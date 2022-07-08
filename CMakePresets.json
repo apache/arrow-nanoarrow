@@ -1,0 +1,28 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Default Config",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/dist",
+            "cacheVariables": {}
+        },
+        {
+            "name": "default-with-tests",
+            "inherits": [
+                "default"
+            ],
+            "displayName": "Default with tests",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "NANOARROW_BUILD_TESTS": "ON"
+            }
+        }
+    ]
+}
