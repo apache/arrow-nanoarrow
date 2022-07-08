@@ -1,0 +1,19 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+      "major": 3,
+      "minor": 21,
+      "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "paleolimbot-local",
+            "inherits": ["default"],
+            "displayName": "(paleolimbot) local build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_FLAGS_DEBUG": "-g"
+            }
+          }
+    ]
+}
