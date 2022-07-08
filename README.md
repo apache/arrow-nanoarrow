@@ -60,6 +60,6 @@ requiring a library with a similar scope:
 - An [R implementation of the draft GeoArrow specification](https://github.com/paleolimbot/geoarrow),
   along which a [mostly header-only C++ library](https://github.com/paleolimbot/geonanoarrowpp/tree/main/src/geoarrow/internal/arrow-hpp)
   was prototyped.
-- The [Arrow Database Connector](https://github.com/apache/arrow-adbc) C API, for which drivers
+- The [Arrow Database Connectivity](https://github.com/apache/arrow-adbc) C API, for which drivers
   in theory can be written in C (which is currently difficult in practice because of there
   are few if any tools to help do this properly).
