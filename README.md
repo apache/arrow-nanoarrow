@@ -77,5 +77,5 @@ requiring a library with a similar scope:
   along which a [mostly header-only C++ library](https://github.com/paleolimbot/geonanoarrowpp/tree/main/src/geoarrow/internal/arrow-hpp)
   was prototyped.
 - The [Arrow Database Connectivity](https://github.com/apache/arrow-adbc) C API, for which drivers
-  in theory can be written in C (which is currently difficult in practice because of there
+  in theory can be written in C (which is currently difficult in practice because there
   are few if any tools to help do this properly).
