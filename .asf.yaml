@@ -21,3 +21,5 @@ github:
   homepage: https://arrow.apache.org/
   enabled_merge_buttons:
     squash:  true
+  features:
+    issues: true
