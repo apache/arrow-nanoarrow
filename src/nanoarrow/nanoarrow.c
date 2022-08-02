@@ -17,6 +17,7 @@
 
 #include "allocator.c"
 #include "buffer.c"
+#include "bitmap.c"
 #include "error.c"
 #include "metadata.c"
 #include "schema.c"

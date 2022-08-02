@@ -559,6 +559,61 @@ ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer, const void* data,
 
 /// }@
 
+/// \defgroup nanoarrow-bitmap Bitmap utilities
+
+/// \brief Extract a boolean value from a bitmap
+int8_t ArrowBitmapElement(const void* bitmap, int64_t i);
+
+/// \brief Set a boolean value to a bitmap
+void ArrowBitmapSetElement(void* bitmap, int64_t i, int8_t value);
+
+/// \brief Count true values in a bitmap
+int64_t ArrowBitmapCountTrue(const void* bitmap, int64_t i_from, int64_t i_to);
+
+/// \brief Count false values in a bitmap
+int64_t ArrowBitmapCountFalse(const void* bitmap, int64_t i_from, int64_t i_to);
+
+/// \brief Build bitmaps element-wise
+struct ArrowBitmapBuilder {
+  /// \brief An ArrowBuffer to hold the allocated memory
+  struct ArrowBuffer buffer;
+
+  /// \brief The number of bits that have been appended to the bitmap
+  int64_t size_bits;
+
+  /// \brief A cache of values (0 or 1) that will be appended to buffer when filled
+  uint8_t pending_values[64];
+
+  /// \brief The number of pending values currently in the cache
+  int8_t n_pending_values;
+};
+
+/// \brief Initialize an ArrowBitmapBuilder
+///
+/// Initialize the builder's buffer, empty its cache, and reset the size to zero
+void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder);
+
+/// \brief Append a boolean value to a bitmap
+ArrowErrorCode ArrowBitmapBuilderAppend(struct ArrowBitmapBuilder* bitmap_builder, int8_t value);
+
+/// \brief Append boolean values encoded as int8_t to a bitmap
+ArrowErrorCode ArrowBitmapBuilderAppendInt8(struct ArrowBitmapBuilder* bitmap_builder, const int8_t* values, int64_t n_values);
+
+/// \brief Append boolean values encoded as int32_t to a bitmap
+ArrowErrorCode ArrowBitmapBuilderAppendInt32(struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values);
+
+/// \brief Force pending value to be written to buffer
+///
+/// After calling this method it is not safe to append more values.
+ArrowErrorCode ArrowBitmapBuilderFlush(struct ArrowBitmapBuilder* bitmap_builder);
+
+/// \brief Reset a bitmap builder
+///
+/// Releases any memory held by buffer, empties the cache, and resets the size to zero
+void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder);
+
+/// }@
+
 #ifdef __cplusplus
 }
 #endif
