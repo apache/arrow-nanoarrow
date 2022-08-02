@@ -106,7 +106,7 @@ jobs:
       - name: Run tests with valgrind
         run: |
           cd build
-          valgrind --tool=memcheck --leak-check=full ctest -T test .
+          ctest -T memcheck .
 
       - name: Calculate coverage
         run: |
