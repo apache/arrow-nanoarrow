@@ -44,6 +44,8 @@ if (NANOARROW_BUILD_TESTS)
     include(FetchContent)
     include(CTest)
 
+    set(MEMORYCHECK_SUPPRESSIONS_FILE "${CMAKE_CURRENT_LIST_DIR}/valgrind.supp")
+
     set(CMAKE_CXX_STANDARD 11)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
