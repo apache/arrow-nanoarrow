@@ -27,10 +27,11 @@ int8_t ArrowBitmapElement(const void* bitmap, int64_t i) {
 
 void ArrowBitmapSetElement(void* bitmap, int64_t i, int8_t value) {
   int8_t* bitmap_char = (int8_t*)bitmap;
+  int8_t mask = 0x01 << (i % 8);
   if (value) {
-    bitmap_char[i / 8] |= (value != 0) << (i % 8);
+    bitmap_char[i / 8] |= mask;
   } else {
-    bitmap_char[i / 8] &= ~((int8_t)(value != 0)) << (i % 8);
+    bitmap_char[i / 8] &= ~mask;
   }
 }
 
