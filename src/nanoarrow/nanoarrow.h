@@ -63,6 +63,23 @@ void ArrowFree(void* ptr);
 /// ArrowFree().
 struct ArrowBufferAllocator* ArrowBufferAllocatorDefault();
 
+/// \brief An owning mutable view of a buffer
+struct ArrowBuffer {
+  /// \brief A pointer to the start of the buffer
+  ///
+  /// If capacity_bytes is 0, this value may be NULL.
+  uint8_t* data;
+
+  /// \brief The size of the buffer in bytes
+  int64_t size_bytes;
+
+  /// \brief The capacity of the buffer in bytes
+  int64_t capacity_bytes;
+
+  /// \brief The allocator that will be used to reallocate and/or free the buffer
+  struct ArrowBufferAllocator* allocator;
+};
+
 /// }@
 
 /// \defgroup nanoarrow-errors Error handling primitives
@@ -213,6 +230,24 @@ char ArrowMetadataHasKey(const char* metadata, const char* key);
 ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
                                      const char* default_value,
                                      struct ArrowStringView* value_out);
+
+/// \brief Initialize a builder for schema metadata from key/value pairs
+ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer, const char* metadata);
+
+/// \brief Append a key/value pair to a buffer containing serialized metadata
+ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer,
+                                          const char* key,
+                                          const char* value);
+
+/// \brief Set a key/value pair to a buffer containing serialized metadata
+///
+/// Ensures that the only entry for key in the metadata is set to value.
+/// If value is NULL, all entries for key will be removed. This function
+/// maintains the existing position of (the first instance of) key if present
+/// in the data.
+ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
+                                       const char* key,
+                                       const char* value);
 
 /// }@
 
