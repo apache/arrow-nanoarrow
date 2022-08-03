@@ -84,10 +84,10 @@ int64_t ArrowMetadataSizeOf(const char* metadata) {
   return size;
 }
 
-ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
-                                     const char* default_value,
-                                     struct ArrowStringView* value_out) {
-  struct ArrowStringView target_key_view = {key, strlen(key)};
+ArrowErrorCode ArrowMetadataGetValueView(const char* metadata,
+                                         struct ArrowStringView* key,
+                                         const char* default_value,
+                                         struct ArrowStringView* value_out) {
   value_out->data = default_value;
   if (default_value != NULL) {
     value_out->n_bytes = strlen(default_value);
@@ -102,8 +102,8 @@ ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
 
   int64_t size = sizeof(int32_t);
   while (ArrowMetadataReaderRead(&reader, &key_view, &value) == NANOARROW_OK) {
-    int key_equal = target_key_view.n_bytes == key_view.n_bytes &&
-                    strncmp(target_key_view.data, key_view.data, key_view.n_bytes) == 0;
+    int key_equal = key->n_bytes == key_view.n_bytes &&
+                    strncmp(key->data, key_view.data, key_view.n_bytes) == 0;
     if (key_equal) {
       value_out->data = value.data;
       value_out->n_bytes = value.n_bytes;
@@ -112,6 +112,13 @@ ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
   }
 
   return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
+                                     const char* default_value,
+                                     struct ArrowStringView* value_out) {
+  struct ArrowStringView key_view = {key, strlen(key)};
+  return ArrowMetadataGetValueView(metadata, &key_view, default_value, value_out);
 }
 
 char ArrowMetadataHasKey(const char* metadata, const char* key) {
@@ -189,8 +196,25 @@ ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer, const char
 ArrowErrorCode ArrowMetadataBuilderSetView(struct ArrowBuffer* buffer,
                                            struct ArrowStringView* key,
                                            struct ArrowStringView* value) {
+  // Inspect the current value to see if we can avoid copying the buffer
+  struct ArrowStringView current_value;
+  int result = ArrowMetadataGetValueView((const char*)buffer->data, key, NULL, &current_value);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  // The key should be removed but no key exists
+  if (value == NULL && current_value.data == NULL) {
+    return NANOARROW_OK;
+  }
+
+  // The key/value can be appended because no key exists
+  if (value != NULL && current_value.data == NULL) {
+    return ArrowMetadataBuilderAppendView(buffer, key, value);
+  }
+
   struct ArrowMetadataReader reader;
-  int result = ArrowMetadataReaderInit(&reader, (const char*)buffer->data);
+  result = ArrowMetadataReaderInit(&reader, (const char*)buffer->data);
   if (result != NANOARROW_OK) {
     return result;
   }
@@ -221,14 +245,6 @@ ArrowErrorCode ArrowMetadataBuilderSetView(struct ArrowBuffer* buffer,
           ArrowMetadataBuilderAppendView(&new_buffer, &existing_key, &existing_value);
     }
 
-    if (result != NANOARROW_OK) {
-      ArrowBufferReset(&new_buffer);
-      return result;
-    }
-  }
-
-  if (value != NULL) {
-    result = ArrowMetadataBuilderAppendView(&new_buffer, key, value);
     if (result != NANOARROW_OK) {
       ArrowBufferReset(&new_buffer);
       return result;

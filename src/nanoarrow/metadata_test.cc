@@ -50,18 +50,26 @@ TEST(MetadataTest, MetadataBuild) {
   char simple_metadata[] = {'\1', '\0', '\0', '\0', '\3', '\0', '\0', '\0', 'k', 'e',
                             'y',  '\5', '\0', '\0', '\0', 'v',  'a',  'l',  'u', 'e'};
 
+  // Empty metadata
   struct ArrowBuffer metadata_builder;
   ASSERT_EQ(ArrowMetadataBuilderInit(&metadata_builder, nullptr), NANOARROW_OK);
   EXPECT_EQ(metadata_builder.size_bytes, 0);
   EXPECT_EQ(metadata_builder.data, nullptr);
 
+  // Recreate simple_metadata
   ASSERT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, "key", "value"), NANOARROW_OK);
   ASSERT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata));
   EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
             0);
 
-  ASSERT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, "key2", "value2"),
-            NANOARROW_OK);
+  // Remove a key that doesn't exist
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key2", NULL), NANOARROW_OK);
+  ASSERT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata));
+  EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
+            0);
+
+  // Add a new key
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key2", "value2"), NANOARROW_OK);
   EXPECT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata) +
                                              sizeof(int32_t) + 4 + sizeof(int32_t) + 6);
 
