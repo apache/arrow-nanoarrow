@@ -18,14 +18,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "nanoarrow.h"
+#include "buffer_inline.h"
+#include "typedefs_inline.h"
 
-int8_t ArrowBitmapElement(const void* bitmap, int64_t i) {
+static inline int8_t ArrowBitmapElement(const void* bitmap, int64_t i) {
   const int8_t* bitmap_char = (const int8_t*)bitmap;
   return 0 != (bitmap_char[i / 8] & ((int8_t)0x01) << (i % 8));
 }
 
-void ArrowBitmapSetElement(void* bitmap, int64_t i, int8_t value) {
+static inline void ArrowBitmapSetElement(void* bitmap, int64_t i, int8_t value) {
   int8_t* bitmap_char = (int8_t*)bitmap;
   int8_t mask = 0x01 << (i % 8);
   if (value) {
@@ -35,7 +36,8 @@ void ArrowBitmapSetElement(void* bitmap, int64_t i, int8_t value) {
   }
 }
 
-int64_t ArrowBitmapCountTrue(const void* bitmap, int64_t i_from, int64_t i_to) {
+static inline int64_t ArrowBitmapCountTrue(const void* bitmap, int64_t i_from,
+                                           int64_t i_to) {
   int64_t count = 0;
   for (int64_t i = i_from; i < i_to; i++) {
     count += ArrowBitmapElement(bitmap, i);
@@ -43,7 +45,8 @@ int64_t ArrowBitmapCountTrue(const void* bitmap, int64_t i_from, int64_t i_to) {
   return count;
 }
 
-int64_t ArrowBitmapCountFalse(const void* bitmap, int64_t i_from, int64_t i_to) {
+static inline int64_t ArrowBitmapCountFalse(const void* bitmap, int64_t i_from,
+                                            int64_t i_to) {
   int64_t count = 0;
   for (int64_t i = i_from; i < i_to; i++) {
     count += !ArrowBitmapElement(bitmap, i);
@@ -51,14 +54,14 @@ int64_t ArrowBitmapCountFalse(const void* bitmap, int64_t i_from, int64_t i_to) 
   return count;
 }
 
-void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder) {
+static inline void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder) {
   ArrowBufferInit(&bitmap_builder->buffer);
   bitmap_builder->size_bits = 0;
   bitmap_builder->n_pending_values = 0;
 }
 
-ArrowErrorCode ArrowBitmapBuilderAppend(struct ArrowBitmapBuilder* bitmap_builder,
-                                        int8_t value) {
+static inline ArrowErrorCode ArrowBitmapBuilderAppend(
+    struct ArrowBitmapBuilder* bitmap_builder, int8_t value) {
   if (bitmap_builder->n_pending_values == 64) {
     int result = ArrowBitmapBuilderFlush(bitmap_builder);
     if (result != NANOARROW_OK) {
@@ -72,8 +75,8 @@ ArrowErrorCode ArrowBitmapBuilderAppend(struct ArrowBitmapBuilder* bitmap_builde
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowBitmapBuilderAppendInt8(struct ArrowBitmapBuilder* bitmap_builder,
-                                            const int8_t* values, int64_t n_values) {
+static inline ArrowErrorCode ArrowBitmapBuilderAppendInt8(
+    struct ArrowBitmapBuilder* bitmap_builder, const int8_t* values, int64_t n_values) {
   int result;
   for (int64_t i = 0; i < n_values; i++) {
     result = ArrowBitmapBuilderAppend(bitmap_builder, values[i]);
@@ -84,8 +87,8 @@ ArrowErrorCode ArrowBitmapBuilderAppendInt8(struct ArrowBitmapBuilder* bitmap_bu
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowBitmapBuilderAppendInt32(struct ArrowBitmapBuilder* bitmap_builder,
-                                             const int32_t* values, int64_t n_values) {
+static inline ArrowErrorCode ArrowBitmapBuilderAppendInt32(
+    struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values) {
   int result;
   for (int64_t i = 0; i < n_values; i++) {
     result = ArrowBitmapBuilderAppend(bitmap_builder, values[i] != 0);
@@ -96,7 +99,8 @@ ArrowErrorCode ArrowBitmapBuilderAppendInt32(struct ArrowBitmapBuilder* bitmap_b
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowBitmapBuilderFlush(struct ArrowBitmapBuilder* bitmap_builder) {
+static inline ArrowErrorCode ArrowBitmapBuilderFlush(
+    struct ArrowBitmapBuilder* bitmap_builder) {
   int8_t pending_bitmap[8];
   memset(pending_bitmap, 0, sizeof(pending_bitmap));
 
@@ -115,7 +119,7 @@ ArrowErrorCode ArrowBitmapBuilderFlush(struct ArrowBitmapBuilder* bitmap_builder
   return NANOARROW_OK;
 }
 
-void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder) {
+static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder) {
   ArrowBufferReset(&bitmap_builder->buffer);
   bitmap_builder->size_bits = 0;
   bitmap_builder->n_pending_values = 0;
