@@ -15,6 +15,113 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#ifndef NANOARROW_BUFFER_INLINE_H_INCLUDED
+#define NANOARROW_BUFFER_INLINE_H_INCLUDED
+
+#include <errno.h>
+#include <stdint.h>
+#include <string.h>
+
 #include "typedefs_inline.h"
 
+static inline int64_t _ArrowGrowByFactor(int64_t current_capacity, int64_t new_capacity) {
+  int64_t doubled_capacity = current_capacity * 2;
+  if (doubled_capacity > new_capacity) {
+    return doubled_capacity;
+  } else {
+    return new_capacity;
+  }
+}
 
+static inline void ArrowBufferInit(struct ArrowBuffer* buffer) {
+  buffer->data = NULL;
+  buffer->size_bytes = 0;
+  buffer->capacity_bytes = 0;
+  buffer->allocator = ArrowBufferAllocatorDefault();
+}
+
+static inline ArrowErrorCode ArrowBufferSetAllocator(
+    struct ArrowBuffer* buffer, struct ArrowBufferAllocator* allocator) {
+  if (buffer->data == NULL) {
+    buffer->allocator = allocator;
+    return NANOARROW_OK;
+  } else {
+    return EINVAL;
+  }
+}
+
+static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
+  if (buffer->data != NULL) {
+    buffer->allocator->free(buffer->allocator, (uint8_t*)buffer->data,
+                            buffer->capacity_bytes);
+    buffer->data = NULL;
+  }
+
+  buffer->capacity_bytes = 0;
+  buffer->size_bytes = 0;
+}
+
+static inline void ArrowBufferMove(struct ArrowBuffer* buffer,
+                                   struct ArrowBuffer* buffer_out) {
+  memcpy(buffer_out, buffer, sizeof(struct ArrowBuffer));
+  buffer->data = NULL;
+  ArrowBufferReset(buffer);
+}
+
+static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
+                                               int64_t new_capacity_bytes,
+                                               char shrink_to_fit) {
+  if (new_capacity_bytes < 0) {
+    return EINVAL;
+  }
+
+  if (new_capacity_bytes > buffer->capacity_bytes || shrink_to_fit) {
+    buffer->data = buffer->allocator->reallocate(
+        buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
+    if (buffer->data == NULL && new_capacity_bytes > 0) {
+      buffer->capacity_bytes = 0;
+      buffer->size_bytes = 0;
+      return ENOMEM;
+    }
+
+    buffer->capacity_bytes = new_capacity_bytes;
+  }
+
+  // Ensures that when shrinking that size <= capacity
+  if (new_capacity_bytes < buffer->size_bytes) {
+    buffer->size_bytes = new_capacity_bytes;
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode ArrowBufferReserve(struct ArrowBuffer* buffer,
+                                                int64_t additional_size_bytes) {
+  int64_t min_capacity_bytes = buffer->size_bytes + additional_size_bytes;
+  if (min_capacity_bytes <= buffer->capacity_bytes) {
+    return NANOARROW_OK;
+  }
+
+  return ArrowBufferResize(
+      buffer, _ArrowGrowByFactor(buffer->capacity_bytes, min_capacity_bytes), 0);
+}
+
+static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const void* data,
+                                           int64_t size_bytes) {
+  if (size_bytes > 0) {
+    memcpy(buffer->data + buffer->size_bytes, data, size_bytes);
+    buffer->size_bytes += size_bytes;
+  }
+}
+
+static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
+                                               const void* data, int64_t size_bytes) {
+  int result = ArrowBufferReserve(buffer, size_bytes);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  ArrowBufferAppendUnsafe(buffer, data, size_bytes);
+  return NANOARROW_OK;
+}
+#endif

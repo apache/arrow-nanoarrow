@@ -29,7 +29,6 @@ include_directories(src)
 add_library(
     nanoarrow
     src/nanoarrow/allocator.c
-    src/nanoarrow/buffer.c
     src/nanoarrow/bitmap.c
     src/nanoarrow/error.c
     src/nanoarrow/metadata.c
