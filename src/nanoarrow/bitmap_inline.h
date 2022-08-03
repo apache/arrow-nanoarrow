@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#ifndef NANOARROW_BITMAP_INLINE_H_INCLUDED
+#define NANOARROW_BITMAP_INLINE_H_INCLUDED
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -124,3 +127,5 @@ static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_bui
   bitmap_builder->size_bits = 0;
   bitmap_builder->n_pending_values = 0;
 }
+
+#endif
