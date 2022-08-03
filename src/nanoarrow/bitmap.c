@@ -59,7 +59,7 @@ void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder) {
 
 ArrowErrorCode ArrowBitmapBuilderAppend(struct ArrowBitmapBuilder* bitmap_builder,
                                         int8_t value) {
-  if (bitmap_builder->n_pending_values == sizeof(bitmap_builder->n_pending_values)) {
+  if (bitmap_builder->n_pending_values == 64) {
     int result = ArrowBitmapBuilderFlush(bitmap_builder);
     if (result != NANOARROW_OK) {
       return result;
@@ -97,7 +97,7 @@ ArrowErrorCode ArrowBitmapBuilderAppendInt32(struct ArrowBitmapBuilder* bitmap_b
 }
 
 ArrowErrorCode ArrowBitmapBuilderFlush(struct ArrowBitmapBuilder* bitmap_builder) {
-  int8_t pending_bitmap[sizeof(bitmap_builder->pending_values) / 8];
+  int8_t pending_bitmap[8];
   memset(pending_bitmap, 0, sizeof(pending_bitmap));
 
   for (int i = 0; i < bitmap_builder->n_pending_values; i++) {
