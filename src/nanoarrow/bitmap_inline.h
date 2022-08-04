@@ -28,34 +28,73 @@
 extern "C" {
 #endif
 
+static const uint8_t _ArrowkBitmask[] = {1, 2, 4, 8, 16, 32, 64, 128};
+static const uint8_t _ArrowkFlippedBitmask[] = {254, 253, 251, 247, 239, 223, 191, 127};
+static const uint8_t _ArrowkBytePopcount[] = {
+    0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3,
+    4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4,
+    4, 5, 4, 5, 5, 6, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4,
+    5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 3, 4, 4, 5,
+    4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2,
+    3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5,
+    5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4,
+    5, 4, 5, 5, 6, 3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 3, 4, 4, 5, 4, 5, 5, 6,
+    4, 5, 5, 6, 5, 6, 6, 7, 4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8};
+
+static inline int64_t _ArrowRoundUpToMultipleOf8(int64_t value) {
+  return (value + (8 - 1)) & ~(8 - 1);
+}
+
+static inline int64_t _ArrowRoundDownToMultipleOf8(int64_t value) {
+  return (value / 8) * 8;
+}
+
 static inline int8_t ArrowBitmapGetBit(const uint8_t* bits, int64_t i) {
-  return 0 != (bits[i / 8] & ((int8_t)0x01) << (i % 8));
+  return (bits[i >> 3] >> (i & 0x07)) & 1;
 }
 
-static inline void ArrowBitmapSetElement(uint8_t* bits, int64_t i, int8_t value) {
-  int8_t mask = 0x01 << (i % 8);
-  if (value) {
-    bits[i / 8] |= mask;
-  } else {
-    bits[i / 8] &= ~mask;
-  }
+static inline void ArrowBitmapSetBit(uint8_t* bits, int64_t i) {
+  bits[i / 8] |= _ArrowkBitmask[i % 8];
 }
 
-static inline int64_t ArrowBitmapCountTrue(const uint8_t* bits, int64_t i_from,
-                                           int64_t i_to) {
+static inline void ArrowBitmapClearBit(uint8_t* bits, int64_t i) {
+  bits[i / 8] &= _ArrowkFlippedBitmask[i % 8];
+}
+
+static inline void ArrowBitmapSetBitTo(uint8_t* bits, int64_t i, uint8_t bit_is_set) {
+  bits[i / 8] ^=
+      ((uint8_t)(-((uint8_t)(bit_is_set != 0)) ^ bits[i / 8])) & _ArrowkBitmask[i % 8];
+}
+
+static inline int64_t ArrowBitmapPopcount(const uint8_t* bits, int64_t i_from,
+                                          int64_t i_to) {
   int64_t count = 0;
-  for (int64_t i = i_from; i < i_to; i++) {
+
+  if ((i_to - i_from) < 8) {
+    for (int64_t i = i_from; i < i_to; i++) {
+      count += ArrowBitmapGetBit(bits, i);
+    }
+    return count;
+  }
+
+  int64_t i_from_byte = _ArrowRoundUpToMultipleOf8(i_from);
+  int64_t i_to_byte = _ArrowRoundDownToMultipleOf8(i_to);
+
+  // Count bits in the first incomplete byte
+  for (int64_t i = i_from; i < i_from_byte; i++) {
     count += ArrowBitmapGetBit(bits, i);
   }
-  return count;
-}
 
-static inline int64_t ArrowBitmapCountFalse(const uint8_t* bits, int64_t i_from,
-                                            int64_t i_to) {
-  int64_t count = 0;
-  for (int64_t i = i_from; i < i_to; i++) {
-    count += !ArrowBitmapGetBit(bits, i);
+  // Count bits in complete bytes
+  for (int64_t i = i_from_byte / 8; i < i_to_byte / 8; i++) {
+    count += _ArrowkBytePopcount[bits[i]];
   }
+
+  // Count bits in the last incomplete byte
+  for (int64_t i = i_to_byte; i < i_to; i++) {
+    count += ArrowBitmapGetBit(bits, i);
+  }
+
   return count;
 }
 

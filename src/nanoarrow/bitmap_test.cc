@@ -56,20 +56,53 @@ TEST(BitmapTest, BitmapTestElement) {
   EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 7), 0);
 }
 
-TEST(BitmapTest, BitmapTestSetElement) {
+TEST(BitmapTest, BitmapTestSetTo) {
   uint8_t bitmap[10];
 
   memset(bitmap, 0xff, sizeof(bitmap));
-  ArrowBitmapSetElement(bitmap, 16 + 1, 0);
+  ArrowBitmapSetBitTo(bitmap, 16 + 1, 0);
   EXPECT_EQ(bitmap[2], 0xfd);
-  ArrowBitmapSetElement(bitmap, 16 + 1, 1);
+  ArrowBitmapSetBitTo(bitmap, 16 + 1, 1);
+  EXPECT_EQ(bitmap[2], 0xff);
+
+  memset(bitmap, 0xff, sizeof(bitmap));
+  ArrowBitmapClearBit(bitmap, 16 + 1);
+  EXPECT_EQ(bitmap[2], 0xfd);
+  ArrowBitmapSetBit(bitmap, 16 + 1);
   EXPECT_EQ(bitmap[2], 0xff);
 
   memset(bitmap, 0x00, sizeof(bitmap));
-  ArrowBitmapSetElement(bitmap, 16 + 1, 1);
+  ArrowBitmapSetBitTo(bitmap, 16 + 1, 1);
   EXPECT_EQ(bitmap[2], 0x02);
-  ArrowBitmapSetElement(bitmap, 16 + 1, 0);
+  ArrowBitmapSetBitTo(bitmap, 16 + 1, 0);
   EXPECT_EQ(bitmap[2], 0x00);
+
+  memset(bitmap, 0x00, sizeof(bitmap));
+  ArrowBitmapSetBit(bitmap, 16 + 1);
+  EXPECT_EQ(bitmap[2], 0x02);
+  ArrowBitmapClearBit(bitmap, 16 + 1);
+  EXPECT_EQ(bitmap[2], 0x00);
+}
+
+TEST(BitmapTest, BitmapTestPopcount) {
+  uint8_t bitmap[10];
+  memset(bitmap, 0x00, sizeof(bitmap));
+  ArrowBitmapSetBit(bitmap, 18);
+  ArrowBitmapSetBit(bitmap, 23);
+  ArrowBitmapSetBit(bitmap, 74);
+
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 0, 80), 3);
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 75), 3);
+
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 18), 0);
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 19), 1);
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 20), 1);
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 21), 1);
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 22), 1);
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 23), 1);
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 24), 2);
+
+  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 23, 24), 1);
 }
 
 TEST(BitmapTest, BitmapTestBuilder) {

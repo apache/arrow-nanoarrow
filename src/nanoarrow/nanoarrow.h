@@ -438,16 +438,18 @@ static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
 /// \brief Extract a boolean value from a bitmap
 static inline int8_t ArrowBitmapGetBit(const uint8_t* bits, int64_t i);
 
+/// \brief Set a boolean value to a bitmap to true
+static inline void ArrowBitmapSetBit(uint8_t* bits, int64_t i);
+
+/// \brief Set a boolean value to a bitmap to false
+static inline void ArrowBitmapClearBit(uint8_t* bits, int64_t i);
+
 /// \brief Set a boolean value to a bitmap
-static inline void ArrowBitmapSetElement(uint8_t* bits, int64_t i, int8_t value);
+static inline void ArrowBitmapSetBitTo(uint8_t* bits, int64_t i, uint8_t value);
 
 /// \brief Count true values in a bitmap
-static inline int64_t ArrowBitmapCountTrue(const uint8_t* bits, int64_t i_from,
-                                           int64_t i_to);
-
-/// \brief Count false values in a bitmap
-static inline int64_t ArrowBitmapCountFalse(const uint8_t* bits, int64_t i_from,
-                                            int64_t i_to);
+static inline int64_t ArrowBitmapPopcount(const uint8_t* bits, int64_t i_from,
+                                          int64_t i_to);
 
 /// \brief Initialize an ArrowBitmapBuilder
 ///
