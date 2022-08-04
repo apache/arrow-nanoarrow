@@ -28,35 +28,33 @@
 extern "C" {
 #endif
 
-static inline int8_t ArrowBitmapElement(const void* bitmap, int64_t i) {
-  const int8_t* bitmap_char = (const int8_t*)bitmap;
-  return 0 != (bitmap_char[i / 8] & ((int8_t)0x01) << (i % 8));
+static inline int8_t ArrowBitmapGetBit(const uint8_t* bits, int64_t i) {
+  return 0 != (bits[i / 8] & ((int8_t)0x01) << (i % 8));
 }
 
-static inline void ArrowBitmapSetElement(void* bitmap, int64_t i, int8_t value) {
-  int8_t* bitmap_char = (int8_t*)bitmap;
+static inline void ArrowBitmapSetElement(uint8_t* bits, int64_t i, int8_t value) {
   int8_t mask = 0x01 << (i % 8);
   if (value) {
-    bitmap_char[i / 8] |= mask;
+    bits[i / 8] |= mask;
   } else {
-    bitmap_char[i / 8] &= ~mask;
+    bits[i / 8] &= ~mask;
   }
 }
 
-static inline int64_t ArrowBitmapCountTrue(const void* bitmap, int64_t i_from,
+static inline int64_t ArrowBitmapCountTrue(const uint8_t* bits, int64_t i_from,
                                            int64_t i_to) {
   int64_t count = 0;
   for (int64_t i = i_from; i < i_to; i++) {
-    count += ArrowBitmapElement(bitmap, i);
+    count += ArrowBitmapGetBit(bits, i);
   }
   return count;
 }
 
-static inline int64_t ArrowBitmapCountFalse(const void* bitmap, int64_t i_from,
+static inline int64_t ArrowBitmapCountFalse(const uint8_t* bits, int64_t i_from,
                                             int64_t i_to) {
   int64_t count = 0;
   for (int64_t i = i_from; i < i_to; i++) {
-    count += !ArrowBitmapElement(bitmap, i);
+    count += !ArrowBitmapGetBit(bits, i);
   }
   return count;
 }

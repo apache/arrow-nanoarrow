@@ -23,47 +23,47 @@
 #include "nanoarrow/nanoarrow.h"
 
 TEST(BitmapTest, BitmapTestElement) {
-  int8_t bitmap[10];
+  uint8_t bitmap[10];
 
   memset(bitmap, 0xff, sizeof(bitmap));
   for (int i = 0; i < sizeof(bitmap) * 8; i++) {
-    EXPECT_EQ(ArrowBitmapElement(bitmap, i), 1);
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap, i), 1);
   }
 
   bitmap[2] = 0xfd;
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 0), 1);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 1), 0);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 2), 1);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 3), 1);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 4), 1);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 5), 1);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 6), 1);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 7), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 0), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 1), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 2), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 3), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 4), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 5), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 6), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 7), 1);
 
   memset(bitmap, 0x00, sizeof(bitmap));
   for (int i = 0; i < sizeof(bitmap) * 8; i++) {
-    EXPECT_EQ(ArrowBitmapElement(bitmap, i), 0);
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap, i), 0);
   }
 
   bitmap[2] = 0x02;
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 0), 0);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 1), 1);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 2), 0);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 3), 0);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 4), 0);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 5), 0);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 6), 0);
-  EXPECT_EQ(ArrowBitmapElement(bitmap, 16 + 7), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 0), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 1), 1);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 2), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 3), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 4), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 5), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 6), 0);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 7), 0);
 }
 
 TEST(BitmapTest, BitmapTestSetElement) {
-  int8_t bitmap[10];
+  uint8_t bitmap[10];
 
   memset(bitmap, 0xff, sizeof(bitmap));
   ArrowBitmapSetElement(bitmap, 16 + 1, 0);
-  EXPECT_EQ(bitmap[2], (int8_t)0xfd);
+  EXPECT_EQ(bitmap[2], 0xfd);
   ArrowBitmapSetElement(bitmap, 16 + 1, 1);
-  EXPECT_EQ(bitmap[2], (int8_t)0xff);
+  EXPECT_EQ(bitmap[2], 0xff);
 
   memset(bitmap, 0x00, sizeof(bitmap));
   ArrowBitmapSetElement(bitmap, 16 + 1, 1);
@@ -87,7 +87,7 @@ TEST(BitmapTest, BitmapTestBuilder) {
 
   EXPECT_EQ(bitmap_builder.size_bits, 65);
   for (int i = 0; i < 65; i++) {
-    EXPECT_EQ(ArrowBitmapElement(bitmap_builder.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i]);
   }
 
   ArrowBitmapBuilderReset(&bitmap_builder);
@@ -104,7 +104,7 @@ TEST(BitmapTest, BitmapTestBuilder) {
 
   EXPECT_EQ(bitmap_builder.size_bits, 65);
   for (int i = 0; i < 65; i++) {
-    EXPECT_EQ(ArrowBitmapElement(bitmap_builder.buffer.data, i), test_values_int32[i]);
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values_int32[i]);
   }
 
   ArrowBitmapBuilderReset(&bitmap_builder);
