@@ -112,34 +112,41 @@ static inline void ArrowBitmapSetBitsTo(uint8_t* bits, int64_t start_offset,
   bits[bytes_end - 1] |= (uint8_t)(fill_byte & ~last_byte_mask);
 }
 
-static inline int64_t ArrowBitmapCountSet(const uint8_t* bits, int64_t i_from,
-                                          int64_t i_to) {
+static inline int64_t ArrowBitmapCountSet(const uint8_t* bits, int64_t start_offset,
+                                          int64_t length) {
+  if (length == 0) {
+    return 0;
+  }
+
+  const int64_t i_begin = start_offset;
+  const int64_t i_end = start_offset + length;
+
+  const int64_t bytes_begin = i_begin / 8;
+  const int64_t bytes_end = i_end / 8 + 1;
+
+  const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_begin % 8];
+  const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_end % 8];
+
+  if (bytes_end == bytes_begin + 1) {
+    // count bits within a single byte
+    const uint8_t only_byte_mask =
+        i_end % 8 == 0 ? first_byte_mask : (uint8_t)(first_byte_mask | last_byte_mask);
+    const uint8_t byte_masked = bits[bytes_begin] & only_byte_mask;
+    return _ArrowkBytePopcount[byte_masked];
+  }
+
   int64_t count = 0;
 
-  if ((i_to - i_from) < 8) {
-    for (int64_t i = i_from; i < i_to; i++) {
-      count += ArrowBitmapGetBit(bits, i);
-    }
-    return count;
-  }
+  // first byte
+  count += _ArrowkBytePopcount[bits[bytes_begin] & ~first_byte_mask];
 
-  int64_t i_from_byte = _ArrowRoundUpToMultipleOf8(i_from);
-  int64_t i_to_byte = _ArrowRoundDownToMultipleOf8(i_to);
-
-  // Count bits in the first incomplete byte
-  for (int64_t i = i_from; i < i_from_byte; i++) {
-    count += ArrowBitmapGetBit(bits, i);
-  }
-
-  // Count bits in complete bytes
-  for (int64_t i = i_from_byte / 8; i < i_to_byte / 8; i++) {
+  // middle bytes
+  for (int64_t i = bytes_begin + 1; i < (bytes_end - 1); i++) {
     count += _ArrowkBytePopcount[bits[i]];
   }
 
-  // Count bits in the last incomplete byte
-  for (int64_t i = i_to_byte; i < i_to; i++) {
-    count += ArrowBitmapGetBit(bits, i);
-  }
+  // last byte
+  count += _ArrowkBytePopcount[bits[bytes_end - 1] & ~last_byte_mask];
 
   return count;
 }

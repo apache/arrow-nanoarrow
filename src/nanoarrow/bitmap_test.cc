@@ -92,17 +92,17 @@ TEST(BitmapTest, BitmapTestCountSet) {
   ArrowBitmapSetBit(bitmap, 74);
 
   EXPECT_EQ(ArrowBitmapCountSet(bitmap, 0, 80), 3);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 75), 3);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 57), 3);
 
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 18), 0);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 19), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 20), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 21), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 22), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 23), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 24), 2);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 0), 0);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 1), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 2), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 3), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 4), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 5), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 6), 2);
 
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 23, 24), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 23, 1), 1);
 }
 
 TEST(BitmapTest, BitmapTestBuilderAppend) {
