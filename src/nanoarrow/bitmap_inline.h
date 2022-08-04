@@ -147,7 +147,6 @@ static inline int64_t ArrowBitmapCountSet(const uint8_t* bits, int64_t i_from,
 static inline void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder) {
   ArrowBufferInit(&bitmap_builder->buffer);
   bitmap_builder->size_bits = 0;
-  bitmap_builder->n_pending_values = 0;
 }
 
 static inline ArrowErrorCode ArrowBitmapBuilderReserve(
@@ -208,7 +207,6 @@ static inline ArrowErrorCode ArrowBitmapBuilderAppendInt32Unsafe(
 static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder) {
   ArrowBufferReset(&bitmap_builder->buffer);
   bitmap_builder->size_bits = 0;
-  bitmap_builder->n_pending_values = 0;
 }
 
 #ifdef __cplusplus
