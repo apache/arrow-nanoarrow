@@ -24,6 +24,10 @@
 #include "buffer_inline.h"
 #include "typedefs_inline.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline int8_t ArrowBitmapElement(const void* bitmap, int64_t i) {
   const int8_t* bitmap_char = (const int8_t*)bitmap;
   return 0 != (bitmap_char[i / 8] & ((int8_t)0x01) << (i % 8));
@@ -127,5 +131,9 @@ static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_bui
   bitmap_builder->size_bits = 0;
   bitmap_builder->n_pending_values = 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

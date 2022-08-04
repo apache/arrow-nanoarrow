@@ -24,6 +24,10 @@
 
 #include "typedefs_inline.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline int64_t _ArrowGrowByFactor(int64_t current_capacity, int64_t new_capacity) {
   int64_t doubled_capacity = current_capacity * 2;
   if (doubled_capacity > new_capacity) {
@@ -124,4 +128,9 @@ static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
   ArrowBufferAppendUnsafe(buffer, data, size_bytes);
   return NANOARROW_OK;
 }
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

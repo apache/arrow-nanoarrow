@@ -20,6 +20,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// \defgroup nanoarrow-inline-typedef Type definitions used in inlined implementations
 
 // Extra guard for versions of Arrow without the canonical guard
@@ -168,5 +172,9 @@ struct ArrowBitmapBuilder {
 };
 
 /// }@
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
