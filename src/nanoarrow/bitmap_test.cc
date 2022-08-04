@@ -84,25 +84,25 @@ TEST(BitmapTest, BitmapTestSetTo) {
   EXPECT_EQ(bitmap[2], 0x00);
 }
 
-TEST(BitmapTest, BitmapTestPopcount) {
+TEST(BitmapTest, BitmapTestCountSet) {
   uint8_t bitmap[10];
   memset(bitmap, 0x00, sizeof(bitmap));
   ArrowBitmapSetBit(bitmap, 18);
   ArrowBitmapSetBit(bitmap, 23);
   ArrowBitmapSetBit(bitmap, 74);
 
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 0, 80), 3);
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 75), 3);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 0, 80), 3);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 75), 3);
 
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 18), 0);
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 19), 1);
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 20), 1);
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 21), 1);
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 22), 1);
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 23), 1);
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 18, 24), 2);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 18), 0);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 19), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 20), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 21), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 22), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 23), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 24), 2);
 
-  EXPECT_EQ(ArrowBitmapPopcount(bitmap, 23, 24), 1);
+  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 23, 24), 1);
 }
 
 TEST(BitmapTest, BitmapTestBuilder) {
@@ -115,10 +115,11 @@ TEST(BitmapTest, BitmapTestBuilder) {
   struct ArrowBitmapBuilder bitmap_builder;
   ArrowBitmapBuilderInit(&bitmap_builder);
 
-  ASSERT_EQ(ArrowBitmapBuilderAppendInt8(&bitmap_builder, test_values, 65), NANOARROW_OK);
-  ASSERT_EQ(ArrowBitmapBuilderFlush(&bitmap_builder), NANOARROW_OK);
+  ASSERT_EQ(ArrowBitmapBuilderAppendInt8Unsafe(&bitmap_builder, test_values, 65),
+            NANOARROW_OK);
 
   EXPECT_EQ(bitmap_builder.size_bits, 65);
+  EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, 4), test_values[4]);
   for (int i = 0; i < 65; i++) {
     EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i]);
   }
@@ -131,9 +132,8 @@ TEST(BitmapTest, BitmapTestBuilder) {
   test_values[63] = 1;
   test_values[64] = 1;
 
-  ASSERT_EQ(ArrowBitmapBuilderAppendInt32(&bitmap_builder, test_values_int32, 65),
+  ASSERT_EQ(ArrowBitmapBuilderAppendInt32Unsafe(&bitmap_builder, test_values_int32, 65),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowBitmapBuilderFlush(&bitmap_builder), NANOARROW_OK);
 
   EXPECT_EQ(bitmap_builder.size_bits, 65);
   for (int i = 0; i < 65; i++) {

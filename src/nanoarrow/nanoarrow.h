@@ -447,8 +447,11 @@ static inline void ArrowBitmapClearBit(uint8_t* bits, int64_t i);
 /// \brief Set a boolean value to a bitmap
 static inline void ArrowBitmapSetBitTo(uint8_t* bits, int64_t i, uint8_t value);
 
+static inline void ArrowBitmapSetBitsTo(uint8_t* bits, int64_t start_offset,
+                                        int64_t length, uint8_t bits_are_set);
+
 /// \brief Count true values in a bitmap
-static inline int64_t ArrowBitmapPopcount(const uint8_t* bits, int64_t i_from,
+static inline int64_t ArrowBitmapCountSet(const uint8_t* bits, int64_t i_from,
                                           int64_t i_to);
 
 /// \brief Initialize an ArrowBitmapBuilder
@@ -456,23 +459,24 @@ static inline int64_t ArrowBitmapPopcount(const uint8_t* bits, int64_t i_from,
 /// Initialize the builder's buffer, empty its cache, and reset the size to zero
 static inline void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder);
 
+/// \brief Ensure a bitmap builder has at least a given additional capacity
+///
+/// Ensures that the buffer has space to append at least
+/// additional_size_bits, overallocating when required.
+static inline ArrowErrorCode ArrowBitmapBuilderReserve(
+    struct ArrowBitmapBuilder* bitmap_builder, int64_t additional_size_bits);
+
 /// \brief Append a boolean value to a bitmap
 static inline ArrowErrorCode ArrowBitmapBuilderAppend(
-    struct ArrowBitmapBuilder* bitmap_builder, int8_t value);
+    struct ArrowBitmapBuilder* bitmap_builder, uint8_t bits_are_set, int64_t length);
 
 /// \brief Append boolean values encoded as int8_t to a bitmap
-static inline ArrowErrorCode ArrowBitmapBuilderAppendInt8(
+static inline ArrowErrorCode ArrowBitmapBuilderAppendInt8Unsafe(
     struct ArrowBitmapBuilder* bitmap_builder, const int8_t* values, int64_t n_values);
 
 /// \brief Append boolean values encoded as int32_t to a bitmap
-static inline ArrowErrorCode ArrowBitmapBuilderAppendInt32(
+static inline ArrowErrorCode ArrowBitmapBuilderAppendInt32Unsafe(
     struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values);
-
-/// \brief Force pending value to be written to buffer
-///
-/// After calling this method it is not safe to append more values.
-static inline ArrowErrorCode ArrowBitmapBuilderFlush(
-    struct ArrowBitmapBuilder* bitmap_builder);
 
 /// \brief Reset a bitmap builder
 ///

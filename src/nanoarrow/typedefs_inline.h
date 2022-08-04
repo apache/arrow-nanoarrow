@@ -163,12 +163,6 @@ struct ArrowBitmapBuilder {
 
   /// \brief The number of bits that have been appended to the bitmap
   int64_t size_bits;
-
-  /// \brief A cache of values (0 or 1) that will be appended to buffer when filled
-  uint8_t pending_values[64];
-
-  /// \brief The number of pending values currently in the cache
-  int8_t n_pending_values;
 };
 
 /// }@
