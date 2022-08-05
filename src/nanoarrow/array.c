@@ -26,7 +26,7 @@ static void ArrowArrayRelease(struct ArrowArray* array) {
   // Release buffers held by this array
   struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
   if (data != NULL) {
-    ArrowBufferReset(&data->bitmap);
+    ArrowBitmapReset(&data->bitmap);
     ArrowBufferReset(&data->buffers[0]);
     ArrowBufferReset(&data->buffers[1]);
     ArrowFree(data);
@@ -135,7 +135,7 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
     return ENOMEM;
   }
 
-  ArrowBufferInit(&data->bitmap);
+  ArrowBitmapInit(&data->bitmap);
   ArrowBufferInit(&data->buffers[0]);
   ArrowBufferInit(&data->buffers[1]);
   data->buffer_data[0] = NULL;
