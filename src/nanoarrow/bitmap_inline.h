@@ -183,6 +183,26 @@ static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
   return NANOARROW_OK;
 }
 
+static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
+                                               int64_t new_capacity_bits,
+                                               char shrink_to_fit) {
+  if (new_capacity_bits < 0) {
+    return EINVAL;
+  }
+
+  int64_t new_capacity_bytes = _ArrowBytesForBits(new_capacity_bits);
+  int result = ArrowBufferResize(&bitmap->buffer, new_capacity_bytes, shrink_to_fit);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  if (new_capacity_bits < bitmap->size_bits) {
+    bitmap->size_bits = new_capacity_bits;
+  }
+
+  return NANOARROW_OK;
+}
+
 static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
                                                uint8_t bits_are_set, int64_t length) {
   int result = ArrowBitmapReserve(bitmap, length);

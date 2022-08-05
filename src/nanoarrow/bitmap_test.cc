@@ -105,7 +105,7 @@ TEST(BitmapTest, BitmapTestCountSet) {
   EXPECT_EQ(ArrowBitCountSet(bitmap, 23, 1), 1);
 }
 
-TEST(BitmapTest, BitmapTestBuilderAppend) {
+TEST(BitmapTest, BitmapTestAppend) {
   int8_t test_values[65];
   memset(test_values, 0, sizeof(test_values));
   test_values[4] = 1;
@@ -128,7 +128,44 @@ TEST(BitmapTest, BitmapTestBuilderAppend) {
   ArrowBitmapReset(&bitmap);
 }
 
-TEST(BitmapTest, BitmapTestBuilderAppendInt8Unsafe) {
+TEST(BitmapTest, BitmapTestResize) {
+  struct ArrowBitmap bitmap;
+  ArrowBitmapInit(&bitmap);
+
+  // Check normal usage, which is resize to the final length
+  // after appending a bunch of values
+  ArrowBitmapResize(&bitmap, 200, false);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 0);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, 200 / 8);
+  EXPECT_EQ(bitmap.size_bits, 0);
+
+  ArrowBitmapAppendUnsafe(&bitmap, true, 100);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 100 / 8 + 1);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, 200 / 8);
+  EXPECT_EQ(bitmap.size_bits, 100);
+
+  // Resize without shrinking
+  EXPECT_EQ(ArrowBitmapResize(&bitmap, 100, false), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 100 / 8 + 1);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, 200 / 8);
+  EXPECT_EQ(bitmap.size_bits, 100);
+
+  // Resize with shrinking
+  EXPECT_EQ(ArrowBitmapResize(&bitmap, 100, true), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 100 / 8 + 1);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, bitmap.buffer.size_bytes);
+  EXPECT_EQ(bitmap.size_bits, 100);
+
+  // Resize with shrinking when a reallocation isn't needed to shrink
+  EXPECT_EQ(ArrowBitmapResize(&bitmap, 99, true), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 100 / 8 + 1);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, bitmap.buffer.size_bytes);
+  EXPECT_EQ(bitmap.size_bits, 99);
+
+  ArrowBitmapReset(&bitmap);
+}
+
+TEST(BitmapTest, BitmapTestAppendInt8Unsafe) {
   struct ArrowBitmap bitmap;
   ArrowBitmapInit(&bitmap);
 
@@ -183,7 +220,7 @@ TEST(BitmapTest, BitmapTestBuilderAppendInt8Unsafe) {
   ArrowBitmapReset(&bitmap);
 }
 
-TEST(BitmapTest, BitmapTestBuilderAppendInt32Unsafe) {
+TEST(BitmapTest, BitmapTestAppendInt32Unsafe) {
   struct ArrowBitmap bitmap;
   ArrowBitmapInit(&bitmap);
 
