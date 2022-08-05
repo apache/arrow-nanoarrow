@@ -27,82 +27,82 @@ TEST(BitmapTest, BitmapTestElement) {
 
   memset(bitmap, 0xff, sizeof(bitmap));
   for (int i = 0; i < sizeof(bitmap) * 8; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap, i), 1);
+    EXPECT_EQ(ArrowBitGet(bitmap, i), 1);
   }
 
   bitmap[2] = 0xfd;
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 0), 1);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 1), 0);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 2), 1);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 3), 1);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 4), 1);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 5), 1);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 6), 1);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 7), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 0), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 1), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 2), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 3), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 4), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 5), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 6), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 7), 1);
 
   memset(bitmap, 0x00, sizeof(bitmap));
   for (int i = 0; i < sizeof(bitmap) * 8; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap, i), 0);
+    EXPECT_EQ(ArrowBitGet(bitmap, i), 0);
   }
 
   bitmap[2] = 0x02;
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 0), 0);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 1), 1);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 2), 0);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 3), 0);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 4), 0);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 5), 0);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 6), 0);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap, 16 + 7), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 0), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 1), 1);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 2), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 3), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 4), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 5), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 6), 0);
+  EXPECT_EQ(ArrowBitGet(bitmap, 16 + 7), 0);
 }
 
 TEST(BitmapTest, BitmapTestSetTo) {
   uint8_t bitmap[10];
 
   memset(bitmap, 0xff, sizeof(bitmap));
-  ArrowBitmapSetBitTo(bitmap, 16 + 1, 0);
+  ArrowBitSetTo(bitmap, 16 + 1, 0);
   EXPECT_EQ(bitmap[2], 0xfd);
-  ArrowBitmapSetBitTo(bitmap, 16 + 1, 1);
+  ArrowBitSetTo(bitmap, 16 + 1, 1);
   EXPECT_EQ(bitmap[2], 0xff);
 
   memset(bitmap, 0xff, sizeof(bitmap));
-  ArrowBitmapClearBit(bitmap, 16 + 1);
+  ArrowBitClear(bitmap, 16 + 1);
   EXPECT_EQ(bitmap[2], 0xfd);
-  ArrowBitmapSetBit(bitmap, 16 + 1);
+  ArrowBitSet(bitmap, 16 + 1);
   EXPECT_EQ(bitmap[2], 0xff);
 
   memset(bitmap, 0x00, sizeof(bitmap));
-  ArrowBitmapSetBitTo(bitmap, 16 + 1, 1);
+  ArrowBitSetTo(bitmap, 16 + 1, 1);
   EXPECT_EQ(bitmap[2], 0x02);
-  ArrowBitmapSetBitTo(bitmap, 16 + 1, 0);
+  ArrowBitSetTo(bitmap, 16 + 1, 0);
   EXPECT_EQ(bitmap[2], 0x00);
 
   memset(bitmap, 0x00, sizeof(bitmap));
-  ArrowBitmapSetBit(bitmap, 16 + 1);
+  ArrowBitSet(bitmap, 16 + 1);
   EXPECT_EQ(bitmap[2], 0x02);
-  ArrowBitmapClearBit(bitmap, 16 + 1);
+  ArrowBitClear(bitmap, 16 + 1);
   EXPECT_EQ(bitmap[2], 0x00);
 }
 
 TEST(BitmapTest, BitmapTestCountSet) {
   uint8_t bitmap[10];
   memset(bitmap, 0x00, sizeof(bitmap));
-  ArrowBitmapSetBit(bitmap, 18);
-  ArrowBitmapSetBit(bitmap, 23);
-  ArrowBitmapSetBit(bitmap, 74);
+  ArrowBitSet(bitmap, 18);
+  ArrowBitSet(bitmap, 23);
+  ArrowBitSet(bitmap, 74);
 
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 0, 80), 3);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 57), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 80), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 57), 3);
 
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 0), 0);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 1), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 2), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 3), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 4), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 5), 1);
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 18, 6), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 0), 0);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 2), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 3), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 4), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 5), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 6), 2);
 
-  EXPECT_EQ(ArrowBitmapCountSet(bitmap, 23, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 23, 1), 1);
 }
 
 TEST(BitmapTest, BitmapTestBuilderAppend) {
@@ -120,9 +120,9 @@ TEST(BitmapTest, BitmapTestBuilderAppend) {
   }
 
   EXPECT_EQ(bitmap.size_bits, 65);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, 4), test_values[4]);
+  EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, 4), test_values[4]);
   for (int i = 0; i < 65; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i]);
   }
 
   ArrowBitmapReset(&bitmap);
@@ -148,7 +148,7 @@ TEST(BitmapTest, BitmapTestBuilderAppendInt8Unsafe) {
   EXPECT_EQ(bitmap.size_bits, 68);
   EXPECT_EQ(bitmap.buffer.size_bytes, 9);
   for (int i = 0; i < 68; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i]);
   }
 
   // Append starting at a non-byte aligned value
@@ -158,10 +158,10 @@ TEST(BitmapTest, BitmapTestBuilderAppendInt8Unsafe) {
   EXPECT_EQ(bitmap.size_bits, 68 * 2);
   EXPECT_EQ(bitmap.buffer.size_bytes, 17);
   for (int i = 0; i < 68; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i]);
   }
   for (int i = 69; i < (68 * 2); i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i - 68]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 68]);
   }
 
   // Append starting at a byte aligned but non-zero value
@@ -171,13 +171,13 @@ TEST(BitmapTest, BitmapTestBuilderAppendInt8Unsafe) {
   EXPECT_EQ(bitmap.size_bits, 204);
   EXPECT_EQ(bitmap.buffer.size_bytes, 26);
   for (int i = 0; i < 68; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i]);
   }
   for (int i = 69; i < 136; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i - 68]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 68]);
   }
   for (int i = 136; i < 204; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i - 136]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 136]);
   }
 
   ArrowBitmapReset(&bitmap);
@@ -203,7 +203,7 @@ TEST(BitmapTest, BitmapTestBuilderAppendInt32Unsafe) {
   EXPECT_EQ(bitmap.size_bits, 68);
   EXPECT_EQ(bitmap.buffer.size_bytes, 9);
   for (int i = 0; i < 68; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i]);
   }
 
   // Append starting at a non-byte aligned value
@@ -213,10 +213,10 @@ TEST(BitmapTest, BitmapTestBuilderAppendInt32Unsafe) {
   EXPECT_EQ(bitmap.size_bits, 68 * 2);
   EXPECT_EQ(bitmap.buffer.size_bytes, 17);
   for (int i = 0; i < 68; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i]);
   }
   for (int i = 69; i < (68 * 2); i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i - 68]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 68]);
   }
 
   // Append starting at a byte aligned but non-zero value
@@ -226,13 +226,13 @@ TEST(BitmapTest, BitmapTestBuilderAppendInt32Unsafe) {
   EXPECT_EQ(bitmap.size_bits, 204);
   EXPECT_EQ(bitmap.buffer.size_bytes, 26);
   for (int i = 0; i < 68; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i]);
   }
   for (int i = 69; i < 136; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i - 68]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 68]);
   }
   for (int i = 136; i < 204; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap.buffer.data, i), test_values[i - 136]);
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 136]);
   }
 
   ArrowBitmapReset(&bitmap);

@@ -66,25 +66,25 @@ static inline void _ArrowBitmapPackInt32(const int32_t* values, uint8_t* out) {
           values[5] << 5 | values[6] << 6 | values[7] << 7);
 }
 
-static inline int8_t ArrowBitmapGetBit(const uint8_t* bits, int64_t i) {
+static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i) {
   return (bits[i >> 3] >> (i & 0x07)) & 1;
 }
 
-static inline void ArrowBitmapSetBit(uint8_t* bits, int64_t i) {
+static inline void ArrowBitSet(uint8_t* bits, int64_t i) {
   bits[i / 8] |= _ArrowkBitmask[i % 8];
 }
 
-static inline void ArrowBitmapClearBit(uint8_t* bits, int64_t i) {
+static inline void ArrowBitClear(uint8_t* bits, int64_t i) {
   bits[i / 8] &= _ArrowkFlippedBitmask[i % 8];
 }
 
-static inline void ArrowBitmapSetBitTo(uint8_t* bits, int64_t i, uint8_t bit_is_set) {
+static inline void ArrowBitSetTo(uint8_t* bits, int64_t i, uint8_t bit_is_set) {
   bits[i / 8] ^=
       ((uint8_t)(-((uint8_t)(bit_is_set != 0)) ^ bits[i / 8])) & _ArrowkBitmask[i % 8];
 }
 
-static inline void ArrowBitmapSetBitsTo(uint8_t* bits, int64_t start_offset,
-                                        int64_t length, uint8_t bits_are_set) {
+static inline void ArrowBitsSetTo(uint8_t* bits, int64_t start_offset, int64_t length,
+                                  uint8_t bits_are_set) {
   const int64_t i_begin = start_offset;
   const int64_t i_end = start_offset + length;
   const uint8_t fill_byte = (uint8_t)(-bits_are_set);
@@ -122,8 +122,8 @@ static inline void ArrowBitmapSetBitsTo(uint8_t* bits, int64_t start_offset,
   bits[bytes_end - 1] |= (uint8_t)(fill_byte & ~last_byte_mask);
 }
 
-static inline int64_t ArrowBitmapCountSet(const uint8_t* bits, int64_t start_offset,
-                                          int64_t length) {
+static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t start_offset,
+                                       int64_t length) {
   if (length == 0) {
     return 0;
   }
@@ -190,7 +190,7 @@ static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
     return result;
   }
 
-  ArrowBitmapSetBitsTo(bitmap->buffer.data, bitmap->size_bits, length, bits_are_set);
+  ArrowBitsSetTo(bitmap->buffer.data, bitmap->size_bits, length, bits_are_set);
   bitmap->size_bits += length;
   bitmap->buffer.size_bytes = _ArrowBytesForBits(bitmap->size_bits);
   return NANOARROW_OK;
@@ -211,7 +211,7 @@ static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
   if ((out_i_cursor % 8) != 0) {
     int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(out_i_cursor) - out_i_cursor;
     for (int i = 0; i < n_partial_bits; i++) {
-      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values[i]);
+      ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, values[i]);
     }
 
     out_cursor++;
@@ -232,7 +232,7 @@ static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
   n_remaining -= n_full_bytes * 8;
   if (n_remaining > 0) {
     for (int i = 0; i < n_remaining; i++) {
-      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
+      ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
     }
     out_cursor++;
   }
@@ -256,7 +256,7 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
   if ((out_i_cursor % 8) != 0) {
     int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(out_i_cursor) - out_i_cursor;
     for (int i = 0; i < n_partial_bits; i++) {
-      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values[i]);
+      ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, values[i]);
     }
 
     out_cursor++;
@@ -277,7 +277,7 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
   n_remaining -= n_full_bytes * 8;
   if (n_remaining > 0) {
     for (int i = 0; i < n_remaining; i++) {
-      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
+      ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
     }
     out_cursor++;
   }
