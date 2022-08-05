@@ -63,23 +63,6 @@ void ArrowFree(void* ptr);
 /// ArrowFree().
 struct ArrowBufferAllocator* ArrowBufferAllocatorDefault();
 
-/// \brief An owning mutable view of a buffer
-struct ArrowBuffer {
-  /// \brief A pointer to the start of the buffer
-  ///
-  /// If capacity_bytes is 0, this value may be NULL.
-  uint8_t* data;
-
-  /// \brief The size of the buffer in bytes
-  int64_t size_bytes;
-
-  /// \brief The capacity of the buffer in bytes
-  int64_t capacity_bytes;
-
-  /// \brief The allocator that will be used to reallocate and/or free the buffer
-  struct ArrowBufferAllocator* allocator;
-};
-
 /// }@
 
 /// \defgroup nanoarrow-errors Error handling primitives
