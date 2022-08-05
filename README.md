@@ -19,6 +19,8 @@
 
 # nanoarrow
 
+[![Codecov test coverage](https://codecov.io/gh/apache/arrow-nanoarrow/branch/main/graph/badge.svg)](https://app.codecov.io/gh/apache/arrow-nanoarrow?branch=main)
+
 The nanoarrow library is a set of helper functions to interpret and generate
 [Arrow C Data Interface](https://arrow.apache.org/docs/format/CDataInterface.html)
 and [Arrow C Stream Interface](https://arrow.apache.org/docs/format/CStreamInterface.html)
