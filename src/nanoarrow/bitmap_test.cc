@@ -129,38 +129,55 @@ TEST(BitmapTest, BitmapTestBuilderAppend) {
 }
 
 TEST(BitmapTest, BitmapTestBuilderAppendUnsafe) {
-  int8_t test_values[65];
-  memset(test_values, 0, sizeof(test_values));
-  test_values[4] = 1;
-  test_values[63] = 1;
-  test_values[64] = 1;
-
   struct ArrowBitmapBuilder bitmap_builder;
   ArrowBitmapBuilderInit(&bitmap_builder);
 
-  ASSERT_EQ(ArrowBitmapBuilderReserve(&bitmap_builder, 65), NANOARROW_OK);
-  ArrowBitmapBuilderAppendInt8Unsafe(&bitmap_builder, test_values, 65);
+  // 68 because this will end in the middle of a byte, and appending twice
+  // will end exactly on the end of a byte
+  int8_t test_values[68];
+  memset(test_values, 0, sizeof(test_values));
+  // Make it easy to check the answer without repeating sequential packed byte values
+  for (int i = 0; i < 68; i++) {
+    test_values[i] = (i % 5) == 0;
+  }
 
-  EXPECT_EQ(bitmap_builder.size_bits, 65);
-  EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, 4), test_values[4]);
-  for (int i = 0; i < 65; i++) {
+  // Append starting at 0
+  ASSERT_EQ(ArrowBitmapBuilderReserve(&bitmap_builder, 68), NANOARROW_OK);
+  ArrowBitmapBuilderAppendInt8Unsafe(&bitmap_builder, test_values, 68);
+
+  EXPECT_EQ(bitmap_builder.size_bits, 68);
+  EXPECT_EQ(bitmap_builder.buffer.size_bytes, 9);
+  for (int i = 0; i < 68; i++) {
     EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i]);
   }
 
-  ArrowBitmapBuilderReset(&bitmap_builder);
+  // Append starting at a non-byte aligned value
+  ASSERT_EQ(ArrowBitmapBuilderReserve(&bitmap_builder, 68), NANOARROW_OK);
+  ArrowBitmapBuilderAppendInt8Unsafe(&bitmap_builder, test_values, 68);
 
-  int32_t test_values_int32[65];
-  memset(test_values_int32, 0, sizeof(test_values_int32));
-  test_values[4] = 1;
-  test_values[63] = 1;
-  test_values[64] = 1;
+  EXPECT_EQ(bitmap_builder.size_bits, 68 * 2);
+  EXPECT_EQ(bitmap_builder.buffer.size_bytes, 17);
+  for (int i = 0; i < 68; i++) {
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i]);
+  }
+  for (int i = 69; i < (68 * 2); i++) {
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i - 68]);
+  }
 
-  ASSERT_EQ(ArrowBitmapBuilderReserve(&bitmap_builder, 65), NANOARROW_OK);
-  ArrowBitmapBuilderAppendInt32Unsafe(&bitmap_builder, test_values_int32, 65);
+  // Append starting at a byte aligned but non-zero value
+  ASSERT_EQ(ArrowBitmapBuilderReserve(&bitmap_builder, 68), NANOARROW_OK);
+  ArrowBitmapBuilderAppendInt8Unsafe(&bitmap_builder, test_values, 68);
 
-  EXPECT_EQ(bitmap_builder.size_bits, 65);
-  for (int i = 0; i < 65; i++) {
-    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values_int32[i]);
+  EXPECT_EQ(bitmap_builder.size_bits, 204);
+  EXPECT_EQ(bitmap_builder.buffer.size_bytes, 26);
+  for (int i = 0; i < 68; i++) {
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i]);
+  }
+  for (int i = 69; i < 136; i++) {
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i - 68]);
+  }
+  for (int i = 136; i < 204; i++) {
+    EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, i), test_values[i - 136]);
   }
 
   ArrowBitmapBuilderReset(&bitmap_builder);

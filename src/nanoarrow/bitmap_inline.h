@@ -206,7 +206,7 @@ static inline void ArrowBitmapBuilderAppendInt8Unsafe(
   const int8_t* values_cursor = values;
   int64_t n_remaining = n_values;
   int64_t out_i_cursor = bitmap_builder->size_bits;
-  uint8_t* out_cursor = bitmap_builder->buffer.data + bitmap_builder->size_bits;
+  uint8_t* out_cursor = bitmap_builder->buffer.data + bitmap_builder->size_bits / 8;
 
   // First byte
   if ((out_i_cursor % 8) != 0) {
@@ -235,10 +235,11 @@ static inline void ArrowBitmapBuilderAppendInt8Unsafe(
     for (int i = 0; i < n_remaining; i++) {
       ArrowBitmapSetBitTo(bitmap_builder->buffer.data, out_i_cursor++, values_cursor[i]);
     }
+    out_cursor++;
   }
 
   bitmap_builder->size_bits += n_values;
-  bitmap_builder->buffer.size_bytes = _ArrowBytesForBits(bitmap_builder->size_bits);
+  bitmap_builder->buffer.size_bytes = out_cursor - bitmap_builder->buffer.data;
 }
 
 static inline void ArrowBitmapBuilderAppendInt32Unsafe(
