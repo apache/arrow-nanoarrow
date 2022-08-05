@@ -79,6 +79,7 @@ TEST(MetadataTest, MetadataBuild) {
       NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
 
+  // Set an existing key
   ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key", "value3"), NANOARROW_OK);
   ASSERT_EQ(
       ArrowMetadataGetValue((const char*)metadata_builder.data, "key", nullptr, &value),
@@ -89,6 +90,7 @@ TEST(MetadataTest, MetadataBuild) {
       NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
 
+  // Remove a key that does exist
   ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key", NULL), NANOARROW_OK);
   EXPECT_EQ(ArrowMetadataHasKey((const char*)metadata_builder.data, "key"), false);
   ASSERT_EQ(
