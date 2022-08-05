@@ -22,96 +22,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "typedefs_inline.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// Extra guard for versions of Arrow without the canonical guard
-#ifndef ARROW_FLAG_DICTIONARY_ORDERED
-
-#ifndef ARROW_C_DATA_INTERFACE
-#define ARROW_C_DATA_INTERFACE
-
-#define ARROW_FLAG_DICTIONARY_ORDERED 1
-#define ARROW_FLAG_NULLABLE 2
-#define ARROW_FLAG_MAP_KEYS_SORTED 4
-
-struct ArrowSchema {
-  // Array type description
-  const char* format;
-  const char* name;
-  const char* metadata;
-  int64_t flags;
-  int64_t n_children;
-  struct ArrowSchema** children;
-  struct ArrowSchema* dictionary;
-
-  // Release callback
-  void (*release)(struct ArrowSchema*);
-  // Opaque producer-specific data
-  void* private_data;
-};
-
-struct ArrowArray {
-  // Array data description
-  int64_t length;
-  int64_t null_count;
-  int64_t offset;
-  int64_t n_buffers;
-  int64_t n_children;
-  const void** buffers;
-  struct ArrowArray** children;
-  struct ArrowArray* dictionary;
-
-  // Release callback
-  void (*release)(struct ArrowArray*);
-  // Opaque producer-specific data
-  void* private_data;
-};
-
-#endif  // ARROW_C_DATA_INTERFACE
-
-#ifndef ARROW_C_STREAM_INTERFACE
-#define ARROW_C_STREAM_INTERFACE
-
-struct ArrowArrayStream {
-  // Callback to get the stream type
-  // (will be the same for all arrays in the stream).
-  //
-  // Return value: 0 if successful, an `errno`-compatible error code otherwise.
-  //
-  // If successful, the ArrowSchema must be released independently from the stream.
-  int (*get_schema)(struct ArrowArrayStream*, struct ArrowSchema* out);
-
-  // Callback to get the next array
-  // (if no error and the array is released, the stream has ended)
-  //
-  // Return value: 0 if successful, an `errno`-compatible error code otherwise.
-  //
-  // If successful, the ArrowArray must be released independently from the stream.
-  int (*get_next)(struct ArrowArrayStream*, struct ArrowArray* out);
-
-  // Callback to get optional detailed error information.
-  // This must only be called if the last stream operation failed
-  // with a non-0 return code.
-  //
-  // Return value: pointer to a null-terminated character array describing
-  // the last error, or NULL if no description is available.
-  //
-  // The returned pointer is only valid until the next operation on this stream
-  // (including release).
-  const char* (*get_last_error)(struct ArrowArrayStream*);
-
-  // Release callback: release the stream's own resources.
-  // Note that arrays returned by `get_next` must be individually released.
-  void (*release)(struct ArrowArrayStream*);
-
-  // Opaque producer-specific data
-  void* private_data;
-};
-
-#endif  // ARROW_C_STREAM_INTERFACE
-#endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
 /// \file Arrow C Implementation
 ///
@@ -142,26 +57,6 @@ void* ArrowRealloc(void* ptr, int64_t size);
 /// \brief Free a pointer allocated using ArrowMalloc() or ArrowRealloc().
 void ArrowFree(void* ptr);
 
-/// \brief Array buffer allocation and deallocation
-///
-/// Container for allocate, reallocate, and free methods that can be used
-/// to customize allocation and deallocation of buffers when constructing
-/// an ArrowArray.
-struct ArrowBufferAllocator {
-  /// \brief Allocate a buffer or return NULL if it cannot be allocated
-  uint8_t* (*allocate)(struct ArrowBufferAllocator* allocator, int64_t size);
-
-  /// \brief Reallocate a buffer or return NULL if it cannot be reallocated
-  uint8_t* (*reallocate)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
-                         int64_t old_size, int64_t new_size);
-
-  /// \brief Deallocate a buffer allocated by this allocator
-  void (*free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size);
-
-  /// \brief Opaque data specific to the allocator
-  void* private_data;
-};
-
 /// \brief Return the default allocator
 ///
 /// The default allocator uses ArrowMalloc(), ArrowRealloc(), and
@@ -181,12 +76,6 @@ struct ArrowBufferAllocator* ArrowBufferAllocatorDefault();
 struct ArrowError {
   char message[1024];
 };
-
-/// \brief Return code for success.
-#define NANOARROW_OK 0
-
-/// \brief Represents an errno-compatible error code
-typedef int ArrowErrorCode;
 
 /// \brief Set the contents of an error using printf syntax
 ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
@@ -483,49 +372,33 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
 
 /// }@
 
-/// \defgroup nanoarrow-buffer-builder Growable buffer builders
-
-/// \brief An owning mutable view of a buffer
-struct ArrowBuffer {
-  /// \brief A pointer to the start of the buffer
-  ///
-  /// If capacity_bytes is 0, this value may be NULL.
-  uint8_t* data;
-
-  /// \brief The size of the buffer in bytes
-  int64_t size_bytes;
-
-  /// \brief The capacity of the buffer in bytes
-  int64_t capacity_bytes;
-
-  /// \brief The allocator that will be used to reallocate and/or free the buffer
-  struct ArrowBufferAllocator* allocator;
-};
+/// \defgroup nanoarrow-buffer Owning, growable buffers
 
 /// \brief Initialize an ArrowBuffer
 ///
 /// Initialize a buffer with a NULL, zero-size buffer using the default
 /// buffer allocator.
-void ArrowBufferInit(struct ArrowBuffer* buffer);
+static inline void ArrowBufferInit(struct ArrowBuffer* buffer);
 
 /// \brief Set a newly-initialized buffer's allocator
 ///
 /// Returns EINVAL if the buffer has already been allocated.
-ArrowErrorCode ArrowBufferSetAllocator(struct ArrowBuffer* buffer,
-                                       struct ArrowBufferAllocator* allocator);
+static inline ArrowErrorCode ArrowBufferSetAllocator(
+    struct ArrowBuffer* buffer, struct ArrowBufferAllocator* allocator);
 
 /// \brief Reset an ArrowBuffer
 ///
 /// Releases the buffer using the allocator's free method if
 /// the buffer's data member is non-null, sets the data member
 /// to NULL, and sets the buffer's size and capacity to 0.
-void ArrowBufferReset(struct ArrowBuffer* buffer);
+static inline void ArrowBufferReset(struct ArrowBuffer* buffer);
 
 /// \brief Move an ArrowBuffer
 ///
 /// Transfers the buffer data and lifecycle management to another
 /// address and resets buffer.
-void ArrowBufferMove(struct ArrowBuffer* buffer, struct ArrowBuffer* buffer_out);
+static inline void ArrowBufferMove(struct ArrowBuffer* buffer,
+                                   struct ArrowBuffer* buffer_out);
 
 /// \brief Grow or shrink a buffer to a given capacity
 ///
@@ -533,31 +406,106 @@ void ArrowBufferMove(struct ArrowBuffer* buffer, struct ArrowBuffer* buffer_out)
 /// if shrink_to_fit is non-zero. Calling ArrowBufferResize() does not
 /// adjust the buffer's size member except to ensure that the invariant
 /// capacity >= size remains true.
-ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer, int64_t new_capacity_bytes,
-                                 char shrink_to_fit);
+static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
+                                               int64_t new_capacity_bytes,
+                                               char shrink_to_fit);
 
 /// \brief Ensure a buffer has at least a given additional capacity
 ///
 /// Ensures that the buffer has space to append at least
 /// additional_size_bytes, overallocating when required.
-ArrowErrorCode ArrowBufferReserve(struct ArrowBuffer* buffer,
-                                  int64_t additional_size_bytes);
+static inline ArrowErrorCode ArrowBufferReserve(struct ArrowBuffer* buffer,
+                                                int64_t additional_size_bytes);
 
 /// \brief Write data to buffer and increment the buffer size
 ///
 /// This function does not check that buffer has the required capacity
-void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const void* data,
-                             int64_t size_bytes);
+static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const void* data,
+                                           int64_t size_bytes);
 
 /// \brief Write data to buffer and increment the buffer size
 ///
 /// This function writes and ensures that the buffer has the required capacity,
 /// possibly by reallocating the buffer. Like ArrowBufferReserve, this will
 /// overallocate when reallocation is required.
-ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer, const void* data,
-                                 int64_t size_bytes);
+static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
+                                               const void* data, int64_t size_bytes);
 
 /// }@
+
+/// \defgroup nanoarrow-bitmap Bitmap utilities
+
+/// \brief Extract a boolean value from a bitmap
+static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i);
+
+/// \brief Set a boolean value to a bitmap to true
+static inline void ArrowBitSet(uint8_t* bits, int64_t i);
+
+/// \brief Set a boolean value to a bitmap to false
+static inline void ArrowBitClear(uint8_t* bits, int64_t i);
+
+/// \brief Set a boolean value to a bitmap
+static inline void ArrowBitSetTo(uint8_t* bits, int64_t i, uint8_t value);
+
+/// \brief Set a boolean value to a range in a bitmap
+static inline void ArrowBitsSetTo(uint8_t* bits, int64_t start_offset, int64_t length,
+                                  uint8_t bits_are_set);
+
+/// \brief Count true values in a bitmap
+static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t i_from, int64_t i_to);
+
+/// \brief Initialize an ArrowBitmap
+///
+/// Initialize the builder's buffer, empty its cache, and reset the size to zero
+static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap);
+
+/// \brief Ensure a bitmap builder has at least a given additional capacity
+///
+/// Ensures that the buffer has space to append at least
+/// additional_size_bits, overallocating when required.
+static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
+                                                int64_t additional_size_bits);
+
+/// \brief Grow or shrink a bitmap to a given capacity
+///
+/// When shrinking the capacity of the bitmap, the bitmap is only reallocated
+/// if shrink_to_fit is non-zero. Calling ArrowBitmapResize() does not
+/// adjust the buffer's size member except when shrinking new_capacity_bits
+/// to a value less than the current number of bits in the bitmap.
+static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
+                                               int64_t new_capacity_bits,
+                                               char shrink_to_fit);
+
+/// \brief Reserve space for and append zero or more of the same boolean value to a bitmap
+static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
+                                               uint8_t bits_are_set, int64_t length);
+
+/// \brief Append zero or more of the same boolean value to a bitmap
+static inline void ArrowBitmapAppendUnsafe(struct ArrowBitmap* bitmap,
+                                           uint8_t bits_are_set, int64_t length);
+
+/// \brief Append boolean values encoded as int8_t to a bitmap
+///
+/// The values must all be 0 or 1.
+static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
+                                               const int8_t* values, int64_t n_values);
+
+/// \brief Append boolean values encoded as int32_t to a bitmap
+///
+/// The values must all be 0 or 1.
+static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
+                                                const int32_t* values, int64_t n_values);
+
+/// \brief Reset a bitmap builder
+///
+/// Releases any memory held by buffer, empties the cache, and resets the size to zero
+static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
+
+/// }@
+
+// Inline function definitions
+#include "bitmap_inline.h"
+#include "buffer_inline.h"
 
 #ifdef __cplusplus
 }
