@@ -447,6 +447,7 @@ static inline void ArrowBitClear(uint8_t* bits, int64_t i);
 /// \brief Set a boolean value to a bitmap
 static inline void ArrowBitSetTo(uint8_t* bits, int64_t i, uint8_t value);
 
+/// \brief Set a boolean value to a range in a bitmap
 static inline void ArrowBitsSetTo(uint8_t* bits, int64_t start_offset, int64_t length,
                                   uint8_t bits_are_set);
 
@@ -465,15 +466,23 @@ static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap);
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits);
 
-/// \brief Append zero or more of the same boolean value to a bitmap
+/// \brief Reserve space for and append zero or more of the same boolean value to a bitmap
 static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
                                                uint8_t bits_are_set, int64_t length);
 
+/// \brief Append zero or more of the same boolean value to a bitmap
+static inline void ArrowBitmapAppendUnsafe(struct ArrowBitmap* bitmap,
+                                           uint8_t bits_are_set, int64_t length);
+
 /// \brief Append boolean values encoded as int8_t to a bitmap
+///
+/// The values must all be 0 or 1.
 static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
                                                const int8_t* values, int64_t n_values);
 
 /// \brief Append boolean values encoded as int32_t to a bitmap
+///
+/// The values must all be 0 or 1.
 static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
                                                 const int32_t* values, int64_t n_values);
 
