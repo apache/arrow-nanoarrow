@@ -244,9 +244,47 @@ static inline void ArrowBitmapBuilderAppendInt8Unsafe(
 
 static inline void ArrowBitmapBuilderAppendInt32Unsafe(
     struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values) {
-  for (int64_t i = 0; i < n_values; i++) {
-    ArrowBitmapBuilderAppend(bitmap_builder, values[i] != 0, 1);
+  if (n_values == 0) {
+    return;
   }
+
+  const int32_t* values_cursor = values;
+  int64_t n_remaining = n_values;
+  int64_t out_i_cursor = bitmap_builder->size_bits;
+  uint8_t* out_cursor = bitmap_builder->buffer.data + bitmap_builder->size_bits / 8;
+
+  // First byte
+  if ((out_i_cursor % 8) != 0) {
+    int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(out_i_cursor) - out_i_cursor;
+    for (int i = 0; i < n_partial_bits; i++) {
+      ArrowBitmapSetBitTo(bitmap_builder->buffer.data, out_i_cursor++, values[i]);
+    }
+
+    out_cursor++;
+    values_cursor += n_partial_bits;
+    n_remaining -= n_partial_bits;
+  }
+
+  // Middle bytes
+  int64_t n_full_bytes = n_remaining / 8;
+  for (int64_t i = 0; i < n_full_bytes; i++) {
+    _ArrowBitmapPackInt32(values_cursor, out_cursor);
+    values_cursor += 8;
+    out_cursor++;
+  }
+
+  // Last byte
+  out_i_cursor += n_full_bytes * 8;
+  n_remaining -= n_full_bytes * 8;
+  if (n_remaining > 0) {
+    for (int i = 0; i < n_remaining; i++) {
+      ArrowBitmapSetBitTo(bitmap_builder->buffer.data, out_i_cursor++, values_cursor[i]);
+    }
+    out_cursor++;
+  }
+
+  bitmap_builder->size_bits += n_values;
+  bitmap_builder->buffer.size_bytes = out_cursor - bitmap_builder->buffer.data;
 }
 
 static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder) {
