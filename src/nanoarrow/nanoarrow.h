@@ -471,11 +471,11 @@ static inline ArrowErrorCode ArrowBitmapBuilderAppend(
     struct ArrowBitmapBuilder* bitmap_builder, uint8_t bits_are_set, int64_t length);
 
 /// \brief Append boolean values encoded as int8_t to a bitmap
-static inline ArrowErrorCode ArrowBitmapBuilderAppendInt8Unsafe(
+static inline void ArrowBitmapBuilderAppendInt8Unsafe(
     struct ArrowBitmapBuilder* bitmap_builder, const int8_t* values, int64_t n_values);
 
 /// \brief Append boolean values encoded as int32_t to a bitmap
-static inline ArrowErrorCode ArrowBitmapBuilderAppendInt32Unsafe(
+static inline void ArrowBitmapBuilderAppendInt32Unsafe(
     struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values);
 
 /// \brief Reset a bitmap builder

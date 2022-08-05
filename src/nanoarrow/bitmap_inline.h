@@ -56,6 +56,18 @@ static inline int64_t _ArrowBytesForBits(int64_t bits) {
   return (bits >> 3) + ((bits & 7) != 0);
 }
 
+static inline void _ArrowBitmapPackInt8(const int8_t* values, uint8_t* out) {
+  *out++ = (values[0] | values[1] << 1 | values[2] << 2 | values[3] << 3 |
+            values[4] << 4 | values[5] << 5 | values[6] << 6 | values[7] << 7);
+  values += 8;
+}
+
+static inline void _ArrowBitmapPackInt32(const int32_t* values, uint8_t* out) {
+  *out++ = (values[0] | values[1] << 1 | values[2] << 2 | values[3] << 3 |
+            values[4] << 4 | values[5] << 5 | values[6] << 6 | values[7] << 7);
+  values += 8;
+}
+
 static inline int8_t ArrowBitmapGetBit(const uint8_t* bits, int64_t i) {
   return (bits[i >> 3] >> (i & 0x07)) & 1;
 }
@@ -187,28 +199,53 @@ static inline ArrowErrorCode ArrowBitmapBuilderAppend(
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode ArrowBitmapBuilderAppendInt8Unsafe(
+static inline void ArrowBitmapBuilderAppendInt8Unsafe(
     struct ArrowBitmapBuilder* bitmap_builder, const int8_t* values, int64_t n_values) {
-  int result;
-  for (int64_t i = 0; i < n_values; i++) {
-    result = ArrowBitmapBuilderAppend(bitmap_builder, values[i] != 0, 1);
-    if (result != NANOARROW_OK) {
-      return result;
+
+  const int64_t i_begin = bitmap_builder->size_bits;
+  const int64_t i_end = i_begin + n_values;
+
+  const int64_t bytes_begin = i_begin / 8;
+  const int64_t bytes_end = i_end / 8 + 1;
+
+  if (bytes_end == bytes_begin + 1) {
+    for (int64_t i = i_begin; i < i_end; i++) {
+      ArrowBitmapSetBitTo(bitmap_builder->buffer.data, i, values[i - i_begin]);
     }
+
+    bitmap_builder->size_bits += n_values;
+    bitmap_builder->buffer.size_bytes = _ArrowBytesForBits(bitmap_builder->size_bits);
+    return;
   }
-  return NANOARROW_OK;
+
+  // First byte
+  const int64_t i_begin_full_byte = _ArrowRoundUpToMultipleOf8(i_begin + 1);
+  for (int64_t i = i_begin; i < i_begin_full_byte; i++) {
+    ArrowBitmapSetBitTo(bitmap_builder->buffer.data, i, values[i - i_begin]);
+  }
+
+  // Middle bytes
+  const int8_t* full_byte_values = values + i_begin_full_byte - i_begin;
+  uint8_t* out = bitmap_builder->buffer.data + bytes_begin + 1;
+  for (int64_t i =  + 1; i < (bytes_end - 1); i++) {
+    _ArrowBitmapPackInt8(full_byte_values, out);
+  }
+
+  // Last byte
+  const int64_t i_begin_last_byte = _ArrowRoundUpToMultipleOf8(i_begin + 1);
+  for (int64_t i = i_begin_last_byte; i < i_end; i++) {
+    ArrowBitmapSetBitTo(bitmap_builder->buffer.data, i, values[i - i_begin]);
+  }
+
+  bitmap_builder->size_bits += n_values;
+  bitmap_builder->buffer.size_bytes = _ArrowBytesForBits(bitmap_builder->size_bits);
 }
 
-static inline ArrowErrorCode ArrowBitmapBuilderAppendInt32Unsafe(
+static inline void ArrowBitmapBuilderAppendInt32Unsafe(
     struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values) {
-  int result;
   for (int64_t i = 0; i < n_values; i++) {
-    result = ArrowBitmapBuilderAppend(bitmap_builder, values[i] != 0, 1);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    ArrowBitmapBuilderAppend(bitmap_builder, values[i] != 0, 1);
   }
-  return NANOARROW_OK;
 }
 
 static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder) {

@@ -138,8 +138,8 @@ TEST(BitmapTest, BitmapTestBuilderAppendUnsafe) {
   struct ArrowBitmapBuilder bitmap_builder;
   ArrowBitmapBuilderInit(&bitmap_builder);
 
-  ASSERT_EQ(ArrowBitmapBuilderAppendInt8Unsafe(&bitmap_builder, test_values, 65),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowBitmapBuilderReserve(&bitmap_builder, 65), NANOARROW_OK);
+  ArrowBitmapBuilderAppendInt8Unsafe(&bitmap_builder, test_values, 65);
 
   EXPECT_EQ(bitmap_builder.size_bits, 65);
   EXPECT_EQ(ArrowBitmapGetBit(bitmap_builder.buffer.data, 4), test_values[4]);
@@ -155,8 +155,8 @@ TEST(BitmapTest, BitmapTestBuilderAppendUnsafe) {
   test_values[63] = 1;
   test_values[64] = 1;
 
-  ASSERT_EQ(ArrowBitmapBuilderAppendInt32Unsafe(&bitmap_builder, test_values_int32, 65),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowBitmapBuilderReserve(&bitmap_builder, 65), NANOARROW_OK);
+  ArrowBitmapBuilderAppendInt32Unsafe(&bitmap_builder, test_values_int32, 65);
 
   EXPECT_EQ(bitmap_builder.size_bits, 65);
   for (int i = 0; i < 65; i++) {
