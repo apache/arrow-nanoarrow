@@ -199,7 +199,6 @@ static inline void ArrowBitmapAppendUnsafe(struct ArrowBitmap* bitmap,
   ArrowBitsSetTo(bitmap->buffer.data, bitmap->size_bits, length, bits_are_set);
   bitmap->size_bits += length;
   bitmap->buffer.size_bytes = _ArrowBytesForBits(bitmap->size_bits);
-  return NANOARROW_OK;
 }
 
 static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
