@@ -513,6 +513,12 @@ struct ArrowArrayPrivateData {
 
   /// \brief Additional buffers as required
   struct ArrowBuffer buffers[2];
+
+  /// \brief The array of pointers to data
+  const void* buffer_data[3];
+
+  /// \brief The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
+  enum ArrowType storage_type;
 };
 
 /// \brief Initialize the fields of an array
@@ -520,7 +526,7 @@ struct ArrowArrayPrivateData {
 /// Initializes the fields and release callback of array. Caller
 /// is responsible for calling the array->release callback if
 /// NANOARROW_OK is returned.
-ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, struct ArrowSchema* schema);
+ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type);
 
 /// }@
 

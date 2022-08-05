@@ -21,5 +21,24 @@
 
 TEST(ArrayTest, ArrayTestBasic) {
   struct ArrowArray array;
-  EXPECT_EQ(ArrowArrayInit(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  EXPECT_EQ(array.n_buffers, 0);
+  array.release(&array);
+
+  EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  EXPECT_EQ(array.n_buffers, 1);
+  array.release(&array);
+
+  EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(array.n_buffers, 2);
+  array.release(&array);
+
+  EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(array.n_buffers, 3);
+  array.release(&array);
+
+  EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  EXPECT_EQ(array.n_buffers, 0);
+  array.release(&array);
 }
