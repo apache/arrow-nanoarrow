@@ -161,58 +161,57 @@ static inline int64_t ArrowBitmapCountSet(const uint8_t* bits, int64_t start_off
   return count;
 }
 
-static inline void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder) {
-  ArrowBufferInit(&bitmap_builder->buffer);
-  bitmap_builder->size_bits = 0;
+static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap) {
+  ArrowBufferInit(&bitmap->buffer);
+  bitmap->size_bits = 0;
 }
 
-static inline ArrowErrorCode ArrowBitmapBuilderReserve(
-    struct ArrowBitmapBuilder* bitmap_builder, int64_t additional_size_bits) {
-  int64_t min_capacity_bits = bitmap_builder->size_bits + additional_size_bits;
-  if (min_capacity_bits <= (bitmap_builder->buffer.capacity_bytes * 8)) {
+static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
+                                                int64_t additional_size_bits) {
+  int64_t min_capacity_bits = bitmap->size_bits + additional_size_bits;
+  if (min_capacity_bits <= (bitmap->buffer.capacity_bytes * 8)) {
     return NANOARROW_OK;
   }
 
-  int result = ArrowBufferReserve(&bitmap_builder->buffer,
-                                  _ArrowBytesForBits(additional_size_bits));
+  int result =
+      ArrowBufferReserve(&bitmap->buffer, _ArrowBytesForBits(additional_size_bits));
   if (result != NANOARROW_OK) {
     return result;
   }
 
-  bitmap_builder->buffer.data[bitmap_builder->buffer.capacity_bytes - 1] = 0;
+  bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode ArrowBitmapBuilderAppend(
-    struct ArrowBitmapBuilder* bitmap_builder, uint8_t bits_are_set, int64_t length) {
-  int result = ArrowBitmapBuilderReserve(bitmap_builder, length);
+static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
+                                               uint8_t bits_are_set, int64_t length) {
+  int result = ArrowBitmapReserve(bitmap, length);
   if (result != NANOARROW_OK) {
     return result;
   }
 
-  ArrowBitmapSetBitsTo(bitmap_builder->buffer.data, bitmap_builder->size_bits, length,
-                       bits_are_set);
-  bitmap_builder->size_bits += length;
-  bitmap_builder->buffer.size_bytes = _ArrowBytesForBits(bitmap_builder->size_bits);
+  ArrowBitmapSetBitsTo(bitmap->buffer.data, bitmap->size_bits, length, bits_are_set);
+  bitmap->size_bits += length;
+  bitmap->buffer.size_bytes = _ArrowBytesForBits(bitmap->size_bits);
   return NANOARROW_OK;
 }
 
-static inline void ArrowBitmapBuilderAppendInt8Unsafe(
-    struct ArrowBitmapBuilder* bitmap_builder, const int8_t* values, int64_t n_values) {
+static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
+                                               const int8_t* values, int64_t n_values) {
   if (n_values == 0) {
     return;
   }
 
   const int8_t* values_cursor = values;
   int64_t n_remaining = n_values;
-  int64_t out_i_cursor = bitmap_builder->size_bits;
-  uint8_t* out_cursor = bitmap_builder->buffer.data + bitmap_builder->size_bits / 8;
+  int64_t out_i_cursor = bitmap->size_bits;
+  uint8_t* out_cursor = bitmap->buffer.data + bitmap->size_bits / 8;
 
   // First byte
   if ((out_i_cursor % 8) != 0) {
     int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(out_i_cursor) - out_i_cursor;
     for (int i = 0; i < n_partial_bits; i++) {
-      ArrowBitmapSetBitTo(bitmap_builder->buffer.data, out_i_cursor++, values[i]);
+      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values[i]);
     }
 
     out_cursor++;
@@ -233,31 +232,31 @@ static inline void ArrowBitmapBuilderAppendInt8Unsafe(
   n_remaining -= n_full_bytes * 8;
   if (n_remaining > 0) {
     for (int i = 0; i < n_remaining; i++) {
-      ArrowBitmapSetBitTo(bitmap_builder->buffer.data, out_i_cursor++, values_cursor[i]);
+      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
     }
     out_cursor++;
   }
 
-  bitmap_builder->size_bits += n_values;
-  bitmap_builder->buffer.size_bytes = out_cursor - bitmap_builder->buffer.data;
+  bitmap->size_bits += n_values;
+  bitmap->buffer.size_bytes = out_cursor - bitmap->buffer.data;
 }
 
-static inline void ArrowBitmapBuilderAppendInt32Unsafe(
-    struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values) {
+static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
+                                                const int32_t* values, int64_t n_values) {
   if (n_values == 0) {
     return;
   }
 
   const int32_t* values_cursor = values;
   int64_t n_remaining = n_values;
-  int64_t out_i_cursor = bitmap_builder->size_bits;
-  uint8_t* out_cursor = bitmap_builder->buffer.data + bitmap_builder->size_bits / 8;
+  int64_t out_i_cursor = bitmap->size_bits;
+  uint8_t* out_cursor = bitmap->buffer.data + bitmap->size_bits / 8;
 
   // First byte
   if ((out_i_cursor % 8) != 0) {
     int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(out_i_cursor) - out_i_cursor;
     for (int i = 0; i < n_partial_bits; i++) {
-      ArrowBitmapSetBitTo(bitmap_builder->buffer.data, out_i_cursor++, values[i]);
+      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values[i]);
     }
 
     out_cursor++;
@@ -278,18 +277,18 @@ static inline void ArrowBitmapBuilderAppendInt32Unsafe(
   n_remaining -= n_full_bytes * 8;
   if (n_remaining > 0) {
     for (int i = 0; i < n_remaining; i++) {
-      ArrowBitmapSetBitTo(bitmap_builder->buffer.data, out_i_cursor++, values_cursor[i]);
+      ArrowBitmapSetBitTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
     }
     out_cursor++;
   }
 
-  bitmap_builder->size_bits += n_values;
-  bitmap_builder->buffer.size_bytes = out_cursor - bitmap_builder->buffer.data;
+  bitmap->size_bits += n_values;
+  bitmap->buffer.size_bytes = out_cursor - bitmap->buffer.data;
 }
 
-static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder) {
-  ArrowBufferReset(&bitmap_builder->buffer);
-  bitmap_builder->size_bits = 0;
+static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap) {
+  ArrowBufferReset(&bitmap->buffer);
+  bitmap->size_bits = 0;
 }
 
 #ifdef __cplusplus

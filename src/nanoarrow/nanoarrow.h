@@ -454,34 +454,34 @@ static inline void ArrowBitmapSetBitsTo(uint8_t* bits, int64_t start_offset,
 static inline int64_t ArrowBitmapCountSet(const uint8_t* bits, int64_t i_from,
                                           int64_t i_to);
 
-/// \brief Initialize an ArrowBitmapBuilder
+/// \brief Initialize an ArrowBitmap
 ///
 /// Initialize the builder's buffer, empty its cache, and reset the size to zero
-static inline void ArrowBitmapBuilderInit(struct ArrowBitmapBuilder* bitmap_builder);
+static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap);
 
 /// \brief Ensure a bitmap builder has at least a given additional capacity
 ///
 /// Ensures that the buffer has space to append at least
 /// additional_size_bits, overallocating when required.
-static inline ArrowErrorCode ArrowBitmapBuilderReserve(
-    struct ArrowBitmapBuilder* bitmap_builder, int64_t additional_size_bits);
+static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
+                                                int64_t additional_size_bits);
 
-/// \brief Append a boolean value to a bitmap
-static inline ArrowErrorCode ArrowBitmapBuilderAppend(
-    struct ArrowBitmapBuilder* bitmap_builder, uint8_t bits_are_set, int64_t length);
+/// \brief Append zero or more of the same boolean value to a bitmap
+static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
+                                               uint8_t bits_are_set, int64_t length);
 
 /// \brief Append boolean values encoded as int8_t to a bitmap
-static inline void ArrowBitmapBuilderAppendInt8Unsafe(
-    struct ArrowBitmapBuilder* bitmap_builder, const int8_t* values, int64_t n_values);
+static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
+                                               const int8_t* values, int64_t n_values);
 
 /// \brief Append boolean values encoded as int32_t to a bitmap
-static inline void ArrowBitmapBuilderAppendInt32Unsafe(
-    struct ArrowBitmapBuilder* bitmap_builder, const int32_t* values, int64_t n_values);
+static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
+                                                const int32_t* values, int64_t n_values);
 
 /// \brief Reset a bitmap builder
 ///
 /// Releases any memory held by buffer, empties the cache, and resets the size to zero
-static inline void ArrowBitmapBuilderReset(struct ArrowBitmapBuilder* bitmap_builder);
+static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 
 /// }@
 

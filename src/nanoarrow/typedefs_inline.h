@@ -157,7 +157,7 @@ struct ArrowBuffer {
 };
 
 /// \brief Build bitmaps element-wise
-struct ArrowBitmapBuilder {
+struct ArrowBitmap {
   /// \brief An ArrowBuffer to hold the allocated memory
   struct ArrowBuffer buffer;
 
