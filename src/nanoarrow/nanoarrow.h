@@ -503,6 +503,27 @@ static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 
 /// }@
 
+/// \defgroup nanoarrow-array Array producer helpers
+/// These functions allocate, copy, and destroy ArrowArray structures
+
+/// \brief A structure used as the private data member for ArrowArrays allocated here
+struct ArrowArrayPrivateData {
+  /// \brief A validity bitmap if needed (will be a struct ArrowBitmap after #10)
+  struct ArrowBuffer bitmap;
+
+  /// \brief Additional buffers as required
+  struct ArrowBuffer buffers[2];
+};
+
+/// \brief Initialize the fields of an array
+///
+/// Initializes the fields and release callback of array. Caller
+/// is responsible for calling the array->release callback if
+/// NANOARROW_OK is returned.
+ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, struct ArrowSchema* schema);
+
+/// }@
+
 // Inline function definitions
 #include "bitmap_inline.h"
 #include "buffer_inline.h"

@@ -15,9 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "allocator.c"
-#include "array.c"
-#include "error.c"
-#include "metadata.c"
-#include "schema.c"
-#include "schema_view.c"
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "nanoarrow.h"
+
+ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, struct ArrowSchema* schema) {
+    return NANOARROW_OK;
+}
+

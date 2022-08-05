@@ -15,9 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "allocator.c"
-#include "array.c"
-#include "error.c"
-#include "metadata.c"
-#include "schema.c"
-#include "schema_view.c"
+#include <gtest/gtest.h>
+
+#include "nanoarrow/nanoarrow.h"
+
+TEST(ArrayTest, ArrayTestBasic) {
+  struct ArrowArray array;
+  EXPECT_EQ(ArrowArrayInit(&array, nullptr), NANOARROW_OK);
+}
