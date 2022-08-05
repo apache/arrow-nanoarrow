@@ -156,7 +156,7 @@ struct ArrowBuffer {
   struct ArrowBufferAllocator* allocator;
 };
 
-/// \brief Build bitmaps element-wise
+/// \brief An owning mutable view of a bitmap
 struct ArrowBitmap {
   /// \brief An ArrowBuffer to hold the allocated memory
   struct ArrowBuffer buffer;
