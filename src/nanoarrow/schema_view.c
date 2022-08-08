@@ -668,8 +668,8 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
     }
   }
 
-  schema_view->extension_name = ArrowStringViewCreate(NULL);
-  schema_view->extension_metadata = ArrowStringViewCreate(NULL);
+  schema_view->extension_name = ArrowCharView(NULL);
+  schema_view->extension_metadata = ArrowCharView(NULL);
   ArrowMetadataGetValue(schema->metadata, "ARROW:extension:name",
                         &schema_view->extension_name);
   ArrowMetadataGetValue(schema->metadata, "ARROW:extension:metadata",

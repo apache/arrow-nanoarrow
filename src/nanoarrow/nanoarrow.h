@@ -188,7 +188,7 @@ ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
 ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
 
 /// \brief Create a string view from a null-terminated string
-struct ArrowStringView ArrowStringViewCreate(const char* value);
+struct ArrowStringView ArrowCharView(const char* value);
 
 /// \brief Reader for key/value pairs in schema metadata
 struct ArrowMetadataReader {

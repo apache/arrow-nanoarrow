@@ -21,7 +21,7 @@
 
 #include "nanoarrow.h"
 
-struct ArrowStringView ArrowStringViewCreate(const char* value) {
+struct ArrowStringView ArrowCharView(const char* value) {
   struct ArrowStringView out;
 
   out.data = value;
@@ -131,7 +131,7 @@ ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
 }
 
 char ArrowMetadataHasKey(const char* metadata, const char* key) {
-  struct ArrowStringView value = ArrowStringViewCreate(NULL);
+  struct ArrowStringView value = ArrowCharView(NULL);
   ArrowMetadataGetValue(metadata, key, &value);
   return value.data != NULL;
 }
@@ -194,7 +194,7 @@ static ArrowErrorCode ArrowMetadataBuilderSetInternal(struct ArrowBuffer* buffer
                                                       struct ArrowStringView* key,
                                                       struct ArrowStringView* value) {
   // Inspect the current value to see if we can avoid copying the buffer
-  struct ArrowStringView current_value = ArrowStringViewCreate(NULL);
+  struct ArrowStringView current_value = ArrowCharView(NULL);
   int result =
       ArrowMetadataGetValueInternal((const char*)buffer->data, key, &current_value);
   if (result != NANOARROW_OK) {
