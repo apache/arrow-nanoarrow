@@ -181,6 +181,7 @@ ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_ch
     array->children[i]->release = NULL;
   }
 
+  array->n_children = n_children;
   return NANOARROW_OK;
 }
 
@@ -206,7 +207,6 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
     case 0:
       ArrowBufferMove(buffer, &data->bitmap.buffer);
       data->buffer_data[i] = data->bitmap.buffer.data;
-      break;
     case 1:
     case 2:
       ArrowBufferMove(buffer, &data->buffers[i - 1]);
