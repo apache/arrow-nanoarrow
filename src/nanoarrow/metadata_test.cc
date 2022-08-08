@@ -50,8 +50,15 @@ TEST(MetadataTest, MetadataBuild) {
   char simple_metadata[] = {'\1', '\0', '\0', '\0', '\3', '\0', '\0', '\0', 'k', 'e',
                             'y',  '\5', '\0', '\0', '\0', 'v',  'a',  'l',  'u', 'e'};
 
-  // Empty metadata
+  // Metadata builder from copy
   struct ArrowBuffer metadata_builder;
+  ASSERT_EQ(ArrowMetadataBuilderInit(&metadata_builder, simple_metadata), NANOARROW_OK);
+  EXPECT_EQ(metadata_builder.size_bytes, sizeof(simple_metadata));
+  EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
+            0);
+  ArrowBufferReset(&metadata_builder);
+
+  // Empty metadata
   ASSERT_EQ(ArrowMetadataBuilderInit(&metadata_builder, nullptr), NANOARROW_OK);
   EXPECT_EQ(metadata_builder.size_bytes, 0);
   EXPECT_EQ(metadata_builder.data, nullptr);
@@ -63,7 +70,7 @@ TEST(MetadataTest, MetadataBuild) {
             0);
 
   // Remove a key that doesn't exist
-  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key2", NULL), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, "key2"), NANOARROW_OK);
   ASSERT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata));
   EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
             0);
@@ -91,12 +98,19 @@ TEST(MetadataTest, MetadataBuild) {
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
 
   // Remove a key that does exist
-  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key", NULL), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, "key"), NANOARROW_OK);
   EXPECT_EQ(ArrowMetadataHasKey((const char*)metadata_builder.data, "key"), false);
   ASSERT_EQ(
       ArrowMetadataGetValue((const char*)metadata_builder.data, "key2", nullptr, &value),
       NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
+
+  // Attempt a NULL key or value
+  EXPECT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, nullptr, "value"), EINVAL);
+  EXPECT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, "key", nullptr), EINVAL);
+  EXPECT_EQ(ArrowMetadataBuilderSet(&metadata_builder, nullptr, "value"), EINVAL);
+  EXPECT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key", nullptr), EINVAL);
+  EXPECT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, nullptr), EINVAL);
 
   ArrowBufferReset(&metadata_builder);
 }

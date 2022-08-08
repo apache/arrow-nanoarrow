@@ -84,10 +84,10 @@ int64_t ArrowMetadataSizeOf(const char* metadata) {
   return size;
 }
 
-ArrowErrorCode ArrowMetadataGetValueView(const char* metadata,
-                                         struct ArrowStringView* key,
-                                         const char* default_value,
-                                         struct ArrowStringView* value_out) {
+static ArrowErrorCode ArrowMetadataGetValueView(const char* metadata,
+                                                struct ArrowStringView* key,
+                                                const char* default_value,
+                                                struct ArrowStringView* value_out) {
   value_out->data = default_value;
   if (default_value != NULL) {
     value_out->n_bytes = strlen(default_value);
@@ -138,9 +138,9 @@ ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowMetadataBuilderAppendView(struct ArrowBuffer* buffer,
-                                              struct ArrowStringView* key,
-                                              struct ArrowStringView* value) {
+static ArrowErrorCode ArrowMetadataBuilderAppendView(struct ArrowBuffer* buffer,
+                                                     struct ArrowStringView* key,
+                                                     struct ArrowStringView* value) {
   if (value == NULL) {
     return NANOARROW_OK;
   }
@@ -181,21 +181,9 @@ ArrowErrorCode ArrowMetadataBuilderAppendView(struct ArrowBuffer* buffer,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer, const char* key,
-                                          const char* value) {
-  struct ArrowStringView key_view = {key, strlen(key)};
-
-  if (value == NULL) {
-    return ArrowMetadataBuilderAppendView(buffer, &key_view, NULL);
-  } else {
-    struct ArrowStringView value_view = {value, strlen(value)};
-    return ArrowMetadataBuilderAppendView(buffer, &key_view, &value_view);
-  }
-}
-
-ArrowErrorCode ArrowMetadataBuilderSetView(struct ArrowBuffer* buffer,
-                                           struct ArrowStringView* key,
-                                           struct ArrowStringView* value) {
+static ArrowErrorCode ArrowMetadataBuilderSetView(struct ArrowBuffer* buffer,
+                                                  struct ArrowStringView* key,
+                                                  struct ArrowStringView* value) {
   // Inspect the current value to see if we can avoid copying the buffer
   struct ArrowStringView current_value;
   int result = ArrowMetadataGetValueView((const char*)buffer->data, key, NULL, &current_value);
@@ -256,14 +244,35 @@ ArrowErrorCode ArrowMetadataBuilderSetView(struct ArrowBuffer* buffer,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer, const char* key,
+                                          const char* value) {
+  if (key == NULL || value == NULL) {
+    return EINVAL;
+  }
+
+  struct ArrowStringView key_view = {key, strlen(key)};
+  struct ArrowStringView value_view = {value, strlen(value)};
+  return ArrowMetadataBuilderAppendView(buffer, &key_view, &value_view);
+}
+
 ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer, const char* key,
                                        const char* value) {
-  struct ArrowStringView key_view = {key, strlen(key)};
-
-  if (value == NULL) {
-    return ArrowMetadataBuilderSetView(buffer, &key_view, NULL);
-  } else {
-    struct ArrowStringView value_view = {value, strlen(value)};
-    return ArrowMetadataBuilderSetView(buffer, &key_view, &value_view);
+  if (key == NULL || value == NULL) {
+    return EINVAL;
   }
+
+  struct ArrowStringView key_view = {key, strlen(key)};
+  struct ArrowStringView value_view = {value, strlen(value)};
+  return ArrowMetadataBuilderSetView(buffer, &key_view, &value_view);
+}
+
+/// \brief Remove a key from a buffer containing serialized metadata
+ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
+                                          const char* key) {
+  if (key == NULL) {
+    return EINVAL;
+  }
+
+  struct ArrowStringView key_view = {key, strlen(key)};
+  return ArrowMetadataBuilderSetView(buffer, &key_view, NULL);
 }

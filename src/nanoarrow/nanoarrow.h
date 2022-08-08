@@ -215,6 +215,9 @@ ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
                                      struct ArrowStringView* value_out);
 
 /// \brief Initialize a builder for schema metadata from key/value pairs
+///
+/// metadata can be an existing metadata string or NULL to initialize
+/// an empty metadata string.
 ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer, const char* metadata);
 
 /// \brief Append a key/value pair to a buffer containing serialized metadata
@@ -225,12 +228,15 @@ ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer,
 /// \brief Set a key/value pair to a buffer containing serialized metadata
 ///
 /// Ensures that the only entry for key in the metadata is set to value.
-/// If value is NULL, all entries for key will be removed. This function
-/// maintains the existing position of (the first instance of) key if present
-/// in the data.
+/// This function maintains the existing position of (the first instance of)
+/// key if present in the data.
 ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
                                        const char* key,
                                        const char* value);
+
+/// \brief Remove a key from a buffer containing serialized metadata
+ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
+                                          const char* key);
 
 /// }@
 
