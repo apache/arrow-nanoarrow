@@ -466,6 +466,23 @@ static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type);
 
+/// \brief Allocate the array->children array
+///
+/// Includes the memory for each child struct ArrowArray.
+/// schema must have been allocated using ArrowArrayInit.
+ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children);
+
+/// \brief Allocate the array->dictionary member
+///
+/// array must have been allocated using ArrowArrayInit
+ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
+
+/// \brief Set a buffer of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
+                                   struct ArrowBuffer* buffer);
+
 /// }@
 
 // Inline function definitions

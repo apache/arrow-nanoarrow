@@ -153,3 +153,68 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
 
   return NANOARROW_OK;
 }
+
+ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children) {
+  if (array->children != NULL) {
+    return EINVAL;
+  }
+
+  if (n_children == 0) {
+    return NANOARROW_OK;
+  }
+
+  array->children =
+      (struct ArrowArray**)ArrowMalloc(n_children * sizeof(struct ArrowArray*));
+  if (array->children == NULL) {
+    return ENOMEM;
+  }
+
+  for (int64_t i = 0; i < n_children; i++) {
+    array->children[i] = NULL;
+  }
+
+  for (int64_t i = 0; i < n_children; i++) {
+    array->children[i] = (struct ArrowArray*)ArrowMalloc(sizeof(struct ArrowArray));
+    if (array->children[i] == NULL) {
+      return ENOMEM;
+    }
+    array->children[i]->release = NULL;
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array) {
+  if (array->dictionary != NULL) {
+    return EINVAL;
+  }
+
+  array->dictionary = (struct ArrowArray*)ArrowMalloc(sizeof(struct ArrowArray));
+  if (array->dictionary == NULL) {
+    return ENOMEM;
+  }
+
+  array->dictionary->release = NULL;
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
+                                   struct ArrowBuffer* buffer) {
+  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
+
+  switch (i) {
+    case 0:
+      ArrowBufferMove(buffer, &data->bitmap.buffer);
+      data->buffer_data[i] = data->bitmap.buffer.data;
+      break;
+    case 1:
+    case 2:
+      ArrowBufferMove(buffer, &data->buffers[i - 1]);
+      data->buffer_data[i] = data->buffers[i - 1].data;
+      break;
+    default:
+      return EINVAL;
+  }
+
+  return NANOARROW_OK;
+}

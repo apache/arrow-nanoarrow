@@ -212,17 +212,22 @@ struct ArrowBitmap {
   int64_t size_bits;
 };
 
-/// \brief A structure used as the private data member for ArrowArrays allocated here
+// Used as the private data member for ArrowArrays allocated here and accessed
+// internally within inline ArrowArray* helpers.
 struct ArrowArrayPrivateData {
+  // Holder for the validity buffer (or first buffer for union types, which are
+  // the only type whose first buffer is not a valdiity buffer)
   struct ArrowBitmap bitmap;
 
-  /// \brief Additional buffers as required
+  // Holder for additional buffers as required
   struct ArrowBuffer buffers[2];
 
-  /// \brief The array of pointers to data
+  // The array of pointers to buffers. This must be updated after a sequence
+  // of appends to synchronize its values with the actual buffer addresses
+  // (which may have ben reallocated uring that time)
   const void* buffer_data[3];
 
-  /// \brief The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
+  // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;
 };
 
