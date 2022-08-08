@@ -213,8 +213,9 @@ int64_t ArrowMetadataSizeOf(const char* metadata);
 char ArrowMetadataHasKey(const char* metadata, const char* key);
 
 /// \brief Extract a value from schema metadata
+///
+/// If key does not exist in metadata, value_out is unmodified
 ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
-                                     struct ArrowStringView default_value,
                                      struct ArrowStringView* value_out);
 
 /// \brief Initialize a builder for schema metadata from key/value pairs

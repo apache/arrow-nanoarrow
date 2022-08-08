@@ -121,20 +121,18 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
 }
 
 ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
-                                     struct ArrowStringView default_value,
                                      struct ArrowStringView* value_out) {
   if (key == NULL || value_out == NULL) {
     return EINVAL;
   }
 
   struct ArrowStringView key_view = {key, strlen(key)};
-  *value_out = default_value;
   return ArrowMetadataGetValueInternal(metadata, &key_view, value_out);
 }
 
 char ArrowMetadataHasKey(const char* metadata, const char* key) {
-  struct ArrowStringView value;
-  ArrowMetadataGetValue(metadata, key, ArrowStringViewCreate(NULL), &value);
+  struct ArrowStringView value = ArrowStringViewCreate(NULL);
+  ArrowMetadataGetValue(metadata, key, &value);
   return value.data != NULL;
 }
 

@@ -668,10 +668,12 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
     }
   }
 
+  schema_view->extension_name = ArrowStringViewCreate(NULL);
+  schema_view->extension_metadata = ArrowStringViewCreate(NULL);
   ArrowMetadataGetValue(schema->metadata, "ARROW:extension:name",
-                        ArrowStringViewCreate(NULL), &schema_view->extension_name);
+                        &schema_view->extension_name);
   ArrowMetadataGetValue(schema->metadata, "ARROW:extension:metadata",
-                        ArrowStringViewCreate(NULL), &schema_view->extension_metadata);
+                        &schema_view->extension_metadata);
 
   return NANOARROW_OK;
 }
