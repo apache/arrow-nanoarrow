@@ -468,12 +468,17 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
 
 /// \brief Allocate the array->children array
 ///
-/// Includes the memory for each child struct ArrowArray.
+/// Includes the memory for each child struct ArrowArray,
+/// whose members are marked as released and may be subsequently initialized
+/// with ArrowArrayInit or moved from an existing ArrowArray.
 /// schema must have been allocated using ArrowArrayInit.
 ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children);
 
 /// \brief Allocate the array->dictionary member
 ///
+/// Includes the memory for the struct ArrowArray, whose contents
+/// is marked as released and may be subsequently initialized
+/// with ArrowArrayInit or moved from an existing ArrowArray.
 /// array must have been allocated using ArrowArrayInit
 ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
 
