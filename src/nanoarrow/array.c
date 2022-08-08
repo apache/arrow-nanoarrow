@@ -199,6 +199,14 @@ ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array) {
   return NANOARROW_OK;
 }
 
+void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap) {
+  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
+  ArrowBufferMove(&bitmap->buffer, &data->bitmap.buffer);
+  data->bitmap.size_bits = bitmap->size_bits;
+  bitmap->size_bits = 0;
+  data->buffer_data[0] = data->bitmap.buffer.data;
+}
+
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer) {
   struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
@@ -207,9 +215,10 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
     case 0:
       ArrowBufferMove(buffer, &data->bitmap.buffer);
       data->buffer_data[i] = data->bitmap.buffer.data;
+      break;
     case 1:
     case 2:
-      ArrowBufferMove(buffer, &data->buffers[i - 1]);
+      ArrowBufferMove(buffer, data->buffers + i - 1);
       data->buffer_data[i] = data->buffers[i - 1].data;
       break;
     default:

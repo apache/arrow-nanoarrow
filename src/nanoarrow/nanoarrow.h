@@ -477,6 +477,11 @@ ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_ch
 /// array must have been allocated using ArrowArrayInit
 ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
 
+/// \brief Set the validity bitmap of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap);
+
 /// \brief Set a buffer of an ArrowArray
 ///
 /// array must have been allocated using ArrowArrayInit
