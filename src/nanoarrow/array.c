@@ -218,7 +218,7 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
       break;
     case 1:
     case 2:
-      ArrowBufferMove(buffer, data->buffers + i - 1);
+      ArrowBufferMove(buffer, &data->buffers[i - 1]);
       data->buffer_data[i] = data->buffers[i - 1].data;
       break;
     default:
