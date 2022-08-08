@@ -37,6 +37,8 @@ TEST(ArrayTest, ArrayTestBasic) {
   EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_EQ(array.n_buffers, 3);
   array.release(&array);
+
+  EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_DATE64), EINVAL);
 }
 
 TEST(ArrayTest, ArrayTestAllocateChildren) {
@@ -120,6 +122,9 @@ TEST(ArrayTest, ArrayTestSetBuffer) {
   EXPECT_EQ(memcmp(array.buffers[0], validity_bitmap, 1), 0);
   EXPECT_EQ(memcmp(array.buffers[1], offsets, 8 * sizeof(int32_t)), 0);
   EXPECT_EQ(memcmp(array.buffers[2], data, 10), 0);
+
+  // try to set a buffer that isn't, 0, 1, or 2
+  EXPECT_EQ(ArrowArraySetBuffer(&array, 3, &buffer0), EINVAL);
 
   array.release(&array);
 }
