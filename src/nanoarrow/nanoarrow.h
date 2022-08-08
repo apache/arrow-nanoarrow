@@ -100,53 +100,6 @@ struct ArrowStringView {
   int64_t n_bytes;
 };
 
-/// \brief Arrow type enumerator
-///
-/// These names are intended to map to the corresponding arrow::Type::type
-/// enumerator; however, the numeric values are specifically not equal
-/// (i.e., do not rely on numeric comparison).
-enum ArrowType {
-  NANOARROW_TYPE_UNINITIALIZED = 0,
-  NANOARROW_TYPE_NA = 1,
-  NANOARROW_TYPE_BOOL,
-  NANOARROW_TYPE_UINT8,
-  NANOARROW_TYPE_INT8,
-  NANOARROW_TYPE_UINT16,
-  NANOARROW_TYPE_INT16,
-  NANOARROW_TYPE_UINT32,
-  NANOARROW_TYPE_INT32,
-  NANOARROW_TYPE_UINT64,
-  NANOARROW_TYPE_INT64,
-  NANOARROW_TYPE_HALF_FLOAT,
-  NANOARROW_TYPE_FLOAT,
-  NANOARROW_TYPE_DOUBLE,
-  NANOARROW_TYPE_STRING,
-  NANOARROW_TYPE_BINARY,
-  NANOARROW_TYPE_FIXED_SIZE_BINARY,
-  NANOARROW_TYPE_DATE32,
-  NANOARROW_TYPE_DATE64,
-  NANOARROW_TYPE_TIMESTAMP,
-  NANOARROW_TYPE_TIME32,
-  NANOARROW_TYPE_TIME64,
-  NANOARROW_TYPE_INTERVAL_MONTHS,
-  NANOARROW_TYPE_INTERVAL_DAY_TIME,
-  NANOARROW_TYPE_DECIMAL128,
-  NANOARROW_TYPE_DECIMAL256,
-  NANOARROW_TYPE_LIST,
-  NANOARROW_TYPE_STRUCT,
-  NANOARROW_TYPE_SPARSE_UNION,
-  NANOARROW_TYPE_DENSE_UNION,
-  NANOARROW_TYPE_DICTIONARY,
-  NANOARROW_TYPE_MAP,
-  NANOARROW_TYPE_EXTENSION,
-  NANOARROW_TYPE_FIXED_SIZE_LIST,
-  NANOARROW_TYPE_DURATION,
-  NANOARROW_TYPE_LARGE_STRING,
-  NANOARROW_TYPE_LARGE_BINARY,
-  NANOARROW_TYPE_LARGE_LIST,
-  NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
-};
-
 /// \brief Arrow time unit enumerator
 ///
 /// These names and values map to the corresponding arrow::TimeUnit::type
@@ -500,6 +453,45 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
 ///
 /// Releases any memory held by buffer, empties the cache, and resets the size to zero
 static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
+
+/// }@
+
+/// \defgroup nanoarrow-array Array producer helpers
+/// These functions allocate, copy, and destroy ArrowArray structures
+
+/// \brief Initialize the fields of an array
+///
+/// Initializes the fields and release callback of array. Caller
+/// is responsible for calling the array->release callback if
+/// NANOARROW_OK is returned.
+ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type);
+
+/// \brief Allocate the array->children array
+///
+/// Includes the memory for each child struct ArrowArray,
+/// whose members are marked as released and may be subsequently initialized
+/// with ArrowArrayInit or moved from an existing ArrowArray.
+/// schema must have been allocated using ArrowArrayInit.
+ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children);
+
+/// \brief Allocate the array->dictionary member
+///
+/// Includes the memory for the struct ArrowArray, whose contents
+/// is marked as released and may be subsequently initialized
+/// with ArrowArrayInit or moved from an existing ArrowArray.
+/// array must have been allocated using ArrowArrayInit
+ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
+
+/// \brief Set the validity bitmap of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap);
+
+/// \brief Set a buffer of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
+                                   struct ArrowBuffer* buffer);
 
 /// }@
 

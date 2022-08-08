@@ -16,6 +16,7 @@
 // under the License.
 
 #include "allocator.c"
+#include "array.c"
 #include "error.c"
 #include "metadata.c"
 #include "schema.c"
