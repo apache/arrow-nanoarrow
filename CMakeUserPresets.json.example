@@ -7,13 +7,25 @@
     },
     "configurePresets": [
         {
-            "name": "paleolimbot-local",
-            "inherits": ["default"],
-            "displayName": "(paleolimbot) local build",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_CXX_FLAGS_DEBUG": "-g"
-            }
+          "name": "user-local",
+          "inherits": ["default-with-tests"],
+          "displayName": "(user) local build",
+          "cacheVariables": {
+              "Arrow_DIR": "/path/to/arrow/dist/lib/cmake/arrow",
+              "ArrowTesting_DIR": "/path/to/arrow/dist/lib/cmake/arrow",
+              "GTest_DIR": "/path/to/googletest/1.11.0/lib/cmake/GTest"
           }
+        }
+    ],
+    "testPresets": [
+      {
+          "name": "user-test-preset",
+          "description": "",
+          "displayName": (user) test preset)",
+          "configurePreset": "user-local",
+          "environment": {
+            "CTEST_OUTPUT_ON_FAILURE": "1"
+          }
+      }
     ]
 }
