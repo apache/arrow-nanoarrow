@@ -21,19 +21,6 @@
 
 #include "nanoarrow.h"
 
-struct ArrowStringView ArrowCharView(const char* value) {
-  struct ArrowStringView out;
-
-  out.data = value;
-  if (value == NULL) {
-    out.n_bytes = 0;
-  } else {
-    out.n_bytes = (int64_t)strlen(value);
-  }
-
-  return out;
-}
-
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
                                        const char* metadata) {
   reader->metadata = metadata;

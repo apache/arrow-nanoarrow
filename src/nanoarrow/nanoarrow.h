@@ -87,19 +87,6 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \defgroup nanoarrow-utils Utility data structures
 
-/// \brief An non-owning view of a string
-struct ArrowStringView {
-  /// \brief A pointer to the start of the string
-  ///
-  /// If n_bytes is 0, this value may be NULL.
-  const char* data;
-
-  /// \brief The size of the string in bytes,
-  ///
-  /// (Not including the null terminator.)
-  int64_t n_bytes;
-};
-
 /// \brief Arrow time unit enumerator
 ///
 /// These names and values map to the corresponding arrow::TimeUnit::type
@@ -186,9 +173,6 @@ ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
 /// schema must have been allocated using ArrowSchemaInit or
 /// ArrowSchemaDeepCopy.
 ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
-
-/// \brief Create a string view from a null-terminated string
-struct ArrowStringView ArrowCharView(const char* value);
 
 /// \brief Reader for key/value pairs in schema metadata
 struct ArrowMetadataReader {
