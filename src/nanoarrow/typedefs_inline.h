@@ -185,7 +185,7 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
 
   out.data = value;
   out.n_bytes = 0;
-  if (value != NULL) {
+  if (value) {
     while (*value++) {
       out.n_bytes++;
     }
