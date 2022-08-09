@@ -166,6 +166,19 @@ enum ArrowType {
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 };
 
+/// \brief An non-owning view of a string
+struct ArrowStringView {
+  /// \brief A pointer to the start of the string
+  ///
+  /// If n_bytes is 0, this value may be NULL.
+  const char* data;
+
+  /// \brief The size of the string in bytes,
+  ///
+  /// (Not including the null terminator.)
+  int64_t n_bytes;
+};
+
 /// \brief Array buffer allocation and deallocation
 ///
 /// Container for allocate, reallocate, and free methods that can be used

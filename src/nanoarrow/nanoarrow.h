@@ -87,18 +87,8 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \defgroup nanoarrow-utils Utility data structures
 
-/// \brief An non-owning view of a string
-struct ArrowStringView {
-  /// \brief A pointer to the start of the string
-  ///
-  /// If n_bytes is 0, this value may be NULL.
-  const char* data;
-
-  /// \brief The size of the string in bytes,
-  ///
-  /// (Not including the null terminator.)
-  int64_t n_bytes;
-};
+/// \brief Create a string view from a null-terminated string
+static inline struct ArrowStringView ArrowCharView(const char* value);
 
 /// \brief Arrow time unit enumerator
 ///
@@ -207,12 +197,37 @@ ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
 int64_t ArrowMetadataSizeOf(const char* metadata);
 
 /// \brief Check for a key in schema metadata
-char ArrowMetadataHasKey(const char* metadata, const char* key);
+char ArrowMetadataHasKey(const char* metadata, struct ArrowStringView key);
 
 /// \brief Extract a value from schema metadata
-ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
-                                     const char* default_value,
+///
+/// If key does not exist in metadata, value_out is unmodified
+ArrowErrorCode ArrowMetadataGetValue(const char* metadata, struct ArrowStringView key,
                                      struct ArrowStringView* value_out);
+
+/// \brief Initialize a builder for schema metadata from key/value pairs
+///
+/// metadata can be an existing metadata string or NULL to initialize
+/// an empty metadata string.
+ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer, const char* metadata);
+
+/// \brief Append a key/value pair to a buffer containing serialized metadata
+ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key,
+                                          struct ArrowStringView value);
+
+/// \brief Set a key/value pair to a buffer containing serialized metadata
+///
+/// Ensures that the only entry for key in the metadata is set to value.
+/// This function maintains the existing position of (the first instance of)
+/// key if present in the data.
+ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
+                                       struct ArrowStringView key,
+                                       struct ArrowStringView value);
+
+/// \brief Remove a key from a buffer containing serialized metadata
+ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key);
 
 /// }@
 
@@ -498,6 +513,7 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
 // Inline function definitions
 #include "bitmap_inline.h"
 #include "buffer_inline.h"
+#include "utils_inline.h"
 
 #ifdef __cplusplus
 }
