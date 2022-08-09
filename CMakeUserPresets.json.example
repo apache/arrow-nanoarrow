@@ -11,8 +11,6 @@
           "inherits": ["default-with-tests"],
           "displayName": "(user) local build",
           "cacheVariables": {
-              "CMAKE_CXX_FLAGS_DEBUG": "-g",
-              "OPENSSL_ROOT_DIR": "/path/to/openssl@1.1",
               "Arrow_DIR": "/path/to/arrow/dist/lib/cmake/arrow",
               "ArrowTesting_DIR": "/path/to/arrow/dist/lib/cmake/arrow",
               "GTest_DIR": "/path/to/googletest/1.11.0/lib/cmake/GTest"
@@ -23,7 +21,7 @@
       {
           "name": "user-test-preset",
           "description": "",
-          "displayName": "",
+          "displayName": (user) test preset)",
           "configurePreset": "user-local",
           "environment": {
             "CTEST_OUTPUT_ON_FAILURE": "1"
