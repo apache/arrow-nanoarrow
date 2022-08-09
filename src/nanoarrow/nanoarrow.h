@@ -87,6 +87,9 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \defgroup nanoarrow-utils Utility data structures
 
+/// \brief Create a string view from a null-terminated string
+static inline struct ArrowStringView ArrowCharView(const char* value);
+
 /// \brief Arrow time unit enumerator
 ///
 /// These names and values map to the corresponding arrow::TimeUnit::type
@@ -510,6 +513,7 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
 // Inline function definitions
 #include "bitmap_inline.h"
 #include "buffer_inline.h"
+#include "utils_inline.h"
 
 #ifdef __cplusplus
 }

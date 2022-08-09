@@ -179,21 +179,6 @@ struct ArrowStringView {
   int64_t n_bytes;
 };
 
- /// \brief Create a string view from a null-terminated string
-static inline struct ArrowStringView ArrowCharView(const char* value) {
-  struct ArrowStringView out;
-
-  out.data = value;
-  out.n_bytes = 0;
-  if (value) {
-    while (*value++) {
-      out.n_bytes++;
-    }
-  }
-
-  return out;
-}
-
 /// \brief Array buffer allocation and deallocation
 ///
 /// Container for allocate, reallocate, and free methods that can be used
