@@ -194,12 +194,12 @@ ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
 int64_t ArrowMetadataSizeOf(const char* metadata);
 
 /// \brief Check for a key in schema metadata
-char ArrowMetadataHasKey(const char* metadata, const char* key);
+char ArrowMetadataHasKey(const char* metadata, struct ArrowStringView key);
 
 /// \brief Extract a value from schema metadata
 ///
 /// If key does not exist in metadata, value_out is unmodified
-ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
+ArrowErrorCode ArrowMetadataGetValue(const char* metadata, struct ArrowStringView key,
                                      struct ArrowStringView* value_out);
 
 /// \brief Initialize a builder for schema metadata from key/value pairs
@@ -209,7 +209,8 @@ ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
 ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer, const char* metadata);
 
 /// \brief Append a key/value pair to a buffer containing serialized metadata
-ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer, const char* key,
+ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key,
                                           struct ArrowStringView value);
 
 /// \brief Set a key/value pair to a buffer containing serialized metadata
@@ -217,11 +218,13 @@ ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer, const char
 /// Ensures that the only entry for key in the metadata is set to value.
 /// This function maintains the existing position of (the first instance of)
 /// key if present in the data.
-ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer, const char* key,
+ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
+                                       struct ArrowStringView key,
                                        struct ArrowStringView value);
 
 /// \brief Remove a key from a buffer containing serialized metadata
-ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer, const char* key);
+ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key);
 
 /// }@
 

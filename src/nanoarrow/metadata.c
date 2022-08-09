@@ -107,17 +107,16 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowMetadataGetValue(const char* metadata, const char* key,
+ArrowErrorCode ArrowMetadataGetValue(const char* metadata, struct ArrowStringView key,
                                      struct ArrowStringView* value_out) {
-  if (key == NULL || value_out == NULL) {
+  if (value_out == NULL) {
     return EINVAL;
   }
 
-  struct ArrowStringView key_view = {key, strlen(key)};
-  return ArrowMetadataGetValueInternal(metadata, &key_view, value_out);
+  return ArrowMetadataGetValueInternal(metadata, &key, value_out);
 }
 
-char ArrowMetadataHasKey(const char* metadata, const char* key) {
+char ArrowMetadataHasKey(const char* metadata, struct ArrowStringView key) {
   struct ArrowStringView value = ArrowCharView(NULL);
   ArrowMetadataGetValue(metadata, key, &value);
   return value.data != NULL;
@@ -240,31 +239,19 @@ static ArrowErrorCode ArrowMetadataBuilderSetInternal(struct ArrowBuffer* buffer
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer, const char* key,
+ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key,
                                           struct ArrowStringView value) {
-  if (key == NULL) {
-    return EINVAL;
-  }
-
-  struct ArrowStringView key_view = {key, strlen(key)};
-  return ArrowMetadataBuilderAppendInternal(buffer, &key_view, &value);
+  return ArrowMetadataBuilderAppendInternal(buffer, &key, &value);
 }
 
-ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer, const char* key,
+ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
+                                       struct ArrowStringView key,
                                        struct ArrowStringView value) {
-  if (key == NULL) {
-    return EINVAL;
-  }
-
-  struct ArrowStringView key_view = {key, strlen(key)};
-  return ArrowMetadataBuilderSetInternal(buffer, &key_view, &value);
+  return ArrowMetadataBuilderSetInternal(buffer, &key, &value);
 }
 
-ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer, const char* key) {
-  if (key == NULL) {
-    return EINVAL;
-  }
-
-  struct ArrowStringView key_view = {key, strlen(key)};
-  return ArrowMetadataBuilderSetInternal(buffer, &key_view, NULL);
+ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key) {
+  return ArrowMetadataBuilderSetInternal(buffer, &key, NULL);
 }

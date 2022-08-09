@@ -33,15 +33,17 @@ TEST(MetadataTest, Metadata) {
   EXPECT_EQ(ArrowMetadataSizeOf(nullptr), 0);
   EXPECT_EQ(ArrowMetadataSizeOf(simple_metadata), sizeof(simple_metadata));
 
-  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata, "key"), 1);
-  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata, "not_a_key"), 0);
+  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata, ArrowCharView("key")), 1);
+  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata, ArrowCharView("not_a_key")), 0);
 
   struct ArrowStringView value = ArrowCharView("default_val");
-  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, "key", &value), NANOARROW_OK);
+  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, ArrowCharView("key"), &value),
+            NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value");
 
   value = ArrowCharView("default_val");
-  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, "not_a_key", &value), NANOARROW_OK);
+  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, ArrowCharView("not_a_key"), &value),
+            NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "default_val");
 }
 
@@ -64,54 +66,58 @@ TEST(MetadataTest, MetadataBuild) {
   EXPECT_EQ(metadata_builder.data, nullptr);
 
   // Recreate simple_metadata
-  ASSERT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, "key",
-                                       {"value", (int)strlen("value")}),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, ArrowCharView("key"),
+                                       ArrowCharView("value")),
             NANOARROW_OK);
   ASSERT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata));
   EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
             0);
 
   // Remove a key that doesn't exist
-  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, "key2"), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, ArrowCharView("key2")),
+            NANOARROW_OK);
   ASSERT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata));
   EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
             0);
 
   // Add a new key
-  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key2", ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, ArrowCharView("key2"),
+                                    ArrowCharView("value2")),
             NANOARROW_OK);
   EXPECT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata) +
                                              sizeof(int32_t) + 4 + sizeof(int32_t) + 6);
 
   struct ArrowStringView value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key2", &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key2"), &value),
             NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
 
   // Set an existing key
-  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key", ArrowCharView("value3")),
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, ArrowCharView("key"),
+                                    ArrowCharView("value3")),
             NANOARROW_OK);
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key", &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key"), &value),
             NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value3");
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key2", &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key2"), &value),
             NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
 
   // Remove a key that does exist
-  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, "key"), NANOARROW_OK);
-  EXPECT_EQ(ArrowMetadataHasKey((const char*)metadata_builder.data, "key"), false);
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, ArrowCharView("key")),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowMetadataHasKey((const char*)metadata_builder.data, ArrowCharView("key")),
+            false);
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key2", &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key2"), &value),
             NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
-
-  // Attempt a NULL key or value
-  EXPECT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, nullptr, {"x", 1}), EINVAL);
-  EXPECT_EQ(ArrowMetadataBuilderSet(&metadata_builder, nullptr, {"x", 1}), EINVAL);
-  EXPECT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, nullptr), EINVAL);
 
   ArrowBufferReset(&metadata_builder);
 }
