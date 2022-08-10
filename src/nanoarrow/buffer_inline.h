@@ -129,6 +129,56 @@ static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
   return NANOARROW_OK;
 }
 
+static inline ArrowErrorCode ArrowBufferAppendInt8(struct ArrowBuffer* buffer,
+                                                   int8_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(int8_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendUInt8(struct ArrowBuffer* buffer,
+                                                    uint8_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(uint8_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendInt16(struct ArrowBuffer* buffer,
+                                                    int16_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(int16_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendUInt16(struct ArrowBuffer* buffer,
+                                                     uint16_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(uint16_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendInt32(struct ArrowBuffer* buffer,
+                                                    int32_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(int32_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendUInt32(struct ArrowBuffer* buffer,
+                                                     uint32_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(uint32_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendInt64(struct ArrowBuffer* buffer,
+                                                    int64_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(int64_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendUInt64(struct ArrowBuffer* buffer,
+                                                     uint64_t value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(uint64_t));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
+                                                     double value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(double));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
+                                                    float value) {
+  return ArrowBufferAppend(buffer, &value, sizeof(float));
+}
+
 #ifdef __cplusplus
 }
 #endif
