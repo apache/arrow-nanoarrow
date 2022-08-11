@@ -17,7 +17,13 @@
 
 #include <gtest/gtest.h>
 
+#include <arrow/array.h>
+#include <arrow/c/bridge.h>
+#include <arrow/testing/gtest_util.h>
+
 #include "nanoarrow/nanoarrow.h"
+
+using namespace arrow;
 
 TEST(ArrayTest, ArrayTestBasic) {
   struct ArrowArray array;
@@ -168,4 +174,118 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   EXPECT_EQ(ArrowArrayBuffer(&array, 2)->size_bytes, 10);
 
   array.release(&array);
+}
+
+TEST(ArrayTest, ArrayTestAppendToNullArray) {
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 0), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 2);
+  EXPECT_EQ(array.null_count, 2);
+
+  auto arrow_array = ImportArray(&array, null());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(null(), "[null, null]")));
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 0), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 0), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), EINVAL);
+  array.release(&array);
+}
+
+TEST(ArrayTest, ArrayTestAppendToInt64Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT64), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const int64_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[1], 0);
+  EXPECT_EQ(data_buffer[2], 0);
+  EXPECT_EQ(data_buffer[3], 3);
+
+  auto arrow_array = ImportArray(&array, int64());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(
+      arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int64(), "[1, null, null, 3]")));
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), EINVAL);
+  array.release(&array);
+}
+
+TEST(ArrayTest, ArrayTestAppendToStringArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto offset_buffer = reinterpret_cast<const int32_t*>(array.buffers[1]);
+  auto data_buffer = reinterpret_cast<const char*>(array.buffers[2]);
+  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(offset_buffer[0], 0);
+  EXPECT_EQ(offset_buffer[1], 4);
+  EXPECT_EQ(offset_buffer[2], 4);
+  EXPECT_EQ(offset_buffer[3], 4);
+  EXPECT_EQ(offset_buffer[4], 9);
+  EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
+
+  auto arrow_array = ImportArray(&array, utf8());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
+      ArrayFromJSON(utf8(), "[\"1234\", null, null, \"56789\"]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_LARGE_STRING), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto offset_buffer = reinterpret_cast<const int64_t*>(array.buffers[1]);
+  auto data_buffer = reinterpret_cast<const char*>(array.buffers[2]);
+  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(offset_buffer[0], 0);
+  EXPECT_EQ(offset_buffer[1], 4);
+  EXPECT_EQ(offset_buffer[2], 4);
+  EXPECT_EQ(offset_buffer[3], 4);
+  EXPECT_EQ(offset_buffer[4], 9);
+  EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
+
+  auto arrow_array = ImportArray(&array, large_utf8());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
+      ArrayFromJSON(large_utf8(), "[\"1234\", null, null, \"56789\"]")));
 }

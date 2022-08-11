@@ -262,6 +262,7 @@ struct ArrowSchemaView {
   /// interpret the buffers in the array.
   enum ArrowType storage_data_type;
 
+  /// \brief The storage layout represented by the schema
   struct ArrowLayout layout;
 
   /// \brief The extension type name if it exists
@@ -403,6 +404,13 @@ static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const voi
 /// overallocate when reallocation is required.
 static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
                                                const void* data, int64_t size_bytes);
+
+/// \brief Write fill to buffer and increment the buffer size
+///
+/// This function writes the specified number of fill bytes and
+/// ensures that the buffer has the required capacity,
+static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
+                                                   uint8_t value, int64_t size_bytes);
 
 /// \brief Write an 8-bit integer to a buffer
 static inline ArrowErrorCode ArrowBufferAppendInt8(struct ArrowBuffer* buffer,
@@ -562,6 +570,21 @@ static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* ar
 ///
 /// array must have been allocated using ArrowArrayInit
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
+
+static inline ArrowErrorCode ArrowArrayStartBuilding(struct ArrowArray* array);
+
+static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n);
+
+static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array, int64_t value);
+
+static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
+                                                  uint64_t value);
+
+static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
+                                                    double value);
+
+static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
+                                                    struct ArrowStringView value);
 
 /// \brief Finish building an ArrowArray
 ///

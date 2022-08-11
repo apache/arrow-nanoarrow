@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: build-deps
-          key: ${{ runner.os }}-3
+          key: ${{ runner.os }}-5
 
       - name: Init build dir
         if: steps.cache-deps-build.outputs.cache-hit != 'true'
@@ -66,6 +66,11 @@ jobs:
           cmake --build .
           cmake --install . --prefix ../../dist
 
+      - name: Install googletest
+        run: |
+          cd build-deps/googletest
+          cmake --install . --prefix ../../dist
+
       - name: Fetch Arrow
         if: steps.cache-deps-build.outputs.cache-hit != 'true'
         uses: actions/checkout@v3
@@ -80,15 +85,13 @@ jobs:
         run: |
           mkdir build-deps/arrow-build
           cd build-deps/arrow-build
-          cmake ../arrow/cpp -DARROW_JSON=ON -DARROW_TESTING=ON -DBoost_SOURCE=BUNDLED
+          cmake ../arrow/cpp -DARROW_JSON=ON -DARROW_TESTING=ON -DBoost_SOURCE=BUNDLED -DGTest_DIR=`pwd`/../../dist/lib/cmake/GTest -DCMAKE_CXX_FLAGS=-fPIC
           cmake --build .
           cmake --install . --prefix ../../dist
 
-      - name: Install Dependencies
+      - name: Install arrow
         run: |
           cd build-deps/arrow-build
-          cmake --install . --prefix ../../dist
-          cd ../googletest
           cmake --install . --prefix ../../dist
 
       - name: Build nanoarrow

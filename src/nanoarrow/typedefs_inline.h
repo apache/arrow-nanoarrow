@@ -290,6 +290,9 @@ struct ArrowArrayPrivateData {
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;
+
+  // The buffer arrangement for the storage type
+  struct ArrowLayout layout;
 };
 
 struct ArrowArrayView {

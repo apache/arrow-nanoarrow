@@ -23,12 +23,13 @@
 
 static void ArrowArrayRelease(struct ArrowArray* array) {
   // Release buffers held by this array
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
-  if (data != NULL) {
-    ArrowBitmapReset(&data->bitmap);
-    ArrowBufferReset(&data->buffers[0]);
-    ArrowBufferReset(&data->buffers[1]);
-    ArrowFree(data);
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  if (private_data != NULL) {
+    ArrowBitmapReset(&private_data->bitmap);
+    ArrowBufferReset(&private_data->buffers[0]);
+    ArrowBufferReset(&private_data->buffers[1]);
+    ArrowFree(private_data);
   }
 
   // This object owns the memory for all the children, but those
@@ -92,6 +93,8 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
     case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
     case NANOARROW_TYPE_INTERVAL_MONTHS:
     case NANOARROW_TYPE_INTERVAL_DAY_TIME:
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
@@ -109,16 +112,19 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
 
     default:
       return EINVAL;
+
+      return NANOARROW_OK;
   }
 
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
-  data->storage_type = storage_type;
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  private_data->storage_type = storage_type;
   return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type) {
   array->length = 0;
-  array->null_count = -1;
+  array->null_count = 0;
   array->offset = 0;
   array->n_buffers = 0;
   array->n_children = 0;
@@ -128,22 +134,22 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
   array->release = &ArrowArrayRelease;
   array->private_data = NULL;
 
-  struct ArrowArrayPrivateData* data =
+  struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)ArrowMalloc(sizeof(struct ArrowArrayPrivateData));
-  if (data == NULL) {
+  if (private_data == NULL) {
     array->release = NULL;
     return ENOMEM;
   }
 
-  ArrowBitmapInit(&data->bitmap);
-  ArrowBufferInit(&data->buffers[0]);
-  ArrowBufferInit(&data->buffers[1]);
-  data->buffer_data[0] = NULL;
-  data->buffer_data[1] = NULL;
-  data->buffer_data[2] = NULL;
+  ArrowBitmapInit(&private_data->bitmap);
+  ArrowBufferInit(&private_data->buffers[0]);
+  ArrowBufferInit(&private_data->buffers[1]);
+  private_data->buffer_data[0] = NULL;
+  private_data->buffer_data[1] = NULL;
+  private_data->buffer_data[2] = NULL;
 
-  array->private_data = data;
-  array->buffers = (const void**)(&data->buffer_data);
+  array->private_data = private_data;
+  array->buffers = (const void**)(&private_data->buffer_data);
 
   int result = ArrowArraySetStorageType(array, storage_type);
   if (result != NANOARROW_OK) {
@@ -151,6 +157,7 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
     return result;
   }
 
+  ArrowLayoutInit(&private_data->layout, storage_type);
   return NANOARROW_OK;
 }
 
@@ -200,26 +207,29 @@ ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array) {
 }
 
 void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap) {
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
-  ArrowBufferMove(&bitmap->buffer, &data->bitmap.buffer);
-  data->bitmap.size_bits = bitmap->size_bits;
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  ArrowBufferMove(&bitmap->buffer, &private_data->bitmap.buffer);
+  private_data->bitmap.size_bits = bitmap->size_bits;
   bitmap->size_bits = 0;
-  data->buffer_data[0] = data->bitmap.buffer.data;
+  private_data->buffer_data[0] = private_data->bitmap.buffer.data;
+  array->null_count = -1;
 }
 
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer) {
-  struct ArrowArrayPrivateData* data = (struct ArrowArrayPrivateData*)array->private_data;
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
 
   switch (i) {
     case 0:
-      ArrowBufferMove(buffer, &data->bitmap.buffer);
-      data->buffer_data[i] = data->bitmap.buffer.data;
+      ArrowBufferMove(buffer, &private_data->bitmap.buffer);
+      private_data->buffer_data[i] = private_data->bitmap.buffer.data;
       break;
     case 1:
     case 2:
-      ArrowBufferMove(buffer, &data->buffers[i - 1]);
-      data->buffer_data[i] = data->buffers[i - 1].data;
+      ArrowBufferMove(buffer, &private_data->buffers[i - 1]);
+      private_data->buffer_data[i] = private_data->buffers[i - 1].data;
       break;
     default:
       return EINVAL;

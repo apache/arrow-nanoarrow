@@ -125,6 +125,29 @@ TEST(BufferTest, BufferTestMove) {
   ArrowBufferReset(&buffer_out);
 }
 
+TEST(BufferTest, BufferTestFill) {
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendFill(&buffer, 0xff, 10), NANOARROW_OK);
+  EXPECT_EQ(buffer.size_bytes, 10);
+  for (int i = 0; i < 10; i++) {
+    EXPECT_EQ(buffer.data[i], 0xff);
+  }
+
+  buffer.size_bytes = 0;
+  EXPECT_EQ(ArrowBufferAppendFill(&buffer, 0, 10), NANOARROW_OK);
+  EXPECT_EQ(buffer.size_bytes, 10);
+  for (int i = 0; i < 10; i++) {
+    EXPECT_EQ(buffer.data[i], 0);
+  }
+
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendFill(&buffer, 0, std::numeric_limits<int64_t>::max()),
+            ENOMEM);
+}
+
 TEST(BufferTest, BufferTestResize0) {
   struct ArrowBuffer buffer;
 
