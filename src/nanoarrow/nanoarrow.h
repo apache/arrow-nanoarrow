@@ -548,9 +548,26 @@ void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* b
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer);
 
+/// \brief Get the validity bitmap of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* array);
+
+/// \brief Get a buffer of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
+
+/// \brief Finish building an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                                      char shrink_to_fit);
+
 /// }@
 
 // Inline function definitions
+#include "array_inline.h"
 #include "bitmap_inline.h"
 #include "buffer_inline.h"
 #include "utils_inline.h"
