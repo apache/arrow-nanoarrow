@@ -105,13 +105,17 @@ jobs:
 
       - name: Run tests
         run: |
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
           cd build
           ctest -T test --output-on-failure .
 
       - name: Run tests with valgrind
         run: |
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
           cd build
-          ctest -T memcheck .
+          ctest -T memcheck . 
 
       - name: Calculate coverage
         run: |
