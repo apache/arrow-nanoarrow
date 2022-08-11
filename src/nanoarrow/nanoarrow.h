@@ -263,7 +263,6 @@ struct ArrowSchemaView {
   /// interpret the buffers in the array.
   enum ArrowType storage_data_type;
 
-  
   struct ArrowLayout layout;
 
   /// \brief The extension type name if it exists
@@ -573,8 +572,19 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
 /// }@
 
+/// \defgroup nanoarrow-array Array consumer helpers
+/// These functions read and validate the contents ArrowArray structures
+
+/// \brief Initialize the contents of an ArrowArayView
+static inline ArrowErrorCode ArrayViewInit(struct ArrowArrayView* array_view,
+                                           struct ArrowArray* array,
+                                           enum ArrowType storage_type);
+
+/// }@
+
 // Inline function definitions
 #include "array_inline.h"
+#include "array_view_inline.h"
 #include "bitmap_inline.h"
 #include "buffer_inline.h"
 #include "utils_inline.h"

@@ -192,12 +192,37 @@ struct ArrowLayout {
   int64_t child_size_elements;
 };
 
+union ArrowBufferDataPointer {
+  void* data;
+  int8_t* int8;
+  uint8_t* uint8;
+  int16_t* int16;
+  uint16_t* uint16;
+  int32_t* int32;
+  uint32_t* uint32;
+  int64_t* int64;
+  uint64_t* uint64;
+};
+
 /// \brief An non-owning view of a string
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
   ///
   /// If n_bytes is 0, this value may be NULL.
   const char* data;
+
+  /// \brief The size of the string in bytes,
+  ///
+  /// (Not including the null terminator.)
+  int64_t n_bytes;
+};
+
+/// \brief An non-owning view of a buffer
+struct ArrowBufferView {
+  /// \brief A pointer to the start of the buffer
+  ///
+  /// If n_bytes is 0, this value may be NULL.
+  const union ArrowBufferDataPointer data;
 
   /// \brief The size of the string in bytes,
   ///
@@ -268,6 +293,13 @@ struct ArrowArrayPrivateData {
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;
+};
+
+struct ArrowArrayView {
+  struct ArrowArray* array;
+  enum ArrowType storage_type;
+  struct ArrowLayout layout;
+  struct ArrowBufferView buffer_views[3];
 };
 
 /// }@
