@@ -166,6 +166,32 @@ enum ArrowType {
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 };
 
+/// \brief Functional types of buffers as described in the Arrow Columnar Specification
+enum ArrowBufferType {
+  NANOARROW_BUFFER_TYPE_NONE,
+  NANOARROW_BUFFER_TYPE_VALIDITY,
+  NANOARROW_BUFFER_TYPE_TYPE_ID,
+  NANOARROW_BUFFER_TYPE_UNION_OFFSET,
+  NANOARROW_BUFFER_TYPE_DATA_OFFSET,
+  NANOARROW_BUFFER_TYPE_DATA
+};
+
+/// \brief A description of an arrangement of buffers
+///
+/// Contains the minimum amount of information required to
+/// calculate the size of each buffer in an ArrowArray knowing only
+/// the length and offset of the array.
+struct ArrowLayout {
+  /// \brief The function of each buffer
+  enum ArrowBufferType buffer_type[3];
+
+  /// \brief The size of an element each buffer or 0 if this size is variable or unknown
+  int64_t element_size_bits[3];
+
+  /// \brief The fixed size of a child element
+  int64_t child_size_elements;
+};
+
 /// \brief An non-owning view of a string
 struct ArrowStringView {
   /// \brief A pointer to the start of the string

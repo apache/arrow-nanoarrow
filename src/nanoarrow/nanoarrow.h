@@ -87,6 +87,10 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \defgroup nanoarrow-utils Utility data structures
 
+/// \brief Initialize a description of buffer arrangements from a storage type
+static inline void ArrowLayoutInit(struct ArrowLayout* layout,
+                                   enum ArrowType storage_type);
+
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
 
