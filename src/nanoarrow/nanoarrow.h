@@ -263,6 +263,9 @@ struct ArrowSchemaView {
   /// interpret the buffers in the array.
   enum ArrowType storage_data_type;
 
+  
+  struct ArrowLayout layout;
+
   /// \brief The extension type name if it exists
   ///
   /// If the ARROW:extension:name key is present in schema.metadata,
