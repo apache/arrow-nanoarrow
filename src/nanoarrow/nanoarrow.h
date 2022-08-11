@@ -399,6 +399,46 @@ static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const voi
 static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
                                                const void* data, int64_t size_bytes);
 
+/// \brief Write an 8-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendInt8(struct ArrowBuffer* buffer,
+                                                   int8_t value);
+
+/// \brief Write an unsigned 8-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendUInt8(struct ArrowBuffer* buffer,
+                                                    uint8_t value);
+
+/// \brief Write a 16-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendInt16(struct ArrowBuffer* buffer,
+                                                    int16_t value);
+
+/// \brief Write an unsigned 16-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendUInt16(struct ArrowBuffer* buffer,
+                                                     uint16_t value);
+
+/// \brief Write a 32-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendInt32(struct ArrowBuffer* buffer,
+                                                    int32_t value);
+
+/// \brief Write an unsigned 32-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendUInt32(struct ArrowBuffer* buffer,
+                                                     uint32_t value);
+
+/// \brief Write a 64-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendInt64(struct ArrowBuffer* buffer,
+                                                    int64_t value);
+
+/// \brief Write an unsigned 64-bit integer to a buffer
+static inline ArrowErrorCode ArrowBufferAppendUInt64(struct ArrowBuffer* buffer,
+                                                     uint64_t value);
+
+/// \brief Write a double to a buffer
+static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
+                                                     double value);
+
+/// \brief Write a float to a buffer
+static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
+                                                    float value);
+
 /// }@
 
 /// \defgroup nanoarrow-bitmap Bitmap utilities
@@ -508,9 +548,26 @@ void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* b
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer);
 
+/// \brief Get the validity bitmap of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* array);
+
+/// \brief Get a buffer of an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
+
+/// \brief Finish building an ArrowArray
+///
+/// array must have been allocated using ArrowArrayInit
+static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                                      char shrink_to_fit);
+
 /// }@
 
 // Inline function definitions
+#include "array_inline.h"
 #include "bitmap_inline.h"
 #include "buffer_inline.h"
 #include "utils_inline.h"

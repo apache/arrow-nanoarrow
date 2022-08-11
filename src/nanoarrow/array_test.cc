@@ -95,13 +95,14 @@ TEST(ArrayTest, ArrayTestSetBitmap) {
   const uint8_t* bitmap_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   EXPECT_EQ(bitmap_buffer[0], 0xff);
   EXPECT_EQ(bitmap_buffer[1], 0x01);
+  EXPECT_EQ(ArrowArrayValidityBitmap(&array)->buffer.data, array.buffers[0]);
 
   array.release(&array);
 }
 
 TEST(ArrayTest, ArrayTestSetBuffer) {
   // the array ["a", null, "bc", null, "def", null, "ghij"]
-  uint8_t validity_bitmap[] = {0x05};
+  uint8_t validity_bitmap[] = {0x55};
   int32_t offsets[] = {0, 1, 1, 3, 3, 6, 6, 10, 10};
   const char* data = "abcdefghij";
 
@@ -123,8 +124,48 @@ TEST(ArrayTest, ArrayTestSetBuffer) {
   EXPECT_EQ(memcmp(array.buffers[1], offsets, 8 * sizeof(int32_t)), 0);
   EXPECT_EQ(memcmp(array.buffers[2], data, 10), 0);
 
+  EXPECT_EQ(ArrowArrayBuffer(&array, 0)->data, array.buffers[0]);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->data, array.buffers[1]);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 2)->data, array.buffers[2]);
+
   // try to set a buffer that isn't, 0, 1, or 2
   EXPECT_EQ(ArrowArraySetBuffer(&array, 3, &buffer0), EINVAL);
+
+  array.release(&array);
+}
+
+TEST(ArrayTest, ArrayTestBuildByBuffer) {
+  // the array ["a", null, "bc", null, "def", null, "ghij"]
+  uint8_t validity_bitmap[] = {0x55};
+  int8_t validity_array[] = {1, 0, 1, 0, 1, 0, 1};
+  int32_t offsets[] = {0, 1, 1, 3, 3, 6, 6, 10, 10};
+  const char* data = "abcdefghij";
+
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowBitmapReserve(ArrowArrayValidityBitmap(&array), 100), NANOARROW_OK);
+  ArrowBitmapAppendInt8Unsafe(ArrowArrayValidityBitmap(&array), validity_array, 7);
+
+  ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 1), 100), NANOARROW_OK);
+  ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 1), offsets, 8 * sizeof(int32_t));
+
+  ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 100), NANOARROW_OK);
+  ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), data, 10);
+
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, true), NANOARROW_OK);
+
+  EXPECT_EQ(memcmp(array.buffers[0], validity_bitmap, 1), 0);
+  EXPECT_EQ(memcmp(array.buffers[1], offsets, 8 * sizeof(int32_t)), 0);
+  EXPECT_EQ(memcmp(array.buffers[2], data, 10), 0);
+
+  EXPECT_EQ(ArrowArrayBuffer(&array, 0)->data, array.buffers[0]);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->data, array.buffers[1]);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 2)->data, array.buffers[2]);
+
+  EXPECT_EQ(ArrowArrayBuffer(&array, 0)->size_bytes, 1);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->size_bytes, 8 * sizeof(int32_t));
+  EXPECT_EQ(ArrowArrayBuffer(&array, 2)->size_bytes, 10);
 
   array.release(&array);
 }

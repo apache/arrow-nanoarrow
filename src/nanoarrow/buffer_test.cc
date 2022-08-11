@@ -160,3 +160,48 @@ TEST(BufferTest, BufferTestError) {
 
   ArrowBufferReset(&buffer);
 }
+
+TEST(BufferTest, BufferTestAppendHelpers) {
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendInt8(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<int8_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendUInt8(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<uint8_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendInt16(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<int16_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendUInt16(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<uint16_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendInt32(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<int32_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendUInt32(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<uint32_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendInt64(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<int64_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendUInt64(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<uint64_t*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendDouble(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<double*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendFloat(&buffer, 123), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<float*>(buffer.data)[0], 123);
+  ArrowBufferReset(&buffer);
+}
