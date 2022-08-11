@@ -141,14 +141,6 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   int32_t offsets[] = {0, 1, 1, 3, 3, 6, 6, 10, 10};
   const char* data = "abcdefghij";
 
-  struct ArrowBuffer buffer0, buffer1, buffer2;
-  ArrowBufferInit(&buffer0);
-  ArrowBufferAppend(&buffer0, validity_bitmap, 1);
-  ArrowBufferInit(&buffer1);
-  ArrowBufferAppend(&buffer1, offsets, 9 * sizeof(int32_t));
-  ArrowBufferInit(&buffer2);
-  ArrowBufferAppend(&buffer2, data, strlen(data));
-
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
 
