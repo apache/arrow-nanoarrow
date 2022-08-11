@@ -62,7 +62,7 @@ jobs:
         if: steps.cache-deps-build.outputs.cache-hit != 'true'
         run: |
           cd build-deps/googletest
-          cmake .
+          cmake . -DCMAKE_CXX_FLAGS=-fPIC
           cmake --build .
           cmake --install . --prefix ../../dist
 
@@ -85,7 +85,7 @@ jobs:
         run: |
           mkdir build-deps/arrow-build
           cd build-deps/arrow-build
-          cmake ../arrow/cpp -DARROW_JSON=ON -DARROW_TESTING=ON -DBoost_SOURCE=BUNDLED -DGTest_DIR=`pwd`/../../dist/lib/cmake/GTest -DCMAKE_CXX_FLAGS=-fPIC
+          cmake ../arrow/cpp -DARROW_JSON=ON -DARROW_TESTING=ON -DBoost_SOURCE=BUNDLED -DGTest_DIR=`pwd`/../../dist/lib/cmake/GTest
           cmake --build .
           cmake --install . --prefix ../../dist
 
