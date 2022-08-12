@@ -30,6 +30,7 @@ add_library(
     nanoarrow
     src/nanoarrow/allocator.c
     src/nanoarrow/array.c
+    src/nanoarrow/array_view.c
     src/nanoarrow/error.c
     src/nanoarrow/metadata.c
     src/nanoarrow/schema.c
