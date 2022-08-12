@@ -575,11 +575,16 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 /// \defgroup nanoarrow-array Array consumer helpers
 /// These functions read and validate the contents ArrowArray structures
 
-/// \brief Initialize the contents of an ArrowArayView
-static inline ArrowErrorCode ArrayViewInit(struct ArrowArrayView* array_view,
-                                           struct ArrowArray* array,
-                                           enum ArrowType storage_type);
+/// \brief Initialize the contents of an ArrowArrayView
+static inline void ArrayViewInit(struct ArrowArrayView* array_view,
+                                 enum ArrowType storage_type);
 
+/// \brief Calculate ArrowArrayView buffer sizes from length
+static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
+
+/// \brief Initialize the contents of an ArrowArayView
+static inline ArrowErrorCode ArrayViewSetArray(struct ArrowArrayView* array_view,
+                                               struct ArrowArray* array);
 /// }@
 
 // Inline function definitions

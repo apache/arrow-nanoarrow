@@ -193,15 +193,15 @@ struct ArrowLayout {
 };
 
 union ArrowBufferDataPointer {
-  void* data;
-  int8_t* int8;
-  uint8_t* uint8;
-  int16_t* int16;
-  uint16_t* uint16;
-  int32_t* int32;
-  uint32_t* uint32;
-  int64_t* int64;
-  uint64_t* uint64;
+  const void* data;
+  const int8_t* int8;
+  const uint8_t* uint8;
+  const int16_t* int16;
+  const uint16_t* uint16;
+  const int32_t* int32;
+  const uint32_t* uint32;
+  const int64_t* int64;
+  const uint64_t* uint64;
 };
 
 /// \brief An non-owning view of a string
@@ -222,7 +222,7 @@ struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
   /// If n_bytes is 0, this value may be NULL.
-  const union ArrowBufferDataPointer data;
+  union ArrowBufferDataPointer data;
 
   /// \brief The size of the string in bytes,
   ///
