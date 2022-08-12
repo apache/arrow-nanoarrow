@@ -590,12 +590,11 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
                                               int64_t n_children);
 
 /// \brief Set data-independent buffer sizes from length
-static inline void ArrowArrayViewSetLength(struct ArrowArrayView* array_view,
-                                           int64_t length);
+void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 
 /// \brief Set buffer sizes and data pointers from an ArrowArray
-static inline ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
-                                                    struct ArrowArray* array);
+ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
+                                      struct ArrowArray* array);
 
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
@@ -604,7 +603,6 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
 // Inline function definitions
 #include "array_inline.h"
-#include "array_view_inline.h"
 #include "bitmap_inline.h"
 #include "buffer_inline.h"
 #include "utils_inline.h"
