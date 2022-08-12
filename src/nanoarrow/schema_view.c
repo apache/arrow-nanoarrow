@@ -668,6 +668,13 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
     }
   }
 
+  ArrowLayoutInit(&schema_view->layout, schema_view->storage_data_type);
+  if (schema_view->storage_data_type == NANOARROW_TYPE_FIXED_SIZE_BINARY) {
+    schema_view->layout.element_size_bits[1] = schema_view->fixed_size * 8;
+  } else if (schema_view->storage_data_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
+    schema_view->layout.child_size_elements = schema_view->fixed_size;
+  }
+
   schema_view->extension_name = ArrowCharView(NULL);
   schema_view->extension_metadata = ArrowCharView(NULL);
   ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),

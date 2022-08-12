@@ -166,6 +166,33 @@ enum ArrowType {
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 };
 
+/// \brief Functional types of buffers as described in the Arrow Columnar Specification
+enum ArrowBufferType {
+  NANOARROW_BUFFER_TYPE_NONE,
+  NANOARROW_BUFFER_TYPE_VALIDITY,
+  NANOARROW_BUFFER_TYPE_TYPE_ID,
+  NANOARROW_BUFFER_TYPE_UNION_OFFSET,
+  NANOARROW_BUFFER_TYPE_DATA_OFFSET,
+  NANOARROW_BUFFER_TYPE_DATA
+};
+
+/// \brief A description of an arrangement of buffers
+///
+/// Contains the minimum amount of information required to
+/// calculate the size of each buffer in an ArrowArray knowing only
+/// the length and offset of the array.
+struct ArrowLayout {
+  /// \brief The function of each buffer
+  enum ArrowBufferType buffer_type[3];
+
+  /// \brief The size of an element each buffer or 0 if this size is variable or unknown
+  int64_t element_size_bits[3];
+
+  /// \brief The number of elements in the child array per element in this array for a
+  /// fixed-size list
+  int64_t child_size_elements;
+};
+
 /// \brief An non-owning view of a string
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
@@ -176,6 +203,27 @@ struct ArrowStringView {
   /// \brief The size of the string in bytes,
   ///
   /// (Not including the null terminator.)
+  int64_t n_bytes;
+};
+
+/// \brief An non-owning view of a buffer
+struct ArrowBufferView {
+  /// \brief A pointer to the start of the buffer
+  ///
+  /// If n_bytes is 0, this value may be NULL.
+  union {
+    const void* data;
+    const int8_t* as_int8;
+    const uint8_t* as_uint8;
+    const int16_t* as_int16;
+    const uint16_t* as_uint16;
+    const int32_t* as_int32;
+    const uint32_t* as_uint32;
+    const int64_t* as_int64;
+    const uint64_t* as_uint64;
+  } data;
+
+  /// \brief The size of the buffer in bytes
   int64_t n_bytes;
 };
 
@@ -242,6 +290,15 @@ struct ArrowArrayPrivateData {
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;
+};
+
+struct ArrowArrayView {
+  struct ArrowArray* array;
+  enum ArrowType storage_type;
+  struct ArrowLayout layout;
+  struct ArrowBufferView buffer_views[3];
+  int64_t n_children;
+  struct ArrowArrayView** children;
 };
 
 /// }@

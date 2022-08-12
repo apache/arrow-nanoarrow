@@ -87,6 +87,9 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \defgroup nanoarrow-utils Utility data structures
 
+/// \brief Initialize a description of buffer arrangements from a storage type
+void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
+
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
 
@@ -258,6 +261,8 @@ struct ArrowSchemaView {
   /// or any datetime type. This value represents only the type required to
   /// interpret the buffers in the array.
   enum ArrowType storage_data_type;
+
+  struct ArrowLayout layout;
 
   /// \brief The extension type name if it exists
   ///
@@ -563,6 +568,35 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 /// array must have been allocated using ArrowArrayInit
 static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                                       char shrink_to_fit);
+
+/// }@
+
+/// \defgroup nanoarrow-array Array consumer helpers
+/// These functions read and validate the contents ArrowArray structures
+
+/// \brief Initialize the contents of an ArrowArrayView
+void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
+
+/// \brief Initialize the contents of an ArrowArrayView from an ArrowSchema
+ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
+                                            struct ArrowSchema* schema,
+                                            struct ArrowError* error);
+
+/// \brief Allocate the schema_view->children array
+///
+/// Includes the memory for each child struct ArrowArrayView
+ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
+                                              int64_t n_children);
+
+/// \brief Set data-independent buffer sizes from length
+void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
+
+/// \brief Set buffer sizes and data pointers from an ArrowArray
+ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
+                                      struct ArrowArray* array);
+
+/// \brief Reset the contents of an ArrowArrayView and frees resources
+void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
 /// }@
 
