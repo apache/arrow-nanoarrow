@@ -140,6 +140,9 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
         ArrowArrayViewSetLength(array_view->children[i], length);
       }
       break;
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      ArrowArrayViewSetLength(array_view->children[0],
+                              length * array_view->layout.child_size_elements);
     default:
       break;
   }
@@ -175,34 +178,49 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
     return EINVAL;
   }
 
-  // Calculate child sizes and sizes that depend on data in the array buffers
+  // Check child sizes and calculate sizes that depend on data in the array buffers
   int result;
+  int64_t last_offset;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       if (array_view->buffer_views[1].n_bytes != 0) {
-        array_view->buffer_views[2].n_bytes =
+        last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
+        array_view->buffer_views[2].n_bytes = last_offset;
       }
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       if (array_view->buffer_views[1].n_bytes != 0) {
-        array_view->buffer_views[2].n_bytes =
+        last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];
+        array_view->buffer_views[2].n_bytes = last_offset;
       }
       break;
     case NANOARROW_TYPE_STRUCT:
-    case NANOARROW_TYPE_SPARSE_UNION:
       for (int64_t i = 0; i < array_view->n_children; i++) {
-        result = ArrowArrayViewSetArray(array_view->children[i], array->children[i]);
-        if (result != NANOARROW_OK) {
-          return result;
+        if (array->children[i]->length < array->length) {
+          return EINVAL;
         }
+      }
+      break;
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      last_offset =
+          (array->offset + array->length) * array_view->layout.child_size_elements;
+      if (array->n_children != 1 || array->children[0]->length < last_offset) {
+        return EINVAL;
       }
       break;
     default:
       break;
+  }
+
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    result = ArrowArrayViewSetArray(array_view->children[i], array->children[i]);
+    if (result != NANOARROW_OK) {
+      return result;
+    }
   }
 
   return NANOARROW_OK;

@@ -167,7 +167,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   ArrowArrayViewReset(&array_view);
 }
 
-TEST(ArrayTest, ArrayViewTestAllocateChildren) {
+TEST(ArrayTest, ArrayViewTestStruct) {
   struct ArrowArrayView array_view;
   ArrowArrayViewInit(&array_view, NANOARROW_TYPE_STRUCT);
 
@@ -183,10 +183,36 @@ TEST(ArrayTest, ArrayViewTestAllocateChildren) {
   ArrowArrayViewInit(array_view.children[1], NANOARROW_TYPE_NA);
   EXPECT_EQ(array_view.children[1]->storage_type, NANOARROW_TYPE_NA);
 
+  ArrowArrayViewSetLength(&array_view, 5);
+  EXPECT_EQ(array_view.buffer_views[0].n_bytes, 1);
+  EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, 5 * sizeof(int32_t));
+
   ArrowArrayViewReset(&array_view);
 }
 
-TEST(ArrayTest, ArrayViewTestStructFromSchema) {
+TEST(ArrayTest, ArrayViewTestFixedSizeList) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_FIXED_SIZE_LIST);
+  array_view.layout.child_size_elements = 3;
+
+  EXPECT_EQ(array_view.array, nullptr);
+  EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_FIXED_SIZE_LIST);
+  EXPECT_EQ(array_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(array_view.layout.element_size_bits[0], 1);
+
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  EXPECT_EQ(array_view.n_children, 1);
+  ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  ArrowArrayViewSetLength(&array_view, 5);
+  EXPECT_EQ(array_view.buffer_views[0].n_bytes, 1);
+  EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, 15 * sizeof(int32_t));
+
+  ArrowArrayViewReset(&array_view);
+}
+
+TEST(ArrayTest, ArrayViewTestStructArray) {
   struct ArrowArrayView array_view;
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -211,6 +237,47 @@ TEST(ArrayTest, ArrayViewTestStructFromSchema) {
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, sizeof(int32_t));
+  EXPECT_EQ(array_view.children[0]->buffer_views[1].data.as_int32[0], 123);
+
+  ArrowArrayViewReset(&array_view);
+  schema.release(&schema);
+  array.release(&array);
+}
+
+TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
+  struct ArrowArrayView array_view;
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 3),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(array_view.n_children, 1);
+  EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_FIXED_SIZE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInit(array.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  // Expect error for the wrong number of child elements
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), EINVAL);
+
+  ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 123),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 456),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 789),
+            NANOARROW_OK);
+  array.children[0]->length = 3;
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
+  EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, 3 * sizeof(int32_t));
   EXPECT_EQ(array_view.children[0]->buffer_views[1].data.as_int32[0], 123);
 
   ArrowArrayViewReset(&array_view);

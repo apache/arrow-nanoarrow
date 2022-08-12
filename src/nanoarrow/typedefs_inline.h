@@ -188,7 +188,8 @@ struct ArrowLayout {
   /// \brief The size of an element each buffer or 0 if this size is variable or unknown
   int64_t element_size_bits[3];
 
-  /// \brief The fixed size of a child element
+  /// \brief The number of elements in the child array per element in this array for a
+  /// fixed-size list
   int64_t child_size_elements;
 };
 
