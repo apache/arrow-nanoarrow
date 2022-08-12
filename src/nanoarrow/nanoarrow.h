@@ -578,6 +578,12 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 /// \brief Initialize the contents of an ArrowArrayView
 void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
 
+/// \brief Allocate the schema_view->children array
+///
+/// Includes the memory for each child struct ArrowArrayView
+ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
+                                              int64_t n_children);
+
 /// \brief Set data-independent buffer sizes from length
 static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 
