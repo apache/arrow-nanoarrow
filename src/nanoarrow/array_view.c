@@ -200,7 +200,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       break;
     case NANOARROW_TYPE_STRUCT:
       for (int64_t i = 0; i < array_view->n_children; i++) {
-        if (array->children[i]->length < array->length) {
+        if (array->children[i]->length < (array->offset + array->length)) {
           return EINVAL;
         }
       }

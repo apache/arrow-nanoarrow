@@ -61,6 +61,11 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   EXPECT_EQ(array_view.buffer_views[0].n_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].n_bytes, 3 * sizeof(int32_t));
 
+  // Expect error for the wrong number of buffers
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_STRING);
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), EINVAL);
+
   array.release(&array);
   ArrowArrayViewReset(&array_view);
 }
@@ -176,6 +181,11 @@ TEST(ArrayTest, ArrayViewTestStruct) {
   EXPECT_EQ(array_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(array_view.layout.element_size_bits[0], 1);
 
+  // Exepct error for out-of-memory
+  EXPECT_EQ(
+      ArrowArrayViewAllocateChildren(&array_view, std::numeric_limits<int64_t>::max()),
+      ENOMEM);
+
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 2), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 2);
   ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
@@ -186,6 +196,9 @@ TEST(ArrayTest, ArrayViewTestStruct) {
   ArrowArrayViewSetLength(&array_view, 5);
   EXPECT_EQ(array_view.buffer_views[0].n_bytes, 1);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, 5 * sizeof(int32_t));
+
+  // Exepct error for attempting to allocate a children array that already exists
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), EINVAL);
 
   ArrowArrayViewReset(&array_view);
 }
@@ -227,11 +240,19 @@ TEST(ArrayTest, ArrayViewTestStructArray) {
   EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+
+  // Expect error for the wrong number of children
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), EINVAL);
+
   ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayInit(array.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  // Expect error for the wrong number of child elements
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), EINVAL);
+
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 123),
             NANOARROW_OK);
-  array.length = 1;
   array.children[0]->length = 1;
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
 
