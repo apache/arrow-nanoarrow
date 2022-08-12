@@ -110,14 +110,14 @@ static inline ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array
     case NANOARROW_TYPE_BINARY:
       if (array_view->buffer_views[1].n_bytes != 0) {
         array_view->buffer_views[2].n_bytes =
-            array_view->buffer_views[1].data.int32[array->offset + array->length];
+            array_view->buffer_views[1].data.as_int32[array->offset + array->length];
       }
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       if (array_view->buffer_views[1].n_bytes != 0) {
         array_view->buffer_views[2].n_bytes =
-            array_view->buffer_views[1].data.int64[array->offset + array->length];
+            array_view->buffer_views[1].data.as_int64[array->offset + array->length];
       }
       break;
     case NANOARROW_TYPE_STRUCT:

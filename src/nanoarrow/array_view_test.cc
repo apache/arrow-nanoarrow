@@ -48,9 +48,9 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].n_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[1].n_bytes, 3 * sizeof(int32_t));
-  EXPECT_EQ(array_view.buffer_views[1].data.int32[0], 11);
-  EXPECT_EQ(array_view.buffer_views[1].data.int32[1], 12);
-  EXPECT_EQ(array_view.buffer_views[1].data.int32[2], 13);
+  EXPECT_EQ(array_view.buffer_views[1].data.as_int32[0], 11);
+  EXPECT_EQ(array_view.buffer_views[1].data.as_int32[1], 12);
+  EXPECT_EQ(array_view.buffer_views[1].data.as_int32[2], 13);
 
   // Build with validity buffer
   ASSERT_EQ(ArrowBitmapAppend(ArrowArrayValidityBitmap(&array), 1, 3), NANOARROW_OK);
@@ -211,7 +211,7 @@ TEST(ArrayTest, ArrayViewTestStructFromSchema) {
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, sizeof(int32_t));
-  EXPECT_EQ(array_view.children[0]->buffer_views[1].data.int32[0], 123);
+  EXPECT_EQ(array_view.children[0]->buffer_views[1].data.as_int32[0], 123);
 
   ArrowArrayViewReset(&array_view);
   schema.release(&schema);

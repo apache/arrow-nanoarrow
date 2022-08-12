@@ -192,18 +192,6 @@ struct ArrowLayout {
   int64_t child_size_elements;
 };
 
-union ArrowBufferDataPointer {
-  const void* data;
-  const int8_t* int8;
-  const uint8_t* uint8;
-  const int16_t* int16;
-  const uint16_t* uint16;
-  const int32_t* int32;
-  const uint32_t* uint32;
-  const int64_t* int64;
-  const uint64_t* uint64;
-};
-
 /// \brief An non-owning view of a string
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
@@ -222,11 +210,19 @@ struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
   /// If n_bytes is 0, this value may be NULL.
-  union ArrowBufferDataPointer data;
+  union {
+    const void* data;
+    const int8_t* as_int8;
+    const uint8_t* as_uint8;
+    const int16_t* as_int16;
+    const uint16_t* as_uint16;
+    const int32_t* as_int32;
+    const uint32_t* as_uint32;
+    const int64_t* as_int64;
+    const uint64_t* as_uint64;
+  } data;
 
-  /// \brief The size of the string in bytes,
-  ///
-  /// (Not including the null terminator.)
+  /// \brief The size of the buffer in bytes
   int64_t n_bytes;
 };
 
