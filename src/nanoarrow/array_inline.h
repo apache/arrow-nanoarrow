@@ -60,13 +60,13 @@ static inline ArrowErrorCode ArrowArrayStartBuilding(struct ArrowArray* array) {
   int64_t zero = 0;
 
   for (int i = 0; i < 3; i++) {
-    if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_OFFSET &&
+    if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
         private_data->layout.element_size_bits[i] == 64) {
       result = ArrowBufferAppend(ArrowArrayBuffer(array, i), &zero, sizeof(int64_t));
       if (result != NANOARROW_OK) {
         return result;
       }
-    } else if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_OFFSET &&
+    } else if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
                private_data->layout.element_size_bits[i] == 32) {
       result = ArrowBufferAppend(ArrowArrayBuffer(array, i), &zero, sizeof(int32_t));
       if (result != NANOARROW_OK) {
@@ -156,7 +156,7 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
       case NANOARROW_BUFFER_TYPE_NONE:
       case NANOARROW_BUFFER_TYPE_VALIDITY:
         continue;
-      case NANOARROW_BUFFER_TYPE_OFFSET:
+      case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Append the current value at the end of the offset buffer for each element
         result = ArrowBufferReserve(buffer, size_bytes * n);
         if (result != NANOARROW_OK) {
@@ -183,7 +183,8 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
         }
         continue;
 
-      case NANOARROW_BUFFER_TYPE_TYPE_IDS:
+      case NANOARROW_BUFFER_TYPE_TYPE_ID:
+      case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         // Not supported
         return EINVAL;
     }
