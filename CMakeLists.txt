@@ -34,7 +34,8 @@ add_library(
     src/nanoarrow/error.c
     src/nanoarrow/metadata.c
     src/nanoarrow/schema.c
-    src/nanoarrow/schema_view.c)
+    src/nanoarrow/schema_view.c
+    src/nanoarrow/utils.c)
 
 install(TARGETS nanoarrow DESTINATION lib)
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")

@@ -22,3 +22,4 @@
 #include "metadata.c"
 #include "schema.c"
 #include "schema_view.c"
+#include "utils.c"
