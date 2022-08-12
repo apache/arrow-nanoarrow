@@ -300,6 +300,8 @@ struct ArrowArrayView {
   enum ArrowType storage_type;
   struct ArrowLayout layout;
   struct ArrowBufferView buffer_views[3];
+  int64_t n_children;
+  struct ArrowArrayView** children;
 };
 
 /// }@

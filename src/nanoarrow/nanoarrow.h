@@ -576,15 +576,19 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 /// These functions read and validate the contents ArrowArray structures
 
 /// \brief Initialize the contents of an ArrowArrayView
-static inline void ArrayViewInit(struct ArrowArrayView* array_view,
-                                 enum ArrowType storage_type);
+static inline void ArrowArrayViewInit(struct ArrowArrayView* array_view,
+                                      enum ArrowType storage_type);
 
-/// \brief Calculate ArrowArrayView buffer sizes from length
+/// \brief Set data-independent buffer sizes from length
 static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 
-/// \brief Initialize the contents of an ArrowArayView
+/// \brief Set buffer sizes and data pointers from an ArrowArray
 static inline ArrowErrorCode ArrayViewSetArray(struct ArrowArrayView* array_view,
                                                struct ArrowArray* array);
+
+/// \brief Reset the contents of an ArrowArrayView and free any internal memory
+static inline void ArrowArrayViewReset(struct ArrowArrayView* array_view);
+
 /// }@
 
 // Inline function definitions

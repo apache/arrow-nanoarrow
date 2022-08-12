@@ -29,11 +29,41 @@
 extern "C" {
 #endif
 
-static inline void ArrayViewInit(struct ArrowArrayView* array_view,
-                                 enum ArrowType storage_type) {
+static inline void ArrowArrayViewInit(struct ArrowArrayView* array_view,
+                                      enum ArrowType storage_type) {
   memset(array_view, 0, sizeof(struct ArrowArrayView));
   array_view->storage_type = storage_type;
   ArrowLayoutInit(&array_view->layout, storage_type);
+}
+
+static inline ArrowErrorCode ArrowArrayViewAllocateChildren(
+    struct ArrowArrayView* array_view, int64_t n_children) {
+  if (array_view->children != NULL) {
+    return EINVAL;
+  }
+
+  array_view->children =
+      (struct ArrowArrayView**)ArrowMalloc(n_children * sizeof(struct ArrowArrayView*));
+  if (array_view->children == NULL) {
+    return ENOMEM;
+  }
+
+  for (int64_t i = 0; i < n_children; i++) {
+    array_view->children[i] = NULL;
+  }
+
+  array_view->n_children = n_children;
+
+  for (int64_t i = 0; i < n_children; i++) {
+    array_view->children[i] =
+        (struct ArrowArrayView*)ArrowMalloc(sizeof(struct ArrowArrayView));
+    if (array_view->children[i] == NULL) {
+      return ENOMEM;
+    }
+    ArrowArrayViewInit(array_view->children[i], NANOARROW_TYPE_UNINITIALIZED);
+  }
+
+  return NANOARROW_OK;
 }
 
 static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {
@@ -42,24 +72,15 @@ static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t
 
     switch (array_view->layout.buffer_type[i]) {
       array_view->buffer_views[i].data.data = NULL;
-      
+
       case NANOARROW_BUFFER_TYPE_VALIDITY:
         array_view->buffer_views[i].n_bytes = _ArrowBytesForBits(length);
         continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Probably don't want/need to rely on the producer to have allocated an
         // offsets buffer of length 1 for a zero-size array
-        if (length > 0) {
-          array_view->buffer_views[i].n_bytes = element_size_bytes * (length + 1);
-          array_view->buffer_views[i + 1].n_bytes =
-              array_view->buffer_views[i].data.int32[length];
-        } else {
-          array_view->buffer_views[i].n_bytes = 0;
-          array_view->buffer_views[i + 1].n_bytes = 0;
-        }
-        
-        // Skip the data buffer
-        i++;
+        array_view->buffer_views[i].n_bytes =
+            (length != 0) * element_size_bytes * (length + 1);
         continue;
       case NANOARROW_BUFFER_TYPE_DATA:
         array_view->buffer_views[i].n_bytes =
@@ -95,7 +116,39 @@ static inline ArrowErrorCode ArrayViewSetArray(struct ArrowArrayView* array_view
     return EINVAL;
   }
 
+  // Calculate sizes that depend on data in the array buffers
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+      array_view->buffer_views[2].n_bytes =
+          (array_view->buffer_views[1].n_bytes != 0) *
+          array_view->buffer_views[1].data.int32[array->offset + array->length];
+      break;
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      array_view->buffer_views[2].n_bytes =
+          (array_view->buffer_views[1].n_bytes != 0) *
+          array_view->buffer_views[1].data.int64[array->offset + array->length];
+    default:
+      break;
+  }
+
   return NANOARROW_OK;
+}
+
+static inline void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
+  if (array_view->children != NULL) {
+    for (int64_t i = 0; i < array_view->n_children; i++) {
+      if (array_view->children[i] != NULL) {
+        ArrowArrayViewReset(array_view->children[i]);
+        ArrowFree(array_view->children[i]);
+      }
+    }
+
+    ArrowFree(array_view->children);
+  }
+
+  ArrowArrayViewInit(array_view, NANOARROW_TYPE_UNINITIALIZED);
 }
 
 #ifdef __cplusplus
