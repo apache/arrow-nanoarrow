@@ -60,6 +60,17 @@ static inline void ArrowArrayViewSetLength(struct ArrowArrayView* array_view,
         continue;
     }
   }
+
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRUCT:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      for (int64_t i = 0; i < array_view->n_children; i++) {
+        ArrowArrayViewSetLength(array_view->children[i], length);
+      }
+      break;
+    default:
+      break;
+  }
 }
 
 static inline ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
@@ -88,7 +99,12 @@ static inline ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array
     return EINVAL;
   }
 
-  // Calculate sizes that depend on data in the array buffers
+  if (array_view->n_children != array->n_children) {
+    return EINVAL;
+  }
+
+  // Calculate child sizes and sizes that depend on data in the array buffers
+  int result;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
@@ -103,6 +119,16 @@ static inline ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array
         array_view->buffer_views[2].n_bytes =
             array_view->buffer_views[1].data.int64[array->offset + array->length];
       }
+      break;
+    case NANOARROW_TYPE_STRUCT:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      for (int64_t i = 0; i < array_view->n_children; i++) {
+        result = ArrowArrayViewSetArray(array_view->children[i], array->children[i]);
+        if (result != NANOARROW_OK) {
+          return result;
+        }
+      }
+      break;
     default:
       break;
   }

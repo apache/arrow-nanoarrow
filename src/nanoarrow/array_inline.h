@@ -67,6 +67,13 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
   }
 
+  for (int64_t i = 0; i < array->n_children; i++) {
+    result = ArrowArrayFinishBuilding(array->children[i], shrink_to_fit);
+    if (result != NANOARROW_OK) {
+      return result;
+    }
+  }
+
   return NANOARROW_OK;
 }
 

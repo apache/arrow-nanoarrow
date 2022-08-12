@@ -58,6 +58,36 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
+                                            struct ArrowSchema* schema,
+                                            struct ArrowError* error) {
+  struct ArrowSchemaView schema_view;
+  int result = ArrowSchemaViewInit(&schema_view, schema, error);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  ArrowArrayViewInit(array_view, schema_view.storage_data_type);
+  array_view->layout = schema_view.layout;
+
+  result = ArrowArrayViewAllocateChildren(array_view, schema->n_children);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(array_view);
+    return result;
+  }
+
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    result =
+        ArrowArrayViewInitFromSchema(array_view->children[i], schema->children[i], error);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(array_view);
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
 void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
   if (array_view->children != NULL) {
     for (int64_t i = 0; i < array_view->n_children; i++) {
