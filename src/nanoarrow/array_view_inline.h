@@ -29,7 +29,8 @@
 extern "C" {
 #endif
 
-static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {
+static inline void ArrowArrayViewSetLength(struct ArrowArrayView* array_view,
+                                           int64_t length) {
   for (int i = 0; i < 3; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
 
@@ -61,18 +62,26 @@ static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t
   }
 }
 
-static inline ArrowErrorCode ArrayViewSetArray(struct ArrowArrayView* array_view,
-                                               struct ArrowArray* array) {
+static inline ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
+                                                    struct ArrowArray* array) {
   array_view->array = array;
-  ArrayViewSetLength(array_view, array->offset + array->length);
+  ArrowArrayViewSetLength(array_view, array->offset + array->length);
 
   int64_t buffers_required = 0;
   for (int i = 0; i < 3; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
-    } else {
-      array_view->buffer_views[i].data.data = array->buffers[i];
     }
+
+    buffers_required++;
+
+    // If the null_count is 0, the validity buffer can be NULL
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+        array->null_count == 0 && array->buffers[i] == NULL) {
+      array_view->buffer_views[i].n_bytes = 0;
+    }
+
+    array_view->buffer_views[i].data.data = array->buffers[i];
   }
 
   if (buffers_required != array->n_buffers) {
@@ -83,15 +92,17 @@ static inline ArrowErrorCode ArrayViewSetArray(struct ArrowArrayView* array_view
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      array_view->buffer_views[2].n_bytes =
-          (array_view->buffer_views[1].n_bytes != 0) *
-          array_view->buffer_views[1].data.int32[array->offset + array->length];
+      if (array_view->buffer_views[1].n_bytes != 0) {
+        array_view->buffer_views[2].n_bytes =
+            array_view->buffer_views[1].data.int32[array->offset + array->length];
+      }
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      array_view->buffer_views[2].n_bytes =
-          (array_view->buffer_views[1].n_bytes != 0) *
-          array_view->buffer_views[1].data.int64[array->offset + array->length];
+      if (array_view->buffer_views[1].n_bytes != 0) {
+        array_view->buffer_views[2].n_bytes =
+            array_view->buffer_views[1].data.int64[array->offset + array->length];
+      }
     default:
       break;
   }

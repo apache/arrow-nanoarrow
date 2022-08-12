@@ -585,11 +585,12 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
                                               int64_t n_children);
 
 /// \brief Set data-independent buffer sizes from length
-static inline void ArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
+static inline void ArrowArrayViewSetLength(struct ArrowArrayView* array_view,
+                                           int64_t length);
 
 /// \brief Set buffer sizes and data pointers from an ArrowArray
-static inline ArrowErrorCode ArrayViewSetArray(struct ArrowArrayView* array_view,
-                                               struct ArrowArray* array);
+static inline ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
+                                                    struct ArrowArray* array);
 
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
