@@ -298,7 +298,7 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
       array, 1 + (private_data->storage_type != NANOARROW_TYPE_FIXED_SIZE_BINARY));
   int32_t offset;
   int64_t large_offset;
-  int64_t fixed_size_bytes = private_data->layout.element_size_bits[2] / 8;
+  int64_t fixed_size_bytes = private_data->layout.element_size_bits[1] / 8;
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_STRING:
