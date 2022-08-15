@@ -161,6 +161,47 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                                  struct ArrowArrayView* array_view,
+                                                  struct ArrowError* error) {
+  ArrowArrayInit(array, array_view->storage_type);
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  int result = ArrowArrayAllocateChildren(array, array_view->n_children);
+  if (result != NANOARROW_OK) {
+    array->release(array);
+    return result;
+  }
+
+  private_data->layout = array_view->layout;
+
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    int result =
+        ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
+    if (result != NANOARROW_OK) {
+      array->release(array);
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
+                                        struct ArrowSchema* schema,
+                                        struct ArrowError* error) {
+  struct ArrowArrayView array_view;
+  int result = ArrowArrayViewInitFromSchema(&array_view, schema, error);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  result = ArrowArrayInitFromArrayView(array, &array_view, error);
+  ArrowArrayViewReset(&array_view);
+  return result;
+}
+
 ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children) {
   if (array->children != NULL) {
     return EINVAL;

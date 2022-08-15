@@ -89,6 +89,25 @@ TEST(ArrayTest, ArrayTestAllocateDictionary) {
   array.release(&array);
 }
 
+TEST(ArrayTest, ArrayTestInitFromSchema) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(array.n_children, 2);
+  EXPECT_EQ(array.children[0]->n_buffers, 2);
+  EXPECT_EQ(array.children[1]->n_buffers, 3);
+
+  array.release(&array);
+  schema.release(&schema);
+}
+
 TEST(ArrayTest, ArrayTestSetBitmap) {
   struct ArrowBitmap bitmap;
   ArrowBitmapInit(&bitmap);
