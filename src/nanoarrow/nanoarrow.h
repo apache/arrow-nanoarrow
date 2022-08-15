@@ -571,7 +571,7 @@ static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* ar
 /// array must have been allocated using ArrowArrayInit
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
 
-static inline ArrowErrorCode ArrowArrayStartBuilding(struct ArrowArray* array);
+static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
 
 static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n);
 

@@ -180,7 +180,7 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
@@ -204,7 +204,7 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   struct ArrowArray array;
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT64), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
@@ -234,7 +234,7 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   struct ArrowArray array;
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
@@ -264,7 +264,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   struct ArrowArray array;
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_LARGE_STRING), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayStartBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);

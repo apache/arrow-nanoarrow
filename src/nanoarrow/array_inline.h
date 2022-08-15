@@ -47,7 +47,7 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
   }
 }
 
-static inline ArrowErrorCode ArrowArrayStartBuilding(struct ArrowArray* array) {
+static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
@@ -55,20 +55,19 @@ static inline ArrowErrorCode ArrowArrayStartBuilding(struct ArrowArray* array) {
     return EINVAL;
   }
 
-  // Initialize any offset buffer with a single zero
+  // Initialize any data offset buffer with a single zero
   int result;
-  int64_t zero = 0;
 
   for (int i = 0; i < 3; i++) {
     if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
         private_data->layout.element_size_bits[i] == 64) {
-      result = ArrowBufferAppend(ArrowArrayBuffer(array, i), &zero, sizeof(int64_t));
+      result = ArrowBufferAppendInt64(ArrowArrayBuffer(array, i), 0);
       if (result != NANOARROW_OK) {
         return result;
       }
     } else if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
                private_data->layout.element_size_bits[i] == 32) {
-      result = ArrowBufferAppend(ArrowArrayBuffer(array, i), &zero, sizeof(int32_t));
+      result = ArrowBufferAppendInt32(ArrowArrayBuffer(array, i), 0);
       if (result != NANOARROW_OK) {
         return result;
       }
@@ -107,7 +106,6 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
   return NANOARROW_OK;
 }
-
 
 static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n) {
   struct ArrowArrayPrivateData* private_data =
@@ -163,8 +161,8 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
           return result;
         }
         for (int64_t j = 0; j < n; j++) {
-          ArrowBufferAppendUnsafe(
-              buffer, buffer->data + size_bytes * (array->length + j), size_bytes);
+          ArrowBufferAppendUnsafe(buffer, buffer->data + size_bytes * (array->length + j),
+                                  size_bytes);
         }
 
         // Skip the data buffer
