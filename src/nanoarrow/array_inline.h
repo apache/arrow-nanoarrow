@@ -436,6 +436,13 @@ static inline ArrowErrorCode ArrowArrayAppendListElement(struct ArrowArray* arra
       return EINVAL;
   }
 
+  if (private_data->bitmap.buffer.data != NULL) {
+    result = ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1);
+    if (result != NANOARROW_OK) {
+      return result;
+    }
+  }
+
   array->length++;
   return NANOARROW_OK;
 }

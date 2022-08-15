@@ -379,7 +379,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(large_list(int64()), "[[123], null, null, [456, 789]]")));
+      ArrayFromJSON(large_list(int64()), "[[123], null, [456, 789]]")));
 }
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
