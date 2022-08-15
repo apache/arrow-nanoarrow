@@ -319,9 +319,9 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("12345")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, {"12345", 5}), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("67890")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, {"67890", 5}), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
@@ -339,4 +339,59 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   ARROW_EXPECT_OK(arrow_array);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
       ArrayFromJSON(fixed_size_binary(5), "[\"12345\", null, null, \"67890\"]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToListArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  array.release(&array);
+  schema.release(&schema);
+}
+
+TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendListElement(&array), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendListElement(&array), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  auto arrow_array = ImportArray(&array, &schema);
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
+      ArrayFromJSON(large_list(int64()), "[[123], null, null, [456, 789]]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  ASSERT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 5),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  array.release(&array);
+  schema.release(&schema);
 }

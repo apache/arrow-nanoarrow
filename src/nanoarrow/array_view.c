@@ -141,8 +141,10 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
       }
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      ArrowArrayViewSetLength(array_view->children[0],
-                              length * array_view->layout.child_size_elements);
+      if (array_view->n_children >= 1) {
+        ArrowArrayViewSetLength(array_view->children[0],
+                                length * array_view->layout.child_size_elements);
+      }
     default:
       break;
   }

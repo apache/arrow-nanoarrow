@@ -579,23 +579,72 @@ static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* ar
 /// array must have been allocated using ArrowArrayInit
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
 
+/// \brief Start element-wise appending to an ArrowArray
+///
+/// Initializes any values needed to use ArrowArrayAppend*() functions.
+/// All element-wise appenders append by value and return EINVAL if the exact value
+/// cannot be represented by the underlying storage type.
+/// array must have been allocated using ArrowArrayInit
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
 
+/// \brief Append a null value to an array
 static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n);
 
+/// \brief Append a signed integer value to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g., value
+/// is outside the valid array range).
 static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array, int64_t value);
 
+/// \brief Append an unsigned integer value to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g., value
+/// is outside the valid array range).
 static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
                                                   uint64_t value);
 
+/// \brief Append a double value to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g., value
+/// is outside the valid array range or there is an attempt to append
+/// a non-integer to an array with an integer storage type).
 static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
                                                     double value);
 
+/// \brief Append a string of bytes to an array
+///
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g.,
+/// the underlying array is not a binary, string, large binary, large string,
+/// or fixed-size binary array, or value is the wrong size for a fixed-size
+/// binary array).
+static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
+                                                   struct ArrowBufferView value);
+
+/// \brief Append a string value to an array
+/// Returns NANOARROW_OK if value can be exactly represented by
+/// the underlying storage type or EINVAL otherwise (e.g.,
+/// the underlying array is not a string or large string array).
 static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
                                                     struct ArrowStringView value);
 
+/// \brief Finish a list element
+///
+/// Appends a non-null element to the array based on the first child's current
+/// length. Returns NANOARROW_OK if the item was successfully added or EINVAL
+/// if the underlying storage type is not a list, large list, or fixed-size
+/// list, or if there was an attempt to add a fixed-size list element where the
+/// length of the child array did not match the expected length.
+static inline ArrowErrorCode ArrowArrayAppendListElement(struct ArrowArray* array);
+
 /// \brief Finish building an ArrowArray
 ///
+/// Flushes any pointers from internal buffers that may have been reallocated
+/// into the array->buffers array and checks the actual size of the buffers
+/// against the expected size based on the final length.
 /// array must have been allocated using ArrowArrayInit
 static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                                       char shrink_to_fit);
