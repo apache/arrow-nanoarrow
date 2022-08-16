@@ -255,6 +255,10 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes, (5 + 1) * sizeof(int32_t));
+
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
@@ -284,6 +288,10 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_LARGE_STRING), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes, (5 + 1) * sizeof(int64_t));
 
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
@@ -319,6 +327,10 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes, 5 * 5);
+
   EXPECT_EQ(ArrowArrayAppendBytes(&array, {"12345", 5}), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendBytes(&array, {"67890", 5}), NANOARROW_OK);
@@ -351,6 +363,10 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
 
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
+  // Check that we can reserve recursively without erroring
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
+
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
@@ -379,6 +395,10 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve recursively without erroring
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
 
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
@@ -410,6 +430,11 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
 
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
+  // Check that we can reserve recursively
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes,
+            2 * 5 * sizeof(int64_t));
+
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
@@ -439,6 +464,10 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve recursively
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 5 * sizeof(int64_t));
 
   // Wrong child length
   EXPECT_EQ(ArrowArrayFinishElement(&array), EINVAL);

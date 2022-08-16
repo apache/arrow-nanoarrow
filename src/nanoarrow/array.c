@@ -278,3 +278,85 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
 
   return NANOARROW_OK;
 }
+
+static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
+                                                  struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  ArrowArrayViewInit(array_view, private_data->storage_type);
+  array_view->layout = private_data->layout;
+
+  int result = ArrowArrayViewAllocateChildren(array_view, array->n_children);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(array_view);
+    return result;
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    result = ArrowArrayViewInitFromArray(array_view->children[i], array->children[i]);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(array_view);
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
+                                                struct ArrowArrayView* array_view) {
+  // Loop through buffers and reserve the extra space that we know about
+  int result;
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    // Don't reserve on a validity buffer that hasn't been allocated yet
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+        ArrowArrayBuffer(array, i)->data == NULL) {
+      continue;
+    }
+
+    int64_t additional_size_bytes =
+        array_view->buffer_views[i].n_bytes - ArrowArrayBuffer(array, i)->size_bytes;
+
+    if (additional_size_bytes > 0) {
+      result = ArrowBufferReserve(ArrowArrayBuffer(array, i), additional_size_bytes);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+    }
+  }
+
+  // Recursively reserve children
+  for (int64_t i = 0; i < array->n_children; i++) {
+    result = ArrowArrayReserveInternal(array->children[i], array_view->children[i]);
+    if (result != NANOARROW_OK) {
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
+                                 int64_t additional_size_elements) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  struct ArrowArrayView array_view;
+  int result = ArrowArrayViewInitFromArray(&array_view, array);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  // Calculate theoretical buffer sizes (recursively)
+  ArrowArrayViewSetLength(&array_view, array->length + additional_size_elements);
+
+  // Walk the structure (recursively)
+  result = ArrowArrayReserveInternal(array, &array_view);
+  ArrowArrayViewReset(&array_view);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  return NANOARROW_OK;
+}

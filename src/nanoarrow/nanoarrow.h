@@ -587,6 +587,15 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 /// array must have been allocated using ArrowArrayInit
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
 
+/// \brief Reserve space for future appends
+///
+/// For buffer sizes that can be calculated (i.e., not string data buffers or
+/// child array sizes for non-fixed-size arrays), recursively reserve space for
+/// additional elements. This is useful for reducing the number of reallocations
+/// that occur using the item-wise appenders.
+ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
+                                 int64_t additional_size_elements);
+
 /// \brief Append a null value to an array
 static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n);
 
