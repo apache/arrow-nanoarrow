@@ -343,6 +343,107 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
       ArrayFromJSON(utf8(), "[\"1234\", null, null, \"56789\"]")));
 }
 
+TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_UINT64), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint64_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[1], 0);
+  EXPECT_EQ(data_buffer[2], 0);
+  EXPECT_EQ(data_buffer[3], 3);
+
+  auto arrow_array = ImportArray(&array, uint64());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(
+      arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint64(), "[1, null, null, 3]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_UINT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
+
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 2);
+  EXPECT_EQ(array.null_count, 0);
+  auto data_buffer = reinterpret_cast<const uint32_t*>(array.buffers[1]);
+  EXPECT_EQ(array.buffers[0], nullptr);
+  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[1], 3);
+
+  auto arrow_array = ImportArray(&array, uint32());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint32(), "[1, 3]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_UINT16), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
+
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 2);
+  EXPECT_EQ(array.null_count, 0);
+  auto data_buffer = reinterpret_cast<const uint16_t*>(array.buffers[1]);
+  EXPECT_EQ(array.buffers[0], nullptr);
+  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[1], 3);
+
+  auto arrow_array = ImportArray(&array, uint16());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint16(), "[1, 3]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_UINT8), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
+
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 2);
+  EXPECT_EQ(array.null_count, 0);
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+  EXPECT_EQ(array.buffers[0], nullptr);
+  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[1], 3);
+
+  auto arrow_array = ImportArray(&array, uint8());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint8(), "[1, 3]")));
+}
+
 TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   struct ArrowArray array;
 
