@@ -263,33 +263,21 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
       }
       break;
     case NANOARROW_TYPE_INT32:
-      result = _NANOARROW_CHECK_RANGE(value, INT32_MIN, INT32_MAX);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
-
+      _NANOARROW_CHECK_RANGE(value, INT32_MIN, INT32_MAX);
       result = ArrowBufferAppendInt32(data_buffer, value);
       if (result != NANOARROW_OK) {
         return result;
       }
       break;
     case NANOARROW_TYPE_INT16:
-      result = _NANOARROW_CHECK_RANGE(value, INT16_MIN, INT16_MAX);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
-
+      _NANOARROW_CHECK_RANGE(value, INT16_MIN, INT16_MAX);
       result = ArrowBufferAppendInt16(data_buffer, value);
       if (result != NANOARROW_OK) {
         return result;
       }
       break;
     case NANOARROW_TYPE_INT8:
-      result = _NANOARROW_CHECK_RANGE(value, INT8_MIN, INT8_MAX);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
-
+      _NANOARROW_CHECK_RANGE(value, INT8_MIN, INT8_MAX);
       result = ArrowBufferAppendInt8(data_buffer, value);
       if (result != NANOARROW_OK) {
         return result;
@@ -299,10 +287,7 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_UINT8:
-      result = _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
       return ArrowArrayAppendUInt(array, value);
     default:
       return EINVAL;
@@ -334,6 +319,33 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
         return result;
       }
       break;
+    case NANOARROW_TYPE_UINT32:
+      _NANOARROW_CHECK_RANGE(value, 0, UINT32_MAX);
+      result = ArrowBufferAppendUInt32(data_buffer, value);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      break;
+    case NANOARROW_TYPE_UINT16:
+      _NANOARROW_CHECK_RANGE(value, 0, UINT16_MAX);
+      result = ArrowBufferAppendUInt16(data_buffer, value);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      break;
+    case NANOARROW_TYPE_UINT8:
+      _NANOARROW_CHECK_RANGE(value, 0, UINT8_MAX);
+      result = ArrowBufferAppendUInt8(data_buffer, value);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      break;
+    case NANOARROW_TYPE_INT64:
+      _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_INT8:
+      return ArrowArrayAppendInt(array, value);
     default:
       return EINVAL;
   }
