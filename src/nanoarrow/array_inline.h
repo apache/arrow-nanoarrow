@@ -58,30 +58,19 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
   }
 
   // Initialize any data offset buffer with a single zero
-  int result;
-
   for (int i = 0; i < 3; i++) {
     if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
         private_data->layout.element_size_bits[i] == 64) {
-      result = ArrowBufferAppendInt64(ArrowArrayBuffer(array, i), 0);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(ArrowArrayBuffer(array, i), 0));
     } else if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
                private_data->layout.element_size_bits[i] == 32) {
-      result = ArrowBufferAppendInt32(ArrowArrayBuffer(array, i), 0);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(ArrowArrayBuffer(array, i), 0));
     }
   }
 
   // Start building any child arrays
   for (int64_t i = 0; i < array->n_children; i++) {
-    result = ArrowArrayStartAppending(array->children[i]);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array->children[i]));
   }
 
   return NANOARROW_OK;
@@ -94,14 +83,11 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
-  int result;
   for (int64_t i = 0; i < 3; i++) {
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
     if (shrink_to_fit) {
-      result = ArrowBufferResize(buffer, buffer->size_bytes, shrink_to_fit);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferResize(buffer, buffer->size_bytes, shrink_to_fit));
     }
 
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
@@ -109,10 +95,7 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
   // Finish building any child arrays
   for (int64_t i = 0; i < array->n_children; i++) {
-    result = ArrowArrayFinishBuilding(array->children[i], shrink_to_fit);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array->children[i], shrink_to_fit));
   }
 
   // Check buffer sizes to make sure we are not sending an ArrowArray
@@ -150,24 +133,14 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
     return NANOARROW_OK;
   }
 
-  int result;
-
   // Append n 0 bits to the validity bitmap. If we haven't allocated a bitmap yet, do it
   // now
   if (private_data->bitmap.buffer.data == NULL) {
-    result = ArrowBitmapReserve(&private_data->bitmap, array->length + n);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
-
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapReserve(&private_data->bitmap, array->length + n));
     ArrowBitmapAppendUnsafe(&private_data->bitmap, 1, array->length);
     ArrowBitmapAppendUnsafe(&private_data->bitmap, 0, n);
   } else {
-    result = ArrowBitmapReserve(&private_data->bitmap, n);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
-
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapReserve(&private_data->bitmap, n));
     ArrowBitmapAppendUnsafe(&private_data->bitmap, 0, n);
   }
 
@@ -185,10 +158,8 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
         continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Append the current value at the end of the offset buffer for each element
-        result = ArrowBufferReserve(buffer, size_bytes * n);
-        if (result != NANOARROW_OK) {
-          return result;
-        }
+        NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
+
         for (int64_t j = 0; j < n; j++) {
           ArrowBufferAppendUnsafe(buffer, buffer->data + size_bytes * (array->length + j),
                                   size_bytes);
@@ -200,10 +171,7 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
       case NANOARROW_BUFFER_TYPE_DATA:
         // Zero out the next bit of memory
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
-          result = ArrowBufferAppendFill(buffer, 0, size_bytes * n);
-          if (result != NANOARROW_OK) {
-            return result;
-          }
+          NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
         } else {
           // TODO: handle booleans
           return EINVAL;
@@ -215,28 +183,18 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
         // Not supported
         return EINVAL;
     }
-
-    if (result != NANOARROW_OK) {
-      return result;
-    }
   }
 
   // For fixed-size list and struct we need to append some nulls to
   // children for the lengths to line up properly
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      result = ArrowArrayAppendNull(array->children[0],
-                                    n * private_data->layout.child_size_elements);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(
+          array->children[0], n * private_data->layout.child_size_elements));
       break;
     case NANOARROW_TYPE_STRUCT:
       for (int64_t i = 0; i < array->n_children; i++) {
-        result = ArrowArrayAppendNull(array->children[i], n);
-        if (result != NANOARROW_OK) {
-          return result;
-        }
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], n));
       }
     default:
       break;
@@ -252,36 +210,23 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  int result;
   struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_INT64:
-      result = ArrowBufferAppend(data_buffer, &value, sizeof(int64_t));
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &value, sizeof(int64_t)));
       break;
     case NANOARROW_TYPE_INT32:
       _NANOARROW_CHECK_RANGE(value, INT32_MIN, INT32_MAX);
-      result = ArrowBufferAppendInt32(data_buffer, value);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value));
       break;
     case NANOARROW_TYPE_INT16:
       _NANOARROW_CHECK_RANGE(value, INT16_MIN, INT16_MAX);
-      result = ArrowBufferAppendInt16(data_buffer, value);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt16(data_buffer, value));
       break;
     case NANOARROW_TYPE_INT8:
       _NANOARROW_CHECK_RANGE(value, INT8_MIN, INT8_MAX);
-      result = ArrowBufferAppendInt8(data_buffer, value);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(data_buffer, value));
       break;
     case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_UINT32:
@@ -294,10 +239,7 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
   }
 
   if (private_data->bitmap.buffer.data != NULL) {
-    result = ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
   }
 
   array->length++;
@@ -309,36 +251,23 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  int result;
   struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_UINT64:
-      result = ArrowBufferAppend(data_buffer, &value, sizeof(uint64_t));
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &value, sizeof(uint64_t)));
       break;
     case NANOARROW_TYPE_UINT32:
       _NANOARROW_CHECK_RANGE(value, 0, UINT32_MAX);
-      result = ArrowBufferAppendUInt32(data_buffer, value);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt32(data_buffer, value));
       break;
     case NANOARROW_TYPE_UINT16:
       _NANOARROW_CHECK_RANGE(value, 0, UINT16_MAX);
-      result = ArrowBufferAppendUInt16(data_buffer, value);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, value));
       break;
     case NANOARROW_TYPE_UINT8:
       _NANOARROW_CHECK_RANGE(value, 0, UINT8_MAX);
-      result = ArrowBufferAppendUInt8(data_buffer, value);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(data_buffer, value));
       break;
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_INT32:
@@ -351,10 +280,7 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
   }
 
   if (private_data->bitmap.buffer.data != NULL) {
-    result = ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
   }
 
   array->length++;
@@ -366,25 +292,18 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  int result;
   struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_DOUBLE:
-      result = ArrowBufferAppend(data_buffer, &value, sizeof(double));
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &value, sizeof(double)));
       break;
     default:
       return EINVAL;
   }
 
   if (private_data->bitmap.buffer.data != NULL) {
-    result = ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
   }
 
   array->length++;
@@ -396,7 +315,6 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  int result;
   struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
   struct ArrowBuffer* data_buffer = ArrowArrayBuffer(
       array, 1 + (private_data->storage_type != NANOARROW_TYPE_FIXED_SIZE_BINARY));
@@ -413,28 +331,19 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
       }
 
       offset += value.n_bytes;
-      result = ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t));
-      if (result != NANOARROW_OK) {
-        return result;
-      }
-      result = ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t)));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes));
       break;
 
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       large_offset = ((int64_t*)offset_buffer->data)[array->length];
       large_offset += value.n_bytes;
-      result = ArrowBufferAppend(offset_buffer, &large_offset, sizeof(int64_t));
-      if (result != NANOARROW_OK) {
-        return result;
-      }
-      result = ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppend(offset_buffer, &large_offset, sizeof(int64_t)));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes));
       break;
 
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
@@ -442,21 +351,15 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
         return EINVAL;
       }
 
-      result = ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
-
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes));
       break;
     default:
       return EINVAL;
   }
 
   if (private_data->bitmap.buffer.data != NULL) {
-    result = ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
   }
 
   array->length++;
@@ -486,7 +389,6 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
       (struct ArrowArrayPrivateData*)array->private_data;
 
   int64_t child_length;
-  int result;
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_LIST:
@@ -494,17 +396,13 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
       if (child_length > INT32_MAX) {
         return EINVAL;
       }
-      result = ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), child_length);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), child_length));
       break;
     case NANOARROW_TYPE_LARGE_LIST:
       child_length = array->children[0]->length;
-      result = ArrowBufferAppendInt64(ArrowArrayBuffer(array, 1), child_length);
-      if (result != NANOARROW_OK) {
-        return result;
-      }
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendInt64(ArrowArrayBuffer(array, 1), child_length));
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       child_length = array->children[0]->length;
@@ -526,10 +424,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
   }
 
   if (private_data->bitmap.buffer.data != NULL) {
-    result = ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
   }
 
   array->length++;
