@@ -120,6 +120,24 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
+static inline ArrowErrorCode _ArrowArrayAppendBits(struct ArrowArray* array, int64_t buffer_i,
+                                                   uint8_t value, int64_t n) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  struct ArrowBuffer* buffer = ArrowArrayBuffer(array, buffer_i);
+  int64_t bytes_required =
+      _ArrowRoundUpToMultipleOf8(private_data->layout.element_size_bits[buffer_i] *
+                                 (array->length + 1)) /
+      8;
+  if (bytes_required > buffer->size_bytes) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppendFill(buffer, 0, bytes_required - buffer->size_bytes));
+  }
+
+  ArrowBitsSetTo(buffer->data, array->length, n, value);
+  return NANOARROW_OK;
+}
+
 static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -174,8 +192,7 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
           NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
         } else {
-          // TODO: handle booleans
-          return EINVAL;
+          NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, i, 0, n));
         }
         continue;
 
