@@ -329,11 +329,9 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto data_buffer = reinterpret_cast<const char*>(array.buffers[1]);
   EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
-  EXPECT_EQ(memcmp(data_buffer,
-                   (char[]){'1',  '2',  '3',  '4',  '5',  0x00, 0x00, 0x00, 0x00, 0x00,
-                            0x00, 0x00, 0x00, 0x00, 0x00, '6',  '7',  '8',  '9',  '0'},
-                   20),
-            0);
+  char expected_data[] = {'1',  '2',  '3',  '4',  '5',  0x00, 0x00, 0x00, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x00, '6',  '7',  '8',  '9',  '0'};
+  EXPECT_EQ(memcmp(data_buffer, expected_data, 20), 0);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
