@@ -449,6 +449,63 @@ TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint8(), "[1, 3]")));
 }
 
+TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_DOUBLE), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 5);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const double*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08 | 0x10);
+  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[1], 0);
+  EXPECT_EQ(data_buffer[2], 0);
+  EXPECT_EQ(data_buffer[3], 3);
+  EXPECT_DOUBLE_EQ(data_buffer[4], 3.14);
+
+  auto arrow_array = ImportArray(&array, float64());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
+      ArrayFromJSON(float64(), "[1.0, null, null, 3.0, 3.14]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToFloatArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<double>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 5);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const float*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08 | 0x10);
+  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[1], 0);
+  EXPECT_EQ(data_buffer[2], 0);
+  EXPECT_EQ(data_buffer[3], 3);
+  EXPECT_FLOAT_EQ(data_buffer[4], 3.14);
+
+  auto arrow_array = ImportArray(&array, float32());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
+      ArrayFromJSON(float32(), "[1.0, null, null, 3.0, 3.14]")));
+}
+
 TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   struct ArrowArray array;
 

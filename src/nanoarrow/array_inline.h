@@ -19,6 +19,7 @@
 #define NANOARROW_ARRAY_INLINE_H_INCLUDED
 
 #include <errno.h>
+#include <float.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
@@ -234,6 +235,12 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
     case NANOARROW_TYPE_UINT8:
       _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
       return ArrowArrayAppendUInt(array, value);
+    case NANOARROW_TYPE_DOUBLE:
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendDouble(data_buffer, value));
+      break;
+    case NANOARROW_TYPE_FLOAT:
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
+      break;
     default:
       return EINVAL;
   }
@@ -275,6 +282,12 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
     case NANOARROW_TYPE_INT8:
       _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
       return ArrowArrayAppendInt(array, value);
+    case NANOARROW_TYPE_DOUBLE:
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendDouble(data_buffer, value));
+      break;
+    case NANOARROW_TYPE_FLOAT:
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
+      break;
     default:
       return EINVAL;
   }
@@ -297,6 +310,10 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_DOUBLE:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &value, sizeof(double)));
+      break;
+    case NANOARROW_TYPE_FLOAT:
+      _NANOARROW_CHECK_RANGE(value, FLT_MIN, FLT_MAX);
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
       break;
     default:
       return EINVAL;
