@@ -341,10 +341,10 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
       }
       break;
     case NANOARROW_TYPE_INT64:
-      _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
     case NANOARROW_TYPE_INT32:
     case NANOARROW_TYPE_INT16:
     case NANOARROW_TYPE_INT8:
+      _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
       return ArrowArrayAppendInt(array, value);
     default:
       return EINVAL;

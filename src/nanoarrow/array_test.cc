@@ -215,6 +215,7 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 0), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 0), EINVAL);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, {.data.data = nullptr, .n_bytes = 0}), EINVAL);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), EINVAL);
   array.release(&array);
 }
@@ -226,7 +227,8 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
@@ -256,6 +258,7 @@ TEST(ArrayTest, ArrayTestAppendToInt32Array) {
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
@@ -276,6 +279,7 @@ TEST(ArrayTest, ArrayTestAppendToInt16Array) {
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
@@ -296,6 +300,7 @@ TEST(ArrayTest, ArrayTestAppendToInt8Array) {
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
