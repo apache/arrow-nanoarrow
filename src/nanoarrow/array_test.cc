@@ -249,6 +249,66 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   array.release(&array);
 }
 
+TEST(ArrayTest, ArrayTestAppendToInt32Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 1);
+  EXPECT_EQ(array.null_count, 0);
+  auto data_buffer = reinterpret_cast<const int32_t*>(array.buffers[1]);
+  EXPECT_EQ(array.buffers[0], nullptr);
+  EXPECT_EQ(data_buffer[0], 123);
+
+  auto arrow_array = ImportArray(&array, int32());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int32(), "[123]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToInt16Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT16), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 1);
+  EXPECT_EQ(array.null_count, 0);
+  auto data_buffer = reinterpret_cast<const int16_t*>(array.buffers[1]);
+  EXPECT_EQ(array.buffers[0], nullptr);
+  EXPECT_EQ(data_buffer[0], 123);
+
+  auto arrow_array = ImportArray(&array, int16());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int16(), "[123]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToInt8Array) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT8), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 1);
+  EXPECT_EQ(array.null_count, 0);
+  auto data_buffer = reinterpret_cast<const int8_t*>(array.buffers[1]);
+  EXPECT_EQ(array.buffers[0], nullptr);
+  EXPECT_EQ(data_buffer[0], 1);
+
+  auto arrow_array = ImportArray(&array, int8());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int8(), "[1]")));
+}
+
 TEST(ArrayTest, ArrayTestAppendToStringArray) {
   struct ArrowArray array;
 

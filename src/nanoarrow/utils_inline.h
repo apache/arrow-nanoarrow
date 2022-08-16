@@ -18,6 +18,7 @@
 #ifndef NANOARROW_UTILS_INLINE_H_INCLUDED
 #define NANOARROW_UTILS_INLINE_H_INCLUDED
 
+#include <errno.h>
 #include <string.h>
 
 #include "typedefs_inline.h"
@@ -25,6 +26,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
+  ((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
 static inline struct ArrowStringView ArrowCharView(const char* value) {
   struct ArrowStringView out;

@@ -26,6 +26,7 @@
 #include "bitmap_inline.h"
 #include "buffer_inline.h"
 #include "typedefs_inline.h"
+#include "utils_inline.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -261,6 +262,48 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
         return result;
       }
       break;
+    case NANOARROW_TYPE_INT32:
+      result = _NANOARROW_CHECK_RANGE(value, INT32_MIN, INT32_MAX);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+
+      result = ArrowBufferAppendInt32(data_buffer, value);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      break;
+    case NANOARROW_TYPE_INT16:
+      result = _NANOARROW_CHECK_RANGE(value, INT16_MIN, INT16_MAX);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+
+      result = ArrowBufferAppendInt16(data_buffer, value);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      break;
+    case NANOARROW_TYPE_INT8:
+      result = _NANOARROW_CHECK_RANGE(value, INT8_MIN, INT8_MAX);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+
+      result = ArrowBufferAppendInt8(data_buffer, value);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      break;
+    case NANOARROW_TYPE_UINT64:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_UINT8:
+      result = _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      return ArrowArrayAppendUInt(array, value);
     default:
       return EINVAL;
   }
