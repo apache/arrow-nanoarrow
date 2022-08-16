@@ -72,8 +72,6 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
       array->n_buffers = 0;
       break;
 
-    case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
     case NANOARROW_TYPE_STRUCT:
     case NANOARROW_TYPE_MAP:
@@ -81,6 +79,8 @@ ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
       array->n_buffers = 1;
       break;
 
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_BOOL:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT8:

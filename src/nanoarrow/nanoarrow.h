@@ -631,14 +631,14 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
 static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
                                                     struct ArrowStringView value);
 
-/// \brief Finish a list element
+/// \brief Finish a nested array element
 ///
 /// Appends a non-null element to the array based on the first child's current
 /// length. Returns NANOARROW_OK if the item was successfully added or EINVAL
-/// if the underlying storage type is not a list, large list, or fixed-size
-/// list, or if there was an attempt to add a fixed-size list element where the
-/// length of the child array did not match the expected length.
-static inline ArrowErrorCode ArrowArrayAppendListElement(struct ArrowArray* array);
+/// if the underlying storage type is not a struct, list, large list, or fixed-size
+/// list, or if there was an attempt to add a struct or fixed-size list element where the
+/// length of the child array(s) did not match the expected length.
+static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
 
 /// \brief Finish building an ArrowArray
 ///

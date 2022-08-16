@@ -220,6 +220,27 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
     }
   }
 
+  // For fixed-size list and struct we need to append some nulls to
+  // children for the lengths to line up properly
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      result = ArrowArrayAppendNull(array->children[0],
+                                    n * private_data->layout.child_size_elements);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
+      break;
+    case NANOARROW_TYPE_STRUCT:
+      for (int64_t i = 0; i < array->n_children; i++) {
+        result = ArrowArrayAppendNull(array->children[i], n);
+        if (result != NANOARROW_OK) {
+          return result;
+        }
+      }
+    default:
+      break;
+  }
+
   array->length += n;
   array->null_count += n;
   return NANOARROW_OK;
@@ -405,31 +426,44 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
   }
 }
 
-static inline ArrowErrorCode ArrowArrayAppendListElement(struct ArrowArray* array) {
+static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  if (array->n_children != 1) {
-    return EINVAL;
-  }
-
-  int64_t child_length = array->children[0]->length;
+  int64_t child_length;
   int result;
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_LIST:
+      child_length = array->children[0]->length;
       if (child_length > INT32_MAX) {
         return EINVAL;
       }
       result = ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), child_length);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
       break;
     case NANOARROW_TYPE_LARGE_LIST:
+      child_length = array->children[0]->length;
       result = ArrowBufferAppendInt64(ArrowArrayBuffer(array, 1), child_length);
+      if (result != NANOARROW_OK) {
+        return result;
+      }
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      child_length = array->children[0]->length;
       if (child_length !=
           ((array->length + 1) * private_data->layout.child_size_elements)) {
         return EINVAL;
+      }
+      break;
+    case NANOARROW_TYPE_STRUCT:
+      for (int64_t i = 0; i < array->n_children; i++) {
+        child_length = array->children[i]->length;
+        if (child_length != (array->length + 1)) {
+          return EINVAL;
+        }
       }
       break;
     default:
