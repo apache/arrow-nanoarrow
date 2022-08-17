@@ -215,7 +215,10 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 0), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 0), EINVAL);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), EINVAL);
-  EXPECT_EQ(ArrowArrayAppendBytes(&array, {.data.data = nullptr, .n_bytes = 0}), EINVAL);
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = nullptr;
+  buffer_view.n_bytes = 0;
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, buffer_view), EINVAL);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), EINVAL);
   array.release(&array);
 }
