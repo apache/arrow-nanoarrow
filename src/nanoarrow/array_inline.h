@@ -120,8 +120,9 @@ static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode _ArrowArrayAppendBits(struct ArrowArray* array, int64_t buffer_i,
-                                                   uint8_t value, int64_t n) {
+static inline ArrowErrorCode _ArrowArrayAppendBits(struct ArrowArray* array,
+                                                   int64_t buffer_i, uint8_t value,
+                                                   int64_t n) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
   struct ArrowBuffer* buffer = ArrowArrayBuffer(array, buffer_i);
@@ -258,6 +259,9 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
     case NANOARROW_TYPE_FLOAT:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
       break;
+    case NANOARROW_TYPE_BOOL:
+      NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
+      break;
     default:
       return EINVAL;
   }
@@ -304,6 +308,9 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
       break;
     case NANOARROW_TYPE_FLOAT:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
+      break;
+    case NANOARROW_TYPE_BOOL:
+      NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
       break;
     default:
       return EINVAL;

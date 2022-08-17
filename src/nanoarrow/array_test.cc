@@ -245,10 +245,6 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   ARROW_EXPECT_OK(arrow_array);
   EXPECT_TRUE(
       arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int64(), "[1, null, null, 3]")));
-
-  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), EINVAL);
-  array.release(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt32Array) {
@@ -504,6 +500,32 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   ARROW_EXPECT_OK(arrow_array);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
       ArrayFromJSON(float32(), "[1.0, null, null, 3.0, 3.14]")));
+}
+
+TEST(ArrayTest, ArrayTestAppendToBoolArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_BOOL), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 0), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, false), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(ArrowBitGet(data_buffer, 0), 0x01);
+  EXPECT_EQ(ArrowBitGet(data_buffer, 1), 0x00);
+  EXPECT_EQ(ArrowBitGet(data_buffer, 2), 0x00);
+  EXPECT_EQ(ArrowBitGet(data_buffer, 3), 0x00);
+
+  auto arrow_array = ImportArray(&array, boolean());
+  ARROW_EXPECT_OK(arrow_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
+      ArrayFromJSON(boolean(), "[true, null, null, false]")));
 }
 
 TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
