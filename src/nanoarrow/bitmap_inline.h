@@ -23,6 +23,7 @@
 
 #include "buffer_inline.h"
 #include "typedefs_inline.h"
+#include "utils_inline.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -173,11 +174,8 @@ static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
     return NANOARROW_OK;
   }
 
-  int result =
-      ArrowBufferReserve(&bitmap->buffer, _ArrowBytesForBits(additional_size_bits));
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(
+      ArrowBufferReserve(&bitmap->buffer, _ArrowBytesForBits(additional_size_bits)));
 
   bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
   return NANOARROW_OK;
@@ -191,10 +189,8 @@ static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
   }
 
   int64_t new_capacity_bytes = _ArrowBytesForBits(new_capacity_bits);
-  int result = ArrowBufferResize(&bitmap->buffer, new_capacity_bytes, shrink_to_fit);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(
+      ArrowBufferResize(&bitmap->buffer, new_capacity_bytes, shrink_to_fit));
 
   if (new_capacity_bits < bitmap->size_bits) {
     bitmap->size_bits = new_capacity_bits;
@@ -205,10 +201,7 @@ static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
 
 static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
                                                uint8_t bits_are_set, int64_t length) {
-  int result = ArrowBitmapReserve(bitmap, length);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowBitmapReserve(bitmap, length));
 
   ArrowBitmapAppendUnsafe(bitmap, bits_are_set, length);
   return NANOARROW_OK;

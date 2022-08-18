@@ -492,10 +492,7 @@ static ArrowErrorCode ArrowSchemaViewValidateUnion(struct ArrowSchemaView* schem
 
 static ArrowErrorCode ArrowSchemaViewValidateMap(struct ArrowSchemaView* schema_view,
                                                  struct ArrowError* error) {
-  int result = ArrowSchemaViewValidateNChildren(schema_view, 1, error);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaViewValidateNChildren(schema_view, 1, error));
 
   if (schema_view->schema->children[0]->n_children != 2) {
     ArrowErrorSet(error, "Expected child of map type to have 2 children but found %d",
