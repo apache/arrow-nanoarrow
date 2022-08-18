@@ -649,14 +649,19 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
 /// length of the child array(s) did not match the expected length.
 static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
 
+/// \brief Shrink buffer capacity to the size required
+///
+/// Also applies shrinking to any child arrays. array must have been allocated using
+/// ArrowArrayInit
+static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
+
 /// \brief Finish building an ArrowArray
 ///
 /// Flushes any pointers from internal buffers that may have been reallocated
 /// into the array->buffers array and checks the actual size of the buffers
 /// against the expected size based on the final length.
 /// array must have been allocated using ArrowArrayInit
-static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
-                                                      char shrink_to_fit);
+static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array);
 
 /// }@
 

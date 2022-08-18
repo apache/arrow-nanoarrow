@@ -77,26 +77,35 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
-                                                      char shrink_to_fit) {
+static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  for (int64_t i = 0; i < 3; i++) {
+    struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferResize(buffer, buffer->size_bytes, 1));
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayShrinkToFit(array->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
   for (int64_t i = 0; i < 3; i++) {
-    struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
-    if (shrink_to_fit) {
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferResize(buffer, buffer->size_bytes, shrink_to_fit));
-    }
-
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
   }
 
   // Finish building any child arrays
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array->children[i], shrink_to_fit));
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array->children[i]));
   }
 
   // Check buffer sizes to make sure we are not sending an ArrowArray
