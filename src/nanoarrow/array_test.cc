@@ -617,6 +617,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
 TEST(ArrayTest, ArrayTestAppendToListArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
+  struct ArrowError error;
 
   ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
@@ -639,7 +640,22 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 1 child of list array but found 0 child arrays");
+  array.n_children = 1;
+
+  // Make sure final child size is checked at finish
+  array.children[0]->length = array.children[0]->length - 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected child of list array with length >= 3 but found array with length 2");
+
+  array.children[0]->length = array.children[0]->length + 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -650,6 +666,7 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
 TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
+  struct ArrowError error;
 
   ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
@@ -672,7 +689,22 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 1 child of large list array but found 0 child arrays");
+  array.n_children = 1;
+
+  // Make sure final child size is checked at finish
+  array.children[0]->length = array.children[0]->length - 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected child of large list array with length >= 3 but found array with "
+               "length 2");
+
+  array.children[0]->length = array.children[0]->length + 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -683,6 +715,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
 TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
+  struct ArrowError error;
 
   ASSERT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 2),
             NANOARROW_OK);
@@ -708,6 +741,21 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 12), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 1 child of fixed-size array but found 0 child arrays");
+  array.n_children = 1;
+
+  // Make sure final child size is checked at finish
+  array.children[0]->length = array.children[0]->length - 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected child of fixed-size list array with length >= 6 but found array "
+               "with length 5");
+
+  array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);

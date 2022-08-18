@@ -216,6 +216,13 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
       break;
     case NANOARROW_TYPE_LIST:
+      if (array->n_children != 1) {
+        ArrowErrorSet(error,
+                      "Expected 1 child of list array but found %d child arrays",
+                      (int)array->n_children);
+        return EINVAL;
+      }
+
       if (array_view->buffer_views[1].n_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
@@ -230,6 +237,13 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
       break;
     case NANOARROW_TYPE_LARGE_LIST:
+      if (array->n_children != 1) {
+        ArrowErrorSet(error,
+                      "Expected 1 child of large list array but found %d child arrays",
+                      (int)array->n_children);
+        return EINVAL;
+      }
+
       if (array_view->buffer_views[1].n_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];

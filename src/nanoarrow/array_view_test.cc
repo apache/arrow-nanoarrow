@@ -206,6 +206,52 @@ TEST(ArrayTest, ArrayViewTestStruct) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewTestList) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_LIST);
+
+  EXPECT_EQ(array_view.array, nullptr);
+  EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_LIST);
+  EXPECT_EQ(array_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(array_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(array_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(array_view.layout.element_size_bits[1], 8 * sizeof(int32_t));
+
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  EXPECT_EQ(array_view.n_children, 1);
+  ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  ArrowArrayViewSetLength(&array_view, 5);
+  EXPECT_EQ(array_view.buffer_views[0].n_bytes, 1);
+  EXPECT_EQ(array_view.buffer_views[1].n_bytes, (5 + 1) * sizeof(int32_t));
+
+  ArrowArrayViewReset(&array_view);
+}
+
+TEST(ArrayTest, ArrayViewTestLargeList) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_LARGE_LIST);
+
+  EXPECT_EQ(array_view.array, nullptr);
+  EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_LARGE_LIST);
+  EXPECT_EQ(array_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(array_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(array_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(array_view.layout.element_size_bits[1], 8 * sizeof(int64_t));
+
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  EXPECT_EQ(array_view.n_children, 1);
+  ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  ArrowArrayViewSetLength(&array_view, 5);
+  EXPECT_EQ(array_view.buffer_views[0].n_bytes, 1);
+  EXPECT_EQ(array_view.buffer_views[1].n_bytes, (5 + 1) * sizeof(int64_t));
+
+  ArrowArrayViewReset(&array_view);
+}
+
 TEST(ArrayTest, ArrayViewTestFixedSizeList) {
   struct ArrowArrayView array_view;
   ArrowArrayViewInit(&array_view, NANOARROW_TYPE_FIXED_SIZE_LIST);
