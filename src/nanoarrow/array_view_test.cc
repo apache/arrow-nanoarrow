@@ -43,7 +43,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 13), NANOARROW_OK);
   array.length = 3;
   array.null_count = 0;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].n_bytes, 0);
@@ -55,7 +55,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   // Build with validity buffer
   ASSERT_EQ(ArrowBitmapAppend(ArrowArrayValidityBitmap(&array), 1, 3), NANOARROW_OK);
   array.null_count = -1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].n_bytes, 1);
@@ -110,7 +110,7 @@ TEST(ArrayTest, ArrayViewTestString) {
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 4), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "abcd", 4);
   array.length = 1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].n_bytes, 0);
@@ -161,7 +161,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 4), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "abcd", 4);
   array.length = 1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].n_bytes, 0);
@@ -254,7 +254,7 @@ TEST(ArrayTest, ArrayViewTestStructArray) {
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 123),
             NANOARROW_OK);
   array.children[0]->length = 1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, sizeof(int32_t));
@@ -295,7 +295,7 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 789),
             NANOARROW_OK);
   array.children[0]->length = 3;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array), NANOARROW_OK);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].n_bytes, 3 * sizeof(int32_t));

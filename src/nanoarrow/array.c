@@ -348,3 +348,70 @@ ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
 
   return NANOARROW_OK;
 }
+
+static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  for (int64_t i = 0; i < 3; i++) {
+    private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    ArrowArrayFlushInternalPointers(array->children[i]);
+  }
+}
+
+static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
+    struct ArrowArray* array, struct ArrowArrayView* array_view,
+    struct ArrowError* error) {
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+        array->null_count == 0 && array->buffers[i] == NULL) {
+      continue;
+    }
+
+    int64_t expected_size = array_view->buffer_views[i].n_bytes;
+    int64_t actual_size = ArrowArrayBuffer(array, i)->size_bytes;
+
+    if (actual_size < expected_size) {
+      ArrowErrorSet(
+          error,
+          "Expected buffer %d to size >= %ld bytes but found buffer with %ld bytes", i,
+          (long)expected_size, (long)actual_size);
+      return EINVAL;
+    }
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayCheckInternalBufferSizes(
+        array->children[i], array_view->children[i], error));
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                        struct ArrowError* error) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  // Make sure the value we get with array->buffers[i] is set to the actual
+  // pointer (which may have changed from the original due to reallocation)
+  ArrowArrayFlushInternalPointers(array);
+
+  // Check buffer sizes to make sure we are not sending an ArrowArray
+  // into the wild that is going to segfault
+  struct ArrowArrayView array_view;
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
+  int result = ArrowArrayViewSetArray(&array_view, array);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
+    return result;
+  }
+
+  result = ArrowArrayCheckInternalBufferSizes(array, &array_view, error);
+  ArrowArrayViewReset(&array_view);
+  return result;
+}

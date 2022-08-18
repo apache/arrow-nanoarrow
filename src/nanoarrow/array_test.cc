@@ -25,7 +25,7 @@
 
 using namespace arrow;
 
-TEST(ArrayTest, ArrayTestBasic) {
+TEST(ArrayTest, ArrayTestInit) {
   struct ArrowArray array;
 
   EXPECT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
@@ -167,6 +167,7 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   const char* data = "abcdefghij";
 
   struct ArrowArray array;
+  struct ArrowError error;
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
 
   ASSERT_EQ(ArrowBitmapReserve(ArrowArrayValidityBitmap(&array), 100), NANOARROW_OK);
@@ -178,8 +179,9 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 100), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), data, 10);
 
+  array.length = 7;
   EXPECT_EQ(ArrowArrayShrinkToFit(&array), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
 
   EXPECT_EQ(memcmp(array.buffers[0], validity_bitmap, 1), 0);
   EXPECT_EQ(memcmp(array.buffers[1], offsets, 8 * sizeof(int32_t)), 0);
@@ -193,6 +195,18 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   EXPECT_EQ(ArrowArrayBuffer(&array, 1)->size_bytes, 8 * sizeof(int32_t));
   EXPECT_EQ(ArrowArrayBuffer(&array, 2)->size_bytes, 10);
 
+  array.length = 8;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected buffer 1 to size >= 36 bytes but found buffer with 32 bytes");
+
+  array.length = 7;
+  int32_t* offsets_buffer = reinterpret_cast<int32_t*>(ArrowArrayBuffer(&array, 1)->data);
+  offsets_buffer[7] = offsets_buffer[7] + 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected buffer 2 to size >= 11 bytes but found buffer with 10 bytes");
+
   array.release(&array);
 }
 
@@ -203,7 +217,7 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 2);
@@ -233,7 +247,7 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -259,7 +273,7 @@ TEST(ArrayTest, ArrayTestAppendToInt32Array) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
   EXPECT_EQ(array.null_count, 0);
@@ -280,7 +294,7 @@ TEST(ArrayTest, ArrayTestAppendToInt16Array) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
   EXPECT_EQ(array.null_count, 0);
@@ -301,7 +315,7 @@ TEST(ArrayTest, ArrayTestAppendToInt8Array) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
   EXPECT_EQ(array.null_count, 0);
@@ -327,7 +341,7 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -356,7 +370,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -385,7 +399,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
@@ -410,7 +424,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
@@ -435,7 +449,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
@@ -458,7 +472,7 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
@@ -487,7 +501,7 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<double>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
@@ -514,7 +528,7 @@ TEST(ArrayTest, ArrayTestAppendToBoolArray) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 0), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -545,7 +559,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -583,7 +597,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_EQ(ArrowArrayAppendBytes(&array, {"12345", 5}), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendBytes(&array, {"67890", 5}), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -625,7 +639,7 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -658,7 +672,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -694,7 +708,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 12), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -729,7 +743,7 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);

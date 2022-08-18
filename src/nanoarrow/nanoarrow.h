@@ -661,7 +661,8 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 /// into the array->buffers array and checks the actual size of the buffers
 /// against the expected size based on the final length.
 /// array must have been allocated using ArrowArrayInit
-static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array);
+ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                        struct ArrowError* error);
 
 /// }@
 

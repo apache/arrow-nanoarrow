@@ -93,42 +93,6 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array) {
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array) {
-  struct ArrowArrayPrivateData* private_data =
-      (struct ArrowArrayPrivateData*)array->private_data;
-
-  // Make sure the value we get with array->buffers[i] is set to the actual
-  // pointer (which may have changed from the original due to reallocation)
-  for (int64_t i = 0; i < 3; i++) {
-    private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
-  }
-
-  // Finish building any child arrays
-  for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array->children[i]));
-  }
-
-  // Check buffer sizes to make sure we are not sending an ArrowArray
-  // into the wild that is going to segfault
-  struct ArrowArrayView array_view;
-  ArrowArrayViewInit(&array_view, private_data->storage_type);
-  array_view.layout = private_data->layout;
-  ArrowArrayViewSetLength(&array_view, array->length);
-
-  for (int64_t i = 0; i < array->n_buffers; i++) {
-    if (array_view.layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
-        array->null_count == 0 && array->buffers[i] == NULL) {
-      continue;
-    }
-
-    if (array_view.buffer_views[i].n_bytes > ArrowArrayBuffer(array, i)->size_bytes) {
-      return EINVAL;
-    }
-  }
-
-  return NANOARROW_OK;
-}
-
 static inline ArrowErrorCode _ArrowArrayAppendBits(struct ArrowArray* array,
                                                    int64_t buffer_i, uint8_t value,
                                                    int64_t n) {
