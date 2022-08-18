@@ -405,7 +405,7 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   struct ArrowArrayView array_view;
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
-  int result = ArrowArrayViewSetArray(&array_view, array);
+  int result = ArrowArrayViewSetArray(&array_view, array, error);
   if (result != NANOARROW_OK) {
     ArrowArrayViewReset(&array_view);
     return result;
