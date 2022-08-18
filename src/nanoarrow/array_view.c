@@ -141,15 +141,18 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
       }
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      ArrowArrayViewSetLength(array_view->children[0],
-                              length * array_view->layout.child_size_elements);
+      if (array_view->n_children >= 1) {
+        ArrowArrayViewSetLength(array_view->children[0],
+                                length * array_view->layout.child_size_elements);
+      }
     default:
       break;
   }
 }
 
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
-                                      struct ArrowArray* array) {
+                                      struct ArrowArray* array,
+                                      struct ArrowError* error) {
   array_view->array = array;
   ArrowArrayViewSetLength(array_view, array->offset + array->length);
 
@@ -171,6 +174,8 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   }
 
   if (buffers_required != array->n_buffers) {
+    ArrowErrorSet(error, "Expected array with %d buffer(s) but found %d buffer(s)",
+                  (int)buffers_required, (int)array->n_buffers);
     return EINVAL;
   }
 
@@ -179,7 +184,6 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   }
 
   // Check child sizes and calculate sizes that depend on data in the array buffers
-  int result;
   int64_t last_offset;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
@@ -201,14 +205,74 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_STRUCT:
       for (int64_t i = 0; i < array_view->n_children; i++) {
         if (array->children[i]->length < (array->offset + array->length)) {
+          ArrowErrorSet(
+              error,
+              "Expected struct child %d to have length >= %ld but found child with "
+              "length %ld",
+              (int)(i + 1), (long)(array->offset + array->length),
+              (long)array->children[i]->length);
+          return EINVAL;
+        }
+      }
+      break;
+    case NANOARROW_TYPE_LIST:
+      if (array->n_children != 1) {
+        ArrowErrorSet(error,
+                      "Expected 1 child of list array but found %d child arrays",
+                      (int)array->n_children);
+        return EINVAL;
+      }
+
+      if (array_view->buffer_views[1].n_bytes != 0) {
+        last_offset =
+            array_view->buffer_views[1].data.as_int32[array->offset + array->length];
+        if (array->children[0]->length < last_offset) {
+          ArrowErrorSet(
+              error,
+              "Expected child of list array with length >= %ld but found array with "
+              "length %ld",
+              (long)last_offset, (long)array->children[0]->length);
+          return EINVAL;
+        }
+      }
+      break;
+    case NANOARROW_TYPE_LARGE_LIST:
+      if (array->n_children != 1) {
+        ArrowErrorSet(error,
+                      "Expected 1 child of large list array but found %d child arrays",
+                      (int)array->n_children);
+        return EINVAL;
+      }
+
+      if (array_view->buffer_views[1].n_bytes != 0) {
+        last_offset =
+            array_view->buffer_views[1].data.as_int64[array->offset + array->length];
+        if (array->children[0]->length < last_offset) {
+          ArrowErrorSet(
+              error,
+              "Expected child of large list array with length >= %ld but found array "
+              "with length %ld",
+              (long)last_offset, (long)array->children[0]->length);
           return EINVAL;
         }
       }
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      if (array->n_children != 1) {
+        ArrowErrorSet(error,
+                      "Expected 1 child of fixed-size array but found %d child arrays",
+                      (int)array->n_children);
+        return EINVAL;
+      }
+
       last_offset =
           (array->offset + array->length) * array_view->layout.child_size_elements;
-      if (array->n_children != 1 || array->children[0]->length < last_offset) {
+      if (array->children[0]->length < last_offset) {
+        ArrowErrorSet(
+            error,
+            "Expected child of fixed-size list array with length >= %ld but found array "
+            "with length %ld",
+            (long)last_offset, (long)array->children[0]->length);
         return EINVAL;
       }
       break;
@@ -217,10 +281,8 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   }
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
-    result = ArrowArrayViewSetArray(array_view->children[i], array->children[i]);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewSetArray(array_view->children[i], array->children[i], error));
   }
 
   return NANOARROW_OK;

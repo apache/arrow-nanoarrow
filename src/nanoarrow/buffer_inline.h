@@ -179,6 +179,18 @@ static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
   return ArrowBufferAppend(buffer, &value, sizeof(float));
 }
 
+static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
+                                                   uint8_t value, int64_t size_bytes) {
+  int result = ArrowBufferReserve(buffer, size_bytes);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  memset(buffer->data + buffer->size_bytes, value, size_bytes);
+  buffer->size_bytes += size_bytes;
+  return NANOARROW_OK;
+}
+
 #ifdef __cplusplus
 }
 #endif
