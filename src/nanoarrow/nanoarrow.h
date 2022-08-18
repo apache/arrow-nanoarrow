@@ -277,21 +277,6 @@ struct ArrowSchemaView {
   /// extension_metadata.data will be non-NULL.
   struct ArrowStringView extension_metadata;
 
-  /// \brief The expected number of buffers in a paired ArrowArray
-  int32_t n_buffers;
-
-  /// \brief The index of the validity buffer or -1 if one does not exist
-  int32_t validity_buffer_id;
-
-  /// \brief The index of the offset buffer or -1 if one does not exist
-  int32_t offset_buffer_id;
-
-  /// \brief The index of the data buffer or -1 if one does not exist
-  int32_t data_buffer_id;
-
-  /// \brief The index of the type_ids buffer or -1 if one does not exist
-  int32_t type_id_buffer_id;
-
   /// \brief Format fixed size parameter
   ///
   /// This value is set when parsing a fixed-size binary or fixed-size

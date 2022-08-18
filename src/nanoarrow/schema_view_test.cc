@@ -69,9 +69,6 @@ void ExpectSimpleTypeOk(std::shared_ptr<DataType> arrow_t, enum ArrowType nanoar
 
   ARROW_EXPECT_OK(ExportType(*arrow_t, &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, nanoarrow_t);
   EXPECT_EQ(schema_view.storage_data_type, nanoarrow_t);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -92,7 +89,6 @@ TEST(SchemaViewTest, SchemaViewInitSimple) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_NA);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_NA);
-  EXPECT_EQ(schema_view.n_buffers, 0);
   EXPECT_EQ(schema_view.extension_name.data, nullptr);
   EXPECT_EQ(schema_view.extension_metadata.data, nullptr);
   schema.release(&schema);
@@ -132,9 +128,6 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
 
   ARROW_EXPECT_OK(ExportType(*decimal128(5, 6), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DECIMAL128);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_DECIMAL128);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -150,9 +143,6 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
 
   ARROW_EXPECT_OK(ExportType(*decimal256(5, 6), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DECIMAL256);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_DECIMAL256);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -219,9 +209,6 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
 
   ARROW_EXPECT_OK(ExportType(*fixed_size_binary(123), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_FIXED_SIZE_BINARY);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_FIXED_SIZE_BINARY);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -235,10 +222,6 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
 
   ARROW_EXPECT_OK(ExportType(*utf8(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 3);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.offset_buffer_id, 1);
-  EXPECT_EQ(schema_view.data_buffer_id, 2);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_STRING);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_STRING);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -251,10 +234,6 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
 
   ARROW_EXPECT_OK(ExportType(*binary(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 3);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.offset_buffer_id, 1);
-  EXPECT_EQ(schema_view.data_buffer_id, 2);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_BINARY);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_BINARY);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -267,10 +246,6 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
 
   ARROW_EXPECT_OK(ExportType(*large_binary(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 3);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.offset_buffer_id, 1);
-  EXPECT_EQ(schema_view.data_buffer_id, 2);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LARGE_BINARY);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LARGE_BINARY);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -283,10 +258,6 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
 
   ARROW_EXPECT_OK(ExportType(*large_utf8(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 3);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.offset_buffer_id, 1);
-  EXPECT_EQ(schema_view.data_buffer_id, 2);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LARGE_STRING);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LARGE_STRING);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -334,18 +305,12 @@ TEST(SchemaViewTest, SchemaViewInitTimeDate) {
 
   ARROW_EXPECT_OK(ExportType(*date32(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DATE32);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*date64(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DATE64);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   schema.release(&schema);
@@ -358,9 +323,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
 
   ARROW_EXPECT_OK(ExportType(*time32(TimeUnit::SECOND), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME32);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
@@ -368,9 +330,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
 
   ARROW_EXPECT_OK(ExportType(*time32(TimeUnit::MILLI), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME32);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
@@ -378,9 +337,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
 
   ARROW_EXPECT_OK(ExportType(*time64(TimeUnit::MICRO), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME64);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
@@ -388,9 +344,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
 
   ARROW_EXPECT_OK(ExportType(*time64(TimeUnit::NANO), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME64);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
@@ -404,9 +357,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
 
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::SECOND, "America/Halifax"), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
@@ -414,9 +364,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
 
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::MILLI, "America/Halifax"), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
@@ -424,9 +371,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
 
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::MICRO, "America/Halifax"), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
@@ -434,9 +378,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
 
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::NANO, "America/Halifax"), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
@@ -450,9 +391,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
 
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::SECOND), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
@@ -460,9 +398,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
 
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::MILLI), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
@@ -470,9 +405,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
 
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::MICRO), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
@@ -480,9 +412,6 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
 
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::NANO), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
@@ -496,24 +425,18 @@ TEST(SchemaViewTest, SchemaViewInitTimeInterval) {
 
   ARROW_EXPECT_OK(ExportType(*month_interval(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_MONTHS);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_MONTHS);
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*day_time_interval(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_DAY_TIME);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_DAY_TIME);
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*month_day_nano_interval(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
   schema.release(&schema);
@@ -576,9 +499,6 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
 
   ARROW_EXPECT_OK(ExportType(*list(int32()), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.offset_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LIST);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LIST);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -591,9 +511,6 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
 
   ARROW_EXPECT_OK(ExportType(*large_list(int32()), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.offset_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LARGE_LIST);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LARGE_LIST);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -606,8 +523,6 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
 
   ARROW_EXPECT_OK(ExportType(*fixed_size_list(int32(), 123), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 1);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_FIXED_SIZE_LIST);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_FIXED_SIZE_LIST);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -652,8 +567,6 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
 
   ARROW_EXPECT_OK(ExportType(*struct_({field("col", int32())}), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 1);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_STRUCT);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_STRUCT);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
@@ -703,10 +616,6 @@ TEST(SchemaViewTest, SchemaViewInitNestedMap) {
 
   ARROW_EXPECT_OK(ExportType(*map(int32(), int32()), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 1);
-  EXPECT_EQ(schema_view.validity_buffer_id, 0);
-  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_MAP);
-  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_MAP);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
@@ -762,9 +671,6 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
 
   ARROW_EXPECT_OK(ExportType(*dense_union({field("col", int32())}), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 2);
-  EXPECT_EQ(schema_view.type_id_buffer_id, 0);
-  EXPECT_EQ(schema_view.offset_buffer_id, 1);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DENSE_UNION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_DENSE_UNION);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_TYPE_ID);
@@ -780,8 +686,6 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
 
   ARROW_EXPECT_OK(ExportType(*sparse_union({field("col", int32())}), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.n_buffers, 1);
-  EXPECT_EQ(schema_view.type_id_buffer_id, 0);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_SPARSE_UNION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_SPARSE_UNION);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_TYPE_ID);
