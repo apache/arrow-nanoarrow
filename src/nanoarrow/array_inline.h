@@ -449,6 +449,8 @@ static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int
   const uint8_t* validity_buffer = array_view->buffer_views[0].data.as_uint8;
   i += array_view->array->offset;
   switch (array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+      return 0x01;
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_SPARSE_UNION:
       // Not supported yet
@@ -486,7 +488,7 @@ static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_vi
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
-      return 0;
+      return INT64_MAX;
   }
 }
 
@@ -518,7 +520,7 @@ static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
-      return 0;
+      return UINT64_MAX;
   }
 }
 
@@ -550,7 +552,7 @@ static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
-      return 0;
+      return DBL_MAX;
   }
 }
 
@@ -569,8 +571,8 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      view.data = data_view + offsets_view->data.as_int32[i];
-      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      view.data = data_view + offsets_view->data.as_int64[i];
+      view.n_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
       break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       view.n_bytes = array_view->layout.element_size_bits[1] / 8;
@@ -600,8 +602,8 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
-      view.data.as_uint8 = data_view + offsets_view->data.as_int32[i];
+      view.n_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
+      view.data.as_uint8 = data_view + offsets_view->data.as_int64[i];
       break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       view.n_bytes = array_view->layout.element_size_bits[1] / 8;
