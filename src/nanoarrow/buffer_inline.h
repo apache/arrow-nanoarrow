@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "typedefs_inline.h"
+#include "utils_inline.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -120,10 +121,7 @@ static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const voi
 
 static inline ArrowErrorCode ArrowBufferAppend(struct ArrowBuffer* buffer,
                                                const void* data, int64_t size_bytes) {
-  int result = ArrowBufferReserve(buffer, size_bytes);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
 
   ArrowBufferAppendUnsafe(buffer, data, size_bytes);
   return NANOARROW_OK;
@@ -181,10 +179,7 @@ static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
 
 static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
                                                    uint8_t value, int64_t size_bytes) {
-  int result = ArrowBufferReserve(buffer, size_bytes);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
 
   memset(buffer->data + buffer->size_bytes, value, size_bytes);
   buffer->size_bytes += size_bytes;
