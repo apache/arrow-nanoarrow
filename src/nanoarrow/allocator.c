@@ -43,8 +43,7 @@ static void ArrowBufferAllocatorMallocFree(struct ArrowBufferAllocator* allocato
 }
 
 static struct ArrowBufferAllocator ArrowBufferAllocatorMalloc = {
-    &ArrowBufferAllocatorMallocAllocate, &ArrowBufferAllocatorMallocReallocate,
-    &ArrowBufferAllocatorMallocFree, NULL};
+    &ArrowBufferAllocatorMallocReallocate, &ArrowBufferAllocatorMallocFree, NULL};
 
 struct ArrowBufferAllocator ArrowBufferAllocatorDefault() {
   return ArrowBufferAllocatorMalloc;
@@ -66,7 +65,6 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
                         int64_t size),
     void* private_data) {
   struct ArrowBufferAllocator allocator;
-  allocator.allocate = &ArrowBufferAllocatorNeverAllocate;
   allocator.reallocate = &ArrowBufferAllocatorNeverReallocate;
   allocator.free = custom_free;
   allocator.private_data = private_data;

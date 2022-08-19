@@ -25,16 +25,6 @@
 
 using namespace arrow;
 
-static uint8_t* MemoryPoolAllocate(struct ArrowBufferAllocator* allocator, int64_t size) {
-  MemoryPool* pool = reinterpret_cast<MemoryPool*>(allocator->private_data);
-  uint8_t* out;
-  if (pool->Allocate(size, &out).ok()) {
-    return out;
-  } else {
-    return nullptr;
-  }
-}
-
 static uint8_t* MemoryPoolReallocate(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                      int64_t old_size, int64_t new_size) {
   MemoryPool* pool = reinterpret_cast<MemoryPool*>(allocator->private_data);
@@ -54,7 +44,6 @@ static void MemoryPoolFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
 
 static void MemoryPoolAllocatorInit(MemoryPool* pool,
                                     struct ArrowBufferAllocator* allocator) {
-  allocator->allocate = &MemoryPoolAllocate;
   allocator->reallocate = &MemoryPoolReallocate;
   allocator->free = &MemoryPoolFree;
   allocator->private_data = pool;
@@ -63,7 +52,7 @@ static void MemoryPoolAllocatorInit(MemoryPool* pool,
 TEST(AllocatorTest, AllocatorTestDefault) {
   struct ArrowBufferAllocator allocator = ArrowBufferAllocatorDefault();
 
-  uint8_t* buffer = allocator.allocate(&allocator, 10);
+  uint8_t* buffer = allocator.reallocate(&allocator, nullptr, 0, 10);
   const char* test_str = "abcdefg";
   memcpy(buffer, test_str, strlen(test_str) + 1);
 
@@ -72,7 +61,8 @@ TEST(AllocatorTest, AllocatorTestDefault) {
 
   allocator.free(&allocator, buffer, 100);
 
-  buffer = allocator.allocate(&allocator, std::numeric_limits<int64_t>::max());
+  buffer =
+      allocator.reallocate(&allocator, nullptr, 0, std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
 
   buffer =
@@ -99,7 +89,7 @@ TEST(AllocatorTest, AllocatorTestDeallocator) {
 
   struct ArrowBufferAllocator deallocator = ArrowBufferDeallocator(&CustomFree, &data);
 
-  EXPECT_EQ(deallocator.allocate(&deallocator, 12), nullptr);
+  EXPECT_EQ(deallocator.reallocate(&deallocator, nullptr, 0, 12), nullptr);
   EXPECT_EQ(deallocator.reallocate(&deallocator, nullptr, 0, 12), nullptr);
   deallocator.free(&deallocator, nullptr, 12);
   EXPECT_EQ(data.pointer_proxy, nullptr);
@@ -111,7 +101,7 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
 
   int64_t allocated0 = system_memory_pool()->bytes_allocated();
 
-  uint8_t* buffer = arrow_allocator.allocate(&arrow_allocator, 10);
+  uint8_t* buffer = arrow_allocator.reallocate(&arrow_allocator, nullptr, 0, 10);
   EXPECT_EQ(system_memory_pool()->bytes_allocated() - allocated0, 10);
   memset(buffer, 0, 10);
 
@@ -125,8 +115,8 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
   arrow_allocator.free(&arrow_allocator, buffer, 100);
   EXPECT_EQ(system_memory_pool()->bytes_allocated(), allocated0);
 
-  buffer =
-      arrow_allocator.allocate(&arrow_allocator, std::numeric_limits<int64_t>::max());
+  buffer = arrow_allocator.reallocate(&arrow_allocator, nullptr, 0,
+                                      std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
 
   buffer = arrow_allocator.reallocate(&arrow_allocator, buffer, 0,

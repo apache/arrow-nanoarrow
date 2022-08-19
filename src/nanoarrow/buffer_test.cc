@@ -26,15 +26,10 @@
 // This test allocator guarantees that allocator->reallocate will return
 // a new pointer so that we can test when reallocations happen whilst
 // building buffers.
-static uint8_t* TestAllocatorAllocate(struct ArrowBufferAllocator* allocator,
-                                      int64_t size) {
-  return reinterpret_cast<uint8_t*>(malloc(size));
-}
-
 static uint8_t* TestAllocatorReallocate(struct ArrowBufferAllocator* allocator,
                                         uint8_t* ptr, int64_t old_size,
                                         int64_t new_size) {
-  uint8_t* new_ptr = TestAllocatorAllocate(allocator, new_size);
+  uint8_t* new_ptr = reinterpret_cast<uint8_t*>(malloc(new_size));
 
   int64_t copy_size = std::min<int64_t>(old_size, new_size);
   if (new_ptr != nullptr && copy_size > 0) {
@@ -53,8 +48,8 @@ static void TestAllocatorFree(struct ArrowBufferAllocator* allocator, uint8_t* p
   free(ptr);
 }
 
-static struct ArrowBufferAllocator test_allocator = {
-    &TestAllocatorAllocate, &TestAllocatorReallocate, &TestAllocatorFree, nullptr};
+static struct ArrowBufferAllocator test_allocator = {&TestAllocatorReallocate,
+                                                     &TestAllocatorFree, nullptr};
 
 TEST(BufferTest, BufferTestBasic) {
   struct ArrowBuffer buffer;
