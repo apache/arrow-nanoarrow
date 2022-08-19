@@ -116,6 +116,13 @@ jobs:
           sudo ldconfig
           cd build
           ctest -T memcheck . 
+      
+      - name: Upload memcheck results
+        if: failure()
+        uses: actions/upload-artifact@main
+        with:
+          name: nanoarrow-memcheck
+          path: build/Testing/Temporary/MemoryChecker.*.log
 
       - name: Calculate coverage
         run: |
