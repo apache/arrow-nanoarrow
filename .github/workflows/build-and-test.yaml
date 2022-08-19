@@ -115,7 +115,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           cd build
-          ctest -T memcheck --output-on-failure . 
+          ctest -T memcheck . 
       
       - name: Upload memcheck results
         if: failure()
