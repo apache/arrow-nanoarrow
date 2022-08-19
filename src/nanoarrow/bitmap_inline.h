@@ -249,6 +249,8 @@ static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
   out_i_cursor += n_full_bytes * 8;
   n_remaining -= n_full_bytes * 8;
   if (n_remaining > 0) {
+    // Zero out the last byte
+    *out_cursor = 0x00;
     for (int i = 0; i < n_remaining; i++) {
       ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
     }
@@ -294,6 +296,8 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
   out_i_cursor += n_full_bytes * 8;
   n_remaining -= n_full_bytes * 8;
   if (n_remaining > 0) {
+    // Zero out the last byte
+    *out_cursor = 0x00;
     for (int i = 0; i < n_remaining; i++) {
       ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, values_cursor[i]);
     }
