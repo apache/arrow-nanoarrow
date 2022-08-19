@@ -105,10 +105,9 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {
   for (int i = 0; i < 3; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
+    array_view->buffer_views[i].data.data = NULL;
 
     switch (array_view->layout.buffer_type[i]) {
-      array_view->buffer_views[i].data.data = NULL;
-
       case NANOARROW_BUFFER_TYPE_VALIDITY:
         array_view->buffer_views[i].n_bytes = _ArrowBytesForBits(length);
         continue;

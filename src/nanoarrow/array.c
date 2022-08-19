@@ -282,6 +282,7 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
 
   ArrowArrayViewInit(array_view, private_data->storage_type);
   array_view->layout = private_data->layout;
+  array_view->array = array;
 
   int result = ArrowArrayViewAllocateChildren(array_view, array->n_children);
   if (result != NANOARROW_OK) {
@@ -364,7 +365,11 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
 
 static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
     struct ArrowArray* array, struct ArrowArrayView* array_view,
-    struct ArrowError* error) {
+    char set_length, struct ArrowError* error) {
+  if (set_length) {
+    ArrowArrayViewSetLength(array_view, array->offset + array->length);
+  }
+
   for (int64_t i = 0; i < array->n_buffers; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
         array->null_count == 0 && array->buffers[i] == NULL) {
@@ -385,7 +390,7 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
 
   for (int64_t i = 0; i < array->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayCheckInternalBufferSizes(
-        array->children[i], array_view->children[i], error));
+        array->children[i], array_view->children[i], set_length, error));
   }
 
   return NANOARROW_OK;
@@ -405,13 +410,23 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   struct ArrowArrayView array_view;
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
-  int result = ArrowArrayViewSetArray(&array_view, array, error);
+
+  // Check buffer sizes once without using internal buffer data since
+  // ArrowArrayViewSetArray() assumes that all the buffers are long enough
+  // and issues invalid reads on offset buffers if they are not
+  int result = ArrowArrayCheckInternalBufferSizes(array, &array_view, 1, error);
   if (result != NANOARROW_OK) {
     ArrowArrayViewReset(&array_view);
     return result;
   }
 
-  result = ArrowArrayCheckInternalBufferSizes(array, &array_view, error);
+  result = ArrowArrayViewSetArray(&array_view, array, error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
+    return result;
+  }
+
+  result = ArrowArrayCheckInternalBufferSizes(array, &array_view, 0, error);
   ArrowArrayViewReset(&array_view);
   return result;
 }

@@ -44,9 +44,9 @@ install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.c")
 if (NANOARROW_BUILD_TESTS)
     # For testing we use GTest + Arrow C++ (both need C++11)
     include(FetchContent)
+    
+    set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/valgrind.supp --error-exitcode=1")
     include(CTest)
-
-    set(MEMORYCHECK_SUPPRESSIONS_FILE "${CMAKE_CURRENT_LIST_DIR}/valgrind.supp")
 
     set(CMAKE_CXX_STANDARD 11)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
