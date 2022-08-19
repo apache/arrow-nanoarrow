@@ -63,8 +63,15 @@ void ArrowFree(void* ptr);
 /// ArrowFree().
 struct ArrowBufferAllocator ArrowBufferAllocatorDefault();
 
+/// \brief Create a custom deallocator
+///
+/// Creates a buffer allocator with only a free method that can be used to
+/// attach a custom deallocator to an ArrowBuffer. This may be used to
+/// avoid copying an existing buffer that was not allocated using the
+/// infrastructure provided here (e.g., by an R or Python object).
 struct ArrowBufferAllocator ArrowBufferDeallocator(
-    void (*free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size),
+    void (*custom_free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                        int64_t size),
     void* private_data);
 
 /// }@
