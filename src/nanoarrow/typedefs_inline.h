@@ -233,9 +233,6 @@ struct ArrowBufferView {
 /// to customize allocation and deallocation of buffers when constructing
 /// an ArrowArray.
 struct ArrowBufferAllocator {
-  /// \brief Allocate a buffer or return NULL if it cannot be allocated
-  uint8_t* (*allocate)(struct ArrowBufferAllocator* allocator, int64_t size);
-
   /// \brief Reallocate a buffer or return NULL if it cannot be reallocated
   uint8_t* (*reallocate)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                          int64_t old_size, int64_t new_size);
@@ -261,7 +258,7 @@ struct ArrowBuffer {
   int64_t capacity_bytes;
 
   /// \brief The allocator that will be used to reallocate and/or free the buffer
-  struct ArrowBufferAllocator* allocator;
+  struct ArrowBufferAllocator allocator;
 };
 
 /// \brief An owning mutable view of a bitmap

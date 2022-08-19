@@ -46,7 +46,7 @@ static inline void ArrowBufferInit(struct ArrowBuffer* buffer) {
 }
 
 static inline ArrowErrorCode ArrowBufferSetAllocator(
-    struct ArrowBuffer* buffer, struct ArrowBufferAllocator* allocator) {
+    struct ArrowBuffer* buffer, struct ArrowBufferAllocator allocator) {
   if (buffer->data == NULL) {
     buffer->allocator = allocator;
     return NANOARROW_OK;
@@ -57,8 +57,8 @@ static inline ArrowErrorCode ArrowBufferSetAllocator(
 
 static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
   if (buffer->data != NULL) {
-    buffer->allocator->free(buffer->allocator, (uint8_t*)buffer->data,
-                            buffer->capacity_bytes);
+    buffer->allocator.free(&buffer->allocator, (uint8_t*)buffer->data,
+                           buffer->capacity_bytes);
     buffer->data = NULL;
   }
 
@@ -81,8 +81,8 @@ static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
   }
 
   if (new_capacity_bytes > buffer->capacity_bytes || shrink_to_fit) {
-    buffer->data = buffer->allocator->reallocate(
-        buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
+    buffer->data = buffer->allocator.reallocate(
+        &buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
     if (buffer->data == NULL && new_capacity_bytes > 0) {
       buffer->capacity_bytes = 0;
       buffer->size_bytes = 0;
