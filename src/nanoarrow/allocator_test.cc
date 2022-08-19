@@ -80,6 +80,31 @@ TEST(AllocatorTest, AllocatorTestDefault) {
   EXPECT_EQ(buffer, nullptr);
 }
 
+// In a non-trivial test this struct could hold a reference to an object
+// that keeps the buffer from being garbage collected (e.g., an SEXP in R)
+struct CustomFreeData {
+  void* pointer_proxy;
+};
+
+static void CustomFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                       int64_t size) {
+  auto data = reinterpret_cast<struct CustomFreeData*>(allocator->private_data);
+  ArrowFree(data->pointer_proxy);
+  data->pointer_proxy = nullptr;
+}
+
+TEST(AllocatorTest, AllocatorTestDeallocator) {
+  struct CustomFreeData data;
+  data.pointer_proxy = reinterpret_cast<uint8_t*>(ArrowMalloc(12));
+
+  struct ArrowBufferAllocator deallocator = ArrowBufferDeallocator(&CustomFree, &data);
+
+  EXPECT_EQ(deallocator.allocate(&deallocator, 12), nullptr);
+  EXPECT_EQ(deallocator.reallocate(&deallocator, nullptr, 0, 12), nullptr);
+  deallocator.free(&deallocator, nullptr, 12);
+  EXPECT_EQ(data.pointer_proxy, nullptr);
+}
+
 TEST(AllocatorTest, AllocatorTestMemoryPool) {
   struct ArrowBufferAllocator arrow_allocator;
   MemoryPoolAllocatorInit(system_memory_pool(), &arrow_allocator);

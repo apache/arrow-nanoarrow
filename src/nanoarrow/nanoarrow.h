@@ -63,6 +63,10 @@ void ArrowFree(void* ptr);
 /// ArrowFree().
 struct ArrowBufferAllocator ArrowBufferAllocatorDefault();
 
+struct ArrowBufferAllocator ArrowBufferDeallocator(
+    void (*free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size),
+    void* private_data);
+
 /// }@
 
 /// \defgroup nanoarrow-errors Error handling primitives
