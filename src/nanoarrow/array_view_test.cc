@@ -185,9 +185,9 @@ TEST(ArrayTest, ArrayViewTestStruct) {
   EXPECT_EQ(array_view.layout.element_size_bits[0], 1);
 
   // Exepct error for out-of-memory
-  EXPECT_EQ(
-      ArrowArrayViewAllocateChildren(&array_view, std::numeric_limits<int64_t>::max()),
-      ENOMEM);
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(
+                &array_view, std::numeric_limits<int64_t>::max() / sizeof(void*)),
+            ENOMEM);
 
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 2), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 2);

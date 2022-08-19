@@ -40,6 +40,12 @@ TEST(SchemaTest, SchemaInit) {
 
   schema.release(&schema);
   EXPECT_EQ(schema.release, nullptr);
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaAllocateChildren(
+                &schema, std::numeric_limits<int64_t>::max() / sizeof(void*)),
+            ENOMEM);
+  schema.release(&schema);
 }
 
 static void ExpectSchemaInitOk(enum ArrowType data_type,
