@@ -445,6 +445,37 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
   return NANOARROW_OK;
 }
 
+static inline char ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i) {
+  return 0;
+}
+
+static inline ArrowErrorCode ArrowArrayViewGetInt(struct ArrowArrayView* array_view,
+                                                  int64_t i, int64_t* out) {
+  return ENOTSUP;
+}
+
+static inline ArrowErrorCode ArrowArrayViewGetUInt(struct ArrowArrayView* array_view,
+                                                   int64_t i, uint64_t* out) {
+  return ENOTSUP;
+}
+
+static inline ArrowErrorCode ArrowArrayViewGetDouble(struct ArrowArrayView* array_view,
+                                                     int64_t i, double* out) {
+  return ENOTSUP;
+}
+
+static inline ArrowErrorCode ArrowArrayViewGetString(struct ArrowArrayView* array_view,
+                                                     int64_t i,
+                                                     struct ArrowStringView* out) {
+  return ENOTSUP;
+}
+
+static inline ArrowErrorCode ArrowArrayViewGetBytes(struct ArrowArrayView* array_view,
+                                                    int64_t i,
+                                                    struct ArrowBufferView* out) {
+  return ENOTSUP;
+}
+
 #ifdef __cplusplus
 }
 #endif

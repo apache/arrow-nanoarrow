@@ -689,6 +689,25 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
+static inline char ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
+
+static inline ArrowErrorCode ArrowArrayViewGetInt(struct ArrowArrayView* array_view,
+                                                  int64_t i, int64_t* out);
+
+static inline ArrowErrorCode ArrowArrayViewGetUInt(struct ArrowArrayView* array_view,
+                                                   int64_t i, uint64_t* out);
+
+static inline ArrowErrorCode ArrowArrayViewGetDouble(struct ArrowArrayView* array_view,
+                                                     int64_t i, double* out);
+
+static inline ArrowErrorCode ArrowArrayViewGetString(struct ArrowArrayView* array_view,
+                                                     int64_t i,
+                                                     struct ArrowStringView* out);
+
+static inline ArrowErrorCode ArrowArrayViewGetBytes(struct ArrowArrayView* array_view,
+                                                    int64_t i,
+                                                    struct ArrowBufferView* out);
+
 /// }@
 
 // Inline function definitions
