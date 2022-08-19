@@ -689,20 +689,39 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
+/// \brief Check for a null element in an ArrowArrayView
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
 
+/// \brief Get an element in an ArrowArrayView as an integer
+///
+/// This function does not check for null values, that values are actually integers, or
+/// that values are within a valid range for an int64.
 static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_view,
                                                  int64_t i);
 
+/// \brief Get an element in an ArrowArrayView as an unsigned integer
+///
+/// This function does not check for null values, that values are actually integers, or
+/// that values are within a valid range for a uint64.
 static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_view,
                                                    int64_t i);
 
+/// \brief Get an element in an ArrowArrayView as a double
+///
+/// This function does not check for null values, or
+/// that values are within a valid range for a double.
 static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_view,
                                                    int64_t i);
 
+/// \brief Get an element in an ArrowArrayView as an ArrowStringView
+///
+/// This function does not check for null values.
 static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
     struct ArrowArrayView* array_view, int64_t i);
 
+/// \brief Get an element in an ArrowArrayView as an ArrowBufferView
+///
+/// This function does not check for null values.
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     struct ArrowArrayView* array_view, int64_t i);
 
