@@ -689,24 +689,22 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
-static inline char ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
+static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
 
-static inline ArrowErrorCode ArrowArrayViewGetInt(struct ArrowArrayView* array_view,
-                                                  int64_t i, int64_t* out);
+static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_view,
+                                                 int64_t i);
 
-static inline ArrowErrorCode ArrowArrayViewGetUInt(struct ArrowArrayView* array_view,
-                                                   int64_t i, uint64_t* out);
+static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_view,
+                                                   int64_t i);
 
-static inline ArrowErrorCode ArrowArrayViewGetDouble(struct ArrowArrayView* array_view,
-                                                     int64_t i, double* out);
+static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_view,
+                                                   int64_t i);
 
-static inline ArrowErrorCode ArrowArrayViewGetString(struct ArrowArrayView* array_view,
-                                                     int64_t i,
-                                                     struct ArrowStringView* out);
+static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
+    struct ArrowArrayView* array_view, int64_t i);
 
-static inline ArrowErrorCode ArrowArrayViewGetBytes(struct ArrowArrayView* array_view,
-                                                    int64_t i,
-                                                    struct ArrowBufferView* out);
+static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
+    struct ArrowArrayView* array_view, int64_t i);
 
 /// }@
 

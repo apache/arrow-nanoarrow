@@ -221,6 +221,9 @@ struct ArrowBufferView {
     const uint32_t* as_uint32;
     const int64_t* as_int64;
     const uint64_t* as_uint64;
+    const double* as_double;
+    const float* as_float;
+    const char* as_char;
   } data;
 
   /// \brief The size of the buffer in bytes

@@ -445,35 +445,175 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
   return NANOARROW_OK;
 }
 
-static inline char ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i) {
-  return 0;
+static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i) {
+  const uint8_t* validity_buffer = array_view->buffer_views[0].data.as_uint8;
+  i += array_view->array->offset;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DENSE_UNION:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      // Not supported yet
+      return 0xff;
+    default:
+      return validity_buffer != NULL && !ArrowBitGet(validity_buffer, i);
+  }
 }
 
-static inline ArrowErrorCode ArrowArrayViewGetInt(struct ArrowArrayView* array_view,
-                                                  int64_t i, int64_t* out) {
-  return ENOTSUP;
+static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_view,
+                                                 int64_t i) {
+  struct ArrowBufferView* data_view = &array_view->buffer_views[1];
+  i += array_view->array->offset;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_INT64:
+      return data_view->data.as_int64[i];
+    case NANOARROW_TYPE_UINT64:
+      return data_view->data.as_uint64[i];
+    case NANOARROW_TYPE_INT32:
+      return data_view->data.as_int32[i];
+    case NANOARROW_TYPE_UINT32:
+      return data_view->data.as_uint32[i];
+    case NANOARROW_TYPE_INT16:
+      return data_view->data.as_int16[i];
+    case NANOARROW_TYPE_UINT16:
+      return data_view->data.as_uint16[i];
+    case NANOARROW_TYPE_INT8:
+      return data_view->data.as_int8[i];
+    case NANOARROW_TYPE_UINT8:
+      return data_view->data.as_uint8[i];
+    case NANOARROW_TYPE_DOUBLE:
+      return data_view->data.as_double[i];
+    case NANOARROW_TYPE_FLOAT:
+      return data_view->data.as_float[i];
+    case NANOARROW_TYPE_BOOL:
+      return ArrowBitGet(data_view->data.as_uint8, i);
+    default:
+      return 0;
+  }
 }
 
-static inline ArrowErrorCode ArrowArrayViewGetUInt(struct ArrowArrayView* array_view,
-                                                   int64_t i, uint64_t* out) {
-  return ENOTSUP;
+static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_view,
+                                                   int64_t i) {
+  i += array_view->array->offset;
+  struct ArrowBufferView* data_view = &array_view->buffer_views[1];
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_INT64:
+      return data_view->data.as_int64[i];
+    case NANOARROW_TYPE_UINT64:
+      return data_view->data.as_uint64[i];
+    case NANOARROW_TYPE_INT32:
+      return data_view->data.as_int32[i];
+    case NANOARROW_TYPE_UINT32:
+      return data_view->data.as_uint32[i];
+    case NANOARROW_TYPE_INT16:
+      return data_view->data.as_int16[i];
+    case NANOARROW_TYPE_UINT16:
+      return data_view->data.as_uint16[i];
+    case NANOARROW_TYPE_INT8:
+      return data_view->data.as_int8[i];
+    case NANOARROW_TYPE_UINT8:
+      return data_view->data.as_uint8[i];
+    case NANOARROW_TYPE_DOUBLE:
+      return data_view->data.as_double[i];
+    case NANOARROW_TYPE_FLOAT:
+      return data_view->data.as_float[i];
+    case NANOARROW_TYPE_BOOL:
+      return ArrowBitGet(data_view->data.as_uint8, i);
+    default:
+      return 0;
+  }
 }
 
-static inline ArrowErrorCode ArrowArrayViewGetDouble(struct ArrowArrayView* array_view,
-                                                     int64_t i, double* out) {
-  return ENOTSUP;
+static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_view,
+                                                   int64_t i) {
+  i += array_view->array->offset;
+  struct ArrowBufferView* data_view = &array_view->buffer_views[1];
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_INT64:
+      return data_view->data.as_int64[i];
+    case NANOARROW_TYPE_UINT64:
+      return data_view->data.as_uint64[i];
+    case NANOARROW_TYPE_INT32:
+      return data_view->data.as_int32[i];
+    case NANOARROW_TYPE_UINT32:
+      return data_view->data.as_uint32[i];
+    case NANOARROW_TYPE_INT16:
+      return data_view->data.as_int16[i];
+    case NANOARROW_TYPE_UINT16:
+      return data_view->data.as_uint16[i];
+    case NANOARROW_TYPE_INT8:
+      return data_view->data.as_int8[i];
+    case NANOARROW_TYPE_UINT8:
+      return data_view->data.as_uint8[i];
+    case NANOARROW_TYPE_DOUBLE:
+      return data_view->data.as_double[i];
+    case NANOARROW_TYPE_FLOAT:
+      return data_view->data.as_float[i];
+    case NANOARROW_TYPE_BOOL:
+      return ArrowBitGet(data_view->data.as_uint8, i);
+    default:
+      return 0;
+  }
 }
 
-static inline ArrowErrorCode ArrowArrayViewGetString(struct ArrowArrayView* array_view,
-                                                     int64_t i,
-                                                     struct ArrowStringView* out) {
-  return ENOTSUP;
+static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
+    struct ArrowArrayView* array_view, int64_t i) {
+  i += array_view->array->offset;
+  struct ArrowBufferView* offsets_view = &array_view->buffer_views[1];
+  const char* data_view = array_view->buffer_views[2].data.as_char;
+
+  struct ArrowStringView view;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+      view.data = data_view + offsets_view->data.as_int32[i];
+      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      break;
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      view.data = data_view + offsets_view->data.as_int32[i];
+      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      break;
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      view.n_bytes = array_view->layout.element_size_bits[1] / 8;
+      view.data = array_view->buffer_views[1].data.as_char + (i * view.n_bytes);
+      break;
+    default:
+      view.data = NULL;
+      view.n_bytes = 0;
+      break;
+  }
+
+  return view;
 }
 
-static inline ArrowErrorCode ArrowArrayViewGetBytes(struct ArrowArrayView* array_view,
-                                                    int64_t i,
-                                                    struct ArrowBufferView* out) {
-  return ENOTSUP;
+static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
+    struct ArrowArrayView* array_view, int64_t i) {
+  i += array_view->array->offset;
+  struct ArrowBufferView* offsets_view = &array_view->buffer_views[1];
+  const uint8_t* data_view = array_view->buffer_views[2].data.as_uint8;
+
+  struct ArrowBufferView view;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      view.data.as_uint8 = data_view + offsets_view->data.as_int32[i];
+      break;
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      view.data.as_uint8 = data_view + offsets_view->data.as_int32[i];
+      break;
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      view.n_bytes = array_view->layout.element_size_bits[1] / 8;
+      view.data.as_uint8 = array_view->buffer_views[1].data.as_uint8 + (i * view.n_bytes);
+      break;
+    default:
+      view.data.data = NULL;
+      view.n_bytes = 0;
+      break;
+  }
+
+  return view;
 }
 
 #ifdef __cplusplus
