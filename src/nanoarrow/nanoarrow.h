@@ -61,7 +61,7 @@ void ArrowFree(void* ptr);
 ///
 /// The default allocator uses ArrowMalloc(), ArrowRealloc(), and
 /// ArrowFree().
-struct ArrowBufferAllocator* ArrowBufferAllocatorDefault();
+struct ArrowBufferAllocator ArrowBufferAllocatorDefault();
 
 /// }@
 
@@ -358,7 +358,7 @@ static inline void ArrowBufferInit(struct ArrowBuffer* buffer);
 ///
 /// Returns EINVAL if the buffer has already been allocated.
 static inline ArrowErrorCode ArrowBufferSetAllocator(
-    struct ArrowBuffer* buffer, struct ArrowBufferAllocator* allocator);
+    struct ArrowBuffer* buffer, struct ArrowBufferAllocator allocator);
 
 /// \brief Reset an ArrowBuffer
 ///
@@ -688,8 +688,7 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 
 /// \brief Set buffer sizes and data pointers from an ArrowArray
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
-                                      struct ArrowArray* array,
-                                      struct ArrowError* error);
+                                      struct ArrowArray* array, struct ArrowError* error);
 
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);

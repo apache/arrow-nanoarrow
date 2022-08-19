@@ -261,7 +261,7 @@ struct ArrowBuffer {
   int64_t capacity_bytes;
 
   /// \brief The allocator that will be used to reallocate and/or free the buffer
-  struct ArrowBufferAllocator* allocator;
+  struct ArrowBufferAllocator allocator;
 };
 
 /// \brief An owning mutable view of a bitmap

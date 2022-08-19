@@ -61,7 +61,7 @@ TEST(BufferTest, BufferTestBasic) {
 
   // Init
   ArrowBufferInit(&buffer);
-  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, &test_allocator), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, test_allocator), NANOARROW_OK);
   EXPECT_EQ(buffer.data, nullptr);
   EXPECT_EQ(buffer.capacity_bytes, 0);
   EXPECT_EQ(buffer.size_bytes, 0);
@@ -109,7 +109,7 @@ TEST(BufferTest, BufferTestMove) {
   struct ArrowBuffer buffer;
 
   ArrowBufferInit(&buffer);
-  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, &test_allocator), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, test_allocator), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppend(&buffer, "1234567", 7), NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, 7);
   EXPECT_EQ(buffer.capacity_bytes, 7);
@@ -152,7 +152,7 @@ TEST(BufferTest, BufferTestResize0) {
   struct ArrowBuffer buffer;
 
   ArrowBufferInit(&buffer);
-  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, &test_allocator), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, test_allocator), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppend(&buffer, "1234567", 7), NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, 7);
   EXPECT_EQ(buffer.capacity_bytes, 7);

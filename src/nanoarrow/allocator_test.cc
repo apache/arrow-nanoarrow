@@ -61,22 +61,22 @@ static void MemoryPoolAllocatorInit(MemoryPool* pool,
 }
 
 TEST(AllocatorTest, AllocatorTestDefault) {
-  struct ArrowBufferAllocator* allocator = ArrowBufferAllocatorDefault();
+  struct ArrowBufferAllocator allocator = ArrowBufferAllocatorDefault();
 
-  uint8_t* buffer = allocator->allocate(allocator, 10);
+  uint8_t* buffer = allocator.allocate(&allocator, 10);
   const char* test_str = "abcdefg";
   memcpy(buffer, test_str, strlen(test_str) + 1);
 
-  buffer = allocator->reallocate(allocator, buffer, 10, 100);
+  buffer = allocator.reallocate(&allocator, buffer, 10, 100);
   EXPECT_STREQ(reinterpret_cast<const char*>(buffer), test_str);
 
-  allocator->free(allocator, buffer, 100);
+  allocator.free(&allocator, buffer, 100);
 
-  buffer = allocator->allocate(allocator, std::numeric_limits<int64_t>::max());
+  buffer = allocator.allocate(&allocator, std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
 
   buffer =
-      allocator->reallocate(allocator, buffer, 0, std::numeric_limits<int64_t>::max());
+      allocator.reallocate(&allocator, buffer, 0, std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
 }
 

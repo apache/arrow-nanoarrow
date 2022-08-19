@@ -46,6 +46,6 @@ static struct ArrowBufferAllocator ArrowBufferAllocatorMalloc = {
     &ArrowBufferAllocatorMallocAllocate, &ArrowBufferAllocatorMallocReallocate,
     &ArrowBufferAllocatorMallocFree, NULL};
 
-struct ArrowBufferAllocator* ArrowBufferAllocatorDefault() {
-  return &ArrowBufferAllocatorMalloc;
+struct ArrowBufferAllocator ArrowBufferAllocatorDefault() {
+  return ArrowBufferAllocatorMalloc;
 }
