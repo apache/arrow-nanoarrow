@@ -23,7 +23,6 @@
 #include <string.h>
 
 #include "nanoarrow_types.h"
-#include "utils_inline.h"
 
 #ifdef __cplusplus
 extern "C" {

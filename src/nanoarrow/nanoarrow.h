@@ -730,7 +730,6 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
 // Inline function definitions
 #include "array_inline.h"
 #include "buffer_inline.h"
-#include "utils_inline.h"
 
 #ifdef __cplusplus
 }

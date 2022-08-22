@@ -26,7 +26,6 @@
 
 #include "buffer_inline.h"
 #include "nanoarrow_types.h"
-#include "utils_inline.h"
 
 #ifdef __cplusplus
 extern "C" {
