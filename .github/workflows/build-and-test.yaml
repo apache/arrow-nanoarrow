@@ -25,7 +25,18 @@ name: Build and Test
 
 jobs:
   build-and-test:
+
     runs-on: ubuntu-latest
+
+    name: ${{ matrix.config.label }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {label: default-build}
+          - {label: amalgamation-build}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -94,13 +105,24 @@ jobs:
           cd build-deps/arrow-build
           cmake --install . --prefix ../../dist
 
-      - name: Build nanoarrow
+      - name: Build nanoarrow (default)
+        if: ${{ matrix.config.label }} == 'default-build'
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           mkdir build
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
+          cmake --build .
+
+      - name: Build nanoarrow (amalgamation)
+        if: ${{ matrix.config.label }} == 'amalgamation-build'
+        run: |
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_AMALGAMATION=ON
           cmake --build .
 
       - name: Run tests
@@ -111,20 +133,22 @@ jobs:
           ctest -T test --output-on-failure .
 
       - name: Run tests with valgrind
+        if: ${{ matrix.config.label }} == 'default-build'
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           cd build
-          ctest -T memcheck . 
-      
+          ctest -T memcheck .
+
       - name: Upload memcheck results
-        if: failure()
+        if: failure() && ${{ matrix.config.label }} == 'default-build'
         uses: actions/upload-artifact@main
         with:
           name: nanoarrow-memcheck
           path: build/Testing/Temporary/MemoryChecker.*.log
 
       - name: Calculate coverage
+        if: ${{ matrix.config.label }} == 'default-build'
         run: |
           SOURCE_PREFIX=`pwd`
           mkdir build/cov
