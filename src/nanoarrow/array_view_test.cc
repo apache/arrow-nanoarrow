@@ -17,7 +17,13 @@
 
 #include <gtest/gtest.h>
 
+#include <arrow/array.h>
+#include <arrow/c/bridge.h>
+#include <arrow/testing/gtest_util.h>
+
 #include "nanoarrow/nanoarrow.h"
+
+using namespace arrow;
 
 TEST(ArrayTest, ArrayViewTestBasic) {
   struct ArrowArrayView array_view;
@@ -353,4 +359,102 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   ArrowArrayViewReset(&array_view);
   schema.release(&schema);
   array.release(&array);
+}
+
+void TestGetFromNumericArrayView(const std::shared_ptr<DataType>& data_type) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  // Array with nulls
+  auto arrow_array = ArrayFromJSON(data_type, "[1, null, null, 4]");
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 3), 4.0);
+
+  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 0);
+  EXPECT_EQ(string_view.data, nullptr);
+  EXPECT_EQ(string_view.n_bytes, 0);
+  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 0);
+  EXPECT_EQ(buffer_view.data.data, nullptr);
+  EXPECT_EQ(buffer_view.n_bytes, 0);
+
+  ArrowArrayViewReset(&array_view);
+  array.release(&array);
+  schema.release(&schema);
+
+  // Array without nulls (Arrow does not allocate the validity buffer)
+  arrow_array = ArrayFromJSON(data_type, "[1, 2]");
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+
+  // We're trying to test behavior with no validity buffer, so make sure that's true
+  ASSERT_EQ(array_view.buffer_views[0].data.data, nullptr);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 1), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 1);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 1), 2);
+
+  ArrowArrayViewReset(&array_view);
+  array.release(&array);
+  schema.release(&schema);
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
+  TestGetFromNumericArrayView(int64());
+  TestGetFromNumericArrayView(uint64());
+  TestGetFromNumericArrayView(int32());
+  TestGetFromNumericArrayView(uint32());
+  TestGetFromNumericArrayView(int16());
+  TestGetFromNumericArrayView(uint16());
+  TestGetFromNumericArrayView(int8());
+  TestGetFromNumericArrayView(uint8());
+  TestGetFromNumericArrayView(float64());
+  TestGetFromNumericArrayView(float32());
+}
+
+void TestGetFromBinary(const std::shared_ptr<DataType>& data_type) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto arrow_array = ArrayFromJSON(data_type, "[\"1234\", null, null, \"four\"]");
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 3);
+  EXPECT_EQ(string_view.n_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(string_view.data, "four", string_view.n_bytes), 0);
+
+  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 3);
+  EXPECT_EQ(buffer_view.n_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(buffer_view.data.as_char, "four", buffer_view.n_bytes), 0);
+
+  ArrowArrayViewReset(&array_view);
+  array.release(&array);
+  schema.release(&schema);
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetString) {
+  TestGetFromBinary(utf8());
+  TestGetFromBinary(binary());
+  TestGetFromBinary(large_utf8());
+  TestGetFromBinary(large_binary());
+  TestGetFromBinary(fixed_size_binary(4));
 }
