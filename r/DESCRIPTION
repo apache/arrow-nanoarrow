@@ -9,7 +9,12 @@ Authors@R: c(
              comment = c(ORCID = "0000-0002-9415-4582")),
     person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph"))
   )
-Description: Provides an R interface to the 'nanoarrow' C library.
+Description: Provides an R interface to the 'nanoarrow' C library and the
+  'Apache Arrow' application binary interface. Functions to import and
+  export 'ArrowArray', 'ArrowSchema', and 'ArrowArrayStream' C structures
+  to and from R objects are provided alongside helpers to facilitate zero-copy
+  data transfer among R bindings to libraries implementing the 'Arrow' C
+  data interface.
 License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
