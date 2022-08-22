@@ -28,7 +28,6 @@ add_library(coverage_config INTERFACE)
 include_directories(src)
 add_library(
     nanoarrow
-    src/nanoarrow/allocator.c
     src/nanoarrow/array.c
     src/nanoarrow/array_view.c
     src/nanoarrow/error.c
@@ -44,7 +43,7 @@ install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.c")
 if (NANOARROW_BUILD_TESTS)
     # For testing we use GTest + Arrow C++ (both need C++11)
     include(FetchContent)
-    
+
     set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/valgrind.supp --error-exitcode=1")
     include(CTest)
 
