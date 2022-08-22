@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "typedefs_inline.h"
+#include "nanoarrow_types.h"
 #include "utils_inline.h"
 
 #ifdef __cplusplus

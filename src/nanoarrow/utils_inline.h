@@ -21,7 +21,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include "typedefs_inline.h"
+#include "nanoarrow_types.h"
 
 #ifdef __cplusplus
 extern "C" {

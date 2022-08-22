@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef NANOARROW_TYPEDEFS_INLINE_H_INCLUDED
-#define NANOARROW_TYPEDEFS_INLINE_H_INCLUDED
+#ifndef NANOARROW_NANOARROW_TYPES_H_INCLUDED
+#define NANOARROW_NANOARROW_TYPES_H_INCLUDED
 
 #include <stdint.h>
 

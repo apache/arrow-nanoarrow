@@ -25,7 +25,7 @@
 #include <string.h>
 
 #include "buffer_inline.h"
-#include "typedefs_inline.h"
+#include "nanoarrow_types.h"
 #include "utils_inline.h"
 
 #ifdef __cplusplus
