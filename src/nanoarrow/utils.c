@@ -15,10 +15,37 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <errno.h>
+#include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "nanoarrow.h"
+
+int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
+  if (error == NULL) {
+    return NANOARROW_OK;
+  }
+
+  memset(error->message, 0, sizeof(error->message));
+
+  va_list args;
+  va_start(args, fmt);
+  int chars_needed = vsnprintf(error->message, sizeof(error->message), fmt, args);
+  va_end(args);
+
+  if (chars_needed < 0) {
+    return EINVAL;
+  } else if (chars_needed >= sizeof(error->message)) {
+    return ERANGE;
+  } else {
+    return NANOARROW_OK;
+  }
+}
+
+const char* ArrowErrorMessage(struct ArrowError* error) { return error->message; }
 
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_VALIDITY;
