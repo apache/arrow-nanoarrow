@@ -21,20 +21,49 @@ cmake_minimum_required(VERSION 3.14)
 project(NanoArrow)
 
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
+option(NANOARROW_AMALGAMATION OFF)
 
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 
 include_directories(src)
-add_library(
-    nanoarrow
-    src/nanoarrow/array.c
-    src/nanoarrow/schema.c
-    src/nanoarrow/utils.c)
 
-install(TARGETS nanoarrow DESTINATION lib)
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.c")
+if(NANOARROW_AMALGAMATION)
+    file(READ src/nanoarrow/nanoarrow_types.h SRC_FILE_CONTENTS)
+    file(WRITE ${CMAKE_BINARY_DIR}/nanoarrow.h "${SRC_FILE_CONTENTS}")
+    file(READ src/nanoarrow/nanoarrow.h SRC_FILE_CONTENTS)
+    file(APPEND ${CMAKE_BINARY_DIR}/nanoarrow.h "${SRC_FILE_CONTENTS}")
+    file(READ src/nanoarrow/buffer_inline.h SRC_FILE_CONTENTS)
+    file(APPEND ${CMAKE_BINARY_DIR}/nanoarrow.h "${SRC_FILE_CONTENTS}")
+    file(READ src/nanoarrow/array_inline.h SRC_FILE_CONTENTS)
+    file(APPEND ${CMAKE_BINARY_DIR}/nanoarrow.h "${SRC_FILE_CONTENTS}")
+
+    file(READ ${CMAKE_BINARY_DIR}/nanoarrow.h SRC_FILE_CONTENTS)
+    string(REGEX REPLACE "#include \"[a-z_.]+\"" "" SRC_FILE_CONTENTS "${SRC_FILE_CONTENTS}")
+    file(WRITE ${CMAKE_BINARY_DIR}/nanoarrow.h "${SRC_FILE_CONTENTS}")
+
+    file(READ src/nanoarrow/utils.c SRC_FILE_CONTENTS)
+    file(WRITE ${CMAKE_BINARY_DIR}/nanoarrow.c "${SRC_FILE_CONTENTS}")
+    file(READ src/nanoarrow/schema.c SRC_FILE_CONTENTS)
+    file(APPEND ${CMAKE_BINARY_DIR}/nanoarrow.c "${SRC_FILE_CONTENTS}")
+    file(READ src/nanoarrow/array.c SRC_FILE_CONTENTS)
+    file(APPEND ${CMAKE_BINARY_DIR}/nanoarrow.c "${SRC_FILE_CONTENTS}")
+
+    add_library(nanoarrow ${CMAKE_BINARY_DIR}/nanoarrow.c)
+
+    install(TARGETS nanoarrow DESTINATION lib)
+    install(FILES ${CMAKE_BINARY_DIR}/nanoarrow.h DESTINATION include)
+    install(FILES ${CMAKE_BINARY_DIR}/nanoarrow.c DESTINATION include)
+else()
+    add_library(
+        nanoarrow
+        src/nanoarrow/array.c
+        src/nanoarrow/schema.c
+        src/nanoarrow/utils.c)
+
+    install(TARGETS nanoarrow DESTINATION lib)
+    install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
+endif()
 
 if(NANOARROW_BUILD_TESTS)
     # For testing we use GTest + Arrow C++ (both need C++11)
