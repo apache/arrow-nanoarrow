@@ -6,7 +6,7 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -30,16 +30,14 @@ add_library(
     nanoarrow
     src/nanoarrow/array.c
     src/nanoarrow/array_view.c
-    src/nanoarrow/metadata.c
     src/nanoarrow/schema.c
-    src/nanoarrow/schema_view.c
     src/nanoarrow/utils.c)
 
 install(TARGETS nanoarrow DESTINATION lib)
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.c")
 
-if (NANOARROW_BUILD_TESTS)
+if(NANOARROW_BUILD_TESTS)
     # For testing we use GTest + Arrow C++ (both need C++11)
     include(FetchContent)
 
@@ -61,11 +59,9 @@ if (NANOARROW_BUILD_TESTS)
     add_executable(buffer_test src/nanoarrow/buffer_test.cc)
     add_executable(array_test src/nanoarrow/array_test.cc)
     add_executable(array_view_test src/nanoarrow/array_view_test.cc)
-    add_executable(metadata_test src/nanoarrow/metadata_test.cc)
     add_executable(schema_test src/nanoarrow/schema_test.cc)
-    add_executable(schema_view_test src/nanoarrow/schema_view_test.cc)
 
-    if (NANOARROW_CODE_COVERAGE)
+    if(NANOARROW_CODE_COVERAGE)
         target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
         target_link_options(coverage_config INTERFACE --coverage)
         target_link_libraries(nanoarrow coverage_config)
@@ -75,16 +71,12 @@ if (NANOARROW_BUILD_TESTS)
     target_link_libraries(buffer_test nanoarrow GTest::gtest_main)
     target_link_libraries(array_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
     target_link_libraries(array_view_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
-    target_link_libraries(metadata_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
     target_link_libraries(schema_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
-    target_link_libraries(schema_view_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
 
     include(GoogleTest)
     gtest_discover_tests(utils_test)
     gtest_discover_tests(buffer_test)
     gtest_discover_tests(array_test)
     gtest_discover_tests(array_view_test)
-    gtest_discover_tests(metadata_test)
     gtest_discover_tests(schema_test)
-    gtest_discover_tests(schema_view_test)
 endif()

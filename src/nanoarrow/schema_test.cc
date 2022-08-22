@@ -421,3 +421,852 @@ TEST(SchemaTest, SchemaCopyMetadata) {
 
   schema.release(&schema);
 }
+
+TEST(SchemaViewTest, SchemaViewInitErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, nullptr, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Expected non-NULL schema");
+
+  schema.release = nullptr;
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Expected non-released schema");
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Error parsing schema->format: Expected a null-terminated string but found NULL");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, ""), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected a string with size > 0");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Unknown format: '*'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "n*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format 'n*': parsed 1/2 characters");
+
+  schema.release(&schema);
+}
+
+void ExpectSimpleTypeOk(std::shared_ptr<DataType> arrow_t, enum ArrowType nanoarrow_t,
+                        int bitwidth) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*arrow_t, &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, nanoarrow_t);
+  EXPECT_EQ(schema_view.storage_data_type, nanoarrow_t);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], bitwidth);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitSimple) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*null(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_NA);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_NA);
+  EXPECT_EQ(schema_view.extension_name.data, nullptr);
+  EXPECT_EQ(schema_view.extension_metadata.data, nullptr);
+  schema.release(&schema);
+
+  ExpectSimpleTypeOk(boolean(), NANOARROW_TYPE_BOOL, 1);
+  ExpectSimpleTypeOk(int8(), NANOARROW_TYPE_INT8, 8);
+  ExpectSimpleTypeOk(uint8(), NANOARROW_TYPE_UINT8, 8);
+  ExpectSimpleTypeOk(int16(), NANOARROW_TYPE_INT16, 16);
+  ExpectSimpleTypeOk(uint16(), NANOARROW_TYPE_UINT16, 16);
+  ExpectSimpleTypeOk(int32(), NANOARROW_TYPE_INT32, 32);
+  ExpectSimpleTypeOk(uint32(), NANOARROW_TYPE_UINT32, 32);
+  ExpectSimpleTypeOk(int64(), NANOARROW_TYPE_INT64, 64);
+  ExpectSimpleTypeOk(uint64(), NANOARROW_TYPE_UINT64, 64);
+  ExpectSimpleTypeOk(float16(), NANOARROW_TYPE_HALF_FLOAT, 16);
+  ExpectSimpleTypeOk(float64(), NANOARROW_TYPE_DOUBLE, 64);
+  ExpectSimpleTypeOk(float32(), NANOARROW_TYPE_FLOAT, 32);
+}
+
+TEST(SchemaViewTest, SchemaViewInitSimpleErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected schema with 0 children but found 2 children");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitDecimal) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*decimal128(5, 6), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DECIMAL128);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_DECIMAL128);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 128);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(schema_view.decimal_bitwidth, 128);
+  EXPECT_EQ(schema_view.decimal_precision, 5);
+  EXPECT_EQ(schema_view.decimal_scale, 6);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*decimal256(5, 6), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DECIMAL256);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_DECIMAL256);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 256);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(schema_view.decimal_bitwidth, 256);
+  EXPECT_EQ(schema_view.decimal_precision, 5);
+  EXPECT_EQ(schema_view.decimal_scale, 6);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitDecimalErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "d"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected ':precision,scale[,bitwidth]' "
+               "following 'd'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "d:"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected ':precision,scale[,bitwidth]' "
+               "following 'd'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "d:5"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected 'precision,scale[,bitwidth]' "
+               "following 'd:'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "d:5,"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected 'scale[,bitwidth]' following "
+               "'d:precision,'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "d:5,6,"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Error parsing schema->format: Expected precision following 'd:precision,scale,'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "d:5,6,127"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected decimal bitwidth of 128 or 256 "
+               "but found 127");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*fixed_size_binary(123), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_FIXED_SIZE_BINARY);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_FIXED_SIZE_BINARY);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 123 * 8);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(schema_view.fixed_size, 123);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*utf8(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_STRING);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_STRING);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*binary(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_BINARY);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_BINARY);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*large_binary(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LARGE_BINARY);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LARGE_BINARY);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*large_utf8(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LARGE_STRING);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LARGE_STRING);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitBinaryAndStringErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "w"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected ':<width>' following 'w'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "w:"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected ':<width>' following 'w'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "w:abc"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format 'w:abc': parsed 2/5 characters");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "w:0"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected size > 0 for fixed size binary but found size 0");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitTimeDate) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*date32(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DATE32);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*date64(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DATE64);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitTimeTime) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*time32(TimeUnit::SECOND), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME32);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*time32(TimeUnit::MILLI), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME32);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*time64(TimeUnit::MICRO), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME64);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*time64(TimeUnit::NANO), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME64);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::SECOND, "America/Halifax"), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::MILLI, "America/Halifax"), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::MICRO, "America/Halifax"), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::NANO, "America/Halifax"), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::SECOND), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::MILLI), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::MICRO), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::NANO), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitTimeInterval) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*month_interval(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_MONTHS);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_MONTHS);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*day_time_interval(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_DAY_TIME);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_DAY_TIME);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*month_day_nano_interval(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitTimeErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "t*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected 'd', 't', 's', 'D', or 'i' "
+               "following 't' but found '*'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "td*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Error parsing schema->format: Expected 'D' or 'm' following 'td' but found '*'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "tt*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected 's', 'm', 'u', or 'n' following "
+               "'tt' but found '*'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "ts*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected 's', 'm', 'u', or 'n' following "
+               "'ts' but found '*'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "tD*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected 's', 'm', u', or 'n' following "
+               "'tD' but found '*'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "ti*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected 'M', 'D', or 'n' following 'ti' "
+               "but found '*'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "tss"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected ':' following 'tss' but found ''");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitNestedList) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*list(int32()), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LIST);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LIST);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*large_list(int32()), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_LARGE_LIST);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_LARGE_LIST);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*fixed_size_list(int32(), 123), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_FIXED_SIZE_LIST);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_FIXED_SIZE_LIST);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(schema_view.fixed_size, 123);
+  EXPECT_EQ(schema_view.layout.child_size_elements, 123);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewNestedListErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+w"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected ':<width>' following '+w'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+w:"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected ':<width>' following '+w'");
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+w:1"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected schema with 1 children but found 0 children");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*struct_({field("col", int32())}), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_STRUCT);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_STRUCT);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+
+  // Make sure child validates
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[0], &error), NANOARROW_OK);
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitNestedStructErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected valid schema at schema->children[0] but found a released schema");
+
+  // Make sure validation passes even with an inspectable but invalid child
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[0], &error), EINVAL);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+
+  ArrowFree(schema.children[0]);
+  schema.children[0] = NULL;
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected valid schema at schema->children[0] but found NULL");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitNestedMap) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*map(int32(), int32()), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected schema with 1 children but found 2 children");
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetFormat(schema.children[0], "n"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected child of map type to have 2 children but found 0");
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.children[0], 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetFormat(schema.children[0], "+us:0,1"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0]->children[0], NANOARROW_TYPE_NA),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0]->children[1], NANOARROW_TYPE_NA),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected format of child of map type to be '+s' but found '+us:0,1'");
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*dense_union({field("col", int32())}), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DENSE_UNION);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_DENSE_UNION);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_TYPE_ID);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_UNION_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(
+      std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
+      std::string("0"));
+  schema.release(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*sparse_union({field("col", int32())}), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_SPARSE_UNION);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_SPARSE_UNION);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_TYPE_ID);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(
+      std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
+      std::string("0"));
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitNestedUnionErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+u*"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected union format string "
+               "+us:<type_ids> or +ud:<type_ids> but found '+u*'");
+
+  // missing colon
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+us"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected union format string "
+               "+us:<type_ids> or +ud:<type_ids> but found '+us'");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitDictionary) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*dictionary(int32(), utf8()), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DICTIONARY);
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitDictionaryErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Expected non-released schema");
+  schema.release(&schema);
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.dictionary, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected dictionary schema index type to be an integral type but found '+s'");
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitExtension) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  auto arrow_meta = std::make_shared<KeyValueMetadata>();
+  arrow_meta->Append("ARROW:extension:name", "arrow.test.ext_name");
+  arrow_meta->Append("ARROW:extension:metadata", "test metadata");
+
+  auto int_field = field("field_name", int32(), arrow_meta);
+  ARROW_EXPECT_OK(ExportField(*int_field, &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(
+      std::string(schema_view.extension_name.data, schema_view.extension_name.n_bytes),
+      "arrow.test.ext_name");
+  EXPECT_EQ(std::string(schema_view.extension_metadata.data,
+                        schema_view.extension_metadata.n_bytes),
+            "test metadata");
+
+  schema.release(&schema);
+}
+
+TEST(MetadataTest, Metadata) {
+  // (test will only work on little endian)
+  char simple_metadata[] = {'\1', '\0', '\0', '\0', '\3', '\0', '\0', '\0', 'k', 'e',
+                            'y',  '\5', '\0', '\0', '\0', 'v',  'a',  'l',  'u', 'e'};
+
+  EXPECT_EQ(ArrowMetadataSizeOf(nullptr), 0);
+  EXPECT_EQ(ArrowMetadataSizeOf(simple_metadata), sizeof(simple_metadata));
+
+  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata, ArrowCharView("key")), 1);
+  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata, ArrowCharView("not_a_key")), 0);
+
+  struct ArrowStringView value = ArrowCharView("default_val");
+  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, ArrowCharView("key"), &value),
+            NANOARROW_OK);
+  EXPECT_EQ(std::string(value.data, value.n_bytes), "value");
+
+  value = ArrowCharView("default_val");
+  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, ArrowCharView("not_a_key"), &value),
+            NANOARROW_OK);
+  EXPECT_EQ(std::string(value.data, value.n_bytes), "default_val");
+}
+
+TEST(MetadataTest, MetadataBuild) {
+  // (test will only work on little endian)
+  char simple_metadata[] = {'\1', '\0', '\0', '\0', '\3', '\0', '\0', '\0', 'k', 'e',
+                            'y',  '\5', '\0', '\0', '\0', 'v',  'a',  'l',  'u', 'e'};
+
+  // Metadata builder from copy
+  struct ArrowBuffer metadata_builder;
+  ASSERT_EQ(ArrowMetadataBuilderInit(&metadata_builder, simple_metadata), NANOARROW_OK);
+  EXPECT_EQ(metadata_builder.size_bytes, sizeof(simple_metadata));
+  EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
+            0);
+  ArrowBufferReset(&metadata_builder);
+
+  // Empty metadata
+  ASSERT_EQ(ArrowMetadataBuilderInit(&metadata_builder, nullptr), NANOARROW_OK);
+  EXPECT_EQ(metadata_builder.size_bytes, 0);
+  EXPECT_EQ(metadata_builder.data, nullptr);
+
+  // Recreate simple_metadata
+  ASSERT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, ArrowCharView("key"),
+                                       ArrowCharView("value")),
+            NANOARROW_OK);
+  ASSERT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata));
+  EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
+            0);
+
+  // Remove a key that doesn't exist
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, ArrowCharView("key2")),
+            NANOARROW_OK);
+  ASSERT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata));
+  EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata, metadata_builder.size_bytes),
+            0);
+
+  // Add a new key
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, ArrowCharView("key2"),
+                                    ArrowCharView("value2")),
+            NANOARROW_OK);
+  EXPECT_EQ(metadata_builder.size_bytes, ArrowMetadataSizeOf(simple_metadata) +
+                                             sizeof(int32_t) + 4 + sizeof(int32_t) + 6);
+
+  struct ArrowStringView value = ArrowCharView(nullptr);
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key2"), &value),
+            NANOARROW_OK);
+  EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
+
+  // Set an existing key
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, ArrowCharView("key"),
+                                    ArrowCharView("value3")),
+            NANOARROW_OK);
+  value = ArrowCharView(nullptr);
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key"), &value),
+            NANOARROW_OK);
+  EXPECT_EQ(std::string(value.data, value.n_bytes), "value3");
+  value = ArrowCharView(nullptr);
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key2"), &value),
+            NANOARROW_OK);
+  EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
+
+  // Remove a key that does exist
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, ArrowCharView("key")),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowMetadataHasKey((const char*)metadata_builder.data, ArrowCharView("key")),
+            false);
+  value = ArrowCharView(nullptr);
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
+                                  ArrowCharView("key2"), &value),
+            NANOARROW_OK);
+  EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
+
+  ArrowBufferReset(&metadata_builder);
+}
