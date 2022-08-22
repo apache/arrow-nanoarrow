@@ -29,7 +29,6 @@ include_directories(src)
 add_library(
     nanoarrow
     src/nanoarrow/array.c
-    src/nanoarrow/array_view.c
     src/nanoarrow/schema.c
     src/nanoarrow/utils.c)
 
@@ -58,7 +57,6 @@ if(NANOARROW_BUILD_TESTS)
     add_executable(utils_test src/nanoarrow/utils_test.cc)
     add_executable(buffer_test src/nanoarrow/buffer_test.cc)
     add_executable(array_test src/nanoarrow/array_test.cc)
-    add_executable(array_view_test src/nanoarrow/array_view_test.cc)
     add_executable(schema_test src/nanoarrow/schema_test.cc)
 
     if(NANOARROW_CODE_COVERAGE)
@@ -70,13 +68,11 @@ if(NANOARROW_BUILD_TESTS)
     target_link_libraries(utils_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
     target_link_libraries(buffer_test nanoarrow GTest::gtest_main)
     target_link_libraries(array_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
-    target_link_libraries(array_view_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
     target_link_libraries(schema_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
 
     include(GoogleTest)
     gtest_discover_tests(utils_test)
     gtest_discover_tests(buffer_test)
     gtest_discover_tests(array_test)
-    gtest_discover_tests(array_view_test)
     gtest_discover_tests(schema_test)
 endif()
