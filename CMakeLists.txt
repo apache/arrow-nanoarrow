@@ -23,7 +23,7 @@ project(NanoArrow)
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_AMALGAMATION OFF)
 
-option(NANOARROW_C_TEMPODE_COVERAGE "Enable coverage reporting" OFF)
+option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 
 if(NANOARROW_AMALGAMATION)
@@ -97,7 +97,7 @@ if(NANOARROW_BUILD_TESTS)
     add_executable(array_test src/nanoarrow/array_test.cc)
     add_executable(schema_test src/nanoarrow/schema_test.cc)
 
-    if(NANOARROW_C_TEMPODE_COVERAGE)
+    if(NANOARROW_CODE_COVERAGE)
         target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
         target_link_options(coverage_config INTERFACE --coverage)
         target_link_libraries(nanoarrow coverage_config)
