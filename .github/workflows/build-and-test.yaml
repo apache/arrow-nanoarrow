@@ -106,7 +106,7 @@ jobs:
           cmake --install . --prefix ../../dist
 
       - name: Build nanoarrow (default)
-        if: ${{ matrix.config.label }} == 'default-build'
+        if: matrix.config.label == 'default-build'
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
@@ -116,7 +116,7 @@ jobs:
           cmake --build .
 
       - name: Build nanoarrow (amalgamation)
-        if: ${{ matrix.config.label }} == 'amalgamation-build'
+        if: matrix.config.label == 'amalgamation-build'
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
@@ -133,7 +133,7 @@ jobs:
           ctest -T test --output-on-failure .
 
       - name: Run tests with valgrind
-        if: ${{ matrix.config.label }} == 'default-build'
+        if: matrix.config.label == 'default-build'
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
@@ -141,14 +141,14 @@ jobs:
           ctest -T memcheck .
 
       - name: Upload memcheck results
-        if: failure() && ${{ matrix.config.label }} == 'default-build'
+        if: failure() && matrix.config.label == 'default-build'
         uses: actions/upload-artifact@main
         with:
           name: nanoarrow-memcheck
           path: build/Testing/Temporary/MemoryChecker.*.log
 
       - name: Calculate coverage
-        if: ${{ matrix.config.label }} == 'default-build'
+        if: matrix.config.label == 'default-build'
         run: |
           SOURCE_PREFIX=`pwd`
           mkdir build/cov
