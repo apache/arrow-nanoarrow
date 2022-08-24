@@ -23,6 +23,7 @@ github:
     squash:  true
   features:
     issues: true
+  ghp_branch: gh-pages
 
 notifications:
   commits:      commits@arrow.apache.org
