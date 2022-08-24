@@ -187,13 +187,9 @@ jobs:
         with:
           name: nanoarrow-latest
           path: nanoarrow-latest.zip
-
-      - name: Update prerelease bundle
+      
+      - name: Update latest tag reference
         if: success() && github.ref == 'refs/heads/main'
-        uses: johnwbyrd/update-release@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          release: latest
-          tag: latest
-          prerelease: true
-          files: ./nanoarrow-devel.zip
+        run: |
+          git tag -f -a latest ${{ github.sha }}
+          git push -f origin refs/tags/latest
