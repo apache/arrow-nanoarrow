@@ -191,5 +191,10 @@ jobs:
       - name: Update latest tag reference
         if: success() && github.ref == 'refs/heads/main'
         run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
           git tag -f -a latest ${{ github.sha }}
           git push -f origin refs/tags/latest
+      
+      - name: Update latest tag asset
+        run: gh release upload latest nanoarrow-latest.zip --clobber
