@@ -197,4 +197,6 @@ jobs:
           git push -f origin refs/tags/latest
       
       - name: Update latest tag asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload latest nanoarrow-latest.zip --clobber
