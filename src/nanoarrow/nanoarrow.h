@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "typedefs_inline.h"
+#include "nanoarrow_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,6 +97,9 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 /// }@
 
 /// \defgroup nanoarrow-utils Utility data structures
+
+/// \brief Return the build id against which the library was compiled
+const char* ArrowNanoarrowBuildId();
 
 /// \brief Initialize a description of buffer arrangements from a storage type
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
@@ -729,9 +732,7 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
 
 // Inline function definitions
 #include "array_inline.h"
-#include "bitmap_inline.h"
 #include "buffer_inline.h"
-#include "utils_inline.h"
 
 #ifdef __cplusplus
 }

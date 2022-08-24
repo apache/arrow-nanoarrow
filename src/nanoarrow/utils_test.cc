@@ -25,6 +25,32 @@
 
 using namespace arrow;
 
+TEST(BuildIdTest, BuildIdTest) {
+  EXPECT_STREQ(ArrowNanoarrowBuildId(), NANOARROW_BUILD_ID);
+}
+
+TEST(ErrorTest, ErrorTestSet) {
+  ArrowError error;
+  EXPECT_EQ(ArrowErrorSet(&error, "there were %d foxes", 4), NANOARROW_OK);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "there were 4 foxes");
+}
+
+TEST(ErrorTest, ErrorTestSetOverrun) {
+  ArrowError error;
+  char big_error[2048];
+  const char* a_few_chars = "abcdefg";
+  for (int i = 0; i < 2047; i++) {
+    big_error[i] = a_few_chars[i % strlen(a_few_chars)];
+  }
+  big_error[2047] = '\0';
+
+  EXPECT_EQ(ArrowErrorSet(&error, "%s", big_error), ERANGE);
+  EXPECT_EQ(std::string(ArrowErrorMessage(&error)), std::string(big_error, 1023));
+
+  wchar_t bad_string[] = {0xFFFF, 0};
+  EXPECT_EQ(ArrowErrorSet(&error, "%ls", bad_string), EINVAL);
+}
+
 static uint8_t* MemoryPoolReallocate(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                      int64_t old_size, int64_t new_size) {
   MemoryPool* pool = reinterpret_cast<MemoryPool*>(allocator->private_data);

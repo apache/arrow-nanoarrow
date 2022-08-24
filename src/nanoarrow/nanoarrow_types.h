@@ -15,10 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef NANOARROW_TYPEDEFS_INLINE_H_INCLUDED
-#define NANOARROW_TYPEDEFS_INLINE_H_INCLUDED
+#ifndef NANOARROW_NANOARROW_TYPES_H_INCLUDED
+#define NANOARROW_NANOARROW_TYPES_H_INCLUDED
 
 #include <stdint.h>
+
+#include "build_id.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -176,6 +178,21 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_DATA
 };
 
+#define _NANOARROW_CONCAT(x, y) x##y
+#define _NANOARROW_MAKE_NAME(x, y) _NANOARROW_CONCAT(x, y)
+
+#define _NANOARROW_RETURN_NOT_OK_IMPL(NAME, EXPR) \
+  do {                                            \
+    const int NAME = (EXPR);                      \
+    if (NAME) return NAME;                        \
+  } while (0)
+
+#define NANOARROW_RETURN_NOT_OK(EXPR) \
+  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
+#define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
+  NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
+
 /// \brief A description of an arrangement of buffers
 ///
 /// Contains the minimum amount of information required to
@@ -205,6 +222,19 @@ struct ArrowStringView {
   /// (Not including the null terminator.)
   int64_t n_bytes;
 };
+
+static inline struct ArrowStringView ArrowCharView(const char* value) {
+  struct ArrowStringView out;
+
+  out.data = value;
+  if (value) {
+    out.n_bytes = (int64_t)strlen(value);
+  } else {
+    out.n_bytes = 0;
+  }
+
+  return out;
+}
 
 /// \brief An non-owning view of a buffer
 struct ArrowBufferView {

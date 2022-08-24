@@ -15,7 +15,39 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <errno.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "nanoarrow.h"
+
+const char* ArrowNanoarrowBuildId() { return NANOARROW_BUILD_ID; }
+
+int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
+  if (error == NULL) {
+    return NANOARROW_OK;
+  }
+
+  memset(error->message, 0, sizeof(error->message));
+
+  va_list args;
+  va_start(args, fmt);
+  int chars_needed = vsnprintf(error->message, sizeof(error->message), fmt, args);
+  va_end(args);
+
+  if (chars_needed < 0) {
+    return EINVAL;
+  } else if (chars_needed >= sizeof(error->message)) {
+    return ERANGE;
+  } else {
+    return NANOARROW_OK;
+  }
+}
+
+const char* ArrowErrorMessage(struct ArrowError* error) { return error->message; }
 
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_VALIDITY;
@@ -123,4 +155,55 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
     default:
       break;
   }
+}
+
+void* ArrowMalloc(int64_t size) { return malloc(size); }
+
+void* ArrowRealloc(void* ptr, int64_t size) { return realloc(ptr, size); }
+
+void ArrowFree(void* ptr) { free(ptr); }
+
+static uint8_t* ArrowBufferAllocatorMallocAllocate(struct ArrowBufferAllocator* allocator,
+                                                   int64_t size) {
+  return ArrowMalloc(size);
+}
+
+static uint8_t* ArrowBufferAllocatorMallocReallocate(
+    struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
+    int64_t new_size) {
+  return ArrowRealloc(ptr, new_size);
+}
+
+static void ArrowBufferAllocatorMallocFree(struct ArrowBufferAllocator* allocator,
+                                           uint8_t* ptr, int64_t size) {
+  ArrowFree(ptr);
+}
+
+static struct ArrowBufferAllocator ArrowBufferAllocatorMalloc = {
+    &ArrowBufferAllocatorMallocReallocate, &ArrowBufferAllocatorMallocFree, NULL};
+
+struct ArrowBufferAllocator ArrowBufferAllocatorDefault() {
+  return ArrowBufferAllocatorMalloc;
+}
+
+static uint8_t* ArrowBufferAllocatorNeverAllocate(struct ArrowBufferAllocator* allocator,
+                                                  int64_t size) {
+  return NULL;
+}
+
+static uint8_t* ArrowBufferAllocatorNeverReallocate(
+    struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
+    int64_t new_size) {
+  return NULL;
+}
+
+struct ArrowBufferAllocator ArrowBufferDeallocator(
+    void (*custom_free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                        int64_t size),
+    void* private_data) {
+  struct ArrowBufferAllocator allocator;
+  allocator.reallocate = &ArrowBufferAllocatorNeverReallocate;
+  allocator.free = custom_free;
+  allocator.private_data = private_data;
+  return allocator;
 }

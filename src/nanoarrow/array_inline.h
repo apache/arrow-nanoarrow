@@ -24,10 +24,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "bitmap_inline.h"
 #include "buffer_inline.h"
-#include "typedefs_inline.h"
-#include "utils_inline.h"
+#include "nanoarrow_types.h"
 
 #ifdef __cplusplus
 extern "C" {
