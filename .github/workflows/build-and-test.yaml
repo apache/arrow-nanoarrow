@@ -58,8 +58,6 @@ jobs:
         if: steps.cache-deps-build.outputs.cache-hit != 'true'
         run: mkdir build-deps
 
-      # There seems to be an error passing -DGTest_DIR into Arrow's build
-      # so we just build the same version of it and install
       - name: Fetch googletest
         if: steps.cache-deps-build.outputs.cache-hit != 'true'
         uses: actions/checkout@v3
@@ -179,12 +177,16 @@ jobs:
           mkdir build && cd build
           cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_BUILD_ID=${{ github.sha }}
           cmake --build .
-          cmake --install . --prefix=../nanoarrow-devel
-          cp LICENSE.txt nanoarrow-devel/LICENSE.txt
-          zip nanoarrow-devel.zip nanoarrow-devel/nanoarrow.h nanoarrow-devel/nanoarrow.c nanoarrow-devel/LICENSE.txt
+          cmake --install . --prefix=../nanoarrow-latest
+          cd ..
+          cp LICENSE.txt nanoarrow-latest/LICENSE.txt
+          zip nanoarrow-latest.zip nanoarrow-latest/nanoarrow.h nanoarrow-latest/nanoarrow.c nanoarrow-latest/LICENSE.txt
 
-      - name: Upload bundle
+      - name: Upload bundle artifact
         uses: actions/upload-artifact@main
         with:
-          name: nanoarrow-devel
-          path: nanoarrow-devel.zip
+          name: nanoarrow-latest
+          path: nanoarrow-latest.zip
+      
+      - name: Upload prerelease artifact
+        if: success() && github.ref != 'refs/heads/main'
