@@ -45,7 +45,7 @@ jobs:
           sphinx-build source _build/html
       
       - name: Run pkgdown
-        run: pkgdown::build_site_github_pages("r", dest_dir = "docs/_build/html/r", new_process = FALSE, install = FALSE)
+        run: pkgdown::build_site_github_pages("r", dest_dir = "../docs/_build/html/r", new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
       - name: Upload built documentation
