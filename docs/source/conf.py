@@ -72,6 +72,9 @@ html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
     "show_toc_level": 2,
     "use_edit_page_button": True,
+    "external_links": [
+      {"name": "R API", "url": "r/index.html"},
+  ],
 }
 
 html_context = {

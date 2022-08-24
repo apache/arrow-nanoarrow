@@ -19,7 +19,7 @@
 
 # Building nanoarrow documentation
 
-Building the nanoarrow documentation requires [Python](https://python.org), [R](https://r-project.org), and [Doxygen](https://doxygen.nl). In addition, several Python and R packages are required. You can install the Python dependencies using `pip install -r requirements.txt` in this directory; you can install the R dependencies using `R -e 'install.packages("pkgdown")`.
+Building the nanoarrow documentation requires [Python](https://python.org), [R](https://r-project.org), [Doxygen](https://doxygen.nl), and [pandoc](https://pandoc.org/). In addition, several Python and R packages are required. You can install the Python dependencies using `pip install -r requirements.txt` in this directory; you can install the R dependencies using `R -e 'install.packages("pkgdown")`.
 
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git
@@ -30,5 +30,9 @@ pushd ../src/apidoc
 doxygen
 popd
 
+# Run sphinx to generate the main site
 sphinx-build source _build/html
+
+# Run pkgdown to generate R package documentation
+R -e 'pkgdown::build_site("../r")'
 ```

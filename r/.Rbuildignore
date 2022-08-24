@@ -1,0 +1,8 @@
+^nanoarrow\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.\./docs/_build/html$
+^README\.Rmd$
