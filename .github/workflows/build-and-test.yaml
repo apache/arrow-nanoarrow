@@ -159,3 +159,29 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           directory: build/cov
+
+  deploy:
+    name: Bundle and deploy
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+          uses: actions/checkout@v3
+          with:
+            fetch-depth: 0
+
+        - name: Install dependencies
+          run: |
+            sudo apt-get install -y cmake
+        
+        - name: Create bundle
+          run: |
+            mkdir build && cd build
+            cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_BUILD_ID=${{ github.sha }}
+            cmake --build .
+            cmake --install . --prefix=../dist
+        
+        - name: Dump files
+          run: |
+            cat nanoarrow.h
+            cat nanoarrow.c
