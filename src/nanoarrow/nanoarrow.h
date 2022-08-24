@@ -98,6 +98,9 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \defgroup nanoarrow-utils Utility data structures
 
+/// \brief Return the build id against which the library was compiled
+const char* ArrowNanoarrowBuildId();
+
 /// \brief Initialize a description of buffer arrangements from a storage type
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
 

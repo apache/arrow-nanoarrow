@@ -25,6 +25,10 @@
 
 using namespace arrow;
 
+TEST(BuildIdTest, BuildIdTest) {
+  EXPECT_STREQ(ArrowNanoarrowBuildId(), NANOARROW_BUILD_ID);
+}
+
 TEST(ErrorTest, ErrorTestSet) {
   ArrowError error;
   EXPECT_EQ(ArrowErrorSet(&error, "there were %d foxes", 4), NANOARROW_OK);

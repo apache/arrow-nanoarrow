@@ -20,6 +20,8 @@
 
 #include <stdint.h>
 
+#include "build_id.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -24,6 +24,8 @@
 
 #include "nanoarrow.h"
 
+const char* ArrowNanoarrowBuildId() { return NANOARROW_BUILD_ID; }
+
 int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   if (error == NULL) {
     return NANOARROW_OK;
