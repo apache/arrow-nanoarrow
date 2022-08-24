@@ -189,7 +189,7 @@ jobs:
           path: nanoarrow-latest.zip
 
       - name: Update prerelease bundle
-        if: success() && github.ref != 'refs/heads/main'
+        if: success() && github.ref == 'refs/heads/main'
         uses: johnwbyrd/update-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
