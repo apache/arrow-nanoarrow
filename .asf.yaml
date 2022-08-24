@@ -24,6 +24,7 @@ github:
   features:
     issues: true
   ghp_branch: gh-pages
+  ghp_path: ~
 
 notifications:
   commits:      commits@arrow.apache.org
