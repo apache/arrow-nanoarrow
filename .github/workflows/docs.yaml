@@ -3,10 +3,10 @@ name: Build documentation
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   docs:
@@ -35,14 +35,14 @@ jobs:
           sphinx-build docs docs/_build/html
 
       - name: Clone gh-pages branch
-        if: success() && github.ref == 'refs/heads/master'
+        if: success() && github.ref == 'refs/heads/main'
         uses: actions/checkout@v2
         with:
           ref: gh-pages
           path: pages-clone
 
       - name: Update development documentation
-        if: success() && github.ref == 'refs/heads/master'
+        if: success() && github.ref == 'refs/heads/main'
         env:
           DOC_TAG: "dev"
         run: |
