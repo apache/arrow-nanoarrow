@@ -32,7 +32,8 @@ jobs:
       
       - name: Build documentation
         run: |
-          sphinx-build docs docs/_build/html
+          cd docs
+          sphinx-build source _build/html
 
       - name: Clone gh-pages branch
         if: success() && github.ref == 'refs/heads/main'
