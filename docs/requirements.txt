@@ -1,4 +1,3 @@
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,16 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-github:
-  description: "Helpers for Arrow C Data & Arrow C Stream interfaces"
-  homepage: https://arrow.apache.org/
-  enabled_merge_buttons:
-    squash:  true
-  features:
-    issues: true
-  ghp_branch: gh-pages
-
-notifications:
-  commits:      commits@arrow.apache.org
-  issues:       github@arrow.apache.org
-  pullrequests: github@arrow.apache.org
+pydata-sphinx-theme
+sphinx
+breathe

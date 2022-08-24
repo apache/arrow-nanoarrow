@@ -1,0 +1,70 @@
+name: Build documentation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  docs:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          sudo apt-get install doxygen
+          python -m pip install --upgrade pip
+          pip install -r docs/requirements.txt
+      
+      - name: Run doxygen
+        run: |
+          cd src/apidoc
+          doxygen
+      
+      - name: Build documentation
+        run: |
+          cd docs
+          sphinx-build source _build/html
+
+      - name: Upload built documentation
+        if: success() && github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@main
+        with:
+          name: nanarrow-docs
+          path: docs/_build/html
+
+      - name: Clone gh-pages branch
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+          path: pages-clone
+
+      - name: Update development documentation
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          DOC_TAG: "dev"
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          cd pages-clone
+          if [ -d "$DOC_TAG" ]; then
+            git rm -rf "$DOC_TAG"
+          fi
+          mkdir "$DOC_TAG"
+          cp -R ../docs/_build/html/* "$DOC_TAG"
+          touch .nojekyll
+          git add .nojekyll
+          git add *
+          git commit --allow-empty -m"update documentation for tag $DOC_TAG"
+          git push
+          cd ..
