@@ -173,15 +173,18 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get install -y cmake
-      
+
       - name: Create bundle
         run: |
           mkdir build && cd build
           cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_BUILD_ID=${{ github.sha }}
           cmake --build .
-          cmake --install . --prefix=../dist
-      
-      - name: Dump files
-        run: |
-          cat nanoarrow.h
-          cat nanoarrow.c
+          cmake --install . --prefix=../nanoarrow-devel
+          cp LICENSE.txt nanoarrow-devel/LICENSE.txt
+          zip nanoarrow-devel.zip nanoarrow-devel/nanoarrow.h nanoarrow-devel/nanoarrow.c nanoarrow-devel/LICENSE.txt
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@main
+        with:
+          name: nanoarrow-devel
+          path: nanoarrow-devel.zip
