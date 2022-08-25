@@ -1153,7 +1153,6 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
   struct ArrowStringView existing_value;
   ArrowMetadataReaderInit(&reader, metadata);
 
-  int64_t size = sizeof(int32_t);
   while (ArrowMetadataReaderRead(&reader, &existing_key, &existing_value) ==
          NANOARROW_OK) {
     int key_equal = key->n_bytes == existing_key.n_bytes &&

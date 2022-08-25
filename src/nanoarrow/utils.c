@@ -163,11 +163,6 @@ void* ArrowRealloc(void* ptr, int64_t size) { return realloc(ptr, size); }
 
 void ArrowFree(void* ptr) { free(ptr); }
 
-static uint8_t* ArrowBufferAllocatorMallocAllocate(struct ArrowBufferAllocator* allocator,
-                                                   int64_t size) {
-  return ArrowMalloc(size);
-}
-
 static uint8_t* ArrowBufferAllocatorMallocReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
     int64_t new_size) {
@@ -184,11 +179,6 @@ static struct ArrowBufferAllocator ArrowBufferAllocatorMalloc = {
 
 struct ArrowBufferAllocator ArrowBufferAllocatorDefault() {
   return ArrowBufferAllocatorMalloc;
-}
-
-static uint8_t* ArrowBufferAllocatorNeverAllocate(struct ArrowBufferAllocator* allocator,
-                                                  int64_t size) {
-  return NULL;
 }
 
 static uint8_t* ArrowBufferAllocatorNeverReallocate(
