@@ -158,6 +158,45 @@ jobs:
         with:
           directory: build/cov
 
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+    name: R / ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # Probably a better way to do this, but for now do the vendor step manually
+      - name: Vendor nanoarrow into the R package
+        run: |
+          cd r
+          ./configure
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+          working-directory: r
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          working-directory: r
+
   deploy:
     name: Bundle and deploy
     needs: build-and-test

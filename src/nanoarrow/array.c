@@ -331,9 +331,6 @@ static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
 
 ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
                                  int64_t additional_size_elements) {
-  struct ArrowArrayPrivateData* private_data =
-      (struct ArrowArrayPrivateData*)array->private_data;
-
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
 
@@ -398,9 +395,6 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
 
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error) {
-  struct ArrowArrayPrivateData* private_data =
-      (struct ArrowArrayPrivateData*)array->private_data;
-
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
   ArrowArrayFlushInternalPointers(array);

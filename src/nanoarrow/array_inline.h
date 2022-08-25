@@ -76,9 +76,6 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
 }
 
 static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array) {
-  struct ArrowArrayPrivateData* private_data =
-      (struct ArrowArrayPrivateData*)array->private_data;
-
   for (int64_t i = 0; i < 3; i++) {
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
     NANOARROW_RETURN_NOT_OK(ArrowBufferResize(buffer, buffer->size_bytes, 1));
