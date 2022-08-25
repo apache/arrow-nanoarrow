@@ -2,10 +2,12 @@
 #include <R.h>
 #include <Rinternals.h>
 
-SEXP nanoarrow_c_version();
+SEXP nanoarrow_c_build_id();
+SEXP nanoarrow_c_build_id_runtime();
 
 static const R_CallMethodDef CallEntries[] = {
-  {"nanoarrow_c_version", (DL_FUNC) &nanoarrow_c_version, 0},
+  {"nanoarrow_c_build_id", (DL_FUNC) &nanoarrow_c_build_id, 0},
+  {"nanoarrow_c_build_id_runtime", (DL_FUNC) &nanoarrow_c_build_id_runtime, 0},
   {NULL, NULL, 0}
 };
 

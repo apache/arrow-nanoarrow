@@ -1,0 +1,24 @@
+
+# if we are building from within the nanoarrow repo, we want to use cmake
+# to generate the bundled header/source
+if [ -f "../src/nanoarrow/nanoarrow.h" ]; then
+  echo "Bundling nanoarrow using ../CMakeLists.txt"
+  rm src/nanoarrow.h src/nanoarrow.c
+  if [ -d "cmake" ]; then
+    rm -rf cmake
+  fi
+  mkdir cmake && cd cmake
+  cmake ../.. -DNANOARROW_BUNDLE=ON
+  cmake --build . && cmake --install . --prefix=../src
+  cd ..
+  rm -rf cmake
+fi
+
+if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
+  echo "Found vendored nanoarrow"
+  exit 0
+fi
+
+echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
+echo "Tge .tar.gz was probably built incorrectly and it's probably not your fault"
+exit 1

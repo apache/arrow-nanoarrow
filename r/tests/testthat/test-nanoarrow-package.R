@@ -1,4 +1,7 @@
 
-test_that("nanoarrow_version() works", {
-  expect_vector(nanoarrow_version(), character(1))
+test_that("nanoarrow_build_id() works", {
+  expect_identical(
+    nanoarrow_build_id(runtime = TRUE),
+    nanoarrow_build_id(runtime = FALSE)
+  )
 })
