@@ -188,7 +188,7 @@ jobs:
         with:
           name: nanoarrow-latest
           path: nanoarrow-latest.zip
-      
+
       - name: Update latest tag reference
         if: success() && github.ref == 'refs/heads/main'
         run: |
@@ -196,8 +196,44 @@ jobs:
           git config --global user.name "GitHub Actions"
           git tag -f -a latest ${{ github.sha }}
           git push -f origin refs/tags/latest
-      
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
       - name: Update latest tag asset
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload latest nanoarrow-latest.zip --clobber
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          install.packages("gh")
+
+          rel <- gh::gh("GET /repos/apache/arrow-nanoarrow/releases/tags/latest")
+          if (length(rel$assets) > 0 && rel$assets[[1]]$name == "nanoarrow-latest.zip") {
+            gh::gh(
+              "DELETE /repos/apache/arrow-nanoarrow/releases/assets/{asset_id}",
+              asset_id = rel$assets[[1]]$id
+            )
+          }
+
+          upload_url <- paste0(
+            gsub("\\{.*?\\}", "", rel$upload_url),
+            "?name=nanoarrow-latest.zip"
+          )
+
+          name <- "nanoarrow-latest.zip"
+          con <- file(name, open = "rb")
+          content <- readBin(con, "raw", n = file.size(name))
+          close(con)
+
+          httr::POST(
+            upload_url,
+            config = httr::add_headers(
+              "Content-Type" = "application/zip",
+              "Accept" = "application/vnd.github+json",
+              "Authorization" = paste0("token ", Sys.getenv("GITHUB_PAT"))
+            ),
+            body = content,
+            encode = "raw"
+          )
+
+        shell: Rscript {0}
