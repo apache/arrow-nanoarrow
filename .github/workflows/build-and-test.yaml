@@ -187,19 +187,3 @@ jobs:
         with:
           name: nanoarrow-latest
           path: nanoarrow-latest.zip
-
-      - name: Clone gh-pages branch
-        uses: actions/checkout@v2
-        with:
-          ref: gh-pages
-          path: pages-clone
-
-      - name: Upload bundle
-        run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
-          cd pages-clone
-          cp ../nanoarrow-latest.zip nanoarrow-latest.zip
-          git add *
-          git commit --allow-empty -m"Upload dev bundle"
-          git push
