@@ -22,7 +22,11 @@ project(NanoArrow)
 
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
-option(NANOARROW_BUILD_ID "A string identifying this build" "devel")
+option(NANOARROW_BUILD_ID "A string identifying this build" OFF)
+
+if (NOT NANOARROW_BUILD_ID)
+    string(RANDOM LENGTH 10 NANOARROW_BUILD_ID)
+endif()
 
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
@@ -78,6 +82,7 @@ else()
 
     install(TARGETS nanoarrow DESTINATION lib)
     install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/build_id.h DESTINATION include/nanoarrow)
 endif()
 
 if(NANOARROW_BUILD_TESTS)
