@@ -110,7 +110,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUILD_ID=${{ github.sha }}
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
           cmake --build .
 
       - name: Build nanoarrow (bundled)
@@ -120,7 +120,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON -DNANOARROW_BUILD_ID=${{ github.sha }}
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
           cmake --build .
 
       - name: Run tests
@@ -175,7 +175,7 @@ jobs:
       - name: Create bundle
         run: |
           mkdir build && cd build
-          cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_BUILD_ID=${{ github.sha }}
+          cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_BUILD_ID=gha${{ github.sha }}
           cmake --build .
           cmake --install . --prefix=../nanoarrow-latest
           cd ..
@@ -188,8 +188,18 @@ jobs:
           name: nanoarrow-latest
           path: nanoarrow-latest.zip
       
-      - name: Update latest tag reference
+      - name: Commit bundle to dist/
         if: success() && github.ref == 'refs/heads/main'
         run: |
-          git tag -f -a latest ${{ github.sha }}
-          git push -f origin refs/tags/latest
+          cp nanoarrow-latest/nanoarrow.h dist/nanoarrow.h
+          cp nanoarrow-latest/nanoarrow.c dist/nanoarrow.c
+          git add dist/nanoarrow.h dist/nanoarrow.c
+
+          # only commit if there are changes
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          UPDATED=`git diff --name-only --cached`
+          if [ "$UPDATED" ]; then
+            git commit -m "Update dist/ for commit ${{ github.sha }}"
+            git push
+          fi
