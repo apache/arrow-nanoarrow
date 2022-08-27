@@ -362,7 +362,7 @@ struct ArrowArrayView {
 #ifndef NANOARROW_BUILD_ID_H_INCLUDED
 #define NANOARROW_BUILD_ID_H_INCLUDED
 
-#define NANOARROW_BUILD_ID "gha6953efeb0657c72fd66af8f34be66e0a3ed0e26a"
+#define NANOARROW_BUILD_ID "ghad3989298af067b9bedd66d93ef1c0bd84e94c42d"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
