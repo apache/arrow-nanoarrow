@@ -3,7 +3,7 @@
 # to generate the bundled header/source
 if [ -f "../src/nanoarrow/nanoarrow.h" ]; then
   echo "Bundling nanoarrow using ../CMakeLists.txt"
-  rm src/nanoarrow.h src/nanoarrow.c
+  rm -f src/nanoarrow.h src/nanoarrow.c
   if [ -d "cmake" ]; then
     rm -rf cmake
   fi
@@ -20,5 +20,5 @@ if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
 fi
 
 echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
-echo "Tge .tar.gz was probably built incorrectly and it's probably not your fault"
+echo "The .tar.gz was probably built incorrectly and it's probably not your fault"
 exit 1
