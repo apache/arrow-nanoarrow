@@ -21,12 +21,13 @@
 
 library(tidyverse)
 
-src_files <- list.files("src", "\\.(c|cpp)$", full.names = TRUE)
+src_files <- list.files("src", "\\.(c|cpp)$", full.names = TRUE) %>%
+  setdiff("src/init.c")
 src_sources <- src_files %>% set_names() %>% map_chr(readr::read_file)
 
 defs <- tibble(
   def = src_sources %>%
-    str_extract_all(regex("SEXP nanoarrow_c_[^\\)]+\\)\\s+", multiline = TRUE)) %>%
+    str_extract_all(regex("SEXP nanoarrow_c_[^\\)]+\\)", multiline = TRUE)) %>%
     unlist() %>%
     str_replace_all("\\s+", " ") %>%
     str_trim(),

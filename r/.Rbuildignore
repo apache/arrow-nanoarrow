@@ -6,3 +6,4 @@
 ^pkgdown$
 ^\.\./docs/_build/html$
 ^README\.Rmd$
+^\.vscode$

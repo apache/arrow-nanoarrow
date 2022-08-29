@@ -23,18 +23,18 @@
 #include "array_stream.h"
 #include "schema.h"
 
-SEXP nanorrow_c_allocate_schema() { return schema_owning_xptr(); }
+SEXP nanoarrow_c_allocate_schema() { return schema_owning_xptr(); }
 
-SEXP nanorrow_c_allocate_array() { return array_owning_xptr(); }
+SEXP nanoarrow_c_allocate_array() { return array_owning_xptr(); }
 
-SEXP nanorrow_c_allocate_array_stream() { return array_stream_owning_xptr(); }
+SEXP nanoarrow_c_allocate_array_stream() { return array_stream_owning_xptr(); }
 
 SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
   if (TYPEOF(obj_sexp) == EXTPTRSXP) {
     return obj_sexp;
   } else if (TYPEOF(obj_sexp) == REALSXP && Rf_length(obj_sexp) == 1) {
     intptr_t ptr_int = REAL(obj_sexp)[0];
-    return R_MakeExternalPtr((void*) ptr_int, R_NilValue, R_NilValue);
+    return R_MakeExternalPtr((void*)ptr_int, R_NilValue, R_NilValue);
   } else if (TYPEOF(obj_sexp) == STRSXP && Rf_length(obj_sexp) == 1) {
     const char* text = CHAR(STRING_ELT(obj_sexp, 0));
     char* end_ptr;
@@ -43,11 +43,19 @@ SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
       Rf_error("'%s' could not be interpreted as an unsigned 64-bit integer", text);
     }
 
-    return R_MakeExternalPtr((void*) ptr_int, R_NilValue, R_NilValue);
+    return R_MakeExternalPtr((void*)ptr_int, R_NilValue, R_NilValue);
   }
 
   Rf_error("Pointer must be chr[1], dbl[1], or external pointer");
   return R_NilValue;
+}
+
+SEXP nanoarrow_c_pointer_addr_chr(SEXP ptr) {
+  uintptr_t ptr_int = (uintptr_t)R_ExternalPtrAddr(nanoarrow_c_pointer(ptr));
+  char addr_chars[100];
+  memset(addr_chars, 0, 100);
+  snprintf(addr_chars, sizeof(addr_chars), "%lu", (unsigned long)ptr_int);
+  return Rf_mkString(addr_chars);
 }
 
 SEXP nanoarrow_c_pointer_is_valid(SEXP ptr) {
