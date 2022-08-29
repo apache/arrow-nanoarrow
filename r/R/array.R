@@ -18,15 +18,17 @@
 #' Convert an object to a nanoarrow array
 #'
 #' @param x An object to convert to a array
+#' @param schema An optional schema used to enforce conversion to a particular
+#'   type. Defaults to [infer_nanoarrow_schema()].
 #' @param ... Passed to S3 methods
 #'
 #' @return An object of class 'nanoarrow_array'
 #' @export
-as_nanoarrow_array <- function(x, ...) {
+as_nanoarrow_array <- function(x, ..., schema = infer_nanoarrow_schema(x)) {
   UseMethod("as_nanoarrow_array")
 }
 
 #' @export
-as_nanoarrow_array.nanoarrow_array <- function(x, ...) {
-  x
+as_nanoarrow_array.default <- function(x, ..., schema = infer_nanoarrow_schema(x)) {
+  as_nanoarrow_array(arrow::as_arrow_array(x, type = arrow::as_data_type(schema)))
 }

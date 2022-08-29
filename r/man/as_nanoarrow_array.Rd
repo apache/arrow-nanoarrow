@@ -4,12 +4,15 @@
 \alias{as_nanoarrow_array}
 \title{Convert an object to a nanoarrow array}
 \usage{
-as_nanoarrow_array(x, ...)
+as_nanoarrow_array(x, ..., schema = infer_nanoarrow_schema(x))
 }
 \arguments{
 \item{x}{An object to convert to a array}
 
 \item{...}{Passed to S3 methods}
+
+\item{schema}{An optional schema used to enforce conversion to a particular
+type. Defaults to \code{\link[=infer_nanoarrow_schema]{infer_nanoarrow_schema()}}.}
 }
 \value{
 An object of class 'nanoarrow_array'

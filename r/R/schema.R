@@ -36,3 +36,8 @@ as_nanoarrow_schema.nanoarrow_schema <- function(x, ...) {
 infer_nanoarrow_schema <- function(x, ...) {
   UseMethod("infer_nanoarrow_schema")
 }
+
+#' @export
+infer_nanoarrow_schema.default <- function(x, ...) {
+  as_nanoarrow_schema(arrow::infer_type(x, ...))
+}

@@ -30,3 +30,8 @@ as_nanoarrow_array_stream <- function(x, ...) {
 as_nanoarrow_array_stream.nanoarrow_array_stream <- function(x, ...) {
   x
 }
+
+#' @export
+as_nanoarrow_array_stream.default <- function(x, ...) {
+  as_nanoarrow_array_stream(arrow::as_record_batch_reader(x, ...))
+}
