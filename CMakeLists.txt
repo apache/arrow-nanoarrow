@@ -23,9 +23,16 @@ project(NanoArrow)
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
 option(NANOARROW_BUILD_ID "A string identifying this build" OFF)
+option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
 
 if (NOT NANOARROW_BUILD_ID)
     string(RANDOM LENGTH 10 NANOARROW_BUILD_ID)
+endif()
+
+if (NANOARROW_NAMESPACE)
+    set(NANOARROW_NAMESPACE_DEFINE "#define NANOARROW_NAMESPACE ${NANOARROW_NAMESPACE}")
+else()
+    set(NANOARROW_NAMESPACE_DEFINE "")
 endif()
 
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
