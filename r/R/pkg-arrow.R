@@ -130,6 +130,11 @@ as_nanoarrow_array.RecordBatch <- function(x, ..., schema = NULL) {
 
 #' @export
 as_nanoarrow_array.Table <- function(x, ..., schema = NULL) {
-  batch <- arrow::as_record_batch(x, schema = arrow::as_schema(schema))
-  as_nanoarrow_array.RecordBatch(x)
+  if (is.null(schema)) {
+    batch <- arrow::as_record_batch(x)
+  } else {
+    batch <- arrow::as_record_batch(x, schema = arrow::as_schema(schema))
+  }
+
+  as_nanoarrow_array.RecordBatch(batch)
 }

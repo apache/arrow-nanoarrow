@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("array to Array works", {
+test_that("nanoarrow_array to Array works", {
   skip_if_not_installed("arrow")
 
   int <- arrow::as_arrow_array(as_nanoarrow_array(1:5))
@@ -31,7 +31,34 @@ test_that("array to Array works", {
   expect_true(chr$Equals(arrow::Array$create(c("one", "two"))))
 })
 
-test_that("array to RecordBatch works", {
+test_that("Array to nanoarrow_array works", {
+  skip_if_not_installed("arrow")
+
+  int <- arrow::Array$create(1:5)
+  int_array <- as_nanoarrow_array(int)
+  expect_s3_class(int_array, "nanoarrow_array")
+  int_schema <- infer_nanoarrow_schema(int_array)
+  expect_s3_class(int_schema, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_arrow_array(int_array)$Equals(
+      arrow::Array$create(1:5)
+    )
+  )
+
+  dbl_array <- as_nanoarrow_array(int, schema = arrow::float64())
+  expect_s3_class(dbl_array, "nanoarrow_array")
+  dbl_schema <- infer_nanoarrow_schema(dbl_array)
+  expect_s3_class(dbl_schema, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_arrow_array(dbl_array)$Equals(
+      arrow::Array$create(1:5, type = arrow::float64())
+    )
+  )
+})
+
+test_that("nanoarrow_array to RecordBatch works", {
   skip_if_not_installed("arrow")
 
   df <- data.frame(a = 1:5, b = letters[1:5])
@@ -51,7 +78,37 @@ test_that("array to RecordBatch works", {
   )
 })
 
-test_that("array to Table works", {
+test_that("RecordBatch to nanoarrow_array", {
+  skip_if_not_installed("arrow")
+
+  batch <- arrow::record_batch(a = 1:5, b = letters[1:5])
+  struct_array <- as_nanoarrow_array(batch)
+  expect_s3_class(struct_array, "nanoarrow_array")
+  struct_schema <- infer_nanoarrow_schema(struct_array)
+  expect_s3_class(struct_schema, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_record_batch(struct_array)$Equals(
+      arrow::record_batch(a = 1:5, b = letters[1:5])
+    )
+  )
+
+  struct_array_casted <- as_nanoarrow_array(
+    batch,
+    schema = arrow::schema(a = arrow::float64(), b = arrow::string())
+  )
+  expect_s3_class(struct_array_casted, "nanoarrow_array")
+  struct_schema_casted <- infer_nanoarrow_schema(struct_array_casted)
+  expect_s3_class(struct_schema_casted, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_record_batch(struct_array_casted)$Equals(
+      arrow::record_batch(a = as.double(1:5), b = letters[1:5])
+    )
+  )
+})
+
+test_that("nanoarrow_array to Table works", {
   skip_if_not_installed("arrow")
 
   df <- data.frame(a = 1:5, b = letters[1:5])
@@ -71,7 +128,37 @@ test_that("array to Table works", {
   )
 })
 
-test_that("schema to DataType works", {
+test_that("Table to nanoarrow_array", {
+  skip_if_not_installed("arrow")
+
+  table <- arrow::arrow_table(a = 1:5, b = letters[1:5])
+  struct_array <- as_nanoarrow_array(table)
+  expect_s3_class(struct_array, "nanoarrow_array")
+  struct_schema <- infer_nanoarrow_schema(struct_array)
+  expect_s3_class(struct_schema, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_arrow_table(struct_array)$Equals(
+      arrow::arrow_table(a = 1:5, b = letters[1:5])
+    )
+  )
+
+  struct_array_casted <- as_nanoarrow_array(
+    table,
+    schema = arrow::schema(a = arrow::float64(), b = arrow::string())
+  )
+  expect_s3_class(struct_array_casted, "nanoarrow_array")
+  struct_schema_casted <- infer_nanoarrow_schema(struct_array_casted)
+  expect_s3_class(struct_schema_casted, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_arrow_table(struct_array_casted)$Equals(
+      arrow::arrow_table(a = as.double(1:5), b = letters[1:5])
+    )
+  )
+})
+
+test_that("nanoarrow_schema to DataType works", {
   skip_if_not_installed("arrow")
 
   int_schema <- as_nanoarrow_schema(arrow::int32())
@@ -79,7 +166,23 @@ test_that("schema to DataType works", {
   expect_true(arrow_type$Equals(arrow::int32()))
 })
 
-test_that("schema to Schema works", {
+test_that("DataType to nanoarrow_schema", {
+  skip_if_not_installed("arrow")
+
+  schema <- as_nanoarrow_schema(arrow::int32())
+  expect_s3_class(schema, "nanoarrow_schema")
+  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
+})
+
+test_that("Field to nanoarrow_schema", {
+  skip_if_not_installed("arrow")
+
+  schema <- as_nanoarrow_schema(arrow::field("name", arrow::int32()))
+  expect_s3_class(schema, "nanoarrow_schema")
+  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
+})
+
+test_that("nanoarrow_schema to Schema works", {
   skip_if_not_installed("arrow")
 
   struct_schema <- as_nanoarrow_schema(
@@ -87,4 +190,12 @@ test_that("schema to Schema works", {
   )
   arrow_schema <- arrow::as_schema(struct_schema)
   expect_true(arrow_schema$Equals(arrow::schema(a = arrow::int32(), b = arrow::string())))
+})
+
+test_that("Schema to nanoarrow_schema", {
+  skip_if_not_installed("arrow")
+
+  schema <- as_nanoarrow_schema(arrow::schema(name = arrow::int32()))
+  expect_s3_class(schema, "nanoarrow_schema")
+  expect_true(arrow::as_schema(schema)$Equals(arrow::schema(name = arrow::int32())))
 })
