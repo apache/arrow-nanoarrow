@@ -102,6 +102,36 @@ test_that("nanoarrow_pointer_move() works for array_stream", {
   )
 })
 
+test_that("nanoarrow_pointer_move() can import from chr address", {
+  ptr <- infer_nanoarrow_schema(integer())
+  ptr_chr <- nanoarrow_pointer_addr_chr(ptr)
+  dst <- nanoarrow_allocate_schema()
+
+  nanoarrow_pointer_move(ptr_chr, dst)
+  expect_false(nanoarrow_pointer_is_valid(ptr))
+  expect_true(nanoarrow_pointer_is_valid(dst))
+})
+
+test_that("nanoarrow_pointer_move() can import from dbl address", {
+  ptr <- infer_nanoarrow_schema(integer())
+  ptr_dbl <- nanoarrow_pointer_addr_dbl(ptr)
+  dst <- nanoarrow_allocate_schema()
+
+  nanoarrow_pointer_move(ptr_dbl, dst)
+  expect_false(nanoarrow_pointer_is_valid(ptr))
+  expect_true(nanoarrow_pointer_is_valid(dst))
+})
+
+test_that("nanoarrow_pointer_move() errors for bad input", {
+  ptr <- infer_nanoarrow_schema(integer())
+  dst <- nanoarrow_allocate_schema()
+  expect_error(nanoarrow_pointer_move(ptr, NULL), "`ptr_dst` must inherit from")
+  expect_error(
+    nanoarrow_pointer_move(NULL, dst),
+    "Pointer must be chr\\[1\\], dbl\\[1\\], or external pointer"
+  )
+})
+
 test_that("nanoarrow_pointer_export() works for schema", {
   ptr <- infer_nanoarrow_schema(integer())
   dst <- nanoarrow_allocate_schema()

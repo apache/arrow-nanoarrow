@@ -27,6 +27,12 @@ nanoarrow_pointer_is_valid <- function(ptr) {
 
 #' @rdname nanoarrow_pointer_is_valid
 #' @export
+nanoarrow_pointer_addr_dbl <- function(ptr) {
+  .Call(nanoarrow_c_pointer_addr_dbl, ptr)
+}
+
+#' @rdname nanoarrow_pointer_is_valid
+#' @export
 nanoarrow_pointer_addr_chr <- function(ptr) {
   .Call(nanoarrow_c_pointer_addr_chr, ptr)
 }

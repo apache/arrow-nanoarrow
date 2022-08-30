@@ -2,6 +2,7 @@
 % Please edit documentation in R/pointers.R
 \name{nanoarrow_pointer_is_valid}
 \alias{nanoarrow_pointer_is_valid}
+\alias{nanoarrow_pointer_addr_dbl}
 \alias{nanoarrow_pointer_addr_chr}
 \alias{nanoarrow_pointer_release}
 \alias{nanoarrow_pointer_move}
@@ -12,6 +13,8 @@
 \title{Danger zone: low-level pointer operations}
 \usage{
 nanoarrow_pointer_is_valid(ptr)
+
+nanoarrow_pointer_addr_dbl(ptr)
 
 nanoarrow_pointer_addr_chr(ptr)
 

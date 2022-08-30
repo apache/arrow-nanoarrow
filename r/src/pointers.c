@@ -50,6 +50,11 @@ SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
   return R_NilValue;
 }
 
+SEXP nanoarrow_c_pointer_addr_dbl(SEXP ptr) {
+  uintptr_t ptr_int = (uintptr_t) R_ExternalPtrAddr(nanoarrow_c_pointer(ptr));
+  return Rf_ScalarReal(ptr_int);
+}
+
 SEXP nanoarrow_c_pointer_addr_chr(SEXP ptr) {
   uintptr_t ptr_int = (uintptr_t)R_ExternalPtrAddr(nanoarrow_c_pointer(ptr));
   char addr_chars[100];

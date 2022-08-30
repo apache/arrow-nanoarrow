@@ -28,6 +28,7 @@ extern SEXP nanoarrow_c_allocate_schema();
 extern SEXP nanoarrow_c_allocate_array();
 extern SEXP nanoarrow_c_allocate_array_stream();
 extern SEXP nanoarrow_c_pointer(SEXP obj_sexp);
+extern SEXP nanoarrow_c_pointer_addr_dbl(SEXP ptr);
 extern SEXP nanoarrow_c_pointer_addr_chr(SEXP ptr);
 extern SEXP nanoarrow_c_pointer_is_valid(SEXP ptr);
 extern SEXP nanoarrow_c_pointer_release(SEXP ptr);
@@ -44,6 +45,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_allocate_array", (DL_FUNC)&nanoarrow_c_allocate_array, 0},
     {"nanoarrow_c_allocate_array_stream", (DL_FUNC)&nanoarrow_c_allocate_array_stream, 0},
     {"nanoarrow_c_pointer", (DL_FUNC)&nanoarrow_c_pointer, 1},
+    {"nanoarrow_c_pointer_addr_dbl", (DL_FUNC)&nanoarrow_c_pointer_addr_dbl, 1},
     {"nanoarrow_c_pointer_addr_chr", (DL_FUNC)&nanoarrow_c_pointer_addr_chr, 1},
     {"nanoarrow_c_pointer_is_valid", (DL_FUNC)&nanoarrow_c_pointer_is_valid, 1},
     {"nanoarrow_c_pointer_release", (DL_FUNC)&nanoarrow_c_pointer_release, 1},
