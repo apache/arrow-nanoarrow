@@ -15,6 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("infer_type() for nanoarrow_array works", {
+  skip_if_not_installed("arrow")
+
+  array <- as_nanoarrow_array(1:5)
+  expect_true(
+    arrow::infer_type(array)$Equals(arrow::int32())
+  )
+})
+
+test_that("infer_nanoarrow_schema() works for arrow objects", {
+  skip_if_not_installed("arrow")
+
+  int_schema <- infer_nanoarrow_schema(arrow::Array$create(1:10))
+  expect_true(arrow::as_data_type(int_schema)$Equals(arrow::int32()))
+})
+
 test_that("nanoarrow_array to Array works", {
   skip_if_not_installed("arrow")
 
@@ -253,25 +269,6 @@ test_that("nanoarrow_array_stream to RecordBatchReader works", {
     )
   )
   expect_null(reader_roundtrip$read_next_batch())
-
-  skip("Casting conversion to RecordBatchReader not supported")
-
-  reader <- arrow::as_record_batch_reader(
-    arrow::record_batch(a = 1:5, b = letters[1:5])
-  )
-  array_stream <- as_nanoarrow_array_stream(reader)
-
-  reader_casted <- arrow::as_record_batch_reader(
-    array_stream,
-    schema = arrow::schema(a = arrow::float64(), b = arrow::string())
-  )
-  expect_false(nanoarrow_pointer_is_valid(array_stream))
-  expect_true(
-    reader_casted$read_next_batch()$Equals(
-      arrow::record_batch(a = as.double(1:5), b = letters[1:5])
-    )
-  )
-  expect_null(reader_casted$read_next_batch())
 })
 
 test_that("RecordBatchReader to nanoarrow_array_stream works", {
@@ -287,23 +284,6 @@ test_that("RecordBatchReader to nanoarrow_array_stream works", {
   expect_true(
     reader_roundtrip$read_next_batch()$Equals(
       arrow::record_batch(a = 1:5, b = letters[1:5])
-    )
-  )
-  expect_null(reader_roundtrip$read_next_batch())
-
-  reader <- arrow::as_record_batch_reader(
-    arrow::record_batch(a = 1:5, b = letters[1:5])
-  )
-  array_stream_casted <- as_nanoarrow_array_stream(
-    reader,
-    schema = arrow::schema(a = arrow::float64(), b = arrow::string())
-  )
-  expect_s3_class(array_stream, "nanoarrow_array_stream")
-
-  reader_roundtrip <- arrow::as_record_batch_reader(array_stream_casted)
-  expect_true(
-    reader_roundtrip$read_next_batch()$Equals(
-      arrow::record_batch(a = as.double(1:5), b = letters[1:5])
     )
   )
   expect_null(reader_roundtrip$read_next_batch())
