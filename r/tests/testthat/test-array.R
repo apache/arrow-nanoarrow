@@ -31,3 +31,12 @@ test_that("infer_nanoarrow_schema() works for nanoarrow_array", {
   nanoarrow_array_set_schema(array, NULL)
   expect_error(infer_nanoarrow_schema(array), "has no associated schema")
 })
+
+test_that("nanoarrow_array_set_schema() errors for invalid schema/array", {
+  array <- as_nanoarrow_array(integer())
+  schema <- infer_nanoarrow_schema(character())
+  expect_error(
+    nanoarrow_array_set_schema(array, schema),
+    "Expected array with 3 buffer\\(s\\) but found 2 buffer\\(s\\)"
+  )
+})

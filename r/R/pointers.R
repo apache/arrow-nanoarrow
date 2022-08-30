@@ -51,7 +51,8 @@ nanoarrow_pointer_export <- function(ptr_src, ptr_dst) {
   } else if (inherits(ptr_src, "nanoarrow_array")) {
     invisible(.Call(nanoarrow_c_export_array, ptr_src, ptr_dst))
   } else if (inherits(ptr_src, "nanoarrow_array_stream")) {
-    stop("Exporting nanoarrow_array_stream is not yet supported")
+    # for streams, we don't keep the original pointer alive
+    nanoarrow_pointer_move(ptr_src, ptr_dst)
   } else {
     stop(
       "`ptr_src` must inherit from 'nanoarrow_schema', 'nanoarrow_array', or 'nanoarrow_array_stream'"
