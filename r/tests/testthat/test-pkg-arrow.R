@@ -70,3 +70,21 @@ test_that("array to Table works", {
     )
   )
 })
+
+test_that("schema to DataType works", {
+  skip_if_not_installed("arrow")
+
+  int_schema <- as_nanoarrow_schema(arrow::int32())
+  arrow_type <- arrow::as_data_type(int_schema)
+  expect_true(arrow_type$Equals(arrow::int32()))
+})
+
+test_that("schema to Schema works", {
+  skip_if_not_installed("arrow")
+
+  struct_schema <- as_nanoarrow_schema(
+    arrow::struct(a = arrow::int32(), b = arrow::string())
+  )
+  arrow_schema <- arrow::as_schema(struct_schema)
+  expect_true(arrow_schema$Equals(arrow::schema(a = arrow::int32(), b = arrow::string())))
+})

@@ -79,18 +79,57 @@ as_nanoarrow_schema.DataType <- function(x, ...) {
 }
 
 #' @export
-as_nanoarrow_array_stream.RecordBatchReader <- function(x, ...) {
-  array_stream <- nanoarrow_allocate_array_stream()
-  x$export_to_c(array_stream)
-  array_stream
+as_nanoarrow_schema.Field <- function(x, ...) {
+  schema <- nanoarrow_allocate_schema()
+  x$export_to_c(schema)
+  schema
 }
 
 #' @export
-as_nanoarrow_array.Array <- function(x, ...) {
+as_nanoarrow_schema.Schema <- function(x, ...) {
   schema <- nanoarrow_allocate_schema()
-  array <- nanoarrow_allocate_array()
-  x$export_to_c(array, schema)
+  x$export_to_c(schema)
+  schema
+}
 
-  nanoarrow_array_set_schema(array, schema)
+#' @export
+as_nanoarrow_array.Array <- function(x, ..., schema = NULL) {
+  imported_schema <- nanoarrow_allocate_schema()
+  array <- nanoarrow_allocate_array()
+
+  if (!is.null(schema)) {
+    x <- x$cast(arrow::as_data_type(schema))
+  }
+
+  x$export_to_c(array, imported_schema)
+
+  nanoarrow_array_set_schema(array, imported_schema)
   array
+}
+
+#' @export
+as_nanoarrow_array.ChunkedArray <- function(x, ..., schema = NULL) {
+  array <- arrow::as_arrow_array(x, type = arrow::as_data_type(schema))
+  as_nanoarrow_array.Array(x)
+}
+
+#' @export
+as_nanoarrow_array.RecordBatch <- function(x, ..., schema = NULL) {
+  imported_schema <- nanoarrow_allocate_schema()
+  array <- nanoarrow_allocate_array()
+
+  if (!is.null(schema)) {
+    x <- x$cast(arrow::as_schema(schema))
+  }
+
+  x$export_to_c(array, imported_schema)
+
+  nanoarrow_array_set_schema(array, imported_schema)
+  array
+}
+
+#' @export
+as_nanoarrow_array.Table <- function(x, ..., schema = NULL) {
+  batch <- arrow::as_record_batch(x, schema = arrow::as_schema(schema))
+  as_nanoarrow_array.RecordBatch(x)
 }
