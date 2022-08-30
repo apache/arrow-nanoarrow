@@ -126,7 +126,7 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
     memcpy(obj_dst, obj_src, sizeof(struct ArrowSchema));
     obj_src->release = NULL;
 
-  } else if (Rf_inherits(ptr_dst, "nanoarrow_array_data")) {
+  } else if (Rf_inherits(ptr_dst, "nanoarrow_array")) {
     struct ArrowArray* obj_dst = (struct ArrowArray*)R_ExternalPtrAddr(ptr_dst);
     if (obj_dst == NULL) {
       Rf_error("`ptr_dst` is a pointer to NULL");
@@ -166,7 +166,7 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
 
   } else {
     Rf_error(
-        "`ptr_dst` must inherit from 'nanoarrow_schema', 'nanoarrow_array_data', or "
+        "`ptr_dst` must inherit from 'nanoarrow_schema', 'nanoarrow_array', or "
         "'nanoarrow_array_stream'");
   }
 
@@ -174,6 +174,58 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
   R_SetExternalPtrProtected(ptr_dst, R_ExternalPtrProtected(xptr_src));
   R_SetExternalPtrTag(ptr_dst, R_ExternalPtrTag(xptr_src));
 
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
+// The rest of this package operates under the assumption that references
+// to a schema/array external pointer are kept by anything that needs
+// the underlying memory to persist. When the reference count reaches 0,
+// R calls the release callback (and nobody else).
+// When exporting to something that is expecting to call the release callback
+// itself (e.g., Arrow C++ via the arrow R package or pyarrow Python package),
+// the structure and the release callback need to keep the information.
+
+// schemas are less frequently iterated over and it's much simpler to
+// (recursively) copy the whole object and export it rather than try to
+// keep all the object dependencies alive and/or risk moving a dependency
+// of some other R object.
+SEXP nanoarrow_c_export_schema(SEXP schema_xptr, SEXP ptr_dst) {
+  struct ArrowSchema* obj_src = schema_from_xptr(schema_xptr);
+  SEXP xptr_dst = PROTECT(nanoarrow_c_pointer(ptr_dst));
+
+  struct ArrowSchema* obj_dst = (struct ArrowSchema*) R_ExternalPtrAddr(xptr_dst);
+  if (obj_dst == NULL) {
+    Rf_error("`ptr_dst` is a pointer to NULL");
+  }
+
+  if (obj_dst->release != NULL) {
+    Rf_error("`ptr_dst` is a valid struct ArrowSchema");
+  }
+
+  int result = ArrowSchemaDeepCopy(obj_src, obj_dst);
+  if (result != NANOARROW_OK) {
+    Rf_error("Failed to deep copy struct ArrowSchema");
+  }
+
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
+
+SEXP nanoarrow_c_export_array(SEXP array_xptr, SEXP ptr_dst) {
+  SEXP xptr_dst = PROTECT(nanoarrow_c_pointer(ptr_dst));
+
+  struct ArrowArray* obj_dst = (struct ArrowArray*) R_ExternalPtrAddr(xptr_dst);
+  if (obj_dst == NULL) {
+    Rf_error("`ptr_dst` is a pointer to NULL");
+  }
+
+  if (obj_dst->release != NULL) {
+    Rf_error("`ptr_dst` is a valid struct ArrowArray");
+  }
+
+  array_export(array_xptr, obj_dst);
   UNPROTECT(1);
   return R_NilValue;
 }

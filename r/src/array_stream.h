@@ -26,7 +26,7 @@
 void finalize_array_stream_xptr(SEXP array_stream_xptr);
 
 static inline struct ArrowArrayStream* array_stream_from_xptr(SEXP array_stream_xptr) {
-  if (!Rf_inherits(array_stream_xptr, "nanorrow_array_stream")) {
+  if (!Rf_inherits(array_stream_xptr, "nanoarrow_array_stream")) {
     Rf_error("`array_stream` argument that is not");
   }
 
@@ -59,7 +59,7 @@ static inline SEXP array_stream_owning_xptr() {
 
   SEXP array_stream_xptr =
       PROTECT(R_MakeExternalPtr(array_stream, R_NilValue, R_NilValue));
-  Rf_setAttrib(array_stream_xptr, R_ClassSymbol, Rf_mkString("nanorrow_array_stream"));
+  Rf_setAttrib(array_stream_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_array_stream"));
   R_RegisterCFinalizer(array_stream_xptr, &finalize_array_stream_xptr);
   UNPROTECT(1);
   return array_stream_xptr;

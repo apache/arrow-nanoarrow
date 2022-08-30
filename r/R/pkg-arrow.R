@@ -17,7 +17,58 @@
 
 # exported in zzz.R
 as_data_type.nanoarrow_schema <- function(x, ...) {
-  arrow::Schema$import_from_c(x)
+  exportable_schema <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(x, exportable_schema)
+  asNamespace("arrow")$DataType$import_from_c(exportable_schema)
+}
+
+as_schema.nanoarrow_schema <- function(x, ...) {
+  exportable_schema <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(x, exportable_schema)
+  arrow::Schema$import_from_c(exportable_schema)
+}
+
+
+as_arrow_array.nanoarrow_array <- function(x, ..., type = NULL) {
+  exportable_schema <- nanoarrow_allocate_schema()
+  exportable_array <- nanoarrow_allocate_array()
+
+  schema <- .Call(nanoarrow_c_infer_schema_array, x)
+  nanoarrow_pointer_export(schema, exportable_schema)
+  nanoarrow_pointer_export(x, exportable_array)
+
+  result <- arrow::Array$import_from_c(exportable_array, exportable_schema)
+
+  if (!is.null(type)) {
+    result$cast(type)
+  } else {
+    result
+  }
+}
+
+as_record_batch.nanoarrow_array <- function(x, ..., schema = NULL) {
+  exportable_schema <- nanoarrow_allocate_schema()
+  exportable_array <- nanoarrow_allocate_array()
+
+  nanoarrow_pointer_export(
+    .Call(nanoarrow_c_infer_schema_array, x),
+    exportable_schema
+  )
+  nanoarrow_pointer_export(x, exportable_array)
+
+  result <- arrow::RecordBatch$import_from_c(exportable_array, exportable_schema)
+
+  if (!is.null(schema)) {
+    arrow::as_record_batch(result, schema = schema)
+  } else {
+    result
+  }
+}
+
+as_arrow_table.nanoarrow_array <- function(x, ..., schema = NULL) {
+  arrow::as_arrow_table(
+    as_record_batch.nanoarrow_array(x, schema = schema)
+  )
 }
 
 #' @export
@@ -40,6 +91,6 @@ as_nanoarrow_array.Array <- function(x, ...) {
   array <- nanoarrow_allocate_array()
   x$export_to_c(array, schema)
 
-  # TODO: haven't sorted how to encode array + schema (probably as the tag)
+  nanoarrow_array_set_schema(array, schema)
   array
 }

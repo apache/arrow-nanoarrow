@@ -18,6 +18,10 @@
 # nocov start
 .onLoad <- function(...) {
   s3_register("arrow::as_data_type", "nanoarrow_schema")
+  s3_register("arrow::as_schema", "nanoarrow_schema")
+  s3_register("arrow::as_arrow_array", "nanoarrow_array")
+  s3_register("arrow::as_record_batch", "nanoarrow_array")
+  s3_register("arrow::as_arrow_table", "nanoarrow_array")
 }
 
 s3_register <- function(generic, class, method = NULL) {

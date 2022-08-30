@@ -5,6 +5,7 @@
 \alias{nanoarrow_pointer_addr_chr}
 \alias{nanoarrow_pointer_release}
 \alias{nanoarrow_pointer_move}
+\alias{nanoarrow_pointer_export}
 \alias{nanoarrow_allocate_schema}
 \alias{nanoarrow_allocate_array}
 \alias{nanoarrow_allocate_array_stream}
@@ -17,6 +18,8 @@ nanoarrow_pointer_addr_chr(ptr)
 nanoarrow_pointer_release(ptr)
 
 nanoarrow_pointer_move(ptr_src, ptr_dst)
+
+nanoarrow_pointer_export(ptr_src, ptr_dst)
 
 nanoarrow_allocate_schema()
 

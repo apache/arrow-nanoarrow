@@ -20,15 +20,49 @@
 #' @param x An object to convert to a array
 #' @param schema An optional schema used to enforce conversion to a particular
 #'   type. Defaults to [infer_nanoarrow_schema()].
+#' @param to A target prototype object describing the type to which `array`
+#'   should be converted.
+#' @param array An object of class 'nanoarrow_array'
 #' @param ... Passed to S3 methods
 #'
 #' @return An object of class 'nanoarrow_array'
 #' @export
-as_nanoarrow_array <- function(x, ..., schema = infer_nanoarrow_schema(x)) {
+as_nanoarrow_array <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array")
 }
 
+#' @rdname as_nanoarrow_array
 #' @export
-as_nanoarrow_array.default <- function(x, ..., schema = infer_nanoarrow_schema(x)) {
-  as_nanoarrow_array(arrow::as_arrow_array(x, type = arrow::as_data_type(schema)))
+from_nanoarrow_array <- function(array, to = NULL, ...) {
+  stopifnot(inherits(array, "nanoarrow_array"))
+  UseMethod("from_nanoarrow_array", to)
+}
+
+#' @export
+as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
+  # For now, use arrow's conversion for everything
+  if (is.null(schema)) {
+    as_nanoarrow_array(arrow::as_arrow_array(x))
+  } else {
+    schema <- as_nanoarrow_schema(schema)
+    as_nanoarrow_array(arrow::as_arrow_array(x, type = arrow::as_data_type(schema)))
+  }
+}
+
+#' @export
+from_nanoarrow_array.default <- function(array, to = NULL, ...) {
+  # For now, use arrow's conversion for everything
+  stopifnot(is.null(to))
+  as.vector(arrow::as_arrow_array(array))
+}
+
+#' @export
+infer_nanoarrow_schema.nanoarrow_array <- function(x, ...) {
+  .Call(nanoarrow_c_infer_schema_array, x) %||%
+    stop("nanoarrow_array() has no associated schema")
+}
+
+nanoarrow_array_set_schema <- function(array, schema) {
+  .Call(nanoarrow_c_array_set_schema, array, schema)
+  invisible(array)
 }

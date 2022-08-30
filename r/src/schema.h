@@ -26,7 +26,7 @@
 void finalize_schema_xptr(SEXP schema_xptr);
 
 static inline struct ArrowSchema* schema_from_xptr(SEXP schema_xptr) {
-  if (!Rf_inherits(schema_xptr, "nanorrow_schema")) {
+  if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
     Rf_error("`schema` argument that is not");
   }
 
@@ -56,7 +56,7 @@ static inline SEXP schema_owning_xptr() {
   schema->release = NULL;
 
   SEXP schema_xptr = PROTECT(R_MakeExternalPtr(schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, Rf_mkString("nanorrow_schema"));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_schema"));
   R_RegisterCFinalizer(schema_xptr, &finalize_schema_xptr);
   UNPROTECT(1);
   return schema_xptr;
