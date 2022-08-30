@@ -199,3 +199,75 @@ test_that("Schema to nanoarrow_schema", {
   expect_s3_class(schema, "nanoarrow_schema")
   expect_true(arrow::as_schema(schema)$Equals(arrow::schema(name = arrow::int32())))
 })
+
+test_that("nanoarrow_array_stream to RecordBatchReader works", {
+  skip_if_not_installed("arrow")
+
+  reader <- arrow::as_record_batch_reader(
+    arrow::record_batch(a = 1:5, b = letters[1:5])
+  )
+  array_stream <- as_nanoarrow_array_stream(reader)
+
+  reader_roundtrip <- arrow::as_record_batch_reader(array_stream)
+  expect_false(nanoarrow_pointer_is_valid(array_stream))
+  expect_true(
+    reader_roundtrip$read_next_batch()$Equals(
+      arrow::record_batch(a = 1:5, b = letters[1:5])
+    )
+  )
+  expect_null(reader_roundtrip$read_next_batch())
+
+  skip("Casting conversion to RecordBatchReader not supported")
+
+  reader <- arrow::as_record_batch_reader(
+    arrow::record_batch(a = 1:5, b = letters[1:5])
+  )
+  array_stream <- as_nanoarrow_array_stream(reader)
+
+  reader_casted <- arrow::as_record_batch_reader(
+    array_stream,
+    schema = arrow::schema(a = arrow::float64(), b = arrow::string())
+  )
+  expect_false(nanoarrow_pointer_is_valid(array_stream))
+  expect_true(
+    reader_casted$read_next_batch()$Equals(
+      arrow::record_batch(a = as.double(1:5), b = letters[1:5])
+    )
+  )
+  expect_null(reader_casted$read_next_batch())
+})
+
+test_that("RecordBatchReader to nanoarrow_array_stream works", {
+  skip_if_not_installed("arrow")
+
+  reader <- arrow::as_record_batch_reader(
+    arrow::record_batch(a = 1:5, b = letters[1:5])
+  )
+  array_stream <- as_nanoarrow_array_stream(reader)
+  expect_s3_class(array_stream, "nanoarrow_array_stream")
+
+  reader_roundtrip <- arrow::as_record_batch_reader(array_stream)
+  expect_true(
+    reader_roundtrip$read_next_batch()$Equals(
+      arrow::record_batch(a = 1:5, b = letters[1:5])
+    )
+  )
+  expect_null(reader_roundtrip$read_next_batch())
+
+  reader <- arrow::as_record_batch_reader(
+    arrow::record_batch(a = 1:5, b = letters[1:5])
+  )
+  array_stream_casted <- as_nanoarrow_array_stream(
+    reader,
+    schema = arrow::schema(a = arrow::float64(), b = arrow::string())
+  )
+  expect_s3_class(array_stream, "nanoarrow_array_stream")
+
+  reader_roundtrip <- arrow::as_record_batch_reader(array_stream_casted)
+  expect_true(
+    reader_roundtrip$read_next_batch()$Equals(
+      arrow::record_batch(a = as.double(1:5), b = letters[1:5])
+    )
+  )
+  expect_null(reader_roundtrip$read_next_batch())
+})

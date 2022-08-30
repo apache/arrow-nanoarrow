@@ -19,19 +19,27 @@
 #'
 #' @param x An object to convert to a array_stream
 #' @param ... Passed to S3 methods
+#' @inheritParams as_nanoarrow_array
 #'
 #' @return An object of class 'nanoarrow_array_stream'
 #' @export
-as_nanoarrow_array_stream <- function(x, ...) {
+as_nanoarrow_array_stream <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array_stream")
 }
 
 #' @export
-as_nanoarrow_array_stream.nanoarrow_array_stream <- function(x, ...) {
-  x
+as_nanoarrow_array_stream.nanoarrow_array_stream <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    x
+  } else {
+    NextMethod()
+  }
 }
 
 #' @export
-as_nanoarrow_array_stream.default <- function(x, ...) {
-  as_nanoarrow_array_stream(arrow::as_record_batch_reader(x, ...))
+as_nanoarrow_array_stream.default <- function(x, ..., schema = NULL) {
+  as_nanoarrow_array_stream(
+    arrow::as_record_batch_reader(x, ...),
+    schema = schema
+  )
 }

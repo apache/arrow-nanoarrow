@@ -22,6 +22,7 @@
   s3_register("arrow::as_arrow_array", "nanoarrow_array")
   s3_register("arrow::as_record_batch", "nanoarrow_array")
   s3_register("arrow::as_arrow_table", "nanoarrow_array")
+  s3_register("arrow::as_record_batch_reader", "nanoarrow_array_stream")
 }
 
 s3_register <- function(generic, class, method = NULL) {

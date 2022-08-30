@@ -71,6 +71,22 @@ as_arrow_table.nanoarrow_array <- function(x, ..., schema = NULL) {
   )
 }
 
+as_record_batch_reader.nanoarrow_array_stream <- function(x, ..., schema = NULL) {
+  # RecordBatchReaders are mutable and shouldn't be pulled from more than one
+  # place, so it's safe to move them and invalidate any R references to `x`
+  arrow_rbr <- arrow::RecordBatchReader$import_from_c(x)
+
+  if (is.null(schema)) {
+    arrow_rbr
+  } else {
+    schema <- arrow::as_schema(schema)
+    arrow::as_record_batch_reader(function() {
+      batch <- arrow_rbr$read_next_batch()
+      if (is.null(batch)) NULL else batch$cast(schema)
+    }, schema = schema)
+  }
+}
+
 #' @export
 as_nanoarrow_schema.DataType <- function(x, ...) {
   schema <- nanoarrow_allocate_schema()
@@ -137,4 +153,22 @@ as_nanoarrow_array.Table <- function(x, ..., schema = NULL) {
   }
 
   as_nanoarrow_array.RecordBatch(batch)
+}
+
+#' @export
+as_nanoarrow_array_stream.RecordBatchReader <- function(x, ..., schema = NULL) {
+  if (!is.null(schema)) {
+    force(x)
+    schema <- arrow::as_schema(schema)
+    casted <- arrow::as_record_batch_reader(function() {
+      batch <- x$read_next_batch()
+      if (is.null(batch)) NULL else batch$cast(schema)
+    }, schema = schema)
+  } else {
+    casted <- x
+  }
+
+  array_stream <- nanoarrow_allocate_array_stream()
+  casted$export_to_c(array_stream)
+  array_stream
 }

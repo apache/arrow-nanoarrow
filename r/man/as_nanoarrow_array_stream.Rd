@@ -4,12 +4,15 @@
 \alias{as_nanoarrow_array_stream}
 \title{Convert an object to a nanoarrow array_stream}
 \usage{
-as_nanoarrow_array_stream(x, ...)
+as_nanoarrow_array_stream(x, ..., schema = NULL)
 }
 \arguments{
 \item{x}{An object to convert to a array_stream}
 
 \item{...}{Passed to S3 methods}
+
+\item{schema}{An optional schema used to enforce conversion to a particular
+type. Defaults to \code{\link[=infer_nanoarrow_schema]{infer_nanoarrow_schema()}}.}
 }
 \value{
 An object of class 'nanoarrow_array_stream'
