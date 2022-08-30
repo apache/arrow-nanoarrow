@@ -16,6 +16,10 @@
 # under the License.
 
 # exported in zzz.R
+infer_type.nanoarrow_array <- function(x, ...) {
+  arrow::as_data_type(infer_nanoarrow_schema(x, ...))
+}
+
 as_data_type.nanoarrow_schema <- function(x, ...) {
   exportable_schema <- nanoarrow_allocate_schema()
   nanoarrow_pointer_export(x, exportable_schema)
@@ -27,7 +31,6 @@ as_schema.nanoarrow_schema <- function(x, ...) {
   nanoarrow_pointer_export(x, exportable_schema)
   arrow::Schema$import_from_c(exportable_schema)
 }
-
 
 as_arrow_array.nanoarrow_array <- function(x, ..., type = NULL) {
   exportable_schema <- nanoarrow_allocate_schema()
@@ -44,6 +47,10 @@ as_arrow_array.nanoarrow_array <- function(x, ..., type = NULL) {
   } else {
     result
   }
+}
+
+as_chunked_array.nanoarrow_array <- function(x, ..., type = NULL) {
+  arrow::as_chunked_array(as_arrow_array.nanoarrow_array(x, ..., type = type))
 }
 
 as_record_batch.nanoarrow_array <- function(x, ..., schema = NULL) {
@@ -79,6 +86,9 @@ as_record_batch_reader.nanoarrow_array_stream <- function(x, ..., schema = NULL)
   if (is.null(schema)) {
     arrow_rbr
   } else {
+    # Something about this doesn't work in CMD check: we get
+    # <RecordBatchReader> is an external pointer to NULL when evaluating
+    # read_next_batch()
     schema <- arrow::as_schema(schema)
     arrow::as_record_batch_reader(function() {
       batch <- arrow_rbr$read_next_batch()
@@ -125,8 +135,13 @@ as_nanoarrow_array.Array <- function(x, ..., schema = NULL) {
 
 #' @export
 as_nanoarrow_array.ChunkedArray <- function(x, ..., schema = NULL) {
-  array <- arrow::as_arrow_array(x, type = arrow::as_data_type(schema))
-  as_nanoarrow_array.Array(x)
+  if (is.null(schema)) {
+    array <- arrow::as_arrow_array(x)
+  } else {
+    array <- arrow::as_arrow_array(x, type = arrow::as_data_type(schema))
+  }
+
+  as_nanoarrow_array.Array(array)
 }
 
 #' @export

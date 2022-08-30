@@ -25,7 +25,7 @@ test_that("nanoarrow_array to Array works", {
   expect_true(dbl$Equals(arrow::Array$create(1:5, type = arrow::float64())))
 
   dbl_casted <- arrow::as_arrow_array(as_nanoarrow_array(1:5), type = arrow::float64())
-  expect_true(dbl$Equals(arrow::Array$create(1:5, type = arrow::float64())))
+  expect_true(dbl_casted$Equals(arrow::Array$create(1:5, type = arrow::float64())))
 
   chr <- arrow::as_arrow_array(as_nanoarrow_array(c("one", "two")))
   expect_true(chr$Equals(arrow::Array$create(c("one", "two"))))
@@ -54,6 +54,43 @@ test_that("Array to nanoarrow_array works", {
   expect_true(
     arrow::as_arrow_array(dbl_array)$Equals(
       arrow::Array$create(1:5, type = arrow::float64())
+    )
+  )
+})
+
+test_that("nanoarrow_array to ChunkedArray works", {
+  skip_if_not_installed("arrow")
+
+  int <- arrow::as_chunked_array(as_nanoarrow_array(1:5))
+  expect_true(int$Equals(arrow::ChunkedArray$create(1:5)))
+
+  dbl_casted <- arrow::as_chunked_array(as_nanoarrow_array(1:5), type = arrow::float64())
+  expect_true(dbl_casted$Equals(arrow::ChunkedArray$create(1:5, type = arrow::float64())))
+})
+
+test_that("ChunkedArray to nanoarrow_array works", {
+  skip_if_not_installed("arrow")
+
+  int <- arrow::ChunkedArray$create(1:5)
+  int_array <- as_nanoarrow_array(int)
+  expect_s3_class(int_array, "nanoarrow_array")
+  int_schema <- infer_nanoarrow_schema(int_array)
+  expect_s3_class(int_schema, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_chunked_array(int_array)$Equals(
+      arrow::ChunkedArray$create(1:5)
+    )
+  )
+
+  dbl_array <- as_nanoarrow_array(int, schema = arrow::float64())
+  expect_s3_class(dbl_array, "nanoarrow_array")
+  dbl_schema <- infer_nanoarrow_schema(dbl_array)
+  expect_s3_class(dbl_schema, "nanoarrow_schema")
+
+  expect_true(
+    arrow::as_chunked_array(dbl_array)$Equals(
+      arrow::ChunkedArray$create(1:5, type = arrow::float64())
     )
   )
 })
