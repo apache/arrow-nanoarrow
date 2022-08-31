@@ -20,8 +20,12 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/**'
+      - 'src/nanoarrow/**'
 
-name: Build and Test
+name: Build and Test C Library
 
 jobs:
   build-and-test:
@@ -255,7 +259,7 @@ jobs:
           path: nanoarrow-latest.zip
       
       - name: Commit bundle to dist/
-        if: success() && github.ref == 'refs/heads/main'
+        if: success() && github.action_repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
           cp nanoarrow-latest/nanoarrow.h dist/nanoarrow.h
           cp nanoarrow-latest/nanoarrow.c dist/nanoarrow.c
