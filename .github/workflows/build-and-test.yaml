@@ -137,6 +137,10 @@ jobs:
       - name: Check for non-namespaced symbols in namespaced build
         if: matrix.config.label == 'namespaced-build'
         run: |
+          # Dump all symbols
+          nm --extern-only build/libnanoarrow.a
+
+          # Check for non-namespaced ones
           ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow.a | grep "T Arrow" || true`
           if [ -z "$ARROW_SYMBOLS" ]; then
             exit 0
