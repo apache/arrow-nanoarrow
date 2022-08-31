@@ -36,7 +36,7 @@
 #define NANOARROW_SYMBOL(A, B) NANOARROW_CAT(A, B)
 
 #define ArrowNanoarrowBuildId NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowBuildId)
-#define ArrowErrorCode NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorCode)
+#define ArrowErrorMessage NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorMessage)
 #define ArrowMalloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMalloc)
 #define ArrowRealloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowRealloc)
 #define ArrowFree NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowFree)
