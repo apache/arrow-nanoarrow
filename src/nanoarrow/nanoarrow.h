@@ -101,6 +101,9 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArray)
 #define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
 
+#undef NANOARROW_CAT
+#undef NANOARROW_SYMBOL
+
 #endif
 
 #ifdef __cplusplus
