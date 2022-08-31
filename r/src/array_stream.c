@@ -28,4 +28,8 @@ void finalize_array_stream_xptr(SEXP array_stream_xptr) {
   if (array_stream != NULL && array_stream->release != NULL) {
     array_stream->release(array_stream);
   }
+
+  if (array_stream != NULL) {
+    ArrowFree(array_stream);
+  }
 }

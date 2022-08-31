@@ -28,6 +28,10 @@ void finalize_array_xptr(SEXP array_xptr) {
   if (array != NULL && array->release != NULL) {
     array->release(array);
   }
+
+  if (array != NULL) {
+    ArrowFree(array);
+  }
 }
 
 SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr) {
@@ -45,10 +49,12 @@ SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr) {
   struct ArrowError error;
   int result = ArrowArrayViewInitFromSchema(&array_view, schema, &error);
   if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
     Rf_error("%s", ArrowErrorMessage(&error));
   }
 
   result = ArrowArrayViewSetArray(&array_view, array, &error);
+  ArrowArrayViewReset(&array_view);
   if (result != NANOARROW_OK) {
     Rf_error("%s", ArrowErrorMessage(&error));
   }
