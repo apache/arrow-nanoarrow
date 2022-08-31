@@ -144,6 +144,7 @@ jobs:
 
           echo "Found the following non-namespaced extern symbols:"
           echo $ARROW_SYMBOLS
+          exit 1
 
       - name: Run tests
         run: |
