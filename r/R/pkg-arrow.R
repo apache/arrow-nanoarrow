@@ -79,6 +79,7 @@ as_arrow_table.nanoarrow_array <- function(x, ..., schema = NULL) {
 }
 
 as_record_batch_reader.nanoarrow_array_stream <- function(x, ..., schema = NULL) {
+  # TODO: not supporting an explicit schema here yet
   stopifnot(is.null(schema))
 
   # RecordBatchReaders are mutable and shouldn't be pulled from more than one
@@ -161,6 +162,7 @@ as_nanoarrow_array.Table <- function(x, ..., schema = NULL) {
 
 #' @export
 as_nanoarrow_array_stream.RecordBatchReader <- function(x, ..., schema = NULL) {
+  # TODO: not supporting an explicit schema here yet
   stopifnot(is.null(schema))
   array_stream <- nanoarrow_allocate_array_stream()
   x$export_to_c(array_stream)
