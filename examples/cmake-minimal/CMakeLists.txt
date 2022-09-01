@@ -36,7 +36,7 @@ endif()
 FetchContent_Declare(
   nanoarrow_example_cmake_minimal
   GIT_REPOSITORY ${EXAMPLE_MINIMAL_CMAKE_NANOARROW_REPO}
-  GIT_TAG examples-2
+  GIT_TAG ${EXAMPLE_MINIMAL_CMAKE_NANOARROW_TAG}
   GIT_SHALLOW TRUE)
 
 FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
