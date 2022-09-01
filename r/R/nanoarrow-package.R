@@ -19,6 +19,7 @@
 "_PACKAGE"
 
 ## usethis namespace: start
+#' @importFrom utils getFromNamespace
 #' @useDynLib nanoarrow, .registration = TRUE
 ## usethis namespace: end
 NULL
