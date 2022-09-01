@@ -44,6 +44,6 @@ jobs:
         run: |
           cd examples/cmake-minimal
           mkdir build && cd build
-          cmake .. -DEXAMPLE_MINIMAL_CMAKE_NANOARROW_REPO=https://github.com/${{ github.event.pull_request.head.repo.full_name }}.git -DEXAMPLE_MINIMAL_CMAKE_NANOARROW_TAG=${{ github.event.pull_request.head.sha }}
+          cmake .. -DEXAMPLE_MINIMAL_CMAKE_NANOARROW_REPO=https://github.com/${{ github.event.pull_request.head.repo.full_name }}.git -DEXAMPLE_MINIMAL_CMAKE_NANOARROW_TAG=${{ github.event.pull_request.head.ref }}
           cmake --build .
           ./example_cmake_minimal_app
