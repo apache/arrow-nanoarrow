@@ -23,17 +23,19 @@ project(NanoArrowExampleCMakeMinimal)
 
 FetchContent_Declare(
   nanoarrow_example_cmake_minimal
-  GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
-  GIT_TAG main
+  GIT_REPOSITORY https://github.com/paleolimbot/arrow-nanoarrow.git
+  GIT_TAG examples-2
   GIT_SHALLOW TRUE)
 
 FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
 
 include_directories(src)
-include_directories(${NANOARROW_INCLUDE_DIR})
 
 add_library(
     example_cmake_minimal_library
     src/library.c)
 
 target_link_libraries(example_cmake_minimal_library PRIVATE nanoarrow)
+
+add_executable(example_cmake_minimal_app src/app.c)
+target_link_libraries(example_cmake_minimal_app example_cmake_minimal_library)

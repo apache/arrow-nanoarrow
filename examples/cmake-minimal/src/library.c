@@ -19,4 +19,4 @@
 
 #include "library.h"
 
-
+const char* some_function() { return ArrowNanoarrowBuildId(); }

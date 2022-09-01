@@ -15,7 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#pragma once
+#include "library.h"
 
-const char* some_function();
+#include <stdio.h>
 
+int main(int argc, char* argv[]) {
+  printf("The nanoarrow build ID is '%s'", some_function());
+  return 0;
+}
