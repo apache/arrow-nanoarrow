@@ -23,6 +23,9 @@
 #include "array_stream.h"
 #include "schema.h"
 
+// More reliable way to stringify intptr_t on Windows using C++
+void intptr_as_string(intptr_t ptr_int, char* buf);
+
 SEXP nanoarrow_c_allocate_schema() { return schema_owning_xptr(); }
 
 SEXP nanoarrow_c_allocate_array() { return array_owning_xptr(); }
@@ -56,10 +59,10 @@ SEXP nanoarrow_c_pointer_addr_dbl(SEXP ptr) {
 }
 
 SEXP nanoarrow_c_pointer_addr_chr(SEXP ptr) {
-  uintptr_t ptr_int = (uintptr_t)R_ExternalPtrAddr(nanoarrow_c_pointer(ptr));
+  intptr_t ptr_int = (intptr_t) R_ExternalPtrAddr(nanoarrow_c_pointer(ptr));
   char addr_chars[100];
   memset(addr_chars, 0, 100);
-  snprintf(addr_chars, sizeof(addr_chars), "%lu", (unsigned long)ptr_int);
+  intptr_as_string(ptr_int, addr_chars);
   return Rf_mkString(addr_chars);
 }
 
@@ -216,7 +219,6 @@ SEXP nanoarrow_c_export_schema(SEXP schema_xptr, SEXP ptr_dst) {
   UNPROTECT(1);
   return R_NilValue;
 }
-
 
 SEXP nanoarrow_c_export_array(SEXP array_xptr, SEXP ptr_dst) {
   SEXP xptr_dst = PROTECT(nanoarrow_c_pointer(ptr_dst));
