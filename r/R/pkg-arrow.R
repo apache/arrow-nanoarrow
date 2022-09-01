@@ -23,7 +23,7 @@ infer_type.nanoarrow_array <- function(x, ...) {
 as_data_type.nanoarrow_schema <- function(x, ...) {
   exportable_schema <- nanoarrow_allocate_schema()
   nanoarrow_pointer_export(x, exportable_schema)
-  asNamespace("arrow")$DataType$import_from_c(exportable_schema)
+  getFromNamespace("DataType", "arrow")$import_from_c(exportable_schema)
 }
 
 as_schema.nanoarrow_schema <- function(x, ...) {
