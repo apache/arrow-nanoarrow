@@ -15,14 +15,62 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <errno.h>
+#include <stdlib.h>
+
 #include "nanoarrow/nanoarrow.h"
 
 #include "library.h"
 
-const char* my_library_nanoarrow_build_id_runtime() { return ArrowNanoarrowBuildId(); }
+static struct ArrowError my_library_last_error_;
 
-const char* my_library_nanoarrow_build_id_compile_time() { return NANOARROW_BUILD_ID; }
+const char* my_library_last_error() { return ArrowErrorMessage(&my_library_last_error_); }
 
-// TODO: when namespacing PR is merged, make sure this works
-#define STR(x) #x
-const char* my_library_nanoarrow_namespace() { return STR(NANOARROW_NAMESPACE); }
+int my_library_int32_array_from_args(int n_args, char* argv[],
+                                     struct ArrowArray* array_out,
+                                     struct ArrowSchema* schema_out) {
+  ArrowErrorSet(&my_library_last_error_, "");
+
+  int result = ArrowArrayInit(array_out, NANOARROW_TYPE_INT32);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  result = ArrowArrayStartAppending(array_out);
+  if (result != NANOARROW_OK) {
+    array_out->release(array_out);
+    return result;
+  }
+
+  char* end_char;
+  for (int i = 0; i < n_args; i++) {
+    int64_t value = strtol(argv[i], &end_char, 10);
+    if (end_char != (argv[i] + strlen(argv[i]))) {
+      ArrowErrorSet(&my_library_last_error_, "Can't parse argument %d ('%s') to long int",
+                    i + 1, argv[i]);
+      array_out->release(array_out);
+      return EINVAL;
+    }
+
+    result = ArrowArrayAppendInt(array_out, value);
+    if (result != NANOARROW_OK) {
+      ArrowErrorSet(&my_library_last_error_,
+                    "Error appending argument %d ('%s') to array", i + 1, argv[i]);
+      array_out->release(array_out);
+      return result;
+    }
+  }
+
+  result = ArrowArrayFinishBuilding(array_out, &my_library_last_error_);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  result = ArrowSchemaInit(schema_out, NANOARROW_TYPE_INT32);
+  if (result != NANOARROW_OK) {
+    array_out->release(array_out);
+    return result;
+  }
+
+  return NANOARROW_OK;
+}

@@ -24,8 +24,8 @@ project(NanoArrowExampleCMakeMinimal)
 # When adding nanoarrow's CMake directory to a CMake project that contains a library
 # intended for use by others, set NANOARROW_NAMESPACE to rename symbols in the
 # nanoarrow library such that they do not collide with other libraries that may also
-# link to nanoarrow.
-set(NANOARROW_NAMESPACE "NanoArrowExampleCmakeMinimal")
+# link to their own copy of nanoarrow.
+set(NANOARROW_NAMESPACE "ExampleCmakeMinimal")
 
 FetchContent_Declare(
   nanoarrow_example_cmake_minimal
@@ -45,7 +45,7 @@ include_directories(src)
 add_library(example_cmake_minimal_library src/library.c)
 
 # Always use PRIVATE when linking to nanoarrow to hide nanoarrow's headers from a
-# library that in turn uses your library.
+# target that in turn uses your library.
 target_link_libraries(example_cmake_minimal_library PRIVATE nanoarrow)
 
 # Add the executable and link it against the library

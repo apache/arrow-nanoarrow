@@ -20,10 +20,18 @@
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-  printf("The nanoarrow build id at runtime is '%s'\n",
-         my_library_nanoarrow_build_id_runtime());
-  printf("The nanoarrow build id at compile time was '%s'\n",
-         my_library_nanoarrow_build_id_compile_time());
-  printf("The nanoarrow namespace is '%s'\n", my_library_nanoarrow_namespace());
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  int result = my_library_int32_array_from_args(argc - 1, argv + 1, &array, &schema);
+  if (result != 0) {
+    printf("%s\n", my_library_last_error());
+    return result;
+  }
+
+  printf("Parsed array with length %ld\n", (long)array.length);
+
+  array.release(&array);
+  schema.release(&schema);
   return 0;
 }

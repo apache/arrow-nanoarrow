@@ -111,8 +111,8 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
-const char* my_library_nanoarrow_build_id_runtime();
+const char* my_library_last_error();
 
-const char* my_library_nanoarrow_build_id_compile_time();
-
-const char* my_library_nanoarrow_namespace();
+int my_library_int32_array_from_args(int n_args, char* argv[],
+                                     struct ArrowArray* array_out,
+                                     struct ArrowSchema* schema_out);
