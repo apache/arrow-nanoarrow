@@ -20,6 +20,10 @@
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-  printf("The nanoarrow build ID is '%s'", some_function());
+  printf("The nanoarrow build id at runtime is '%s'\n",
+         my_library_nanoarrow_build_id_runtime());
+  printf("The nanoarrow build id at compile time was '%s'\n",
+         my_library_nanoarrow_build_id_compile_time());
+  printf("The nanoarrow namespace is '%s'\n", my_library_nanoarrow_namespace());
   return 0;
 }

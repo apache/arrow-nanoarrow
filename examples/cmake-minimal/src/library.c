@@ -19,4 +19,10 @@
 
 #include "library.h"
 
-const char* some_function() { return ArrowNanoarrowBuildId(); }
+const char* my_library_nanoarrow_build_id_runtime() { return ArrowNanoarrowBuildId(); }
+
+const char* my_library_nanoarrow_build_id_compile_time() { return NANOARROW_BUILD_ID; }
+
+// TODO: when namespacing PR is merged, make sure this works
+#define STR(x) #x
+const char* my_library_nanoarrow_namespace() { return STR(NANOARROW_NAMESPACE); }
