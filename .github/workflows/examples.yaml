@@ -49,7 +49,7 @@ jobs:
           
           ./example_cmake_minimal_app 8 2 4 9
           #> Parsed array with length 4
-          ./example_cmake_minimal_app asd
+          ./example_cmake_minimal_app asd || true
           #> Can't parse argument 1 ('asd') to long int
-          ./example_cmake_minimal_app 999999999999999
+          ./example_cmake_minimal_app 999999999999999 || true
           #> Error appending argument 1 ('999999999999999') to array
