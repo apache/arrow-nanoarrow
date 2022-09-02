@@ -20,8 +20,12 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/**'
+      - 'src/nanoarrow/**'
 
-name: Build and Test
+name: Build and Test C Library
 
 jobs:
   build-and-test:
@@ -35,6 +39,7 @@ jobs:
       matrix:
         config:
           - {label: default-build}
+          - {label: namespaced-build}
           - {label: bundled-build}
 
     steps:
@@ -112,6 +117,16 @@ jobs:
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
           cmake --build .
+      
+      - name: Build nanoarrow (namespaced)
+        if: matrix.config.label == 'namespaced-build'
+        run: |
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_NAMESPACE=SomeUserNamespace
+          cmake --build .
 
       - name: Build nanoarrow (bundled)
         if: matrix.config.label == 'bundled-build'
@@ -122,6 +137,22 @@ jobs:
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
           cmake --build .
+    
+      - name: Check for non-namespaced symbols in namespaced build
+        if: matrix.config.label == 'namespaced-build'
+        run: |
+          # Dump all symbols
+          nm --extern-only build/libnanoarrow.a
+
+          # Check for non-namespaced ones
+          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow.a | grep "T Arrow" || true`
+          if [ -z "$ARROW_SYMBOLS" ]; then
+            exit 0
+          fi
+
+          echo "Found the following non-namespaced extern symbols:"
+          echo $ARROW_SYMBOLS
+          exit 1
 
       - name: Run tests
         run: |
@@ -228,7 +259,7 @@ jobs:
           path: nanoarrow-latest.zip
       
       - name: Commit bundle to dist/
-        if: success() && github.ref == 'refs/heads/main'
+        if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
           cp nanoarrow-latest/nanoarrow.h dist/nanoarrow.h
           cp nanoarrow-latest/nanoarrow.c dist/nanoarrow.c

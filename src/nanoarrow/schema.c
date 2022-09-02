@@ -22,7 +22,7 @@
 
 #include "nanoarrow.h"
 
-void ArrowSchemaRelease(struct ArrowSchema* schema) {
+static void ArrowSchemaRelease(struct ArrowSchema* schema) {
   if (schema->format != NULL) ArrowFree((void*)schema->format);
   if (schema->name != NULL) ArrowFree((void*)schema->name);
   if (schema->metadata != NULL) ArrowFree((void*)schema->metadata);
@@ -63,7 +63,7 @@ void ArrowSchemaRelease(struct ArrowSchema* schema) {
   schema->release = NULL;
 }
 
-const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
+static const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
   switch (data_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
       return NULL;
