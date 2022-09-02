@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow.h"
 
 #include "library.h"
 
