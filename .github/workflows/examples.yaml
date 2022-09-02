@@ -56,7 +56,7 @@ jobs:
     
       - name: Minimal Vendored Example
         run: |
-          cd examples/cmake-vendored
+          cd examples/vendored-minimal
           mkdir build && cd build
           cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
           cmake --build .
