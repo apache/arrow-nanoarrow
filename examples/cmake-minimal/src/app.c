@@ -22,16 +22,19 @@
 int main(int argc, char* argv[]) {
   struct ArrowArray array;
   struct ArrowSchema schema;
+  array.release = NULL;
+  schema.release = NULL;
 
-  int result = my_library_int32_array_from_args(argc - 1, argv + 1, &array, &schema);
+  int result = make_simple_array(&array, &schema);
   if (result != 0) {
-    printf("%s\n", my_library_last_error());
+    if (array.release) array.release(&array);
+    if (schema.release) schema.release(&schema);
     return result;
   }
 
-  printf("Parsed array with length %ld\n", (long)array.length);
-
-  array.release(&array);
-  schema.release(&schema);
-  return 0;
+  result = print_simple_array(&array, &schema);
+  if (array.release) array.release(&array);
+  if (schema.release) schema.release(&schema);
+  
+  return result;
 }

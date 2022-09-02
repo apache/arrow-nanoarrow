@@ -18,59 +18,52 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "nanoarrow.h"
+#include <stdio.h>
+
+#include "nanoarrow/nanoarrow.h"
 
 #include "library.h"
 
-static struct ArrowError my_library_last_error_;
+static struct ArrowError global_error;
 
-const char* my_library_last_error() { return ArrowErrorMessage(&my_library_last_error_); }
+const char* my_library_last_error() { return ArrowErrorMessage(&global_error); }
 
-int my_library_int32_array_from_args(int n_args, char* argv[],
-                                     struct ArrowArray* array_out,
-                                     struct ArrowSchema* schema_out) {
-  ArrowErrorSet(&my_library_last_error_, "");
+int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_out) {
+  ArrowErrorSet(&global_error, "");
+  array_out->release = NULL;
+  schema_out->release = NULL;
 
-  int result = ArrowArrayInit(array_out, NANOARROW_TYPE_INT32);
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInit(array_out, NANOARROW_TYPE_INT32));
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array_out));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 1));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 2));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 3));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array_out, &global_error));
+  
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema_out, NANOARROW_TYPE_INT32));
+
+  return NANOARROW_OK;
+}
+
+int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema) {
+  struct ArrowArrayView array_view;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, &global_error));
+
+  if (array_view.storage_type != NANOARROW_TYPE_INT32) {
+    printf("Array has storage that is not int32\n");
+  }
+
+  int result = ArrowArrayViewSetArray(&array_view, array, &global_error);
   if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
     return result;
   }
 
-  result = ArrowArrayStartAppending(array_out);
-  if (result != NANOARROW_OK) {
-    array_out->release(array_out);
-    return result;
+  for (int64_t i = 0; i < array->length; i++) {
+    printf("%d\n", (int)ArrowArrayViewGetIntUnsafe(&array_view, i));
   }
 
-  char* end_char;
-  for (int i = 0; i < n_args; i++) {
-    int64_t value = strtol(argv[i], &end_char, 10);
-    if (end_char != (argv[i] + strlen(argv[i]))) {
-      ArrowErrorSet(&my_library_last_error_, "Can't parse argument %d ('%s') to long int",
-                    i + 1, argv[i]);
-      array_out->release(array_out);
-      return EINVAL;
-    }
-
-    result = ArrowArrayAppendInt(array_out, value);
-    if (result != NANOARROW_OK) {
-      ArrowErrorSet(&my_library_last_error_,
-                    "Error appending argument %d ('%s') to array", i + 1, argv[i]);
-      array_out->release(array_out);
-      return result;
-    }
-  }
-
-  result = ArrowArrayFinishBuilding(array_out, &my_library_last_error_);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
-
-  result = ArrowSchemaInit(schema_out, NANOARROW_TYPE_INT32);
-  if (result != NANOARROW_OK) {
-    array_out->release(array_out);
-    return result;
-  }
-
+  ArrowArrayViewReset(&array_view);
   return NANOARROW_OK;
 }

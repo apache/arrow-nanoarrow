@@ -113,6 +113,8 @@ struct ArrowArrayStream {
 
 const char* my_library_last_error();
 
-int my_library_int32_array_from_args(int n_args, char* argv[],
-                                     struct ArrowArray* array_out,
-                                     struct ArrowSchema* schema_out);
+// Creates the integer array [1, 2, 3]
+int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_out);
+
+// Prints the array created by make_simple_array to the stdout
+int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema);

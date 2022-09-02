@@ -24,7 +24,9 @@ project(NanoArrowExampleCMakeMinimal)
 # When adding nanoarrow's CMake directory to a CMake project that contains a library
 # intended for use by others, set NANOARROW_NAMESPACE to rename symbols in the
 # nanoarrow library such that they do not collide with other libraries that may also
-# link to their own copy of nanoarrow.
+# link to their own copy of nanoarrow. You may wish to include the namespace only
+# on release builds, since the namespace implementation obscures inline help
+# available in many text editors.
 set(NANOARROW_NAMESPACE "ExampleCmakeMinimal")
 
 FetchContent_Declare(
