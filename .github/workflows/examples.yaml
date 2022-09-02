@@ -53,3 +53,24 @@ jobs:
           #> Can't parse argument 1 ('asd') to long int
           ./example_cmake_minimal_app 999999999999999 || true
           #> Error appending argument 1 ('999999999999999') to array
+    
+      - name: Minimal Vendored Example
+        run: |
+          cd examples/cmake-vendored
+          mkdir build && cd build
+          cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
+          cmake --build .
+          cmake --install . --prefix=../src
+
+          cd ../src
+
+          gcc -c library.c nanoarrow.c
+          ar rcs libexample_vendored_minimal_library.a library.o nanoarrow.o
+          gcc -o example_vendored_minimal_app app.c libexample_vendored_minimal_library.a
+          
+          ./example_vendored_minimal_app 8 2 4 9
+          #> Parsed array with length 4
+          ./example_vendored_minimal_app asd || true
+          #> Can't parse argument 1 ('asd') to long int
+          ./example_vendored_minimal_app 999999999999999 || true
+          #> Error appending argument 1 ('999999999999999') to array

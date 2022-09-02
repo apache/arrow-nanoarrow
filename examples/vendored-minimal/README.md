@@ -35,6 +35,42 @@ repository:
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git
 cd arrow-nanoarrow/examples/vendored-minimal
-cp ../../dist/nanoarrow.c src/nanoarrow.c
 cp ../../dist/nanoarrow.h src/nanoarrow.h
+cp ../../dist/nanoarrow.c src/nanoarrow.c
+```
+
+If you use these, you will have to manually `#define NANOARROW_NAMESPACE MyProject`
+manually next to `#define NANOARROW_BUILD_ID` in the header.
+
+You can also generate the bundled versions with the namespace defined using `cmake`:
+
+```bash
+git clone https://github.com/apache/arrow-nanoarrow.git
+cd arrow-nanoarrow
+mkdir build && cd build
+cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
+cmake --build .
+cmake --install . --prefix=../examples/vendored-minimal/src
+```
+
+Then you can build/link the application/library using the build tool of your choosing:
+
+```bash
+cd src
+cc -c library.c nanoarrow.c
+ar rcs libexample_vendored_minimal_library.a library.o nanoarrow.o
+cc -o example_vendored_minimal_app app.c libexample_vendored_minimal_library.a
+```
+
+After building, you can run the app. The app
+parses command line arguments into an int32 array and prints out the
+resulting length (or any error encountered whilst building the array).
+
+```bash
+./example_vendored_minimal_app 8 2 4 9
+#> Parsed array with length 4
+./example_vendored_minimal_app asd
+#> Can't parse argument 1 ('asd') to long int
+./example_vendored_minimal_app 999999999999999
+#> Error appending argument 1 ('999999999999999') to array
 ```
