@@ -21,23 +21,9 @@ include(FetchContent)
 
 project(NanoArrowExampleCMakeMinimal)
 
-option(EXAMPLE_MINIMAL_CMAKE_NANOARROW_REPO
-  "Repo from which nanoarrow should be fetched")
-if (EXAMPLE_MINIMAL_CMAKE_NANOARROW_REPO)
-  set(EXAMPLE_MINIMAL_CMAKE_NANOARROW_REPO "https://github.com/apache/arrow-nanoarrow.git")
-endif()
-
-option(EXAMPLE_MINIMAL_CMAKE_NANOARROW_TAG
-  "A reference or commit sha1 used to pin the version of nanoarrow")
-  if (EXAMPLE_MINIMAL_CMAKE_NANOARROW_TAG)
-  set(EXAMPLE_MINIMAL_CMAKE_NANOARROW_TAG "main")
-endif()
-
 FetchContent_Declare(
   nanoarrow_example_cmake_minimal
-  GIT_REPOSITORY ${EXAMPLE_MINIMAL_CMAKE_NANOARROW_REPO}
-  GIT_TAG ${EXAMPLE_MINIMAL_CMAKE_NANOARROW_TAG}
-  GIT_SHALLOW TRUE)
+  SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 
 FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
 
