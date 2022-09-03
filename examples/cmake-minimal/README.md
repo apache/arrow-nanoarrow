@@ -47,10 +47,8 @@ parses command line arguments into an int32 array and prints out the
 resulting length (or any error encountered whilst building the array).
 
 ```bash
-./example_cmake_minimal_app 8 2 4 9
-#> Parsed array with length 4
-./example_cmake_minimal_app asd
-#> Can't parse argument 1 ('asd') to long int
-./example_cmake_minimal_app 999999999999999
-#> Error appending argument 1 ('999999999999999') to array
+./example_cmake_minimal_app
+# 1
+# 2
+# 3
 ```
