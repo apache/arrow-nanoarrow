@@ -79,13 +79,16 @@ if(NANOARROW_BUNDLE)
     # Install the amalgamated header and source
     install(FILES ${NANOARROW_H_TEMP} ${NANOARROW_C_TEMP} DESTINATION ".")
 else()
-    include_directories(src)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
     add_library(
         nanoarrow
         src/nanoarrow/array.c
         src/nanoarrow/schema.c
         src/nanoarrow/utils.c)
+
+    target_include_directories(nanoarrow PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<INSTALL_INTERFACE:include>)
+    target_include_directories(nanoarrow PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>)
 
     install(TARGETS nanoarrow DESTINATION lib)
     install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")

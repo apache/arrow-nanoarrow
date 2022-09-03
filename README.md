@@ -17,67 +17,79 @@
   under the License.
 -->
 
-# nanoarrow
+# arrow-nanoarrow
 
 [![Codecov test coverage](https://codecov.io/gh/apache/arrow-nanoarrow/branch/main/graph/badge.svg)](https://app.codecov.io/gh/apache/arrow-nanoarrow?branch=main)
 
 The nanoarrow library is a set of helper functions to interpret and generate
 [Arrow C Data Interface](https://arrow.apache.org/docs/format/CDataInterface.html)
 and [Arrow C Stream Interface](https://arrow.apache.org/docs/format/CStreamInterface.html)
-structures. The library is in active development and should currently be used only
-for entertainment purposes. Everything from the name of the project to the variable
-names are up for grabs (i.e., suggest/pull request literally any ideas you may
-have!).
+structures. The library is in active early development and users should update regularly
+from the main branch of this repository.
 
 Whereas the current suite of Arrow implementations provide the basis for a
 comprehensive data analysis toolkit, this library is intended to support clients
-that wish to produce or interpret Arrow C Data and/or Arrow C Stream structures.
-The library will:
+that wish to produce or interpret Arrow C Data and/or Arrow C Stream structures
+where linking to a higher level Arrow binding is difficult or impossible.
 
-- Create, copy, parse, and validate struct ArrowSchema objects (all types mentioned
-  in the C Data interface specification)
-- Create and validate struct ArrowArray/struct ArrowSchema pairs for (all types
-  mentioned in the C Data interface specification)
-- Iterate over struct ArrowArrays element-wise (non-nested types) (i.e., is the
-  ith element null; get the ith element).
-- Build Arrays element-wise (non-nested types) (i.e., basic Array Builder logic).
+## Using the C library
 
-While it will not provide full support for nested types, it should provide enough
-infrastructure that an extension library with a similar format could implement such
-support.
+The nanoarrow C library is intended to be copied and vendored. This can be done using
+CMake or by using the bundled nanoarrow.h/nanorrow.c distribution available in the
+dist/ directory in this repository. Examples of both can be found in the examples/
+directory in this repository.
 
-## Usage
+A simple producer example:
 
-You can use nanoarrow in your project in two ways:
+```c
+#include "nanoarrow.h"
 
-1. Copy contents of the `src/nanoarrow/` into your favourite include directory and
-   `#include <nanoarrow/nanoarrow.c>` somewhere in your project exactly once.
-2. Clone and use `cmake`, `cmake --build`, and `cmake --install` to build/install
-   the static library and add `-L/path/to/nanoarrow/lib -lnanoarrow` to your favourite
-   linker flag configuration.
+int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_out) {
+  struct ArrowError error;
+  array_out->release = NULL;
+  schema_out->release = NULL;
 
-All public functions and types are declared in `nanoarrow/nanoarrow.h`.
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInit(array_out, NANOARROW_TYPE_INT32));
 
-In all cases you will want to copy this project or pin your build to a specific commit
-since it will change rapidly and regularly. The nanoarrow library does not and will
-not provide ABI stability (i.e., you must vendor or link to a private version of
-the static library).
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array_out));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 1));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 2));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 3));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array_out, &error));
+  
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema_out, NANOARROW_TYPE_INT32));
 
-## Background
+  return NANOARROW_OK;
+}
+```
 
-The design of nanoarrow reflects the needs of a few previous libraries/prototypes
-requiring a library with a similar scope:
+A simple consumer example:
 
-- DuckDB’s Arrow wrappers, the details of which are in a few places
-  (e.g., [here](https://github.com/duckdb/duckdb/blob/master/src/common/arrow_wrapper.cpp),
-  [here](https://github.com/duckdb/duckdb/blob/master/src/main/query_result.cpp),
-  and a few other places)
-- An [R wrapper around the C Data interface](https://github.com/paleolimbot/narrow),
-  along which a [C-only library](https://github.com/paleolimbot/narrow/tree/master/src/narrow)
-  was prototyped.
-- An [R implementation of the draft GeoArrow specification](https://github.com/paleolimbot/geoarrow),
-  along which a [mostly header-only C++ library](https://github.com/paleolimbot/geonanoarrowpp/tree/main/src/geoarrow/internal/arrow-hpp)
-  was prototyped.
-- The [Arrow Database Connectivity](https://github.com/apache/arrow-adbc) C API, for which drivers
-  in theory can be written in C (which is currently difficult in practice because there
-  are few if any tools to help do this properly).
+```c
+#include <stdio.h>
+
+#include "nanoarrow.h"
+
+int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema) {
+  struct ArrowError error;
+  struct ArrowArrayView array_view;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, &error));
+
+  if (array_view.storage_type != NANOARROW_TYPE_INT32) {
+    printf("Array has storage that is not int32\n");
+  }
+
+  int result = ArrowArrayViewSetArray(&array_view, array, &error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
+    return result;
+  }
+
+  for (int64_t i = 0; i < array->length; i++) {
+    printf("%d\n", (int)ArrowArrayViewGetIntUnsafe(&array_view, i));
+  }
+
+  ArrowArrayViewReset(&array_view);
+  return NANOARROW_OK;
+}
+```
