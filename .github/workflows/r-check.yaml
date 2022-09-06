@@ -21,7 +21,7 @@ on:
   pull_request:
     branches: [main, master]
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/r-check.yaml'
       - 'r/**'
 
 name: R-CMD-check
