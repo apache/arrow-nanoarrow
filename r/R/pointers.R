@@ -50,7 +50,7 @@
 #'   to the original array are not invalidated.
 #' - Array stream objects are moved: the responsibility for the object is
 #'   transferred to the other C data interface implementation and any
-#'   references to the original R object are invalidated). Because these
+#'   references to the original R object are invalidated. Because these
 #'   objects are mutable, this is typically what you want (i.e., you should
 #'   not be pulling arrays from a stream accidentally from two places).
 #'
