@@ -20,11 +20,15 @@
 #include <Rinternals.h>
 
 #include "nanoarrow.h"
+#include "schema.h"
 
-SEXP nanoarrow_c_build_id() {
-  return Rf_mkString(NANOARROW_BUILD_ID);
-}
+void finalize_schema_xptr(SEXP schema_xptr) {
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  if (schema != NULL && schema->release != NULL) {
+    schema->release(schema);
+  }
 
-SEXP nanoarrow_c_build_id_runtime() {
-  return Rf_mkString(ArrowNanoarrowBuildId());
+  if (schema != NULL) {
+    ArrowFree(schema);
+  }
 }

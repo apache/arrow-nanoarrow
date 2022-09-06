@@ -22,5 +22,7 @@ RoxygenNote: 7.2.1
 URL: https://github.com/apache/arrow-nanoarrow
 BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests: 
-    testthat (>= 3.0.0)
+    arrow (>= 8.0.0),
+    testthat (>= 3.0.0),
+    vctrs
 Config/testthat/edition: 3

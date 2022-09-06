@@ -15,16 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-library(testthat)
-library(nanoarrow)
+test_that("as_nanoarrow_schema() works for nanoarrow_schema", {
+  schema <- infer_nanoarrow_schema(1:10)
+  expect_identical(as_nanoarrow_schema(schema), schema)
+})
 
-verbose_test_output <- identical(tolower(Sys.getenv("ARROW_R_DEV", "false")), "true") ||
-  identical(tolower(Sys.getenv("ARROW_R_VERBOSE_TEST", "false")), "true")
-
-if (verbose_test_output) {
-  reporter <- MultiReporter$new(list(CheckReporter$new(), LocationReporter$new()))
-} else {
-  reporter <- check_reporter()
-}
-
-test_check("nanoarrow", reporter = reporter)
+test_that("infer_nanoarrow_schema() default method works", {
+  schema <- infer_nanoarrow_schema(1:10)
+  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
+})

@@ -15,16 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-library(testthat)
-library(nanoarrow)
+test_that("as_nanoarrow_array_stream() works for nanoarow_array_stream", {
+  stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+  expect_identical(as_nanoarrow_array_stream(stream), stream)
 
-verbose_test_output <- identical(tolower(Sys.getenv("ARROW_R_DEV", "false")), "true") ||
-  identical(tolower(Sys.getenv("ARROW_R_VERBOSE_TEST", "false")), "true")
-
-if (verbose_test_output) {
-  reporter <- MultiReporter$new(list(CheckReporter$new(), LocationReporter$new()))
-} else {
-  reporter <- check_reporter()
-}
-
-test_check("nanoarrow", reporter = reporter)
+  # Not supported yet
+  expect_error(
+    as_nanoarrow_array_stream(stream, schema = data.frame(x = double())),
+    "is.null\\(schema\\) is not TRUE"
+  )
+})

@@ -15,16 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-library(testthat)
-library(nanoarrow)
-
-verbose_test_output <- identical(tolower(Sys.getenv("ARROW_R_DEV", "false")), "true") ||
-  identical(tolower(Sys.getenv("ARROW_R_VERBOSE_TEST", "false")), "true")
-
-if (verbose_test_output) {
-  reporter <- MultiReporter$new(list(CheckReporter$new(), LocationReporter$new()))
-} else {
-  reporter <- check_reporter()
+`%||%` <- function(rhs, lhs) {
+  if (is.null(rhs)) lhs else rhs
 }
 
-test_check("nanoarrow", reporter = reporter)
+new_data_frame <- function(x, nrow) {
+  structure(x, row.names = c(NA, nrow), class = "data.frame")
+}
