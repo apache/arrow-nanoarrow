@@ -1014,10 +1014,10 @@ TEST(SchemaViewTest, SchemaViewInitNestedMap) {
   ARROW_EXPECT_OK(ExportType(*map(int32(), int32()), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
-  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
-  EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
   schema.release(&schema);
 }
