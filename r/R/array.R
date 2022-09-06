@@ -39,6 +39,17 @@ from_nanoarrow_array <- function(array, to = NULL, ...) {
 }
 
 #' @export
+as.vector.nanoarrow_array <- function(x, mode = "any") {
+  stopifnot(identical(mode, "any"))
+  from_nanoarrow_array(x)
+}
+
+#' @export
+as.data.frame.nanoarrow_array <- function(x, ...) {
+  from_nanoarrow_array(x, to = vctrs::partial_frame())
+}
+
+#' @export
 as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
   # For now, use arrow's conversion for everything
   if (is.null(schema)) {
@@ -52,8 +63,15 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
 #' @export
 from_nanoarrow_array.default <- function(array, to = NULL, ...) {
   # For now, use arrow's conversion for everything
-  stopifnot(is.null(to))
-  as.vector(arrow::as_arrow_array(array))
+  result <- as.vector(arrow::as_arrow_array(array))
+
+  # arrow's conversion doesn't support `to`, so for now use an R cast
+  # workaround for a bug in vctrs: https://github.com/r-lib/vctrs/issues/1642
+  if (inherits(result, "tbl_df")) {
+    result <- new_data_frame(result, nrow(result))
+  }
+
+  vctrs::vec_cast(result, to)
 }
 
 #' @export

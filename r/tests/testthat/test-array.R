@@ -40,3 +40,11 @@ test_that("nanoarrow_array_set_schema() errors for invalid schema/array", {
     "Expected array with 3 buffer\\(s\\) but found 2 buffer\\(s\\)"
   )
 })
+
+test_that("as.vector() and as.data.frame() work for array", {
+  array <- as_nanoarrow_array(1:10)
+  expect_identical(as.vector(array), 1:10)
+
+  struct_array <- as_nanoarrow_array(data.frame(a = 1:10))
+  expect_identical(as.data.frame(struct_array), data.frame(a = 1:10))
+})

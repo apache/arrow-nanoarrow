@@ -23,5 +23,6 @@ URL: https://github.com/apache/arrow-nanoarrow
 BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests: 
     arrow (>= 8.0.0),
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    vctrs
 Config/testthat/edition: 3
