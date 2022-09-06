@@ -17,6 +17,16 @@
 
 #' Convert an object to a nanoarrow array_stream
 #'
+#' In nanoarrow, an 'array stream' corresponds to the `struct ArrowArrayStream`
+#' as defined in the Arrow C Stream interface. This object is used to represent
+#' a stream of [arrays][as_nanoarrow_array] with a common
+#' [schema][as_nanoarrow_schema]. This is similar to an
+#' [arrow::RecordBatchReader] except it can be used to represent a stream of
+#' any type (not just record batches). Note that a stream of record batches
+#' and a stream of non-nullable struct arrays are represented identically.
+#' Also note that array streams are mutable objects and are passed by
+#' reference and not by value.
+#'
 #' @param x An object to convert to a array_stream
 #' @param ... Passed to S3 methods
 #' @inheritParams as_nanoarrow_array

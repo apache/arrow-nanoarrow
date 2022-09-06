@@ -17,6 +17,12 @@
 
 #' Convert an object to a nanoarrow schema
 #'
+#' In nanoarrow a 'schema' refers to a `struct ArrowSchema` as defined in the
+#' Arrow C Data interface. This data structure can be used to represent an
+#' [arrow::schema()], an [arrow::field()], or an `arrow::DataType`. Note that
+#' in nanoarrow, an [arrow::schema()] and a non-nullable [arrow::struct()]
+#' are represented identically.
+#'
 #' @param x An object to convert to a schema
 #' @param ... Passed to S3 methods
 #'

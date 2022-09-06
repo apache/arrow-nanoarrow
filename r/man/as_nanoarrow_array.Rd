@@ -26,5 +26,10 @@ should be converted.}
 An object of class 'nanoarrow_array'
 }
 \description{
-Convert an object to a nanoarrow array
+In nanoarrow an 'array' refers to the \verb{struct ArrowArray} definition
+in the Arrow C data interface. At the R level, we attach a
+\link[=as_nanoarrow_schema]{schema} such that functionally the nanoarrow_array
+class can be used in a similar way as an \link[arrow:array]{arrow::Array}. Note that in
+nanoarrow an \link[arrow:RecordBatch]{arrow::RecordBatch} and a non-nullable \link[arrow:array]{arrow::StructArray}
+are represented identically.
 }

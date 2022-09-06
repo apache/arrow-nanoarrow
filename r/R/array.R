@@ -17,6 +17,13 @@
 
 #' Convert an object to a nanoarrow array
 #'
+#' In nanoarrow an 'array' refers to the `struct ArrowArray` definition
+#' in the Arrow C data interface. At the R level, we attach a
+#' [schema][as_nanoarrow_schema] such that functionally the nanoarrow_array
+#' class can be used in a similar way as an [arrow::Array]. Note that in
+#' nanoarrow an [arrow::RecordBatch] and a non-nullable [arrow::StructArray]
+#' are represented identically.
+#'
 #' @param x An object to convert to a array
 #' @param schema An optional schema used to enforce conversion to a particular
 #'   type. Defaults to [infer_nanoarrow_schema()].

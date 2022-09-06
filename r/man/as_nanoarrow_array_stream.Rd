@@ -18,5 +18,13 @@ type. Defaults to \code{\link[=infer_nanoarrow_schema]{infer_nanoarrow_schema()}
 An object of class 'nanoarrow_array_stream'
 }
 \description{
-Convert an object to a nanoarrow array_stream
+In nanoarrow, an 'array stream' corresponds to the \verb{struct ArrowArrayStream}
+as defined in the Arrow C Stream interface. This object is used to represent
+a stream of \link[=as_nanoarrow_array]{arrays} with a common
+\link[=as_nanoarrow_schema]{schema}. This is similar to an
+\link[arrow:RecordBatchReader]{arrow::RecordBatchReader} except it can be used to represent a stream of
+any type (not just record batches). Note that a stream of record batches
+and a stream of non-nullable struct arrays are represented identically.
+Also note that array streams are mutable objects and are passed by
+reference and not by value.
 }

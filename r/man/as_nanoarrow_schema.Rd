@@ -18,5 +18,9 @@ infer_nanoarrow_schema(x, ...)
 An object of class 'nanoarrow_schema'
 }
 \description{
-Convert an object to a nanoarrow schema
+In nanoarrow a 'schema' refers to a \verb{struct ArrowSchema} as defined in the
+Arrow C Data interface. This data structure can be used to represent an
+\code{\link[arrow:Schema]{arrow::schema()}}, an \code{\link[arrow:Field]{arrow::field()}}, or an \code{arrow::DataType}. Note that
+in nanoarrow, an \code{\link[arrow:Schema]{arrow::schema()}} and a non-nullable \code{\link[arrow:data-type]{arrow::struct()}}
+are represented identically.
 }
