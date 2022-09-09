@@ -159,7 +159,7 @@ int ArrowSQLite3ResultSetSchema(struct ArrowSQLite3Result* result,
 
 int ArrowSQLite3ResultFinishSchema(struct ArrowSQLite3Result* result,
                                    struct ArrowSchema* schema_out) {
-  if (result->array.release == NULL) {
+  if (result->schema.release == NULL) {
     return EINVAL;
   }
 
@@ -234,7 +234,7 @@ static int ArrowSQLite3GuessSchema(sqlite3_stmt* stmt, struct ArrowSchema* schem
   NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema_out, n_col));
 
   for (int i = 0; i < n_col; i++) {
-    const char* name = sqlite3_column_name16(stmt, i);
+    const char* name = sqlite3_column_name(stmt, i);
     const char* declared_type = sqlite3_column_decltype(stmt, i);
     int first_value_type = sqlite3_column_type(stmt, i);
     NANOARROW_RETURN_NOT_OK(ArrowSQLite3ColumnSchema(
@@ -315,7 +315,7 @@ int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt
 
       case SQLITE_TEXT:
         string_view.n_bytes = sqlite3_column_bytes(stmt, i);
-        string_view.data = sqlite3_column_text16(stmt, i);
+        string_view.data = (const char*)sqlite3_column_text(stmt, i);
         result_code = ArrowArrayAppendString(result->array.children[i], string_view);
         break;
 

@@ -17,9 +17,9 @@
 
 #include <stdexcept>
 
-#include <gtest/gtest.h>
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
+#include <gtest/gtest.h>
 #include <sqlite3.h>
 
 #include "nanoarrow_sqlite3.h"
@@ -27,9 +27,9 @@
 using namespace arrow;
 
 class ConnectionHolder {
-public:
+ public:
   sqlite3* ptr;
-  ConnectionHolder(): ptr(nullptr) {}
+  ConnectionHolder() : ptr(nullptr) {}
 
   int open_memory() {
     int result = sqlite3_open(":memory:", &ptr);
@@ -52,7 +52,9 @@ public:
 
   void add_crossfit_table() {
     exec("CREATE TABLE crossfit (exercise text,difficulty_level int)");
-    exec("INSERT INTO crossfit VALUES ('Push Ups', 3), ('Pull Ups', 5) , ('Push Jerk', 7), ('Bar Muscle Up', 10)");
+    exec(
+        "INSERT INTO crossfit VALUES ('Push Ups', 3), ('Pull Ups', 5) , ('Push Jerk', "
+        "7), ('Bar Muscle Up', 10)");
   }
 
   ~ConnectionHolder() {
@@ -63,10 +65,10 @@ public:
 };
 
 class StmtHolder {
-public:
+ public:
   sqlite3_stmt* ptr;
 
-  StmtHolder(): ptr(nullptr) {}
+  StmtHolder() : ptr(nullptr) {}
 
   int prepare(sqlite3* con, const std::string& sql) {
     const char* tail;
@@ -88,7 +90,9 @@ public:
 };
 
 void ASSERT_ARROW_OK(Status status) {
-  ASSERT_TRUE(status.ok());
+  if (!status.ok()) {
+    throw std::runtime_error(status.message());
+  }
 }
 
 TEST(SQLite3Test, SQLite3ResultBasic) {
@@ -135,6 +139,34 @@ TEST(SQLite3Test, SQLite3ResultWithGuessedSchema) {
     EXPECT_EQ(ArrowSQLite3ResultStep(&result, stmt.ptr), 0);
   } while (result.step_return_code == SQLITE_ROW);
 
+  // Trying to step again is an error
+  EXPECT_EQ(ArrowSQLite3ResultStep(&result, stmt.ptr), EIO);
+
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  EXPECT_EQ(ArrowSQLite3ResultFinishArray(&result, &array), 0);
+  EXPECT_EQ(ArrowSQLite3ResultFinishSchema(&result, &schema), 0);
+
+  auto maybe_array = ImportArray(&array, &schema);
+  ASSERT_ARROW_OK(maybe_array.status());
+
+  EXPECT_TRUE(maybe_array.ValueUnsafe()->type()->Equals(
+      struct_({field("exercise", utf8()), field("difficulty_level", int64())})));
+
+  auto arr = std::dynamic_pointer_cast<StructArray>(maybe_array.ValueUnsafe());
+  EXPECT_EQ(arr->length(), 4);
+
+  auto col1 = std::dynamic_pointer_cast<StringArray>(arr->field(0));
+  EXPECT_EQ(col1->Value(0), "Push Ups");
+  EXPECT_EQ(col1->Value(1), "Pull Ups");
+  EXPECT_EQ(col1->Value(2), "Push Jerk");
+  EXPECT_EQ(col1->Value(3), "Bar Muscle Up");
+
+  auto col2 = std::dynamic_pointer_cast<Int64Array>(arr->field(1));
+  EXPECT_EQ(col2->Value(0), 3);
+  EXPECT_EQ(col2->Value(1), 5);
+  EXPECT_EQ(col2->Value(2), 7);
+  EXPECT_EQ(col2->Value(3), 10);
 
   ArrowSQLite3ResultReset(&result);
 }
