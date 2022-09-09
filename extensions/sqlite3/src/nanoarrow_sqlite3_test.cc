@@ -139,9 +139,6 @@ TEST(SQLite3Test, SQLite3ResultWithGuessedSchema) {
     EXPECT_EQ(ArrowSQLite3ResultStep(&result, stmt.ptr), 0);
   } while (result.step_return_code == SQLITE_ROW);
 
-  // Trying to step again is an error
-  EXPECT_EQ(ArrowSQLite3ResultStep(&result, stmt.ptr), EIO);
-
   struct ArrowArray array;
   struct ArrowSchema schema;
   EXPECT_EQ(ArrowSQLite3ResultFinishArray(&result, &array), 0);
