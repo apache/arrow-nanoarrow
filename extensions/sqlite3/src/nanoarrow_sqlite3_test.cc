@@ -219,3 +219,35 @@ TEST(SQLite3Test, SQLite3ResultWithExplicitSchema) {
 
   ArrowSQLite3ResultReset(&result);
 }
+
+TEST(SQLite3Test, SQLite3ResultFromEmpty) {
+  ConnectionHolder con;
+  con.open_memory();
+  con.add_crossfit_table();
+
+  StmtHolder stmt;
+  stmt.prepare(con.ptr, "SELECT * from crossfit WHERE 0");
+
+  struct ArrowSQLite3Result result;
+  ASSERT_EQ(ArrowSQLite3ResultInit(&result), 0);
+
+  do {
+    EXPECT_EQ(ArrowSQLite3ResultStep(&result, stmt.ptr), 0);
+  } while (result.step_return_code == SQLITE_ROW);
+
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  EXPECT_EQ(ArrowSQLite3ResultFinishArray(&result, &array), 0);
+  EXPECT_EQ(ArrowSQLite3ResultFinishSchema(&result, &schema), 0);
+
+  auto maybe_array = ImportArray(&array, &schema);
+  ASSERT_ARROW_OK(maybe_array.status());
+
+  EXPECT_TRUE(maybe_array.ValueUnsafe()->type()->Equals(
+      struct_({field("exercise", null()), field("difficulty_level", null())})));
+
+  auto arr = std::dynamic_pointer_cast<StructArray>(maybe_array.ValueUnsafe());
+  EXPECT_EQ(arr->length(), 0);
+
+  ArrowSQLite3ResultReset(&result);
+}

@@ -190,6 +190,9 @@ static int ArrowSQLite3ColumnSchema(const char* name, const char* declared_type,
   int result;
 
   switch (first_value_type) {
+    case SQLITE_NULL:
+      result = ArrowSchemaInit(schema_out, NANOARROW_TYPE_NA);
+      break;
     case SQLITE_INTEGER:
       result = ArrowSchemaInit(schema_out, NANOARROW_TYPE_INT64);
       break;
