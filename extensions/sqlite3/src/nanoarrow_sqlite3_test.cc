@@ -20,6 +20,8 @@
 #include "nanoarrow_sqlite3.h"
 
 
-TEST(SQLite3Test, SQLite3TestStub) {
+TEST(SQLite3Test, SQLite3ResultLifecycle) {
+  struct ArrowSQLite3Result result;
+
   EXPECT_EQ(0, 0);
 }

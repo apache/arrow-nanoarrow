@@ -122,6 +122,11 @@ struct ArrowSQLite3Error {
   char message[1024];
 };
 
+struct ArrowSQLite3ErrorCode {
+  int errno_code;
+  int sqlite3_code;
+};
+
 struct ArrowSQLite3Result {
   sqlite3_stmt* stmt;
   struct ArrowArray array;
@@ -129,12 +134,21 @@ struct ArrowSQLite3Result {
   int schema_explicit;
 };
 
-int ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt);
-int ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result);
-int ArrowSQLite3ResultFinishArray(struct ArrowSQLite3Result* result,
-                                  struct ArrowArray* array_out);
+void ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt);
 
-int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result, struct ArrowSQLite3Error* error);
+int ArrowSQLite3ResultSetSchema(struct ArrowSQLite3Result* result,
+                                struct ArrowSchema* schema);
+
+void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result);
+
+void ArrowSQLite3ResultFinishSchema(struct ArrowSQLite3Result* result,
+                                    struct ArrowSchema* schema_out);
+
+void ArrowSQLite3ResultFinishArray(struct ArrowSQLite3Result* result,
+                                   struct ArrowArray* array_out);
+
+struct ArrowSQLite3ErrorCode ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result,
+                                                    struct ArrowSQLite3Error* error);
 
 #ifdef __cplusplus
 }
