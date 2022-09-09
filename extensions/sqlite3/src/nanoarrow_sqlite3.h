@@ -119,7 +119,6 @@ struct ArrowArrayStream {
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
 struct ArrowSQLite3Result {
-  sqlite3_stmt* stmt;
   int step_return_code;
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -127,7 +126,7 @@ struct ArrowSQLite3Result {
   void* private_data;
 };
 
-int ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt);
+int ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result);
 
 void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result);
 
@@ -142,7 +141,7 @@ int ArrowSQLite3ResultFinishSchema(struct ArrowSQLite3Result* result,
 int ArrowSQLite3ResultFinishArray(struct ArrowSQLite3Result* result,
                                   struct ArrowArray* array_out);
 
-int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result);
+int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt);
 
 #ifdef __cplusplus
 }

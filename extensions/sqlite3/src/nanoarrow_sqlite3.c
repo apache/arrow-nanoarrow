@@ -28,23 +28,25 @@ struct ArrowSQLite3ResultPrivate {
   struct ArrowBuffer sqlite_column_types;
 };
 
-int ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt) {
-  result->stmt = stmt;
+int ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result) {
   result->step_return_code = SQLITE_OK;
   result->array.release = NULL;
   result->schema.release = NULL;
+
   result->private_data = ArrowMalloc(sizeof(struct ArrowSQLite3ResultPrivate));
   if (result->private_data == NULL) {
     return ENOMEM;
   }
 
-  memset(result->private_data, 0, sizeof(struct ArrowSQLite3ResultPrivate));
+  struct ArrowSQLite3ResultPrivate* private =
+        (struct ArrowSQLite3ResultPrivate*)result->private_data;
+  private->error.message[0] = '\0';
+  ArrowBufferInit(&private->sqlite_column_types);
+
   return 0;
 }
 
 void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result) {
-  result->stmt = NULL;
-
   if (result->array.release != NULL) {
     result->array.release(&result->array);
   }
@@ -63,7 +65,7 @@ void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result) {
 
 const char* ArrowSQLite3ResultError(struct ArrowSQLite3Result* result) {
   struct ArrowSQLite3ResultPrivate* private =
-        (struct ArrowSQLite3ResultPrivate*)result->private_data;
+      (struct ArrowSQLite3ResultPrivate*)result->private_data;
   return private->error.message;
 }
 
@@ -242,20 +244,21 @@ static int ArrowSQLite3GuessSchema(sqlite3_stmt* stmt, struct ArrowSchema* schem
   return 0;
 }
 
-int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result) {
+int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt) {
   struct ArrowSQLite3ResultPrivate* private =
-    (struct ArrowSQLite3ResultPrivate*)result->private_data;
-  private->error.message[0] = '\0';
+      (struct ArrowSQLite3ResultPrivate*)result->private_data;
+ private
+  ->error.message[0] = '\0';
 
   // Call sqlite3_step()
-  result->step_return_code = sqlite3_step(result->stmt);
-  if (result->step_return_code != SQLITE_OK && result->step_return_code != SQLITE_DONE) {
+  result->step_return_code = sqlite3_step(stmt);
+  if (result->step_return_code != SQLITE_ROW && result->step_return_code != SQLITE_DONE) {
     return EIO;
   }
 
   // Make sure we have a schema
   if (result->schema.release == NULL) {
-    NANOARROW_RETURN_NOT_OK(ArrowSQLite3GuessSchema(result->stmt, &result->schema));
+    NANOARROW_RETURN_NOT_OK(ArrowSQLite3GuessSchema(stmt, &result->schema));
     NANOARROW_RETURN_NOT_OK(ArrowSQlite3ResolveSQLiteTypes(result, &result->schema));
   }
 
@@ -267,7 +270,7 @@ int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result) {
   }
 
   // Check the schema
-  int n_col = sqlite3_column_count(result->stmt);
+  int n_col = sqlite3_column_count(stmt);
   if (n_col != result->schema.n_children) {
     ArrowErrorSet(&private->error,
                   "Expected result with %d column(s) but got result with %d column(s)",
@@ -296,25 +299,25 @@ int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result) {
         break;
 
       case SQLITE_INTEGER:
-        result_code = ArrowArrayAppendInt(result->array.children[i],
-                                     sqlite3_column_int64(result->stmt, i));
+        result_code =
+            ArrowArrayAppendInt(result->array.children[i], sqlite3_column_int64(stmt, i));
         break;
 
       case SQLITE_FLOAT:
         result_code = ArrowArrayAppendDouble(result->array.children[i],
-                                        sqlite3_column_double(result->stmt, i));
+                                             sqlite3_column_double(stmt, i));
         break;
 
       case SQLITE_BLOB:
-        buffer_view.n_bytes = sqlite3_column_bytes(result->stmt, i);
-        buffer_view.data.data = sqlite3_column_blob(result->stmt, i);
+        buffer_view.n_bytes = sqlite3_column_bytes(stmt, i);
+        buffer_view.data.data = sqlite3_column_blob(stmt, i);
         result_code = ArrowArrayAppendBytes(result->array.children[i], buffer_view);
         break;
 
       case SQLITE_TEXT:
-        string_view.n_bytes = sqlite3_column_bytes(result->stmt, i);
-        string_view.data = sqlite3_column_text16(result->stmt, i);
-        result_code = ArrowArrayAppendBytes(result->array.children[i], buffer_view);
+        string_view.n_bytes = sqlite3_column_bytes(stmt, i);
+        string_view.data = sqlite3_column_text16(stmt, i);
+        result_code = ArrowArrayAppendString(result->array.children[i], string_view);
         break;
 
       default:
