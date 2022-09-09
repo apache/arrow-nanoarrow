@@ -118,37 +118,29 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
-struct ArrowSQLite3Error {
-  char message[1024];
-};
-
-struct ArrowSQLite3ErrorCode {
-  int errno_code;
-  int sqlite3_code;
-};
-
 struct ArrowSQLite3Result {
   sqlite3_stmt* stmt;
+  int step_return_code;
   struct ArrowArray array;
   struct ArrowSchema schema;
   int schema_explicit;
+  void* private_data;
 };
 
-void ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt);
+int ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt);
 
 int ArrowSQLite3ResultSetSchema(struct ArrowSQLite3Result* result,
                                 struct ArrowSchema* schema);
 
 void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result);
 
-void ArrowSQLite3ResultFinishSchema(struct ArrowSQLite3Result* result,
-                                    struct ArrowSchema* schema_out);
+int ArrowSQLite3ResultFinishSchema(struct ArrowSQLite3Result* result,
+                                   struct ArrowSchema* schema_out);
 
-void ArrowSQLite3ResultFinishArray(struct ArrowSQLite3Result* result,
-                                   struct ArrowArray* array_out);
+int ArrowSQLite3ResultFinishArray(struct ArrowSQLite3Result* result,
+                                  struct ArrowArray* array_out);
 
-struct ArrowSQLite3ErrorCode ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result,
-                                                    struct ArrowSQLite3Error* error);
+int ArrowSQLite3ResultStep(struct ArrowSQLite3Result* result);
 
 #ifdef __cplusplus
 }

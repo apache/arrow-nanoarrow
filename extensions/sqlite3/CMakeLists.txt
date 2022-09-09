@@ -44,6 +44,8 @@ if (NANOARROW_SQLITE3_BUILD_TESTS)
   set(CMAKE_CXX_STANDARD 11)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+  find_package(Arrow REQUIRED)
+
   FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/release-1.11.0.zip
@@ -53,7 +55,7 @@ if (NANOARROW_SQLITE3_BUILD_TESTS)
   enable_testing()
 
   add_executable(nanoarrow_sqlite3_test src/nanoarrow_sqlite3_test.cc)
-  target_link_libraries(nanoarrow_sqlite3_test nanoarrow_sqlite3 gtest_main)
+  target_link_libraries(nanoarrow_sqlite3_test nanoarrow_sqlite3 arrow_shared gtest_main)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_sqlite3_test)

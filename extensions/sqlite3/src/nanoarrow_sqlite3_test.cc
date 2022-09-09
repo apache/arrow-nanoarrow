@@ -16,12 +16,14 @@
 // under the License.
 
 #include <gtest/gtest.h>
+#include <arrow/array.h>
+#include <sqlite3.h>
 
 #include "nanoarrow_sqlite3.h"
 
 
 TEST(SQLite3Test, SQLite3ResultLifecycle) {
   struct ArrowSQLite3Result result;
-
-  EXPECT_EQ(0, 0);
+  ASSERT_EQ(ArrowSQLite3ResultInit(&result, nullptr), 0);
+  ArrowSQLite3ResultReset(&result);
 }
