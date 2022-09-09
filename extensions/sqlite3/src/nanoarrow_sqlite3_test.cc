@@ -170,3 +170,52 @@ TEST(SQLite3Test, SQLite3ResultWithGuessedSchema) {
 
   ArrowSQLite3ResultReset(&result);
 }
+
+TEST(SQLite3Test, SQLite3ResultWithExplicitSchema) {
+  ConnectionHolder con;
+  con.open_memory();
+  con.add_crossfit_table();
+
+  StmtHolder stmt;
+  stmt.prepare(con.ptr, "SELECT * from crossfit");
+
+  struct ArrowSQLite3Result result;
+  ASSERT_EQ(ArrowSQLite3ResultInit(&result), 0);
+
+  auto explicit_schema = arrow::schema({field("col1", large_utf8()), field("col2", utf8())});
+  struct ArrowSchema schema_in;
+  ASSERT_ARROW_OK(ExportSchema(*explicit_schema, &schema_in));
+  ASSERT_EQ(ArrowSQLite3ResultSetSchema(&result, &schema_in), 0);
+
+  do {
+    EXPECT_EQ(ArrowSQLite3ResultStep(&result, stmt.ptr), 0);
+  } while (result.step_return_code == SQLITE_ROW);
+
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  EXPECT_EQ(ArrowSQLite3ResultFinishArray(&result, &array), 0);
+  EXPECT_EQ(ArrowSQLite3ResultFinishSchema(&result, &schema), 0);
+
+  auto maybe_array = ImportArray(&array, &schema);
+  ASSERT_ARROW_OK(maybe_array.status());
+
+  EXPECT_TRUE(maybe_array.ValueUnsafe()->type()->Equals(
+      struct_({field("col1", large_utf8()), field("col2", utf8())})));
+
+  auto arr = std::dynamic_pointer_cast<StructArray>(maybe_array.ValueUnsafe());
+  EXPECT_EQ(arr->length(), 4);
+
+  auto col1 = std::dynamic_pointer_cast<LargeStringArray>(arr->field(0));
+  EXPECT_EQ(col1->Value(0), "Push Ups");
+  EXPECT_EQ(col1->Value(1), "Pull Ups");
+  EXPECT_EQ(col1->Value(2), "Push Jerk");
+  EXPECT_EQ(col1->Value(3), "Bar Muscle Up");
+
+  auto col2 = std::dynamic_pointer_cast<StringArray>(arr->field(1));
+  EXPECT_EQ(col2->Value(0), "3");
+  EXPECT_EQ(col2->Value(1), "5");
+  EXPECT_EQ(col2->Value(2), "7");
+  EXPECT_EQ(col2->Value(3), "10");
+
+  ArrowSQLite3ResultReset(&result);
+}
