@@ -122,7 +122,6 @@ struct ArrowSQLite3Result {
   int step_return_code;
   struct ArrowArray array;
   struct ArrowSchema schema;
-  int schema_explicit;
   void* private_data;
 };
 
