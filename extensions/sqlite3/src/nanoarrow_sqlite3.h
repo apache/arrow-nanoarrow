@@ -129,10 +129,12 @@ struct ArrowSQLite3Result {
 
 int ArrowSQLite3ResultInit(struct ArrowSQLite3Result* result, sqlite3_stmt* stmt);
 
+void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result);
+
+const char* ArrowSQLite3ResultError(struct ArrowSQLite3Result* result);
+
 int ArrowSQLite3ResultSetSchema(struct ArrowSQLite3Result* result,
                                 struct ArrowSchema* schema);
-
-void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result);
 
 int ArrowSQLite3ResultFinishSchema(struct ArrowSQLite3Result* result,
                                    struct ArrowSchema* schema_out);

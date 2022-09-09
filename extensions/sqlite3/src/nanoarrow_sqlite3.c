@@ -61,6 +61,12 @@ void ArrowSQLite3ResultReset(struct ArrowSQLite3Result* result) {
   }
 }
 
+const char* ArrowSQLite3ResultError(struct ArrowSQLite3Result* result) {
+  struct ArrowSQLite3ResultPrivate* private =
+        (struct ArrowSQLite3ResultPrivate*)result->private_data;
+  return private->error.message;
+}
+
 static int ArrowSQLite3TypeFromArrowType(enum ArrowType storage_type, int* sqlite_type) {
   switch (storage_type) {
     case NANOARROW_TYPE_NA:

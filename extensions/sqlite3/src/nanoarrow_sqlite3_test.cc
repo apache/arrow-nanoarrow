@@ -17,13 +17,44 @@
 
 #include <gtest/gtest.h>
 #include <arrow/array.h>
+#include <arrow/c/bridge.h>
 #include <sqlite3.h>
 
 #include "nanoarrow_sqlite3.h"
 
+using namespace arrow;
 
-TEST(SQLite3Test, SQLite3ResultLifecycle) {
+void ASSERT_ARROW_OK(Status status) {
+  ASSERT_TRUE(status.ok());
+}
+
+TEST(SQLite3Test, SQLite3ResultBasic) {
   struct ArrowSQLite3Result result;
   ASSERT_EQ(ArrowSQLite3ResultInit(&result, nullptr), 0);
+  ArrowSQLite3ResultReset(&result);
+}
+
+TEST(SQLite3Test, SQLite3ResultSetSchema) {
+  struct ArrowSQLite3Result result;
+  struct ArrowSchema schema;
+  schema.release = nullptr;
+
+  ASSERT_EQ(ArrowSQLite3ResultInit(&result, nullptr), 0);
+
+  EXPECT_EQ(ArrowSQLite3ResultSetSchema(&result, nullptr), EINVAL);
+  EXPECT_STREQ(ArrowSQLite3ResultError(&result), "schema is null or released");
+  EXPECT_EQ(ArrowSQLite3ResultSetSchema(&result, &schema), EINVAL);
+  EXPECT_STREQ(ArrowSQLite3ResultError(&result), "schema is null or released");
+  
+  ASSERT_ARROW_OK(ExportType(*int32(), &schema));
+  EXPECT_EQ(ArrowSQLite3ResultSetSchema(&result, &schema), EINVAL);
+  EXPECT_STREQ(ArrowSQLite3ResultError(&result), "schema is not a struct");
+  schema.release(&schema);
+
+  ASSERT_ARROW_OK(ExportSchema(*arrow::schema({}), &schema));
+  EXPECT_EQ(ArrowSQLite3ResultSetSchema(&result, &schema), 0);
+
+  
+
   ArrowSQLite3ResultReset(&result);
 }
