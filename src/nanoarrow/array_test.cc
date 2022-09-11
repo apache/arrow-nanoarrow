@@ -363,6 +363,15 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
       ArrayFromJSON(utf8(), "[\"1234\", null, null, \"56789\"]")));
 }
 
+TEST(ArrayTest, ArrayTestAppendEmptyToString) {
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_NE(array.buffers[2], nullptr);
+}
+
 TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
   struct ArrowArray array;
 
