@@ -370,6 +370,7 @@ TEST(ArrayTest, ArrayTestAppendEmptyToString) {
   ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
   EXPECT_NE(array.buffers[2], nullptr);
+  array.release(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
