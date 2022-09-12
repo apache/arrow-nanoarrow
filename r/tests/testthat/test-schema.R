@@ -15,6 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("nanoarrow_schema format, print, and str methods work", {
+  schema <- infer_nanoarrow_schema(1:10)
+  expect_identical(format(schema), "<nanoarrow_schema[i]>")
+  expect_output(expect_identical(str(schema), schema), "nanoarrow_schema")
+  expect_output(expect_identical(print(schema), schema), "nanoarrow_schema")
+})
+
 test_that("as_nanoarrow_schema() works for nanoarrow_schema", {
   schema <- infer_nanoarrow_schema(1:10)
   expect_identical(as_nanoarrow_schema(schema), schema)
@@ -48,6 +55,12 @@ test_that("schema list interface works for nested types", {
   expect_identical(schema$children$a, schema$children[[1]])
   expect_identical(schema$children$a$format, "i")
   expect_identical(schema$children$b$format, "u")
+  expect_s3_class(schema$children$a, "nanoarrow_schema")
+  expect_s3_class(schema$children$b, "nanoarrow_schema")
+
+  info_recursive <- nanoarrow_schema_info(schema, recursive = TRUE)
+  expect_type(info_recursive$children$a, "list")
+  expect_identical(info_recursive$children$a$format, "i")
 })
 
 test_that("schema list interface works for dictionary types", {
@@ -55,6 +68,11 @@ test_that("schema list interface works for dictionary types", {
 
   expect_identical(schema$format, "c")
   expect_identical(schema$dictionary$format, "u")
+  expect_s3_class(schema$dictionary, "nanoarrow_schema")
+
+  info_recursive <- nanoarrow_schema_info(schema, recursive = TRUE)
+  expect_type(info_recursive$dictionary, "list")
+  expect_identical(info_recursive$dictionary$format, "u")
 })
 
 test_that("schema list interface works with metadata", {

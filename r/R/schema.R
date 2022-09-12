@@ -48,6 +48,25 @@ infer_nanoarrow_schema.default <- function(x, ...) {
   as_nanoarrow_schema(arrow::infer_type(x, ...))
 }
 
+#' @importFrom utils str
+#' @export
+str.nanoarrow_schema <- function(object, ...) {
+  cat(sprintf("%s\n", format(object)))
+  str(nanoarrow_schema_info(object, recursive = TRUE))
+  invisible(object)
+}
+
+#' @export
+print.nanoarrow_schema <- function(x, ...) {
+  str(x, ...)
+  invisible(x)
+}
+
+#' @export
+format.nanoarrow_schema <- function(x, ...) {
+  sprintf("<nanoarrow_schema[%s]>", x$format)
+}
+
 # This is the list()-like interface to nanoarrow_schema that allows $ and [[
 # to make nice auto-complete for the schema fields
 
