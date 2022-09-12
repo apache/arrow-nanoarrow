@@ -53,6 +53,10 @@ static inline struct ArrowSchema* nullable_schema_from_xptr(SEXP schema_xptr) {
 static inline SEXP schema_owning_xptr() {
   struct ArrowSchema* schema =
       (struct ArrowSchema*)ArrowMalloc(sizeof(struct ArrowSchema));
+  if (schema == NULL) {
+    Rf_error("Failed to allocate ArrowSchema");
+  }
+
   schema->release = NULL;
 
   SEXP schema_xptr = PROTECT(R_MakeExternalPtr(schema, R_NilValue, R_NilValue));

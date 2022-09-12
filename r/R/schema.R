@@ -47,3 +47,56 @@ infer_nanoarrow_schema <- function(x, ...) {
 infer_nanoarrow_schema.default <- function(x, ...) {
   as_nanoarrow_schema(arrow::infer_type(x, ...))
 }
+
+# This is the list()-like interface to nanoarrow_schema that allows $ and [[
+# to make nice auto-complete for the schema fields
+
+#' @export
+length.nanoarrow_schema <- function(x, ...) {
+  6L
+}
+
+#' @export
+names.nanoarrow_schema <- function(x, ...) {
+  c("format", "name", "metadata", "flags", "children", "dictionary")
+}
+
+#' @export
+`[[.nanoarrow_schema` <- function(x, i, ...) {
+  nanoarrow_schema_info(x)[[i]]
+}
+
+#' @export
+`$.nanoarrow_schema` <- function(x, i, ...) {
+  nanoarrow_schema_info(x)[[i]]
+}
+
+nanoarrow_schema_info <- function(schema, recursive = FALSE) {
+  result <- .Call(nanoarrow_c_schema_to_list, schema)
+  if (recursive && !is.null(schema$children)) {
+    result$children <- lapply(
+      schema$children,
+      nanoarrow_schema_info,
+      recursive = TRUE
+    )
+  }
+
+  if (recursive && !is.null(schema$dictionary)) {
+    result$dictionary <- nanoarrow_schema_info(schema$dictionary, recursive = TRUE)
+  }
+
+  result$metadata <- list_of_raw_to_metadata(result$metadata)
+
+  result
+}
+
+list_of_raw_to_metadata <- function(metadata) {
+  lapply(metadata, function(x) {
+    if (is.character(x) || any(x == 0)) {
+      x
+    } else {
+      x_str <- iconv(list(x), from = "UTF-8", to = "UTF-8", mark = TRUE)[[1]]
+      if (is.na(x_str)) x else x_str
+    }
+  })
+}

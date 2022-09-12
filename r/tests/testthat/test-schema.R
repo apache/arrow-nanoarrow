@@ -24,3 +24,47 @@ test_that("infer_nanoarrow_schema() default method works", {
   schema <- infer_nanoarrow_schema(1:10)
   expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
 })
+
+test_that("schema list interface works for non-nested types", {
+  schema <- infer_nanoarrow_schema(1:10)
+  expect_identical(length(schema), 6L)
+  expect_identical(
+    names(schema),
+    c("format", "name", "metadata", "flags", "children", "dictionary")
+  )
+  expect_identical(schema$format, "i")
+  expect_identical(schema$name, "")
+  expect_identical(schema$metadata, list())
+  expect_identical(schema$flags, 2L)
+  expect_identical(schema$children, NULL)
+  expect_identical(schema$dictionary, NULL)
+})
+
+test_that("schema list interface works for nested types", {
+  schema <- infer_nanoarrow_schema(data.frame(a = 1L, b = "two"))
+
+  expect_identical(schema$format, "+s")
+  expect_named(schema$children, c("a", "b"))
+  expect_identical(schema$children$a, schema$children[[1]])
+  expect_identical(schema$children$a$format, "i")
+  expect_identical(schema$children$b$format, "u")
+})
+
+test_that("schema list interface works for dictionary types", {
+  schema <- infer_nanoarrow_schema(factor(letters[1:5]))
+
+  expect_identical(schema$format, "c")
+  expect_identical(schema$dictionary$format, "u")
+})
+
+test_that("schema list interface works with metadata", {
+  schema <- infer_nanoarrow_schema(as.POSIXlt("2020-01-01", tz = "UTC"))
+  expect_identical(
+    schema$metadata[["ARROW:extension:name"]],
+    "arrow.r.vctrs"
+  )
+  expect_s3_class(
+    unserialize(schema$metadata[["ARROW:extension:metadata"]]),
+    "POSIXlt"
+  )
+})
