@@ -205,15 +205,15 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
       break;
     case NANOARROW_TYPE_INT32:
       _NANOARROW_CHECK_RANGE(value, INT32_MIN, INT32_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, (int32_t)value));
       break;
     case NANOARROW_TYPE_INT16:
       _NANOARROW_CHECK_RANGE(value, INT16_MIN, INT16_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt16(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt16(data_buffer, (int16_t)value));
       break;
     case NANOARROW_TYPE_INT8:
       _NANOARROW_CHECK_RANGE(value, INT8_MIN, INT8_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(data_buffer, (int8_t)value));
       break;
     case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_UINT32:
@@ -255,15 +255,15 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
       break;
     case NANOARROW_TYPE_UINT32:
       _NANOARROW_CHECK_RANGE(value, 0, UINT32_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt32(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt32(data_buffer, (uint32_t)value));
       break;
     case NANOARROW_TYPE_UINT16:
       _NANOARROW_CHECK_RANGE(value, 0, UINT16_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, (uint16_t)value));
       break;
     case NANOARROW_TYPE_UINT8:
       _NANOARROW_CHECK_RANGE(value, 0, UINT8_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(data_buffer, (uint8_t)value));
       break;
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_INT32:
@@ -406,7 +406,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
         return EINVAL;
       }
       NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), child_length));
+          ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), (int32_t)child_length));
       break;
     case NANOARROW_TYPE_LARGE_LIST:
       child_length = array->children[0]->length;
@@ -449,7 +449,7 @@ static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_SPARSE_UNION:
       // Not supported yet
-      return 0xff;
+      return -1;
     default:
       return validity_buffer != NULL && !ArrowBitGet(validity_buffer, i);
   }

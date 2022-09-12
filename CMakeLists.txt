@@ -89,6 +89,29 @@ else()
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:include>)
     target_include_directories(nanoarrow PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>)
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+      target_compile_options(
+        nanoarrow
+        PRIVATE
+        -Wall
+        -Werror
+        -Wextra
+        -Wno-type-limits
+        -Wno-unused-parameter
+        -Wpedantic
+        -Wunused-result)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR
+        CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      target_compile_options(
+        nanoarrow
+        PRIVATE
+        -Wall
+        -Werror
+        -Wextra
+        -Wdocumentation
+        -Wno-unused-parameter
+        -Wshorten-64-to-32)
+    endif()
 
     install(TARGETS nanoarrow DESTINATION lib)
     install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
