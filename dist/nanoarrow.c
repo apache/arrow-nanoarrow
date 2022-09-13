@@ -40,7 +40,7 @@ int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
 
   if (chars_needed < 0) {
     return EINVAL;
-  } else if (chars_needed >= sizeof(error->message)) {
+  } else if (((size_t)chars_needed) >= sizeof(error->message)) {
     return ERANGE;
   } else {
     return NANOARROW_OK;
@@ -491,7 +491,7 @@ ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
       return EINVAL;
   }
 
-  if (n_chars >= sizeof(buffer)) {
+  if (((size_t)n_chars) >= sizeof(buffer)) {
     schema->release(schema);
     return ERANGE;
   }
@@ -745,14 +745,14 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
       }
 
       parse_start = format + 2;
-      schema_view->decimal_precision = strtol(parse_start, &parse_end, 10);
+      schema_view->decimal_precision = (int32_t)strtol(parse_start, &parse_end, 10);
       if (parse_end == parse_start || parse_end[0] != ',') {
         ArrowErrorSet(error, "Expected 'precision,scale[,bitwidth]' following 'd:'");
         return EINVAL;
       }
 
       parse_start = parse_end + 1;
-      schema_view->decimal_scale = strtol(parse_start, &parse_end, 10);
+      schema_view->decimal_scale = (int32_t)strtol(parse_start, &parse_end, 10);
       if (parse_end == parse_start) {
         ArrowErrorSet(error, "Expected 'scale[,bitwidth]' following 'd:precision,'");
         return EINVAL;
@@ -760,7 +760,7 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
         schema_view->decimal_bitwidth = 128;
       } else {
         parse_start = parse_end + 1;
-        schema_view->decimal_bitwidth = strtol(parse_start, &parse_end, 10);
+        schema_view->decimal_bitwidth = (int32_t)strtol(parse_start, &parse_end, 10);
         if (parse_start == parse_end) {
           ArrowErrorSet(error, "Expected precision following 'd:precision,scale,'");
           return EINVAL;
@@ -791,7 +791,7 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
         return EINVAL;
       }
 
-      schema_view->fixed_size = strtol(format + 2, (char**)format_end_out, 10);
+      schema_view->fixed_size = (int32_t)strtol(format + 2, (char**)format_end_out, 10);
       return NANOARROW_OK;
 
     // validity + offset + data
@@ -844,7 +844,8 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
 
           schema_view->storage_data_type = NANOARROW_TYPE_FIXED_SIZE_LIST;
           schema_view->data_type = NANOARROW_TYPE_FIXED_SIZE_LIST;
-          schema_view->fixed_size = strtol(format + 3, (char**)format_end_out, 10);
+          schema_view->fixed_size =
+              (int32_t)strtol(format + 3, (char**)format_end_out, 10);
           return NANOARROW_OK;
         case 's':
           schema_view->storage_data_type = NANOARROW_TYPE_STRUCT;
@@ -888,6 +889,11 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
                           format);
             return EINVAL;
           }
+
+        default:
+          ArrowErrorSet(error, "Expected nested type format string but found '%s'",
+                        format);
+          return EINVAL;
       }
 
     // date/time types
@@ -1226,7 +1232,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
     return EINVAL;
   }
 
-  int format_len = strlen(format);
+  size_t format_len = strlen(format);
   if (format_len == 0) {
     ArrowErrorSet(error, "Error parsing schema->format: Expected a string with size > 0");
     return EINVAL;
@@ -1399,15 +1405,15 @@ static ArrowErrorCode ArrowMetadataBuilderAppendInternal(struct ArrowBuffer* buf
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(buffer, 0));
   }
 
-  if (buffer->capacity_bytes < sizeof(int32_t)) {
+  if (((size_t)buffer->capacity_bytes) < sizeof(int32_t)) {
     return EINVAL;
   }
 
   int32_t n_keys;
   memcpy(&n_keys, buffer->data, sizeof(int32_t));
 
-  int32_t key_size = key->n_bytes;
-  int32_t value_size = value->n_bytes;
+  int32_t key_size = (int32_t)key->n_bytes;
+  int32_t value_size = (int32_t)value->n_bytes;
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(
       buffer, sizeof(int32_t) + key_size + sizeof(int32_t) + value_size));
 
@@ -1841,6 +1847,32 @@ ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  // The only buffer finalizing this currently does is make sure the data
+  // buffer for (Large)String|Binary is never NULL
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_LARGE_STRING:
+      if (ArrowArrayBuffer(array, 2)->data == NULL) {
+        ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0);
+      }
+      break;
+    default:
+      break;
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
 static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -1889,6 +1921,9 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
 
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error) {
+  // Even if the data buffer is size zero, the value needs to be non-null
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array));
+
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
   ArrowArrayFlushInternalPointers(array);
