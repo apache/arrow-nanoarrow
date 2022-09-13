@@ -347,6 +347,32 @@ ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  // The only buffer finalizing this currently does is make sure the data
+  // buffer for (Large)String|Binary is never NULL
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_LARGE_STRING:
+      if (ArrowArrayBuffer(array, 2)->data == NULL) {
+        ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0);
+      }
+      break;
+    default:
+      break;
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
 static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -395,6 +421,9 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
 
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error) {
+  // Even if the data buffer is size zero, the value needs to be non-null
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array));
+
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
   ArrowArrayFlushInternalPointers(array);
