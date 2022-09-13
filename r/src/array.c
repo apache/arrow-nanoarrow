@@ -72,9 +72,138 @@ SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr) {
   }
 }
 
-// for ArrowArray* that are exported references to an R schema_xptr
+static SEXP borrow_array_xptr(struct ArrowArray* array, SEXP shelter) {
+  SEXP array_xptr = PROTECT(R_MakeExternalPtr(array, R_NilValue, shelter));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_array"));
+  UNPROTECT(1);
+  return array_xptr;
+}
+
+static SEXP borrow_array_view_xptr(struct ArrowArray* array_view, SEXP shelter) {
+  return R_MakeExternalPtr(array_view, R_NilValue, shelter);
+}
+
+static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP shelter) {
+  return R_NilValue;
+}
+
+static SEXP borrow_unknown_buffer(struct ArrowArray* array, int64_t i, SEXP shelter) {
+  SEXP buffer_class = PROTECT(Rf_allocVector(STRSXP, 2));
+  SET_STRING_ELT(buffer_class, 0, Rf_mkChar("nanoarrow_buffer_unknown"));
+  SET_STRING_ELT(buffer_class, 1, Rf_mkChar("nanoarrow_buffer"));
+
+  SEXP buffer = PROTECT(R_MakeExternalPtr((void*)array->buffers[i], R_NilValue, shelter));
+  Rf_setAttrib(buffer, R_ClassSymbol, buffer_class);
+  UNPROTECT(2);
+  return buffer;
+}
+
+static SEXP length_from_int64(int64_t value) {
+  if (value < 2147483647) {
+    return Rf_ScalarInteger(value);
+  } else {
+    return Rf_ScalarReal(value);
+  }
+}
+
+static void finalize_array_view_xptr(SEXP array_view_xptr) {
+  struct ArrowArrayView* array_view =
+      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
+  if (array_view != NULL) {
+    ArrowArrayViewReset(array_view);
+    ArrowFree(array_view);
+  }
+}
+
+SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowSchema* schema = schema_from_xptr(array_xptr);
+
+  struct ArrowError error;
+  ArrowErrorSet(&error, "");
+
+  struct ArrowArrayView* array_view =
+      (struct ArrowArrayView*)ArrowMalloc(sizeof(struct ArrowArrayView));
+  ArrowArrayViewInit(array_view, NANOARROW_TYPE_UNINITIALIZED);
+  SEXP xptr = PROTECT(R_MakeExternalPtr(array_view, R_NilValue, array_xptr));
+  R_RegisterCFinalizer(xptr, &finalize_array_view_xptr);
+
+  int result = ArrowArrayViewInitFromSchema(array_view, schema, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("<ArrowArrayViewInitFromSchema> %s", error.message);
+  }
+
+  result = ArrowArrayViewSetArray(array_view, array, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("<ArrowArrayViewSetArray> %s", error.message);
+  }
+
+  UNPROTECT(1);
+  return xptr;
+}
+
+SEXP nanoarrow_c_array_info(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  int recursive = LOGICAL(recursive_sexp)[0];
+
+  const char* names[] = {"length",  "null_count", "offset",     "n_buffers", "n_children",
+                         "buffers", "children",   "dictionary", ""};
+  SEXP array_info = PROTECT(Rf_mkNamed(VECSXP, names));
+
+  SET_VECTOR_ELT(array_info, 0, length_from_int64(array->length));
+  SET_VECTOR_ELT(array_info, 1, length_from_int64(array->null_count));
+  SET_VECTOR_ELT(array_info, 2, length_from_int64(array->offset));
+  SET_VECTOR_ELT(array_info, 3, length_from_int64(array->n_buffers));
+  SET_VECTOR_ELT(array_info, 4, length_from_int64(array->n_children));
+
+  if (array_view_xptr == R_NilValue) {
+    if (array->n_buffers > 0) {
+      SEXP buffers = PROTECT(Rf_allocVector(VECSXP, array->n_buffers));
+      for (int64_t i = 0; i < array->n_buffers; i++) {
+        SET_VECTOR_ELT(buffers, i, borrow_unknown_buffer(array, i, array_xptr));
+      }
+
+      SET_VECTOR_ELT(array_info, 5, buffers);
+      UNPROTECT(1);
+    }
+
+    if (array->n_children > 0) {
+      SEXP children = PROTECT(Rf_allocVector(VECSXP, array->n_children));
+      for (int64_t i = 0; i < array->n_children; i++) {
+        SEXP child = PROTECT(borrow_array_xptr(array->children[i], array_xptr));
+        if (recursive) {
+          SET_VECTOR_ELT(children, i, nanoarrow_c_array_info(child, R_NilValue, recursive_sexp));
+        } else {
+          SET_VECTOR_ELT(children, i, child);
+        }
+        UNPROTECT(1);
+      }
+
+      SET_VECTOR_ELT(array_info, 6, children);
+      UNPROTECT(1);
+    }
+
+    if (array->dictionary != NULL) {
+      SEXP dictionary = PROTECT(borrow_array_xptr(array->dictionary, array_xptr));
+      if (recursive) {
+        SET_VECTOR_ELT(array_info, 7,
+                       nanoarrow_c_array_info(dictionary, R_NilValue, recursive_sexp));
+      } else {
+        SET_VECTOR_ELT(array_info, 7, dictionary);
+      }
+      UNPROTECT(1);
+    }
+  } else {
+    Rf_error("array info with array view not implemented");
+  }
+
+  UNPROTECT(1);
+  return array_info;
+}
+
+// for ArrowArray* that are exported references to an R array_xptr
 void finalize_exported_array(struct ArrowArray* array) {
-  SEXP array_xptr = (SEXP) array->private_data;
+  SEXP array_xptr = (SEXP)array->private_data;
   R_ReleaseObject(array_xptr);
 
   // TODO: properly relocate child arrays

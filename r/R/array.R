@@ -91,3 +91,12 @@ nanoarrow_array_set_schema <- function(array, schema) {
   .Call(nanoarrow_c_array_set_schema, array, schema)
   invisible(array)
 }
+
+# This is the list()-like interface to nanoarrow_array that allows $ and [[
+# to make nice auto-complete for the array fields
+nanoarrow_array_info <- function(array, schema = NULL, recursive = FALSE) {
+  schema <- schema %||% .Call(nanoarrow_c_infer_schema_array, x)
+  result <- .Call(nanoarrow_c_array_info, array, NULL, recursive)
+  result
+}
+
