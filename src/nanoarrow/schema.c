@@ -1032,7 +1032,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
     return EINVAL;
   }
 
-  unsigned long format_len = strlen(format);
+  size_t format_len = strlen(format);
   if (format_len == 0) {
     ArrowErrorSet(error, "Error parsing schema->format: Expected a string with size > 0");
     return EINVAL;
