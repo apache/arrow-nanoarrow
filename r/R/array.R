@@ -94,9 +94,43 @@ nanoarrow_array_set_schema <- function(array, schema) {
 
 # This is the list()-like interface to nanoarrow_array that allows $ and [[
 # to make nice auto-complete for the array fields
-nanoarrow_array_info <- function(array, schema = NULL, recursive = FALSE) {
-  schema <- schema %||% .Call(nanoarrow_c_infer_schema_array, x)
-  result <- .Call(nanoarrow_c_array_info, array, NULL, recursive)
-  result
+
+
+#' @export
+length.nanoarrow_array <- function(x, ...) {
+  6L
 }
 
+#' @export
+names.nanoarrow_array <- function(x, ...) {
+  c(
+    "length",  "null_count", "offset", "buffers", "children", "dictionary"
+  )
+}
+
+#' @export
+`[[.nanoarrow_array` <- function(x, i, ...) {
+  nanoarrow_array_info_safe(x)[[i]]
+}
+
+#' @export
+`$.nanoarrow_array` <- function(x, i, ...) {
+  nanoarrow_array_info_safe(x)[[i]]
+}
+
+nanoarrow_array_info_safe <- function(array, recursive = FALSE) {
+  schema <- .Call(nanoarrow_c_infer_schema_array, array)
+  tryCatch(
+    nanoarrow_array_info(array, schema = schema, recursive = recursive),
+    error = function(...) nanoarrow_array_info(array, recursive = recursive)
+  )
+}
+
+nanoarrow_array_info <- function(array, schema = NULL, recursive = FALSE) {
+  if (!is.null(schema)) {
+    array_view <- .Call(nanoarrow_c_array_view, array, schema)
+    .Call(nanoarrow_c_array_info, array, array_view, recursive)
+  } else {
+    .Call(nanoarrow_c_array_info, array, NULL, recursive)
+  }
+}

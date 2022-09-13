@@ -48,3 +48,50 @@ test_that("as.vector() and as.data.frame() work for array", {
   struct_array <- as_nanoarrow_array(data.frame(a = 1:10))
   expect_identical(as.data.frame(struct_array), data.frame(a = 1:10))
 })
+
+test_that("schemaless array list interface works for non-nested types", {
+  array <- as_nanoarrow_array(1:10)
+  nanoarrow_array_set_schema(array, NULL)
+
+  expect_identical(length(array), 6L)
+  expect_identical(
+    names(array),
+    c("length",  "null_count", "offset", "buffers", "children",   "dictionary")
+  )
+  expect_identical(array$length, 10L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(array$offset, 0L)
+  expect_length(array$buffers, 2L)
+  expect_s3_class(array$buffers[[1]], "nanoarrow_buffer")
+  expect_s3_class(array$buffers[[2]], "nanoarrow_buffer")
+  expect_null(array$children)
+  expect_null(array$dictionary)
+})
+
+test_that("schemaless array list interface works for nested types", {
+  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
+  nanoarrow_array_set_schema(array, NULL)
+
+  expect_length(array$children, 2L)
+  expect_length(array$children[[1]]$buffers, 2L)
+  expect_length(array$children[[2]]$buffers, 3L)
+  expect_s3_class(array$children[[1]], "nanoarrow_array")
+  expect_s3_class(array$children[[2]], "nanoarrow_array")
+
+  info_recursive <- nanoarrow_array_info(array, recursive = TRUE)
+  expect_type(info_recursive$children[[1]], "list")
+  expect_length(info_recursive$children[[1]]$buffers, 2L)
+})
+
+test_that("schemaless array list interface works for dictionary types", {
+  array <- as_nanoarrow_array(factor(letters[1:5]))
+  nanoarrow_array_set_schema(array, NULL)
+
+  expect_length(array$buffers, 2L)
+  expect_length(array$dictionary$buffers, 3L)
+  expect_s3_class(array$dictionary, "nanoarrow_array")
+
+  info_recursive <- nanoarrow_array_info(array, recursive = TRUE)
+  expect_type(info_recursive$dictionary, "list")
+  expect_length(info_recursive$dictionary$buffers, 3L)
+})

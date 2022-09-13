@@ -27,7 +27,7 @@ void finalize_schema_xptr(SEXP schema_xptr);
 
 static inline struct ArrowSchema* schema_from_xptr(SEXP schema_xptr) {
   if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
-    Rf_error("`schema` argument that is not");
+    Rf_error("`schema` argument that does not inherit from 'nanoarrow_schema'");
   }
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
