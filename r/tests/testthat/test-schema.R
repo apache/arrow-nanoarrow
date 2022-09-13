@@ -22,6 +22,13 @@ test_that("nanoarrow_schema format, print, and str methods work", {
   expect_output(expect_identical(print(schema), schema), "nanoarrow_schema")
 })
 
+test_that("nanoarrow_schema format, print, and str methods work for invalid pointers", {
+  schema <- nanoarrow_allocate_schema()
+  expect_identical(format(schema), "<nanoarrow_schema[invalid pointer]>")
+  expect_output(expect_identical(str(schema), schema), "nanoarrow_schema")
+  expect_output(expect_identical(print(schema), schema), "nanoarrow_schema")
+})
+
 test_that("as_nanoarrow_schema() works for nanoarrow_schema", {
   schema <- infer_nanoarrow_schema(1:10)
   expect_identical(as_nanoarrow_schema(schema), schema)

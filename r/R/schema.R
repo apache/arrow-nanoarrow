@@ -51,8 +51,25 @@ infer_nanoarrow_schema.default <- function(x, ...) {
 #' @importFrom utils str
 #' @export
 str.nanoarrow_schema <- function(object, ...) {
-  cat(sprintf("%s\n", format(object)))
-  str(nanoarrow_schema_info(object, recursive = TRUE))
+  if (nanoarrow_pointer_is_valid(object)) {
+    cat("<nanoarrow_schema>\n")
+
+    # Modify the str() output of the listified version, since str()
+    # does a pretty good job at printing out a compact representation
+    # of a nested list.
+    raw_str_output <- utils::capture.output(
+      str(nanoarrow_schema_info(object, recursive = TRUE))
+    )
+    modified_str_output <- gsub(
+      "([^\\s])List of 6$",
+      "\\1 <nanoarrow_schema>",
+      raw_str_output[-1]
+    )
+    cat(paste0(modified_str_output, collapse = "\n"))
+  } else {
+    cat(sprintf("%s\n", format(object)))
+  }
+
   invisible(object)
 }
 
@@ -64,7 +81,12 @@ print.nanoarrow_schema <- function(x, ...) {
 
 #' @export
 format.nanoarrow_schema <- function(x, ...) {
-  sprintf("<nanoarrow_schema[%s]>", x$format)
+  if (nanoarrow_pointer_is_valid(x)) {
+    sprintf("<nanoarrow_schema[%s]>", x$format)
+  } else {
+    "<nanoarrow_schema[invalid pointer]>"
+  }
+
 }
 
 # This is the list()-like interface to nanoarrow_schema that allows $ and [[
