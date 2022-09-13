@@ -103,9 +103,7 @@ length.nanoarrow_array <- function(x, ...) {
 
 #' @export
 names.nanoarrow_array <- function(x, ...) {
-  c(
-    "length",  "null_count", "offset", "buffers", "children", "dictionary"
-  )
+  c("length",  "null_count", "offset", "buffers", "children", "dictionary")
 }
 
 #' @export
@@ -118,6 +116,8 @@ names.nanoarrow_array <- function(x, ...) {
   nanoarrow_array_info_safe(x)[[i]]
 }
 
+# A version of nanoarrow_array_info() that is less likely to error for invalid
+# arrays and/or schemas
 nanoarrow_array_info_safe <- function(array, recursive = FALSE) {
   schema <- .Call(nanoarrow_c_infer_schema_array, array)
   tryCatch(
@@ -129,8 +129,35 @@ nanoarrow_array_info_safe <- function(array, recursive = FALSE) {
 nanoarrow_array_info <- function(array, schema = NULL, recursive = FALSE) {
   if (!is.null(schema)) {
     array_view <- .Call(nanoarrow_c_array_view, array, schema)
-    .Call(nanoarrow_c_array_info, array, array_view, recursive)
+    result <- .Call(nanoarrow_c_array_info, array, array_view, recursive)
+
+    # Pass on some information from the schema if we have it
+    if (!is.null(result$dictionary)) {
+      nanoarrow_array_set_schema(result$dictionary, schema$dictionary)
+    }
+
+    names(result$children) <- names(schema$children)
+
+    if (!recursive) {
+      result$children <- Map(
+        nanoarrow_array_set_schema,
+        result$children,
+        schema$children
+      )
+    }
   } else {
-    .Call(nanoarrow_c_array_info, array, NULL, recursive)
+    result <- .Call(nanoarrow_c_array_info, array, NULL, recursive)
   }
+
+  # Recursive-ness of the dictionary is handled here because it's not
+  # part of the array view
+  if (recursive && !is.null(result$dictionary)) {
+    result$dictionary <- nanoarrow_array_info(
+      result$dictionary,
+      schema = schema$dictionary,
+      recursive = TRUE
+    )
+  }
+
+  result
 }

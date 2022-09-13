@@ -99,16 +99,124 @@ static SEXP borrow_unknown_buffer(struct ArrowArray* array, int64_t i, SEXP shel
   return buffer;
 }
 
-static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP shelter) {
-  return borrow_unknown_buffer(array_view->array, i, shelter);
-}
-
 static SEXP length_from_int64(int64_t value) {
   if (value < 2147483647) {
     return Rf_ScalarInteger(value);
   } else {
     return Rf_ScalarReal(value);
   }
+}
+
+static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP shelter) {
+  SEXP buffer_class = PROTECT(Rf_allocVector(STRSXP, 2));
+  SET_STRING_ELT(buffer_class, 1, Rf_mkChar("nanoarrow_buffer"));
+
+  const char* class0 = "nanoarrow_buffer_unknown";
+
+  switch (array_view->layout.buffer_type[i]) {
+    case NANOARROW_BUFFER_TYPE_VALIDITY:
+      class0 = "nanoarrow_buffer_validity";
+      break;
+    case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+      switch (array_view->layout.element_size_bits[i]) {
+        case 32:
+          class0 = "nanoarrow_buffer_data_offset32";
+          break;
+        case 64:
+          class0 = "nanoarrow_buffer_data_offset64";
+          break;
+        default:
+          break;
+      }
+      break;
+    case NANOARROW_BUFFER_TYPE_DATA:
+      switch (array_view->storage_type) {
+        case NANOARROW_TYPE_BOOL:
+          class0 = "nanoarrow_buffer_data_bool";
+          break;
+        case NANOARROW_TYPE_UINT8:
+          class0 = "nanoarrow_buffer_data_uint8";
+          break;
+        case NANOARROW_TYPE_INT8:
+          class0 = "nanoarrow_buffer_data_int8";
+          break;
+        case NANOARROW_TYPE_UINT16:
+          class0 = "nanoarrow_buffer_data_uint16";
+          break;
+        case NANOARROW_TYPE_INT16:
+          class0 = "nanoarrow_buffer_data_int16";
+          break;
+        case NANOARROW_TYPE_UINT32:
+          class0 = "nanoarrow_buffer_data_uint32";
+          break;
+        case NANOARROW_TYPE_INT32:
+          class0 = "nanoarrow_buffer_data_int32";
+          break;
+        case NANOARROW_TYPE_UINT64:
+          class0 = "nanoarrow_buffer_data_uint64";
+          break;
+        case NANOARROW_TYPE_INT64:
+          class0 = "nanoarrow_buffer_data_int64";
+          break;
+        case NANOARROW_TYPE_HALF_FLOAT:
+          class0 = "nanoarrow_buffer_data_half_float";
+          break;
+        case NANOARROW_TYPE_FLOAT:
+          class0 = "nanoarrow_buffer_data_float";
+          break;
+        case NANOARROW_TYPE_DOUBLE:
+          class0 = "nanoarrow_buffer_data_double";
+          break;
+        case NANOARROW_TYPE_DECIMAL128:
+          class0 = "nanoarrow_buffer_data_decimal256";
+          break;
+        case NANOARROW_TYPE_DECIMAL256:
+          class0 = "nanoarrow_buffer_data_offset64";
+          break;
+        case NANOARROW_TYPE_INTERVAL_MONTHS:
+          class0 = "nanoarrow_buffer_data_int32";
+          break;
+        case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+          class0 = "nanoarrow_buffer_data_int64";
+          break;
+        case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+          class0 = "nanoarrow_buffer_data_interval_month_day_nano";
+          break;
+        case NANOARROW_TYPE_STRING:
+        case NANOARROW_TYPE_LARGE_STRING:
+          class0 = "nanoarrow_buffer_data_string";
+          break;
+        case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+        case NANOARROW_TYPE_BINARY:
+        case NANOARROW_TYPE_LARGE_BINARY:
+          class0 = "nanoarrow_buffer_binary";
+          break;
+        default:
+          break;
+      }
+      break;
+    case NANOARROW_BUFFER_TYPE_TYPE_ID:
+      class0 = "nanoarrow_buffer_type_id";
+      break;
+    case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+      class0 = "nanoarrow_buffer_union_offset";
+      break;
+    default:
+      break;
+  }
+
+  SET_STRING_ELT(buffer_class, 0, Rf_mkChar(class0));
+
+  const char* names[] = {"size_bytes", "element_size_bits", ""};
+  SEXP buffer_info = PROTECT(Rf_mkNamed(VECSXP, names));
+  SET_VECTOR_ELT(buffer_info, 0, length_from_int64(array_view->buffer_views[i].n_bytes));
+  SET_VECTOR_ELT(buffer_info, 1, length_from_int64(array_view->layout.element_size_bits[i]));
+
+  SEXP buffer = PROTECT(R_MakeExternalPtr((void*)array_view->buffer_views[i].data.data,
+                                          buffer_info, shelter));
+  Rf_setAttrib(buffer, R_ClassSymbol, buffer_class);
+  UNPROTECT(3);
+  return buffer;
 }
 
 static void finalize_array_view_xptr(SEXP array_view_xptr) {
@@ -197,15 +305,10 @@ SEXP nanoarrow_c_array_info(SEXP array_xptr, SEXP array_view_xptr, SEXP recursiv
     UNPROTECT(1);
   }
 
+  // The recursive-ness of the dictionary is handled in R because this is not part
+  // of the struct ArrowArrayView.
   if (array->dictionary != NULL) {
-    SEXP dictionary = PROTECT(borrow_array_xptr(array->dictionary, array_xptr));
-    if (recursive) {
-      SET_VECTOR_ELT(array_info, 5,
-                     nanoarrow_c_array_info(dictionary, R_NilValue, recursive_sexp));
-    } else {
-      SET_VECTOR_ELT(array_info, 5, dictionary);
-    }
-    UNPROTECT(1);
+    SET_VECTOR_ELT(array_info, 5, borrow_array_xptr(array->dictionary, array_xptr));
   }
 
   UNPROTECT(1);
