@@ -1119,6 +1119,21 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnionErrors) {
   schema.release(&schema);
 }
 
+TEST(SchemaViewTest, SchemaViewInitInvalidSpecErrors) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+Z"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected nested type "
+               "format string but found '+Z'");
+
+  schema.release(&schema);
+}
+
 TEST(SchemaViewTest, SchemaViewInitDictionary) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;

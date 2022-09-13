@@ -40,7 +40,7 @@ int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
 
   if (chars_needed < 0) {
     return EINVAL;
-  } else if (chars_needed >= sizeof(error->message)) {
+  } else if (((size_t)chars_needed) >= sizeof(error->message)) {
     return ERANGE;
   } else {
     return NANOARROW_OK;
