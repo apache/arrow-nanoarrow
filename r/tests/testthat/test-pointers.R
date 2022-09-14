@@ -197,4 +197,5 @@ test_that("nanoarrow_pointer_export() errors for unknown object", {
 test_that("pointer address getters work", {
   schema <- infer_nanoarrow_schema(integer())
   expect_match(nanoarrow_pointer_addr_chr(schema), "^[0-9]+$")
+  expect_match(nanoarrow_pointer_addr_pretty(schema), "^(0x)?[0-9a-fA-F]+$")
 })
