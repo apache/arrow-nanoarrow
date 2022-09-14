@@ -92,6 +92,44 @@ nanoarrow_array_set_schema <- function(array, schema) {
   invisible(array)
 }
 
+#' @importFrom utils str
+#' @export
+str.nanoarrow_array <- function(object, ...) {
+  cat(sprintf("%s\n", format(object)))
+
+  if (nanoarrow_pointer_is_valid(object)) {
+    # Use the str() of the list version but remove the first
+    # line of the output ("List of 6")
+    info <- nanoarrow_array_info_safe(object)
+    raw_str_output <- utils::capture.output(str(info, ...))
+    cat(paste0(raw_str_output[-1], collapse = "\n"))
+    cat("\n")
+  }
+
+  invisible(object)
+}
+
+#' @export
+print.nanoarrow_array <- function(x, ...) {
+  str(x, ...)
+  invisible(x)
+}
+
+#' @export
+format.nanoarrow_array <- function(x, ...) {
+  if (nanoarrow_pointer_is_valid(x)) {
+    schema <- .Call(nanoarrow_c_infer_schema_array, x)
+    if (is.null(schema)) {
+      sprintf("<nanoarrow_array <unknown schema>[%s]>", x$length)
+    } else {
+      sprintf("<nanoarrow_array %s[%s]>", schema$format, x$length)
+    }
+  } else {
+    "<nanoarrow_array[invalid pointer]>"
+  }
+}
+
+
 # This is the list()-like interface to nanoarrow_array that allows $ and [[
 # to make nice auto-complete for the array fields
 

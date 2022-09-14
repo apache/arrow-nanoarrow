@@ -86,7 +86,6 @@ format.nanoarrow_schema <- function(x, ...) {
   } else {
     "<nanoarrow_schema[invalid pointer]>"
   }
-
 }
 
 # This is the list()-like interface to nanoarrow_schema that allows $ and [[

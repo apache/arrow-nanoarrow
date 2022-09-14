@@ -15,6 +15,28 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("nanoarrow_array format, print, and str methods work", {
+  array <- as_nanoarrow_array(1:10)
+  expect_identical(format(array), "<nanoarrow_array i[10]>")
+  expect_output(expect_identical(str(array), array), "nanoarrow_array")
+  expect_output(expect_identical(print(array), array), "nanoarrow_array")
+})
+
+test_that("released nanoarrow_array format, print, and str methods work", {
+  array <- nanoarrow_allocate_array()
+  expect_identical(format(array), "<nanoarrow_array[invalid pointer]>")
+  expect_output(expect_identical(str(array), array), "nanoarrow_array")
+  expect_output(expect_identical(print(array), array), "nanoarrow_array")
+})
+
+test_that("schemaless nanoarrow_array format, print, and str methods work", {
+  array <- as_nanoarrow_array(1:10)
+  nanoarrow_array_set_schema(array, NULL)
+  expect_identical(format(array), "<nanoarrow_array <unknown schema>[10]>")
+  expect_output(expect_identical(str(array), array), "nanoarrow_array")
+  expect_output(expect_identical(print(array), array), "nanoarrow_array")
+})
+
 test_that("as_nanoarrow_array() / from_nanoarrow_array() default method works", {
   array <- as_nanoarrow_array(1:10)
   expect_identical(from_nanoarrow_array(array), 1:10)
