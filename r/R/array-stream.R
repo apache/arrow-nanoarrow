@@ -74,7 +74,11 @@ str.nanoarrow_array_stream <- function(object, ...) {
   if (nanoarrow_pointer_is_valid(object)) {
     # Use the str() of the list version but remove the first
     # line of the output ("List of 2")
-    info <- list(get_schema = object$get_schema, get_next = object$get_next)
+    info <- list(
+      get_schema = object$get_schema,
+      get_next = object$get_next,
+      release = object$release
+    )
     raw_str_output <- utils::capture.output(str(info, ..., give.attr = FALSE))
     cat(paste0(raw_str_output[-1], collapse = "\n"))
     cat("\n")
