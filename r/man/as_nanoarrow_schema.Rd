@@ -24,3 +24,8 @@ Arrow C Data interface. This data structure can be used to represent an
 in nanoarrow, an \code{\link[arrow:Schema]{arrow::schema()}} and a non-nullable \code{\link[arrow:data-type]{arrow::struct()}}
 are represented identically.
 }
+\examples{
+infer_nanoarrow_schema(integer())
+infer_nanoarrow_schema(data.frame(x = integer()))
+
+}

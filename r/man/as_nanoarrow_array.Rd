@@ -33,3 +33,11 @@ class can be used in a similar way as an \link[arrow:array]{arrow::Array}. Note 
 nanoarrow an \link[arrow:RecordBatch]{arrow::RecordBatch} and a non-nullable \link[arrow:array]{arrow::StructArray}
 are represented identically.
 }
+\examples{
+(array <- as_nanoarrow_array(1:5))
+as.vector(array)
+
+(array <- as_nanoarrow_array(data.frame(x = 1:5)))
+as.data.frame(array)
+
+}

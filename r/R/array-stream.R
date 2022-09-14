@@ -33,6 +33,13 @@
 #'
 #' @return An object of class 'nanoarrow_array_stream'
 #' @export
+#'
+#' @examples
+#' (stream <- as_nanoarrow_array_stream(data.frame(x = 1:5)))
+#' stream$get_schema()
+#' stream$get_next()
+#' stream$get_next()
+#'
 as_nanoarrow_array_stream <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array_stream")
 }

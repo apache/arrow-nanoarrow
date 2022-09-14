@@ -28,6 +28,11 @@
 #'
 #' @return An object of class 'nanoarrow_schema'
 #' @export
+#'
+#' @examples
+#' infer_nanoarrow_schema(integer())
+#' infer_nanoarrow_schema(data.frame(x = integer()))
+#'
 as_nanoarrow_schema <- function(x, ...) {
   UseMethod("as_nanoarrow_schema")
 }

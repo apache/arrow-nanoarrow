@@ -34,6 +34,14 @@
 #'
 #' @return An object of class 'nanoarrow_array'
 #' @export
+#'
+#' @examples
+#' (array <- as_nanoarrow_array(1:5))
+#' as.vector(array)
+#'
+#' (array <- as_nanoarrow_array(data.frame(x = 1:5)))
+#' as.data.frame(array)
+#'
 as_nanoarrow_array <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array")
 }
