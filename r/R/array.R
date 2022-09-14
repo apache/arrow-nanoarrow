@@ -87,8 +87,8 @@ infer_nanoarrow_schema.nanoarrow_array <- function(x, ...) {
     stop("nanoarrow_array() has no associated schema")
 }
 
-nanoarrow_array_set_schema <- function(array, schema) {
-  .Call(nanoarrow_c_array_set_schema, array, schema)
+nanoarrow_array_set_schema <- function(array, schema, validate = TRUE) {
+  .Call(nanoarrow_c_array_set_schema, array, schema, as.logical(validate)[1])
   invisible(array)
 }
 

@@ -34,29 +34,32 @@ void finalize_array_xptr(SEXP array_xptr) {
   }
 }
 
-SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr) {
+SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp) {
   // Fair game to remove a schema from a pointer
   if (schema_xptr == R_NilValue) {
     array_xptr_set_schema(array_xptr, R_NilValue);
     return R_NilValue;
   }
 
-  // If adding a schema, validate the pair
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  int validate = LOGICAL(validate_sexp)[0];
+  if (validate) {
+    // If adding a schema, validate the schema and the pair
+    struct ArrowArray* array = array_from_xptr(array_xptr);
+    struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
 
-  struct ArrowArrayView array_view;
-  struct ArrowError error;
-  int result = ArrowArrayViewInitFromSchema(&array_view, schema, &error);
-  if (result != NANOARROW_OK) {
+    struct ArrowArrayView array_view;
+    struct ArrowError error;
+    int result = ArrowArrayViewInitFromSchema(&array_view, schema, &error);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(&array_view);
+      Rf_error("%s", ArrowErrorMessage(&error));
+    }
+
+    result = ArrowArrayViewSetArray(&array_view, array, &error);
     ArrowArrayViewReset(&array_view);
-    Rf_error("%s", ArrowErrorMessage(&error));
-  }
-
-  result = ArrowArrayViewSetArray(&array_view, array, &error);
-  ArrowArrayViewReset(&array_view);
-  if (result != NANOARROW_OK) {
-    Rf_error("%s", ArrowErrorMessage(&error));
+    if (result != NANOARROW_OK) {
+      Rf_error("%s", ArrowErrorMessage(&error));
+    }
   }
 
   array_xptr_set_schema(array_xptr, schema_xptr);

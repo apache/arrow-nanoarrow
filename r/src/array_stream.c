@@ -20,6 +20,8 @@
 #include <Rinternals.h>
 
 #include "array_stream.h"
+#include "schema.h"
+#include "array.h"
 #include "nanoarrow.h"
 
 void finalize_array_stream_xptr(SEXP array_stream_xptr) {
@@ -32,4 +34,42 @@ void finalize_array_stream_xptr(SEXP array_stream_xptr) {
   if (array_stream != NULL) {
     ArrowFree(array_stream);
   }
+}
+
+SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
+  struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
+
+  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  int result = array_stream->get_schema(array_stream, schema);
+
+  if (result != 0) {
+    const char* last_error = array_stream->get_last_error(array_stream);
+    if (last_error == NULL) {
+      last_error = "";
+    }
+    Rf_error("array_stream->get_schema(): [%d] %s", result, last_error);
+  }
+
+  UNPROTECT(1);
+  return schema_xptr;
+}
+
+SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
+  struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
+
+  SEXP array_xptr = PROTECT(array_owning_xptr());
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  int result = array_stream->get_next(array_stream, array);
+  
+  if (result != 0) {
+    const char* last_error = array_stream->get_last_error(array_stream);
+    if (last_error == NULL) {
+      last_error = "";
+    }
+    Rf_error("array_stream->get_next(): [%d] %s", result, last_error);
+  }
+
+  UNPROTECT(1);
+  return array_xptr;
 }
