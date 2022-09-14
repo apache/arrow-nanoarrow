@@ -51,23 +51,15 @@ infer_nanoarrow_schema.default <- function(x, ...) {
 #' @importFrom utils str
 #' @export
 str.nanoarrow_schema <- function(object, ...) {
-  if (nanoarrow_pointer_is_valid(object)) {
-    cat("<nanoarrow_schema>\n")
+  cat(sprintf("%s\n", format(object)))
 
-    # Modify the str() output of the listified version, since str()
-    # does a pretty good job at printing out a compact representation
-    # of a nested list.
-    raw_str_output <- utils::capture.output(
-      str(nanoarrow_schema_info(object, recursive = TRUE))
-    )
-    modified_str_output <- gsub(
-      "([^\\s])List of 6$",
-      "\\1 <nanoarrow_schema>",
-      raw_str_output[-1]
-    )
-    cat(paste0(modified_str_output, collapse = "\n"))
-  } else {
-    cat(sprintf("%s\n", format(object)))
+  if (nanoarrow_pointer_is_valid(object)) {
+    # Use the str() of the list version but remove the first
+    # line of the output ("List of 6")
+    info <- nanoarrow_schema_info(object)
+    raw_str_output <- utils::capture.output(str(info, ...))
+    cat(paste0(raw_str_output[-1], collapse = "\n"))
+    cat("\n")
   }
 
   invisible(object)
