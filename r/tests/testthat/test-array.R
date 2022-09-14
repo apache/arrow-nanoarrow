@@ -96,6 +96,79 @@ test_that("schemaless array list interface works for dictionary types", {
   expect_length(info_recursive$dictionary$buffers, 3L)
 })
 
+test_that("array list interface classes data buffers for relevant types", {
+  types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    half_float = arrow::float16(),
+    float = arrow::float32(),
+    double = arrow::float64(),
+    decimal128 = arrow::decimal128(2, 3),
+    decimal256 = arrow::decimal256(2, 3)
+  )
+
+  arrays <- lapply(types, function(x) arrow::concat_arrays(type = x))
+
+  for (nm in names(arrays)) {
+    expect_s3_class(
+      as_nanoarrow_array(arrays[[!!nm]])$buffers[[1]],
+      "nanoarrow_buffer_validity"
+    )
+    expect_s3_class(
+      as_nanoarrow_array(arrays[[!!nm]])$buffers[[2]],
+      paste0("nanoarrow_buffer_data_", nm)
+    )
+  }
+})
+
+test_that("array list interface classes offset buffers for relevant types", {
+  arr_string <- arrow::concat_arrays(type = arrow::utf8())
+  expect_s3_class(
+    as_nanoarrow_array(arr_string)$buffers[[2]],
+    "nanoarrow_buffer_data_offset32"
+  )
+  expect_s3_class(
+    as_nanoarrow_array(arr_string)$buffers[[3]],
+    "nanoarrow_buffer_data_utf8"
+  )
+
+  arr_large_string <- arrow::concat_arrays(type = arrow::large_utf8())
+  expect_s3_class(
+    as_nanoarrow_array(arr_large_string)$buffers[[2]],
+    "nanoarrow_buffer_data_offset64"
+  )
+  expect_s3_class(
+    as_nanoarrow_array(arr_large_string)$buffers[[3]],
+    "nanoarrow_buffer_data_utf8"
+  )
+
+  arr_binary <- arrow::concat_arrays(type = arrow::binary())
+  expect_s3_class(
+    as_nanoarrow_array(arr_binary)$buffers[[2]],
+    "nanoarrow_buffer_data_offset32"
+  )
+  expect_s3_class(
+    as_nanoarrow_array(arr_binary)$buffers[[3]],
+    "nanoarrow_buffer_data_uint8"
+  )
+
+  arr_large_binary <- arrow::concat_arrays(type = arrow::large_binary())
+  expect_s3_class(
+    as_nanoarrow_array(arr_large_binary)$buffers[[2]],
+    "nanoarrow_buffer_data_offset64"
+  )
+  expect_s3_class(
+    as_nanoarrow_array(arr_large_binary)$buffers[[3]],
+    "nanoarrow_buffer_data_uint8"
+  )
+})
+
 test_that("array list interface works for nested types", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
 

@@ -168,10 +168,10 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
           class0 = "nanoarrow_buffer_data_double";
           break;
         case NANOARROW_TYPE_DECIMAL128:
-          class0 = "nanoarrow_buffer_data_decimal256";
+          class0 = "nanoarrow_buffer_data_decimal128";
           break;
         case NANOARROW_TYPE_DECIMAL256:
-          class0 = "nanoarrow_buffer_data_offset64";
+          class0 = "nanoarrow_buffer_data_decimal256";
           break;
         case NANOARROW_TYPE_INTERVAL_MONTHS:
           class0 = "nanoarrow_buffer_data_int32";
@@ -184,12 +184,12 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
           break;
         case NANOARROW_TYPE_STRING:
         case NANOARROW_TYPE_LARGE_STRING:
-          class0 = "nanoarrow_buffer_data_string";
+          class0 = "nanoarrow_buffer_data_utf8";
           break;
         case NANOARROW_TYPE_FIXED_SIZE_BINARY:
         case NANOARROW_TYPE_BINARY:
         case NANOARROW_TYPE_LARGE_BINARY:
-          class0 = "nanoarrow_buffer_binary";
+          class0 = "nanoarrow_buffer_data_uint8";
           break;
         default:
           break;
