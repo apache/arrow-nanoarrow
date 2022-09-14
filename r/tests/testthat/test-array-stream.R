@@ -42,10 +42,11 @@ test_that("as_nanoarrow_array_stream() works for nanoarow_array_stream", {
 
 test_that("nanoarrow_array_stream list interface works", {
   stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
-  expect_identical(length(stream), 2L)
-  expect_identical(names(stream), c("get_schema", "get_next"))
+  expect_identical(length(stream), 3L)
+  expect_identical(names(stream), c("get_schema", "get_next", "release"))
   expect_identical(formals(stream[["get_schema"]]), formals(stream$get_schema))
   expect_identical(formals(stream[["get_next"]]), formals(stream$get_next))
+  expect_identical(formals(stream[["release"]]), formals(stream$release))
   expect_null(stream[["this key does not exist"]])
 })
 
@@ -54,6 +55,13 @@ test_that("nanoarrow_array_stream can get_schema() and get_next()", {
   expect_identical(stream$get_schema()$format, "+s")
   expect_identical(as.data.frame(stream$get_next()), data.frame(x = 1:5))
   expect_null(stream$get_next())
+})
+
+test_that("nanoarrow_array_stream can release()", {
+  stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+  expect_true(nanoarrow_pointer_is_valid(stream))
+  stream$release()
+  expect_false(nanoarrow_pointer_is_valid(stream))
 })
 
 test_that("nanoarrow_array_stream can validate or not on get_next()", {

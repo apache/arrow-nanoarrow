@@ -38,7 +38,12 @@
 #' (stream <- as_nanoarrow_array_stream(data.frame(x = 1:5)))
 #' stream$get_schema()
 #' stream$get_next()
+#'
+#' # The last batch is returned as NULL
 #' stream$get_next()
+#'
+#' # Release the stream
+#' stream$release()
 #'
 as_nanoarrow_array_stream <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array_stream")
@@ -102,21 +107,20 @@ format.nanoarrow_array_stream <- function(x, ...) {
 
 #' @export
 length.nanoarrow_array_stream <- function(x, ...) {
-  2L
+  3L
 }
 
 #' @export
 names.nanoarrow_array_stream <- function(x, ...) {
-  c("get_schema", "get_next")
+  c("get_schema", "get_next", "release")
 }
 
 #' @export
 `[[.nanoarrow_array_stream` <- function(x, i, ...) {
-  if (identical(i, "get_schema") || identical(i, 1L)) {
-    force(x)
+  force(x)
+  if (identical(i, "get_schema") || isTRUE(i == 1L)) {
     function() .Call(nanoarrow_c_array_stream_get_schema, x)
-  } else if (identical(i, "get_next") || identical(i, 2L)) {
-    force(x)
+  } else if (identical(i, "get_next") || isTRUE(i == 2L)) {
     function(schema = x$get_schema(), validate = TRUE) {
       array <- .Call(nanoarrow_c_array_stream_get_next, x)
       if (!nanoarrow_pointer_is_valid(array)) {
@@ -126,6 +130,8 @@ names.nanoarrow_array_stream <- function(x, ...) {
       nanoarrow_array_set_schema(array, schema, validate = validate)
       array
     }
+  } else if (identical(i, "release") || isTRUE(i == 3L)) {
+    function() nanoarrow_pointer_release(x)
   } else {
     NULL
   }
