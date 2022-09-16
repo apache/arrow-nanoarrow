@@ -40,6 +40,12 @@ test_that("as_nanoarrow_array_stream() works for nanoarow_array_stream", {
   )
 })
 
+test_that("infer_nanoarrow_schema() is implemented for streams", {
+  stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+  schema <- infer_nanoarrow_schema(stream)
+  expect_identical(schema$children$x$format, "i")
+})
+
 test_that("nanoarrow_array_stream list interface works", {
   stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
   expect_identical(length(stream), 3L)

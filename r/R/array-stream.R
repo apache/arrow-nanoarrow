@@ -66,6 +66,11 @@ as_nanoarrow_array_stream.default <- function(x, ..., schema = NULL) {
   )
 }
 
+#' @export
+infer_nanoarrow_schema.nanoarrow_array_stream <- function(x, ...) {
+  x$get_schema()
+}
+
 #' @importFrom utils str
 #' @export
 str.nanoarrow_array_stream <- function(object, ...) {
