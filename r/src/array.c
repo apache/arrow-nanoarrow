@@ -258,7 +258,7 @@ SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
   return xptr;
 }
 
-SEXP nanoarrow_c_array_info(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp) {
+SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp) {
   struct ArrowArray* array = array_from_xptr(array_xptr);
   int recursive = LOGICAL(recursive_sexp)[0];
   struct ArrowArrayView* array_view = NULL;
@@ -268,11 +268,11 @@ SEXP nanoarrow_c_array_info(SEXP array_xptr, SEXP array_view_xptr, SEXP recursiv
 
   const char* names[] = {"length",   "null_count", "offset", "buffers",
                          "children", "dictionary", ""};
-  SEXP array_info = PROTECT(Rf_mkNamed(VECSXP, names));
+  SEXP array_proxy = PROTECT(Rf_mkNamed(VECSXP, names));
 
-  SET_VECTOR_ELT(array_info, 0, length_from_int64(array->length));
-  SET_VECTOR_ELT(array_info, 1, length_from_int64(array->null_count));
-  SET_VECTOR_ELT(array_info, 2, length_from_int64(array->offset));
+  SET_VECTOR_ELT(array_proxy, 0, length_from_int64(array->length));
+  SET_VECTOR_ELT(array_proxy, 1, length_from_int64(array->null_count));
+  SET_VECTOR_ELT(array_proxy, 2, length_from_int64(array->offset));
 
   if (array->n_buffers > 0) {
     SEXP buffers = PROTECT(Rf_allocVector(VECSXP, array->n_buffers));
@@ -284,7 +284,7 @@ SEXP nanoarrow_c_array_info(SEXP array_xptr, SEXP array_view_xptr, SEXP recursiv
       }
     }
 
-    SET_VECTOR_ELT(array_info, 3, buffers);
+    SET_VECTOR_ELT(array_proxy, 3, buffers);
     UNPROTECT(1);
   }
 
@@ -296,7 +296,7 @@ SEXP nanoarrow_c_array_info(SEXP array_xptr, SEXP array_view_xptr, SEXP recursiv
         SEXP array_view_child =
             PROTECT(borrow_array_view_child(array_view, i, array_view_xptr));
         SET_VECTOR_ELT(children, i,
-                       nanoarrow_c_array_info(child, array_view_child, recursive_sexp));
+                       nanoarrow_c_array_proxy(child, array_view_child, recursive_sexp));
         UNPROTECT(1);
       } else {
         SET_VECTOR_ELT(children, i, child);
@@ -304,18 +304,18 @@ SEXP nanoarrow_c_array_info(SEXP array_xptr, SEXP array_view_xptr, SEXP recursiv
       UNPROTECT(1);
     }
 
-    SET_VECTOR_ELT(array_info, 4, children);
+    SET_VECTOR_ELT(array_proxy, 4, children);
     UNPROTECT(1);
   }
 
   // The recursive-ness of the dictionary is handled in R because this is not part
   // of the struct ArrowArrayView.
   if (array->dictionary != NULL) {
-    SET_VECTOR_ELT(array_info, 5, borrow_array_xptr(array->dictionary, array_xptr));
+    SET_VECTOR_ELT(array_proxy, 5, borrow_array_xptr(array->dictionary, array_xptr));
   }
 
   UNPROTECT(1);
-  return array_info;
+  return array_proxy;
 }
 
 // for ArrowArray* that are exported references to an R array_xptr

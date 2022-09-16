@@ -65,7 +65,7 @@ test_that("schema list interface works for nested types", {
   expect_s3_class(schema$children$a, "nanoarrow_schema")
   expect_s3_class(schema$children$b, "nanoarrow_schema")
 
-  info_recursive <- nanoarrow_schema_info(schema, recursive = TRUE)
+  info_recursive <- nanoarrow_schema_proxy(schema, recursive = TRUE)
   expect_type(info_recursive$children$a, "list")
   expect_identical(info_recursive$children$a$format, "i")
 })
@@ -77,7 +77,7 @@ test_that("schema list interface works for dictionary types", {
   expect_identical(schema$dictionary$format, "u")
   expect_s3_class(schema$dictionary, "nanoarrow_schema")
 
-  info_recursive <- nanoarrow_schema_info(schema, recursive = TRUE)
+  info_recursive <- nanoarrow_schema_proxy(schema, recursive = TRUE)
   expect_type(info_recursive$dictionary, "list")
   expect_identical(info_recursive$dictionary$format, "u")
 })

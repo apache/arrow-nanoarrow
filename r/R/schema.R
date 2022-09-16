@@ -61,7 +61,7 @@ str.nanoarrow_schema <- function(object, ...) {
   if (nanoarrow_pointer_is_valid(object)) {
     # Use the str() of the list version but remove the first
     # line of the output ("List of 6")
-    info <- nanoarrow_schema_info(object)
+    info <- nanoarrow_schema_proxy(object)
     raw_str_output <- utils::capture.output(str(info, ...))
     cat(paste0(raw_str_output[-1], collapse = "\n"))
     cat("\n")
@@ -100,26 +100,26 @@ names.nanoarrow_schema <- function(x, ...) {
 
 #' @export
 `[[.nanoarrow_schema` <- function(x, i, ...) {
-  nanoarrow_schema_info(x)[[i]]
+  nanoarrow_schema_proxy(x)[[i]]
 }
 
 #' @export
 `$.nanoarrow_schema` <- function(x, i, ...) {
-  nanoarrow_schema_info(x)[[i]]
+  nanoarrow_schema_proxy(x)[[i]]
 }
 
-nanoarrow_schema_info <- function(schema, recursive = FALSE) {
+nanoarrow_schema_proxy <- function(schema, recursive = FALSE) {
   result <- .Call(nanoarrow_c_schema_to_list, schema)
   if (recursive && !is.null(schema$children)) {
     result$children <- lapply(
       schema$children,
-      nanoarrow_schema_info,
+      nanoarrow_schema_proxy,
       recursive = TRUE
     )
   }
 
   if (recursive && !is.null(schema$dictionary)) {
-    result$dictionary <- nanoarrow_schema_info(schema$dictionary, recursive = TRUE)
+    result$dictionary <- nanoarrow_schema_proxy(schema$dictionary, recursive = TRUE)
   }
 
   result$metadata <- list_of_raw_to_metadata(result$metadata)

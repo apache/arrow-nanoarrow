@@ -100,7 +100,7 @@ test_that("schemaless array list interface works for nested types", {
   expect_s3_class(array$children[[1]], "nanoarrow_array")
   expect_s3_class(array$children[[2]], "nanoarrow_array")
 
-  info_recursive <- nanoarrow_array_info(array, recursive = TRUE)
+  info_recursive <- nanoarrow_array_proxy(array, recursive = TRUE)
   expect_type(info_recursive$children[[1]], "list")
   expect_length(info_recursive$children[[1]]$buffers, 2L)
 })
@@ -113,7 +113,7 @@ test_that("schemaless array list interface works for dictionary types", {
   expect_length(array$dictionary$buffers, 3L)
   expect_s3_class(array$dictionary, "nanoarrow_array")
 
-  info_recursive <- nanoarrow_array_info_safe(array, recursive = TRUE)
+  info_recursive <- nanoarrow_array_proxy_safe(array, recursive = TRUE)
   expect_type(info_recursive$dictionary, "list")
   expect_length(info_recursive$dictionary$buffers, 3L)
 })
@@ -202,7 +202,7 @@ test_that("array list interface works for nested types", {
   expect_s3_class(array$children$a$buffers[[2]], "nanoarrow_buffer_data_int32")
   expect_s3_class(array$children$b$buffers[[2]], "nanoarrow_buffer_data_offset32")
 
-  info_recursive <- nanoarrow_array_info_safe(array, recursive = TRUE)
+  info_recursive <- nanoarrow_array_proxy_safe(array, recursive = TRUE)
   expect_type(info_recursive$children, "list")
   expect_s3_class(info_recursive$children$a$buffers[[2]], "nanoarrow_buffer_data_int32")
   expect_s3_class(info_recursive$children$b$buffers[[2]], "nanoarrow_buffer_data_offset32")
@@ -214,7 +214,7 @@ test_that("array list interface works for dictionary types", {
   expect_s3_class(array$buffers[[2]], "nanoarrow_buffer_data_int8")
   expect_s3_class(array$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
 
-  info_recursive <- nanoarrow_array_info_safe(array, recursive = TRUE)
+  info_recursive <- nanoarrow_array_proxy_safe(array, recursive = TRUE)
   expect_type(info_recursive$dictionary, "list")
   expect_s3_class(info_recursive$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
 })

@@ -108,7 +108,7 @@ str.nanoarrow_array <- function(object, ...) {
   if (nanoarrow_pointer_is_valid(object)) {
     # Use the str() of the list version but remove the first
     # line of the output ("List of 6")
-    info <- nanoarrow_array_info_safe(object)
+    info <- nanoarrow_array_proxy_safe(object)
     raw_str_output <- utils::capture.output(str(info, ...))
     cat(paste0(raw_str_output[-1], collapse = "\n"))
     cat("\n")
@@ -154,28 +154,28 @@ names.nanoarrow_array <- function(x, ...) {
 
 #' @export
 `[[.nanoarrow_array` <- function(x, i, ...) {
-  nanoarrow_array_info_safe(x)[[i]]
+  nanoarrow_array_proxy_safe(x)[[i]]
 }
 
 #' @export
 `$.nanoarrow_array` <- function(x, i, ...) {
-  nanoarrow_array_info_safe(x)[[i]]
+  nanoarrow_array_proxy_safe(x)[[i]]
 }
 
-# A version of nanoarrow_array_info() that is less likely to error for invalid
+# A version of nanoarrow_array_proxy() that is less likely to error for invalid
 # arrays and/or schemas
-nanoarrow_array_info_safe <- function(array, recursive = FALSE) {
+nanoarrow_array_proxy_safe <- function(array, recursive = FALSE) {
   schema <- .Call(nanoarrow_c_infer_schema_array, array)
   tryCatch(
-    nanoarrow_array_info(array, schema = schema, recursive = recursive),
-    error = function(...) nanoarrow_array_info(array, recursive = recursive)
+    nanoarrow_array_proxy(array, schema = schema, recursive = recursive),
+    error = function(...) nanoarrow_array_proxy(array, recursive = recursive)
   )
 }
 
-nanoarrow_array_info <- function(array, schema = NULL, recursive = FALSE) {
+nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
   if (!is.null(schema)) {
     array_view <- .Call(nanoarrow_c_array_view, array, schema)
-    result <- .Call(nanoarrow_c_array_info, array, array_view, recursive)
+    result <- .Call(nanoarrow_c_array_proxy, array, array_view, recursive)
 
     # Pass on some information from the schema if we have it
     if (!is.null(result$dictionary)) {
@@ -192,13 +192,13 @@ nanoarrow_array_info <- function(array, schema = NULL, recursive = FALSE) {
       )
     }
   } else {
-    result <- .Call(nanoarrow_c_array_info, array, NULL, recursive)
+    result <- .Call(nanoarrow_c_array_proxy, array, NULL, recursive)
   }
 
   # Recursive-ness of the dictionary is handled here because it's not
   # part of the array view
   if (recursive && !is.null(result$dictionary)) {
-    result$dictionary <- nanoarrow_array_info(
+    result$dictionary <- nanoarrow_array_proxy(
       result$dictionary,
       schema = schema$dictionary,
       recursive = TRUE
