@@ -27,7 +27,7 @@ void finalize_schema_xptr(SEXP schema_xptr);
 
 static inline struct ArrowSchema* schema_from_xptr(SEXP schema_xptr) {
   if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
-    Rf_error("`schema` argument that is not");
+    Rf_error("`schema` argument that does not inherit from 'nanoarrow_schema'");
   }
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
@@ -53,6 +53,10 @@ static inline struct ArrowSchema* nullable_schema_from_xptr(SEXP schema_xptr) {
 static inline SEXP schema_owning_xptr() {
   struct ArrowSchema* schema =
       (struct ArrowSchema*)ArrowMalloc(sizeof(struct ArrowSchema));
+  if (schema == NULL) {
+    Rf_error("Failed to allocate ArrowSchema");
+  }
+
   schema->release = NULL;
 
   SEXP schema_xptr = PROTECT(R_MakeExternalPtr(schema, R_NilValue, R_NilValue));

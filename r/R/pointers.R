@@ -81,6 +81,12 @@ nanoarrow_pointer_addr_chr <- function(ptr) {
 
 #' @rdname nanoarrow_pointer_is_valid
 #' @export
+nanoarrow_pointer_addr_pretty <- function(ptr) {
+  .Call(nanoarrow_c_pointer_addr_pretty, ptr)
+}
+
+#' @rdname nanoarrow_pointer_is_valid
+#' @export
 nanoarrow_pointer_release <- function(ptr) {
   invisible(.Call(nanoarrow_c_pointer_release, ptr))
 }

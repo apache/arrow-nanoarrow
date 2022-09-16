@@ -34,6 +34,14 @@
 #'
 #' @return An object of class 'nanoarrow_array'
 #' @export
+#'
+#' @examples
+#' (array <- as_nanoarrow_array(1:5))
+#' as.vector(array)
+#'
+#' (array <- as_nanoarrow_array(data.frame(x = 1:5)))
+#' as.data.frame(array)
+#'
 as_nanoarrow_array <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array")
 }
@@ -87,7 +95,115 @@ infer_nanoarrow_schema.nanoarrow_array <- function(x, ...) {
     stop("nanoarrow_array() has no associated schema")
 }
 
-nanoarrow_array_set_schema <- function(array, schema) {
-  .Call(nanoarrow_c_array_set_schema, array, schema)
+nanoarrow_array_set_schema <- function(array, schema, validate = TRUE) {
+  .Call(nanoarrow_c_array_set_schema, array, schema, as.logical(validate)[1])
   invisible(array)
+}
+
+#' @importFrom utils str
+#' @export
+str.nanoarrow_array <- function(object, ...) {
+  cat(sprintf("%s\n", format(object)))
+
+  if (nanoarrow_pointer_is_valid(object)) {
+    # Use the str() of the list version but remove the first
+    # line of the output ("List of 6")
+    info <- nanoarrow_array_proxy_safe(object)
+    raw_str_output <- utils::capture.output(str(info, ...))
+    cat(paste0(raw_str_output[-1], collapse = "\n"))
+    cat("\n")
+  }
+
+  invisible(object)
+}
+
+#' @export
+print.nanoarrow_array <- function(x, ...) {
+  str(x, ...)
+  invisible(x)
+}
+
+#' @export
+format.nanoarrow_array <- function(x, ...) {
+  if (nanoarrow_pointer_is_valid(x)) {
+    schema <- .Call(nanoarrow_c_infer_schema_array, x)
+    if (is.null(schema)) {
+      sprintf("<nanoarrow_array <unknown schema>[%s]>", x$length)
+    } else {
+      sprintf("<nanoarrow_array %s[%s]>", schema$format, x$length)
+    }
+  } else {
+    "<nanoarrow_array[invalid pointer]>"
+  }
+}
+
+
+# This is the list()-like interface to nanoarrow_array that allows $ and [[
+# to make nice auto-complete for the array fields
+
+
+#' @export
+length.nanoarrow_array <- function(x, ...) {
+  6L
+}
+
+#' @export
+names.nanoarrow_array <- function(x, ...) {
+  c("length",  "null_count", "offset", "buffers", "children", "dictionary")
+}
+
+#' @export
+`[[.nanoarrow_array` <- function(x, i, ...) {
+  nanoarrow_array_proxy_safe(x)[[i]]
+}
+
+#' @export
+`$.nanoarrow_array` <- function(x, i, ...) {
+  nanoarrow_array_proxy_safe(x)[[i]]
+}
+
+# A version of nanoarrow_array_proxy() that is less likely to error for invalid
+# arrays and/or schemas
+nanoarrow_array_proxy_safe <- function(array, recursive = FALSE) {
+  schema <- .Call(nanoarrow_c_infer_schema_array, array)
+  tryCatch(
+    nanoarrow_array_proxy(array, schema = schema, recursive = recursive),
+    error = function(...) nanoarrow_array_proxy(array, recursive = recursive)
+  )
+}
+
+nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
+  if (!is.null(schema)) {
+    array_view <- .Call(nanoarrow_c_array_view, array, schema)
+    result <- .Call(nanoarrow_c_array_proxy, array, array_view, recursive)
+
+    # Pass on some information from the schema if we have it
+    if (!is.null(result$dictionary)) {
+      nanoarrow_array_set_schema(result$dictionary, schema$dictionary)
+    }
+
+    names(result$children) <- names(schema$children)
+
+    if (!recursive) {
+      result$children <- Map(
+        nanoarrow_array_set_schema,
+        result$children,
+        schema$children
+      )
+    }
+  } else {
+    result <- .Call(nanoarrow_c_array_proxy, array, NULL, recursive)
+  }
+
+  # Recursive-ness of the dictionary is handled here because it's not
+  # part of the array view
+  if (recursive && !is.null(result$dictionary)) {
+    result$dictionary <- nanoarrow_array_proxy(
+      result$dictionary,
+      schema = schema$dictionary,
+      recursive = TRUE
+    )
+  }
+
+  result
 }

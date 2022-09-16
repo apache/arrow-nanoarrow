@@ -66,6 +66,13 @@ SEXP nanoarrow_c_pointer_addr_chr(SEXP ptr) {
   return Rf_mkString(addr_chars);
 }
 
+SEXP nanoarrow_c_pointer_addr_pretty(SEXP ptr) {
+  char addr_chars[100];
+  memset(addr_chars, 0, 100);
+  snprintf(addr_chars, sizeof(addr_chars), "%p", R_ExternalPtrAddr(nanoarrow_c_pointer(ptr)));
+  return Rf_mkString(addr_chars);
+}
+
 SEXP nanoarrow_c_pointer_is_valid(SEXP ptr) {
   if (Rf_inherits(ptr, "nanoarrow_schema")) {
     struct ArrowSchema* obj = (struct ArrowSchema*)R_ExternalPtrAddr(ptr);

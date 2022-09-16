@@ -28,6 +28,11 @@
 #'
 #' @return An object of class 'nanoarrow_schema'
 #' @export
+#'
+#' @examples
+#' infer_nanoarrow_schema(integer())
+#' infer_nanoarrow_schema(data.frame(x = integer()))
+#'
 as_nanoarrow_schema <- function(x, ...) {
   UseMethod("as_nanoarrow_schema")
 }
@@ -46,4 +51,89 @@ infer_nanoarrow_schema <- function(x, ...) {
 #' @export
 infer_nanoarrow_schema.default <- function(x, ...) {
   as_nanoarrow_schema(arrow::infer_type(x, ...))
+}
+
+#' @importFrom utils str
+#' @export
+str.nanoarrow_schema <- function(object, ...) {
+  cat(sprintf("%s\n", format(object)))
+
+  if (nanoarrow_pointer_is_valid(object)) {
+    # Use the str() of the list version but remove the first
+    # line of the output ("List of 6")
+    info <- nanoarrow_schema_proxy(object)
+    raw_str_output <- utils::capture.output(str(info, ...))
+    cat(paste0(raw_str_output[-1], collapse = "\n"))
+    cat("\n")
+  }
+
+  invisible(object)
+}
+
+#' @export
+print.nanoarrow_schema <- function(x, ...) {
+  str(x, ...)
+  invisible(x)
+}
+
+#' @export
+format.nanoarrow_schema <- function(x, ...) {
+  if (nanoarrow_pointer_is_valid(x)) {
+    sprintf("<nanoarrow_schema[%s]>", x$format)
+  } else {
+    "<nanoarrow_schema[invalid pointer]>"
+  }
+}
+
+# This is the list()-like interface to nanoarrow_schema that allows $ and [[
+# to make nice auto-complete for the schema fields
+
+#' @export
+length.nanoarrow_schema <- function(x, ...) {
+  6L
+}
+
+#' @export
+names.nanoarrow_schema <- function(x, ...) {
+  c("format", "name", "metadata", "flags", "children", "dictionary")
+}
+
+#' @export
+`[[.nanoarrow_schema` <- function(x, i, ...) {
+  nanoarrow_schema_proxy(x)[[i]]
+}
+
+#' @export
+`$.nanoarrow_schema` <- function(x, i, ...) {
+  nanoarrow_schema_proxy(x)[[i]]
+}
+
+nanoarrow_schema_proxy <- function(schema, recursive = FALSE) {
+  result <- .Call(nanoarrow_c_schema_to_list, schema)
+  if (recursive && !is.null(schema$children)) {
+    result$children <- lapply(
+      schema$children,
+      nanoarrow_schema_proxy,
+      recursive = TRUE
+    )
+  }
+
+  if (recursive && !is.null(schema$dictionary)) {
+    result$dictionary <- nanoarrow_schema_proxy(schema$dictionary, recursive = TRUE)
+  }
+
+  result$metadata <- list_of_raw_to_metadata(result$metadata)
+
+  result
+}
+
+list_of_raw_to_metadata <- function(metadata) {
+  lapply(metadata, function(x) {
+    if (is.character(x) || any(x == 0)) {
+      x
+    } else {
+      x_str <- iconv(list(x), from = "UTF-8", to = "UTF-8", mark = TRUE)[[1]]
+      if (is.na(x_str)) x else x_str
+    }
+  })
 }

@@ -28,3 +28,15 @@ and a stream of non-nullable struct arrays are represented identically.
 Also note that array streams are mutable objects and are passed by
 reference and not by value.
 }
+\examples{
+(stream <- as_nanoarrow_array_stream(data.frame(x = 1:5)))
+stream$get_schema()
+stream$get_next()
+
+# The last batch is returned as NULL
+stream$get_next()
+
+# Release the stream
+stream$release()
+
+}

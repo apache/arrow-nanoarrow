@@ -38,5 +38,188 @@ You can install the development version of nanoarrow from
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-nanoarrow/r")
+remotes::install_github("apache/arrow-nanoarrow/r", build = FALSE)
 ```
+
+If you can load the package, you’re good to go!
+
+``` r
+library(nanoarrow)
+```
+
+## Example
+
+The Arrow C Data and Arrow C Stream interfaces are comprised of three
+structures: the `ArrowSchema` which represents a data type of an array,
+the `ArrowArray` which represents the values of an array, and an
+`ArrowArrayStream`, which represents zero or more `ArrowArray`s with a
+common `ArrowSchema`. All three can be wrapped by R objects using the
+nanoarrow R package.
+
+### Schemas
+
+Use `infer_nanoarrow_schema()` to get the ArrowSchema object that
+corresponds to a given R vector type; use `as_nanoarrow_schema()` to
+convert an object from some other data type representation (e.g., an
+arrow R package `DataType` like `arrow::int32()`).
+
+``` r
+infer_nanoarrow_schema(1:5)
+#> <nanoarrow_schema[i]>
+#>  $ format    : chr "i"
+#>  $ name      : chr ""
+#>  $ metadata  : list()
+#>  $ flags     : int 2
+#>  $ children  : NULL
+#>  $ dictionary: NULL
+as_nanoarrow_schema(arrow::schema(col1 = arrow::float64()))
+#> <nanoarrow_schema[+s]>
+#>  $ format    : chr "+s"
+#>  $ name      : chr ""
+#>  $ metadata  : list()
+#>  $ flags     : int 0
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_schema[g]>
+#>   .. ..$ format    : chr "g"
+#>   .. ..$ name      : chr "col1"
+#>   .. ..$ metadata  : list()
+#>   .. ..$ flags     : int 2
+#>   .. ..$ children  : NULL
+#>   .. ..$ dictionary: NULL
+#>  $ dictionary: NULL
+```
+
+### Arrays
+
+Use `as_nanoarrow_array()` to convert an object to an ArrowArray object:
+
+``` r
+as_nanoarrow_array(1:5)
+#> <nanoarrow_array i[5]>
+#>  $ length    : int 5
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 2
+#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>   ..$ :<nanoarrow_buffer_data_int32[20 b] at 0x1397d7758>
+#>  $ dictionary: NULL
+#>  $ children  : list()
+as_nanoarrow_array(arrow::record_batch(col1 = c(1.1, 2.2)))
+#> <nanoarrow_array +s[2]>
+#>  $ length    : int 2
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 1
+#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_array g[2]>
+#>   .. ..$ length    : int 2
+#>   .. ..$ null_count: int 0
+#>   .. ..$ offset    : int 0
+#>   .. ..$ buffers   :List of 2
+#>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x118a4b2b8>
+#>   .. ..$ dictionary: NULL
+#>   .. ..$ children  : list()
+#>  $ dictionary: NULL
+```
+
+You can use `as.vector()` or `as.data.frame()` to get the R
+representation of the object back:
+
+``` r
+array <- as_nanoarrow_array(arrow::record_batch(col1 = c(1.1, 2.2)))
+as.data.frame(array)
+#>   col1
+#> 1  1.1
+#> 2  2.2
+```
+
+Even though at the C level the ArrowArray is distinct from the
+ArrowSchema, at the R level we attach a schema wherever possible. You
+can access the attached schema using `infer_nanoarrow_schema()`:
+
+``` r
+infer_nanoarrow_schema(array)
+#> <nanoarrow_schema[+s]>
+#>  $ format    : chr "+s"
+#>  $ name      : chr ""
+#>  $ metadata  : list()
+#>  $ flags     : int 0
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_schema[g]>
+#>   .. ..$ format    : chr "g"
+#>   .. ..$ name      : chr "col1"
+#>   .. ..$ metadata  : list()
+#>   .. ..$ flags     : int 2
+#>   .. ..$ children  : NULL
+#>   .. ..$ dictionary: NULL
+#>  $ dictionary: NULL
+```
+
+### Array Streams
+
+The easiest way to create an ArrowArrayStream is from an
+`arrow::RecordBatchReader`:
+
+``` r
+reader <- arrow::RecordBatchReader$create(
+  arrow::record_batch(col1 = c(1.1, 2.2)),
+  arrow::record_batch(col1 = c(3.3, 4.4))
+)
+
+(stream <- as_nanoarrow_array_stream(reader))
+#> <nanoarrow_array_stream[+s]>
+#>  $ get_schema:function ()  
+#>  $ get_next  :function (schema = x$get_schema(), validate = TRUE)  
+#>  $ release   :function ()
+```
+
+You can pull batches from the stream using the `$get_next()` method. The
+last batch will return `NULL`.
+
+``` r
+stream$get_next()
+#> <nanoarrow_array +s[2]>
+#>  $ length    : int 2
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 1
+#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_array g[2]>
+#>   .. ..$ length    : int 2
+#>   .. ..$ null_count: int 0
+#>   .. ..$ offset    : int 0
+#>   .. ..$ buffers   :List of 2
+#>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x1195924b8>
+#>   .. ..$ dictionary: NULL
+#>   .. ..$ children  : list()
+#>  $ dictionary: NULL
+stream$get_next()
+#> <nanoarrow_array +s[2]>
+#>  $ length    : int 2
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 1
+#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_array g[2]>
+#>   .. ..$ length    : int 2
+#>   .. ..$ null_count: int 0
+#>   .. ..$ offset    : int 0
+#>   .. ..$ buffers   :List of 2
+#>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x1195920f8>
+#>   .. ..$ dictionary: NULL
+#>   .. ..$ children  : list()
+#>  $ dictionary: NULL
+stream$get_next()
+#> NULL
+```
+
+After consuming a stream, you should call the release method as soon as
+you can. This lets the implementation of the stream release any
+resources (like open files) it may be holding in a more predictable way
+than waiting for the garabge collector to clean up the object.
