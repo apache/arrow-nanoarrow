@@ -110,4 +110,4 @@ stream$get_next()
 stream$get_next()
 ```
 
-After consuming a stream, you should call the release method as soon as you can. This lets the implementation of the stream release any resources (like open files) it may be holding in a more predictable way than waiting for the garabge collector to clean up the object.
+After consuming a stream, you should call the release method as soon as you can. This lets the implementation of the stream release any resources (like open files) it may be holding in a more predictable way than waiting for the garbage collector to clean up the object.
