@@ -111,34 +111,22 @@ static void register_nanoarrow_altstring(DllInfo* info) {
   R_set_altstring_No_NA_method(nanoarrow_altrep_string_cls, &nanoarrow_altstring_no_na);
 }
 
-static SEXP new_nanorrow_altstring(SEXP array_view_xptr) {
-  Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::array_string"));
-  return R_new_altrep(nanoarrow_altrep_string_cls, array_view_xptr, R_NilValue);
-}
-
 void register_nanoarrow_altrep(DllInfo* info) { register_nanoarrow_altstring(info); }
 
-SEXP nanoarrow_c_make_altrep(SEXP array_view_xptr) {
+SEXP nanoarrow_c_make_altstring(SEXP array_view_xptr) {
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
 
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
-      return new_nanorrow_altstring(array_view_xptr);
+      break;
     default:
       Rf_error("Can't make ALTREP for storage type %d", (int)array_view->storage_type);
   }
 
-  return R_NilValue;
-}
-
-#else
-
-void register_nanoarrow_altrep(DllInfo* info) {}
-
-SEXP nanoarrow_c_make_altrep(SEXP array_view_xptr) {
-  Rf_error("ALTREP not supported on this build of R");
+  Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::array_string"));
+  return R_new_altrep(nanoarrow_altrep_string_cls, array_view_xptr, R_NilValue);
 }
 
 #endif

@@ -1,11 +1,19 @@
 
 test_that("nanoarrow_altrep() errors for unsupported types", {
-  expect_error(nanoarrow_altrep(as_nanoarrow_array(1:10)), "Can't make ALTREP")
+  expect_error(
+    nanoarrow_altrep(as_nanoarrow_array(1:10), character()),
+    "Can't make ALTREP"
+  )
+
+  expect_error(
+    nanoarrow_altrep(as_nanoarrow_array(1:10)),
+    "Can't make nanoarrow::altrep"
+  )
 })
 
 test_that("nanoarrow_altrep() works for string", {
   x <- as_nanoarrow_array(letters, schema = arrow::utf8())
-  x_altrep <- nanoarrow_altrep(x)
+  x_altrep <- nanoarrow_altrep(x, character())
   expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::array_string\\[26\\]>")
   expect_identical(x_altrep, letters)
   expect_false(anyNA(x_altrep))
@@ -19,7 +27,7 @@ test_that("nanoarrow_altrep() works for string", {
 
 test_that("nanoarrow_altrep() works for large string", {
   x <- as_nanoarrow_array(letters, schema = arrow::large_utf8())
-  x_altrep <- nanoarrow_altrep(x)
+  x_altrep <- nanoarrow_altrep(x, character())
   expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::array_string\\[26\\]>")
   expect_identical(x_altrep, letters)
   expect_false(anyNA(x_altrep))
