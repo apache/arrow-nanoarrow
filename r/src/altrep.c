@@ -38,6 +38,25 @@ static R_xlen_t nanoarrow_altrep_length(SEXP altrep_sexp) {
   return array_view->array->length;
 }
 
+static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
+  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
+  if (array_view_xptr == R_NilValue) {
+    return DATAPTR_OR_NULL(R_altrep_data2(altrep_sexp));
+  }
+
+  return NULL;
+}
+
+static void* nanoarrow_altrep_dataptr(SEXP altrep_sexp, Rboolean writable) {
+  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
+  if (array_view_xptr == R_NilValue) {
+    return DATAPTR(R_altrep_data2(altrep_sexp));
+  }
+
+  Rf_error("nanoarrow_altrep_dataptr() materialize here");
+  return NULL;
+}
+
 static Rboolean nanoarrow_altrep_inspect(SEXP altrep_sexp, int pre, int deep, int pvec,
                                          void (*inspect_subtree)(SEXP, int, int, int)) {
   SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
@@ -104,6 +123,9 @@ static void register_nanoarrow_altstring(DllInfo* info) {
       R_make_altstring_class("nanoarrow::array_string", "nanoarrow", info);
   R_set_altrep_Length_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_length);
   R_set_altrep_Inspect_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_inspect);
+  R_set_altvec_Dataptr_or_null_method(nanoarrow_altrep_string_cls,
+                                      &nanoarrow_altrep_dataptr_or_null);
+  R_set_altvec_Dataptr_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_dataptr);
 
   R_set_altstring_Elt_method(nanoarrow_altrep_string_cls, &nanoarrow_altstring_elt);
   R_set_altstring_Set_elt_method(nanoarrow_altrep_string_cls,
@@ -126,7 +148,11 @@ SEXP nanoarrow_c_make_altstring(SEXP array_view_xptr) {
   }
 
   Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::array_string"));
-  return R_new_altrep(nanoarrow_altrep_string_cls, array_view_xptr, R_NilValue);
+  SEXP out =
+      PROTECT(R_new_altrep(nanoarrow_altrep_string_cls, array_view_xptr, R_NilValue));
+  MARK_NOT_MUTABLE(out);
+  UNPROTECT(1);
+  return out;
 }
 
 #endif
