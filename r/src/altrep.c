@@ -47,16 +47,6 @@ static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
   return NULL;
 }
 
-static void* nanoarrow_altrep_dataptr(SEXP altrep_sexp, Rboolean writable) {
-  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
-  if (array_view_xptr == R_NilValue) {
-    return DATAPTR(R_altrep_data2(altrep_sexp));
-  }
-
-  Rf_error("nanoarrow_altrep_dataptr() materialize here");
-  return NULL;
-}
-
 static Rboolean nanoarrow_altrep_inspect(SEXP altrep_sexp, int pre, int deep, int pvec,
                                          void (*inspect_subtree)(SEXP, int, int, int)) {
   SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
@@ -66,8 +56,8 @@ static Rboolean nanoarrow_altrep_inspect(SEXP altrep_sexp, int pre, int deep, in
   }
 
   R_xlen_t len = nanoarrow_altrep_length(altrep_sexp);
-  SEXP data_class = Rf_getAttrib(R_altrep_data1(altrep_sexp), R_ClassSymbol);
-  const char* data_class_ptr = Rf_translateChar(STRING_ELT(data_class, 0));
+  SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(altrep_sexp)));
+  const char* data_class_ptr = CHAR(PRINTNAME(data_class_sym));
 
   Rprintf("<%s%s[%ld]>\n", materialized, data_class_ptr, (long)len);
   return TRUE;
@@ -92,6 +82,41 @@ static SEXP nanoarrow_altstring_elt(SEXP altrep_sexp, R_xlen_t i) {
 
 static void nanoarrow_altstring_set_elt(SEXP altrep_sexp, R_xlen_t i, SEXP char_sexp) {
   Rf_error("Can't SET_STRING_ELT() on nanoarrow_altstring");
+}
+
+static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
+  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
+  if (array_view_xptr == R_NilValue) {
+    return R_altrep_data2(altrep_sexp);
+  }
+
+  struct ArrowArrayView* array_view =
+      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
+
+  SEXP result = PROTECT(Rf_allocVector(STRSXP, array_view->array->length));
+  struct ArrowStringView item;
+  for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+    if (ArrowArrayViewIsNull(array_view, i)) {
+      SET_STRING_ELT(result, i, NA_STRING);
+    } else {
+      item = ArrowArrayViewGetStringUnsafe(array_view, i);
+      SET_STRING_ELT(result, i, Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
+    }
+  }
+
+  R_set_altrep_data2(altrep_sexp, result);
+  R_set_altrep_data1(altrep_sexp, R_NilValue);
+  UNPROTECT(1);
+  return result;
+}
+
+static void* nanoarrow_altrep_dataptr(SEXP altrep_sexp, Rboolean writable) {
+  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
+  if (array_view_xptr == R_NilValue) {
+    return DATAPTR(R_altrep_data2(altrep_sexp));
+  }
+
+  return DATAPTR(nanoarrow_altstring_materialize(altrep_sexp));
 }
 
 static int nanoarrow_altstring_no_na(SEXP altrep_sexp) {
@@ -144,7 +169,7 @@ SEXP nanoarrow_c_make_altstring(SEXP array_view_xptr) {
     case NANOARROW_TYPE_LARGE_STRING:
       break;
     default:
-      Rf_error("Can't make ALTREP for storage type %d", (int)array_view->storage_type);
+      return R_NilValue;
   }
 
   Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::array_string"));
@@ -153,6 +178,54 @@ SEXP nanoarrow_c_make_altstring(SEXP array_view_xptr) {
   MARK_NOT_MUTABLE(out);
   UNPROTECT(1);
   return out;
+}
+
+SEXP nanoarrow_c_altrep_class(SEXP x_sexp) {
+  if (!ALTREP(x_sexp)) {
+    return R_NilValue;
+  }
+
+  // An unnamed pairlist where the first element is the class name
+  // as a symbol and the second element is the package name
+  return CAR(ATTRIB(ALTREP_CLASS(x_sexp)));
+}
+
+SEXP nanoarrow_c_altrep_is_materialized(SEXP x_sexp) {
+  if (!ALTREP(x_sexp)) {
+    return Rf_ScalarLogical(0);
+  }
+
+  SEXP data1 = R_altrep_data1(x_sexp);
+  if (Rf_inherits(data1, "nanoarrow::array_string")) {
+    return Rf_ScalarLogical(data1 == R_NilValue);
+  }
+
+  return Rf_ScalarLogical(NA_LOGICAL);
+}
+
+SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sexp) {
+  if (TYPEOF(x_sexp) == VECSXP && LOGICAL(recursive_sexp)[0]) {
+    int n_materialized = 0;
+    for (R_xlen_t i = 0; i < Rf_xlength(x_sexp); i++) {
+      SEXP n_materialized_sexp = PROTECT(
+          nanoarrow_c_altrep_force_materialize(VECTOR_ELT(x_sexp, i), recursive_sexp));
+      n_materialized += INTEGER(n_materialized_sexp)[0];
+      UNPROTECT(1);
+    }
+    return Rf_ScalarInteger(n_materialized);
+  }
+
+  if (!ALTREP(x_sexp)) {
+    return Rf_ScalarInteger(0);
+  }
+
+  SEXP data1 = R_altrep_data1(x_sexp);
+  if (Rf_inherits(data1, "nanoarrow::array_string") && data1 != R_NilValue) {
+    nanoarrow_altstring_materialize(x_sexp);
+    return Rf_ScalarInteger(1);
+  } else {
+    return Rf_ScalarInteger(0);
+  }
 }
 
 #endif
