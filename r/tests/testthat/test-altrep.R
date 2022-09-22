@@ -28,6 +28,11 @@ test_that("nanoarrow_altrep() works for string", {
 
   # Materialization should get printed in inspect()
   expect_output(.Internal(inspect(x_altrep)), "<materialized nanoarrow::altrep_string\\[27\\]>")
+
+  # For good measure, force materialization again and check
+  nanoarrow_altrep_force_materialize(x_altrep)
+  expect_identical(x_altrep, c(NA, letters))
+  expect_length(x_altrep, 27)
 })
 
 test_that("nanoarrow_altrep() works for large string", {

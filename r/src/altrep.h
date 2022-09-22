@@ -20,18 +20,36 @@
 
 #include "Rversion.h"
 
+#include <string.h>
+
 // ALTREP available in R >= 3.5
 #if defined(R_VERSION) && R_VERSION >= R_Version(3, 5, 0)
+
 #define HAS_ALTREP
 #include <R_ext/Altrep.h>
-#endif
 
+static inline const char* nanoarrow_altrep_class(SEXP x) {
+  if (ALTREP(x)) {
+    SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x)));
+    return CHAR(PRINTNAME(data_class_sym));
+  } else {
+    return NULL;
+  }
+}
 
-// ...ALTREP raw() class available in R >= 3.6
-#if (defined(R_VERSION) && R_VERSION >= R_Version(3, 6, 0))
-#define HAS_ALTREP_RAW
+#else
+
+static inline const char* nanoarrow_altrep_class(SEXP x) {
+  return NULL;
+}
+
 #endif
 
 void register_nanoarrow_altrep(DllInfo* info);
+
+static inline int is_nanoarrow_altrep(SEXP x) {
+  const char* class_name = nanoarrow_altrep_class(x);
+  return class_name && strncmp(class_name, "nanoarrow::", 11) == 0;
+}
 
 #endif

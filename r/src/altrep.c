@@ -27,6 +27,17 @@
 
 #ifdef HAS_ALTREP
 
+// This file defines all ALTREP classes used to speed up conversion
+// from an arrow_array to an R vector. Currently only string and
+// large string arrays are converted to ALTREP.
+//
+// All ALTREP classes follow some common patterns:
+//
+// - R_altrep_data1() holds an external pointer to a struct ArrowArrayView
+// - R_altrep_data2() holds the materialized version of the vector.
+// - When materialization happens, we set R_altrep_data1() to R_NilValue
+//   to ensure we don't hold on to any more resources than needed.
+
 static R_xlen_t nanoarrow_altrep_length(SEXP altrep_sexp) {
   SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
   if (array_view_xptr == R_NilValue) {
@@ -47,10 +58,8 @@ static Rboolean nanoarrow_altrep_inspect(SEXP altrep_sexp, int pre, int deep, in
   }
 
   R_xlen_t len = nanoarrow_altrep_length(altrep_sexp);
-  SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(altrep_sexp)));
-  const char* data_class_ptr = CHAR(PRINTNAME(data_class_sym));
-
-  Rprintf("<%s%s[%ld]>\n", materialized, data_class_ptr, (long)len);
+  const char* class_name = nanoarrow_altrep_class(altrep_sexp);
+  Rprintf("<%s%s[%ld]>\n", materialized, class_name, (long)len);
   return TRUE;
 }
 
@@ -69,10 +78,6 @@ static SEXP nanoarrow_altstring_elt(SEXP altrep_sexp, R_xlen_t i) {
 
   struct ArrowStringView item = ArrowArrayViewGetStringUnsafe(array_view, i);
   return Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8);
-}
-
-static void nanoarrow_altstring_set_elt(SEXP altrep_sexp, R_xlen_t i, SEXP char_sexp) {
-  Rf_error("Can't SET_STRING_ELT() on nanoarrow_altstring");
 }
 
 static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
@@ -116,7 +121,10 @@ static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
 
 static R_altrep_class_t nanoarrow_altrep_string_cls;
 
+#endif
+
 static void register_nanoarrow_altstring(DllInfo* info) {
+#ifdef HAS_ALTREP
   nanoarrow_altrep_string_cls =
       R_make_altstring_class("nanoarrow::altrep_string", "nanoarrow", info);
   R_set_altrep_Length_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_length);
@@ -126,13 +134,25 @@ static void register_nanoarrow_altstring(DllInfo* info) {
   R_set_altvec_Dataptr_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_dataptr);
 
   R_set_altstring_Elt_method(nanoarrow_altrep_string_cls, &nanoarrow_altstring_elt);
-  R_set_altstring_Set_elt_method(nanoarrow_altrep_string_cls,
-                                 &nanoarrow_altstring_set_elt);
+
+  // Notes about other available methods:
+  //
+  // - The no_na method never seems to get called (anyNA() doesn't seem to
+  //   use it)
+  // - Because set_Elt is not defined, SET_STRING_ELT() will modify the
+  //   technically modify the materialized value. The object has been marked
+  //   immutable but in the case of a string this is fine because we materialize
+  //   when this happens (via Dataptr).
+  // - It may be beneficial to implement the Extract_subset method to defer string
+  //   conversion even longer since this is expensive compared to rearranging integer
+  //   indices.
+#endif
 }
 
 void register_nanoarrow_altrep(DllInfo* info) { register_nanoarrow_altstring(info); }
 
-SEXP nanoarrow_c_make_altstring(SEXP array_view_xptr) {
+SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr) {
+#ifdef HAS_ALTREP
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
 
@@ -150,34 +170,28 @@ SEXP nanoarrow_c_make_altstring(SEXP array_view_xptr) {
   MARK_NOT_MUTABLE(out);
   UNPROTECT(1);
   return out;
+#else
+  return R_NilValue;
+#endif
 }
 
 SEXP nanoarrow_c_is_altrep(SEXP x_sexp) {
-  if (!ALTREP(x_sexp)) {
-    return Rf_ScalarLogical(FALSE);
-  }
-
-  SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x_sexp)));
-  const char* data_class_ptr = CHAR(PRINTNAME(data_class_sym));
-  return Rf_ScalarLogical(strncmp(data_class_ptr, "nanoarrow::", 11) == 0);
+  return Rf_ScalarLogical(is_nanoarrow_altrep(x_sexp));
 }
 
 SEXP nanoarrow_c_altrep_is_materialized(SEXP x_sexp) {
-  if (!ALTREP(x_sexp)) {
+  const char* class_name = nanoarrow_altrep_class(x_sexp);
+  if (class_name == NULL || strncmp(class_name, "nanoarrow::", 11) != 0) {
     return Rf_ScalarLogical(NA_LOGICAL);
+  } else {
+    return Rf_ScalarLogical(R_altrep_data1(x_sexp) == R_NilValue);
   }
-
-  SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x_sexp)));
-  const char* data_class_ptr = CHAR(PRINTNAME(data_class_sym));
-  if (strncmp(data_class_ptr, "nanoarrow::", 11) != 0) {
-    return Rf_ScalarLogical(NA_LOGICAL);
-  }
-
-  return Rf_ScalarLogical(R_altrep_data1(x_sexp) == R_NilValue);
 }
 
 SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sexp) {
-  if (TYPEOF(x_sexp) == VECSXP && LOGICAL(recursive_sexp)[0]) {
+  // The recursive flag lets a developer/user force materialization of any
+  // string columns in a data.frame that came from nanoarrow.
+  if (Rf_inherits(x_sexp, "data.frame") && LOGICAL(recursive_sexp)[0]) {
     int n_materialized = 0;
     for (R_xlen_t i = 0; i < Rf_xlength(x_sexp); i++) {
       SEXP n_materialized_sexp = PROTECT(
@@ -188,17 +202,14 @@ SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sexp) {
     return Rf_ScalarInteger(n_materialized);
   }
 
-  if (!ALTREP(x_sexp)) {
-    return Rf_ScalarInteger(0);
-  }
-
-  SEXP data1 = R_altrep_data1(x_sexp);
-  if (Rf_inherits(data1, "nanoarrow::altrep_string") && data1 != R_NilValue) {
+  const char* class_name = nanoarrow_altrep_class(x_sexp);
+  if (class_name && strcmp(class_name, "nanoarrow::altrep_string") == 0) {
+    // Force materialization even if already materialized (the method
+    // should be safe to call more than once as written here)
+    int already_materialized = R_altrep_data1(x_sexp) == R_NilValue;
     nanoarrow_altstring_materialize(x_sexp);
-    return Rf_ScalarInteger(1);
+    return Rf_ScalarInteger(!already_materialized);
   } else {
     return Rf_ScalarInteger(0);
   }
 }
-
-#endif
