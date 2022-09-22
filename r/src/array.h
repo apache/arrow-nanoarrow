@@ -86,5 +86,31 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
   R_PreserveObject(array_xptr);
 }
 
+// When arrays arrive as a nanoarrow_array, they are responsible for
+// releasing their children. This is fine until we need to keep one
+// child alive (e.g., a column of a data frame that we attach to an
+// ALTREP array) or until we need to export it (i.e., comply with
+// https://arrow.apache.org/docs/format/CDataInterface.html#moving-child-arrays
+// where child arrays must be movable). To make this work we need to do a shuffle: we
+// move the child array to a new owning external pointer and
+// give an exported version back to the original object. This only
+// applies if the array_xptr has the external pointer 'prot' field
+// set (if it doesn't have that set, it is already independent).
+static inline SEXP array_ensure_independent(struct ArrowArray* array) {
+  SEXP original_array_xptr = PROTECT(array_owning_xptr());
+
+  // Move array to the newly created owner
+  struct ArrowArray* original_array = array_from_xptr(original_array_xptr);
+  memcpy(original_array, array, sizeof(struct ArrowArray));
+  array->release = NULL;
+
+  // Export the independent array (which keeps a reference to original_array_xptr)
+  // back to the original home
+  array_export(original_array_xptr, array);
+  UNPROTECT(1);
+
+  // Return the external pointer of the independent array
+  return original_array_xptr;
+}
 
 #endif
