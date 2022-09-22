@@ -5,37 +5,35 @@ test_that("nanoarrow_altrep() returns NULL for unsupported types", {
 })
 
 test_that("nanoarrow_altrep() works for string", {
-  x <- as_nanoarrow_array(letters, schema = arrow::utf8())
+  x <- as_nanoarrow_array(c(NA, letters), schema = arrow::utf8())
   x_altrep <- nanoarrow_altrep(x, character())
-  expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::array_string\\[26\\]>")
-  expect_identical(x_altrep, letters)
-  expect_false(anyNA(x_altrep))
 
-  for (i in seq_along(x_altrep)) {
-    expect_identical(x_altrep[i], letters[i])
-  }
+  expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::altrep_string\\[27\\]>")
 
-  expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::array_string\\[26\\]>")
+  # Check that some common operations that call the string elt method
+  # don't materialize the vector
+  expect_identical(x_altrep, c(NA, letters))
+  expect_length(x_altrep, 27)
+  expect_false(is_nanoarrow_altrep_materialized(x_altrep))
 
-  x_altrep[1] <- "not a letter"
-  expect_identical(x_altrep, c("not a letter", letters[-1]))
+  # Setting an element will materialize, duplicate, then modify
+  x_altrep2 <- x_altrep
+  x_altrep2[1] <- "not a letter"
+  expect_identical(x_altrep2, c("not a letter", letters))
+  expect_true(is_nanoarrow_altrep_materialized(x_altrep))
+
+  # Check the same operations on the materialized output
+  expect_identical(x_altrep, c(NA, letters))
+  expect_length(x_altrep, 27)
+
+  # Materialization should get printed in inspect()
+  expect_output(.Internal(inspect(x_altrep)), "<materialized nanoarrow::altrep_string\\[27\\]>")
 })
 
 test_that("nanoarrow_altrep() works for large string", {
   x <- as_nanoarrow_array(letters, schema = arrow::large_utf8())
   x_altrep <- nanoarrow_altrep(x, character())
-  expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::array_string\\[26\\]>")
   expect_identical(x_altrep, letters)
-  expect_false(anyNA(x_altrep))
-
-  for (i in seq_along(x_altrep)) {
-    expect_identical(x_altrep[i], letters[i])
-  }
-
-  expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::array_string\\[26\\]>")
-
-  x_altrep[1] <- "not a letter"
-  expect_identical(x_altrep, c("not a letter", letters[-1]))
 })
 
 test_that("is_nanoarrow_altrep() returns true for nanoarrow altrep objects", {
