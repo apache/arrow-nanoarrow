@@ -66,3 +66,14 @@ test_that("nanoarrow_altrep_force_materialize() forces materialization", {
     0L
   )
 })
+
+test_that("is_nanoarrow_altrep_materialized() checks for materialization", {
+  expect_identical(is_nanoarrow_altrep_materialized("not altrep"), NA)
+  expect_identical(is_nanoarrow_altrep_materialized(1:10), NA)
+
+  x <- as_nanoarrow_array(letters, schema = arrow::utf8())
+  x_altrep <- nanoarrow_altrep(x, character())
+  expect_false(is_nanoarrow_altrep_materialized(x_altrep))
+  expect_identical(nanoarrow_altrep_force_materialize(x_altrep), 1L)
+  expect_true(is_nanoarrow_altrep_materialized(x_altrep))
+})

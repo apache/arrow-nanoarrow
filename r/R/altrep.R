@@ -12,8 +12,7 @@ nanoarrow_altrep <- function(array, ptype = NULL) {
 }
 
 is_nanoarrow_altrep <- function(x) {
-  cls <- .Call(nanoarrow_c_altrep_class, x)
-  if (is.null(cls)) FALSE else grepl("^nanoarrow::", cls)
+  .Call(nanoarrow_c_is_altrep, x)
 }
 
 nanoarrow_altrep_force_materialize <- function(x, recursive = FALSE) {

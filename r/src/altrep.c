@@ -180,27 +180,28 @@ SEXP nanoarrow_c_make_altstring(SEXP array_view_xptr) {
   return out;
 }
 
-SEXP nanoarrow_c_altrep_class(SEXP x_sexp) {
+SEXP nanoarrow_c_is_altrep(SEXP x_sexp) {
   if (!ALTREP(x_sexp)) {
-    return R_NilValue;
+    return Rf_ScalarLogical(FALSE);
   }
 
-  // An unnamed pairlist where the first element is the class name
-  // as a symbol and the second element is the package name
-  return CAR(ATTRIB(ALTREP_CLASS(x_sexp)));
+  SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x_sexp)));
+  const char* data_class_ptr = CHAR(PRINTNAME(data_class_sym));
+  return Rf_ScalarLogical(strncmp(data_class_ptr, "nanoarrow::", 11) == 0);
 }
 
 SEXP nanoarrow_c_altrep_is_materialized(SEXP x_sexp) {
   if (!ALTREP(x_sexp)) {
-    return Rf_ScalarLogical(0);
+    return Rf_ScalarLogical(NA_LOGICAL);
   }
 
-  SEXP data1 = R_altrep_data1(x_sexp);
-  if (Rf_inherits(data1, "nanoarrow::array_string")) {
-    return Rf_ScalarLogical(data1 == R_NilValue);
+  SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x_sexp)));
+  const char* data_class_ptr = CHAR(PRINTNAME(data_class_sym));
+  if (strncmp(data_class_ptr, "nanoarrow::", 11) != 0) {
+    return Rf_ScalarLogical(NA_LOGICAL);
   }
 
-  return Rf_ScalarLogical(NA_LOGICAL);
+  return Rf_ScalarLogical(R_altrep_data1(x_sexp) == R_NilValue);
 }
 
 SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sexp) {
