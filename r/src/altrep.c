@@ -25,6 +25,8 @@
 #include "altrep.h"
 #include "nanoarrow.h"
 
+#include "materialize.h"
+
 #ifdef HAS_ALTREP
 
 // This file defines all ALTREP classes used to speed up conversion
@@ -89,17 +91,7 @@ static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
 
-  SEXP result = PROTECT(Rf_allocVector(STRSXP, array_view->array->length));
-  struct ArrowStringView item;
-  for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-    if (ArrowArrayViewIsNull(array_view, i)) {
-      SET_STRING_ELT(result, i, NA_STRING);
-    } else {
-      item = ArrowArrayViewGetStringUnsafe(array_view, i);
-      SET_STRING_ELT(result, i, Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
-    }
-  }
-
+  SEXP result = PROTECT(nanoarrow_materialize_chr(array_view));
   R_set_altrep_data2(altrep_sexp, result);
   R_set_altrep_data1(altrep_sexp, R_NilValue);
   UNPROTECT(1);
