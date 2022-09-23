@@ -56,6 +56,10 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      - name: Install valgrind on r-devel
+        if: matrix.config.r == "devel"
+        run: sudo apt-get install -y valgrind
+
       # Probably a better way to do this, but for now do the vendor step manually
       - name: Vendor nanoarrow into the R package
         run: |
@@ -67,9 +71,16 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
           working-directory: r
+
       - uses: r-lib/actions/check-r-package@v2
         env:
           ARROW_R_VERBOSE_TEST: "true"
         with:
           upload-snapshots: true
           working-directory: r
+
+      - name: Run valgrind on r-devel
+        run: |
+          cd r
+          R CMD INSTALL .
+          echo "testthat::test_local()" | R --no-save -d "valgrind --tool=memcheck --leak-check=full"
