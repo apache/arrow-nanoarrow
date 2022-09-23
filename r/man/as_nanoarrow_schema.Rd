@@ -3,16 +3,21 @@
 \name{as_nanoarrow_schema}
 \alias{as_nanoarrow_schema}
 \alias{infer_nanoarrow_schema}
+\alias{infer_nanoarrow_ptype}
 \title{Convert an object to a nanoarrow schema}
 \usage{
 as_nanoarrow_schema(x, ...)
 
 infer_nanoarrow_schema(x, ...)
+
+infer_nanoarrow_ptype(schema, ...)
 }
 \arguments{
 \item{x}{An object to convert to a schema}
 
 \item{...}{Passed to S3 methods}
+
+\item{schema}{A \link[=as_nanoarrow_schema]{nanoarrow schema}}
 }
 \value{
 An object of class 'nanoarrow_schema'
