@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "array.h"
 #include "altrep.h"
 #include "nanoarrow.h"
 
@@ -155,6 +156,15 @@ SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr) {
     default:
       return R_NilValue;
   }
+
+  // Ensure the array that we're attaching to this ALTREP object does not keep its
+  // parent struct alive unnecessarily (i.e., a user can select only a few columns
+  // and the memory for the unused columns will be released).
+  SEXP array_xptr_independent =
+      PROTECT(array_xptr_ensure_independent(R_ExternalPtrProtected(array_view_xptr)));
+  array_view->array = array_from_xptr(array_xptr_independent);
+  R_SetExternalPtrProtected(array_view_xptr, array_xptr_independent);
+  UNPROTECT(1);
 
   Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::altrep_string"));
   SEXP out =
