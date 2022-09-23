@@ -319,20 +319,6 @@ SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursi
   return array_proxy;
 }
 
-// This version is like the version that operates on a raw struct ArrowArray*
-// except is designed for children that were exposed via nanoarrow_array_proxy().
-// We can check if this array has any array dependencies by inspecing the 'Protected'
-// field of the external pointer: if it that field is R_NilValue, it is already
-// independent.
-SEXP nanoarrow_c_ensure_independent(SEXP array_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  if (R_ExternalPtrProtected(array_xptr) == R_NilValue) {
-    return array_xptr;
-  }
-
-  return array_ensure_independent(array);
-}
-
 // for ArrowArray* that are exported references to an R array_xptr
 void finalize_exported_array(struct ArrowArray* array) {
   SEXP array_xptr = (SEXP)array->private_data;

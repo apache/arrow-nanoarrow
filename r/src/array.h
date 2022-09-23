@@ -75,15 +75,23 @@ static inline struct ArrowSchema* schema_from_array_xptr(SEXP array_xptr) {
   }
 }
 
-static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+static inline SEXP array_xptr_ensure_independent(SEXP array_xptr);
 
-  // keep all the pointers but use the R_PreserveObject mechanism to keep
+static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) {
+  // If array_xptr has SEXP dependencies, this will ensure an independent version
+  // It is possible that this should be done recursively, too, to ensure that unused
+  // child arrays can be released by wherever this is being exported. This is in the
+  // specification although it is unclear whether any implementation actually does this.
+  SEXP independent_array_xptr = PROTECT(array_xptr_ensure_independent(array_xptr));
+  struct ArrowArray* array = array_from_xptr(independent_array_xptr);
+
+  // Keep all the pointers but use the R_PreserveObject mechanism to keep
   // the original data valid (R_ReleaseObject is called from the release callback)
   memcpy(array_copy, array, sizeof(struct ArrowArray));
-  array_copy->private_data = array_xptr;
+  array_copy->private_data = independent_array_xptr;
   array_copy->release = &finalize_exported_array;
-  R_PreserveObject(array_xptr);
+  R_PreserveObject(independent_array_xptr);
+  UNPROTECT(1);
 }
 
 // When arrays arrive as a nanoarrow_array, they are responsible for
@@ -111,6 +119,19 @@ static inline SEXP array_ensure_independent(struct ArrowArray* array) {
 
   // Return the external pointer of the independent array
   return original_array_xptr;
+}
+
+// This version is like the version that operates on a raw struct ArrowArray*
+// except it checks if this array has any array dependencies by inspecing the 'Protected'
+// field of the external pointer: if it that field is R_NilValue, it is already
+// independent.
+static inline SEXP array_xptr_ensure_independent(SEXP array_xptr) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  if (R_ExternalPtrProtected(array_xptr) == R_NilValue) {
+    return array_xptr;
+  }
+
+  return array_ensure_independent(array);
 }
 
 #endif

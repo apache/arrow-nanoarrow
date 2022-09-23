@@ -47,6 +47,27 @@ test_that("nanoarrow_array to Array works", {
   expect_true(chr$Equals(arrow::Array$create(c("one", "two"))))
 })
 
+test_that("nanoarrow_array to Array works for child arrays", {
+  skip_if_not_installed("arrow")
+
+  df <- data.frame(a = 1, b = "two")
+  batch <- as_nanoarrow_array(df)
+  array_from_column <- arrow::as_arrow_array(batch$children[[2]])
+  expect_true(array_from_column$Equals(arrow::Array$create("two")))
+
+  expect_true(nanoarrow_pointer_is_valid(batch))
+  expect_true(nanoarrow_pointer_is_valid(batch$children[[1]]))
+  expect_true(nanoarrow_pointer_is_valid(batch$children[[2]]))
+
+  array_from_column <- NULL
+  gc()
+  Sys.sleep(0.1)
+
+  expect_true(nanoarrow_pointer_is_valid(batch))
+  expect_true(nanoarrow_pointer_is_valid(batch$children[[1]]))
+  expect_true(nanoarrow_pointer_is_valid(batch$children[[2]]))
+})
+
 test_that("Array to nanoarrow_array works", {
   skip_if_not_installed("arrow")
 
