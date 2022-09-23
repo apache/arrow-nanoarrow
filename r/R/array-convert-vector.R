@@ -16,7 +16,7 @@
 # under the License.
 
 #' @export
-from_nanoarrow_array.partial_frame <- function(array, to, ...) {
+from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
   nrows <- array$length
   children <- lapply(array$children, as.vector)
   new_data_frame(children, nrows)

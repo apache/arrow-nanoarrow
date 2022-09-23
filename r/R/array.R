@@ -62,7 +62,7 @@ as.vector.nanoarrow_array <- function(x, mode = "any") {
 
 #' @export
 as.data.frame.nanoarrow_array <- function(x, ...) {
-  from_nanoarrow_array(x, to = vctrs::partial_frame())
+  from_nanoarrow_array.vctrs_partial_frame(x)
 }
 
 #' @export
