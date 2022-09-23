@@ -57,7 +57,7 @@ jobs:
           use-public-rspm: true
 
       - name: Install valgrind on r-devel
-        if: matrix.config.r == "devel"
+        if: matrix.config.r == 'devel'
         run: sudo apt-get install -y valgrind
 
       # Probably a better way to do this, but for now do the vendor step manually
@@ -80,6 +80,7 @@ jobs:
           working-directory: r
 
       - name: Run valgrind on r-devel
+        if: matrix.config.r == 'devel'
         run: |
           cd r
           R CMD INSTALL .
