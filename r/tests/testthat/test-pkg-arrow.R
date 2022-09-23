@@ -50,22 +50,71 @@ test_that("nanoarrow_array to Array works", {
 test_that("nanoarrow_array to Array works for child arrays", {
   skip_if_not_installed("arrow")
 
+  bytes_allocated_baseline <- arrow::default_memory_pool()$bytes_allocated
+
   df <- data.frame(a = 1, b = "two")
   batch <- as_nanoarrow_array(df)
-  array_from_column <- arrow::as_arrow_array(batch$children[[2]])
-  expect_true(array_from_column$Equals(arrow::Array$create("two")))
+  bytes_allocated_batch <- arrow::default_memory_pool()$bytes_allocated
 
+  array_from_column <- arrow::as_arrow_array(batch$children[[2]])
+
+  # No extra memory should have been allocated
+  expect_identical(
+    arrow::default_memory_pool()$bytes_allocated,
+    bytes_allocated_batch
+  )
+
+  # The exported array should be valid
+  expect_null(array_from_column$Validate())
+
+  # All the nanoarrow pointers should still be valid
   expect_true(nanoarrow_pointer_is_valid(batch))
   expect_true(nanoarrow_pointer_is_valid(batch$children[[1]]))
   expect_true(nanoarrow_pointer_is_valid(batch$children[[2]]))
 
+  # Let the exported arrow::Array go out of scope and maximize the
+  # chance that the exported data release callback is called
   array_from_column <- NULL
   gc()
   Sys.sleep(0.1)
 
+  # We still should have the same memory allocated because `batch`
+  # is holding on to it
+  expect_identical(
+    arrow::default_memory_pool()$bytes_allocated,
+    bytes_allocated_batch
+  )
+
+  # All the nanoarrow pointers should *still* be valid even after that
+  # release callback is called
   expect_true(nanoarrow_pointer_is_valid(batch))
   expect_true(nanoarrow_pointer_is_valid(batch$children[[1]]))
   expect_true(nanoarrow_pointer_is_valid(batch$children[[2]]))
+
+  # Export one column again but this time let the `batch` go out of scope
+  array_from_column <- arrow::as_arrow_array(batch$children[[1]])
+  batch <- NULL
+  gc()
+  Sys.sleep(0.1)
+
+  # The exported array should still be valid
+  expect_null(array_from_column$Validate())
+
+  # Some, but not all memory should have been released
+  expect_true(arrow::default_memory_pool()$bytes_allocated > bytes_allocated_baseline)
+  expect_true(arrow::default_memory_pool()$bytes_allocated < bytes_allocated_batch)
+
+  # ...Until we remove the last reference to the exported array
+  array_from_column <- NULL
+  gc()
+  Sys.sleep(0.1)
+
+  expect_true(arrow::default_memory_pool()$bytes_allocated <= bytes_allocated_baseline)
+
+  expect_identical(
+    arrow::default_memory_pool()$bytes_allocated,
+    bytes_allocated_baseline
+  )
 })
 
 test_that("Array to nanoarrow_array works", {

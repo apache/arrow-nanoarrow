@@ -108,7 +108,8 @@ static inline SEXP array_ensure_independent(struct ArrowArray* array) {
   SEXP original_array_xptr = PROTECT(array_owning_xptr());
 
   // Move array to the newly created owner
-  struct ArrowArray* original_array = array_from_xptr(original_array_xptr);
+  struct ArrowArray* original_array =
+      (struct ArrowArray*)R_ExternalPtrAddr(original_array_xptr);
   memcpy(original_array, array, sizeof(struct ArrowArray));
   array->release = NULL;
 
