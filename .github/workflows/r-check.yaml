@@ -84,4 +84,4 @@ jobs:
         run: |
           cd r
           R CMD INSTALL .
-          echo "testthat::test_local()" | R --no-save -d "valgrind --tool=memcheck --leak-check=full"
+          echo "testthat::test_local()" | R --no-save -d "valgrind --tool=memcheck --leak-check=full --suppressions ../valgrind.supp"
