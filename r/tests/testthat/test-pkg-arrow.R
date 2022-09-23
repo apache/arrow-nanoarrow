@@ -50,19 +50,15 @@ test_that("nanoarrow_array to Array works", {
 test_that("nanoarrow_array to Array works for child arrays", {
   skip_if_not_installed("arrow")
 
-  bytes_allocated_baseline <- arrow::default_memory_pool()$bytes_allocated
-
   df <- data.frame(a = 1, b = "two")
   batch <- as_nanoarrow_array(df)
-  bytes_allocated_batch <- arrow::default_memory_pool()$bytes_allocated
 
+  # This type of export is special because batch$children[[2]] has an SEXP
+  # dependency on the original array. When we export it, we reverse that
+  # dependency such that the exported array and the batch->children[1] array
+  # are shells that call R_ReleaseObject on a common object (i.e., sort of like
+  # a shared pointer).
   array_from_column <- arrow::as_arrow_array(batch$children[[2]])
-
-  # No extra memory should have been allocated
-  expect_identical(
-    arrow::default_memory_pool()$bytes_allocated,
-    bytes_allocated_batch
-  )
 
   # The exported array should be valid
   expect_null(array_from_column$Validate())
@@ -78,13 +74,6 @@ test_that("nanoarrow_array to Array works for child arrays", {
   gc()
   Sys.sleep(0.1)
 
-  # We still should have the same memory allocated because `batch`
-  # is holding on to it
-  expect_identical(
-    arrow::default_memory_pool()$bytes_allocated,
-    bytes_allocated_batch
-  )
-
   # All the nanoarrow pointers should *still* be valid even after that
   # release callback is called
   expect_true(nanoarrow_pointer_is_valid(batch))
@@ -99,22 +88,6 @@ test_that("nanoarrow_array to Array works for child arrays", {
 
   # The exported array should still be valid
   expect_null(array_from_column$Validate())
-
-  # Some, but not all memory should have been released
-  expect_true(arrow::default_memory_pool()$bytes_allocated > bytes_allocated_baseline)
-  expect_true(arrow::default_memory_pool()$bytes_allocated < bytes_allocated_batch)
-
-  # ...Until we remove the last reference to the exported array
-  array_from_column <- NULL
-  gc()
-  Sys.sleep(0.1)
-
-  expect_true(arrow::default_memory_pool()$bytes_allocated <= bytes_allocated_baseline)
-
-  expect_identical(
-    arrow::default_memory_pool()$bytes_allocated,
-    bytes_allocated_baseline
-  )
 })
 
 test_that("Array to nanoarrow_array works", {
