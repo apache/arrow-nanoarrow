@@ -1,11 +1,13 @@
 
 nanoarrow_altrep <- function(array, ptype = NULL) {
   stopifnot(inherits(array, "nanoarrow_array"))
+  schema <- infer_nanoarrow_schema(array)
+  array_view <- .Call(nanoarrow_c_array_view, array, schema)
 
-  if (inherits(ptype, "character")) {
-    schema <- infer_nanoarrow_schema(array)
-    array_view <- .Call(nanoarrow_c_array_view, array, schema)
+  if (is.character(ptype)) {
     .Call(nanoarrow_c_make_altrep_string, array_view)
+  } else if (is.integer(ptype)) {
+    .Call(nanoarrow_c_make_altrep_integer, array_view)
   } else {
     NULL
   }

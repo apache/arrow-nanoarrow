@@ -177,6 +177,12 @@ SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr) {
 #endif
 }
 
+SEXP nanoarrow_c_make_altrep_integer(SEXP array_view_xptr) {
+  struct ArrowArrayView* array_view =
+      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
+  return nanoarrow_materialize_int(array_view);
+}
+
 SEXP nanoarrow_c_is_altrep(SEXP x_sexp) {
   return Rf_ScalarLogical(is_nanoarrow_altrep(x_sexp));
 }
