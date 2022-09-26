@@ -47,3 +47,79 @@ test_that("convert to vector works for character()", {
     "Can't convert array to character"
   )
 })
+
+test_that("convert to vector works for valid integer()", {
+  # TODO: Not altrep yet, just materialized
+  arrow_int_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    float32 = arrow::float32(),
+    float64 = arrow::float64()
+  )
+
+  ints <- c(NA, 0:10)
+  for (nm in names(arrow_int_types)) {
+    expect_identical(
+      nanoarrow_altrep(
+        as_nanoarrow_array(ints, schema = arrow_int_types[[!!nm]]),
+        integer()
+      ),
+      ints
+    )
+  }
+
+  ints_no_na <- 0:10
+  for (nm in names(arrow_int_types)) {
+    expect_identical(
+      nanoarrow_altrep(
+        as_nanoarrow_array(ints_no_na, schema = arrow_int_types[[!!nm]]),
+        integer()
+      ),
+      ints_no_na
+    )
+  }
+
+  # Boolean array to integer
+  expect_identical(
+    nanoarrow_altrep(
+      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
+      integer()
+    ),
+    c(NA, 1L, 0L)
+  )
+
+  expect_identical(
+    nanoarrow_altrep(
+      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
+      integer()
+    ),
+    c(1L, 0L)
+  )
+})
+
+test_that("convert to vector warns for invalid integer()", {
+  array <- as_nanoarrow_array(arrow::as_arrow_array(.Machine$double.xmax))
+  expect_warning(
+    expect_identical(nanoarrow_altrep(array, integer()), NA_integer_),
+    "1 value\\(s\\) outside integer range set to NA"
+  )
+
+  array <- as_nanoarrow_array(arrow::as_arrow_array(c(NA, .Machine$double.xmax)))
+  expect_warning(
+    expect_identical(nanoarrow_altrep(array, integer()), c(NA_integer_, NA_integer_)),
+    "1 value\\(s\\) outside integer range set to NA"
+  )
+})
+
+test_that("convert to vector warns for invalid array to integer()", {
+  expect_error(
+    nanoarrow_altrep(as_nanoarrow_array(letters), integer()),
+    "Can't convert array to integer"
+  )
+})
