@@ -25,6 +25,7 @@
 
 void finalize_array_xptr(SEXP array_xptr);
 void finalize_exported_array(struct ArrowArray* array);
+SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i);
 
 static inline struct ArrowArray* array_from_xptr(SEXP array_xptr) {
   if (!Rf_inherits(array_xptr, "nanoarrow_array")) {

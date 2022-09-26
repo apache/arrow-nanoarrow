@@ -30,10 +30,10 @@ enum VectorType {
   VECTOR_TYPE_CHARACTER,
   VECTOR_TYPE_DATA_FRAME,
   VECTOR_TYPE_LIST_OF_RAW,
-  VECTOR_TYPE_OTHER
+  VECTOR_TYPE_UNKNOWN
 };
 
-// These conversions are the conversion we can be sure about without inspecting
+// These conversions are the conversions we can be sure about without inspecting
 // any extra data from schema or the array.
 static enum VectorType vector_type_from_array_type(enum ArrowType type) {
   switch (type) {
@@ -47,6 +47,7 @@ static enum VectorType vector_type_from_array_type(enum ArrowType type) {
     case NANOARROW_TYPE_INT32:
       return VECTOR_TYPE_INTEGER;
 
+    case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
       return VECTOR_TYPE_DOUBLE;
@@ -63,29 +64,68 @@ static enum VectorType vector_type_from_array_type(enum ArrowType type) {
       return VECTOR_TYPE_LIST_OF_RAW;
 
     default:
-      break;
+      return VECTOR_TYPE_UNKNOWN;
   }
 }
 
-static enum VectorType vector_type_from_array_view_xptr(SEXP array_view_xptr) {
-  SEXP array_xptr = R_ExternalPtrProtected(array_view_xptr);
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+static enum VectorType vector_type_from_array_xptr(SEXP array_xptr) {
   struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
-}
 
-static SEXP ptype_from_array_type(enum ArrowType type) {
-  SEXP ptype = R_NilValue;
-  switch (type) {
-    case NANOARROW_TYPE_STRUCT:
-      ptype = PROTECT(Rf_allocVector(VECSXP, 0));
-      Rf_setAttrib(ptype, R_ClassSymbol, Rf_mkString("data.frame"));
-      UNPROTECT(1);
-      break;
-    case NANOARROW_TYPE_STRING:
-      return Rf_allocVector(STRSXP, 0);
-    default:
-      break;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  if (ArrowSchemaViewInit(&schema_view, schema, &error) != NANOARROW_OK) {
+    Rf_error("vector_type_from_array_view_xptr(): %s", ArrowErrorMessage(&error));
   }
 
-  return ptype;
+  // Try the types with a definitive conversion
+  enum VectorType result = vector_type_from_array_type(schema_view.data_type);
+  if (result != VECTOR_TYPE_UNKNOWN) {
+    return result;
+  }
+
+  // TODO: Try inspecting the schema/array (e.g., to range-check an int64
+  // to check if it's coercible to int or double)
+  return VECTOR_TYPE_UNKNOWN;
+}
+
+SEXP nanoarrow_c_infer_ptype(SEXP array_xptr);
+
+static SEXP infer_ptype_data_frame(SEXP array_xptr) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  SEXP result = PROTECT(Rf_allocVector(VECSXP, array->n_children));
+
+  for (R_xlen_t i = 0; i < array->n_children; i++) {
+    SEXP child_xptr = PROTECT(borrow_array_child_xptr(array_xptr, i));
+    SET_VECTOR_ELT(child_xptr, i, nanoarrow_c_infer_ptype(child_xptr));
+    UNPROTECT(1);
+  }
+
+  Rf_setAttrib(result, R_ClassSymbol, Rf_mkString("data.frame"));
+  SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
+  INTEGER(rownames)[0] = NA_INTEGER;
+  INTEGER(rownames)[1] = 0;
+  Rf_setAttrib(result, R_RowNamesSymbol, rownames);
+  UNPROTECT(2);
+  return result;
+}
+
+SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
+  enum VectorType vector_type = vector_type_from_array_xptr(array_xptr);
+
+  switch (vector_type) {
+    case VECTOR_TYPE_LOGICAL:
+      return Rf_allocVector(LGLSXP, 0);
+    case VECTOR_TYPE_INTEGER:
+      return Rf_allocVector(INTSXP, 0);
+    case VECTOR_TYPE_DOUBLE:
+      return Rf_allocVector(REALSXP, 0);
+    case VECTOR_TYPE_CHARACTER:
+      return Rf_allocVector(STRSXP, 0);
+    case VECTOR_TYPE_DATA_FRAME:
+      return infer_ptype_data_frame(array_xptr);
+    default:
+      Rf_error("Can't guess default ptype for array");
+  }
+
+  return R_NilValue;
 }

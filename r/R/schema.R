@@ -24,7 +24,6 @@
 #' are represented identically.
 #'
 #' @param x An object to convert to a schema
-#' @param schema A [nanoarrow schema][as_nanoarrow_schema]
 #' @param ... Passed to S3 methods
 #'
 #' @return An object of class 'nanoarrow_schema'

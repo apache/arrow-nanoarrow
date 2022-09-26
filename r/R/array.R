@@ -46,8 +46,7 @@ as_nanoarrow_array <- function(x, ..., schema = NULL) {
 #' @export
 as.vector.nanoarrow_array <- function(x, mode = "any") {
   stopifnot(identical(mode, "any"))
-  schema <- infer_nanoarrow_schema(x)
-  from_nanoarrow_array(x, to = infer_nanoarrow_ptype(schema))
+  from_nanoarrow_array(x, to = infer_nanoarrow_ptype(x))
 }
 
 #' @export

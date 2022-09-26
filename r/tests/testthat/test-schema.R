@@ -39,35 +39,6 @@ test_that("infer_nanoarrow_schema() default method works", {
   expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
 })
 
-test_that("infer_nanoarrow_ptype() works for schemas", {
-  expect_identical(
-    infer_nanoarrow_ptype(infer_nanoarrow_schema(character())),
-    character()
-  )
-
-  expect_identical(
-    infer_nanoarrow_ptype(infer_nanoarrow_schema(integer())),
-    integer()
-  )
-
-  expect_identical(
-    infer_nanoarrow_ptype(infer_nanoarrow_schema(logical())),
-    logical()
-  )
-
-  expect_identical(
-    infer_nanoarrow_ptype(infer_nanoarrow_schema(double())),
-    double()
-  )
-
-  # Arrow gives us a tibble as the ptype
-  expect_equal(
-    infer_nanoarrow_ptype(infer_nanoarrow_schema(data.frame(x = character()))),
-    data.frame(x = character()),
-    ignore_attr = TRUE
-  )
-})
-
 test_that("schema list interface works for non-nested types", {
   schema <- infer_nanoarrow_schema(1:10)
   expect_identical(length(schema), 6L)

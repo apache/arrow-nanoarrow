@@ -15,6 +15,35 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("infer_nanoarrow_ptype() works for schemas", {
+  expect_identical(
+    infer_nanoarrow_ptype(as_nanoarrow_array(character())),
+    character()
+  )
+
+  expect_identical(
+    infer_nanoarrow_ptype(as_nanoarrow_array(integer())),
+    integer()
+  )
+
+  expect_identical(
+    infer_nanoarrow_ptype(as_nanoarrow_array(logical())),
+    logical()
+  )
+
+  expect_identical(
+    infer_nanoarrow_ptype(as_nanoarrow_array(double())),
+    double()
+  )
+
+  # Arrow gives us a tibble as the ptype
+  expect_equal(
+    infer_nanoarrow_ptype(as_nanoarrow_array(data.frame(x = character()))),
+    data.frame(x = character()),
+    ignore_attr = TRUE
+  )
+})
+
 test_that("convert to vector works for partial_frame", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
   expect_identical(

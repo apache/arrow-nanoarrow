@@ -18,8 +18,7 @@
 
 #' Convert an Array to an R vector
 #'
-#' @param array An object of class 'nanoarrow_array'
-#' @param schema A [nanoarrow schema][as_nanoarrow_schema] to use as a target
+#' @param array A [nanoarrow_array][as_nanoarrow_array].
 #' @param to A target prototype object describing the type to which `array`
 #'   should be converted, or `NULL` to use the default conversion.
 #' @param ... Passed to S3 methods
@@ -48,9 +47,10 @@ from_nanoarrow_array.default <- function(array, to = NULL, ...) {
 
 #' @rdname from_nanoarrow_array
 #' @export
-infer_nanoarrow_ptype <- function(schema, ...) {
+infer_nanoarrow_ptype <- function(array, ...) {
   # For now, just convert a zero-size arrow array to a vector
   # and see what we get
+  schema <- infer_nanoarrow_schema(as_nanoarrow_array(array))
   as.vector(arrow::concat_arrays(type = arrow::as_data_type(schema)))
 }
 

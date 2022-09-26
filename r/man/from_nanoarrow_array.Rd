@@ -7,17 +7,15 @@
 \usage{
 from_nanoarrow_array(array, to = NULL, ...)
 
-infer_nanoarrow_ptype(schema, ...)
+infer_nanoarrow_ptype(array, ...)
 }
 \arguments{
-\item{array}{An object of class 'nanoarrow_array'}
+\item{array}{A \link[=as_nanoarrow_array]{nanoarrow_array}.}
 
 \item{to}{A target prototype object describing the type to which \code{array}
 should be converted, or \code{NULL} to use the default conversion.}
 
 \item{...}{Passed to S3 methods}
-
-\item{schema}{A \link[=as_nanoarrow_schema]{nanoarrow schema} to use as a target}
 }
 \value{
 An R vector of type \code{to}.

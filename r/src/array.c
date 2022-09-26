@@ -82,6 +82,11 @@ static SEXP borrow_array_xptr(struct ArrowArray* array, SEXP shelter) {
   return array_xptr;
 }
 
+SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  return borrow_array_xptr(array->children[i], array_xptr);
+}
+
 static SEXP borrow_array_view_child(struct ArrowArrayView* array_view, int64_t i,
                                     SEXP shelter) {
   if (array_view != NULL) {

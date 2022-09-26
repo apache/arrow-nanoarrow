@@ -13,8 +13,6 @@ infer_nanoarrow_schema(x, ...)
 \item{x}{An object to convert to a schema}
 
 \item{...}{Passed to S3 methods}
-
-\item{schema}{A \link[=as_nanoarrow_schema]{nanoarrow schema}}
 }
 \value{
 An object of class 'nanoarrow_schema'
