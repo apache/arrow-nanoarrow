@@ -232,42 +232,6 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
   return buffer;
 }
 
-static void finalize_array_view_xptr(SEXP array_view_xptr) {
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
-  if (array_view != NULL) {
-    ArrowArrayViewReset(array_view);
-    ArrowFree(array_view);
-  }
-}
-
-SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-
-  struct ArrowError error;
-  ArrowErrorSet(&error, "");
-
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)ArrowMalloc(sizeof(struct ArrowArrayView));
-  ArrowArrayViewInit(array_view, NANOARROW_TYPE_UNINITIALIZED);
-  SEXP xptr = PROTECT(R_MakeExternalPtr(array_view, R_NilValue, array_xptr));
-  R_RegisterCFinalizer(xptr, &finalize_array_view_xptr);
-
-  int result = ArrowArrayViewInitFromSchema(array_view, schema, &error);
-  if (result != NANOARROW_OK) {
-    Rf_error("<ArrowArrayViewInitFromSchema> %s", error.message);
-  }
-
-  result = ArrowArrayViewSetArray(array_view, array, &error);
-  if (result != NANOARROW_OK) {
-    Rf_error("<ArrowArrayViewSetArray> %s", error.message);
-  }
-
-  UNPROTECT(1);
-  return xptr;
-}
-
 SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp) {
   struct ArrowArray* array = array_from_xptr(array_xptr);
   int recursive = LOGICAL(recursive_sexp)[0];

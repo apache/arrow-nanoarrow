@@ -27,7 +27,7 @@ void finalize_array_stream_xptr(SEXP array_stream_xptr);
 
 static inline struct ArrowArrayStream* array_stream_from_xptr(SEXP array_stream_xptr) {
   if (!Rf_inherits(array_stream_xptr, "nanoarrow_array_stream")) {
-    Rf_error("`array_stream` argument that is not");
+    Rf_error("`array_stream` argument that is not a nanoarrow_array_stream()");
   }
 
   struct ArrowArrayStream* array_stream =

@@ -51,7 +51,12 @@ as.vector.nanoarrow_array <- function(x, mode = "any") {
 
 #' @export
 as.data.frame.nanoarrow_array <- function(x, ...) {
-  from_nanoarrow_array.vctrs_partial_frame(x)
+  schema <- infer_nanoarrow_schema(x)
+  if (schema$format != "+s") {
+    stop(sprintf("Can't convert array with schema '%s' to data.frame()", schema$format))
+  }
+
+  .Call(nanoarrow_c_from_array, x, NULL)
 }
 
 #' @export

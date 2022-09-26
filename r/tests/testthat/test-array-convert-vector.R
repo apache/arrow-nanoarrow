@@ -42,18 +42,29 @@ test_that("infer_nanoarrow_ptype() works for basic types", {
   )
 })
 
+test_that("convert to vector works for data.frame", {
+  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
+
+  expect_identical(
+    from_nanoarrow_array(array, NULL),
+    data.frame(a = 1L, b = "two")
+  )
+
+  expect_identical(
+    from_nanoarrow_array(array, data.frame(a = integer(), b = character())),
+    data.frame(a = 1L, b = "two")
+  )
+
+  expect_error(
+    from_nanoarrow_array(array, data.frame(a = integer(), b = raw())),
+    "Can't convert array to vector"
+  )
+})
+
 test_that("convert to vector works for partial_frame", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
   expect_identical(
     from_nanoarrow_array(array, vctrs::partial_frame()),
-    data.frame(a = 1L, b = "two")
-  )
-})
-
-test_that("convert to vector works for data.frame", {
-  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
-  expect_identical(
-    from_nanoarrow_array(array, data.frame(a = integer(), b = character())),
     data.frame(a = 1L, b = "two")
   )
 })
@@ -76,7 +87,6 @@ test_that("convert to vector works for character()", {
 })
 
 test_that("convert to vector works for valid integer()", {
-  # TODO: Not altrep yet, just materialized
   arrow_int_types <- list(
     int8 = arrow::int8(),
     uint8 = arrow::uint8(),

@@ -29,7 +29,7 @@ SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i);
 
 static inline struct ArrowArray* array_from_xptr(SEXP array_xptr) {
   if (!Rf_inherits(array_xptr, "nanoarrow_array")) {
-    Rf_error("`array` argument that is not");
+    Rf_error("`array` argument that is not a nanoarrow_array()");
   }
 
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);

@@ -33,43 +33,18 @@ from_nanoarrow_array <- function(array, to = NULL, ...) {
 
 #' @export
 from_nanoarrow_array.default <- function(array, to = NULL, ...) {
-  # For now, use arrow's conversion for everything
-  result <- as.vector(arrow::as_arrow_array(array))
+  .Call(nanoarrow_c_from_array, array, to)
+}
 
-  # arrow's conversion doesn't support `to`, so for now use an R cast
-  # workaround for a bug in vctrs: https://github.com/r-lib/vctrs/issues/1642
-  if (inherits(result, "tbl_df")) {
-    result <- new_data_frame(result, nrow(result))
-  }
-
-  vctrs::vec_cast(result, to)
+#' @export
+from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
+  ptype <- infer_nanoarrow_ptype(array)
+  ptype <- vctrs::vec_cast(ptype, to)
+  .Call(nanoarrow_c_from_array, array, ptype)
 }
 
 #' @rdname from_nanoarrow_array
 #' @export
 infer_nanoarrow_ptype <- function(array, ...) {
   .Call(nanoarrow_c_infer_ptype, array)
-}
-
-#' @export
-from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
-  nrows <- array$length
-  children <- lapply(array$children, as.vector)
-  new_data_frame(children, nrows)
-}
-
-#' @export
-from_nanoarrow_array.data.frame <- function(array, to, ...) {
-  nrows <- array$length
-  children <- Map(from_nanoarrow_array, array$children, to)
-  names(children) <- names(to)
-  result <- new_data_frame(children, nrows)
-  class(result) <- class(to)
-  result
-}
-
-#' @export
-from_nanoarrow_array.character <- function(array, to, ...) {
-  nanoarrow_altrep(array, to) %||%
-    stop("Can't convert array to character()")
 }

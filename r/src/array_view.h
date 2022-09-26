@@ -15,43 +15,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_ALTREP_H_INCLUDED
-#define R_ALTREP_H_INCLUDED
+#ifndef R_NANOARROW_ARRAY_VIEW_H_INCLUDED
+#define R_NANOARROW_ARRAY_VIEW_H_INCLUDED
 
-#include "Rversion.h"
+#include <R.h>
+#include <Rinternals.h>
 
-#include <string.h>
+#include "nanoarrow.h"
 
-// ALTREP available in R >= 3.5
-#if defined(R_VERSION) && R_VERSION >= R_Version(3, 5, 0)
+SEXP array_view_xptr_from_array_xptr(SEXP array_xptr);
 
-#define HAS_ALTREP
-#include <R_ext/Altrep.h>
-
-static inline const char* nanoarrow_altrep_class(SEXP x) {
-  if (ALTREP(x)) {
-    SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x)));
-    return CHAR(PRINTNAME(data_class_sym));
-  } else {
-    return NULL;
+static inline struct ArrowArrayView* array_view_from_xptr(SEXP array_view_xptr) {
+  if (!Rf_inherits(array_view_xptr, "nanoarrow_array_view")) {
+    Rf_error("`array_view` argument that is not a nanoarrow_array_view()");
   }
+
+  struct ArrowArrayView* array_view =
+      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
+  if (array_view == NULL) {
+    Rf_error("nanoarrow_array_view() is an external pointer to NULL");
+  }
+
+  return array_view;
 }
-
-#else
-
-static inline const char* nanoarrow_altrep_class(SEXP x) {
-  return NULL;
-}
-
-#endif
-
-void register_nanoarrow_altrep(DllInfo* info);
-
-static inline int is_nanoarrow_altrep(SEXP x) {
-  const char* class_name = nanoarrow_altrep_class(x);
-  return class_name && strncmp(class_name, "nanoarrow::", 11) == 0;
-}
-
-SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr);
 
 #endif
