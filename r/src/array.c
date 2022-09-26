@@ -84,7 +84,11 @@ static SEXP borrow_array_xptr(struct ArrowArray* array, SEXP shelter) {
 
 SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i) {
   struct ArrowArray* array = array_from_xptr(array_xptr);
-  return borrow_array_xptr(array->children[i], array_xptr);
+  SEXP schema_xptr = R_ExternalPtrTag(array_xptr);
+  SEXP child_xptr = PROTECT(borrow_array_xptr(array->children[i], array_xptr));
+  array_xptr_set_schema(child_xptr, borrow_schema_child_xptr(schema_xptr, i));
+  UNPROTECT(1);
+  return child_xptr;
 }
 
 static SEXP borrow_array_view_child(struct ArrowArrayView* array_view, int64_t i,

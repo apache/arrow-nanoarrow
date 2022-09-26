@@ -24,6 +24,7 @@
 #include "nanoarrow.h"
 
 void finalize_schema_xptr(SEXP schema_xptr);
+SEXP borrow_schema_child_xptr(SEXP schema_xptr, int64_t i);
 
 static inline struct ArrowSchema* schema_from_xptr(SEXP schema_xptr) {
   if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {

@@ -29,6 +29,7 @@ defs <- tibble(
   def = src_sources %>%
     str_extract_all(regex("SEXP nanoarrow_c_[^\\)]+\\)", multiline = TRUE)) %>%
     unlist() %>%
+    unique() %>%
     str_replace_all("\\s+", " ") %>%
     str_trim(),
   name = def %>% str_extract("nanoarrow_c_[^\\(]+"),

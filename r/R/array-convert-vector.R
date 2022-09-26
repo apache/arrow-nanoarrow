@@ -48,10 +48,7 @@ from_nanoarrow_array.default <- function(array, to = NULL, ...) {
 #' @rdname from_nanoarrow_array
 #' @export
 infer_nanoarrow_ptype <- function(array, ...) {
-  # For now, just convert a zero-size arrow array to a vector
-  # and see what we get
-  schema <- infer_nanoarrow_schema(as_nanoarrow_array(array))
-  as.vector(arrow::concat_arrays(type = arrow::as_data_type(schema)))
+  .Call(nanoarrow_c_infer_ptype, array)
 }
 
 #' @export

@@ -59,10 +59,6 @@ static enum VectorType vector_type_from_array_type(enum ArrowType type) {
     case NANOARROW_TYPE_STRUCT:
       return VECTOR_TYPE_DATA_FRAME;
 
-    case NANOARROW_TYPE_BINARY:
-    case NANOARROW_TYPE_LARGE_BINARY:
-      return VECTOR_TYPE_LIST_OF_RAW;
-
     default:
       return VECTOR_TYPE_UNKNOWN;
   }
@@ -93,19 +89,28 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr);
 static SEXP infer_ptype_data_frame(SEXP array_xptr) {
   struct ArrowArray* array = array_from_xptr(array_xptr);
   SEXP result = PROTECT(Rf_allocVector(VECSXP, array->n_children));
+  SEXP result_names = PROTECT(Rf_allocVector(STRSXP, array->n_children));
 
   for (R_xlen_t i = 0; i < array->n_children; i++) {
     SEXP child_xptr = PROTECT(borrow_array_child_xptr(array_xptr, i));
-    SET_VECTOR_ELT(child_xptr, i, nanoarrow_c_infer_ptype(child_xptr));
+    SET_VECTOR_ELT(result, i, nanoarrow_c_infer_ptype(child_xptr));
     UNPROTECT(1);
+
+    struct ArrowSchema* schema = schema_from_array_xptr(child_xptr);
+    if (schema->name != NULL) {
+      SET_STRING_ELT(result_names, i, Rf_mkCharCE(schema->name, CE_UTF8));
+    } else {
+      SET_STRING_ELT(result_names, i, Rf_mkChar(""));
+    }
   }
 
   Rf_setAttrib(result, R_ClassSymbol, Rf_mkString("data.frame"));
+  Rf_setAttrib(result, R_NamesSymbol, result_names);
   SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
   INTEGER(rownames)[0] = NA_INTEGER;
   INTEGER(rownames)[1] = 0;
   Rf_setAttrib(result, R_RowNamesSymbol, rownames);
-  UNPROTECT(2);
+  UNPROTECT(3);
   return result;
 }
 
