@@ -5,9 +5,9 @@ nanoarrow_altrep <- function(array, ptype = NULL) {
   array_view <- .Call(nanoarrow_c_array_view, array, schema)
 
   if (is.character(ptype)) {
-    .Call(nanoarrow_c_make_altrep_string, array_view)
+    .Call(nanoarrow_c_make_altrep_chr, array_view)
   } else if (is.integer(ptype)) {
-    .Call(nanoarrow_c_make_altrep_integer, array_view)
+    .Call(nanoarrow_c_make_altrep_int, array_view)
   } else {
     NULL
   }

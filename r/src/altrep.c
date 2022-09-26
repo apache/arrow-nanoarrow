@@ -22,8 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "array.h"
 #include "altrep.h"
+#include "array.h"
 #include "nanoarrow.h"
 
 #include "materialize.h"
@@ -112,21 +112,21 @@ static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
   return NULL;
 }
 
-static R_altrep_class_t nanoarrow_altrep_string_cls;
+static R_altrep_class_t nanoarrow_altrep_chr_cls;
 
 #endif
 
 static void register_nanoarrow_altstring(DllInfo* info) {
 #ifdef HAS_ALTREP
-  nanoarrow_altrep_string_cls =
-      R_make_altstring_class("nanoarrow::altrep_string", "nanoarrow", info);
-  R_set_altrep_Length_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_length);
-  R_set_altrep_Inspect_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_inspect);
-  R_set_altvec_Dataptr_or_null_method(nanoarrow_altrep_string_cls,
+  nanoarrow_altrep_chr_cls =
+      R_make_altstring_class("nanoarrow::altrep_chr", "nanoarrow", info);
+  R_set_altrep_Length_method(nanoarrow_altrep_chr_cls, &nanoarrow_altrep_length);
+  R_set_altrep_Inspect_method(nanoarrow_altrep_chr_cls, &nanoarrow_altrep_inspect);
+  R_set_altvec_Dataptr_or_null_method(nanoarrow_altrep_chr_cls,
                                       &nanoarrow_altrep_dataptr_or_null);
-  R_set_altvec_Dataptr_method(nanoarrow_altrep_string_cls, &nanoarrow_altrep_dataptr);
+  R_set_altvec_Dataptr_method(nanoarrow_altrep_chr_cls, &nanoarrow_altrep_dataptr);
 
-  R_set_altstring_Elt_method(nanoarrow_altrep_string_cls, &nanoarrow_altstring_elt);
+  R_set_altstring_Elt_method(nanoarrow_altrep_chr_cls, &nanoarrow_altstring_elt);
 
   // Notes about other available methods:
   //
@@ -144,7 +144,7 @@ static void register_nanoarrow_altstring(DllInfo* info) {
 
 void register_nanoarrow_altrep(DllInfo* info) { register_nanoarrow_altstring(info); }
 
-SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr) {
+SEXP nanoarrow_c_make_altrep_chr(SEXP array_view_xptr) {
 #ifdef HAS_ALTREP
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
@@ -166,9 +166,8 @@ SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr) {
   R_SetExternalPtrProtected(array_view_xptr, array_xptr_independent);
   UNPROTECT(1);
 
-  Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::altrep_string"));
-  SEXP out =
-      PROTECT(R_new_altrep(nanoarrow_altrep_string_cls, array_view_xptr, R_NilValue));
+  Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::altrep_chr"));
+  SEXP out = PROTECT(R_new_altrep(nanoarrow_altrep_chr_cls, array_view_xptr, R_NilValue));
   MARK_NOT_MUTABLE(out);
   UNPROTECT(1);
   return out;
@@ -177,7 +176,7 @@ SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr) {
 #endif
 }
 
-SEXP nanoarrow_c_make_altrep_integer(SEXP array_view_xptr) {
+SEXP nanoarrow_c_make_altrep_int(SEXP array_view_xptr) {
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
   return nanoarrow_materialize_int(array_view);
@@ -211,7 +210,7 @@ SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sexp) {
   }
 
   const char* class_name = nanoarrow_altrep_class(x_sexp);
-  if (class_name && strcmp(class_name, "nanoarrow::altrep_string") == 0) {
+  if (class_name && strcmp(class_name, "nanoarrow::altrep_chr") == 0) {
     // Force materialization even if already materialized (the method
     // should be safe to call more than once as written here)
     int already_materialized = R_altrep_data1(x_sexp) == R_NilValue;

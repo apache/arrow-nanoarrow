@@ -8,7 +8,7 @@ test_that("nanoarrow_altrep() works for string", {
   x <- as_nanoarrow_array(c(NA, letters), schema = arrow::utf8())
   x_altrep <- nanoarrow_altrep(x, character())
 
-  expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::altrep_string\\[27\\]>")
+  expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::altrep_chr\\[27\\]>")
 
   # Check that some common operations that call the string elt method
   # don't materialize the vector
@@ -27,7 +27,7 @@ test_that("nanoarrow_altrep() works for string", {
   expect_length(x_altrep, 27)
 
   # Materialization should get printed in inspect()
-  expect_output(.Internal(inspect(x_altrep)), "<materialized nanoarrow::altrep_string\\[27\\]>")
+  expect_output(.Internal(inspect(x_altrep)), "<materialized nanoarrow::altrep_chr\\[27\\]>")
 
   # For good measure, force materialization again and check
   nanoarrow_altrep_force_materialize(x_altrep)

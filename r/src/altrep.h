@@ -39,9 +39,7 @@ static inline const char* nanoarrow_altrep_class(SEXP x) {
 
 #else
 
-static inline const char* nanoarrow_altrep_class(SEXP x) {
-  return NULL;
-}
+static inline const char* nanoarrow_altrep_class(SEXP x) { return NULL; }
 
 #endif
 
@@ -52,6 +50,6 @@ static inline int is_nanoarrow_altrep(SEXP x) {
   return class_name && strncmp(class_name, "nanoarrow::", 11) == 0;
 }
 
-SEXP nanoarrow_c_make_altrep_string(SEXP array_view_xptr);
+SEXP nanoarrow_c_make_altrep_chr(SEXP array_view_xptr);
 
 #endif

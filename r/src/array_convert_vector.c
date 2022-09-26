@@ -27,10 +27,10 @@
 #include "materialize.h"
 
 enum VectorType {
-  VECTOR_TYPE_LOGICAL,
-  VECTOR_TYPE_INTEGER,
-  VECTOR_TYPE_DOUBLE,
-  VECTOR_TYPE_CHARACTER,
+  VECTOR_TYPE_LGL,
+  VECTOR_TYPE_INT,
+  VECTOR_TYPE_DBL,
+  VECTOR_TYPE_CHR,
   VECTOR_TYPE_DATA_FRAME,
   VECTOR_TYPE_LIST_OF_RAW,
   VECTOR_TYPE_UNKNOWN
@@ -41,23 +41,23 @@ enum VectorType {
 static enum VectorType vector_type_from_array_type(enum ArrowType type) {
   switch (type) {
     case NANOARROW_TYPE_BOOL:
-      return VECTOR_TYPE_LOGICAL;
+      return VECTOR_TYPE_LGL;
 
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT16:
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT32:
-      return VECTOR_TYPE_INTEGER;
+      return VECTOR_TYPE_INT;
 
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
-      return VECTOR_TYPE_DOUBLE;
+      return VECTOR_TYPE_DBL;
 
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
-      return VECTOR_TYPE_CHARACTER;
+      return VECTOR_TYPE_CHR;
 
     case NANOARROW_TYPE_STRUCT:
       return VECTOR_TYPE_DATA_FRAME;
@@ -121,13 +121,13 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
   enum VectorType vector_type = vector_type_from_array_xptr(array_xptr);
 
   switch (vector_type) {
-    case VECTOR_TYPE_LOGICAL:
+    case VECTOR_TYPE_LGL:
       return Rf_allocVector(LGLSXP, 0);
-    case VECTOR_TYPE_INTEGER:
+    case VECTOR_TYPE_INT:
       return Rf_allocVector(INTSXP, 0);
-    case VECTOR_TYPE_DOUBLE:
+    case VECTOR_TYPE_DBL:
       return Rf_allocVector(REALSXP, 0);
-    case VECTOR_TYPE_CHARACTER:
+    case VECTOR_TYPE_CHR:
       return Rf_allocVector(STRSXP, 0);
     case VECTOR_TYPE_DATA_FRAME:
       return infer_ptype_data_frame(array_xptr);
@@ -195,16 +195,16 @@ static SEXP from_array_to_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
   return result;
 }
 
-static SEXP from_array_to_integer(SEXP array_xptr) {
+static SEXP from_array_to_int(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   SEXP result = PROTECT(nanoarrow_materialize_int(array_view_from_xptr(array_view_xptr)));
   UNPROTECT(2);
   return result;
 }
 
-static SEXP from_array_to_character(SEXP array_xptr) {
+static SEXP from_array_to_chr(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
-  SEXP result = PROTECT(nanoarrow_c_make_altrep_string(array_view_xptr));
+  SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_view_xptr));
   if (result == R_NilValue) {
     Rf_error("Can't convert array to character()");
   }
@@ -217,10 +217,10 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   if (ptype_sexp == R_NilValue) {
     enum VectorType vector_type = vector_type_from_array_xptr(array_xptr);
     switch (vector_type) {
-      case VECTOR_TYPE_INTEGER:
-        return from_array_to_integer(array_xptr);
-      case VECTOR_TYPE_CHARACTER:
-        return from_array_to_character(array_xptr);
+      case VECTOR_TYPE_INT:
+        return from_array_to_int(array_xptr);
+      case VECTOR_TYPE_CHR:
+        return from_array_to_chr(array_xptr);
       case VECTOR_TYPE_DATA_FRAME:
         return from_array_to_data_frame(array_xptr, R_NilValue);
       default:
@@ -241,9 +241,9 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   // If we're here, these are non-S3 objects
   switch (TYPEOF(ptype_sexp)) {
     case INTSXP:
-      return from_array_to_integer(array_xptr);
+      return from_array_to_int(array_xptr);
     case STRSXP:
-      return from_array_to_character(array_xptr);
+      return from_array_to_chr(array_xptr);
     default:
       return call_from_nanoarrow_array(array_xptr, ptype_sexp);
   }
