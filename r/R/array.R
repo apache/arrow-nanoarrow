@@ -27,9 +27,6 @@
 #' @param x An object to convert to a array
 #' @param schema An optional schema used to enforce conversion to a particular
 #'   type. Defaults to [infer_nanoarrow_schema()].
-#' @param to A target prototype object describing the type to which `array`
-#'   should be converted.
-#' @param array An object of class 'nanoarrow_array'
 #' @param ... Passed to S3 methods
 #'
 #' @return An object of class 'nanoarrow_array'
@@ -44,13 +41,6 @@
 #'
 as_nanoarrow_array <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array")
-}
-
-#' @rdname as_nanoarrow_array
-#' @export
-from_nanoarrow_array <- function(array, to = NULL, ...) {
-  stopifnot(inherits(array, "nanoarrow_array"))
-  UseMethod("from_nanoarrow_array", to)
 }
 
 #' @export
@@ -74,20 +64,6 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
     schema <- as_nanoarrow_schema(schema)
     as_nanoarrow_array(arrow::as_arrow_array(x, type = arrow::as_data_type(schema)))
   }
-}
-
-#' @export
-from_nanoarrow_array.default <- function(array, to = NULL, ...) {
-  # For now, use arrow's conversion for everything
-  result <- as.vector(arrow::as_arrow_array(array))
-
-  # arrow's conversion doesn't support `to`, so for now use an R cast
-  # workaround for a bug in vctrs: https://github.com/r-lib/vctrs/issues/1642
-  if (inherits(result, "tbl_df")) {
-    result <- new_data_frame(result, nrow(result))
-  }
-
-  vctrs::vec_cast(result, to)
 }
 
 #' @export

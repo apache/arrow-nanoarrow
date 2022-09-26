@@ -2,12 +2,9 @@
 % Please edit documentation in R/array.R
 \name{as_nanoarrow_array}
 \alias{as_nanoarrow_array}
-\alias{from_nanoarrow_array}
 \title{Convert an object to a nanoarrow array}
 \usage{
 as_nanoarrow_array(x, ..., schema = NULL)
-
-from_nanoarrow_array(array, to = NULL, ...)
 }
 \arguments{
 \item{x}{An object to convert to a array}
@@ -16,11 +13,6 @@ from_nanoarrow_array(array, to = NULL, ...)
 
 \item{schema}{An optional schema used to enforce conversion to a particular
 type. Defaults to \code{\link[=infer_nanoarrow_schema]{infer_nanoarrow_schema()}}.}
-
-\item{array}{An object of class 'nanoarrow_array'}
-
-\item{to}{A target prototype object describing the type to which \code{array}
-should be converted.}
 }
 \value{
 An object of class 'nanoarrow_array'

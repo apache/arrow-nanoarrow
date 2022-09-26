@@ -15,6 +15,45 @@
 # specific language governing permissions and limitations
 # under the License.
 
+
+#' Convert an Array to an R vector
+#'
+#' @param array An object of class 'nanoarrow_array'
+#' @param schema A [nanoarrow schema][as_nanoarrow_schema] to use as a target
+#' @param to A target prototype object describing the type to which `array`
+#'   should be converted, or `NULL` to use the default conversion.
+#' @param ... Passed to S3 methods
+#'
+#' @return An R vector of type `to`.
+#' @export
+#'
+from_nanoarrow_array <- function(array, to = NULL, ...) {
+  stopifnot(inherits(array, "nanoarrow_array"))
+  UseMethod("from_nanoarrow_array", to)
+}
+
+#' @export
+from_nanoarrow_array.default <- function(array, to = NULL, ...) {
+  # For now, use arrow's conversion for everything
+  result <- as.vector(arrow::as_arrow_array(array))
+
+  # arrow's conversion doesn't support `to`, so for now use an R cast
+  # workaround for a bug in vctrs: https://github.com/r-lib/vctrs/issues/1642
+  if (inherits(result, "tbl_df")) {
+    result <- new_data_frame(result, nrow(result))
+  }
+
+  vctrs::vec_cast(result, to)
+}
+
+#' @rdname from_nanoarrow_array
+#' @export
+infer_nanoarrow_ptype <- function(schema, ...) {
+  # For now, just convert a zero-size arrow array to a vector
+  # and see what we get
+  as.vector(arrow::concat_arrays(type = arrow::as_data_type(schema)))
+}
+
 #' @export
 from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
   nrows <- array$length

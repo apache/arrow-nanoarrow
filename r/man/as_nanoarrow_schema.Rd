@@ -3,14 +3,11 @@
 \name{as_nanoarrow_schema}
 \alias{as_nanoarrow_schema}
 \alias{infer_nanoarrow_schema}
-\alias{infer_nanoarrow_ptype}
 \title{Convert an object to a nanoarrow schema}
 \usage{
 as_nanoarrow_schema(x, ...)
 
 infer_nanoarrow_schema(x, ...)
-
-infer_nanoarrow_ptype(schema, ...)
 }
 \arguments{
 \item{x}{An object to convert to a schema}
