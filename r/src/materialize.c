@@ -116,7 +116,8 @@ SEXP nanoarrow_materialize_int(struct ArrowArrayView* array_view) {
       break;
 
     default:
-      Rf_error("Can't convert array to integer()");
+      UNPROTECT(1);
+      return R_NilValue;
   }
 
   if (n_bad_values > 0) {
@@ -178,7 +179,8 @@ SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view) {
       break;
 
     default:
-      Rf_error("Can't convert array to double()");
+      UNPROTECT(1);
+      return R_NilValue;
   }
 
   UNPROTECT(1);

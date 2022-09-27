@@ -57,7 +57,7 @@ test_that("convert to vector works for data.frame", {
 
   expect_error(
     from_nanoarrow_array(array, data.frame(a = integer(), b = raw())),
-    "Can't convert array to vector"
+    "Can't convert `b` <u> to R vector of type raw"
   )
 })
 
@@ -82,7 +82,7 @@ test_that("convert to vector works for character()", {
   # check an array that we can't convert
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(1:5), character()),
-    "Can't convert array to character"
+    "Can't convert array <i> to R vector of type character"
   )
 })
 
@@ -157,7 +157,7 @@ test_that("convert to vector warns for invalid integer()", {
 test_that("convert to vector errors for bad array to integer()", {
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(letters), integer()),
-    "Can't convert array to integer"
+    "Can't convert array <u> to R vector of type integer"
   )
 })
 
@@ -218,6 +218,6 @@ test_that("convert to vector works for valid double()", {
 test_that("convert to vector errors for bad array to double()", {
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(letters), double()),
-    "Can't convert array to double"
+    "Can't convert array <u> to R vector of type numeric"
   )
 })

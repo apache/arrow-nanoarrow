@@ -138,10 +138,27 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
   return R_NilValue;
 }
 
+// This calls from_nanoarrow_array() (via a package helper) to try S3
+// dispatch to find a from_nanoarrow_array() method (or error if there
+// isn't one)
 static SEXP call_from_nanoarrow_array(SEXP array_xptr, SEXP ptype_sexp) {
-  // Calls nanoarrow::from_nanoarrow_array() with .call_from_c = TRUE or
-  // something to make sure we don't go in circles
-  Rf_error("Can't convert array to vector");
+  SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
+  SEXP call = PROTECT(
+      Rf_lang3(Rf_install("from_nanoarrow_array_from_c"), array_xptr, ptype_sexp));
+  SEXP result = PROTECT(Rf_eval(call, ns));
+  UNPROTECT(3);
+  return result;
+}
+
+// Call stop_cant_convert_array(), which gives a more informative error
+// message than we can provide in a reasonable amount of C code here
+static void call_stop_cant_convert_array(SEXP array_xptr, int sexp_type) {
+  SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
+  SEXP ptype_sexp = PROTECT(Rf_allocVector(sexp_type, 0));
+  SEXP call =
+      PROTECT(Rf_lang3(Rf_install("stop_cant_convert_array"), array_xptr, ptype_sexp));
+  Rf_eval(call, ns);
+  UNPROTECT(3);
 }
 
 SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp);
@@ -198,6 +215,9 @@ static SEXP from_array_to_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
 static SEXP from_array_to_int(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   SEXP result = PROTECT(nanoarrow_materialize_int(array_view_from_xptr(array_view_xptr)));
+  if (result == R_NilValue) {
+    call_stop_cant_convert_array(array_xptr, INTSXP);
+  }
   UNPROTECT(2);
   return result;
 }
@@ -205,6 +225,9 @@ static SEXP from_array_to_int(SEXP array_xptr) {
 static SEXP from_array_to_dbl(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   SEXP result = PROTECT(nanoarrow_materialize_dbl(array_view_from_xptr(array_view_xptr)));
+  if (result == R_NilValue) {
+    call_stop_cant_convert_array(array_xptr, REALSXP);
+  }
   UNPROTECT(2);
   return result;
 }
@@ -213,7 +236,7 @@ static SEXP from_array_to_chr(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_view_xptr));
   if (result == R_NilValue) {
-    Rf_error("Can't convert array to character()");
+    call_stop_cant_convert_array(array_xptr, STRSXP);
   }
   UNPROTECT(2);
   return result;
