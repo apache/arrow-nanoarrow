@@ -221,6 +221,16 @@ static SEXP from_array_to_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
   return result;
 }
 
+static SEXP from_array_to_lgl(SEXP array_xptr) {
+  SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
+  SEXP result = PROTECT(nanoarrow_materialize_lgl(array_view_from_xptr(array_view_xptr)));
+  if (result == R_NilValue) {
+    call_stop_cant_convert_array(array_xptr, LGLSXP);
+  }
+  UNPROTECT(2);
+  return result;
+}
+
 static SEXP from_array_to_int(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   SEXP result = PROTECT(nanoarrow_materialize_int(array_view_from_xptr(array_view_xptr)));
@@ -256,6 +266,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   if (ptype_sexp == R_NilValue) {
     enum VectorType vector_type = vector_type_from_array_xptr(array_xptr);
     switch (vector_type) {
+      case VECTOR_TYPE_LGL:
+        return from_array_to_lgl(array_xptr);
       case VECTOR_TYPE_INT:
         return from_array_to_int(array_xptr);
       case VECTOR_TYPE_DBL:
@@ -281,6 +293,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
 
   // If we're here, these are non-S3 objects
   switch (TYPEOF(ptype_sexp)) {
+    case LGLSXP:
+      return from_array_to_lgl(array_xptr);
     case INTSXP:
       return from_array_to_int(array_xptr);
     case REALSXP:

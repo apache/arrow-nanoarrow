@@ -237,3 +237,64 @@ test_that("convert to vector errors for bad array to double()", {
     "Can't convert array <u> to R vector of type numeric"
   )
 })
+
+test_that("convert to vector works for valid logical()", {
+  arrow_numeric_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    float32 = arrow::float32(),
+    float64 = arrow::float64()
+  )
+
+  vals <- c(NA, 0:10)
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      from_nanoarrow_array(
+        as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
+        logical()
+      ),
+      vals != 0
+    )
+  }
+
+  vals_no_na <- 0:10
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      from_nanoarrow_array(
+        as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
+        logical()
+      ),
+      vals_no_na != 0
+    )
+  }
+
+  # Boolean array to logical
+  expect_identical(
+    from_nanoarrow_array(
+      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
+      logical()
+    ),
+    c(NA, TRUE, FALSE)
+  )
+
+  expect_identical(
+    from_nanoarrow_array(
+      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
+      logical()
+    ),
+    c(TRUE, FALSE)
+  )
+})
+
+test_that("convert to vector errors for bad array to logical()", {
+  expect_error(
+    from_nanoarrow_array(as_nanoarrow_array(letters), logical()),
+    "Can't convert array <u> to R vector of type logical"
+  )
+})

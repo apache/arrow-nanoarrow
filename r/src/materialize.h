@@ -23,8 +23,9 @@
 
 #include "nanoarrow.h"
 
-SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view);
+SEXP nanoarrow_materialize_lgl(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_int(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view);
+SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view);
 
 #endif

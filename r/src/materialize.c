@@ -21,17 +21,57 @@
 
 #include "nanoarrow.h"
 
-SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view) {
-  SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, array_view->array->length));
+SEXP nanoarrow_materialize_lgl(struct ArrowArrayView* array_view) {
+  SEXP result_sexp = PROTECT(Rf_allocVector(LGLSXP, array_view->array->length));
+  int* result = LOGICAL(result_sexp);
 
-  struct ArrowStringView item;
-  for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-    if (ArrowArrayViewIsNull(array_view, i)) {
-      SET_STRING_ELT(result_sexp, i, NA_STRING);
-    } else {
-      item = ArrowArrayViewGetStringUnsafe(array_view, i);
-      SET_STRING_ELT(result_sexp, i, Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
-    }
+  // True for all the types supported here
+  const uint8_t* is_valid = array_view->buffer_views[0].data.as_uint8;
+  const uint8_t* data_buffer = array_view->buffer_views[1].data.as_uint8;
+
+  // Fill the buffer
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_BOOL:
+      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+        result[i] = ArrowBitGet(data_buffer, i);
+      }
+
+      // Set any nulls to NA_LOGICAL
+      if (is_valid != NULL && array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+          if (!ArrowBitGet(is_valid, i)) {
+            result[i] = NA_LOGICAL;
+          }
+        }
+      }
+      break;
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
+    case NANOARROW_TYPE_FLOAT:
+    case NANOARROW_TYPE_DOUBLE:
+      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+        result[i] = ArrowArrayViewGetIntUnsafe(array_view, i) != 0;
+      }
+
+      // Set any nulls to NA_LOGICAL
+      if (is_valid != NULL && array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+          if (!ArrowBitGet(is_valid, i)) {
+            result[i] = NA_LOGICAL;
+          }
+        }
+      }
+      break;
+
+    default:
+      UNPROTECT(1);
+      return R_NilValue;
   }
 
   UNPROTECT(1);
@@ -181,6 +221,23 @@ SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view) {
     default:
       UNPROTECT(1);
       return R_NilValue;
+  }
+
+  UNPROTECT(1);
+  return result_sexp;
+}
+
+SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view) {
+  SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, array_view->array->length));
+
+  struct ArrowStringView item;
+  for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+    if (ArrowArrayViewIsNull(array_view, i)) {
+      SET_STRING_ELT(result_sexp, i, NA_STRING);
+    } else {
+      item = ArrowArrayViewGetStringUnsafe(array_view, i);
+      SET_STRING_ELT(result_sexp, i, Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
+    }
   }
 
   UNPROTECT(1);
