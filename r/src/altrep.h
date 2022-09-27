@@ -28,6 +28,8 @@
 #define HAS_ALTREP
 #include <R_ext/Altrep.h>
 
+// Returns the ALTREP class name or NULL if x is not an altrep
+// object.
 static inline const char* nanoarrow_altrep_class(SEXP x) {
   if (ALTREP(x)) {
     SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x)));
@@ -43,13 +45,17 @@ static inline const char* nanoarrow_altrep_class(SEXP x) { return NULL; }
 
 #endif
 
+// Performs the ALTREP type registration and should be called on package load
 void register_nanoarrow_altrep(DllInfo* info);
 
+// Checks if an object is an ALTREP object created by this package
 static inline int is_nanoarrow_altrep(SEXP x) {
   const char* class_name = nanoarrow_altrep_class(x);
   return class_name && strncmp(class_name, "nanoarrow::", 11) == 0;
 }
 
+// Creates an altstring vector backed by a nanoarrow array or returns
+// R_NilValue if the conversion is not possible.
 SEXP nanoarrow_c_make_altrep_chr(SEXP array_view_xptr);
 
 #endif

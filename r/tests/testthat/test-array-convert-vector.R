@@ -58,21 +58,59 @@ test_that("infer_nanoarrow_ptype() errors for types it can't infer",  {
   )
 })
 
-test_that("convert to vector works for data.frame", {
-  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
-
-  expect_identical(
-    from_nanoarrow_array(array, NULL),
-    data.frame(a = 1L, b = "two")
-  )
-
-  expect_identical(
-    from_nanoarrow_array(array, data.frame(a = integer(), b = character())),
-    data.frame(a = 1L, b = "two")
+test_that("from_nanoarrow_array() errors for invalid arrays", {
+  array <- as_nanoarrow_array(1:10)
+  nanoarrow_array_set_schema(
+    array,
+    infer_nanoarrow_schema("chr"),
+    validate = FALSE
   )
 
   expect_error(
+    from_nanoarrow_array(array),
+    "Expected array with 3 buffer"
+  )
+})
+
+test_that("from_nanoarrow_array() errors for unsupported ptype", {
+  array <- as_nanoarrow_array(1:10)
+
+  # an S3 unsupported type
+  expect_error(
+    from_nanoarrow_array(array, structure(list(), class = "some_class")),
+    "Can't convert array <i> to R vector of type some_class"
+  )
+
+  # A non-S3 unsupported type
+  expect_error(
+    from_nanoarrow_array(array, environment()),
+    "Can't convert array <i> to R vector of type environment"
+  )
+})
+
+test_that("from_nanoarrow_array() errors for unsupported array", {
+  unsupported_array <- arrow::concat_arrays(type = arrow::decimal256(3, 4))
+  expect_error(
+    from_nanoarrow_array(as_nanoarrow_array(unsupported_array)),
+    "Can't infer R vector type for array <d:3,4,256>"
+  )
+})
+
+test_that("convert to vector works for data.frame", {
+  df <- data.frame(a = 1L, b = "two", c = 3, d = TRUE)
+  array <- as_nanoarrow_array(df)
+
+  expect_identical(from_nanoarrow_array(array, NULL), df)
+  expect_identical(from_nanoarrow_array(array, df), df)
+
+  expect_error(
     from_nanoarrow_array(array, data.frame(a = integer(), b = raw())),
+    "Expected data.frame\\(\\) ptype with 4 column\\(s\\) but found 2 column\\(s\\)"
+  )
+
+  bad_ptype <- data.frame(a = integer(), b = raw(), c = double(), d = integer())
+  expect_error(
+    from_nanoarrow_array(array, bad_ptype),
     "Can't convert `b` <u> to R vector of type raw"
   )
 })
@@ -85,20 +123,64 @@ test_that("convert to vector works for partial_frame", {
   )
 })
 
-test_that("convert to vector works for character()", {
-  array <- as_nanoarrow_array(letters)
-  expect_identical(
-    from_nanoarrow_array(array, character()),
-    letters
+test_that("convert to vector works for valid logical()", {
+  arrow_numeric_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    float32 = arrow::float32(),
+    float64 = arrow::float64()
   )
 
-  # make sure we get altrep here
-  expect_true(is_nanoarrow_altrep(from_nanoarrow_array(array, character())))
+  vals <- c(NA, 0:10)
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      from_nanoarrow_array(
+        as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
+        logical()
+      ),
+      vals != 0
+    )
+  }
 
-  # check an array that we can't convert
+  vals_no_na <- 0:10
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      from_nanoarrow_array(
+        as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
+        logical()
+      ),
+      vals_no_na != 0
+    )
+  }
+
+  # Boolean array to logical
+  expect_identical(
+    from_nanoarrow_array(
+      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
+      logical()
+    ),
+    c(NA, TRUE, FALSE)
+  )
+
+  expect_identical(
+    from_nanoarrow_array(
+      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
+      logical()
+    ),
+    c(TRUE, FALSE)
+  )
+})
+
+test_that("convert to vector errors for bad array to logical()", {
   expect_error(
-    from_nanoarrow_array(as_nanoarrow_array(1:5), character()),
-    "Can't convert array <i> to R vector of type character"
+    from_nanoarrow_array(as_nanoarrow_array(letters), logical()),
+    "Can't convert array <u> to R vector of type logical"
   )
 })
 
@@ -238,63 +320,19 @@ test_that("convert to vector errors for bad array to double()", {
   )
 })
 
-test_that("convert to vector works for valid logical()", {
-  arrow_numeric_types <- list(
-    int8 = arrow::int8(),
-    uint8 = arrow::uint8(),
-    int16 = arrow::int16(),
-    uint16 = arrow::uint16(),
-    int32 = arrow::int32(),
-    uint32 = arrow::uint32(),
-    int64 = arrow::int64(),
-    uint64 = arrow::uint64(),
-    float32 = arrow::float32(),
-    float64 = arrow::float64()
-  )
-
-  vals <- c(NA, 0:10)
-  for (nm in names(arrow_numeric_types)) {
-    expect_identical(
-      from_nanoarrow_array(
-        as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
-        logical()
-      ),
-      vals != 0
-    )
-  }
-
-  vals_no_na <- 0:10
-  for (nm in names(arrow_numeric_types)) {
-    expect_identical(
-      from_nanoarrow_array(
-        as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
-        logical()
-      ),
-      vals_no_na != 0
-    )
-  }
-
-  # Boolean array to logical
+test_that("convert to vector works for character()", {
+  array <- as_nanoarrow_array(letters)
   expect_identical(
-    from_nanoarrow_array(
-      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
-      logical()
-    ),
-    c(NA, TRUE, FALSE)
+    from_nanoarrow_array(array, character()),
+    letters
   )
 
-  expect_identical(
-    from_nanoarrow_array(
-      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
-      logical()
-    ),
-    c(TRUE, FALSE)
-  )
-})
+  # make sure we get altrep here
+  expect_true(is_nanoarrow_altrep(from_nanoarrow_array(array, character())))
 
-test_that("convert to vector errors for bad array to logical()", {
+  # check an array that we can't convert
   expect_error(
-    from_nanoarrow_array(as_nanoarrow_array(letters), logical()),
-    "Can't convert array <u> to R vector of type logical"
+    from_nanoarrow_array(as_nanoarrow_array(1:5), character()),
+    "Can't convert array <i> to R vector of type character"
   )
 })

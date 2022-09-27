@@ -21,6 +21,10 @@
 
 #include "nanoarrow.h"
 
+// Note: These conversions are not currently written for safety rather than
+// speed. We could make use of C++ templating to provide faster and/or more
+// readable conversions here with a C entry point.
+
 SEXP nanoarrow_materialize_lgl(struct ArrowArrayView* array_view) {
   SEXP result_sexp = PROTECT(Rf_allocVector(LGLSXP, array_view->array->length));
   int* result = LOGICAL(result_sexp);

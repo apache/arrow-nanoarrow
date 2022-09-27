@@ -23,8 +23,18 @@
 
 #include "nanoarrow.h"
 
+// Creates an external pointer to a struct ArrowArrayView, erroring
+// if the validation inherent in its creation fails (i.e., calling
+// this will aslo validate the array). This requires that array_xptr
+// has a schema attached. The ArrowArrayView is an augmented structure
+// provided by the nanoarrow C library that makes it easier to access
+// elements and buffers. This is not currently exposed at the R
+// level but is used at the C level to make validation and conversion
+// to R easier to write.
 SEXP array_view_xptr_from_array_xptr(SEXP array_xptr);
 
+// Returns the struct ArrowArrayView underlying an external pointer,
+// erroring for invalid objects and NULL pointers.
 static inline struct ArrowArrayView* array_view_from_xptr(SEXP array_view_xptr) {
   if (!Rf_inherits(array_view_xptr, "nanoarrow_array_view")) {
     Rf_error("`array_view` argument that is not a nanoarrow_array_view()");

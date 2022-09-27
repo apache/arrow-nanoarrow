@@ -279,6 +279,13 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
       default:
         break;
     }
+
+    // Otherwise, resolve the ptype and use it (this will also error
+    // for ptypes that can't be resolved)
+    ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr));
+    SEXP result = nanoarrow_c_from_array(array_xptr, ptype_sexp);
+    UNPROTECT(1);
+    return result;
   }
 
   // Handle some S3 objects internally to avoid S3 dispatch
