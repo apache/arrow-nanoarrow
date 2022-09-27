@@ -36,8 +36,12 @@ enum VectorType {
   VECTOR_TYPE_UNKNOWN
 };
 
-// These conversions are the conversions we can be sure about without inspecting
-// any extra data from schema or the array.
+// These conversions are the default R-native type guesses for
+// an array that don't require extra information from the ptype (e.g.,
+// factor with levels). Some of these guesses may result in a conversion
+// that later warns for out-of-range values (e.g., int64 to double());
+// however, a user can use the from_nanoarrow_array(x, ptype = something_safer())
+// when this occurs.
 static enum VectorType vector_type_from_array_type(enum ArrowType type) {
   switch (type) {
     case NANOARROW_TYPE_BOOL:
@@ -51,6 +55,8 @@ static enum VectorType vector_type_from_array_type(enum ArrowType type) {
       return VECTOR_TYPE_INT;
 
     case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
       return VECTOR_TYPE_DBL;
@@ -67,6 +73,7 @@ static enum VectorType vector_type_from_array_type(enum ArrowType type) {
   }
 }
 
+// The same as the above, but from a nanoarrow_array()
 static enum VectorType vector_type_from_array_xptr(SEXP array_xptr) {
   struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
 
@@ -76,15 +83,17 @@ static enum VectorType vector_type_from_array_xptr(SEXP array_xptr) {
     Rf_error("vector_type_from_array_view_xptr(): %s", ArrowErrorMessage(&error));
   }
 
-  // Try the types with a definitive conversion
-  enum VectorType result = vector_type_from_array_type(schema_view.data_type);
-  if (result != VECTOR_TYPE_UNKNOWN) {
-    return result;
-  }
+  return vector_type_from_array_type(schema_view.data_type);
+}
 
-  // TODO: Try inspecting the schema/array (e.g., to range-check an int64
-  // to check if it's coercible to int or double)
-  return VECTOR_TYPE_UNKNOWN;
+// Call stop_cant_infer_ptype(), which gives a more informative error
+// message than we can provide in a reasonable amount of C code here
+static void call_stop_cant_infer_ptype(SEXP array_xptr) {
+  SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
+  SEXP call =
+      PROTECT(Rf_lang2(Rf_install("stop_cant_infer_ptype"), array_xptr));
+  Rf_eval(call, ns);
+  UNPROTECT(2);
 }
 
 SEXP nanoarrow_c_infer_ptype(SEXP array_xptr);
@@ -132,7 +141,7 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
     case VECTOR_TYPE_DATA_FRAME:
       return infer_ptype_data_frame(array_xptr);
     default:
-      Rf_error("Can't guess default ptype for array");
+      call_stop_cant_infer_ptype(array_xptr);
   }
 
   return R_NilValue;

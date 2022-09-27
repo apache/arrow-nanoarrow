@@ -7,7 +7,7 @@
 \usage{
 from_nanoarrow_array(array, to = NULL, ...)
 
-infer_nanoarrow_ptype(array, ...)
+infer_nanoarrow_ptype(array)
 }
 \arguments{
 \item{array}{A \link[=as_nanoarrow_array]{nanoarrow_array}.}

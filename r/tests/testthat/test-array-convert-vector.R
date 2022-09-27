@@ -42,6 +42,22 @@ test_that("infer_nanoarrow_ptype() works for basic types", {
   )
 })
 
+test_that("infer_nanoarrow_ptype() errors for types it can't infer",  {
+  unsupported_array <- arrow::concat_arrays(type = arrow::decimal256(3, 4))
+  expect_error(
+    infer_nanoarrow_ptype(as_nanoarrow_array(unsupported_array)),
+    "Can't infer R vector type for array <d:3,4,256>"
+  )
+
+  unsupported_struct <- arrow::concat_arrays(
+    type = arrow::struct(col = arrow::decimal256(3, 4))
+  )
+  expect_error(
+    infer_nanoarrow_ptype(as_nanoarrow_array(unsupported_struct)),
+    "Can't infer R vector type for `col` <d:3,4,256>"
+  )
+})
+
 test_that("convert to vector works for data.frame", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
 

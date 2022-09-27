@@ -59,29 +59,34 @@ from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
 
 #' @rdname from_nanoarrow_array
 #' @export
-infer_nanoarrow_ptype <- function(array, ...) {
+infer_nanoarrow_ptype <- function(array) {
+  stopifnot(inherits(array, "nanoarrow_array"))
   .Call(nanoarrow_c_infer_ptype, array)
 }
 
-stop_cant_infer_ptype <- function(array, to) {
+stop_cant_infer_ptype <- function(array) {
   schema <- infer_nanoarrow_schema(array)
 
   if (is.null(schema$name) || identical(schema$name, "")) {
-    stop(
+    cnd <- simpleError(
       sprintf(
         "Can't infer R vector type for array <%s>",
         schema$format
-      )
+      ),
+      call = sys.call(1)
     )
   } else {
-    stop(
+    cnd <- simpleError(
       sprintf(
         "Can't infer R vector type for `%s` <%s>",
         schema$name,
         schema$format
-      )
+      ),
+      call = sys.call(1)
     )
   }
+
+  stop(cnd)
 }
 
 stop_cant_convert_array <- function(array, to) {
