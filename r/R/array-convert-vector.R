@@ -53,7 +53,11 @@ from_nanoarrow_array_from_c <- function(array, to) {
 #' @export
 from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
   ptype <- infer_nanoarrow_ptype(array)
-  ptype <- vctrs::vec_cast(ptype, to)
+  if (!is.data.frame(ptype)) {
+    stop_cant_convert_array(array, to)
+  }
+
+  ptype <- vctrs::vec_ptype_common(ptype, to)
   .Call(nanoarrow_c_from_array, array, ptype)
 }
 
@@ -73,7 +77,7 @@ stop_cant_infer_ptype <- function(array) {
         "Can't infer R vector type for array <%s>",
         schema$format
       ),
-      call = sys.call(1)
+      call = sys.call(-1)
     )
   } else {
     cnd <- simpleError(
@@ -82,7 +86,7 @@ stop_cant_infer_ptype <- function(array) {
         schema$name,
         schema$format
       ),
-      call = sys.call(1)
+      call = sys.call(-1)
     )
   }
 
@@ -99,7 +103,7 @@ stop_cant_convert_array <- function(array, to) {
         schema$format,
         class(to)[1]
       ),
-      call = sys.call(1)
+      call = sys.call(-1)
     )
   } else {
     cnd <- simpleError(
@@ -109,7 +113,7 @@ stop_cant_convert_array <- function(array, to) {
         schema$format,
         class(to)[1]
       ),
-      call = sys.call(1)
+      call = sys.call(-1)
     )
   }
 
