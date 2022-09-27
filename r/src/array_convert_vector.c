@@ -202,6 +202,13 @@ static SEXP from_array_to_int(SEXP array_xptr) {
   return result;
 }
 
+static SEXP from_array_to_dbl(SEXP array_xptr) {
+  SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
+  SEXP result = PROTECT(nanoarrow_materialize_dbl(array_view_from_xptr(array_view_xptr)));
+  UNPROTECT(2);
+  return result;
+}
+
 static SEXP from_array_to_chr(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_view_xptr));
@@ -219,6 +226,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
     switch (vector_type) {
       case VECTOR_TYPE_INT:
         return from_array_to_int(array_xptr);
+      case VECTOR_TYPE_DBL:
+        return from_array_to_dbl(array_xptr);
       case VECTOR_TYPE_CHR:
         return from_array_to_chr(array_xptr);
       case VECTOR_TYPE_DATA_FRAME:
@@ -242,6 +251,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   switch (TYPEOF(ptype_sexp)) {
     case INTSXP:
       return from_array_to_int(array_xptr);
+    case REALSXP:
+      return from_array_to_dbl(array_xptr);
     case STRSXP:
       return from_array_to_chr(array_xptr);
     default:

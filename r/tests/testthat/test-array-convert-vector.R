@@ -103,7 +103,7 @@ test_that("convert to vector works for valid integer()", {
   ints <- c(NA, 0:10)
   for (nm in names(arrow_int_types)) {
     expect_identical(
-      nanoarrow_altrep(
+      from_nanoarrow_array(
         as_nanoarrow_array(ints, schema = arrow_int_types[[!!nm]]),
         integer()
       ),
@@ -114,7 +114,7 @@ test_that("convert to vector works for valid integer()", {
   ints_no_na <- 0:10
   for (nm in names(arrow_int_types)) {
     expect_identical(
-      nanoarrow_altrep(
+      from_nanoarrow_array(
         as_nanoarrow_array(ints_no_na, schema = arrow_int_types[[!!nm]]),
         integer()
       ),
@@ -124,7 +124,7 @@ test_that("convert to vector works for valid integer()", {
 
   # Boolean array to integer
   expect_identical(
-    nanoarrow_altrep(
+    from_nanoarrow_array(
       as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
       integer()
     ),
@@ -132,7 +132,7 @@ test_that("convert to vector works for valid integer()", {
   )
 
   expect_identical(
-    nanoarrow_altrep(
+    from_nanoarrow_array(
       as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
       integer()
     ),
@@ -143,20 +143,81 @@ test_that("convert to vector works for valid integer()", {
 test_that("convert to vector warns for invalid integer()", {
   array <- as_nanoarrow_array(arrow::as_arrow_array(.Machine$double.xmax))
   expect_warning(
-    expect_identical(nanoarrow_altrep(array, integer()), NA_integer_),
+    expect_identical(from_nanoarrow_array(array, integer()), NA_integer_),
     "1 value\\(s\\) outside integer range set to NA"
   )
 
   array <- as_nanoarrow_array(arrow::as_arrow_array(c(NA, .Machine$double.xmax)))
   expect_warning(
-    expect_identical(nanoarrow_altrep(array, integer()), c(NA_integer_, NA_integer_)),
+    expect_identical(from_nanoarrow_array(array, integer()), c(NA_integer_, NA_integer_)),
     "1 value\\(s\\) outside integer range set to NA"
   )
 })
 
-test_that("convert to vector warns for invalid array to integer()", {
+test_that("convert to vector errors for bad array to integer()", {
   expect_error(
-    nanoarrow_altrep(as_nanoarrow_array(letters), integer()),
+    from_nanoarrow_array(as_nanoarrow_array(letters), integer()),
     "Can't convert array to integer"
+  )
+})
+
+test_that("convert to vector works for valid double()", {
+  arrow_numeric_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    float32 = arrow::float32(),
+    float64 = arrow::float64()
+  )
+
+  vals <- as.double(c(NA, 0:10))
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      from_nanoarrow_array(
+        as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
+        double()
+      ),
+      vals
+    )
+  }
+
+  vals_no_na <- as.double(0:10)
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      from_nanoarrow_array(
+        as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
+        double()
+      ),
+      vals_no_na
+    )
+  }
+
+  # Boolean array to double
+  expect_identical(
+    from_nanoarrow_array(
+      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
+      double()
+    ),
+    as.double(c(NA, 1L, 0L))
+  )
+
+  expect_identical(
+    from_nanoarrow_array(
+      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
+      double()
+    ),
+    as.double(c(1L, 0L))
+  )
+})
+
+test_that("convert to vector errors for bad array to double()", {
+  expect_error(
+    from_nanoarrow_array(as_nanoarrow_array(letters), double()),
+    "Can't convert array to double"
   )
 })

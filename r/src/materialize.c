@@ -126,3 +126,61 @@ SEXP nanoarrow_materialize_int(struct ArrowArrayView* array_view) {
   UNPROTECT(1);
   return result_sexp;
 }
+
+SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view) {
+  SEXP result_sexp = PROTECT(Rf_allocVector(REALSXP, array_view->array->length));
+  double* result = REAL(result_sexp);
+
+  // True for all the types supported here
+  const uint8_t* is_valid = array_view->buffer_views[0].data.as_uint8;
+
+  // Fill the buffer
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DOUBLE:
+      memcpy(result,
+             array_view->buffer_views[1].data.as_double + array_view->array->offset,
+             array_view->array->length * sizeof(double));
+
+      // Set any nulls to NA_REAL
+      if (is_valid != NULL && array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+          if (!ArrowBitGet(is_valid, i)) {
+            result[i] = NA_REAL;
+          }
+        }
+      }
+      break;
+    case NANOARROW_TYPE_BOOL:
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
+    case NANOARROW_TYPE_FLOAT:
+      // TODO: implement bounds check for int64 and uint64, but instead
+      // of setting to NA, just warn (because sequential values might not
+      // roundtrip above 2^51 ish)
+      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+        result[i] = ArrowArrayViewGetDoubleUnsafe(array_view, i);
+      }
+
+      // Set any nulls to NA_REAL
+      if (is_valid != NULL && array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+          if (!ArrowBitGet(is_valid, i)) {
+            result[i] = NA_REAL;
+          }
+        }
+      }
+      break;
+
+    default:
+      Rf_error("Can't convert array to double()");
+  }
+
+  UNPROTECT(1);
+  return result_sexp;
+}
