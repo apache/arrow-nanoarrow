@@ -1,16 +1,9 @@
 
-nanoarrow_altrep <- function(array, ptype = NULL) {
-  stopifnot(inherits(array, "nanoarrow_array"))
+# For testing the altrep chr conversion
+nanoarrow_altrep_chr <- function(array) {
   schema <- infer_nanoarrow_schema(array)
   array_view <- .Call(nanoarrow_c_array_view, array, schema)
-
-  if (is.character(ptype)) {
-    .Call(nanoarrow_c_make_altrep_chr, array_view)
-  } else if (is.integer(ptype)) {
-    .Call(nanoarrow_c_make_altrep_int, array_view)
-  } else {
-    NULL
-  }
+  .Call(nanoarrow_c_make_altrep_chr, array_view)
 }
 
 is_nanoarrow_altrep <- function(x) {
