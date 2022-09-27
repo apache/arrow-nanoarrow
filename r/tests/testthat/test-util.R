@@ -21,3 +21,20 @@ test_that("new_data_frame() works", {
     data.frame(x = 1, y = 2)
   )
 })
+
+test_that("vector fuzzers work", {
+  ptype <- data.frame(a = logical(), b = integer(), c = double(), d = character())
+  df_gen <- vec_gen(ptype, n = 123)
+
+  expect_identical(nrow(df_gen), 123L)
+  expect_identical(df_gen[integer(), ], ptype)
+})
+
+test_that("vector shuffler works", {
+  df <- data.frame(letters = letters)
+  df_shuffled <- vec_shuffle(df)
+  expect_setequal(df_shuffled$letters, df$letters)
+
+  letters_shuffled <- vec_shuffle(letters)
+  expect_setequal(letters_shuffled, letters)
+})
