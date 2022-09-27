@@ -24,12 +24,12 @@ new_data_frame <- function(x, nrow) {
 }
 
 vec_gen <- function(ptype, n = 1e3, prop_true = 0.5,  prop_na = 0,
-                    chr_len = function(n) ceiling(25 * runif(n))) {
+                    chr_len = function(n) ceiling(25 * stats::runif(n))) {
   vec <- switch(
     class(ptype)[1],
-    logical = runif(n) < prop_true,
-    integer = as.integer(runif(n, min = -1, max = 1) * .Machine$integer.max),
-    numeric = runif(n),
+    logical = stats::runif(n) < prop_true,
+    integer = as.integer(stats::runif(n, min = -1, max = 1) * .Machine$integer.max),
+    numeric = stats::runif(n),
     character = strrep(rep_len(letters, n), chr_len(n)),
     data.frame = new_data_frame(
       lapply(
@@ -42,11 +42,11 @@ vec_gen <- function(ptype, n = 1e3, prop_true = 0.5,  prop_na = 0,
       ),
       n
     ),
-    stop(sprintf("Don't know how to generate vector for type %s", class(x)[1]))
+    stop(sprintf("Don't know how to generate vector for type %s", class(ptype)[1]))
   )
 
   if (!is.data.frame(vec) && prop_na > 0) {
-    is_na <- runif(n) < prop_na
+    is_na <- stats::runif(n) < prop_na
     vec[is_na] <- ptype[NA_integer_]
   }
 

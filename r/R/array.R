@@ -59,6 +59,11 @@ as.data.frame.nanoarrow_array <- function(x, ...) {
   .Call(nanoarrow_c_from_array, x, NULL)
 }
 
+# exported in zzz.R
+as_tibble.nanoarrow_array <- function(x, ...) {
+  tibble::as_tibble(as.data.frame.nanoarrow_array(x), ...)
+}
+
 #' @export
 as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
   # For now, use arrow's conversion for everything

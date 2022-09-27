@@ -61,6 +61,12 @@ from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
   .Call(nanoarrow_c_from_array, array, ptype)
 }
 
+#' @export
+from_nanoarrow_array.tbl_df <- function(array, to, ...) {
+  df <- from_nanoarrow_array(array, as.data.frame(to))
+  tibble::as_tibble(df)
+}
+
 #' @rdname from_nanoarrow_array
 #' @export
 infer_nanoarrow_ptype <- function(array) {

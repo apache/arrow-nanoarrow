@@ -75,6 +75,11 @@ test_that("as.vector() and as.data.frame() work for array", {
   )
 })
 
+test_that("as_tibble() works for array()", {
+  struct_array <- as_nanoarrow_array(data.frame(a = 1:10))
+  expect_identical(tibble::as_tibble(struct_array), tibble::tibble(a = 1:10))
+})
+
 test_that("schemaless array list interface works for non-nested types", {
   array <- as_nanoarrow_array(1:10)
   nanoarrow_array_set_schema(array, NULL)

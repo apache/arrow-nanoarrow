@@ -123,6 +123,30 @@ test_that("convert to vector works for partial_frame", {
   )
 })
 
+test_that("convert to vector works for tibble", {
+  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
+  expect_identical(
+    from_nanoarrow_array(array, tibble::tibble(a = integer(), b = character())),
+    tibble::tibble(a = 1L, b = "two")
+  )
+
+  # Check nested tibble at both levels
+  tbl_nested_df <- tibble::tibble(a = 1L, b = "two", c = data.frame(a = 3))
+  array_nested <- as_nanoarrow_array(tbl_nested_df)
+
+  expect_identical(
+    from_nanoarrow_array(array_nested, tbl_nested_df),
+    tbl_nested_df
+  )
+
+  df_nested_tbl <- as.data.frame(tbl_nested_df)
+  df_nested_tbl$c <- tibble::as_tibble(df_nested_tbl$c)
+  expect_identical(
+    from_nanoarrow_array(array_nested, df_nested_tbl),
+    df_nested_tbl
+  )
+})
+
 test_that("convert to vector works for valid logical()", {
   arrow_numeric_types <- list(
     int8 = arrow::int8(),

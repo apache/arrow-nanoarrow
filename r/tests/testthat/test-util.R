@@ -28,6 +28,8 @@ test_that("vector fuzzers work", {
 
   expect_identical(nrow(df_gen), 123L)
   expect_identical(df_gen[integer(), ], ptype)
+
+  expect_error(vec_gen(environment()), "Don't know how to generate vector")
 })
 
 test_that("vector shuffler works", {

@@ -90,8 +90,7 @@ static enum VectorType vector_type_from_array_xptr(SEXP array_xptr) {
 // message than we can provide in a reasonable amount of C code here
 static void call_stop_cant_infer_ptype(SEXP array_xptr) {
   SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call =
-      PROTECT(Rf_lang2(Rf_install("stop_cant_infer_ptype"), array_xptr));
+  SEXP call = PROTECT(Rf_lang2(Rf_install("stop_cant_infer_ptype"), array_xptr));
   Rf_eval(call, ns);
   UNPROTECT(2);
 }
@@ -291,7 +290,7 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   // Handle some S3 objects internally to avoid S3 dispatch
   // (e.g., when looping over a data frame with a lot of columns)
   if (Rf_isObject(ptype_sexp)) {
-    if (Rf_inherits(ptype_sexp, "data.frame")) {
+    if (Rf_inherits(ptype_sexp, "data.frame") && !Rf_inherits(ptype_sexp, "tbl_df")) {
       return from_array_to_data_frame(array_xptr, ptype_sexp);
     } else {
       return call_from_nanoarrow_array(array_xptr, ptype_sexp);
