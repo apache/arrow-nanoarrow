@@ -291,17 +291,20 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t start_offset
   const int64_t bytes_begin = i_begin / 8;
   const int64_t bytes_end = i_end / 8 + 1;
 
-  const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_begin % 8];
-  const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_end % 8];
-
   if (bytes_end == bytes_begin + 1) {
     // count bits within a single byte
+    const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_end % 8];
+    const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_begin % 8];
+
     const uint8_t only_byte_mask =
-        i_end % 8 == 0 ? first_byte_mask : (uint8_t)(first_byte_mask | last_byte_mask);
+        i_end % 8 == 0 ? first_byte_mask : (uint8_t)(first_byte_mask & last_byte_mask);
+
     const uint8_t byte_masked = bits[bytes_begin] & only_byte_mask;
     return _ArrowkBytePopcount[byte_masked];
   }
 
+  const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_begin % 8];
+  const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_end % 8];
   int64_t count = 0;
 
   // first byte
