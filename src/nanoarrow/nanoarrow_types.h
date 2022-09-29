@@ -169,6 +169,89 @@ enum ArrowType {
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 };
 
+static inline const char* ArrowTypeString(enum ArrowType type) {
+  switch (type) {
+    case NANOARROW_TYPE_NA:
+      return "na";
+    case NANOARROW_TYPE_BOOL:
+      return "bool";
+    case NANOARROW_TYPE_UINT8:
+      return "uint8";
+    case NANOARROW_TYPE_INT8:
+      return "int8";
+    case NANOARROW_TYPE_UINT16:
+      return "uint16";
+    case NANOARROW_TYPE_INT16:
+      return "int16";
+    case NANOARROW_TYPE_UINT32:
+      return "uint32";
+    case NANOARROW_TYPE_INT32:
+      return "int32";
+    case NANOARROW_TYPE_UINT64:
+      return "uint64";
+    case NANOARROW_TYPE_INT64:
+      return "int64";
+    case NANOARROW_TYPE_HALF_FLOAT:
+      return "half_float";
+    case NANOARROW_TYPE_FLOAT:
+      return "float";
+    case NANOARROW_TYPE_DOUBLE:
+      return "double";
+    case NANOARROW_TYPE_STRING:
+      return "string";
+    case NANOARROW_TYPE_BINARY:
+      return "binary";
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      return "fixed_size_binary";
+    case NANOARROW_TYPE_DATE32:
+      return "date32";
+    case NANOARROW_TYPE_DATE64:
+      return "date64";
+    case NANOARROW_TYPE_TIMESTAMP:
+      return "timestamp";
+    case NANOARROW_TYPE_TIME32:
+      return "time32";
+    case NANOARROW_TYPE_TIME64:
+      return "time64";
+    case NANOARROW_TYPE_INTERVAL_MONTHS:
+      return "interval_months";
+    case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+      return "interval_day_time";
+    case NANOARROW_TYPE_DECIMAL128:
+      return "decimal128";
+    case NANOARROW_TYPE_DECIMAL256:
+      return "decimal256";
+    case NANOARROW_TYPE_LIST:
+      return "list";
+    case NANOARROW_TYPE_STRUCT:
+      return "struct";
+    case NANOARROW_TYPE_SPARSE_UNION:
+      return "sparse_union";
+    case NANOARROW_TYPE_DENSE_UNION:
+      return "dense_union";
+    case NANOARROW_TYPE_DICTIONARY:
+      return "dictionary";
+    case NANOARROW_TYPE_MAP:
+      return "map";
+    case NANOARROW_TYPE_EXTENSION:
+      return "extension";
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      return "fixed_size_list";
+    case NANOARROW_TYPE_DURATION:
+      return "duration";
+    case NANOARROW_TYPE_LARGE_STRING:
+      return "large_string";
+    case NANOARROW_TYPE_LARGE_BINARY:
+      return "large_binary";
+    case NANOARROW_TYPE_LARGE_LIST:
+      return "large_list";
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      return "interval_month_day_nano";
+    default:
+      return NULL;
+  }
+}
+
 /// \brief Functional types of buffers as described in the Arrow Columnar Specification
 enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_NONE,
