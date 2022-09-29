@@ -24,5 +24,6 @@ BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests: 
     arrow (>= 8.0.0),
     testthat (>= 3.0.0),
+    tibble,
     vctrs
 Config/testthat/edition: 3

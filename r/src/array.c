@@ -82,6 +82,15 @@ static SEXP borrow_array_xptr(struct ArrowArray* array, SEXP shelter) {
   return array_xptr;
 }
 
+SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  SEXP schema_xptr = R_ExternalPtrTag(array_xptr);
+  SEXP child_xptr = PROTECT(borrow_array_xptr(array->children[i], array_xptr));
+  array_xptr_set_schema(child_xptr, borrow_schema_child_xptr(schema_xptr, i));
+  UNPROTECT(1);
+  return child_xptr;
+}
+
 static SEXP borrow_array_view_child(struct ArrowArrayView* array_view, int64_t i,
                                     SEXP shelter) {
   if (array_view != NULL) {
@@ -213,49 +222,14 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
   const char* names[] = {"size_bytes", "element_size_bits", ""};
   SEXP buffer_info = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(buffer_info, 0, length_from_int64(array_view->buffer_views[i].n_bytes));
-  SET_VECTOR_ELT(buffer_info, 1, length_from_int64(array_view->layout.element_size_bits[i]));
+  SET_VECTOR_ELT(buffer_info, 1,
+                 length_from_int64(array_view->layout.element_size_bits[i]));
 
   SEXP buffer = PROTECT(R_MakeExternalPtr((void*)array_view->buffer_views[i].data.data,
                                           buffer_info, shelter));
   Rf_setAttrib(buffer, R_ClassSymbol, buffer_class);
   UNPROTECT(3);
   return buffer;
-}
-
-static void finalize_array_view_xptr(SEXP array_view_xptr) {
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
-  if (array_view != NULL) {
-    ArrowArrayViewReset(array_view);
-    ArrowFree(array_view);
-  }
-}
-
-SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-
-  struct ArrowError error;
-  ArrowErrorSet(&error, "");
-
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)ArrowMalloc(sizeof(struct ArrowArrayView));
-  ArrowArrayViewInit(array_view, NANOARROW_TYPE_UNINITIALIZED);
-  SEXP xptr = PROTECT(R_MakeExternalPtr(array_view, R_NilValue, array_xptr));
-  R_RegisterCFinalizer(xptr, &finalize_array_view_xptr);
-
-  int result = ArrowArrayViewInitFromSchema(array_view, schema, &error);
-  if (result != NANOARROW_OK) {
-    Rf_error("<ArrowArrayViewInitFromSchema> %s", error.message);
-  }
-
-  result = ArrowArrayViewSetArray(array_view, array, &error);
-  if (result != NANOARROW_OK) {
-    Rf_error("<ArrowArrayViewSetArray> %s", error.message);
-  }
-
-  UNPROTECT(1);
-  return xptr;
 }
 
 SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp) {
@@ -322,9 +296,5 @@ SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursi
 void finalize_exported_array(struct ArrowArray* array) {
   SEXP array_xptr = (SEXP)array->private_data;
   R_ReleaseObject(array_xptr);
-
-  // TODO: properly relocate child arrays
-  // https://arrow.apache.org/docs/format/CDataInterface.html#moving-child-arrays
-
   array->release = NULL;
 }

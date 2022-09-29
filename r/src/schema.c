@@ -68,6 +68,11 @@ static SEXP borrow_schema_xptr(struct ArrowSchema* schema, SEXP shelter) {
   return schema_xptr;
 }
 
+SEXP borrow_schema_child_xptr(SEXP schema_xptr, int64_t i) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  return borrow_schema_xptr(schema->children[i], schema_xptr);
+}
+
 SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr) {
   struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
 

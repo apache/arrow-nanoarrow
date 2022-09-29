@@ -22,3 +22,41 @@
 new_data_frame <- function(x, nrow) {
   structure(x, row.names = c(NA, nrow), class = "data.frame")
 }
+
+vec_gen <- function(ptype, n = 1e3, prop_true = 0.5,  prop_na = 0,
+                    chr_len = function(n) ceiling(25 * stats::runif(n))) {
+  vec <- switch(
+    class(ptype)[1],
+    logical = stats::runif(n) < prop_true,
+    integer = as.integer(stats::runif(n, min = -1, max = 1) * .Machine$integer.max),
+    numeric = stats::runif(n),
+    character = strrep(rep_len(letters, n), chr_len(n)),
+    data.frame = new_data_frame(
+      lapply(
+        ptype,
+        vec_gen,
+        n = n,
+        prop_true = prop_true,
+        prop_na = prop_na,
+        chr_len = chr_len
+      ),
+      n
+    ),
+    stop(sprintf("Don't know how to generate vector for type %s", class(ptype)[1]))
+  )
+
+  if (!is.data.frame(vec) && prop_na > 0) {
+    is_na <- stats::runif(n) < prop_na
+    vec[is_na] <- ptype[NA_integer_]
+  }
+
+  vec
+}
+
+vec_shuffle <- function(x) {
+  if (is.data.frame(x)) {
+    x[sample(seq_len(nrow(x)), replace = FALSE), , drop = FALSE]
+  } else {
+    x[sample(seq_along(x), replace = FALSE)]
+  }
+}
