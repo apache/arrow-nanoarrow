@@ -22,11 +22,25 @@
 #include <arrow/array/builder_nested.h>
 #include <arrow/array/builder_primitive.h>
 #include <arrow/c/bridge.h>
-#include <arrow/testing/gtest_util.h>
 
 #include "nanoarrow/nanoarrow.h"
 
 using namespace arrow;
+
+// Lightweight versions of ArrowTesting's ARROW_EXPECT_OK. This
+// version accomplishes the task of making sure the status message
+// ends up in the ctests log.
+void ARROW_EXPECT_OK(Status status) {
+  if (!status.ok()) {
+    throw std::runtime_error(status.message());
+  }
+}
+
+void ARROW_EXPECT_OK(Result<std::shared_ptr<Array>> result) {
+  if (!result.ok()) {
+    throw std::runtime_error(result.status().message());
+  }
+}
 
 TEST(ArrayTest, ArrayTestInit) {
   struct ArrowArray array;
