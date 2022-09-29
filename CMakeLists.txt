@@ -134,8 +134,11 @@ if(NANOARROW_BUILD_TESTS)
     message(STATUS "Arrow version: ${ARROW_VERSION}")
     message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
-    find_package(GTest REQUIRED)
-    enable_testing()
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/release-1.11.0.zip
+    )
+    FetchContent_MakeAvailable(googletest)
 
     add_executable(utils_test src/nanoarrow/utils_test.cc)
     add_executable(buffer_test src/nanoarrow/buffer_test.cc)
