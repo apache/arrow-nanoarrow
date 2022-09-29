@@ -12,8 +12,6 @@
           "displayName": "(user) local build",
           "cacheVariables": {
               "Arrow_DIR": "/path/to/arrow/dist/lib/cmake/arrow",
-              "ArrowTesting_DIR": "/path/to/arrow/dist/lib/cmake/arrow",
-              "GTest_DIR": "/path/to/googletest/1.11.0/lib/cmake/GTest"
           }
         }
     ],
@@ -21,7 +19,7 @@
       {
           "name": "user-test-preset",
           "description": "",
-          "displayName": (user) test preset)",
+          "displayName": "(user) test preset)",
           "configurePreset": "user-local",
           "environment": {
             "CTEST_OUTPUT_ON_FAILURE": "1"
