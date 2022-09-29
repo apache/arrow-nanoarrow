@@ -307,6 +307,42 @@ TEST(BitmapTest, BitmapTestCountSet) {
   EXPECT_EQ(ArrowBitCountSet(bitmap, 23, 1), 1);
 }
 
+TEST(BitmapTest, BitmapTestCountSetSingleByte) {
+  uint8_t bitmap = 0xff;
+
+  // Check starting on a byte boundary
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 0), 0);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 2), 2);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 3), 3);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 4), 4);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 5), 5);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 6), 6);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 7), 7);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 8), 8);
+
+  // Check bits in the middle
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 1, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 2, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 3, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 4, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 5, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 6, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 7, 1), 1);
+
+  // Check ending on a byte boundary
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 0, 8), 8);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 1, 7), 7);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 2, 6), 6);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 3, 5), 5);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 4, 4), 4);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 5, 3), 3);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 6, 2), 2);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 7, 1), 1);
+  EXPECT_EQ(ArrowBitCountSet(&bitmap, 8, 0), 0);
+}
+
 TEST(BitmapTest, BitmapTestAppend) {
   int8_t test_values[65];
   memset(test_values, 0, sizeof(test_values));
