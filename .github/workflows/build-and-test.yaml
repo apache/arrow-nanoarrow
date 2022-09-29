@@ -17,12 +17,14 @@
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
     paths:
       - 'CMakeLists.txt'
-      - '.github/workflows/**'
+      - '.github/workflows/build-and-test.yaml'
       - 'src/nanoarrow/**'
 
 name: Build and Test C Library
@@ -50,63 +52,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get install -y cmake valgrind
-
-      - name: Cache Dependency Builds
-        id: cache-deps-build
-        uses: actions/cache@v3
-        with:
-          path: build-deps
-          key: ${{ runner.os }}-5
-
-      - name: Init build dir
-        if: steps.cache-deps-build.outputs.cache-hit != 'true'
-        run: mkdir build-deps
-
-      - name: Fetch googletest
-        if: steps.cache-deps-build.outputs.cache-hit != 'true'
-        uses: actions/checkout@v3
-        with:
-          repository: google/googletest
-          ref: release-1.11.0
-          path: build-deps/googletest
-          fetch-depth: 0
-
-      - name: Build googletest
-        if: steps.cache-deps-build.outputs.cache-hit != 'true'
-        run: |
-          cd build-deps/googletest
-          cmake . -DCMAKE_CXX_FLAGS=-fPIC
-          cmake --build .
-          cmake --install . --prefix ../../dist
-
-      - name: Install googletest
-        run: |
-          cd build-deps/googletest
-          cmake --install . --prefix ../../dist
-
-      - name: Fetch Arrow
-        if: steps.cache-deps-build.outputs.cache-hit != 'true'
-        uses: actions/checkout@v3
-        with:
-          repository: apache/arrow
-          ref: apache-arrow-8.0.0
-          path: build-deps/arrow
-          fetch-depth: 0
-
-      - name: Build Arrow
-        if: steps.cache-deps-build.outputs.cache-hit != 'true'
-        run: |
-          mkdir build-deps/arrow-build
-          cd build-deps/arrow-build
-          cmake ../arrow/cpp -DARROW_JSON=ON -DARROW_TESTING=ON -DBoost_SOURCE=BUNDLED -DGTest_DIR=`pwd`/../../dist/lib/cmake/GTest
-          cmake --build .
-          cmake --install . --prefix ../../dist
-
-      - name: Install arrow
-        run: |
-          cd build-deps/arrow-build
-          cmake --install . --prefix ../../dist
+          sudo apt install -y -V ca-certificates lsb-release wget cmake valgrind
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-dev
+          rm apache-arrow-apt-*.deb
 
       - name: Build nanoarrow (default)
         if: matrix.config.label == 'default-build'
@@ -115,7 +66,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
           cmake --build .
       
       - name: Build nanoarrow (namespaced)
@@ -125,7 +76,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_NAMESPACE=SomeUserNamespace
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_NAMESPACE=SomeUserNamespace
           cmake --build .
 
       - name: Build nanoarrow (bundled)
@@ -135,7 +86,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DGTest_DIR=`pwd`/../dist/lib/cmake/GTest -DArrow_DIR=`pwd`/../dist/lib/cmake/arrow -DArrowTesting_DIR=`pwd`/../dist/lib/cmake/arrow -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
           cmake --build .
     
       - name: Check for non-namespaced symbols in namespaced build
