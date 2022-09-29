@@ -360,3 +360,16 @@ test_that("convert to vector works for character()", {
     "Can't convert array <i> to R vector of type character"
   )
 })
+
+test_that("convert to vector works for character()", {
+  array <- as_nanoarrow_array(list(as.raw(1:5)), schema = arrow::binary())
+  expect_identical(
+    from_nanoarrow_array(array),
+    list(as.raw(1:5))
+  )
+
+  expect_identical(
+    from_nanoarrow_array(array, list()),
+    list(as.raw(1:5))
+  )
+})

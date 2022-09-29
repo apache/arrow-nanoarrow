@@ -247,3 +247,32 @@ SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view) {
   UNPROTECT(1);
   return result_sexp;
 }
+
+SEXP nanoarrow_materialize_list_of_raw(struct ArrowArrayView* array_view) {
+  switch(array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      break;
+    default:
+      return R_NilValue;
+  }
+  
+  SEXP result_sexp = PROTECT(Rf_allocVector(VECSXP, array_view->array->length));
+
+  struct ArrowBufferView item;
+  SEXP item_sexp;
+  for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+    if (!ArrowArrayViewIsNull(array_view, i)) {
+      item = ArrowArrayViewGetBytesUnsafe(array_view, i);
+      item_sexp = PROTECT(Rf_allocVector(RAWSXP, item.n_bytes));
+      memcpy(RAW(item_sexp), item.data.data, item.n_bytes);
+      SET_VECTOR_ELT(result_sexp, i, item_sexp);
+      UNPROTECT(1);
+    }
+  }
+
+  UNPROTECT(1);
+  return result_sexp;
+}

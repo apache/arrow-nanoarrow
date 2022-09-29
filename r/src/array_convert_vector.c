@@ -26,14 +26,17 @@
 #include "array_view.h"
 #include "materialize.h"
 
+// These are the vector types that have some special casing
+// internally to avoid unnecessary allocations or looping at
+// the R level. Other types are represented by an SEXP ptype.
 enum VectorType {
   VECTOR_TYPE_LGL,
   VECTOR_TYPE_INT,
   VECTOR_TYPE_DBL,
   VECTOR_TYPE_CHR,
-  VECTOR_TYPE_DATA_FRAME,
   VECTOR_TYPE_LIST_OF_RAW,
-  VECTOR_TYPE_UNKNOWN
+  VECTOR_TYPE_DATA_FRAME,
+  VECTOR_TYPE_OTHER
 };
 
 // These conversions are the default R-native type guesses for
@@ -65,11 +68,15 @@ static enum VectorType vector_type_from_array_type(enum ArrowType type) {
     case NANOARROW_TYPE_LARGE_STRING:
       return VECTOR_TYPE_CHR;
 
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      return VECTOR_TYPE_LIST_OF_RAW;
+
     case NANOARROW_TYPE_STRUCT:
       return VECTOR_TYPE_DATA_FRAME;
 
     default:
-      return VECTOR_TYPE_UNKNOWN;
+      return VECTOR_TYPE_OTHER;
   }
 }
 
@@ -260,6 +267,41 @@ static SEXP from_array_to_chr(SEXP array_xptr) {
   return result;
 }
 
+static SEXP from_array_to_list_of_raw(SEXP array_xptr) {
+  SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
+  SEXP result =
+      PROTECT(nanoarrow_materialize_list_of_raw(array_view_from_xptr(array_view_xptr)));
+  if (result == R_NilValue) {
+    call_stop_cant_convert_array(array_xptr, STRSXP);
+  }
+  UNPROTECT(2);
+  return result;
+}
+
+// TODO: Lists are not all that well supported yet.
+static SEXP from_array_to_list(SEXP array_xptr, SEXP ptype_sexp) {
+  struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
+
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  if (ArrowSchemaViewInit(&schema_view, schema, &error) != NANOARROW_OK) {
+    Rf_error("from_array_to_list(): %s", ArrowErrorMessage(&error));
+  }
+
+  SEXP result = R_NilValue;
+  switch (schema_view.data_type) {
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      result = PROTECT(from_array_to_list_of_raw(array_xptr));
+      break;
+    default:
+      call_stop_cant_convert_array(array_xptr, STRSXP);
+  }
+
+  UNPROTECT(1);
+  return result;
+}
+
 SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   // See if we can skip any ptype resolution at all
   if (ptype_sexp == R_NilValue) {
@@ -273,6 +315,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
         return from_array_to_dbl(array_xptr);
       case VECTOR_TYPE_CHR:
         return from_array_to_chr(array_xptr);
+      case VECTOR_TYPE_LIST_OF_RAW:
+        return from_array_to_list_of_raw(array_xptr);
       case VECTOR_TYPE_DATA_FRAME:
         return from_array_to_data_frame(array_xptr, R_NilValue);
       default:
@@ -307,6 +351,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
       return from_array_to_dbl(array_xptr);
     case STRSXP:
       return from_array_to_chr(array_xptr);
+    case VECSXP:
+      return from_array_to_list(array_xptr, ptype_sexp);
     default:
       return call_from_nanoarrow_array(array_xptr, ptype_sexp);
   }

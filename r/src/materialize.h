@@ -31,5 +31,6 @@ SEXP nanoarrow_materialize_lgl(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_int(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view);
+SEXP nanoarrow_materialize_list_of_raw(struct ArrowArrayView* array_view);
 
 #endif
