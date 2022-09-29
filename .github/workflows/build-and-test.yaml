@@ -128,7 +128,7 @@ jobs:
           path: build/Testing/Temporary/MemoryChecker.*.log
 
       - name: Calculate coverage
-        if: matrix.config.label == 'default-build'
+        if: success() && matrix.config.label == 'default-build'
         run: |
           SOURCE_PREFIX=`pwd`
           mkdir build/cov
@@ -136,6 +136,7 @@ jobs:
           gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
 
       - name: Upload coverage
+        if: success() && matrix.config.label == 'default-build'
         uses: codecov/codecov-action@v2
         with:
           directory: build/cov
