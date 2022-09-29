@@ -20,7 +20,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha16c8df72adc4939a6af70c0e83d37176195069b5"
+#define NANOARROW_BUILD_ID "gha3a33b6a3379682afe5de4911afaf0d17ec9d1a7c"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
