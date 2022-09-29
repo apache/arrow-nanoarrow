@@ -9,8 +9,6 @@
         {
             "name": "default",
             "displayName": "Default Config",
-            "binaryDir": "${sourceDir}/build",
-            "installDir": "${sourceDir}/dist",
             "cacheVariables": {}
         },
         {

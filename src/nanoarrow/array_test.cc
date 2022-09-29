@@ -18,12 +18,29 @@
 #include <gtest/gtest.h>
 
 #include <arrow/array.h>
+#include <arrow/array/builder_binary.h>
+#include <arrow/array/builder_nested.h>
+#include <arrow/array/builder_primitive.h>
 #include <arrow/c/bridge.h>
-#include <arrow/testing/gtest_util.h>
 
 #include "nanoarrow/nanoarrow.h"
 
 using namespace arrow;
+
+// Lightweight versions of ArrowTesting's ARROW_EXPECT_OK. This
+// version accomplishes the task of making sure the status message
+// ends up in the ctests log.
+void ARROW_EXPECT_OK(Status status) {
+  if (!status.ok()) {
+    throw std::runtime_error(status.message());
+  }
+}
+
+void ARROW_EXPECT_OK(Result<std::shared_ptr<Array>> result) {
+  if (!result.ok()) {
+    throw std::runtime_error(result.status().message());
+  }
+}
 
 TEST(ArrayTest, ArrayTestInit) {
   struct ArrowArray array;
@@ -225,7 +242,9 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
 
   auto arrow_array = ImportArray(&array, null());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(null(), "[null, null]")));
+  auto expected_array = MakeArrayOfNull(null(), 2);
+  ARROW_EXPECT_OK(expected_array);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 0), EINVAL);
@@ -262,8 +281,14 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
 
   auto arrow_array = ImportArray(&array, int64());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(
-      arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int64(), "[1, null, null, 3]")));
+
+  auto builder = Int64Builder();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(3));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt32Array) {
@@ -284,7 +309,12 @@ TEST(ArrayTest, ArrayTestAppendToInt32Array) {
 
   auto arrow_array = ImportArray(&array, int32());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int32(), "[123]")));
+
+  auto builder = Int32Builder();
+  ARROW_EXPECT_OK(builder.Append(123));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt16Array) {
@@ -305,7 +335,12 @@ TEST(ArrayTest, ArrayTestAppendToInt16Array) {
 
   auto arrow_array = ImportArray(&array, int16());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int16(), "[123]")));
+
+  auto builder = Int16Builder();
+  ARROW_EXPECT_OK(builder.Append(123));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt8Array) {
@@ -313,7 +348,7 @@ TEST(ArrayTest, ArrayTestAppendToInt8Array) {
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT8), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
@@ -322,11 +357,16 @@ TEST(ArrayTest, ArrayTestAppendToInt8Array) {
   EXPECT_EQ(array.null_count, 0);
   auto data_buffer = reinterpret_cast<const int8_t*>(array.buffers[1]);
   EXPECT_EQ(array.buffers[0], nullptr);
-  EXPECT_EQ(data_buffer[0], 1);
+  EXPECT_EQ(data_buffer[0], 123);
 
   auto arrow_array = ImportArray(&array, int8());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(int8(), "[1]")));
+
+  auto builder = Int8Builder();
+  ARROW_EXPECT_OK(builder.Append(123));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToStringArray) {
@@ -359,8 +399,14 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
 
   auto arrow_array = ImportArray(&array, utf8());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(utf8(), "[\"1234\", null, null, \"56789\"]")));
+
+  auto builder = StringBuilder();
+  ARROW_EXPECT_OK(builder.Append("1234"));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append("56789"));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendEmptyToString) {
@@ -395,8 +441,14 @@ TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
 
   auto arrow_array = ImportArray(&array, uint64());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(
-      arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint64(), "[1, null, null, 3]")));
+
+  auto builder = UInt64Builder();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(3));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
@@ -421,7 +473,13 @@ TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
 
   auto arrow_array = ImportArray(&array, uint32());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint32(), "[1, 3]")));
+
+  auto builder = UInt32Builder();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.Append(3));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
@@ -446,7 +504,13 @@ TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
 
   auto arrow_array = ImportArray(&array, uint16());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint16(), "[1, 3]")));
+
+  auto builder = UInt16Builder();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.Append(3));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
@@ -471,7 +535,13 @@ TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
 
   auto arrow_array = ImportArray(&array, uint8());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(uint8(), "[1, 3]")));
+
+  auto builder = UInt8Builder();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.Append(3));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
@@ -498,8 +568,15 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
 
   auto arrow_array = ImportArray(&array, float64());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(float64(), "[1.0, null, null, 3.0, 3.14]")));
+
+  auto builder = DoubleBuilder();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(3));
+  ARROW_EXPECT_OK(builder.Append(3.14));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToFloatArray) {
@@ -527,8 +604,15 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
 
   auto arrow_array = ImportArray(&array, float32());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(float32(), "[1.0, null, null, 3.0, 3.14]")));
+
+  auto builder = FloatBuilder();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(3));
+  ARROW_EXPECT_OK(builder.Append(3.14));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {
@@ -553,8 +637,14 @@ TEST(ArrayTest, ArrayTestAppendToBoolArray) {
 
   auto arrow_array = ImportArray(&array, boolean());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(boolean(), "[true, null, null, false]")));
+
+  auto builder = BooleanBuilder();
+  ARROW_EXPECT_OK(builder.Append(true));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(false));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
@@ -587,8 +677,14 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
 
   auto arrow_array = ImportArray(&array, large_utf8());
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(large_utf8(), "[\"1234\", null, null, \"56789\"]")));
+
+  auto builder = LargeStringBuilder();
+  ARROW_EXPECT_OK(builder.Append("1234"));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append("56789"));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
@@ -621,8 +717,15 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(fixed_size_binary(5), "[\"12345\", null, null, \"67890\"]")));
+
+  auto builder = FixedSizeBinaryBuilder(fixed_size_binary(5));
+  ARROW_EXPECT_OK(builder.Append("12345"));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append("67890"));
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToListArray) {
@@ -670,8 +773,19 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(list(int64()), "[[123], null, [456, 789]]")));
+
+  auto child_builder = std::make_shared<Int64Builder>();
+  auto builder = ListBuilder(default_memory_pool(), child_builder, list(int64()));
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(child_builder->Append(123));
+  ARROW_EXPECT_OK(builder.AppendNull());
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(child_builder->Append(456));
+  ARROW_EXPECT_OK(child_builder->Append(789));
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
@@ -719,8 +833,20 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(large_list(int64()), "[[123], null, [456, 789]]")));
+
+  auto child_builder = std::make_shared<Int64Builder>();
+  auto builder =
+      LargeListBuilder(default_memory_pool(), child_builder, large_list(int64()));
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(child_builder->Append(123));
+  ARROW_EXPECT_OK(builder.AppendNull());
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(child_builder->Append(456));
+  ARROW_EXPECT_OK(child_builder->Append(789));
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
@@ -771,8 +897,21 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(
-      ArrayFromJSON(fixed_size_list(int64(), 2), "[[123, 456], null, [789, 12]]")));
+
+  auto child_builder = std::make_shared<Int64Builder>();
+  auto builder = FixedSizeListBuilder(default_memory_pool(), child_builder,
+                                      fixed_size_list(int64(), 2));
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(child_builder->Append(123));
+  ARROW_EXPECT_OK(child_builder->Append(456));
+  ARROW_EXPECT_OK(builder.AppendNull());
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(child_builder->Append(789));
+  ARROW_EXPECT_OK(child_builder->Append(12));
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayTestAppendToStructArray) {
@@ -806,8 +945,19 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(ArrayFromJSON(
-      struct_({field("col1", int64())}), "[{\"col1\": 123}, null, {\"col1\": 456}]")));
+
+  auto child_builder = std::make_shared<Int64Builder>();
+  auto builder = StructBuilder(struct_({field("col1", int64())}), default_memory_pool(),
+                               {child_builder});
+  ARROW_EXPECT_OK(child_builder->Append(123));
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(builder.AppendNull());
+  ARROW_EXPECT_OK(child_builder->Append(456));
+  ARROW_EXPECT_OK(builder.Append());
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
 TEST(ArrayTest, ArrayViewTestBasic) {
@@ -1146,14 +1296,24 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   array.release(&array);
 }
 
-void TestGetFromNumericArrayView(const std::shared_ptr<DataType>& data_type) {
+template <typename TypeClass>
+void TestGetFromNumericArrayView() {
   struct ArrowArray array;
   struct ArrowSchema schema;
   struct ArrowArrayView array_view;
   struct ArrowError error;
 
+  auto data_type = TypeTraits<TypeClass>::type_singleton();
+
   // Array with nulls
-  auto arrow_array = ArrayFromJSON(data_type, "[1, null, null, 4]");
+  auto builder = NumericBuilder<TypeClass>();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(4));
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
   ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
@@ -1177,7 +1337,13 @@ void TestGetFromNumericArrayView(const std::shared_ptr<DataType>& data_type) {
   schema.release(&schema);
 
   // Array without nulls (Arrow does not allocate the validity buffer)
-  arrow_array = ArrayFromJSON(data_type, "[1, 2]");
+  builder = NumericBuilder<TypeClass>();
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.Append(2));
+  maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  arrow_array = maybe_arrow_array.ValueUnsafe();
+
   ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
@@ -1197,25 +1363,33 @@ void TestGetFromNumericArrayView(const std::shared_ptr<DataType>& data_type) {
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
-  TestGetFromNumericArrayView(int64());
-  TestGetFromNumericArrayView(uint64());
-  TestGetFromNumericArrayView(int32());
-  TestGetFromNumericArrayView(uint32());
-  TestGetFromNumericArrayView(int16());
-  TestGetFromNumericArrayView(uint16());
-  TestGetFromNumericArrayView(int8());
-  TestGetFromNumericArrayView(uint8());
-  TestGetFromNumericArrayView(float64());
-  TestGetFromNumericArrayView(float32());
+  TestGetFromNumericArrayView<Int64Type>();
+  TestGetFromNumericArrayView<UInt64Type>();
+  TestGetFromNumericArrayView<Int32Type>();
+  TestGetFromNumericArrayView<UInt32Type>();
+  TestGetFromNumericArrayView<Int16Type>();
+  TestGetFromNumericArrayView<UInt32Type>();
+  TestGetFromNumericArrayView<Int8Type>();
+  TestGetFromNumericArrayView<UInt32Type>();
+  TestGetFromNumericArrayView<DoubleType>();
+  TestGetFromNumericArrayView<FloatType>();
 }
 
-void TestGetFromBinary(const std::shared_ptr<DataType>& data_type) {
+template <typename BuilderClass>
+void TestGetFromBinary(BuilderClass& builder) {
   struct ArrowArray array;
   struct ArrowSchema schema;
   struct ArrowArrayView array_view;
   struct ArrowError error;
 
-  auto arrow_array = ArrayFromJSON(data_type, "[\"1234\", null, null, \"four\"]");
+  auto data_type = builder.type();
+  ARROW_EXPECT_OK(builder.Append("1234"));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append("four"));
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
   ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
@@ -1237,9 +1411,18 @@ void TestGetFromBinary(const std::shared_ptr<DataType>& data_type) {
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetString) {
-  TestGetFromBinary(utf8());
-  TestGetFromBinary(binary());
-  TestGetFromBinary(large_utf8());
-  TestGetFromBinary(large_binary());
-  TestGetFromBinary(fixed_size_binary(4));
+  auto string_builder = StringBuilder();
+  TestGetFromBinary<StringBuilder>(string_builder);
+
+  auto binary_builder = BinaryBuilder();
+  TestGetFromBinary<BinaryBuilder>(binary_builder);
+
+  auto large_string_builder = LargeStringBuilder();
+  TestGetFromBinary<LargeStringBuilder>(large_string_builder);
+
+  auto large_binary_builder = LargeBinaryBuilder();
+  TestGetFromBinary<LargeBinaryBuilder>(large_binary_builder);
+
+  auto fixed_size_builder = FixedSizeBinaryBuilder(fixed_size_binary(4));
+  TestGetFromBinary<FixedSizeBinaryBuilder>(fixed_size_builder);
 }

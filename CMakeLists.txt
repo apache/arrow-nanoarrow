@@ -133,10 +133,12 @@ if(NANOARROW_BUILD_TESTS)
     find_package(Arrow REQUIRED)
     message(STATUS "Arrow version: ${ARROW_VERSION}")
     message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
-    find_package(ArrowTesting REQUIRED)
 
-    find_package(GTest REQUIRED)
-    enable_testing()
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/release-1.11.0.zip
+    )
+    FetchContent_MakeAvailable(googletest)
 
     add_executable(utils_test src/nanoarrow/utils_test.cc)
     add_executable(buffer_test src/nanoarrow/buffer_test.cc)
@@ -149,10 +151,10 @@ if(NANOARROW_BUILD_TESTS)
         target_link_libraries(nanoarrow coverage_config)
     endif()
 
-    target_link_libraries(utils_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
+    target_link_libraries(utils_test nanoarrow GTest::gtest_main arrow_shared)
     target_link_libraries(buffer_test nanoarrow GTest::gtest_main)
-    target_link_libraries(array_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
-    target_link_libraries(schema_test nanoarrow GTest::gtest_main arrow_shared arrow_testing_shared)
+    target_link_libraries(array_test nanoarrow GTest::gtest_main arrow_shared)
+    target_link_libraries(schema_test nanoarrow GTest::gtest_main arrow_shared)
 
     include(GoogleTest)
     gtest_discover_tests(utils_test)
