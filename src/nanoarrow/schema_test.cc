@@ -1288,7 +1288,7 @@ TEST(SchemaViewTest, SchemaFormatNChars) {
   int64_t chars_needed = ArrowSchemaFormat(&schema, nullptr, 0, true);
   char* formatted = (char*)ArrowMalloc(chars_needed + 1);
   ArrowSchemaFormat(&schema, formatted, chars_needed + 1, true);
-  EXPECT_STREQ(formatted, "struct[col1: int32, col2: int32]");
+  EXPECT_STREQ(formatted, "struct[col1: int32, col2: int64]");
   ArrowFree(formatted);
 
   schema.release(&schema);

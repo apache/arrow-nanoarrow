@@ -1140,50 +1140,55 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
   // and the storage type.
   int is_extension = schema_view.extension_name.n_bytes > 0;
   int is_dictionary = schema->dictionary != NULL;
-  int n_chars = 0;
+  int64_t n_chars = 0;
+  int64_t n_chars_last = 0;
 
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
-    n_chars += snprintf(
+    n_chars_last = snprintf(
         out + n_chars, n, "%.*s<dictionary(%s)<", (int)schema_view.extension_name.n_bytes,
         schema_view.extension_name.data, ArrowTypeString(schema_view.storage_data_type));
   } else if (is_extension) {
-    n_chars +=
+    n_chars_last =
         snprintf(out + n_chars, n, "%.*s<", (int)schema_view.extension_name.n_bytes,
                  schema_view.extension_name.data);
   } else if (is_dictionary) {
-    n_chars += snprintf(out + n_chars, n, "dictionary(%s)<",
-                        ArrowTypeString(schema_view.storage_data_type));
+    n_chars_last = snprintf(out + n_chars, n, "dictionary(%s)<",
+                            ArrowTypeString(schema_view.storage_data_type));
   }
 
-  n -= n_chars;
+  n_chars += n_chars_last;
+  n -= n_chars_last;
   if (n < 0) {
     n = 0;
   }
 
   if (!is_dictionary) {
-    n_chars +=
+    n_chars_last =
         ArrowSchemaFormatInternal(&schema_view, schema_view.data_type, out + n_chars, n);
   } else {
-    n_chars += ArrowSchemaFormat(schema->dictionary, out + n_chars, n, recursive);
+    n_chars_last = ArrowSchemaFormat(schema->dictionary, out + n_chars, n, recursive);
   }
 
-  n -= n_chars;
+  n_chars += n_chars_last;
+  n -= n_chars_last;
   if (n < 0) {
     n = 0;
   }
 
   if (recursive && schema->format[0] == '+') {
-    n_chars += snprintf(out + n_chars, n, "[");
-    n -= n_chars;
+    n_chars_last = snprintf(out + n_chars, n, "[");
+    n_chars += n_chars_last;
+    n -= n_chars_last;
     if (n < 0) {
       n = 0;
     }
 
     for (int64_t i = 0; i < schema->n_children; i++) {
       if (i > 0) {
-        n_chars += snprintf(out + n_chars, n, ", ");
-        n -= n_chars;
+        n_chars_last = snprintf(out + n_chars, n, ", ");
+        n_chars += n_chars_last;
+        n -= n_chars_last;
         if (n < 0) {
           n = 0;
         }
@@ -1193,22 +1198,25 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
       // but we need the name first
       if (schema->children[i] != NULL && schema->children[i]->release != NULL &&
           schema->children[i]->name != NULL) {
-        n_chars += snprintf(out + n_chars, n, "%s: ", schema->children[i]->name);
-        n -= n_chars;
+        n_chars_last = snprintf(out + n_chars, n, "%s: ", schema->children[i]->name);
+        n_chars += n_chars_last;
+        n -= n_chars_last;
         if (n < 0) {
           n = 0;
         }
       }
 
-      n_chars += ArrowSchemaFormat(schema->children[i], out + n_chars, n, recursive);
-      n -= n_chars;
+      n_chars_last = ArrowSchemaFormat(schema->children[i], out + n_chars, n, recursive);
+      n_chars += n_chars_last;
+      n -= n_chars_last;
       if (n < 0) {
         n = 0;
       }
     }
 
-    n_chars += snprintf(out + n_chars, n, "]");
-    n -= n_chars;
+    n_chars_last = snprintf(out + n_chars, n, "]");
+    n_chars += n_chars_last;
+    n -= n_chars_last;
     if (n < 0) {
       n = 0;
     }
