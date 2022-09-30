@@ -1144,10 +1144,13 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
 
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
-    n_chars += snprintf(out + n_chars, n, "extension<dictionary(%s)<",
-                        ArrowTypeString(schema_view.storage_data_type));
+    n_chars += snprintf(
+        out + n_chars, n, "%.*s<dictionary(%s)<", (int)schema_view.extension_name.n_bytes,
+        schema_view.extension_name.data, ArrowTypeString(schema_view.storage_data_type));
   } else if (is_extension) {
-    n_chars += snprintf(out + n_chars, n, "extension<");
+    n_chars +=
+        snprintf(out + n_chars, n, "%.*s<", (int)schema_view.extension_name.n_bytes,
+                 schema_view.extension_name.data);
   } else if (is_dictionary) {
     n_chars += snprintf(out + n_chars, n, "dictionary(%s)<",
                         ArrowTypeString(schema_view.storage_data_type));
