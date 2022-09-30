@@ -938,7 +938,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(ArrowSchemaToString(&schema), "list[int32]");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "list[item: int32]");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*large_list(int32()), &schema));
@@ -951,7 +951,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(ArrowSchemaToString(&schema), "large_list[int32]");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "large_list[item: int32]");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*fixed_size_list(int32(), 123), &schema));
@@ -966,7 +966,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
   EXPECT_EQ(schema_view.fixed_size, 123);
   EXPECT_EQ(schema_view.layout.child_size_elements, 123);
-  EXPECT_EQ(ArrowSchemaToString(&schema), "fixed_size_list(123)[int32]");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "fixed_size_list(123)[item: int32]");
   schema.release(&schema);
 }
 
@@ -999,7 +999,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
-  ARROW_EXPECT_OK(ExportType(*struct_({field("col", int32())}), &schema));
+  ARROW_EXPECT_OK(ExportType(*struct_({field("col1", int32()), field("col2", int64())}), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_STRUCT);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_STRUCT);
@@ -1009,11 +1009,12 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(ArrowSchemaToString(&schema), "struct[int32]");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "struct[col1: int32, col2: int64]");
 
-  // Make sure child validates
+  // Make sure children validate
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[0], &error), NANOARROW_OK);
-
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[1], &error), NANOARROW_OK);
+  
   schema.release(&schema);
 }
 
@@ -1057,7 +1058,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedMap) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(ArrowSchemaToString(&schema), "map[struct[int32], int32]]");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "map[entries: struct[key: int32, value: int32]]");
   schema.release(&schema);
 }
 
@@ -1118,7 +1119,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(
       std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
       std::string("0"));
-  EXPECT_EQ(ArrowSchemaToString(&schema), "dense_union([0])[int32]");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "dense_union([0])[col: int32]");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*sparse_union({field("col", int32())}), &schema));
@@ -1134,7 +1135,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(
       std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
       std::string("0"));
-  EXPECT_EQ(ArrowSchemaToString(&schema), "sparse_union([0])[int32]");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "sparse_union([0])[col: int32]");
   schema.release(&schema);
 }
 

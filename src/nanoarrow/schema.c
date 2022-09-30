@@ -1186,17 +1186,25 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
         }
       }
 
+      if (schema->children[i]->name != NULL) {
+        n_chars += snprintf(out + n_chars, n, "%s: ", schema->children[i]->name);
+        n -= n_chars;
+        if (n < 0) {
+          n = 0;
+        }
+      }
+
       n_chars += ArrowSchemaFormat(schema->children[i], out + n_chars, n, recursive);
       n -= n_chars;
       if (n < 0) {
         n = 0;
       }
+    }
 
-      n_chars += snprintf(out + n_chars, n, "]");
-      n -= n_chars;
-      if (n < 0) {
-        n = 0;
-      }
+    n_chars += snprintf(out + n_chars, n, "]");
+    n -= n_chars;
+    if (n < 0) {
+      n = 0;
     }
   }
 
