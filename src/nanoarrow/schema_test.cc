@@ -1232,7 +1232,7 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
   EXPECT_EQ(std::string(schema_view.extension_metadata.data,
                         schema_view.extension_metadata.n_bytes),
             "test metadata");
-  EXPECT_EQ(ArrowSchemaToStdString(&schema), "arrow.test.ext_name<int32>");
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "arrow.test.ext_name{int32}");
 
   schema.release(&schema);
 }
@@ -1258,7 +1258,7 @@ TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
                         schema_view.extension_metadata.n_bytes),
             "test metadata");
   EXPECT_EQ(ArrowSchemaToStdString(&schema),
-            "arrow.test.ext_name<dictionary(int32)<string>>");
+            "arrow.test.ext_name{dictionary(int32)<string>}");
 
   schema.release(&schema);
 }

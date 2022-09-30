@@ -1146,11 +1146,11 @@ static int64_t ArrowSchemaToStringInternal(struct ArrowSchema* schema, char* out
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
     n_chars_last = snprintf(
-        out + n_chars, n, "%.*s<dictionary(%s)<", (int)schema_view.extension_name.n_bytes,
+        out + n_chars, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.n_bytes,
         schema_view.extension_name.data, ArrowTypeString(schema_view.storage_data_type));
   } else if (is_extension) {
     n_chars_last =
-        snprintf(out + n_chars, n, "%.*s<", (int)schema_view.extension_name.n_bytes,
+        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.n_bytes,
                  schema_view.extension_name.data);
   } else if (is_dictionary) {
     n_chars_last = snprintf(out + n_chars, n, "dictionary(%s)<",
@@ -1224,8 +1224,10 @@ static int64_t ArrowSchemaToStringInternal(struct ArrowSchema* schema, char* out
   }
 
   if (is_extension && is_dictionary) {
-    n_chars += snprintf(out + n_chars, n, ">>");
-  } else if (is_extension || is_dictionary) {
+    n_chars += snprintf(out + n_chars, n, ">}");
+  } else if (is_extension) {
+    n_chars += snprintf(out + n_chars, n, "}");
+  } else if (is_dictionary) {
     n_chars += snprintf(out + n_chars, n, ">");
   }
 
