@@ -78,7 +78,7 @@
 #define ArrowMetadataBuilderRemove \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderRemove)
 #define ArrowSchemaViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaViewInit)
-#define ArrowSchemaFormat NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaFormat)
+#define ArrowSchemaToString NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaToString)
 #define ArrowArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInit)
 #define ArrowArrayInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
@@ -200,7 +200,11 @@ static inline struct ArrowStringView ArrowCharView(const char* value);
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
 
-int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n, char recursive);
+/// \brief Get a human-readable summary of a Schema
+///
+/// Returns a char* that must be ArrowFree()d by the caller if non-null.
+/// If recursive is non-zero, the result will also include children.
+char* ArrowSchemaToString(struct ArrowSchema* schema, char recursive);
 
 /// \brief Initialize the fields of a fixed-size schema
 ///

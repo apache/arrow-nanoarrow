@@ -1088,10 +1088,10 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
   return NANOARROW_OK;
 }
 
-static int64_t ArrowSchemaFormatInternal(struct ArrowSchemaView* schema_view,
-                                         enum ArrowType data_type, char* out, int64_t n) {
-  const char* type_string = ArrowTypeString(data_type);
-  switch (data_type) {
+static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_view,
+                                               char* out, int64_t n) {
+  const char* type_string = ArrowTypeString(schema_view->data_type);
+  switch (schema_view->data_type) {
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
       return snprintf(out, n, "%s(%d, %d)", type_string,
@@ -1119,8 +1119,8 @@ static int64_t ArrowSchemaFormatInternal(struct ArrowSchemaView* schema_view,
   }
 }
 
-int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
-                          char recursive) {
+static int64_t ArrowSchemaToStringInternal(struct ArrowSchema* schema, char* out,
+                                           int64_t n, char recursive) {
   if (schema == NULL) {
     return snprintf(out, n, "[invalid: pointer is null]");
   }
@@ -1164,10 +1164,10 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
   }
 
   if (!is_dictionary) {
-    n_chars_last =
-        ArrowSchemaFormatInternal(&schema_view, schema_view.data_type, out + n_chars, n);
+    n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out + n_chars, n);
   } else {
-    n_chars_last = ArrowSchemaFormat(schema->dictionary, out + n_chars, n, recursive);
+    n_chars_last =
+        ArrowSchemaToStringInternal(schema->dictionary, out + n_chars, n, recursive);
   }
 
   n_chars += n_chars_last;
@@ -1194,7 +1194,7 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
         }
       }
 
-      // ArrowSchemaFormat() will validate the child and print the error,
+      // ArrowSchemaToStringInternal() will validate the child and print the error,
       // but we need the name first
       if (schema->children[i] != NULL && schema->children[i]->release != NULL &&
           schema->children[i]->name != NULL) {
@@ -1206,7 +1206,8 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
         }
       }
 
-      n_chars_last = ArrowSchemaFormat(schema->children[i], out + n_chars, n, recursive);
+      n_chars_last =
+          ArrowSchemaToStringInternal(schema->children[i], out + n_chars, n, recursive);
       n_chars += n_chars_last;
       n -= n_chars_last;
       if (n < 0) {
@@ -1229,6 +1230,17 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
   }
 
   return n_chars;
+}
+
+char* ArrowSchemaToString(struct ArrowSchema* schema, char recursive) {
+  int64_t chars_needed = ArrowSchemaToStringInternal(schema, NULL, 0, recursive);
+  char* out = (char*)ArrowMalloc(chars_needed + 1);
+  if (out == NULL) {
+    return NULL;
+  }
+
+  ArrowSchemaToStringInternal(schema, out, chars_needed + 1, recursive);
+  return out;
 }
 
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
