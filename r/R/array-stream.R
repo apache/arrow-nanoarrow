@@ -102,7 +102,7 @@ print.nanoarrow_array_stream <- function(x, ...) {
 format.nanoarrow_array_stream <- function(x, ...) {
   if (nanoarrow_pointer_is_valid(x)) {
     tryCatch(
-      sprintf("<nanoarrow_array_stream[%s]>", x$get_schema()$format),
+      sprintf("<nanoarrow_array_stream %s>", nanoarrow_schema_formatted(x$get_schema())),
       error = function(...) "<nanoarrow_array_stream[<error calling get_schema()]>"
     )
 

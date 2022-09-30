@@ -56,7 +56,7 @@ infer_nanoarrow_schema.default <- function(x, ...) {
 #' @importFrom utils str
 #' @export
 str.nanoarrow_schema <- function(object, ...) {
-  cat(sprintf("%s\n", format(object)))
+  cat(sprintf("%s\n", format(object, .recursive = FALSE)))
 
   if (nanoarrow_pointer_is_valid(object)) {
     # Use the str() of the list version but remove the first
@@ -77,12 +77,11 @@ print.nanoarrow_schema <- function(x, ...) {
 }
 
 #' @export
-format.nanoarrow_schema <- function(x, ...) {
-  if (nanoarrow_pointer_is_valid(x)) {
-    sprintf("<nanoarrow_schema[%s]>", x$format)
-  } else {
-    "<nanoarrow_schema[invalid pointer]>"
-  }
+format.nanoarrow_schema <- function(x, ..., .recursive = TRUE) {
+  sprintf(
+    "<nanoarrow_schema %s>",
+    nanoarrow_schema_formatted(x, .recursive)
+  )
 }
 
 # This is the list()-like interface to nanoarrow_schema that allows $ and [[
@@ -106,6 +105,10 @@ names.nanoarrow_schema <- function(x, ...) {
 #' @export
 `$.nanoarrow_schema` <- function(x, i, ...) {
   nanoarrow_schema_proxy(x)[[i]]
+}
+
+nanoarrow_schema_formatted <- function(x, recursive = TRUE) {
+  .Call(nanoarrow_c_schema_format, x, as.logical(recursive)[1])
 }
 
 nanoarrow_schema_proxy <- function(schema, recursive = FALSE) {

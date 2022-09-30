@@ -128,3 +128,27 @@ SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr) {
   UNPROTECT(1);
   return result;
 }
+
+SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp) {
+  int recursive = LOGICAL(recursive_sexp)[0];
+
+  // Be extra safe here (errors during formatting are hard to work around)
+  if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
+    return Rf_mkString("[invalid: schema is not a nanoarrow_schema]");
+  }
+
+  if (TYPEOF(schema_xptr) != EXTPTRSXP) {
+    return Rf_mkString("[invalid: schema is not an external pointer]");
+  }
+
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+
+  int64_t size_needed = ArrowSchemaFormat(schema, NULL, 0, recursive);
+  // Using an SEXP because Rf_mkCharLenCE could jump
+  SEXP formatted_sexp = PROTECT(Rf_allocVector(RAWSXP, size_needed + 1));
+  ArrowSchemaFormat(schema, (char*)RAW(formatted_sexp), size_needed + 1, recursive);
+  SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, 1));
+  SET_STRING_ELT(result_sexp, 0, Rf_mkCharLenCE((char*)RAW(formatted_sexp), size_needed, CE_UTF8));
+  UNPROTECT(2);
+  return result_sexp;
+}

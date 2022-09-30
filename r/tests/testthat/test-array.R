@@ -17,7 +17,7 @@
 
 test_that("nanoarrow_array format, print, and str methods work", {
   array <- as_nanoarrow_array(1:10)
-  expect_identical(format(array), "<nanoarrow_array i[10]>")
+  expect_identical(format(array), "<nanoarrow_array int32[10]>")
   expect_output(expect_identical(str(array), array), "nanoarrow_array")
   expect_output(expect_identical(print(array), array), "nanoarrow_array")
 })
@@ -71,7 +71,7 @@ test_that("as.vector() and as.data.frame() work for array", {
   expect_identical(as.data.frame(struct_array), data.frame(a = 1:10))
   expect_error(
     as.data.frame(array),
-    "Can't convert array with schema 'i' to data.frame"
+    "Can't convert array with type int32 to data.frame"
   )
 })
 
