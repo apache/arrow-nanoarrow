@@ -499,6 +499,7 @@ TEST(SchemaViewTest, SchemaViewInitSimple) {
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_NA);
   EXPECT_EQ(schema_view.extension_name.data, nullptr);
   EXPECT_EQ(schema_view.extension_metadata.data, nullptr);
+  EXPECT_EQ(ArrowSchemaToString(&schema), "na");
   schema.release(&schema);
 
   ExpectSimpleTypeOk(boolean(), NANOARROW_TYPE_BOOL, 1, "bool");
