@@ -999,7 +999,8 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
-  ARROW_EXPECT_OK(ExportType(*struct_({field("col1", int32()), field("col2", int64())}), &schema));
+  ARROW_EXPECT_OK(
+      ExportType(*struct_({field("col1", int32()), field("col2", int64())}), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_STRUCT);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_STRUCT);
@@ -1014,7 +1015,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   // Make sure children validate
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[0], &error), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[1], &error), NANOARROW_OK);
-  
+
   schema.release(&schema);
 }
 
@@ -1058,7 +1059,8 @@ TEST(SchemaViewTest, SchemaViewInitNestedMap) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(ArrowSchemaToString(&schema), "map[entries: struct[key: int32, value: int32]]");
+  EXPECT_EQ(ArrowSchemaToString(&schema),
+            "map[entries: struct[key: int32, value: int32]]");
   schema.release(&schema);
 }
 
@@ -1228,6 +1230,33 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
   EXPECT_EQ(std::string(schema_view.extension_metadata.data,
                         schema_view.extension_metadata.n_bytes),
             "test metadata");
+  EXPECT_EQ(ArrowSchemaToString(&schema), "arrow.test.ext_name<int32>");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  auto arrow_meta = std::make_shared<KeyValueMetadata>();
+  arrow_meta->Append("ARROW:extension:name", "arrow.test.ext_name");
+  arrow_meta->Append("ARROW:extension:metadata", "test metadata");
+
+  auto int_field = field("field_name", dictionary(int32(), utf8()), arrow_meta);
+  ARROW_EXPECT_OK(ExportField(*int_field, &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DICTIONARY);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(
+      std::string(schema_view.extension_name.data, schema_view.extension_name.n_bytes),
+      "arrow.test.ext_name");
+  EXPECT_EQ(std::string(schema_view.extension_metadata.data,
+                        schema_view.extension_metadata.n_bytes),
+            "test metadata");
+  EXPECT_EQ(ArrowSchemaToString(&schema),
+            "arrow.test.ext_name<dictionary(int32)<string>>");
 
   schema.release(&schema);
 }
