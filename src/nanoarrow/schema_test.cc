@@ -26,9 +26,10 @@
 using namespace arrow;
 
 // Helper to avoid the verbosity of ArrowSchemaFormat
-std::string ArrowSchemaToString(struct ArrowSchema* schema) {
+std::string ArrowSchemaToString(struct ArrowSchema* schema, bool recursive = true) {
   char formatted_out[1024];
-  int64_t n_chars = ArrowSchemaFormat(schema, formatted_out, sizeof(formatted_out), true);
+  int64_t n_chars =
+      ArrowSchemaFormat(schema, formatted_out, sizeof(formatted_out), recursive);
   return std::string(formatted_out, n_chars);
 }
 
@@ -1257,6 +1258,53 @@ TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
             "test metadata");
   EXPECT_EQ(ArrowSchemaToString(&schema),
             "arrow.test.ext_name<dictionary(int32)<string>>");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaFormatNotRecursive) {
+  struct ArrowSchema schema;
+  ARROW_EXPECT_OK(
+      ExportType(*struct_({field("col1", int32()), field("col2", int64())}), &schema));
+  EXPECT_EQ(ArrowSchemaToString(&schema, false), "struct");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaFormatEmptyNested) {
+  struct ArrowSchema schema;
+  ARROW_EXPECT_OK(ExportType(*struct_({}), &schema));
+  EXPECT_EQ(ArrowSchemaToString(&schema), "struct[]");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaFormatNChars) {
+  struct ArrowSchema schema;
+  ARROW_EXPECT_OK(
+      ExportType(*struct_({field("col1", int32()), field("col2", int64())}), &schema));
+
+  // Check that we can pass nullptr, 0 to get the buffer size we need
+  int64_t chars_needed = ArrowSchemaFormat(&schema, nullptr, 0, true);
+  char* formatted = (char*)ArrowMalloc(chars_needed + 1);
+  ArrowSchemaFormat(&schema, formatted, chars_needed + 1, true);
+  EXPECT_STREQ(formatted, "struct[col1: int32, col2: int32]");
+  ArrowFree(formatted);
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaFormatInvalid) {
+  EXPECT_EQ(ArrowSchemaToString(nullptr), "[invalid: pointer is null]");
+
+  struct ArrowSchema schema;
+  schema.release = nullptr;
+  EXPECT_EQ(ArrowSchemaToString(&schema), "[invalid: schema is released]");
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaToString(&schema),
+            "[invalid: Error parsing schema->format: Expected a null-terminated string "
+            "but found NULL]");
 
   schema.release(&schema);
 }

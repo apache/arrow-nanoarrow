@@ -1173,7 +1173,7 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
     n = 0;
   }
 
-  if (recursive && schema->n_children > 0) {
+  if (recursive && schema->format[0] == '+') {
     n_chars += snprintf(out + n_chars, n, "[");
     n -= n_chars;
     if (n < 0) {
@@ -1189,7 +1189,10 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
         }
       }
 
-      if (schema->children[i]->name != NULL) {
+      // ArrowSchemaFormat() will validate the child and print the error,
+      // but we need the name first
+      if (schema->children[i] != NULL && schema->children[i]->release != NULL &&
+          schema->children[i]->name != NULL) {
         n_chars += snprintf(out + n_chars, n, "%s: ", schema->children[i]->name);
         n -= n_chars;
         if (n < 0) {
