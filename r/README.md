@@ -101,7 +101,7 @@ as_nanoarrow_array(1:5)
 #>  $ offset    : int 0
 #>  $ buffers   :List of 2
 #>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   ..$ :<nanoarrow_buffer_data_int32[20 b] at 0x11672b428>
+#>   ..$ :<nanoarrow_buffer_data_int32[20 b] at 0x135d13c28>
 #>  $ dictionary: NULL
 #>  $ children  : list()
 as_nanoarrow_array(arrow::record_batch(col1 = c(1.1, 2.2)))
@@ -118,7 +118,7 @@ as_nanoarrow_array(arrow::record_batch(col1 = c(1.1, 2.2)))
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
 #>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x116a666b8>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x13604f0b8>
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
@@ -169,7 +169,7 @@ reader <- arrow::RecordBatchReader$create(
 )
 
 (stream <- as_nanoarrow_array_stream(reader))
-#> <nanoarrow_array_stream struct[col1: double]>
+#> <nanoarrow_array_stream struct<col1: double>>
 #>  $ get_schema:function ()  
 #>  $ get_next  :function (schema = x$get_schema(), validate = TRUE)  
 #>  $ release   :function ()
@@ -193,7 +193,7 @@ stream$get_next()
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
 #>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x1177fab38>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x136de3538>
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
@@ -211,7 +211,7 @@ stream$get_next()
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
 #>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x1177fa778>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x136de3178>
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL

@@ -17,7 +17,7 @@
 
 test_that("nanoarrow_array_stream format, print, and str methods work", {
   array_stream <- as_nanoarrow_array_stream(data.frame(x = 1:10))
-  expect_identical(format(array_stream), "<nanoarrow_array_stream struct[x: int32]>")
+  expect_identical(format(array_stream), "<nanoarrow_array_stream struct<x: int32>>")
   expect_output(expect_identical(str(array_stream), array_stream), "nanoarrow_array_stream")
   expect_output(expect_identical(print(array_stream), array_stream), "nanoarrow_array_stream")
 })

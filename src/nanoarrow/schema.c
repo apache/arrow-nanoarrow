@@ -1177,7 +1177,7 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
   }
 
   if (recursive && schema->format[0] == '+') {
-    n_chars_last = snprintf(out + n_chars, n, "[");
+    n_chars_last = snprintf(out + n_chars, n, "<");
     n_chars += n_chars_last;
     n -= n_chars_last;
     if (n < 0) {
@@ -1214,7 +1214,7 @@ int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n,
       }
     }
 
-    n_chars_last = snprintf(out + n_chars, n, "]");
+    n_chars_last = snprintf(out + n_chars, n, ">");
     n_chars += n_chars_last;
     n -= n_chars_last;
     if (n < 0) {
