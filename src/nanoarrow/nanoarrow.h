@@ -187,17 +187,6 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
 
-/// \brief Arrow time unit enumerator
-///
-/// These names and values map to the corresponding arrow::TimeUnit::type
-/// enumerator.
-enum ArrowTimeUnit {
-  NANOARROW_TIME_UNIT_SECOND = 0,
-  NANOARROW_TIME_UNIT_MILLI = 1,
-  NANOARROW_TIME_UNIT_MICRO = 2,
-  NANOARROW_TIME_UNIT_NANO = 3
-};
-
 /// }@
 
 /// \defgroup nanoarrow-schema Schema producer helpers
@@ -209,6 +198,8 @@ enum ArrowTimeUnit {
 /// is responsible for calling the schema->release callback if
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
+
+int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n);
 
 /// \brief Initialize the fields of a fixed-size schema
 ///

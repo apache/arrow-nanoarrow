@@ -232,7 +232,7 @@ ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
-static const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
+static const char* ArrowTimeUnitFormatString(enum ArrowTimeUnit time_unit) {
   switch (time_unit) {
     case NANOARROW_TIME_UNIT_SECOND:
       return "s";
@@ -256,7 +256,7 @@ ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
     return result;
   }
 
-  const char* time_unit_str = ArrowTimeUnitString(time_unit);
+  const char* time_unit_str = ArrowTimeUnitFormatString(time_unit);
   if (time_unit_str == NULL) {
     schema->release(schema);
     return EINVAL;
@@ -1086,6 +1086,52 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
                         &schema_view->extension_metadata);
 
   return NANOARROW_OK;
+}
+
+int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n) {
+  if (schema == NULL) {
+    return snprintf(out, n, "[invalid: pointer is null]");
+  }
+
+  if (schema->release == NULL) {
+    return snprintf(out, n, "[invalid: schema is released]");
+  }
+
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  if (ArrowSchemaViewInit(&schema_view, schema, &error) != NANOARROW_OK) {
+    return snprintf(out, n, "[invalid: %s]", ArrowErrorMessage(&error));
+  }
+
+  // TODO: extension type
+
+  const char* type_string = ArrowTypeString(schema_view.data_type);
+  switch (schema_view.data_type) {
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
+      return snprintf(out, n, "%s(%d, %d)", type_string,
+                      (int)schema_view.decimal_precision, (int)schema_view.decimal_scale);
+    case NANOARROW_TYPE_TIMESTAMP:
+      return snprintf(out, n, "%s(\"%s\", \"%.*s\")", type_string,
+                      ArrowTimeUnitString(schema_view.time_unit),
+                      (int)schema_view.timezone.n_bytes, schema_view.timezone.data);
+    case NANOARROW_TYPE_TIME32:
+    case NANOARROW_TYPE_TIME64:
+    case NANOARROW_TYPE_DURATION:
+      return snprintf(out, n, "%s(\"%s\")", type_string,
+                      ArrowTimeUnitString(schema_view.time_unit));
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      return snprintf(out, n, "%s(%ld)", type_string, (long)schema_view.fixed_size);
+    case NANOARROW_TYPE_SPARSE_UNION:
+    case NANOARROW_TYPE_DENSE_UNION:
+      return snprintf(out, n, "%s(%.*s)", type_string,
+                      (int)schema_view.union_type_ids.n_bytes,
+                      schema_view.union_type_ids.data);
+    default:
+      return snprintf(out, n, "%s", type_string);
+  }
 }
 
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,

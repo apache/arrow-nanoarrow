@@ -252,6 +252,32 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
   }
 }
 
+/// \brief Arrow time unit enumerator
+///
+/// These names and values map to the corresponding arrow::TimeUnit::type
+/// enumerator.
+enum ArrowTimeUnit {
+  NANOARROW_TIME_UNIT_SECOND = 0,
+  NANOARROW_TIME_UNIT_MILLI = 1,
+  NANOARROW_TIME_UNIT_MICRO = 2,
+  NANOARROW_TIME_UNIT_NANO = 3
+};
+
+static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
+  switch (time_unit) {
+    case NANOARROW_TIME_UNIT_SECOND:
+      return "s";
+    case NANOARROW_TIME_UNIT_MILLI:
+      return "ms";
+    case NANOARROW_TIME_UNIT_MICRO:
+      return "us";
+    case NANOARROW_TIME_UNIT_NANO:
+      return "ns";
+    default:
+      return NULL;
+  }
+}
+
 /// \brief Functional types of buffers as described in the Arrow Columnar Specification
 enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_NONE,
