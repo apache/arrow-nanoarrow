@@ -199,7 +199,7 @@ static inline struct ArrowStringView ArrowCharView(const char* value);
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
 
-int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n);
+int64_t ArrowSchemaFormat(struct ArrowSchema* schema, char* out, int64_t n, char recursive);
 
 /// \brief Initialize the fields of a fixed-size schema
 ///
