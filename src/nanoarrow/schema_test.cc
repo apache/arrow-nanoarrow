@@ -27,9 +27,9 @@ using namespace arrow;
 
 // Helper to avoid the verbosity of ArrowSchemaToStdString
 std::string ArrowSchemaToStdString(struct ArrowSchema* schema, bool recursive = true) {
-  char* result = ArrowSchemaToString(schema, recursive);
-  std::string out(result);
-  ArrowFree(result);
+  char result[1024];
+  int64_t n = ArrowSchemaToString(schema, result, sizeof(result), recursive);
+  std::string out(result, n);
   return out;
 }
 

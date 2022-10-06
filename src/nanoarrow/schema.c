@@ -1119,8 +1119,8 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
   }
 }
 
-static int64_t ArrowSchemaToStringInternal(struct ArrowSchema* schema, char* out,
-                                           int64_t n, char recursive) {
+int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+                            char recursive) {
   if (schema == NULL) {
     return snprintf(out, n, "[invalid: pointer is null]");
   }
@@ -1166,8 +1166,7 @@ static int64_t ArrowSchemaToStringInternal(struct ArrowSchema* schema, char* out
   if (!is_dictionary) {
     n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out + n_chars, n);
   } else {
-    n_chars_last =
-        ArrowSchemaToStringInternal(schema->dictionary, out + n_chars, n, recursive);
+    n_chars_last = ArrowSchemaToString(schema->dictionary, out + n_chars, n, recursive);
   }
 
   n_chars += n_chars_last;
@@ -1207,7 +1206,7 @@ static int64_t ArrowSchemaToStringInternal(struct ArrowSchema* schema, char* out
       }
 
       n_chars_last =
-          ArrowSchemaToStringInternal(schema->children[i], out + n_chars, n, recursive);
+          ArrowSchemaToString(schema->children[i], out + n_chars, n, recursive);
       n_chars += n_chars_last;
       n -= n_chars_last;
       if (n < 0) {
@@ -1232,17 +1231,6 @@ static int64_t ArrowSchemaToStringInternal(struct ArrowSchema* schema, char* out
   }
 
   return n_chars;
-}
-
-char* ArrowSchemaToString(struct ArrowSchema* schema, char recursive) {
-  int64_t chars_needed = ArrowSchemaToStringInternal(schema, NULL, 0, recursive);
-  char* out = (char*)ArrowMalloc(chars_needed + 1);
-  if (out == NULL) {
-    return NULL;
-  }
-
-  ArrowSchemaToStringInternal(schema, out, chars_needed + 1, recursive);
-  return out;
 }
 
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,

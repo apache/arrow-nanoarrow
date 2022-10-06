@@ -202,9 +202,12 @@ ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
 
 /// \brief Get a human-readable summary of a Schema
 ///
-/// Returns a char* that must be ArrowFree()d by the caller if non-null.
-/// If recursive is non-zero, the result will also include children.
-char* ArrowSchemaToString(struct ArrowSchema* schema, char recursive);
+/// Writes a summary of an ArrowSchema to out (up to n - 1 characters)
+/// and returns the number of characters required for the output if
+/// n were sufficiently large. If recursive is non-zero, the result will
+/// also include children.
+int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+                            char recursive);
 
 /// \brief Initialize the fields of a fixed-size schema
 ///

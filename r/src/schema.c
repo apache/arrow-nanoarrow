@@ -142,14 +142,13 @@ SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp) {
   }
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
-  char* formatted = ArrowSchemaToString(schema, recursive);
-  // Technically this could jump and leak formatted in the unlikely event that
-  // Rf_mkCharCE can't allocate
-  SEXP formatted_charsxp = PROTECT(Rf_mkCharCE(formatted, CE_UTF8));
-  ArrowFree(formatted);
 
+  int64_t size_needed = ArrowSchemaToString(schema, NULL, 0, recursive);
+  // Using an SEXP because Rf_mkCharLenCE could jump
+  SEXP formatted_sexp = PROTECT(Rf_allocVector(RAWSXP, size_needed + 1));
+  ArrowSchemaToString(schema, (char*)RAW(formatted_sexp), size_needed + 1, recursive);
   SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, 1));
-  SET_STRING_ELT(result_sexp, 0, formatted_charsxp);
+  SET_STRING_ELT(result_sexp, 0, Rf_mkCharLenCE((char*)RAW(formatted_sexp), size_needed, CE_UTF8));
   UNPROTECT(2);
   return result_sexp;
 }
