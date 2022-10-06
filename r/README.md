@@ -65,7 +65,7 @@ arrow R package `DataType` like `arrow::int32()`).
 
 ``` r
 infer_nanoarrow_schema(1:5)
-#> <nanoarrow_schema[i]>
+#> <nanoarrow_schema int32>
 #>  $ format    : chr "i"
 #>  $ name      : chr ""
 #>  $ metadata  : list()
@@ -73,13 +73,13 @@ infer_nanoarrow_schema(1:5)
 #>  $ children  : NULL
 #>  $ dictionary: NULL
 as_nanoarrow_schema(arrow::schema(col1 = arrow::float64()))
-#> <nanoarrow_schema[+s]>
+#> <nanoarrow_schema struct>
 #>  $ format    : chr "+s"
 #>  $ name      : chr ""
 #>  $ metadata  : list()
 #>  $ flags     : int 0
 #>  $ children  :List of 1
-#>   ..$ col1:<nanoarrow_schema[g]>
+#>   ..$ col1:<nanoarrow_schema double>
 #>   .. ..$ format    : chr "g"
 #>   .. ..$ name      : chr "col1"
 #>   .. ..$ metadata  : list()
@@ -95,30 +95,30 @@ Use `as_nanoarrow_array()` to convert an object to an ArrowArray object:
 
 ``` r
 as_nanoarrow_array(1:5)
-#> <nanoarrow_array i[5]>
+#> <nanoarrow_array int32[5]>
 #>  $ length    : int 5
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 2
 #>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   ..$ :<nanoarrow_buffer_data_int32[20 b] at 0x1397d7758>
+#>   ..$ :<nanoarrow_buffer_data_int32[20 b] at 0x135d13c28>
 #>  $ dictionary: NULL
 #>  $ children  : list()
 as_nanoarrow_array(arrow::record_batch(col1 = c(1.1, 2.2)))
-#> <nanoarrow_array +s[2]>
+#> <nanoarrow_array struct[2]>
 #>  $ length    : int 2
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 1
 #>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
 #>  $ children  :List of 1
-#>   ..$ col1:<nanoarrow_array g[2]>
+#>   ..$ col1:<nanoarrow_array double[2]>
 #>   .. ..$ length    : int 2
 #>   .. ..$ null_count: int 0
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
 #>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x118a4b2b8>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x13604f0b8>
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
@@ -141,13 +141,13 @@ can access the attached schema using `infer_nanoarrow_schema()`:
 
 ``` r
 infer_nanoarrow_schema(array)
-#> <nanoarrow_schema[+s]>
+#> <nanoarrow_schema struct>
 #>  $ format    : chr "+s"
 #>  $ name      : chr ""
 #>  $ metadata  : list()
 #>  $ flags     : int 0
 #>  $ children  :List of 1
-#>   ..$ col1:<nanoarrow_schema[g]>
+#>   ..$ col1:<nanoarrow_schema double>
 #>   .. ..$ format    : chr "g"
 #>   .. ..$ name      : chr "col1"
 #>   .. ..$ metadata  : list()
@@ -169,7 +169,7 @@ reader <- arrow::RecordBatchReader$create(
 )
 
 (stream <- as_nanoarrow_array_stream(reader))
-#> <nanoarrow_array_stream[+s]>
+#> <nanoarrow_array_stream struct<col1: double>>
 #>  $ get_schema:function ()  
 #>  $ get_next  :function (schema = x$get_schema(), validate = TRUE)  
 #>  $ release   :function ()
@@ -180,38 +180,38 @@ last batch will return `NULL`.
 
 ``` r
 stream$get_next()
-#> <nanoarrow_array +s[2]>
+#> <nanoarrow_array struct[2]>
 #>  $ length    : int 2
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 1
 #>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
 #>  $ children  :List of 1
-#>   ..$ col1:<nanoarrow_array g[2]>
+#>   ..$ col1:<nanoarrow_array double[2]>
 #>   .. ..$ length    : int 2
 #>   .. ..$ null_count: int 0
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
 #>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x1195924b8>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x136de3538>
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
 stream$get_next()
-#> <nanoarrow_array +s[2]>
+#> <nanoarrow_array struct[2]>
 #>  $ length    : int 2
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 1
 #>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
 #>  $ children  :List of 1
-#>   ..$ col1:<nanoarrow_array g[2]>
+#>   ..$ col1:<nanoarrow_array double[2]>
 #>   .. ..$ length    : int 2
 #>   .. ..$ null_count: int 0
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
 #>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x1195920f8>
+#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x136de3178>
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL

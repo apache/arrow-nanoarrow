@@ -53,7 +53,12 @@ as.vector.nanoarrow_array <- function(x, mode = "any") {
 as.data.frame.nanoarrow_array <- function(x, ...) {
   schema <- infer_nanoarrow_schema(x)
   if (schema$format != "+s") {
-    stop(sprintf("Can't convert array with schema '%s' to data.frame()", schema$format))
+    stop(
+      sprintf(
+        "Can't convert array with type %s to data.frame()",
+        nanoarrow_schema_formatted(schema)
+      )
+    )
   }
 
   .Call(nanoarrow_c_from_array, x, NULL)
@@ -89,7 +94,7 @@ nanoarrow_array_set_schema <- function(array, schema, validate = TRUE) {
 #' @importFrom utils str
 #' @export
 str.nanoarrow_array <- function(object, ...) {
-  cat(sprintf("%s\n", format(object)))
+  cat(sprintf("%s\n", format(object, .recursive = FALSE)))
 
   if (nanoarrow_pointer_is_valid(object)) {
     # Use the str() of the list version but remove the first
@@ -110,13 +115,17 @@ print.nanoarrow_array <- function(x, ...) {
 }
 
 #' @export
-format.nanoarrow_array <- function(x, ...) {
+format.nanoarrow_array <- function(x, ..., .recursive = TRUE) {
   if (nanoarrow_pointer_is_valid(x)) {
     schema <- .Call(nanoarrow_c_infer_schema_array, x)
     if (is.null(schema)) {
       sprintf("<nanoarrow_array <unknown schema>[%s]>", x$length)
     } else {
-      sprintf("<nanoarrow_array %s[%s]>", schema$format, x$length)
+      sprintf(
+        "<nanoarrow_array %s[%s]>",
+        nanoarrow_schema_formatted(schema, .recursive),
+        x$length
+      )
     }
   } else {
     "<nanoarrow_array[invalid pointer]>"

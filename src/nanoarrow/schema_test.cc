@@ -25,6 +25,14 @@
 
 using namespace arrow;
 
+// Helper to avoid the verbosity of ArrowSchemaToStdString
+std::string ArrowSchemaToStdString(struct ArrowSchema* schema, bool recursive = true) {
+  char result[1024];
+  int64_t n = ArrowSchemaToString(schema, result, sizeof(result), recursive);
+  std::string out(result, n);
+  return out;
+}
+
 TEST(SchemaTest, SchemaInit) {
   struct ArrowSchema schema;
   ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
@@ -459,7 +467,7 @@ TEST(SchemaViewTest, SchemaViewInitErrors) {
 }
 
 void ExpectSimpleTypeOk(std::shared_ptr<DataType> arrow_t, enum ArrowType nanoarrow_t,
-                        int bitwidth) {
+                        int bitwidth, const char* formatted) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
@@ -474,6 +482,9 @@ void ExpectSimpleTypeOk(std::shared_ptr<DataType> arrow_t, enum ArrowType nanoar
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], bitwidth);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), formatted);
+
   schema.release(&schema);
 }
 
@@ -488,20 +499,21 @@ TEST(SchemaViewTest, SchemaViewInitSimple) {
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_NA);
   EXPECT_EQ(schema_view.extension_name.data, nullptr);
   EXPECT_EQ(schema_view.extension_metadata.data, nullptr);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "na");
   schema.release(&schema);
 
-  ExpectSimpleTypeOk(boolean(), NANOARROW_TYPE_BOOL, 1);
-  ExpectSimpleTypeOk(int8(), NANOARROW_TYPE_INT8, 8);
-  ExpectSimpleTypeOk(uint8(), NANOARROW_TYPE_UINT8, 8);
-  ExpectSimpleTypeOk(int16(), NANOARROW_TYPE_INT16, 16);
-  ExpectSimpleTypeOk(uint16(), NANOARROW_TYPE_UINT16, 16);
-  ExpectSimpleTypeOk(int32(), NANOARROW_TYPE_INT32, 32);
-  ExpectSimpleTypeOk(uint32(), NANOARROW_TYPE_UINT32, 32);
-  ExpectSimpleTypeOk(int64(), NANOARROW_TYPE_INT64, 64);
-  ExpectSimpleTypeOk(uint64(), NANOARROW_TYPE_UINT64, 64);
-  ExpectSimpleTypeOk(float16(), NANOARROW_TYPE_HALF_FLOAT, 16);
-  ExpectSimpleTypeOk(float64(), NANOARROW_TYPE_DOUBLE, 64);
-  ExpectSimpleTypeOk(float32(), NANOARROW_TYPE_FLOAT, 32);
+  ExpectSimpleTypeOk(boolean(), NANOARROW_TYPE_BOOL, 1, "bool");
+  ExpectSimpleTypeOk(int8(), NANOARROW_TYPE_INT8, 8, "int8");
+  ExpectSimpleTypeOk(uint8(), NANOARROW_TYPE_UINT8, 8, "uint8");
+  ExpectSimpleTypeOk(int16(), NANOARROW_TYPE_INT16, 16, "int16");
+  ExpectSimpleTypeOk(uint16(), NANOARROW_TYPE_UINT16, 16, "uint16");
+  ExpectSimpleTypeOk(int32(), NANOARROW_TYPE_INT32, 32, "int32");
+  ExpectSimpleTypeOk(uint32(), NANOARROW_TYPE_UINT32, 32, "uint32");
+  ExpectSimpleTypeOk(int64(), NANOARROW_TYPE_INT64, 64, "int64");
+  ExpectSimpleTypeOk(uint64(), NANOARROW_TYPE_UINT64, 64, "uint64");
+  ExpectSimpleTypeOk(float16(), NANOARROW_TYPE_HALF_FLOAT, 16, "half_float");
+  ExpectSimpleTypeOk(float64(), NANOARROW_TYPE_DOUBLE, 64, "double");
+  ExpectSimpleTypeOk(float32(), NANOARROW_TYPE_FLOAT, 32, "float");
 }
 
 TEST(SchemaViewTest, SchemaViewInitSimpleErrors) {
@@ -536,6 +548,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   EXPECT_EQ(schema_view.decimal_bitwidth, 128);
   EXPECT_EQ(schema_view.decimal_precision, 5);
   EXPECT_EQ(schema_view.decimal_scale, 6);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "decimal128(5, 6)");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*decimal256(5, 6), &schema));
@@ -551,6 +564,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   EXPECT_EQ(schema_view.decimal_bitwidth, 256);
   EXPECT_EQ(schema_view.decimal_precision, 5);
   EXPECT_EQ(schema_view.decimal_scale, 6);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "decimal256(5, 6)");
   schema.release(&schema);
 }
 
@@ -615,6 +629,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 123 * 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
   EXPECT_EQ(schema_view.fixed_size, 123);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "fixed_size_binary(123)");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*utf8(), &schema));
@@ -627,6 +642,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "string");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*binary(), &schema));
@@ -639,6 +655,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "binary");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*large_binary(), &schema));
@@ -651,6 +668,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "large_binary");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*large_utf8(), &schema));
@@ -663,6 +681,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "large_string");
   schema.release(&schema);
 }
 
@@ -704,12 +723,14 @@ TEST(SchemaViewTest, SchemaViewInitTimeDate) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DATE32);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "date32");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*date64(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DATE64);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "date64");
   schema.release(&schema);
 }
 
@@ -723,6 +744,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME32);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "time32('s')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*time32(TimeUnit::MILLI), &schema));
@@ -730,6 +752,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME32);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "time32('ms')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*time64(TimeUnit::MICRO), &schema));
@@ -737,6 +760,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME64);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "time64('us')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*time64(TimeUnit::NANO), &schema));
@@ -744,6 +768,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTime) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIME64);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "time64('ns')");
   schema.release(&schema);
 }
 
@@ -757,6 +782,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('s', 'America/Halifax')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::MILLI, "America/Halifax"), &schema));
@@ -764,6 +790,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('ms', 'America/Halifax')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::MICRO, "America/Halifax"), &schema));
@@ -771,6 +798,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('us', 'America/Halifax')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::NANO, "America/Halifax"), &schema));
@@ -778,6 +806,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('ns', 'America/Halifax')");
   schema.release(&schema);
 }
 
@@ -791,6 +820,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "duration('s')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::MILLI), &schema));
@@ -798,6 +828,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "duration('ms')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::MICRO), &schema));
@@ -805,6 +836,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "duration('us')");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::NANO), &schema));
@@ -812,6 +844,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DURATION);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "duration('ns')");
   schema.release(&schema);
 }
 
@@ -824,18 +857,21 @@ TEST(SchemaViewTest, SchemaViewInitTimeInterval) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_MONTHS);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_MONTHS);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "interval_months");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*day_time_interval(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_DAY_TIME);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_DAY_TIME);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "interval_day_time");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*month_day_nano_interval(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "interval_month_day_nano");
   schema.release(&schema);
 }
 
@@ -904,6 +940,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "list<item: int32>");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*large_list(int32()), &schema));
@@ -916,6 +953,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "large_list<item: int32>");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*fixed_size_list(int32(), 123), &schema));
@@ -930,6 +968,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
   EXPECT_EQ(schema_view.fixed_size, 123);
   EXPECT_EQ(schema_view.layout.child_size_elements, 123);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "fixed_size_list(123)<item: int32>");
   schema.release(&schema);
 }
 
@@ -962,7 +1001,8 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
-  ARROW_EXPECT_OK(ExportType(*struct_({field("col", int32())}), &schema));
+  ARROW_EXPECT_OK(
+      ExportType(*struct_({field("col1", int32()), field("col2", int64())}), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_STRUCT);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_STRUCT);
@@ -972,9 +1012,11 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "struct<col1: int32, col2: int64>");
 
-  // Make sure child validates
+  // Make sure children validate
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[0], &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[1], &error), NANOARROW_OK);
 
   schema.release(&schema);
 }
@@ -1019,6 +1061,8 @@ TEST(SchemaViewTest, SchemaViewInitNestedMap) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema),
+            "map<entries: struct<key: int32, value: int32>>");
   schema.release(&schema);
 }
 
@@ -1079,6 +1123,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(
       std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
       std::string("0"));
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "dense_union([0])<col: int32>");
   schema.release(&schema);
 
   ARROW_EXPECT_OK(ExportType(*sparse_union({field("col", int32())}), &schema));
@@ -1094,6 +1139,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(
       std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
       std::string("0"));
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "sparse_union([0])<col: int32>");
   schema.release(&schema);
 }
 
@@ -1143,6 +1189,7 @@ TEST(SchemaViewTest, SchemaViewInitDictionary) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DICTIONARY);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "dictionary(int32)<string>");
   schema.release(&schema);
 }
 
@@ -1185,6 +1232,65 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
   EXPECT_EQ(std::string(schema_view.extension_metadata.data,
                         schema_view.extension_metadata.n_bytes),
             "test metadata");
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "arrow.test.ext_name{int32}");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  auto arrow_meta = std::make_shared<KeyValueMetadata>();
+  arrow_meta->Append("ARROW:extension:name", "arrow.test.ext_name");
+  arrow_meta->Append("ARROW:extension:metadata", "test metadata");
+
+  auto int_field = field("field_name", dictionary(int32(), utf8()), arrow_meta);
+  ARROW_EXPECT_OK(ExportField(*int_field, &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DICTIONARY);
+  EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(
+      std::string(schema_view.extension_name.data, schema_view.extension_name.n_bytes),
+      "arrow.test.ext_name");
+  EXPECT_EQ(std::string(schema_view.extension_metadata.data,
+                        schema_view.extension_metadata.n_bytes),
+            "test metadata");
+  EXPECT_EQ(ArrowSchemaToStdString(&schema),
+            "arrow.test.ext_name{dictionary(int32)<string>}");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaFormatNotRecursive) {
+  struct ArrowSchema schema;
+  ARROW_EXPECT_OK(
+      ExportType(*struct_({field("col1", int32()), field("col2", int64())}), &schema));
+  EXPECT_EQ(ArrowSchemaToStdString(&schema, false), "struct");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaFormatEmptyNested) {
+  struct ArrowSchema schema;
+  ARROW_EXPECT_OK(ExportType(*struct_({}), &schema));
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "struct<>");
+
+  schema.release(&schema);
+}
+
+TEST(SchemaViewTest, SchemaFormatInvalid) {
+  EXPECT_EQ(ArrowSchemaToStdString(nullptr), "[invalid: pointer is null]");
+
+  struct ArrowSchema schema;
+  schema.release = nullptr;
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "[invalid: schema is released]");
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema),
+            "[invalid: Error parsing schema->format: Expected a null-terminated string "
+            "but found NULL]");
 
   schema.release(&schema);
 }

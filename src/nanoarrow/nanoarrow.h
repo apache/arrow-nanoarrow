@@ -78,6 +78,7 @@
 #define ArrowMetadataBuilderRemove \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderRemove)
 #define ArrowSchemaViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaViewInit)
+#define ArrowSchemaToString NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaToString)
 #define ArrowArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInit)
 #define ArrowArrayInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
@@ -187,17 +188,6 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
 
-/// \brief Arrow time unit enumerator
-///
-/// These names and values map to the corresponding arrow::TimeUnit::type
-/// enumerator.
-enum ArrowTimeUnit {
-  NANOARROW_TIME_UNIT_SECOND = 0,
-  NANOARROW_TIME_UNIT_MILLI = 1,
-  NANOARROW_TIME_UNIT_MICRO = 2,
-  NANOARROW_TIME_UNIT_NANO = 3
-};
-
 /// }@
 
 /// \defgroup nanoarrow-schema Schema producer helpers
@@ -209,6 +199,15 @@ enum ArrowTimeUnit {
 /// is responsible for calling the schema->release callback if
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
+
+/// \brief Get a human-readable summary of a Schema
+///
+/// Writes a summary of an ArrowSchema to out (up to n - 1 characters)
+/// and returns the number of characters required for the output if
+/// n were sufficiently large. If recursive is non-zero, the result will
+/// also include children.
+int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+                            char recursive);
 
 /// \brief Initialize the fields of a fixed-size schema
 ///
