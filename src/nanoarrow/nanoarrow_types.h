@@ -27,8 +27,6 @@
 extern "C" {
 #endif
 
-/// \defgroup nanoarrow-inline-typedef Type definitions used in inlined implementations
-
 // Extra guard for versions of Arrow without the canonical guard
 #ifndef ARROW_FLAG_DICTIONARY_ORDERED
 
@@ -116,13 +114,34 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
+// Utility macros
+#define _NANOARROW_CONCAT(x, y) x##y
+#define _NANOARROW_MAKE_NAME(x, y) _NANOARROW_CONCAT(x, y)
+
+#define _NANOARROW_RETURN_NOT_OK_IMPL(NAME, EXPR) \
+  do {                                            \
+    const int NAME = (EXPR);                      \
+    if (NAME) return NAME;                        \
+  } while (0)
+
+#define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
+  NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
+
 /// \brief Return code for success.
+/// \ingroup nanoarrow-errors
 #define NANOARROW_OK 0
 
 /// \brief Represents an errno-compatible error code
+/// \ingroup nanoarrow-errors
 typedef int ArrowErrorCode;
 
+/// \brief Check the result of an expression and return it if not NANOARROW_OK
+/// \ingroup nanoarrow-errors
+#define NANOARROW_RETURN_NOT_OK(EXPR) \
+  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
 /// \brief Arrow type enumerator
+/// \ingroup nanoarrow-utils
 ///
 /// These names are intended to map to the corresponding arrow::Type::type
 /// enumerator; however, the numeric values are specifically not equal
@@ -169,6 +188,10 @@ enum ArrowType {
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 };
 
+/// \brief Get a string value of an enum ArrowType value
+/// \ingroup nanoarrow-utils
+///
+/// Returns NULL for invalid values for type
 static inline const char* ArrowTypeString(enum ArrowType type) {
   switch (type) {
     case NANOARROW_TYPE_NA:
@@ -253,6 +276,7 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
 }
 
 /// \brief Arrow time unit enumerator
+/// \ingroup nanoarrow-utils
 ///
 /// These names and values map to the corresponding arrow::TimeUnit::type
 /// enumerator.
@@ -263,6 +287,10 @@ enum ArrowTimeUnit {
   NANOARROW_TIME_UNIT_NANO = 3
 };
 
+/// \brief Get a string value of an enum ArrowTimeUnit value
+/// \ingroup nanoarrow-utils
+///
+/// Returns NULL for invalid values for time_unit
 static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
   switch (time_unit) {
     case NANOARROW_TIME_UNIT_SECOND:
@@ -279,6 +307,7 @@ static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
 }
 
 /// \brief Functional types of buffers as described in the Arrow Columnar Specification
+/// \ingroup nanoarrow-array-view
 enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_NONE,
   NANOARROW_BUFFER_TYPE_VALIDITY,
@@ -288,39 +317,8 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_DATA
 };
 
-#define _NANOARROW_CONCAT(x, y) x##y
-#define _NANOARROW_MAKE_NAME(x, y) _NANOARROW_CONCAT(x, y)
-
-#define _NANOARROW_RETURN_NOT_OK_IMPL(NAME, EXPR) \
-  do {                                            \
-    const int NAME = (EXPR);                      \
-    if (NAME) return NAME;                        \
-  } while (0)
-
-#define NANOARROW_RETURN_NOT_OK(EXPR) \
-  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
-
-#define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
-  NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
-
-/// \brief A description of an arrangement of buffers
-///
-/// Contains the minimum amount of information required to
-/// calculate the size of each buffer in an ArrowArray knowing only
-/// the length and offset of the array.
-struct ArrowLayout {
-  /// \brief The function of each buffer
-  enum ArrowBufferType buffer_type[3];
-
-  /// \brief The size of an element each buffer or 0 if this size is variable or unknown
-  int64_t element_size_bits[3];
-
-  /// \brief The number of elements in the child array per element in this array for a
-  /// fixed-size list
-  int64_t child_size_elements;
-};
-
 /// \brief An non-owning view of a string
+/// \ingroup nanoarrow-utils
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
   ///
@@ -333,6 +331,8 @@ struct ArrowStringView {
   int64_t n_bytes;
 };
 
+/// \brief Return a view of a const C string
+/// \ingroup nanoarrow-utils
 static inline struct ArrowStringView ArrowCharView(const char* value) {
   struct ArrowStringView out;
 
@@ -347,6 +347,7 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
 }
 
 /// \brief An non-owning view of a buffer
+/// \ingroup nanoarrow-utils
 struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
@@ -371,6 +372,7 @@ struct ArrowBufferView {
 };
 
 /// \brief Array buffer allocation and deallocation
+/// \ingroup nanoarrow-buffer
 ///
 /// Container for allocate, reallocate, and free methods that can be used
 /// to customize allocation and deallocation of buffers when constructing
@@ -388,6 +390,7 @@ struct ArrowBufferAllocator {
 };
 
 /// \brief An owning mutable view of a buffer
+/// \ingroup nanoarrow-buffer
 struct ArrowBuffer {
   /// \brief A pointer to the start of the buffer
   ///
@@ -413,6 +416,57 @@ struct ArrowBitmap {
   int64_t size_bits;
 };
 
+/// \brief A description of an arrangement of buffers
+/// \ingroup nanoarrow-array-view
+///
+/// Contains the minimum amount of information required to
+/// calculate the size of each buffer in an ArrowArray knowing only
+/// the length and offset of the array.
+struct ArrowLayout {
+  /// \brief The function of each buffer
+  enum ArrowBufferType buffer_type[3];
+
+  /// \brief The size of an element each buffer or 0 if this size is variable or unknown
+  int64_t element_size_bits[3];
+
+  /// \brief The number of elements in the child array per element in this array for a
+  /// fixed-size list
+  int64_t child_size_elements;
+};
+
+/// \brief A non-owning view of an ArrowArray
+/// \ingroup nanoarrow-array-view
+///
+/// This data structure provides access to the values contained within
+/// an ArrowArray with fields provided in a more readily-extractible
+/// form. You can re-use an ArrowArrayView for multiple ArrowArrays
+/// with the same storage type, or use it to represent a hypothetical
+/// ArrowArray that does not exist yet.
+struct ArrowArrayView {
+  /// \brief The underlying ArrowArray or NULL if it has not been set
+  struct ArrowArray* array;
+
+  /// \brief The type used to store values in this array
+  ///
+  /// This type represents only the minimum required information to
+  /// extract values from the array buffers (e.g., for a Date32 array,
+  /// this value will be NANOARROW_TYPE_INT32). For dictionary-encoded
+  /// arrays, this will be the index type.
+  enum ArrowType storage_type;
+
+  /// \brief The buffer types, strides, and sizes of this Array's buffers
+  struct ArrowLayout layout;
+
+  /// \brief This Array's buffers as ArrowBufferView objects
+  struct ArrowBufferView buffer_views[3];
+
+  /// \brief The number of children of this view
+  int64_t n_children;
+
+  /// \brief Pointers to views of this array's children
+  struct ArrowArrayView** children;
+};
+
 // Used as the private data member for ArrowArrays allocated here and accessed
 // internally within inline ArrowArray* helpers.
 struct ArrowArrayPrivateData {
@@ -434,17 +488,6 @@ struct ArrowArrayPrivateData {
   // The buffer arrangement for the storage type
   struct ArrowLayout layout;
 };
-
-struct ArrowArrayView {
-  struct ArrowArray* array;
-  enum ArrowType storage_type;
-  struct ArrowLayout layout;
-  struct ArrowBufferView buffer_views[3];
-  int64_t n_children;
-  struct ArrowArrayView** children;
-};
-
-/// }@
 
 #ifdef __cplusplus
 }
