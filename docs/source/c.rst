@@ -15,11 +15,62 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-C API
+C API Reference
 ==================
 
-nanoarrow.h
+Creating schemas
 ------------------
+.. doxygengroup:: nanoarrow-schema
+   :members:
 
-.. doxygenfile:: nanoarrow.h
-   :project: nanoarrow_c
+Reading schemas
+------------------
+.. doxygengroup:: nanoarrow-schema-view
+   :members:
+
+Creating arrays
+------------------
+.. doxygengroup:: nanoarrow-array
+   :members:
+
+Reading arrays
+------------------
+.. doxygengroup:: nanoarrow-array-view
+   :members:
+
+Owning, growable buffers
+------------------------
+.. doxygengroup:: nanoarrow-buffer
+   :members:
+
+Bitmap utilities
+------------------
+.. doxygengroup:: nanoarrow-bitmap
+   :members:
+
+Create, read, and modify schema metadata
+----------------------------------------
+.. doxygengroup:: nanoarrow-metadata
+   :members:
+
+Memory management 
+------------------
+.. doxygengroup:: nanoarrow-malloc
+   :members:
+
+Error handling 
+------------------
+.. doxygengroup:: nanoarrow-errors
+   :members:
+
+Utility data structures
+-----------------------
+.. doxygengroup:: nanoarrow-utils
+   :members:
+
+Arrow C Data Interface
+----------------------
+
+.. doxygengroup:: nanoarrow-arrow-cdata
+   :members:
+   :undoc-members:

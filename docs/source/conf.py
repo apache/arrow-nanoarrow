@@ -59,7 +59,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ['README_generated.rst']
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -73,7 +73,7 @@ html_theme_options = {
     "show_toc_level": 2,
     "use_edit_page_button": True,
     "external_links": [
-      {"name": "R API", "url": "r/index.html"},
+      {"name": "R Package", "url": "r/index.html"},
   ],
 }
 
