@@ -18,6 +18,36 @@
 C API
 ==================
 
+Creating schemas
+------------------
+.. doxygengroup:: nanoarrow-schema
+   :members:
+
+Reading schemas
+------------------
+.. doxygengroup:: nanoarrow-schema-view
+   :members:
+
+Creating arrays
+------------------
+.. doxygengroup:: nanoarrow-array
+   :members:
+
+Reading arrays
+------------------
+.. doxygengroup:: nanoarrow-array-view
+   :members:
+
+Owning, growable buffers
+------------------------
+.. doxygengroup:: nanoarrow-buffer
+   :members:
+
+Bitmap utilities
+------------------
+.. doxygengroup:: nanoarrow-bitmap
+   :members:
+
 Memory management 
 ------------------
 .. doxygengroup:: nanoarrow-malloc
@@ -31,34 +61,4 @@ Error handling
 Utility data structures
 -----------------------
 .. doxygengroup:: nanoarrow-utils
-   :members:
-
-Creating schemas
-------------------
-.. doxygengroup:: nanoarrow-schema
-   :members:
-
-Reading schemas
-------------------
-.. doxygengroup:: nanoarrow-schema-view
-   :members:
-
-Owning, growable buffers
-------------------------
-.. doxygengroup:: nanoarrow-buffer
-   :members:
-
-Bitmap utilities
-------------------
-.. doxygengroup:: nanoarrow-bitmap
-   :members:
-
-Creating arrays
-------------------
-.. doxygengroup:: nanoarrow-array
-   :members:
-
-Reading arrays
-------------------
-.. doxygengroup:: nanoarrow-array-view
    :members:
