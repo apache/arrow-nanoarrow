@@ -421,6 +421,7 @@ struct ArrowBuffer {
 };
 
 /// \brief An owning mutable view of a bitmap
+/// \ingroup nanoarrow-bitmap
 struct ArrowBitmap {
   /// \brief An ArrowBuffer to hold the allocated memory
   struct ArrowBuffer buffer;
@@ -430,7 +431,7 @@ struct ArrowBitmap {
 };
 
 /// \brief A description of an arrangement of buffers
-/// \ingroup nanoarrow-array-view
+/// \ingroup nanoarrow-utils
 ///
 /// Contains the minimum amount of information required to
 /// calculate the size of each buffer in an ArrowArray knowing only
