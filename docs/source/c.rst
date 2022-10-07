@@ -15,7 +15,7 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-C API
+C API Reference
 ==================
 
 Creating schemas
@@ -48,6 +48,11 @@ Bitmap utilities
 .. doxygengroup:: nanoarrow-bitmap
    :members:
 
+Create, read, and modify schema metadata
+----------------------------------------
+.. doxygengroup:: nanoarrow-metadata
+   :members:
+
 Memory management 
 ------------------
 .. doxygengroup:: nanoarrow-malloc
@@ -62,3 +67,10 @@ Utility data structures
 -----------------------
 .. doxygengroup:: nanoarrow-utils
    :members:
+
+Arrow C Data Interface
+----------------------
+
+.. doxygengroup:: nanoarrow-arrow-cdata
+   :members:
+   :undoc-members:

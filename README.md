@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# arrow-nanoarrow
+# nanoarrow
 
 [![Codecov test coverage](https://codecov.io/gh/apache/arrow-nanoarrow/branch/main/graph/badge.svg)](https://app.codecov.io/gh/apache/arrow-nanoarrow?branch=main)
 

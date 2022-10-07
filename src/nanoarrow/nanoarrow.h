@@ -109,7 +109,7 @@
 extern "C" {
 #endif
 
-/// \file nanoarrow.h
+/// \defgroup nanoarrow
 ///
 /// Except where noted, objects are not thread-safe and clients should
 /// take care to serialize accesses to methods.
@@ -122,7 +122,7 @@ extern "C" {
 ///
 /// Non-buffer members of a struct ArrowSchema and struct ArrowArray
 /// must be allocated using ArrowMalloc() or ArrowRealloc() and freed
-/// using ArrowFree for schemas and arrays allocated here. Buffer members
+/// using ArrowFree() for schemas and arrays allocated here. Buffer members
 /// are allocated using an ArrowBufferAllocator.
 ///
 /// @{
@@ -250,35 +250,41 @@ ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
 
 /// \brief Copy format into schema->format
 ///
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format);
 
 /// \brief Copy name into schema->name
 ///
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema, const char* name);
 
 /// \brief Copy metadata into schema->metadata
 ///
-/// schema must have been allocated using ArrowSchemaInit or
+/// schema must have been allocated using ArrowSchemaInit() or
 /// ArrowSchemaDeepCopy.
 ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema, const char* metadata);
 
 /// \brief Allocate the schema->children array
 ///
 /// Includes the memory for each child struct ArrowSchema.
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
                                            int64_t n_children);
 
 /// \brief Allocate the schema->dictionary member
 ///
-/// schema must have been allocated using ArrowSchemaInit or
-/// ArrowSchemaDeepCopy.
+/// schema must have been allocated using ArrowSchemaInit() or
+/// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
+
+/// @}
+
+/// \defgroup nanoarrow-metadata Create, read, and modify schema metadata
+///
+/// @{
 
 /// \brief Reader for key/value pairs in schema metadata
 ///
@@ -648,37 +654,37 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
 ///
 /// Includes the memory for each child struct ArrowArray,
 /// whose members are marked as released and may be subsequently initialized
-/// with ArrowArrayInit or moved from an existing ArrowArray.
-/// schema must have been allocated using ArrowArrayInit.
+/// with ArrowArrayInit() or moved from an existing ArrowArray.
+/// schema must have been allocated using ArrowArrayInit().
 ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children);
 
 /// \brief Allocate the array->dictionary member
 ///
 /// Includes the memory for the struct ArrowArray, whose contents
 /// is marked as released and may be subsequently initialized
-/// with ArrowArrayInit or moved from an existing ArrowArray.
-/// array must have been allocated using ArrowArrayInit
+/// with ArrowArrayInit() or moved from an existing ArrowArray.
+/// array must have been allocated using ArrowArrayInit()
 ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
 
 /// \brief Set the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap);
 
 /// \brief Set a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer);
 
 /// \brief Get the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* array);
 
 /// \brief Get a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
 
 /// \brief Start element-wise appending to an ArrowArray
@@ -686,7 +692,7 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 /// Initializes any values needed to use ArrowArrayAppend*() functions.
 /// All element-wise appenders append by value and return EINVAL if the exact value
 /// cannot be represented by the underlying storage type.
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
 
 /// \brief Reserve space for future appends
@@ -762,7 +768,7 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 /// Flushes any pointers from internal buffers that may have been reallocated
 /// into the array->buffers array and checks the actual size of the buffers
 /// against the expected size based on the final length.
-/// array must have been allocated using ArrowArrayInit
+/// array must have been allocated using ArrowArrayInit()
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error);
 

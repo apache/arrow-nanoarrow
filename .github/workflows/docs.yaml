@@ -45,6 +45,11 @@ jobs:
           cd src/apidoc
           doxygen
       
+      - name: Regenerate index content from README
+        run: |
+          cd docs
+          pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
+      
       - name: Run sphinx
         run: |
           cd docs

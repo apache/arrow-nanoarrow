@@ -30,6 +30,17 @@ extern "C" {
 // Extra guard for versions of Arrow without the canonical guard
 #ifndef ARROW_FLAG_DICTIONARY_ORDERED
 
+/// \defgroup nanoarrow-arrow-cdata
+///
+/// The Arrow C Data (https://arrow.apache.org/docs/format/CDataInterface.html)
+/// and Arrow C Stream (https://arrow.apache.org/docs/format/CStreamInterface.html)
+/// interfaces are part of the
+/// Arrow Columnar Format specification
+/// (https://arrow.apache.org/docs/format/Columnar.html). See the Arrow documentation for
+/// documentation of these structures.
+///
+/// @{
+
 #ifndef ARROW_C_DATA_INTERFACE
 #define ARROW_C_DATA_INTERFACE
 
@@ -113,6 +124,8 @@ struct ArrowArrayStream {
 
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
+
+/// @}
 
 // Utility macros
 #define _NANOARROW_CONCAT(x, y) x##y

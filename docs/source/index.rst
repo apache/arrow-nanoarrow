@@ -15,16 +15,12 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-nanoarrow
-============
+.. include:: README_generated.rst
 
-The nanoarrow library is a C library providing helpers to generate and
-interpret `Arrow C Data interface <https://arrow.apache.org/docs/format/CDataInterface.html>`_
-and `Arrow C Array Stream interface <https://arrow.apache.org/docs/format/CStreamInterface.html>`_
-structures to facilitate producing and consuming data using `Apache Arrow <https://arrow.apache.org>`_.
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-   C API <c>
+   C API Reference <c>
