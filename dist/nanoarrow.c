@@ -432,7 +432,7 @@ ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
-static const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
+static const char* ArrowTimeUnitFormatString(enum ArrowTimeUnit time_unit) {
   switch (time_unit) {
     case NANOARROW_TIME_UNIT_SECOND:
       return "s";
@@ -456,7 +456,7 @@ ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
     return result;
   }
 
-  const char* time_unit_str = ArrowTimeUnitString(time_unit);
+  const char* time_unit_str = ArrowTimeUnitFormatString(time_unit);
   if (time_unit_str == NULL) {
     schema->release(schema);
     return EINVAL;
@@ -1286,6 +1286,151 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
                         &schema_view->extension_metadata);
 
   return NANOARROW_OK;
+}
+
+static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_view,
+                                               char* out, int64_t n) {
+  const char* type_string = ArrowTypeString(schema_view->data_type);
+  switch (schema_view->data_type) {
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
+      return snprintf(out, n, "%s(%d, %d)", type_string,
+                      (int)schema_view->decimal_precision,
+                      (int)schema_view->decimal_scale);
+    case NANOARROW_TYPE_TIMESTAMP:
+      return snprintf(out, n, "%s('%s', '%.*s')", type_string,
+                      ArrowTimeUnitString(schema_view->time_unit),
+                      (int)schema_view->timezone.n_bytes, schema_view->timezone.data);
+    case NANOARROW_TYPE_TIME32:
+    case NANOARROW_TYPE_TIME64:
+    case NANOARROW_TYPE_DURATION:
+      return snprintf(out, n, "%s('%s')", type_string,
+                      ArrowTimeUnitString(schema_view->time_unit));
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      return snprintf(out, n, "%s(%ld)", type_string, (long)schema_view->fixed_size);
+    case NANOARROW_TYPE_SPARSE_UNION:
+    case NANOARROW_TYPE_DENSE_UNION:
+      return snprintf(out, n, "%s([%.*s])", type_string,
+                      (int)schema_view->union_type_ids.n_bytes,
+                      schema_view->union_type_ids.data);
+    default:
+      return snprintf(out, n, "%s", type_string);
+  }
+}
+
+int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+                            char recursive) {
+  if (schema == NULL) {
+    return snprintf(out, n, "[invalid: pointer is null]");
+  }
+
+  if (schema->release == NULL) {
+    return snprintf(out, n, "[invalid: schema is released]");
+  }
+
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+
+  if (ArrowSchemaViewInit(&schema_view, schema, &error) != NANOARROW_OK) {
+    return snprintf(out, n, "[invalid: %s]", ArrowErrorMessage(&error));
+  }
+
+  // Extension type and dictionary should include both the top-level type
+  // and the storage type.
+  int is_extension = schema_view.extension_name.n_bytes > 0;
+  int is_dictionary = schema->dictionary != NULL;
+  int64_t n_chars = 0;
+  int64_t n_chars_last = 0;
+
+  // Uncommon but not technically impossible that both are true
+  if (is_extension && is_dictionary) {
+    n_chars_last = snprintf(
+        out + n_chars, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.n_bytes,
+        schema_view.extension_name.data, ArrowTypeString(schema_view.storage_data_type));
+  } else if (is_extension) {
+    n_chars_last =
+        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.n_bytes,
+                 schema_view.extension_name.data);
+  } else if (is_dictionary) {
+    n_chars_last = snprintf(out + n_chars, n, "dictionary(%s)<",
+                            ArrowTypeString(schema_view.storage_data_type));
+  }
+
+  n_chars += n_chars_last;
+  n -= n_chars_last;
+  if (n < 0) {
+    n = 0;
+  }
+
+  if (!is_dictionary) {
+    n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out + n_chars, n);
+  } else {
+    n_chars_last = ArrowSchemaToString(schema->dictionary, out + n_chars, n, recursive);
+  }
+
+  n_chars += n_chars_last;
+  n -= n_chars_last;
+  if (n < 0) {
+    n = 0;
+  }
+
+  if (recursive && schema->format[0] == '+') {
+    n_chars_last = snprintf(out + n_chars, n, "<");
+    n_chars += n_chars_last;
+    n -= n_chars_last;
+    if (n < 0) {
+      n = 0;
+    }
+
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      if (i > 0) {
+        n_chars_last = snprintf(out + n_chars, n, ", ");
+        n_chars += n_chars_last;
+        n -= n_chars_last;
+        if (n < 0) {
+          n = 0;
+        }
+      }
+
+      // ArrowSchemaToStringInternal() will validate the child and print the error,
+      // but we need the name first
+      if (schema->children[i] != NULL && schema->children[i]->release != NULL &&
+          schema->children[i]->name != NULL) {
+        n_chars_last = snprintf(out + n_chars, n, "%s: ", schema->children[i]->name);
+        n_chars += n_chars_last;
+        n -= n_chars_last;
+        if (n < 0) {
+          n = 0;
+        }
+      }
+
+      n_chars_last =
+          ArrowSchemaToString(schema->children[i], out + n_chars, n, recursive);
+      n_chars += n_chars_last;
+      n -= n_chars_last;
+      if (n < 0) {
+        n = 0;
+      }
+    }
+
+    n_chars_last = snprintf(out + n_chars, n, ">");
+    n_chars += n_chars_last;
+    n -= n_chars_last;
+    if (n < 0) {
+      n = 0;
+    }
+  }
+
+  if (is_extension && is_dictionary) {
+    n_chars += snprintf(out + n_chars, n, ">}");
+  } else if (is_extension) {
+    n_chars += snprintf(out + n_chars, n, "}");
+  } else if (is_dictionary) {
+    n_chars += snprintf(out + n_chars, n, ">");
+  }
+
+  return n_chars;
 }
 
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
