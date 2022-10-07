@@ -109,11 +109,7 @@
 extern "C" {
 #endif
 
-/// \file Arrow C Implementation
-///
-/// EXPERIMENTAL. Interface subject to change.
-
-/// \page object-model Object Model
+/// \file nanoarrow.h
 ///
 /// Except where noted, objects are not thread-safe and clients should
 /// take care to serialize accesses to methods.
@@ -128,6 +124,8 @@ extern "C" {
 /// must be allocated using ArrowMalloc() or ArrowRealloc() and freed
 /// using ArrowFree for schemas and arrays allocated here. Buffer members
 /// are allocated using an ArrowBufferAllocator.
+///
+/// @{
 
 /// \brief Allocate like malloc()
 void* ArrowMalloc(int64_t size);
@@ -155,17 +153,21 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
                         int64_t size),
     void* private_data);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-errors Error handling primitives
+/// \defgroup nanoarrow-errors Error handling
+///
 /// Functions generally return an errno-compatible error code; functions that
 /// need to communicate more verbose error information accept a pointer
 /// to an ArrowError. This can be stack or statically allocated. The
 /// content of the message is undefined unless an error code has been
 /// returned.
+///
+/// @{
 
 /// \brief Error type containing a UTF-8 encoded message.
 struct ArrowError {
+  /// \brief A character buffer with space for an error message.
   char message[1024];
 };
 
@@ -175,9 +177,11 @@ ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
 /// \brief Get the contents of an error
 const char* ArrowErrorMessage(struct ArrowError* error);
 
-/// }@
+/// @}
 
 /// \defgroup nanoarrow-utils Utility data structures
+///
+/// @{
 
 /// \brief Return the build id against which the library was compiled
 const char* ArrowNanoarrowBuildId();
@@ -188,10 +192,13 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-schema Schema producer helpers
+/// \defgroup nanoarrow-schema Creating schemas
+///
 /// These functions allocate, copy, and destroy ArrowSchema structures
+///
+/// @{
 
 /// \brief Initialize the fields of a schema
 ///
@@ -274,9 +281,17 @@ ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
 ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
 
 /// \brief Reader for key/value pairs in schema metadata
+///
+/// The ArrowMetadataReader does not own any data and is only valid
+/// for the lifetime of the underlying metadata pointer.
 struct ArrowMetadataReader {
+  /// \brief A metadata string from a schema->metadata field.
   const char* metadata;
+
+  /// \brief The current offset into the metadata string
   int64_t offset;
+
+  /// \brief The number of remaining keys
   int32_t remaining_keys;
 };
 
@@ -325,9 +340,11 @@ ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
 ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
                                           struct ArrowStringView key);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-schema-view Schema consumer helpers
+/// \defgroup nanoarrow-schema-view Reading schemas
+///
+/// @{
 
 /// \brief A non-owning view of a parsed ArrowSchema
 ///
@@ -422,9 +439,11 @@ struct ArrowSchemaView {
 ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
                                    struct ArrowSchema* schema, struct ArrowError* error);
 
-/// }@
+/// @}
 
 /// \defgroup nanoarrow-buffer Owning, growable buffers
+///
+/// @{
 
 /// \brief Initialize an ArrowBuffer
 ///
@@ -530,9 +549,11 @@ static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
 static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value);
 
-/// }@
+/// @}
 
 /// \defgroup nanoarrow-bitmap Bitmap utilities
+///
+/// @{
 
 /// \brief Extract a boolean value from a bitmap
 static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i);
@@ -600,10 +621,13 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
 /// Releases any memory held by buffer, empties the cache, and resets the size to zero
 static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-array Array producer helpers
+/// \defgroup nanoarrow-array Creating arrays
+///
 /// These functions allocate, copy, and destroy ArrowArray structures
+///
+/// @{
 
 /// \brief Initialize the fields of an array
 ///
@@ -742,10 +766,13 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error);
 
-/// }@
+/// @}
 
-/// \defgroup nanoarrow-array Array consumer helpers
+/// \defgroup nanoarrow-array-view Reading arrays
+///
 /// These functions read and validate the contents ArrowArray structures
+///
+/// @{
 
 /// \brief Initialize the contents of an ArrowArrayView
 void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
@@ -807,7 +834,7 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     struct ArrowArrayView* array_view, int64_t i);
 
-/// }@
+/// @}
 
 // Inline function definitions
 #include "array_inline.h"

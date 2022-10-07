@@ -18,8 +18,47 @@
 C API
 ==================
 
-nanoarrow.h
+Memory management 
 ------------------
+.. doxygengroup:: nanoarrow-malloc
+   :members:
 
-.. doxygenfile:: nanoarrow.h
-   :project: nanoarrow_c
+Error handling 
+------------------
+.. doxygengroup:: nanoarrow-errors
+   :members:
+
+Utility data structures
+-----------------------
+.. doxygengroup:: nanoarrow-utils
+   :members:
+
+Creating schemas
+------------------
+.. doxygengroup:: nanoarrow-schema
+   :members:
+
+Reading schemas
+------------------
+.. doxygengroup:: nanoarrow-schema-view
+   :members:
+
+Owning, growable buffers
+------------------------
+.. doxygengroup:: nanoarrow-buffer
+   :members:
+
+Bitmap utilities
+------------------
+.. doxygengroup:: nanoarrow-bitmap
+   :members:
+
+Creating arrays
+------------------
+.. doxygengroup:: nanoarrow-array
+   :members:
+
+Reading arrays
+------------------
+.. doxygengroup:: nanoarrow-array-view
+   :members:
