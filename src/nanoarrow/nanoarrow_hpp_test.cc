@@ -15,31 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "nanoarrow.h"
+#include <gtest/gtest.h>
 
-namespace nanoarrow {
+#include "nanoarrow/nanoarrow.hpp"
 
-class Array {
- public:
-  Array() { data_.release = nullptr; }
-
-  explicit Array(struct ArrowArray* data) {
-    memcpy(&data_, data, sizeof(struct ArrowArray));
-    data->release = nullptr;
-  }
-
-  struct ArrowArray* data() {
-    return &data_;
-  }
-
-  ~Array() {
-    if (data_.release != nullptr) {
-      data_.release(&data_);
-    }
-  }
-
- private:
-  struct ArrowArray data_;
-};
-
-}  // namespace nanoarrow
+TEST(NanoArrowHppTest, ArrayTestInit) {
+  EXPECT_EQ(4, 4);
+}
