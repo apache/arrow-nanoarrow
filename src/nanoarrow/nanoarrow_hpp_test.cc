@@ -64,3 +64,34 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueSchemaTest) {
   EXPECT_NE(schema3->release, nullptr);
   EXPECT_STREQ(schema3->format, "i");
 }
+
+TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayStreamTest) {
+  nanoarrow::UniqueSchema schema;
+  schema->format = NULL;
+
+  nanoarrow::UniqueArrayStream array_stream_default;
+  EXPECT_EQ(array_stream_default->release, nullptr);
+
+  auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(NANOARROW_TYPE_INT32);
+  EXPECT_NE(array_stream->release, nullptr);
+  EXPECT_EQ(array_stream.get_schema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "i");
+  schema.release();
+  schema->format = NULL;
+
+  // move constructor
+  nanoarrow::UniqueArrayStream array_stream2 = std::move(array_stream);
+  EXPECT_EQ(array_stream->release, nullptr);
+  EXPECT_NE(array_stream2->release, nullptr);
+  EXPECT_EQ(array_stream2.get_schema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "i");
+  schema.release();
+  schema->format = NULL;
+
+  // pointer constructor
+  nanoarrow::UniqueArrayStream array_stream3(array_stream2.get());
+  EXPECT_EQ(array_stream2->release, nullptr);
+  EXPECT_NE(array_stream3->release, nullptr);
+  EXPECT_EQ(array_stream3.get_schema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "i");
+}
