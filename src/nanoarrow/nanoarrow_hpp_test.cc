@@ -19,6 +19,48 @@
 
 #include "nanoarrow/nanoarrow.hpp"
 
-TEST(NanoArrowHppTest, ArrayTestInit) {
-  EXPECT_EQ(4, 4);
+TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayTest) {
+  nanoarrow::UniqueArray array;
+  EXPECT_EQ(array->release, nullptr);
+
+  ArrowArrayInit(array.get(), NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 123), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(array.get(), nullptr), NANOARROW_OK);
+
+  EXPECT_NE(array->release, nullptr);
+  EXPECT_EQ(array->length, 1);
+
+  // move constructor
+  nanoarrow::UniqueArray array2 = std::move(array);
+  EXPECT_EQ(array->release, nullptr);
+  EXPECT_NE(array2->release, nullptr);
+  EXPECT_EQ(array2->length, 1);
+
+  // pointer constructor
+  nanoarrow::UniqueArray array3(array2.get());
+  EXPECT_EQ(array2->release, nullptr);
+  EXPECT_NE(array3->release, nullptr);
+  EXPECT_EQ(array3->length, 1);
+}
+
+TEST(NanoarrowHppTest, NanoarrowHppUniqueSchemaTest) {
+  nanoarrow::UniqueSchema schema;
+  EXPECT_EQ(schema->release, nullptr);
+
+  ArrowSchemaInit(schema.get(), NANOARROW_TYPE_INT32);
+  EXPECT_NE(schema->release, nullptr);
+  EXPECT_STREQ(schema->format, "i");
+
+  // move constructor
+  nanoarrow::UniqueSchema schema2 = std::move(schema);
+  EXPECT_EQ(schema->release, nullptr);
+  EXPECT_NE(schema2->release, nullptr);
+  EXPECT_STREQ(schema2->format, "i");
+
+  // pointer constructor
+  nanoarrow::UniqueSchema schema3(schema2.get());
+  EXPECT_EQ(schema2->release, nullptr);
+  EXPECT_NE(schema3->release, nullptr);
+  EXPECT_STREQ(schema3->format, "i");
 }

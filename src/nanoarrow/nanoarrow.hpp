@@ -19,27 +19,59 @@
 
 namespace nanoarrow {
 
-class Array {
- public:
-  Array() { data_.release = nullptr; }
+namespace internal {
 
-  explicit Array(struct ArrowArray* data) {
-    memcpy(&data_, data, sizeof(struct ArrowArray));
-    data->release = nullptr;
+template<typename T>
+class Unique {
+public:
+  Unique() = default;
+  Unique(const Unique& rhs) = delete;
+
+  explicit Unique(T* data) {
+    memcpy(&data_, data, sizeof(T));
   }
 
-  struct ArrowArray* data() {
+  T* get() noexcept {
     return &data_;
   }
 
-  ~Array() {
-    if (data_.release != nullptr) {
-      data_.release(&data_);
-    }
+  T* operator->() {
+    return &data_;
   }
 
- private:
-  struct ArrowArray data_;
+protected:
+  T data_;
 };
+
+template<typename T>
+class UniqueReleaseable: public internal::Unique<T> {
+ public:
+  UniqueReleaseable() { this->data_.release = nullptr; }
+
+  UniqueReleaseable(UniqueReleaseable&& rhs) {
+    memcpy(this->get(), rhs.get(), sizeof(T));
+    rhs->release = nullptr;
+  }
+
+  explicit UniqueReleaseable(T* data): Unique<T>(data) {
+    data->release = nullptr;
+  }
+
+  void release() {
+    this->data_.release(&this->data_);
+  }
+
+  ~UniqueReleaseable() {
+    if (this->data_.release != nullptr) {
+      release();
+    }
+  }
+};
+
+}
+
+using UniqueArray = internal::UniqueReleaseable<struct ArrowArray>;
+using UniqueSchema = internal::UniqueReleaseable<struct ArrowSchema>;
+using UniqueArrayStream = internal::UniqueReleaseable<struct ArrowArrayStream>;
 
 }  // namespace nanoarrow
