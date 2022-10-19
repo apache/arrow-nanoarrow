@@ -72,7 +72,9 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayStreamTest) {
   nanoarrow::UniqueArrayStream array_stream_default;
   EXPECT_EQ(array_stream_default->release, nullptr);
 
-  auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(NANOARROW_TYPE_INT32);
+  nanoarrow::UniqueSchema schema_in;
+  EXPECT_EQ(ArrowSchemaInit(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(schema_in.get());
   EXPECT_NE(array_stream->release, nullptr);
   EXPECT_EQ(array_stream.get_schema(schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");

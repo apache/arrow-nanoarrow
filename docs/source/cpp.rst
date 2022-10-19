@@ -25,6 +25,12 @@ Owning object wrappers
 .. doxygengroup:: nanoarrow_hpp-unique
    :members:
 
+Array Stream utilities
+----------------------
+
+.. doxygengroup:: nanoarrow_hpp-array-stream
+   :members:
+
 Base classes and utilities
 --------------------------
 .. doxygengroup:: nanoarrow_hpp-unique_base

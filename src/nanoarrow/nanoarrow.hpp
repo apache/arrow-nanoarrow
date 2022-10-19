@@ -145,11 +145,30 @@ class UniqueArrayStream : public internal::UniqueReleaseable<struct ArrowArraySt
 
 /// @}
 
+/// \defgroup nanoarrow_hpp-array-stream ArrayStream helpers
+///
+/// These classes provide simple struct ArrowArrayStream implementations that
+/// can be extended to help simplify the process of creating a valid
+/// ArrowArrayStream implementation or used as-is for testing.
+///
+/// @{
+
+/// \brief An empty array stream
+///
+/// This class can be constructed from an enum ArrowType or
+/// struct ArrowSchema and implements a default get_next() method that
+/// always marks the output ArrowArray as released. This class can
+/// be extended with an implementation of get_next() for a custom
+/// source.
 class EmptyArrayStream {
  public:
-  static UniqueArrayStream MakeUnique(enum ArrowType type) {
+  /// \brief Create an empty UniqueArrayStream from a struct ArrowSchema
+  ///
+  /// This object takes ownership of the schema and marks the source schema
+  /// as released.
+  static UniqueArrayStream MakeUnique(struct ArrowSchema* schema) {
     UniqueArrayStream stream;
-    (new EmptyArrayStream(type))->MakeStream(stream.get());
+    (new EmptyArrayStream(schema))->MakeStream(stream.get());
     return stream;
   }
 
@@ -206,17 +225,38 @@ class EmptyArrayStream {
   }
 };
 
+/// \brief Implementation of an ArrowArrayStream backed by a vector of ArrowArray objects
 class VectorArrayStream : public EmptyArrayStream {
  public:
-  VectorArrayStream(struct ArrowSchema* schema) : EmptyArrayStream(schema), offset_(0) {}
+  /// \brief Create a UniqueArrowArrayStream from an existing array
+  ///
+  /// Takes ownership of the schema and the array.
+  static UniqueArrayStream MakeUnique(struct ArrowSchema* schema,
+                                      struct ArrowArray* array) {
+    UniqueArrayStream stream;
+    (new VectorArrayStream(schema, array))->MakeStream(stream.get());
+    return stream;
+  }
+
+  /// \brief Create a UniqueArrowArrayStream from existing arrays
+  ///
+  /// This object takes ownership of the schema and arrays.
+  static UniqueArrayStream MakeUnique(struct ArrowSchema* schema,
+                                      std::vector<UniqueArray> arrays) {
+    UniqueArrayStream stream;
+    (new VectorArrayStream(schema, std::move(arrays)))->MakeStream(stream.get());
+    return stream;
+  }
+
+ protected:
   VectorArrayStream(struct ArrowSchema* schema, struct ArrowArray* array)
       : EmptyArrayStream(schema), offset_(0) {
     arrays_.emplace_back(array);
   }
+
   VectorArrayStream(struct ArrowSchema* schema, std::vector<UniqueArray> arrays)
       : EmptyArrayStream(schema), offset_(0), arrays_(std::move(arrays)) {}
 
- protected:
   int get_next(struct ArrowArray* array) {
     if (offset_ < arrays_.size()) {
       arrays_[offset_++].move(array);
@@ -231,6 +271,8 @@ class VectorArrayStream : public EmptyArrayStream {
   std::vector<UniqueArray> arrays_;
   int64_t offset_;
 };
+
+/// @}
 
 }  // namespace nanoarrow
 
