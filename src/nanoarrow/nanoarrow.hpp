@@ -17,87 +17,133 @@
 
 #include "nanoarrow.h"
 
+#ifndef NANOARROW_HPP_INCLUDED
+#define NANOARROW_HPP_INCLUDED
+
+/// \defgroup nanoarrow_hpp
+///
+/// The utilities provided in this file are intended to support C++ users
+/// of the nanoarrow C library such that C++-style resource allocation
+/// and error handling can be used with nanoarrow data structures.
+/// These utilities are not intended to mirror the nanoarrow C API.
+
 namespace nanoarrow {
 
 namespace internal {
 
+/// \defgroup nanoarrow_hpp-unique_base Base classes for Unique wrappers
+///
+/// @{
+
+/// \brief A unique_ptr-like base class for stack-allocatable objects
+/// \tparam T The object type
 template <typename T>
 class Unique {
  public:
-  Unique() = default;
-  Unique(const Unique& rhs) = delete;
-
-  explicit Unique(T* data) { memcpy(&data_, data, sizeof(T)); }
-
+  /// \brief Get a pointer to the data owned by this object
   T* get() noexcept { return &data_; }
 
+  /// \brief Use the pointer operator to access the fields of this object
   T* operator->() { return &data_; }
 
  protected:
   T data_;
 };
 
+/// \brief Base class for objects that can be
+/// \tparam T A struct ArrowSchema, a struct ArrowArray, or struct ArrowArrayStream.
 template <typename T>
 class UniqueReleaseable : public internal::Unique<T> {
  public:
+  /// \brief Construct an object marked as invalid via a release callback set to nullptr
   UniqueReleaseable() { this->data_.release = nullptr; }
 
+  /// \brief Move ownership of the object wrapped by rhs to this object
   UniqueReleaseable(UniqueReleaseable&& rhs) { rhs.move(this->get()); }
 
-  explicit UniqueReleaseable(T* data) : Unique<T>(data) { data->release = nullptr; }
+  /// \brief Move ownership of the data pointed to by data to this object
+  explicit UniqueReleaseable(T* data) : UniqueReleaseable() { reset(data); }
 
+  /// \brief Call data's release callback
   void release() { this->data_.release(&this->data_); }
 
+  /// \brief Call data's release callback if valid
   void reset() {
     if (this->data_.release != nullptr) {
       release();
     }
   }
 
+  /// \brief Call data's release callback if valid and move ownership of the data
+  /// pointed to by data
   void reset(T* data) {
     reset();
     memcpy(this->get(), data, sizeof(T));
     data->release = nullptr;
   }
 
+  /// \brief Move ownership of this object to rhs and move ownership of rhs to this object
   void swap(UniqueReleaseable& rhs) {
     UniqueReleaseable temp(std::move(rhs));
     rhs.reset(this->get());
     this->reset(temp.get());
   }
 
+  /// \brief Move ownership of this object to the data pointed to by out
   void move(T* out) {
     memcpy(out, this->get(), sizeof(T));
     this->data_.release = nullptr;
   }
 
-  ~UniqueReleaseable() {
-    reset();
-  }
+  ~UniqueReleaseable() { reset(); }
 };
+
+/// @}
 
 }  // namespace internal
 
-using UniqueArray = internal::UniqueReleaseable<struct ArrowArray>;
+/// \defgroup nanoarrow_hpp-unique
+///
+/// The Arrow C Data interface, the Arrow C Stream interface, and the
+/// nanoarrow C library use stack-allocatable objects, some of which
+/// require initialization or cleanup.
+///
+/// @{
+
+/// \brief Class wrapping a unique struct ArrowSchema
 using UniqueSchema = internal::UniqueReleaseable<struct ArrowSchema>;
 
+/// \brief Class wrapping a unique struct ArrowArray
+using UniqueArray = internal::UniqueReleaseable<struct ArrowArray>;
+
+/// \brief Class wrapping a unique struct ArrowArrayStream
 class UniqueArrayStream : public internal::UniqueReleaseable<struct ArrowArrayStream> {
  public:
+  /// \brief Construct an object marked as invalid via a release callback set to nullptr
   UniqueArrayStream() = default;
 
+  /// \brief Move ownership of the object wrapped by rhs to this object
+  UniqueArrayStream(UniqueArrayStream&& rhs) { rhs.move(this->get()); }
+
+  /// \brief Move ownership of the data pointed to by data to this object
   explicit UniqueArrayStream(struct ArrowArrayStream* data)
       : internal::UniqueReleaseable<struct ArrowArrayStream>(data) {}
 
+  /// \brief Call the struct ArrowArrayStream's get_schema() method
   int get_schema(struct ArrowSchema* schema) {
     return this->data_.get_schema(&this->data_, schema);
   }
 
+  /// \brief Call the struct ArrowArrayStream's get_next() method
   int get_next(struct ArrowArray* array) {
     return this->data_.get_next(&this->data_, array);
   }
 
+  /// \brief Call the struct ArrowArrayStream's get_last_error() method
   const char* get_last_error() { return this->data_.get_last_error(&this->data_); }
 };
+
+/// @}
 
 class EmptyArrayStream {
  public:
@@ -187,3 +233,5 @@ class VectorArrayStream : public EmptyArrayStream {
 };
 
 }  // namespace nanoarrow
+
+#endif
