@@ -61,6 +61,10 @@ if(NANOARROW_BUNDLE)
     string(REGEX REPLACE "#include \"[a-z_.]+\"" "" SRC_FILE_CONTENTS "${SRC_FILE_CONTENTS}")
     file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
 
+    # Copy nanoarrow.hpp too
+    file(READ src/nanoarrow/nanoarrow.hpp SRC_FILE_CONTENTS)
+    file(WRITE ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.hpp "${SRC_FILE_CONTENTS}")
+
     # Combine all source files into amalgamation/nanoarrow.c in the build directory
     set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.c)
     file(READ src/nanoarrow/utils.c SRC_FILE_CONTENTS)
