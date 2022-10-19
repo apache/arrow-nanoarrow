@@ -180,13 +180,6 @@ class EmptyArrayStream {
     error_.message[0] = '\0';
   }
 
-  EmptyArrayStream(enum ArrowType type) {
-    if (ArrowSchemaInit(schema_.get(), type) != NANOARROW_OK) {
-      throw std::bad_alloc();
-    }
-    error_.message[0] = '\0';
-  }
-
   void MakeStream(struct ArrowArrayStream* stream) {
     stream->get_schema = &get_schema_wrapper;
     stream->get_next = &get_next_wrapper;
@@ -233,9 +226,9 @@ class VectorArrayStream : public EmptyArrayStream {
   /// Takes ownership of the schema and the array.
   static UniqueArrayStream MakeUnique(struct ArrowSchema* schema,
                                       struct ArrowArray* array) {
-    UniqueArrayStream stream;
-    (new VectorArrayStream(schema, array))->MakeStream(stream.get());
-    return stream;
+    std::vector<UniqueArray> arrays;
+    arrays.emplace_back(array);
+    return MakeUnique(schema, std::move(arrays));
   }
 
   /// \brief Create a UniqueArrowArrayStream from existing arrays
@@ -249,11 +242,6 @@ class VectorArrayStream : public EmptyArrayStream {
   }
 
  protected:
-  VectorArrayStream(struct ArrowSchema* schema, struct ArrowArray* array)
-      : EmptyArrayStream(schema), offset_(0) {
-    arrays_.emplace_back(array);
-  }
-
   VectorArrayStream(struct ArrowSchema* schema, std::vector<UniqueArray> arrays)
       : EmptyArrayStream(schema), offset_(0), arrays_(std::move(arrays)) {}
 
