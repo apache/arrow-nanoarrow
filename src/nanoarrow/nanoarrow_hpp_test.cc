@@ -98,6 +98,54 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayStreamTest) {
   EXPECT_STREQ(schema->format, "i");
 }
 
+TEST(NanoarrowHppTest, NanoarrowHppUniqueBufferTest) {
+  nanoarrow::UniqueBuffer buffer;
+  EXPECT_EQ(buffer->data, nullptr);
+  EXPECT_EQ(buffer->size_bytes, 0);
+
+  ASSERT_EQ(ArrowBufferAppendFill(buffer.get(), 0xff, 123), NANOARROW_OK);
+  EXPECT_NE(buffer->data, nullptr);
+  EXPECT_EQ(buffer->size_bytes, 123);
+
+  // move constructor
+  nanoarrow::UniqueBuffer buffer2 = std::move(buffer);
+  EXPECT_EQ(buffer->data, nullptr);
+  EXPECT_EQ(buffer->size_bytes, 0);
+  EXPECT_NE(buffer2->data, nullptr);
+  EXPECT_EQ(buffer2->size_bytes, 123);
+
+  // pointer constructor
+  nanoarrow::UniqueBuffer buffer3(buffer2.get());
+  EXPECT_EQ(buffer2->data, nullptr);
+  EXPECT_EQ(buffer2->size_bytes, 0);
+  EXPECT_NE(buffer3->data, nullptr);
+  EXPECT_EQ(buffer3->size_bytes, 123);
+}
+
+TEST(NanoarrowHppTest, NanoarrowHppUniqueBitmapTest) {
+  nanoarrow::UniqueBitmap bitmap;
+  EXPECT_EQ(bitmap->buffer.data, nullptr);
+  EXPECT_EQ(bitmap->size_bits, 0);
+
+  ASSERT_EQ(ArrowBitmapAppend(bitmap.get(), true, 123), NANOARROW_OK);
+  EXPECT_NE(bitmap->buffer.data, nullptr);
+  EXPECT_EQ(bitmap->size_bits, 123);
+
+  // move constructor
+  nanoarrow::UniqueBitmap bitmap2 = std::move(bitmap);
+  EXPECT_EQ(bitmap->buffer.data, nullptr);
+  EXPECT_EQ(bitmap->size_bits, 0);
+  EXPECT_NE(bitmap2->buffer.data, nullptr);
+  EXPECT_EQ(bitmap2->size_bits, 123);
+
+  // pointer constructor
+  nanoarrow::UniqueBitmap bitmap3(bitmap2.get());
+  EXPECT_EQ(bitmap2->buffer.data, nullptr);
+  EXPECT_EQ(bitmap2->size_bits, 0);
+  EXPECT_NE(bitmap3->buffer.data, nullptr);
+  EXPECT_EQ(bitmap3->size_bits, 123);
+}
+
 TEST(NanoarrowHppTest, NanoarrowHppEmptyArrayStreamTest) {
   nanoarrow::UniqueSchema schema;
   struct ArrowArray array;
