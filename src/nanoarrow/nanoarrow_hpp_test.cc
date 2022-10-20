@@ -146,6 +146,27 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueBitmapTest) {
   EXPECT_EQ(bitmap3->size_bits, 123);
 }
 
+TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayViewTest) {
+  nanoarrow::UniqueArrayView array_view;
+  EXPECT_EQ(array_view->storage_type, NANOARROW_TYPE_UNINITIALIZED);
+
+  // Use an ArrayView with children, since an ArrayView with no children
+  // doesn't hold any resources
+  ArrowArrayViewInit(array_view.get(), NANOARROW_TYPE_STRUCT);
+  ArrowArrayViewAllocateChildren(array_view.get(), 2);
+  EXPECT_EQ(array_view->storage_type, NANOARROW_TYPE_STRUCT);
+
+  // move constructor
+  nanoarrow::UniqueArrayView array_view2 = std::move(array_view);
+  EXPECT_EQ(array_view->storage_type, NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(array_view2->storage_type, NANOARROW_TYPE_STRUCT);
+
+  // pointer constructor
+  nanoarrow::UniqueArrayView array_view3(array_view2.get());
+  EXPECT_EQ(array_view2->storage_type, NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(array_view3->storage_type, NANOARROW_TYPE_STRUCT);
+}
+
 TEST(NanoarrowHppTest, NanoarrowHppEmptyArrayStreamTest) {
   nanoarrow::UniqueSchema schema;
   struct ArrowArray array;
