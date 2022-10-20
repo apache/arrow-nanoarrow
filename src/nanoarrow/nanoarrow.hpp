@@ -37,60 +37,110 @@ namespace internal {
 ///
 /// @{
 
+void init_pointer(struct ArrowSchema* data) { data->release = nullptr; }
+
+void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
+  memcpy(dst, src, sizeof(struct ArrowSchema));
+  src->release = nullptr;
+}
+
+void release_pointer(struct ArrowSchema* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+void init_pointer(struct ArrowArray* data) { data->release = nullptr; }
+
+void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArray));
+  src->release = nullptr;
+}
+
+void release_pointer(struct ArrowArray* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+void init_pointer(struct ArrowArrayStream* data) { data->release = nullptr; }
+
+void move_pointer(struct ArrowArrayStream* src, struct ArrowArrayStream* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArrayStream));
+  src->release = nullptr;
+}
+
+void release_pointer(ArrowArrayStream* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+void init_pointer(struct ArrowBuffer* data) { ArrowBufferInit(data); }
+
+void move_pointer(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
+  ArrowBufferMove(src, dst);
+}
+
+void release_pointer(struct ArrowBuffer* data) { ArrowBufferReset(data); }
+
+void init_pointer(struct ArrowBitmap* data) { ArrowBitmapInit(data); }
+
+void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
+  ArrowBufferMove(&src->buffer, &dst->buffer);
+  src->size_bits = 0;
+}
+
+void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }
+
+void init_pointer(struct ArrowArrayView* data) {
+  ArrowArrayViewInit(data, NANOARROW_TYPE_UNINITIALIZED);
+}
+
+void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArrayView));
+  init_pointer(src);
+}
+
+void release_pointer(struct ArrowArrayView* data) { ArrowArrayViewReset(data); }
+
 /// \brief A unique_ptr-like base class for stack-allocatable objects
 /// \tparam T The object type
 template <typename T>
 class Unique {
  public:
+  /// \brief Construct an invalid instance of T holding no resources
+  Unique() { init_pointer(&data_); }
+
+  /// \brief Move and take ownership of data
+  Unique(T* data) { move_pointer(data, &data_); }
+
+  /// \brief Move and take ownership of data wrapped by rhs
+  Unique(Unique&& rhs) : Unique(rhs.get()) {}
+
   /// \brief Get a pointer to the data owned by this object
   T* get() noexcept { return &data_; }
 
-  /// \brief Use the pointer operator to access the fields of this object
+  /// \brief Use the pointer operator to access fields of this object
   T* operator->() { return &data_; }
 
- protected:
-  T data_;
-};
-
-/// \brief Base class for objects that can be
-/// \tparam T A struct ArrowSchema, a struct ArrowArray, or struct ArrowArrayStream.
-template <typename T>
-class UniqueReleaseable : public internal::Unique<T> {
- public:
-  /// \brief Construct an object marked as invalid via a release callback set to nullptr
-  UniqueReleaseable() { this->data_.release = nullptr; }
-
-  /// \brief Move ownership of the object wrapped by rhs to this object
-  UniqueReleaseable(UniqueReleaseable&& rhs) { rhs.move(this->get()); }
-
-  /// \brief Move ownership of the data pointed to by data to this object
-  explicit UniqueReleaseable(T* data) : UniqueReleaseable() { reset(data); }
-
-  /// \brief Call data's release callback
-  void release() { this->data_.release(&this->data_); }
-
   /// \brief Call data's release callback if valid
-  void reset() {
-    if (this->data_.release != nullptr) {
-      release();
-    }
-  }
+  void reset() { release_pointer(&data_); }
 
   /// \brief Call data's release callback if valid and move ownership of the data
   /// pointed to by data
   void reset(T* data) {
     reset();
-    memcpy(this->get(), data, sizeof(T));
-    data->release = nullptr;
+    move_pointer(data, &data_);
   }
 
   /// \brief Move ownership of this object to the data pointed to by out
-  void move(T* out) {
-    memcpy(out, this->get(), sizeof(T));
-    this->data_.release = nullptr;
-  }
+  void move(T* out) { move_pointer(&data_, out); }
 
-  ~UniqueReleaseable() { reset(); }
+  ~Unique() { reset(); }
+
+ protected:
+  T data_;
 };
 
 /// @}
@@ -106,103 +156,22 @@ class UniqueReleaseable : public internal::Unique<T> {
 /// @{
 
 /// \brief Class wrapping a unique struct ArrowSchema
-using UniqueSchema = internal::UniqueReleaseable<struct ArrowSchema>;
+using UniqueSchema = internal::Unique<struct ArrowSchema>;
 
 /// \brief Class wrapping a unique struct ArrowArray
-using UniqueArray = internal::UniqueReleaseable<struct ArrowArray>;
+using UniqueArray = internal::Unique<struct ArrowArray>;
 
 /// \brief Class wrapping a unique struct ArrowArrayStream
-class UniqueArrayStream : public internal::UniqueReleaseable<struct ArrowArrayStream> {
- public:
-  /// \brief Construct an object marked as invalid via a release callback set to nullptr
-  UniqueArrayStream() = default;
+using UniqueArrayStream = internal::Unique<struct ArrowArrayStream>;
 
-  /// \brief Move ownership of the object wrapped by rhs to this object
-  UniqueArrayStream(UniqueArrayStream&& rhs) { rhs.move(this->get()); }
+/// \brief Class wrapping a unique struct ArrowBuffer
+using UniqueBuffer = internal::Unique<struct ArrowBuffer>;
 
-  /// \brief Move ownership of the data pointed to by data to this object
-  explicit UniqueArrayStream(struct ArrowArrayStream* data)
-      : internal::UniqueReleaseable<struct ArrowArrayStream>(data) {}
+/// \brief Class wrapping a unique struct ArrowBitmap
+using UniqueBitmap = internal::Unique<struct ArrowBitmap>;
 
-  /// \brief Call the struct ArrowArrayStream's get_schema() method
-  int get_schema(struct ArrowSchema* schema) {
-    return this->data_.get_schema(&this->data_, schema);
-  }
-
-  /// \brief Call the struct ArrowArrayStream's get_next() method
-  int get_next(struct ArrowArray* array) {
-    return this->data_.get_next(&this->data_, array);
-  }
-
-  /// \brief Call the struct ArrowArrayStream's get_last_error() method
-  const char* get_last_error() { return this->data_.get_last_error(&this->data_); }
-};
-
-/// \brief Class wrapping a unique ArrowBuffer
-class UniqueBuffer : public internal::Unique<struct ArrowBuffer> {
- public:
-  UniqueBuffer() { ArrowBufferInit(this->get()); }
-
-  UniqueBuffer(struct ArrowBuffer* data) : UniqueBuffer() { reset(data); }
-
-  void reset() { ArrowBufferReset(this->get()); }
-
-  void reset(struct ArrowBuffer* data) {
-    reset();
-    ArrowBufferMove(data, this->get());
-  }
-
-  void move(struct ArrowBuffer* out) { ArrowBufferMove(this->get(), out); }
-
-  ~UniqueBuffer() { reset(); }
-};
-
-/// \brief Class wrapping a unique ArrowBitmap
-class UniqueBitmap : public internal::Unique<struct ArrowBitmap> {
- public:
-  UniqueBitmap() { ArrowBitmapInit(this->get()); }
-
-  UniqueBitmap(struct ArrowBitmap* data) : UniqueBitmap() { reset(data); }
-
-  void reset() { ArrowBitmapReset(this->get()); }
-
-  void reset(struct ArrowBitmap* data) {
-    reset();
-    ArrowBufferMove(&data->buffer, &data->buffer);
-    this->data_.size_bits = data->size_bits;
-    data->size_bits = 0;
-  }
-
-  void move(struct ArrowBitmap* out) {
-    ArrowBufferMove(&this->data_.buffer, &out->buffer);
-    out->size_bits = this->data_.size_bits;
-    this->data_.size_bits = 0;
-  }
-
-  ~UniqueBitmap() { reset(); }
-};
-
-/// \brief Class wrapping a unique ArrowArrayView
-class UniqueArrayView : public internal::Unique<struct ArrowArrayView> {
- public:
-  UniqueArrayView() { ArrowArrayViewInit(this->get(), NANOARROW_TYPE_UNINITIALIZED); }
-
-  UniqueArrayView(struct ArrowArrayView* data) : UniqueArrayView() { reset(data); }
-
-  void reset() { ArrowArrayViewReset(this->get()); }
-
-  void reset(struct ArrowArrayView* data) {
-    reset();
-    memcpy(this->get(), data, sizeof(struct ArrowArrayView));
-  }
-
-  void move(struct ArrowBitmap* out) {
-    memcpy(out, this->get(), sizeof(struct ArrowArrayView));
-    ArrowArrayViewInit(this->get(), NANOARROW_TYPE_UNINITIALIZED);
-  }
-
-  ~UniqueArrayView() { reset(); }
-};
+/// \brief Class wrapping a unique struct ArrowArrayView
+using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
 
 /// @}
 

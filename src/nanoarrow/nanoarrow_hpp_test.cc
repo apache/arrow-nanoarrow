@@ -76,25 +76,25 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayStreamTest) {
   EXPECT_EQ(ArrowSchemaInit(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(schema_in.get());
   EXPECT_NE(array_stream->release, nullptr);
-  EXPECT_EQ(array_stream.get_schema(schema.get()), NANOARROW_OK);
+  EXPECT_EQ(array_stream->get_schema(array_stream.get(), schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");
-  schema.release();
+  schema.reset();
   schema->format = NULL;
 
   // move constructor
   nanoarrow::UniqueArrayStream array_stream2 = std::move(array_stream);
   EXPECT_EQ(array_stream->release, nullptr);
   EXPECT_NE(array_stream2->release, nullptr);
-  EXPECT_EQ(array_stream2.get_schema(schema.get()), NANOARROW_OK);
+  EXPECT_EQ(array_stream2->get_schema(array_stream2.get(), schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");
-  schema.release();
+  schema.reset();
   schema->format = NULL;
 
   // pointer constructor
   nanoarrow::UniqueArrayStream array_stream3(array_stream2.get());
   EXPECT_EQ(array_stream2->release, nullptr);
   EXPECT_NE(array_stream3->release, nullptr);
-  EXPECT_EQ(array_stream3.get_schema(schema.get()), NANOARROW_OK);
+  EXPECT_EQ(array_stream3->get_schema(array_stream2.get(), schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");
 }
 
@@ -106,11 +106,11 @@ TEST(NanoarrowHppTest, NanoarrowHppEmptyArrayStreamTest) {
   EXPECT_EQ(ArrowSchemaInit(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(schema_in.get());
 
-  EXPECT_EQ(array_stream.get_schema(schema.get()), NANOARROW_OK);
+  EXPECT_EQ(array_stream->get_schema(array_stream.get(), schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");
-  EXPECT_EQ(array_stream.get_next(&array), NANOARROW_OK);
+  EXPECT_EQ(array_stream->get_next(array_stream.get(), &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
-  EXPECT_STREQ(array_stream.get_last_error(), "");
+  EXPECT_STREQ(array_stream->get_last_error(array_stream.get()), "");
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
@@ -130,13 +130,13 @@ TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
   auto array_stream =
       nanoarrow::VectorArrayStream::MakeUnique(schema_in.get(), array_in.get());
 
-  EXPECT_EQ(array_stream.get_next(array.get()), NANOARROW_OK);
+  EXPECT_EQ(array_stream->get_next(array_stream.get(), array.get()), NANOARROW_OK);
   ArrowArrayViewInit(&array_view, NANOARROW_TYPE_INT32);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, array.get(), nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 1234);
   ArrowArrayViewReset(&array_view);
-  array.release();
+  array.reset();
 
-  EXPECT_EQ(array_stream.get_next(array.get()), NANOARROW_OK);
+  EXPECT_EQ(array_stream->get_next(array_stream.get(), array.get()), NANOARROW_OK);
   EXPECT_EQ(array->release, nullptr);
 }
