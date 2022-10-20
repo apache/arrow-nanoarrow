@@ -123,6 +123,9 @@ class Unique {
   /// \brief Move and take ownership of data wrapped by rhs
   Unique(Unique&& rhs) : Unique(rhs.get()) {}
 
+  // These objects are not copyable
+  Unique(Unique& rhs) = delete;
+
   /// \brief Get a pointer to the data owned by this object
   T* get() noexcept { return &data_; }
 
