@@ -82,13 +82,6 @@ class UniqueReleaseable : public internal::Unique<T> {
     data->release = nullptr;
   }
 
-  /// \brief Move ownership of this object to rhs and move ownership of rhs to this object
-  void swap(UniqueReleaseable& rhs) {
-    UniqueReleaseable temp(std::move(rhs));
-    rhs.reset(this->get());
-    this->reset(temp.get());
-  }
-
   /// \brief Move ownership of this object to the data pointed to by out
   void move(T* out) {
     memcpy(out, this->get(), sizeof(T));
@@ -171,6 +164,8 @@ class EmptyArrayStream {
     (new EmptyArrayStream(schema))->MakeStream(stream.get());
     return stream;
   }
+
+  virtual ~EmptyArrayStream() {}
 
  protected:
   UniqueSchema schema_;
