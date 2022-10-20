@@ -37,72 +37,77 @@ namespace internal {
 ///
 /// @{
 
-void init_pointer(struct ArrowSchema* data) { data->release = nullptr; }
+static inline void init_pointer(struct ArrowSchema* data) { data->release = nullptr; }
 
-void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
+static inline void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
   memcpy(dst, src, sizeof(struct ArrowSchema));
   src->release = nullptr;
 }
 
-void release_pointer(struct ArrowSchema* data) {
+static inline void release_pointer(struct ArrowSchema* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
 }
 
-void init_pointer(struct ArrowArray* data) { data->release = nullptr; }
+static inline void init_pointer(struct ArrowArray* data) { data->release = nullptr; }
 
-void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
+static inline void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
   memcpy(dst, src, sizeof(struct ArrowArray));
   src->release = nullptr;
 }
 
-void release_pointer(struct ArrowArray* data) {
+static inline void release_pointer(struct ArrowArray* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
 }
 
-void init_pointer(struct ArrowArrayStream* data) { data->release = nullptr; }
+static inline void init_pointer(struct ArrowArrayStream* data) {
+  data->release = nullptr;
+}
 
-void move_pointer(struct ArrowArrayStream* src, struct ArrowArrayStream* dst) {
+static inline void move_pointer(struct ArrowArrayStream* src,
+                                struct ArrowArrayStream* dst) {
   memcpy(dst, src, sizeof(struct ArrowArrayStream));
   src->release = nullptr;
 }
 
-void release_pointer(ArrowArrayStream* data) {
+static inline void release_pointer(ArrowArrayStream* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
 }
 
-void init_pointer(struct ArrowBuffer* data) { ArrowBufferInit(data); }
+static inline void init_pointer(struct ArrowBuffer* data) { ArrowBufferInit(data); }
 
-void move_pointer(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
+static inline void move_pointer(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
   ArrowBufferMove(src, dst);
 }
 
-void release_pointer(struct ArrowBuffer* data) { ArrowBufferReset(data); }
+static inline void release_pointer(struct ArrowBuffer* data) { ArrowBufferReset(data); }
 
-void init_pointer(struct ArrowBitmap* data) { ArrowBitmapInit(data); }
+static inline void init_pointer(struct ArrowBitmap* data) { ArrowBitmapInit(data); }
 
-void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
+static inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
   ArrowBufferMove(&src->buffer, &dst->buffer);
   src->size_bits = 0;
 }
 
-void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }
+static inline void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }
 
-void init_pointer(struct ArrowArrayView* data) {
+static inline void init_pointer(struct ArrowArrayView* data) {
   ArrowArrayViewInit(data, NANOARROW_TYPE_UNINITIALIZED);
 }
 
-void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
+static inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
   memcpy(dst, src, sizeof(struct ArrowArrayView));
   init_pointer(src);
 }
 
-void release_pointer(struct ArrowArrayView* data) { ArrowArrayViewReset(data); }
+static inline void release_pointer(struct ArrowArrayView* data) {
+  ArrowArrayViewReset(data);
+}
 
 /// \brief A unique_ptr-like base class for stack-allocatable objects
 /// \tparam T The object type
