@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <vector>
+
 #include "nanoarrow.h"
 
 #ifndef NANOARROW_HPP_INCLUDED
@@ -134,6 +136,72 @@ class UniqueArrayStream : public internal::UniqueReleaseable<struct ArrowArraySt
 
   /// \brief Call the struct ArrowArrayStream's get_last_error() method
   const char* get_last_error() { return this->data_.get_last_error(&this->data_); }
+};
+
+/// \brief Class wrapping a unique ArrowBuffer
+class UniqueBuffer : public internal::Unique<struct ArrowBuffer> {
+ public:
+  UniqueBuffer() { ArrowBufferInit(this->get()); }
+
+  UniqueBuffer(struct ArrowBuffer* data) : UniqueBuffer() { reset(data); }
+
+  void reset() { ArrowBufferReset(this->get()); }
+
+  void reset(struct ArrowBuffer* data) {
+    reset();
+    ArrowBufferMove(data, this->get());
+  }
+
+  void move(struct ArrowBuffer* out) { ArrowBufferMove(this->get(), out); }
+
+  ~UniqueBuffer() { reset(); }
+};
+
+/// \brief Class wrapping a unique ArrowBitmap
+class UniqueBitmap : public internal::Unique<struct ArrowBitmap> {
+ public:
+  UniqueBitmap() { ArrowBitmapInit(this->get()); }
+
+  UniqueBitmap(struct ArrowBitmap* data) : UniqueBitmap() { reset(data); }
+
+  void reset() { ArrowBitmapReset(this->get()); }
+
+  void reset(struct ArrowBitmap* data) {
+    reset();
+    ArrowBufferMove(&data->buffer, &data->buffer);
+    this->data_.size_bits = data->size_bits;
+    data->size_bits = 0;
+  }
+
+  void move(struct ArrowBitmap* out) {
+    ArrowBufferMove(&this->data_.buffer, &out->buffer);
+    out->size_bits = this->data_.size_bits;
+    this->data_.size_bits = 0;
+  }
+
+  ~UniqueBitmap() { reset(); }
+};
+
+/// \brief Class wrapping a unique ArrowArrayView
+class UniqueArrayView : public internal::Unique<struct ArrowArrayView> {
+ public:
+  UniqueArrayView() { ArrowArrayViewInit(this->get(), NANOARROW_TYPE_UNINITIALIZED); }
+
+  UniqueArrayView(struct ArrowArrayView* data) : UniqueArrayView() { reset(data); }
+
+  void reset() { ArrowArrayViewReset(this->get()); }
+
+  void reset(struct ArrowArrayView* data) {
+    reset();
+    memcpy(this->get(), data, sizeof(struct ArrowArrayView));
+  }
+
+  void move(struct ArrowBitmap* out) {
+    memcpy(out, this->get(), sizeof(struct ArrowArrayView));
+    ArrowArrayViewInit(this->get(), NANOARROW_TYPE_UNINITIALIZED);
+  }
+
+  ~UniqueArrayView() { reset(); }
 };
 
 /// @}
