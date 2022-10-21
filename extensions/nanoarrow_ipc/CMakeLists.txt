@@ -31,6 +31,15 @@ FetchContent_Declare(
   SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 FetchContent_MakeAvailable(nanoarrow_for_nanoarrow_ipc)
 
+# Add the flatcc (runtime) dependency
+# TODO: Make it more flexible to use an existing flatcc
+set(FLATCC_RTONLY ON CACHE INTERNAL "")
+FetchContent_Declare(
+  flatcc
+  URL https://github.com/dvidelabs/flatcc/archive/refs/tags/v0.6.1.zip
+)
+FetchContent_MakeAvailable(flatcc)
+
 include_directories(src)
 add_library(nanoarrow_ipc src/nanoarrow_ipc/nanoarrow_ipc.c)
 target_link_libraries(nanoarrow_ipc PRIVATE nanoarrow)
