@@ -215,6 +215,7 @@ jobs:
         run: |
           cp nanoarrow-latest/nanoarrow.h dist/nanoarrow.h
           cp nanoarrow-latest/nanoarrow.c dist/nanoarrow.c
+          cp nanoarrow-latest/nanoarrow.hpp dist/nanoarrow.hpp
           git add dist/nanoarrow.h dist/nanoarrow.c
 
           # only commit if there are changes
