@@ -154,6 +154,8 @@ if(NANOARROW_BUILD_TESTS)
         target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
         target_link_options(coverage_config INTERFACE --coverage)
         target_link_libraries(nanoarrow coverage_config)
+        # Because nanoarrow.hpp is header-only we have to link the test here to get coverage
+        target_link_libraries(nanoarrow_hpp_test coverage_config)
     endif()
 
     target_link_libraries(utils_test nanoarrow GTest::gtest_main arrow_shared)

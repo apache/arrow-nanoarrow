@@ -133,6 +133,9 @@ jobs:
           SOURCE_PREFIX=`pwd`
           mkdir build/cov
           cd build/cov
+          # We had to generate coverage for the test file to get coverage of nanoarrow.hpp
+          # but we don't actually want it reported
+          find ../CMakeFiles/nanoarrow.dir/ -name nanoarrow_hpp_test.cc.gcno -delete
           gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
 
       - name: Upload coverage
