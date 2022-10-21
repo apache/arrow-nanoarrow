@@ -126,4 +126,29 @@ struct ArrowArrayStream {
 }
 #endif
 
+typedef int ArrowIpcErrorCode;
+
+struct ArrowIpcIO {
+  ArrowIpcErrorCode (*read)(struct ArrowIpcIO* readable, uint8_t* dst, int64_t dst_size,
+                            int64_t* size_read_out);
+  ArrowIpcErrorCode (*write)(struct ArrowIpcIO* readable, const uint8_t* src,
+                             int64_t src_size);
+  ArrowIpcErrorCode (*size)(int64_t* size_out);
+  ArrowIpcErrorCode (*seek)(int64_t position);
+  const char* (*get_last_error)(struct ArrowIpcIO*);
+  void (*release)(struct ArrowIpcIO* readable);
+  void* private_data;
+};
+
+ArrowIpcErrorCode ArrowIpcInitStreamReader(struct ArrowArrayStream* stream_out,
+                                           struct ArrowIpcIO* io);
+
+ArrowIpcErrorCode ArrowIpcWriteSchema(struct ArrowArrayStream* stream_in,
+                                      struct ArrowIpcIO* io);
+
+ArrowIpcErrorCode ArrowIpcWriteBatches(struct ArrowArrayStream* stream_in,
+                                       struct ArrowIpcIO* io, int64_t num_batches);
+
+ArrowIpcErrorCode ArrowIpcWriteEndOfStream(struct ArrowIpcIO* io);
+
 #endif
