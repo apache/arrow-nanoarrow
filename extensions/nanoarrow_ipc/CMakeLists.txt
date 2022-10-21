@@ -41,8 +41,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(flatcc)
 
 include_directories(src)
+include_directories(${flatcc_SOURCE_DIR}/include)
 add_library(nanoarrow_ipc src/nanoarrow_ipc/nanoarrow_ipc.c)
-target_link_libraries(nanoarrow_ipc PRIVATE nanoarrow)
+target_link_libraries(nanoarrow_ipc PRIVATE nanoarrow flatccrt)
 
 if(NANOARROW_IPC_CODE_COVERAGE)
   target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
