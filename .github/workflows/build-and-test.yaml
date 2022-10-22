@@ -131,10 +131,9 @@ jobs:
         if: success() && matrix.config.label == 'default-build'
         run: |
           SOURCE_PREFIX=`pwd`
-          mkdir build/cov
-          cd build/cov
-          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles -name "*.gcno"`
-          rm *_test.cc.gcov
+          cd build/CMakeFiles
+          find . -name "*.gcno" -execdir gcov -abcfu --source-prefix=$SOURCE_PREFIX {} \;
+          find . -name "*_test.cc.gcov" -delete
 
       - name: Upload coverage
         if: success() && matrix.config.label == 'default-build'
