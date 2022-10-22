@@ -133,8 +133,7 @@ jobs:
           SOURCE_PREFIX=`pwd`
           mkdir build/cov
           cd build/cov
-          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow_hpp_test.dir/ -name "*.gcno"` `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
-          rm *_test.cc.gcov
+          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
 
       - name: Upload coverage
         if: success() && matrix.config.label == 'default-build'
@@ -216,7 +215,6 @@ jobs:
         run: |
           cp nanoarrow-latest/nanoarrow.h dist/nanoarrow.h
           cp nanoarrow-latest/nanoarrow.c dist/nanoarrow.c
-          cp nanoarrow-latest/nanoarrow.hpp dist/nanoarrow.hpp
           git add dist/nanoarrow.h dist/nanoarrow.c
 
           # only commit if there are changes
