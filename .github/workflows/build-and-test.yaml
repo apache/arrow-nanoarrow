@@ -133,7 +133,7 @@ jobs:
           SOURCE_PREFIX=`pwd`
           mkdir build/cov
           cd build/cov
-          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"` `find ../CMakeFiles/nanoarrow_hpp_test.dir/ -name "*.gcno"`
+          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow_hpp_test.dir/ -name "*.gcno"` `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
           rm *_test.cc.gcov
 
       - name: Upload coverage
