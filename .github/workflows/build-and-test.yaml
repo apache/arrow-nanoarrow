@@ -68,7 +68,7 @@ jobs:
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
           cmake --build .
-      
+
       - name: Build nanoarrow (namespaced)
         if: matrix.config.label == 'namespaced-build'
         run: |
@@ -88,7 +88,7 @@ jobs:
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
           cmake --build .
-    
+
       - name: Check for non-namespaced symbols in namespaced build
         if: matrix.config.label == 'namespaced-build'
         run: |
@@ -133,10 +133,8 @@ jobs:
           SOURCE_PREFIX=`pwd`
           mkdir build/cov
           cd build/cov
-          # We had to generate coverage for the test file to get coverage of nanoarrow.hpp
-          # but we don't actually want it reported
-          find ../CMakeFiles/nanoarrow.dir/ -name nanoarrow_hpp_test.cc.gcno -delete
-          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
+          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles -name "*.gcno"`
+          rm *_test.cc.gcov
 
       - name: Upload coverage
         if: success() && matrix.config.label == 'default-build'
@@ -212,7 +210,7 @@ jobs:
         with:
           name: nanoarrow-latest
           path: nanoarrow-latest.zip
-      
+
       - name: Commit bundle to dist/
         if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
