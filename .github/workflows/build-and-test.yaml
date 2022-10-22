@@ -131,15 +131,16 @@ jobs:
         if: success() && matrix.config.label == 'default-build'
         run: |
           SOURCE_PREFIX=`pwd`
-          cd build/CMakeFiles
-          find . -name "*.gcno" -execdir gcov -abcfu --source-prefix=$SOURCE_PREFIX {} \;
-          find . -name "*_test.cc.gcov" -delete
+          mkdir build/cov
+          cd build/cov
+          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"` `find ../CMakeFiles/nanoarrow_hpp_test.dir/ -name "*.gcno"`
+          rm *_test.cc.gcov
 
       - name: Upload coverage
         if: success() && matrix.config.label == 'default-build'
         uses: codecov/codecov-action@v2
         with:
-          directory: build/CMakeFiles
+          directory: build/cov
 
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
