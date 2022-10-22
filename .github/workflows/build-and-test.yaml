@@ -139,7 +139,7 @@ jobs:
         if: success() && matrix.config.label == 'default-build'
         uses: codecov/codecov-action@v2
         with:
-          directory: build/cov
+          directory: build/CMakeFiles
 
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
