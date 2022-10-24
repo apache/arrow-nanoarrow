@@ -47,3 +47,25 @@ def test_array_to_numpy():
     arr = nanoarrow.Array.from_pyarrow(pa.array([[1], [2, 3]]))
     with pytest.raises(TypeError, match="Cannot convert a non-primitive array"):
        arr.to_numpy()
+
+
+def test_from_external_pointers():
+    pytest.importorskip("pyarrow.cffi")
+
+    from pyarrow.cffi import ffi
+
+    c_schema = ffi.new("struct ArrowSchema*")
+    ptr_schema = int(ffi.cast("uintptr_t", c_schema))
+    c_array = ffi.new("struct ArrowArray*")
+    ptr_array = int(ffi.cast("uintptr_t", c_array))
+
+    typ = pa.int32()
+    parr = pa.array([1, 2, 3], type=typ)
+    parr._export_to_c(ptr_array, ptr_schema)
+
+    arr = nanoarrow.Array.from_pointers(ptr_array, ptr_schema)
+    assert arr.to_numpy().tolist() == [1, 2, 3]
+
+    # trying to import second time should not cause a segfault? To enable
+    # this we should copy the schema struct and set release to NULL?
+    # arr = nanoarrow.Array.from_pointers(ptr_array, ptr_schema)

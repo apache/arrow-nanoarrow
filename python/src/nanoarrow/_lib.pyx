@@ -86,15 +86,26 @@ cdef class Array:
         else:
             return format_string.decode('utf8')
 
+    @staticmethod
+    cdef Array _from_ptrs(ArrowArray* array_ptr, ArrowSchema* schema_ptr, bint own_ptrs=False):
+        cdef Array self = Array.__new__(Array)
+        self.init(array_ptr, schema_ptr)
+        self.own_ptrs = own_ptrs
+        return self
+
+    @classmethod
+    def from_pointers(cls, array_ptr, schema_ptr):
+        cdef:
+            ArrowArray* c_array_ptr = <ArrowArray*> <uintptr_t > array_ptr
+            ArrowSchema* c_schema_ptr = <ArrowSchema*> <uintptr_t > schema_ptr
+        return Array._from_ptrs(c_array_ptr, c_schema_ptr)
+
     @classmethod
     def from_pyarrow(cls, arr):
         cdef ArrowSchema *schema = <ArrowSchema *>malloc(sizeof(ArrowSchema))
         cdef ArrowArray *array = <ArrowArray *>malloc(sizeof(ArrowArray))
-
         arr._export_to_c(<uintptr_t> array, <uintptr_t> schema)
-        cdef Array self = Array.__new__(Array)
-        self.init(array, schema)
-        self.own_ptrs = True
+        self = Array._from_ptrs(array, schema, own_ptrs=True)
         self.parent = arr
         return self
 
