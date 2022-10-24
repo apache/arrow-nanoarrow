@@ -19,7 +19,10 @@
 
 """Low-level nanoarrow Python bindings."""
 
-from libc.stdint cimport uint8_t, uintptr_t
+from libc.stdlib cimport malloc, free
+from libc.stdint cimport int64_t, uint8_t, uintptr_t
+from cython.operator cimport dereference as deref
+from cpython cimport PyObject, Py_INCREF
 
 from nanoarrow_c cimport *
 
@@ -44,14 +47,71 @@ cdef dict _numpy_type_map = {
 }
 
 
-def as_numpy_array(arr):
-    cdef ArrowSchema schema
-    cdef ArrowArray array
+cdef class Array:
+
+    cdef:
+        ArrowArray* array_ptr
+        ArrowSchema* schema_ptr
+        bint own_data
+        bint own_ptrs
+        ArrowArrayView array_view
+        object parent
+
+    def __init__(self):
+        raise TypeError("Do not call constructor directly")
+
+    cdef void init(self, ArrowArray* array_ptr, ArrowSchema* schema_ptr) except *:
+        self.array_ptr = array_ptr
+        self.schema_ptr = schema_ptr
+        self.own_data = True
+
+    def __dealloc__(self):
+        if self.own_data:
+            self.array_ptr.release(self.array_ptr)
+            self.schema_ptr.release(self.schema_ptr)
+        if self.own_ptrs:
+            if self.array_ptr is not NULL:
+                free(self.array_ptr)
+                self.array_ptr = NULL
+            if self.schema_ptr is not NULL:
+                free(self.schema_ptr)
+                self.schema_ptr = NULL
+        self.parent = None
+
+    @property
+    def format(self):
+        cdef const char* format_string = deref(self.schema_ptr).format
+        if format_string == NULL:
+            return None
+        else:
+            return format_string.decode('utf8')
+
+    @classmethod
+    def from_pyarrow(cls, arr):
+        cdef ArrowSchema *schema = <ArrowSchema *>malloc(sizeof(ArrowSchema))
+        cdef ArrowArray *array = <ArrowArray *>malloc(sizeof(ArrowArray))
+
+        arr._export_to_c(<uintptr_t> array, <uintptr_t> schema)
+        cdef Array self = Array.__new__(Array)
+        self.init(array, schema)
+        self.own_ptrs = True
+        self.parent = arr
+        return self
+
+    def to_numpy(self):
+        return _as_numpy_array(self)
+
+
+def _as_numpy_array(Array arr):
+    cdef ArrowArray* array = arr.array_ptr
     cdef ArrowArrayView array_view
     cdef ArrowError error
+    cdef ArrowErrorCode ret_code
 
-    arr._export_to_c(<uintptr_t> &array, <uintptr_t> &schema)
-    ArrowArrayViewInitFromSchema(&array_view, &schema, &error)
+    ret_code = ArrowArrayViewInitFromSchema(&array_view, arr.schema_ptr, &error)
+    if ret_code != 0:
+        msg = ArrowErrorMessage(&error).decode('utf8')
+        raise Exception("Could not create view: {} (error code {})".format(msg, int(ret_code)))
 
     # primitive arrays have DATA as the second buffer
     if array_view.layout.buffer_type[1] != NANOARROW_BUFFER_TYPE_DATA:
@@ -81,6 +141,7 @@ def as_numpy_array(arr):
     cdef cnp.ndarray result = cnp.PyArray_New(
         np.ndarray, 1, dims, type_num, NULL, <void *> array.buffers[1], -1, 0, <object>NULL
     )
-    # TODO set base
+    result.base = <PyObject*> arr
+    Py_INCREF(arr)
 
     return result
