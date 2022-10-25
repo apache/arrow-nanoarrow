@@ -61,6 +61,10 @@ if(NANOARROW_BUNDLE)
     string(REGEX REPLACE "#include \"[a-z_.]+\"" "" SRC_FILE_CONTENTS "${SRC_FILE_CONTENTS}")
     file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
 
+    # Copy nanoarrow.hpp too
+    file(READ src/nanoarrow/nanoarrow.hpp SRC_FILE_CONTENTS)
+    file(WRITE ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.hpp "${SRC_FILE_CONTENTS}")
+
     # Combine all source files into amalgamation/nanoarrow.c in the build directory
     set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.c)
     file(READ src/nanoarrow/utils.c SRC_FILE_CONTENTS)
@@ -144,21 +148,26 @@ if(NANOARROW_BUILD_TESTS)
     add_executable(buffer_test src/nanoarrow/buffer_test.cc)
     add_executable(array_test src/nanoarrow/array_test.cc)
     add_executable(schema_test src/nanoarrow/schema_test.cc)
+    add_executable(nanoarrow_hpp_test src/nanoarrow/nanoarrow_hpp_test.cc)
 
     if(NANOARROW_CODE_COVERAGE)
         target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
         target_link_options(coverage_config INTERFACE --coverage)
         target_link_libraries(nanoarrow coverage_config)
+        # Because nanoarrow.hpp is header-only we have to link the test here to get coverage
+        target_link_libraries(nanoarrow_hpp_test coverage_config)
     endif()
 
     target_link_libraries(utils_test nanoarrow GTest::gtest_main arrow_shared)
     target_link_libraries(buffer_test nanoarrow GTest::gtest_main)
     target_link_libraries(array_test nanoarrow GTest::gtest_main arrow_shared)
     target_link_libraries(schema_test nanoarrow GTest::gtest_main arrow_shared)
+    target_link_libraries(nanoarrow_hpp_test nanoarrow GTest::gtest_main)
 
     include(GoogleTest)
     gtest_discover_tests(utils_test)
     gtest_discover_tests(buffer_test)
     gtest_discover_tests(array_test)
     gtest_discover_tests(schema_test)
+    gtest_discover_tests(nanoarrow_hpp_test)
 endif()

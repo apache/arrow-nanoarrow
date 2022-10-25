@@ -15,13 +15,23 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-.. include:: README_generated.rst
+C++ API Reference
+==================
 
-Contents
---------
+.. doxygengroup:: nanoarrow_hpp
 
-.. toctree::
-   :maxdepth: 2
+Owning object wrappers
+----------------------
+.. doxygengroup:: nanoarrow_hpp-unique
+   :members:
 
-   C API Reference <c>
-   C++ API Reference <cpp>
+Array Stream utilities
+----------------------
+
+.. doxygengroup:: nanoarrow_hpp-array-stream
+   :members:
+
+Base classes and utilities
+--------------------------
+.. doxygengroup:: nanoarrow_hpp-unique_base
+   :members:

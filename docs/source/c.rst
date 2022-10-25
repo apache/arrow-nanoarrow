@@ -18,6 +18,8 @@
 C API Reference
 ==================
 
+.. doxygengroup:: nanoarrow
+
 Creating schemas
 ------------------
 .. doxygengroup:: nanoarrow-schema
