@@ -20,7 +20,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha7395bf25275679f6a4fbc35c7cf9bc8fbd6b6150"
+#define NANOARROW_BUILD_ID "ghaa66afcc5a9faf48fe7062eb2a025d808ccfac5dd"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -55,7 +55,7 @@ extern "C" {
 // Extra guard for versions of Arrow without the canonical guard
 #ifndef ARROW_FLAG_DICTIONARY_ORDERED
 
-/// \defgroup nanoarrow-arrow-cdata
+/// \defgroup nanoarrow-arrow-cdata Arrow C Data interface
 ///
 /// The Arrow C Data (https://arrow.apache.org/docs/format/CDataInterface.html)
 /// and Arrow C Stream (https://arrow.apache.org/docs/format/CStreamInterface.html)
@@ -644,7 +644,7 @@ struct ArrowArrayPrivateData {
 extern "C" {
 #endif
 
-/// \defgroup nanoarrow
+/// \defgroup nanoarrow Nanoarrow C library
 ///
 /// Except where noted, objects are not thread-safe and clients should
 /// take care to serialize accesses to methods.
