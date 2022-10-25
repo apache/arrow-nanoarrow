@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# if we are building from within the nanoarrow repo, we want to use cmake
-# to generate the bundled header/source
+# If we are building from within the nanoarrow repo, we want to use cmake
+# to regenerate the bundled header/source
 if [ -f "../src/nanoarrow/nanoarrow.h" ]; then
   echo "Bundling nanoarrow using ../CMakeLists.txt"
   rm -f src/nanoarrow.h src/nanoarrow.c
@@ -32,6 +32,22 @@ fi
 
 if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
   echo "Found vendored nanoarrow"
+  exit 0
+fi
+
+# We have a situation where the package has been built via R CMD build
+# but there is no vendored nanoarrow. This occurs with
+# remotes::install_github() with the default arguments. In this case, pull
+# the latest bundled version from GitHub. To ensure commit-level consistency,
+# use remotes::install_github(build = FALSE) (which will run cmake to get
+# a fresh bundle with a specific commit).
+curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.h \
+  --output src/nanoarrow.h
+curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.c \
+  --output src/nanoarrow.c
+
+if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
+  echo "Fetched bundled nanoarrow from https://github.com/apache/arrow-nanoarrow/tree/main/dist"
   exit 0
 fi
 
