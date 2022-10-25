@@ -42,9 +42,9 @@ fi
 # use remotes::install_github(build = FALSE) (which will run cmake to get
 # a fresh bundle with a specific commit).
 curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.h \
-  --output src/nanoarrow.h
+  --output src/nanoarrow.h --silent
 curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.c \
-  --output src/nanoarrow.c
+  --output src/nanoarrow.c --silent
 
 if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
   echo "Fetched bundled nanoarrow from https://github.com/apache/arrow-nanoarrow/tree/main/dist"
