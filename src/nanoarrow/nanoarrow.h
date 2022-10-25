@@ -109,7 +109,7 @@
 extern "C" {
 #endif
 
-/// \defgroup nanoarrow
+/// \defgroup nanoarrow Nanoarrow C library
 ///
 /// Except where noted, objects are not thread-safe and clients should
 /// take care to serialize accesses to methods.

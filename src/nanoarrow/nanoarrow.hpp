@@ -22,7 +22,7 @@
 #ifndef NANOARROW_HPP_INCLUDED
 #define NANOARROW_HPP_INCLUDED
 
-/// \defgroup nanoarrow_hpp
+/// \defgroup nanoarrow_hpp Nanoarrow C++ Helpers
 ///
 /// The utilities provided in this file are intended to support C++ users
 /// of the nanoarrow C library such that C++-style resource allocation
@@ -156,7 +156,7 @@ class Unique {
 
 }  // namespace internal
 
-/// \defgroup nanoarrow_hpp-unique
+/// \defgroup nanoarrow_hpp-unique Unique object wrappers
 ///
 /// The Arrow C Data interface, the Arrow C Stream interface, and the
 /// nanoarrow C library use stack-allocatable objects, some of which
