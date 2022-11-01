@@ -75,6 +75,17 @@ test_that("infer_nanoarrow_ptype() infers ptypes for nested types", {
     infer_nanoarrow_ptype(array_list),
     vctrs::list_of(.ptype = integer())
   )
+
+  array_fixed_size <- as_nanoarrow_array(
+    arrow::Array$create(
+      list(1:5),
+      arrow::fixed_size_list_of(arrow::int32(), 5)
+    )
+  )
+  expect_identical(
+    infer_nanoarrow_ptype(array_fixed_size),
+    matrix(integer(), nrow = 0, ncol = 5)
+  )
 })
 
 test_that("infer_nanoarrow_ptype() errors for types it can't infer",  {

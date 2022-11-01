@@ -103,10 +103,13 @@ infer_ptype_other <- function(array) {
       )
     },
     "large_list" = ,
-    "fixed_size_list" = ,
     "list" = {
       ptype <- infer_nanoarrow_ptype(array$children[[1]])
       vctrs::list_of(.ptype = ptype)
+    },
+    "fixed_size_list" = {
+      ptype <- infer_nanoarrow_ptype(array$children[[1]])
+      matrix(ptype, nrow = 0, ncol = parsed$fixed_size)
     },
     stop_cant_infer_ptype(array, schema)
   )
