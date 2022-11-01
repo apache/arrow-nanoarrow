@@ -17,6 +17,11 @@
 
 test_that("infer_nanoarrow_ptype() works for basic types", {
   expect_identical(
+    infer_nanoarrow_ptype(as_nanoarrow_array(vctrs::unspecified())),
+    vctrs::unspecified()
+  )
+
+  expect_identical(
     infer_nanoarrow_ptype(as_nanoarrow_array(logical())),
     logical()
   )
@@ -145,6 +150,26 @@ test_that("convert to vector works for tibble", {
     from_nanoarrow_array(array_nested, df_nested_tbl),
     df_nested_tbl
   )
+})
+
+test_that("convert to vector works for unspecified()", {
+  array <- as_nanoarrow_array(
+    arrow::Array$create(rep(NA, 10), arrow::null())
+  )
+
+  # implicit
+  expect_identical(
+    from_nanoarrow_array(array, to = NULL),
+    vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
+  )
+
+  # explicit for null
+  expect_identical(
+    from_nanoarrow_array(array, vctrs::unspecified()),
+    vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
+  )
+
+
 })
 
 test_that("convert to vector works for valid logical()", {

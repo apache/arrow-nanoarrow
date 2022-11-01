@@ -30,6 +30,7 @@
 // internally to avoid unnecessary allocations or looping at
 // the R level. Other types are represented by an SEXP ptype.
 enum VectorType {
+  VECTOR_TYPE_UNSPECIFIED,
   VECTOR_TYPE_LGL,
   VECTOR_TYPE_INT,
   VECTOR_TYPE_DBL,
@@ -47,6 +48,9 @@ enum VectorType {
 // when this occurs.
 static enum VectorType vector_type_from_array_type(enum ArrowType type) {
   switch (type) {
+    case NANOARROW_TYPE_NA:
+      return VECTOR_TYPE_UNSPECIFIED;
+
     case NANOARROW_TYPE_BOOL:
       return VECTOR_TYPE_LGL;
 
@@ -134,23 +138,37 @@ static SEXP infer_ptype_data_frame(SEXP array_xptr) {
 
 SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
   enum VectorType vector_type = vector_type_from_array_xptr(array_xptr);
+  SEXP ptype = R_NilValue;
 
   switch (vector_type) {
+    case VECTOR_TYPE_UNSPECIFIED:
+      ptype = PROTECT(Rf_allocVector(LGLSXP, 0));
+      Rf_setAttrib(ptype, R_ClassSymbol, Rf_mkString("vctrs_unspecified"));
+      break;
     case VECTOR_TYPE_LGL:
-      return Rf_allocVector(LGLSXP, 0);
+      ptype = PROTECT(Rf_allocVector(LGLSXP, 0));
+      break;
     case VECTOR_TYPE_INT:
-      return Rf_allocVector(INTSXP, 0);
+      ptype = PROTECT(Rf_allocVector(INTSXP, 0));
+      break;
     case VECTOR_TYPE_DBL:
-      return Rf_allocVector(REALSXP, 0);
+      ptype = PROTECT(Rf_allocVector(REALSXP, 0));
+      break;
     case VECTOR_TYPE_CHR:
-      return Rf_allocVector(STRSXP, 0);
+      ptype = PROTECT(Rf_allocVector(STRSXP, 0));
+      break;
     case VECTOR_TYPE_DATA_FRAME:
-      return infer_ptype_data_frame(array_xptr);
+      ptype = PROTECT(infer_ptype_data_frame(array_xptr));
+      break;
     default:
       call_stop_cant_infer_ptype(array_xptr);
   }
 
-  return R_NilValue;
+  if (ptype != R_NilValue) {
+    UNPROTECT(1);
+  }
+
+  return ptype;
 }
 
 // This calls from_nanoarrow_array() (via a package helper) to try S3
@@ -225,6 +243,18 @@ static SEXP from_array_to_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
 
   UNPROTECT(2);
   return result;
+}
+
+static SEXP from_array_to_unspecified(SEXP array_xptr) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  SEXP result_sexp = PROTECT(Rf_allocVector(LGLSXP, array->length));
+  Rf_setAttrib(result_sexp, R_ClassSymbol, Rf_mkString("vctrs_unspecified"));
+  int* result = LOGICAL(result_sexp);
+  for (int64_t i = 0; i < array->length; i++) {
+    result[i] = NA_LOGICAL;
+  }
+  UNPROTECT(1);
+  return result_sexp;
 }
 
 static SEXP from_array_to_lgl(SEXP array_xptr) {
@@ -307,6 +337,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   if (ptype_sexp == R_NilValue) {
     enum VectorType vector_type = vector_type_from_array_xptr(array_xptr);
     switch (vector_type) {
+      case VECTOR_TYPE_UNSPECIFIED:
+        return from_array_to_unspecified(array_xptr);
       case VECTOR_TYPE_LGL:
         return from_array_to_lgl(array_xptr);
       case VECTOR_TYPE_INT:
@@ -336,6 +368,8 @@ SEXP nanoarrow_c_from_array(SEXP array_xptr, SEXP ptype_sexp) {
   if (Rf_isObject(ptype_sexp)) {
     if (Rf_inherits(ptype_sexp, "data.frame") && !Rf_inherits(ptype_sexp, "tbl_df")) {
       return from_array_to_data_frame(array_xptr, ptype_sexp);
+    } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified")) {
+      return from_array_to_unspecified(array_xptr);
     } else {
       return call_from_nanoarrow_array(array_xptr, ptype_sexp);
     }
