@@ -3,16 +3,22 @@
 \name{as_nanoarrow_schema}
 \alias{as_nanoarrow_schema}
 \alias{infer_nanoarrow_schema}
+\alias{nanoarrow_schema_parse}
 \title{Convert an object to a nanoarrow schema}
 \usage{
 as_nanoarrow_schema(x, ...)
 
 infer_nanoarrow_schema(x, ...)
+
+nanoarrow_schema_parse(x, recursive = FALSE)
 }
 \arguments{
 \item{x}{An object to convert to a schema}
 
 \item{...}{Passed to S3 methods}
+
+\item{recursive}{Use \code{TRUE} to include a \code{children} member when parsing
+schemas.}
 }
 \value{
 An object of class 'nanoarrow_schema'

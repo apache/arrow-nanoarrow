@@ -24,6 +24,8 @@
 #' are represented identically.
 #'
 #' @param x An object to convert to a schema
+#' @param recursive Use `TRUE` to include a `children` member when parsing
+#'   schemas.
 #' @param ... Passed to S3 methods
 #'
 #' @return An object of class 'nanoarrow_schema'
@@ -51,6 +53,20 @@ infer_nanoarrow_schema <- function(x, ...) {
 #' @export
 infer_nanoarrow_schema.default <- function(x, ...) {
   as_nanoarrow_schema(arrow::infer_type(x, ...))
+}
+
+#' @rdname as_nanoarrow_schema
+#' @export
+nanoarrow_schema_parse <- function(x, recursive = FALSE) {
+  parsed <- .Call(nanoarrow_c_schema_parse, as_nanoarrow_schema(x))
+  parsed_null <- vapply(parsed, is.null, logical(1))
+  result <- parsed[!parsed_null]
+
+  if (recursive && !is.null(x$children)) {
+    result$children <- lapply(x$children, nanoarrow_schema_parse, TRUE)
+  }
+
+  result
 }
 
 #' @importFrom utils str

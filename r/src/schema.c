@@ -104,7 +104,8 @@ SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr) {
       SEXP child_xptr = PROTECT(borrow_schema_xptr(schema->children[i], schema_xptr));
       SET_VECTOR_ELT(children_sexp, i, child_xptr);
       if (schema->children[i]->name != NULL) {
-        SET_STRING_ELT(children_names_sexp, i, Rf_mkCharCE(schema->children[i]->name, CE_UTF8));
+        SET_STRING_ELT(children_names_sexp, i,
+                       Rf_mkCharCE(schema->children[i]->name, CE_UTF8));
       } else {
         SET_STRING_ELT(children_names_sexp, i, Rf_mkCharCE("", CE_UTF8));
       }
@@ -123,6 +124,105 @@ SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr) {
     UNPROTECT(1);
   } else {
     SET_VECTOR_ELT(result, 5, R_NilValue);
+  }
+
+  UNPROTECT(1);
+  return result;
+}
+
+static SEXP mkStringView(struct ArrowStringView* view) {
+  if (view->data == NULL) {
+    return R_NilValue;
+  }
+
+  SEXP chr = PROTECT(Rf_mkCharLenCE(view->data, view->n_bytes, CE_UTF8));
+  SEXP str = PROTECT(Rf_allocVector(STRSXP, 1));
+  SET_STRING_ELT(str, 0, chr);
+  UNPROTECT(2);
+  return str;
+}
+
+SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
+  int status = ArrowSchemaViewInit(&schema_view, schema, &error);
+  if (status != NANOARROW_OK) {
+    Rf_error("ArrowSchemaViewInit(): %s", ArrowErrorMessage(&error));
+  }
+
+  const char* names[] = {"type",
+                         "storage_type",
+                         "extension_name",
+                         "extension_metadata",
+                         "fixed_size",
+                         "decimal_bitwidth",
+                         "decimal_precision",
+                         "decimal_scale",
+                         "time_unit",
+                         "timezone",
+                         "union_type_ids",
+                         ""};
+
+  SEXP result = PROTECT(Rf_mkNamed(VECSXP, names));
+  SET_VECTOR_ELT(result, 0, Rf_mkString(ArrowTypeString((schema_view.data_type))));
+  SET_VECTOR_ELT(result, 1, Rf_mkString(ArrowTypeString((schema_view.storage_data_type))));
+
+  if (schema_view.extension_name.data != NULL) {
+    SET_VECTOR_ELT(result, 2, mkStringView(&schema_view.extension_name));
+  }
+
+  if (schema_view.extension_metadata.data != NULL) {
+    SEXP metadata_sexp =
+        PROTECT(Rf_allocVector(RAWSXP, schema_view.extension_metadata.n_bytes));
+    memcpy(RAW(metadata_sexp), schema_view.extension_metadata.data,
+           schema_view.extension_metadata.n_bytes);
+    SET_VECTOR_ELT(result, 3, metadata_sexp);
+    UNPROTECT(1);
+  }
+
+  if (schema_view.data_type == NANOARROW_TYPE_FIXED_SIZE_LIST ||
+      schema_view.data_type == NANOARROW_TYPE_FIXED_SIZE_BINARY) {
+    SET_VECTOR_ELT(result, 4, Rf_ScalarInteger(schema_view.fixed_size));
+  }
+
+  if (schema_view.data_type == NANOARROW_TYPE_DECIMAL128 ||
+      schema_view.data_type == NANOARROW_TYPE_DECIMAL256) {
+    SET_VECTOR_ELT(result, 5, Rf_ScalarInteger(schema_view.decimal_bitwidth));
+    SET_VECTOR_ELT(result, 6, Rf_ScalarInteger(schema_view.decimal_precision));
+    SET_VECTOR_ELT(result, 7, Rf_ScalarInteger(schema_view.decimal_scale));
+  }
+
+  if (schema_view.data_type == NANOARROW_TYPE_TIME32 ||
+      schema_view.data_type == NANOARROW_TYPE_TIME64 ||
+      schema_view.data_type == NANOARROW_TYPE_TIMESTAMP ||
+      schema_view.data_type == NANOARROW_TYPE_DURATION) {
+    SET_VECTOR_ELT(result, 8, Rf_mkString(ArrowTimeUnitString((schema_view.time_unit))));
+  }
+
+  if (schema_view.data_type == NANOARROW_TYPE_TIMESTAMP) {
+    SET_VECTOR_ELT(result, 9, mkStringView(&schema_view.timezone));
+  }
+
+  if (schema_view.data_type == NANOARROW_TYPE_DENSE_UNION ||
+      schema_view.data_type == NANOARROW_TYPE_SPARSE_UNION) {
+    int num_type_ids = 1;
+    for (int64_t i = 0; i < schema_view.union_type_ids.n_bytes; i++) {
+      num_type_ids += schema_view.union_type_ids.data[i] == ',';
+    }
+
+    SEXP union_type_ids = PROTECT(Rf_allocVector(INTSXP, num_type_ids));
+    const char* ptr = schema_view.union_type_ids.data;
+    char* end_ptr = (char*)ptr;
+    int i = 0;
+    while (*end_ptr != '\0') {
+      INTEGER(union_type_ids)[i] = strtol(ptr, &end_ptr, 10);
+      i++;
+      ptr = end_ptr + 1;
+    }
+    SET_VECTOR_ELT(result, 10, union_type_ids);
+    UNPROTECT(1);
   }
 
   UNPROTECT(1);
@@ -148,7 +248,8 @@ SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp) {
   SEXP formatted_sexp = PROTECT(Rf_allocVector(RAWSXP, size_needed + 1));
   ArrowSchemaToString(schema, (char*)RAW(formatted_sexp), size_needed + 1, recursive);
   SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, 1));
-  SET_STRING_ELT(result_sexp, 0, Rf_mkCharLenCE((char*)RAW(formatted_sexp), size_needed, CE_UTF8));
+  SET_STRING_ELT(result_sexp, 0,
+                 Rf_mkCharLenCE((char*)RAW(formatted_sexp), size_needed, CE_UTF8));
   UNPROTECT(2);
   return result_sexp;
 }
