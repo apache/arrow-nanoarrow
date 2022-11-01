@@ -101,12 +101,13 @@ stop_cant_infer_ptype <- function(array) {
 
 stop_cant_convert_array <- function(array, to) {
   schema <- infer_nanoarrow_schema(array)
+  schema_label <- nanoarrow_schema_formatted(schema)
 
   if (is.null(schema$name) || identical(schema$name, "")) {
     cnd <- simpleError(
       sprintf(
         "Can't convert array <%s> to R vector of type %s",
-        schema$format,
+        schema_label,
         class(to)[1]
       ),
       call = sys.call(-1)
@@ -116,7 +117,7 @@ stop_cant_convert_array <- function(array, to) {
       sprintf(
         "Can't convert `%s` <%s> to R vector of type %s",
         schema$name,
-        schema$format,
+        schema_label,
         class(to)[1]
       ),
       call = sys.call(-1)

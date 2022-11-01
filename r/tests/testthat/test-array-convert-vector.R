@@ -83,13 +83,20 @@ test_that("from_nanoarrow_array() errors for unsupported ptype", {
   # an S3 unsupported type
   expect_error(
     from_nanoarrow_array(array, structure(list(), class = "some_class")),
-    "Can't convert array <i> to R vector of type some_class"
+    "Can't convert array <int32> to R vector of type some_class"
   )
 
   # A non-S3 unsupported type
   expect_error(
     from_nanoarrow_array(array, environment()),
-    "Can't convert array <i> to R vector of type environment"
+    "Can't convert array <int32> to R vector of type environment"
+  )
+
+  # An array with a name to an unsupported type
+  struct_array <- as_nanoarrow_array(data.frame(x = 1L))
+  expect_error(
+    from_nanoarrow_array(struct_array$children$x, environment()),
+    "Can't convert `x`"
   )
 })
 
@@ -116,7 +123,7 @@ test_that("convert to vector works for data.frame", {
   bad_ptype <- data.frame(a = integer(), b = raw(), c = double(), d = integer())
   expect_error(
     from_nanoarrow_array(array, bad_ptype),
-    "Can't convert `b` <u> to R vector of type raw"
+    "Can't convert `b` <string> to R vector of type raw"
   )
 })
 
@@ -250,7 +257,7 @@ test_that("convert to vector works for null -> logical()", {
 test_that("convert to vector errors for bad array to logical()", {
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(letters), logical()),
-    "Can't convert array <u> to R vector of type logical"
+    "Can't convert array <string> to R vector of type logical"
   )
 })
 
@@ -333,7 +340,7 @@ test_that("convert to vector warns for invalid integer()", {
 test_that("convert to vector errors for bad array to integer()", {
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(letters), integer()),
-    "Can't convert array <u> to R vector of type integer"
+    "Can't convert array <string> to R vector of type integer"
   )
 })
 
@@ -402,7 +409,7 @@ test_that("convert to vector works for null -> double()", {
 test_that("convert to vector errors for bad array to double()", {
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(letters), double()),
-    "Can't convert array <u> to R vector of type numeric"
+    "Can't convert array <string> to R vector of type numeric"
   )
 })
 
@@ -419,7 +426,7 @@ test_that("convert to vector works for character()", {
   # check an array that we can't convert
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(1:5), character()),
-    "Can't convert array <i> to R vector of type character"
+    "Can't convert array <int32> to R vector of type character"
   )
 })
 
