@@ -74,9 +74,12 @@ infer_nanoarrow_ptype <- function(array) {
   .Call(nanoarrow_c_infer_ptype, array)
 }
 
-stop_cant_infer_ptype <- function(array) {
+infer_ptype_other <- function(array) {
   schema <- infer_nanoarrow_schema(array)
+  stop_cant_infer_ptype(array, schema)
+}
 
+stop_cant_infer_ptype <- function(array, schema = infer_nanoarrow_schema(array)) {
   if (is.null(schema$name) || identical(schema$name, "")) {
     cnd <- simpleError(
       sprintf(

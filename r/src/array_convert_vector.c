@@ -97,13 +97,15 @@ static enum VectorType vector_type_from_array_xptr(SEXP array_xptr) {
   return vector_type_from_array_type(schema_view.data_type);
 }
 
-// Call stop_cant_infer_ptype(), which gives a more informative error
-// message than we can provide in a reasonable amount of C code here
-static void call_stop_cant_infer_ptype(SEXP array_xptr) {
+// Call infer_ptype_other(), which handles less common types that
+// are easier to compute in R or gives an informative error if this is
+// not possible.
+static SEXP call_infer_ptype_other(SEXP array_xptr) {
   SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call = PROTECT(Rf_lang2(Rf_install("stop_cant_infer_ptype"), array_xptr));
-  Rf_eval(call, ns);
-  UNPROTECT(2);
+  SEXP call = PROTECT(Rf_lang2(Rf_install("infer_ptype_other"), array_xptr));
+  SEXP result = PROTECT(Rf_eval(call, ns));
+  UNPROTECT(3);
+  return result;
 }
 
 SEXP nanoarrow_c_infer_ptype(SEXP array_xptr);
@@ -161,13 +163,11 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
       ptype = PROTECT(infer_ptype_data_frame(array_xptr));
       break;
     default:
-      call_stop_cant_infer_ptype(array_xptr);
+      ptype = PROTECT(call_infer_ptype_other(array_xptr));
+      break;
   }
 
-  if (ptype != R_NilValue) {
-    UNPROTECT(1);
-  }
-
+  UNPROTECT(1);
   return ptype;
 }
 
