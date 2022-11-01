@@ -153,9 +153,7 @@ test_that("convert to vector works for tibble", {
 })
 
 test_that("convert to vector works for unspecified()", {
-  array <- as_nanoarrow_array(
-    arrow::Array$create(rep(NA, 10), arrow::null())
-  )
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
 
   # implicit for null type
   expect_identical(
@@ -241,6 +239,14 @@ test_that("convert to vector works for valid logical()", {
   )
 })
 
+test_that("convert to vector works for null -> logical()", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    from_nanoarrow_array(array, logical()),
+    rep(NA, 10)
+  )
+})
+
 test_that("convert to vector errors for bad array to logical()", {
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(letters), logical()),
@@ -299,6 +305,14 @@ test_that("convert to vector works for valid integer()", {
       integer()
     ),
     c(1L, 0L)
+  )
+})
+
+test_that("convert to vector works for null -> logical()", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    from_nanoarrow_array(array, integer()),
+    rep(NA_integer_, 10)
   )
 })
 
@@ -377,6 +391,14 @@ test_that("convert to vector works for valid double()", {
   )
 })
 
+test_that("convert to vector works for null -> double()", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    from_nanoarrow_array(array, double()),
+    rep(NA_real_, 10)
+  )
+})
+
 test_that("convert to vector errors for bad array to double()", {
   expect_error(
     from_nanoarrow_array(as_nanoarrow_array(letters), double()),
@@ -401,7 +423,15 @@ test_that("convert to vector works for character()", {
   )
 })
 
-test_that("convert to vector works for character()", {
+test_that("convert to vector works for null -> character()", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    from_nanoarrow_array(array, character()),
+    rep(NA_character_, 10)
+  )
+})
+
+test_that("convert to vector works for list() of raw()", {
   array <- as_nanoarrow_array(list(as.raw(1:5)), schema = arrow::binary())
   expect_identical(
     from_nanoarrow_array(array),
@@ -411,5 +441,13 @@ test_that("convert to vector works for character()", {
   expect_identical(
     from_nanoarrow_array(array, list()),
     list(as.raw(1:5))
+  )
+})
+
+test_that("convert to vector works for null -> list()", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    from_nanoarrow_array(array, list()),
+    rep(list(NULL), 10)
   )
 })

@@ -150,6 +150,7 @@ SEXP nanoarrow_c_make_altrep_chr(SEXP array_view_xptr) {
       (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
 
   switch (array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
       break;

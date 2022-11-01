@@ -306,6 +306,7 @@ static SEXP from_array_to_list_of_raw(SEXP array_xptr) {
 
 // TODO: Lists are not all that well supported yet.
 static SEXP from_array_to_list(SEXP array_xptr, SEXP ptype_sexp) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
   struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
 
   struct ArrowSchemaView schema_view;
@@ -316,6 +317,9 @@ static SEXP from_array_to_list(SEXP array_xptr, SEXP ptype_sexp) {
 
   SEXP result = R_NilValue;
   switch (schema_view.data_type) {
+    case NANOARROW_TYPE_NA:
+      result = PROTECT(Rf_allocVector(VECSXP, array->length));
+      break;
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
       result = PROTECT(from_array_to_list_of_raw(array_xptr));

@@ -72,6 +72,11 @@ SEXP nanoarrow_materialize_lgl(struct ArrowArrayView* array_view) {
 
   // Fill the buffer
   switch (array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+        result[i] = NA_LOGICAL;
+      }
+      break;
     case NANOARROW_TYPE_BOOL:
       for (R_xlen_t i = 0; i < array_view->array->length; i++) {
         result[i] = ArrowBitGet(data_buffer, i);
@@ -129,6 +134,11 @@ SEXP nanoarrow_materialize_int(struct ArrowArrayView* array_view) {
 
   // Fill the buffer
   switch (array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+        result[i] = NA_INTEGER;
+      }
+      break;
     case NANOARROW_TYPE_INT32:
       memcpy(result,
              array_view->buffer_views[1].data.as_int32 + array_view->array->offset,
@@ -218,6 +228,11 @@ SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view) {
 
   // Fill the buffer
   switch (array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+        result[i] = NA_REAL;
+      }
+      break;
     case NANOARROW_TYPE_DOUBLE:
       memcpy(result,
              array_view->buffer_views[1].data.as_double + array_view->array->offset,
@@ -271,6 +286,15 @@ SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view) {
 SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view) {
   SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, array_view->array->length));
 
+  if (array_view->storage_type == NANOARROW_TYPE_NA) {
+    for (R_xlen_t i = 0; i < array_view->array->length; i++) {
+      SET_STRING_ELT(result_sexp, i, NA_STRING);
+    }
+
+    UNPROTECT(1);
+    return result_sexp;
+  }
+
   struct ArrowStringView item;
   for (R_xlen_t i = 0; i < array_view->array->length; i++) {
     if (ArrowArrayViewIsNull(array_view, i)) {
@@ -287,6 +311,7 @@ SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view) {
 
 SEXP nanoarrow_materialize_list_of_raw(struct ArrowArrayView* array_view) {
   switch (array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_BINARY:
@@ -297,6 +322,11 @@ SEXP nanoarrow_materialize_list_of_raw(struct ArrowArrayView* array_view) {
   }
 
   SEXP result_sexp = PROTECT(Rf_allocVector(VECSXP, array_view->array->length));
+
+  if (array_view->storage_type == NANOARROW_TYPE_NA) {
+    UNPROTECT(1);
+    return result_sexp;
+  }
 
   struct ArrowBufferView item;
   SEXP item_sexp;
