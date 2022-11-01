@@ -47,6 +47,36 @@ test_that("infer_nanoarrow_ptype() works for basic types", {
   )
 })
 
+test_that("infer_nanoarrow_ptype() infers ptypes for date/time types", {
+  array_time <- as_nanoarrow_array(hms::parse_hm("12:34"))
+  expect_identical(
+    infer_nanoarrow_ptype(array_time),
+    hms::hms()
+  )
+
+  array_duration <- as_nanoarrow_array(as.difftime(123, units = "secs"))
+  expect_identical(
+    infer_nanoarrow_ptype(array_duration),
+    as.difftime(numeric(), units = "secs")
+  )
+
+  array_timestamp <- as_nanoarrow_array(
+    as.POSIXct("2000-01-01 12:33", tz = "America/Halifax")
+  )
+  expect_identical(
+    infer_nanoarrow_ptype(array_timestamp),
+    as.POSIXct(character(), tz = "America/Halifax")
+  )
+})
+
+test_that("infer_nanoarrow_ptype() infers ptypes for nested types", {
+  array_list <- as_nanoarrow_array(vctrs::list_of(integer()))
+  expect_identical(
+    infer_nanoarrow_ptype(array_list),
+    vctrs::list_of(.ptype = integer())
+  )
+})
+
 test_that("infer_nanoarrow_ptype() errors for types it can't infer",  {
   unsupported_array <- arrow::concat_arrays(type = arrow::decimal256(3, 4))
   expect_error(

@@ -74,9 +74,42 @@ infer_nanoarrow_ptype <- function(array) {
   .Call(nanoarrow_c_infer_ptype, array)
 }
 
+# This is called from C from nanoarrow_c_infer_ptype when all the C conversions
+# have been tried. Some of these inferences could be moved to C to be faster
+# (but are much less verbose to create here)
 infer_ptype_other <- function(array) {
-  schema <- infer_nanoarrow_schema(array)
-  stop_cant_infer_ptype(array, schema)
+  # we don't need the user-friendly versions and this is performance-sensitive
+  schema <- .Call(nanoarrow_c_infer_schema_array, array)
+  parsed <- .Call(nanoarrow_c_schema_parse, schema)
+
+  switch(
+    parsed$type,
+    "time32" = ,
+    "time64" = hms::hms(),
+    "duration" = structure(numeric(), class = "difftime", units = "secs"),
+    "timestamp" = {
+      if (parsed$timezone == "") {
+        # We almost never want to assume the user's timezone here, which is
+        # what would happen if we passed on "". This is consistent with how
+        # readr handles reading timezones (assign "UTC" since it's DST-free
+        # and let the user explicitly set this later)
+        parsed$timezone <- getOption("nanoarrow.timezone_if_unspecified", "UTC")
+      }
+
+      structure(
+        numeric(0),
+        class = c("POSIXct", "POSIXt"),
+        tzone = parsed$timezone
+      )
+    },
+    "large_list" = ,
+    "fixed_size_list" = ,
+    "list" = {
+      ptype <- infer_nanoarrow_ptype(array$children[[1]])
+      vctrs::list_of(.ptype = ptype)
+    },
+    stop_cant_infer_ptype(array, schema)
+  )
 }
 
 stop_cant_infer_ptype <- function(array, schema = infer_nanoarrow_schema(array)) {
