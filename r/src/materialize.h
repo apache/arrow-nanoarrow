@@ -27,6 +27,7 @@
 // if they cannot (i.e., no conversion possible). These functions will warn
 // (once)  if there are values that cannot be converted (e.g., because they
 // are out of range).
+SEXP nanoarrow_materialize_unspecified(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_lgl(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_int(struct ArrowArrayView* array_view);
 SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view);

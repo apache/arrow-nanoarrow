@@ -246,15 +246,11 @@ static SEXP from_array_to_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
 }
 
 static SEXP from_array_to_unspecified(SEXP array_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  SEXP result_sexp = PROTECT(Rf_allocVector(LGLSXP, array->length));
-  Rf_setAttrib(result_sexp, R_ClassSymbol, Rf_mkString("vctrs_unspecified"));
-  int* result = LOGICAL(result_sexp);
-  for (int64_t i = 0; i < array->length; i++) {
-    result[i] = NA_LOGICAL;
-  }
-  UNPROTECT(1);
-  return result_sexp;
+  SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
+  SEXP result =
+      PROTECT(nanoarrow_materialize_unspecified(array_view_from_xptr(array_view_xptr)));
+  UNPROTECT(2);
+  return result;
 }
 
 static SEXP from_array_to_lgl(SEXP array_xptr) {

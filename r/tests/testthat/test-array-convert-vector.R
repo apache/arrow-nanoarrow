@@ -157,19 +157,34 @@ test_that("convert to vector works for unspecified()", {
     arrow::Array$create(rep(NA, 10), arrow::null())
   )
 
-  # implicit
+  # implicit for null type
   expect_identical(
     from_nanoarrow_array(array, to = NULL),
     vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
   )
 
-  # explicit for null
+  # explicit for null type
   expect_identical(
     from_nanoarrow_array(array, vctrs::unspecified()),
     vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
   )
 
+  # explicit for non-null type that is all NAs
+  array <- as_nanoarrow_array(rep(NA_integer_, 10))
+  expect_identical(
+    from_nanoarrow_array(array, vctrs::unspecified()),
+    vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
+  )
 
+  # explicit for non-null type that is not all NAs
+  array <- as_nanoarrow_array(c(1L, rep(NA_integer_, 9)))
+  expect_warning(
+    expect_identical(
+      from_nanoarrow_array(array, vctrs::unspecified()),
+      vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
+    ),
+    "1 non-null value\\(s\\) set to NA"
+  )
 })
 
 test_that("convert to vector works for valid logical()", {

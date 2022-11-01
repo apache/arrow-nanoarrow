@@ -25,6 +25,43 @@
 // speed. We could make use of C++ templating to provide faster and/or more
 // readable conversions here with a C entry point.
 
+SEXP nanoarrow_materialize_unspecified(struct ArrowArrayView* array_view) {
+  SEXP result_sexp = PROTECT(Rf_allocVector(LGLSXP, array_view->array->length));
+  Rf_setAttrib(result_sexp, R_ClassSymbol, Rf_mkString("vctrs_unspecified"));
+  int* result = LOGICAL(result_sexp);
+
+  int64_t length = array_view->array->length;
+  const uint8_t* bits = array_view->buffer_views[0].data.as_uint8;
+  int64_t null_count = array_view->array->null_count;
+
+  if (length > 0 && null_count == -1 && bits != NULL &&
+      array_view->layout.buffer_type[0] == NANOARROW_BUFFER_TYPE_VALIDITY) {
+    null_count = length - ArrowBitCountSet(bits, array_view->array->offset, length);
+  }
+
+  if (length == 0 || length == null_count ||
+      array_view->storage_type == NANOARROW_TYPE_NA) {
+    // We can blindly set all the values to NA_LOGICAL without checking
+    for (int64_t i = 0; i < length; i++) {
+      result[i] = NA_LOGICAL;
+    }
+  } else {
+    // Count non-null values and warn
+    int64_t n_bad_values = 0;
+    for (int64_t i = 0; i < length; i++) {
+      n_bad_values += ArrowBitGet(bits, array_view->array->offset + i);
+      result[i] = NA_LOGICAL;
+    }
+
+    if (n_bad_values > 0) {
+      Rf_warning("%ld non-null value(s) set to NA", (long)n_bad_values);
+    }
+  }
+
+  UNPROTECT(1);
+  return result_sexp;
+}
+
 SEXP nanoarrow_materialize_lgl(struct ArrowArrayView* array_view) {
   SEXP result_sexp = PROTECT(Rf_allocVector(LGLSXP, array_view->array->length));
   int* result = LOGICAL(result_sexp);
@@ -249,7 +286,7 @@ SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view) {
 }
 
 SEXP nanoarrow_materialize_list_of_raw(struct ArrowArrayView* array_view) {
-  switch(array_view->storage_type) {
+  switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_BINARY:
@@ -258,7 +295,7 @@ SEXP nanoarrow_materialize_list_of_raw(struct ArrowArrayView* array_view) {
     default:
       return R_NilValue;
   }
-  
+
   SEXP result_sexp = PROTECT(Rf_allocVector(VECSXP, array_view->array->length));
 
   struct ArrowBufferView item;
