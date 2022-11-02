@@ -57,6 +57,34 @@ struct MaterializeContext {
   const char* context;
 };
 
+static inline struct ArrayViewSlice DefaultArrayViewSlice(struct ArrowArrayView* array_view) {
+  struct ArrayViewSlice slice;
+  slice.array_view = array_view;
+  slice.offset = 0;
+  slice.length = array_view->array->length;
+  return slice;
+}
+
+static inline struct VectorSlice DefaultVectorSlice(SEXP vec_sexp) {
+  struct VectorSlice slice;
+  slice.vec_sexp = vec_sexp;
+  slice.offset = 0;
+  slice.length = Rf_xlength(vec_sexp);
+  return slice;
+}
+
+static inline struct MaterializeOptions DefaultMaterializeOptions() {
+  struct MaterializeOptions options;
+  options.scale = 1;
+  return options;
+}
+
+static inline struct MaterializeContext DefaultMaterializeContext() {
+  struct MaterializeContext context;
+  context.context = "";
+  return context;
+}
+
 // These functions allocate an SEXP result of a specified size
 // The type version allows allocating a result without allocating
 // an intermediary ptype if we don't need one.

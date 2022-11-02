@@ -94,20 +94,10 @@ SEXP nanoarrow_materialize_unspecified(struct ArrowArrayView* array_view) {
   SEXP result_sexp =
       PROTECT(nanoarrow_alloc_type(VECTOR_TYPE_UNSPECIFIED, array_view->array->length));
 
-  struct ArrayViewSlice src;
-  src.array_view = array_view;
-  src.offset = 0;
-  src.length = array_view->array->length;
-
-  struct VectorSlice dst;
-  dst.vec_sexp = result_sexp;
-  dst.offset = 0;
-  dst.length = src.length;
-
-  struct MaterializeOptions options;
-
-  struct MaterializeContext context;
-  context.context = "unknown";
+  struct ArrayViewSlice src = DefaultArrayViewSlice(array_view);
+  struct VectorSlice dst = DefaultVectorSlice(result_sexp);
+  struct MaterializeOptions options = DefaultMaterializeOptions();
+  struct MaterializeContext context = DefaultMaterializeContext();
 
   nanoarrow_materialize(&src, &dst, &options, &context);
 
