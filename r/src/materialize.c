@@ -153,23 +153,9 @@ SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view) {
 SEXP nanoarrow_materialize_chr(struct ArrowArrayView* array_view) {
   SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, array_view->array->length));
 
-  if (array_view->storage_type == NANOARROW_TYPE_NA) {
-    for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-      SET_STRING_ELT(result_sexp, i, NA_STRING);
-    }
-
+  if (nanoarrow_materialize_legacy(array_view, result_sexp)) {
     UNPROTECT(1);
-    return result_sexp;
-  }
-
-  struct ArrowStringView item;
-  for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-    if (ArrowArrayViewIsNull(array_view, i)) {
-      SET_STRING_ELT(result_sexp, i, NA_STRING);
-    } else {
-      item = ArrowArrayViewGetStringUnsafe(array_view, i);
-      SET_STRING_ELT(result_sexp, i, Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
-    }
+    return R_NilValue;
   }
 
   UNPROTECT(1);
@@ -502,7 +488,25 @@ static int nanoarrow_materialize_dbl2(struct ArrayViewSlice* src, struct VectorS
 static int nanoarrow_materialize_chr2(struct ArrayViewSlice* src, struct VectorSlice* dst,
                                       struct MaterializeOptions* options,
                                       struct MaterializeContext* context) {
-  Rf_error("Materialize to chr not implemented");
+  if (src->array_view->storage_type == NANOARROW_TYPE_NA) {
+    for (R_xlen_t i = 0; i < dst->length; i++) {
+      SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
+    }
+
+    return NANOARROW_OK;
+  }
+
+  struct ArrowStringView item;
+  for (R_xlen_t i = 0; i < dst->length; i++) {
+    if (ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+      SET_STRING_ELT(dst->vec_sexp, i, NA_STRING);
+    } else {
+      item = ArrowArrayViewGetStringUnsafe(src->array_view, src->offset + i);
+      SET_STRING_ELT(dst->vec_sexp, i, Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
+    }
+  }
+
+  return NANOARROW_OK;
 }
 
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
