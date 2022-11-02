@@ -140,62 +140,10 @@ SEXP nanoarrow_materialize_int(struct ArrowArrayView* array_view) {
 
 SEXP nanoarrow_materialize_dbl(struct ArrowArrayView* array_view) {
   SEXP result_sexp = PROTECT(Rf_allocVector(REALSXP, array_view->array->length));
-  double* result = REAL(result_sexp);
 
-  // True for all the types supported here
-  const uint8_t* is_valid = array_view->buffer_views[0].data.as_uint8;
-
-  // Fill the buffer
-  switch (array_view->storage_type) {
-    case NANOARROW_TYPE_NA:
-      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-        result[i] = NA_REAL;
-      }
-      break;
-    case NANOARROW_TYPE_DOUBLE:
-      memcpy(result,
-             array_view->buffer_views[1].data.as_double + array_view->array->offset,
-             array_view->array->length * sizeof(double));
-
-      // Set any nulls to NA_REAL
-      if (is_valid != NULL && array_view->array->null_count != 0) {
-        for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-          if (!ArrowBitGet(is_valid, i)) {
-            result[i] = NA_REAL;
-          }
-        }
-      }
-      break;
-    case NANOARROW_TYPE_BOOL:
-    case NANOARROW_TYPE_INT8:
-    case NANOARROW_TYPE_UINT8:
-    case NANOARROW_TYPE_INT16:
-    case NANOARROW_TYPE_UINT16:
-    case NANOARROW_TYPE_INT32:
-    case NANOARROW_TYPE_UINT32:
-    case NANOARROW_TYPE_INT64:
-    case NANOARROW_TYPE_UINT64:
-    case NANOARROW_TYPE_FLOAT:
-      // TODO: implement bounds check for int64 and uint64, but instead
-      // of setting to NA, just warn (because sequential values might not
-      // roundtrip above 2^51 ish)
-      for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-        result[i] = ArrowArrayViewGetDoubleUnsafe(array_view, i);
-      }
-
-      // Set any nulls to NA_REAL
-      if (is_valid != NULL && array_view->array->null_count != 0) {
-        for (R_xlen_t i = 0; i < array_view->array->length; i++) {
-          if (!ArrowBitGet(is_valid, i)) {
-            result[i] = NA_REAL;
-          }
-        }
-      }
-      break;
-
-    default:
-      UNPROTECT(1);
-      return R_NilValue;
+  if (nanoarrow_materialize_legacy(array_view, result_sexp)) {
+    UNPROTECT(1);
+    return R_NilValue;
   }
 
   UNPROTECT(1);
@@ -412,7 +360,7 @@ static int nanoarrow_materialize_int2(struct ArrayViewSlice* src, struct VectorS
     case NANOARROW_TYPE_INT32:
       memcpy(result + dst->offset,
              src->array_view->buffer_views[1].data.as_int32 + raw_src_offset,
-             src->array_view->array->length * sizeof(int32_t));
+             dst->length * sizeof(int32_t));
 
       // Set any nulls to NA_INTEGER
       if (is_valid != NULL && src->array_view->array->null_count != 0) {
@@ -490,7 +438,65 @@ static int nanoarrow_materialize_int2(struct ArrayViewSlice* src, struct VectorS
 static int nanoarrow_materialize_dbl2(struct ArrayViewSlice* src, struct VectorSlice* dst,
                                       struct MaterializeOptions* options,
                                       struct MaterializeContext* context) {
-  Rf_error("Materialize to dbl not implemented");
+  double* result = REAL(dst->vec_sexp);
+
+  // True for all the types supported here
+  const uint8_t* is_valid = src->array_view->buffer_views[0].data.as_uint8;
+  int64_t raw_src_offset = src->array_view->array->offset + src->offset;
+
+  // Fill the buffer
+  switch (src->array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        result[dst->offset + i] = NA_REAL;
+      }
+      break;
+    case NANOARROW_TYPE_DOUBLE:
+      memcpy(result + dst->offset,
+             src->array_view->buffer_views[1].data.as_double + raw_src_offset,
+             dst->length * sizeof(double));
+
+      // Set any nulls to NA_REAL
+      if (is_valid != NULL && src->array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < dst->length; i++) {
+          if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
+            result[dst->offset + i] = NA_REAL;
+          }
+        }
+      }
+      break;
+    case NANOARROW_TYPE_BOOL:
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
+    case NANOARROW_TYPE_FLOAT:
+      // TODO: implement bounds check for int64 and uint64, but instead
+      // of setting to NA, just warn (because sequential values might not
+      // roundtrip above 2^51 ish)
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        result[dst->offset + i] = ArrowArrayViewGetDoubleUnsafe(src->array_view, src->offset + i);
+      }
+
+      // Set any nulls to NA_REAL
+      if (is_valid != NULL && src->array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < dst->length; i++) {
+          if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
+            result[dst->offset + i] = NA_REAL;
+          }
+        }
+      }
+      break;
+
+    default:
+      return EINVAL;
+  }
+
+  return NANOARROW_OK;
 }
 
 static int nanoarrow_materialize_chr2(struct ArrayViewSlice* src, struct VectorSlice* dst,
