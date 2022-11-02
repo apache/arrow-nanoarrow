@@ -61,7 +61,7 @@ as.data.frame.nanoarrow_array <- function(x, ...) {
     )
   }
 
-  .Call(nanoarrow_c_from_array, x, NULL)
+  .Call(nanoarrow_c_materialize_array, x, NULL)
 }
 
 # exported in zzz.R

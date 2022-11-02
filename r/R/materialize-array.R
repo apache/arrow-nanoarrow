@@ -34,10 +34,10 @@ materialize_array <- function(array, to = NULL, ...) {
 #' @export
 materialize_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
   if (.from_c) {
-    stop_cant_convert_array(array, to)
+    stop_cant_materialize_array(array, to)
   }
 
-  .Call(nanoarrow_c_from_array, array, to)
+  .Call(nanoarrow_c_materialize_array, array, to)
 }
 
 # This is defined because it's verbose to pass named arguments from C.
@@ -54,11 +54,11 @@ materialize_array_from_c <- function(array, to) {
 materialize_array.vctrs_partial_frame <- function(array, to, ...) {
   ptype <- infer_nanoarrow_ptype(array)
   if (!is.data.frame(ptype)) {
-    stop_cant_convert_array(array, to)
+    stop_cant_materialize_array(array, to)
   }
 
   ptype <- vctrs::vec_ptype_common(ptype, to)
-  .Call(nanoarrow_c_from_array, array, ptype)
+  .Call(nanoarrow_c_materialize_array, array, ptype)
 }
 
 #' @export
@@ -138,7 +138,7 @@ stop_cant_infer_ptype <- function(array, schema = infer_nanoarrow_schema(array))
   stop(cnd)
 }
 
-stop_cant_convert_array <- function(array, to) {
+stop_cant_materialize_array <- function(array, to) {
   schema <- infer_nanoarrow_schema(array)
   schema_label <- nanoarrow_schema_formatted(schema)
 

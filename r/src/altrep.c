@@ -92,11 +92,22 @@ static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
 
-  SEXP result = PROTECT(nanoarrow_materialize_chr(array_view));
-  R_set_altrep_data2(altrep_sexp, result);
+  SEXP result_sexp =
+      PROTECT(nanoarrow_alloc_type(VECTOR_TYPE_CHR, array_view->array->length));
+
+  struct ArrayViewSlice src = DefaultArrayViewSlice(array_view);
+  struct VectorSlice dst = DefaultVectorSlice(result_sexp);
+  struct MaterializeOptions options = DefaultMaterializeOptions();
+  struct MaterializeContext context = DefaultMaterializeContext();
+
+  if (nanoarrow_materialize(&src, &dst, &options, &context) != NANOARROW_OK) {
+    Rf_error("Error materializing altstring");
+  }
+
+  R_set_altrep_data2(altrep_sexp, result_sexp);
   R_set_altrep_data1(altrep_sexp, R_NilValue);
   UNPROTECT(1);
-  return result;
+  return result_sexp;
 }
 
 static void* nanoarrow_altrep_dataptr(SEXP altrep_sexp, Rboolean writable) {
