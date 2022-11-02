@@ -26,20 +26,6 @@
 #include "array_view.h"
 #include "materialize.h"
 
-// These are the vector types that have some special casing
-// internally to avoid unnecessary allocations or looping at
-// the R level. Other types are represented by an SEXP ptype.
-enum VectorType {
-  VECTOR_TYPE_UNSPECIFIED,
-  VECTOR_TYPE_LGL,
-  VECTOR_TYPE_INT,
-  VECTOR_TYPE_DBL,
-  VECTOR_TYPE_CHR,
-  VECTOR_TYPE_LIST_OF_RAW,
-  VECTOR_TYPE_DATA_FRAME,
-  VECTOR_TYPE_OTHER
-};
-
 // These conversions are the default R-native type guesses for
 // an array that don't require extra information from the ptype (e.g.,
 // factor with levels). Some of these guesses may result in a conversion
@@ -144,20 +130,11 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
 
   switch (vector_type) {
     case VECTOR_TYPE_UNSPECIFIED:
-      ptype = PROTECT(Rf_allocVector(LGLSXP, 0));
-      Rf_setAttrib(ptype, R_ClassSymbol, Rf_mkString("vctrs_unspecified"));
-      break;
     case VECTOR_TYPE_LGL:
-      ptype = PROTECT(Rf_allocVector(LGLSXP, 0));
-      break;
     case VECTOR_TYPE_INT:
-      ptype = PROTECT(Rf_allocVector(INTSXP, 0));
-      break;
     case VECTOR_TYPE_DBL:
-      ptype = PROTECT(Rf_allocVector(REALSXP, 0));
-      break;
     case VECTOR_TYPE_CHR:
-      ptype = PROTECT(Rf_allocVector(STRSXP, 0));
+      ptype = PROTECT(nanoarrow_alloc_type(vector_type, 0));
       break;
     case VECTOR_TYPE_DATA_FRAME:
       ptype = PROTECT(infer_ptype_data_frame(array_xptr));
