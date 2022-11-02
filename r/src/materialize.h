@@ -57,7 +57,8 @@ struct MaterializeContext {
   const char* context;
 };
 
-static inline struct ArrayViewSlice DefaultArrayViewSlice(struct ArrowArrayView* array_view) {
+static inline struct ArrayViewSlice DefaultArrayViewSlice(
+    struct ArrowArrayView* array_view) {
   struct ArrayViewSlice slice;
   slice.array_view = array_view;
   slice.offset = 0;
@@ -91,10 +92,9 @@ static inline struct MaterializeContext DefaultMaterializeContext() {
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
 SEXP nanoarrow_alloc_ptype(SEXP ptype, R_xlen_t len);
 
-
-void nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                           struct MaterializeOptions* options,
-                           struct MaterializeContext* context);
+int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
+                          struct MaterializeOptions* options,
+                          struct MaterializeContext* context);
 
 // These functions materialize a complete R vector or return R_NilValue
 // if they cannot (i.e., no conversion possible). These functions will warn
