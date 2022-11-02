@@ -16,7 +16,7 @@
 # under the License.
 
 
-#' Convert an Array to an R vector
+#' Materialize an Array into an R vector
 #'
 #' @param array A [nanoarrow_array][as_nanoarrow_array].
 #' @param to A target prototype object describing the type to which `array`
@@ -26,13 +26,13 @@
 #' @return An R vector of type `to`.
 #' @export
 #'
-from_nanoarrow_array <- function(array, to = NULL, ...) {
+materialize_array <- function(array, to = NULL, ...) {
   stopifnot(inherits(array, "nanoarrow_array"))
-  UseMethod("from_nanoarrow_array", to)
+  UseMethod("materialize_array", to)
 }
 
 #' @export
-from_nanoarrow_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
+materialize_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
   if (.from_c) {
     stop_cant_convert_array(array, to)
   }
@@ -43,15 +43,15 @@ from_nanoarrow_array.default <- function(array, to = NULL, ..., .from_c = FALSE)
 # This is defined because it's verbose to pass named arguments from C.
 # When converting data frame columns, we try the internal C conversions
 # first to save R evaluation overhead. When the internal conversions fail,
-# we call from_nanoarrow_array() to dispatch to conversions defined via S3
+# we call materialize_array() to dispatch to conversions defined via S3
 # dispatch, making sure to let the default method know that we've already
 # tried the internal C conversions.
-from_nanoarrow_array_from_c <- function(array, to) {
-  from_nanoarrow_array(array, to, .from_c = TRUE)
+materialize_array_from_c <- function(array, to) {
+  materialize_array(array, to, .from_c = TRUE)
 }
 
 #' @export
-from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
+materialize_array.vctrs_partial_frame <- function(array, to, ...) {
   ptype <- infer_nanoarrow_ptype(array)
   if (!is.data.frame(ptype)) {
     stop_cant_convert_array(array, to)
@@ -62,12 +62,12 @@ from_nanoarrow_array.vctrs_partial_frame <- function(array, to, ...) {
 }
 
 #' @export
-from_nanoarrow_array.tbl_df <- function(array, to, ...) {
-  df <- from_nanoarrow_array(array, as.data.frame(to))
+materialize_array.tbl_df <- function(array, to, ...) {
+  df <- materialize_array(array, as.data.frame(to))
   tibble::as_tibble(df)
 }
 
-#' @rdname from_nanoarrow_array
+#' @rdname materialize_array
 #' @export
 infer_nanoarrow_ptype <- function(array) {
   stopifnot(inherits(array, "nanoarrow_array"))

@@ -46,7 +46,7 @@ as_nanoarrow_array <- function(x, ..., schema = NULL) {
 #' @export
 as.vector.nanoarrow_array <- function(x, mode = "any") {
   stopifnot(identical(mode, "any"))
-  from_nanoarrow_array(x, to = infer_nanoarrow_ptype(x))
+  materialize_array(x, to = infer_nanoarrow_ptype(x))
 }
 
 #' @export
