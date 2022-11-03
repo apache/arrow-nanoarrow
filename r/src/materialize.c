@@ -23,9 +23,20 @@
 
 #include "materialize.h"
 
-// Note: These conversions are not currently written for safety rather than
-// speed. We could make use of C++ templating to provide faster and/or more
-// readable conversions here with a C entry point.
+R_xlen_t nanoarrow_vec_size(SEXP vec_sexp) {
+  if (Rf_isObject(vec_sexp)) {
+    if (Rf_inherits(vec_sexp, "data.frame") && Rf_length(vec_sexp) > 0) {
+      // Avoid materializing the row.names if we can
+      return Rf_xlength(VECTOR_ELT(vec_sexp, 0));
+    } else if (Rf_inherits(vec_sexp, "data.frame")) {
+      return Rf_xlength(Rf_getAttrib(vec_sexp, R_RowNamesSymbol));
+    } else if (Rf_inherits(vec_sexp, "matrix")) {
+      return Rf_nrows(vec_sexp);
+    }
+  }
+
+  return Rf_xlength(vec_sexp);
+}
 
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
   SEXP result;
@@ -51,7 +62,7 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
   return result;
 }
 
-SEXP nanoarrow_alloc_ptype(SEXP ptype, R_xlen_t len) {
+SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   SEXP result;
 
   if (Rf_isObject(ptype)) {
@@ -59,7 +70,8 @@ SEXP nanoarrow_alloc_ptype(SEXP ptype, R_xlen_t len) {
       R_xlen_t num_cols = Rf_xlength(ptype);
       result = PROTECT(Rf_allocVector(VECSXP, num_cols));
       for (R_xlen_t i = 0; i < num_cols; i++) {
-        SET_VECTOR_ELT(result, i, nanoarrow_alloc_ptype(VECTOR_ELT(ptype, i), len));
+        SET_VECTOR_ELT(result, i,
+                       nanoarrow_materialize_realloc(VECTOR_ELT(ptype, i), len));
       }
 
       // Set attributes from ptype
@@ -86,39 +98,15 @@ SEXP nanoarrow_alloc_ptype(SEXP ptype, R_xlen_t len) {
   return result;
 }
 
-static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
-                                            struct VectorSlice* dst,
-                                            struct MaterializeOptions* options,
-                                            struct MaterializeContext* context) {
-  if (src->array_view->storage_type != NANOARROW_TYPE_STRUCT) {
-    return EINVAL;
+SEXP nanoarrow_materialize_finish(SEXP result_sexp, R_xlen_t len,
+                                  struct MaterializeOptions* options) {
+  R_xlen_t actual_len = nanoarrow_vec_size(result_sexp);
+  if (actual_len != len) {
+    Rf_error("Expected finished vector of size %ld but got vector of size %ld", len,
+             actual_len);
   }
 
-  if (src->array_view->n_children != Rf_xlength(dst->vec_sexp)) {
-    return EINVAL;
-  }
-
-  struct ArrayViewSlice src_child = *src;
-  struct VectorSlice dst_child = *dst;
-  struct MaterializeContext child_context;
-  SEXP names = Rf_getAttrib(dst_child.vec_sexp, R_NamesSymbol);
-
-  for (int64_t i = 0; i < src->array_view->n_children; i++) {
-    child_context.context = Rf_translateCharUTF8(STRING_ELT(names, i));
-    src_child.array_view = src->array_view->children[i];
-    dst_child.vec_sexp = VECTOR_ELT(dst->vec_sexp, i);
-    NANOARROW_RETURN_NOT_OK(
-        nanoarrow_materialize(&src_child, &dst_child, options, &child_context));
-  }
-
-  return NANOARROW_OK;
-}
-
-static int nanoarrow_materialize_matrix(struct ArrayViewSlice* src,
-                                        struct VectorSlice* dst,
-                                        struct MaterializeOptions* options,
-                                        struct MaterializeContext* context) {
-  Rf_error("Materialize to matrix not implemented");
+  return result_sexp;
 }
 
 static int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
@@ -433,6 +421,48 @@ static int nanoarrow_materialize_blob(struct ArrayViewSlice* src, struct VectorS
   return NANOARROW_OK;
 }
 
+static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
+                                            struct VectorSlice* dst,
+                                            struct MaterializeOptions* options,
+                                            struct MaterializeContext* context) {
+  if (src->array_view->storage_type != NANOARROW_TYPE_STRUCT) {
+    return EINVAL;
+  }
+
+  if (src->array_view->n_children != Rf_xlength(dst->vec_sexp)) {
+    return EINVAL;
+  }
+
+  struct ArrayViewSlice src_child = *src;
+  struct VectorSlice dst_child = *dst;
+  struct MaterializeContext child_context;
+  SEXP names = Rf_getAttrib(dst_child.vec_sexp, R_NamesSymbol);
+
+  for (int64_t i = 0; i < src->array_view->n_children; i++) {
+    child_context.context = Rf_translateCharUTF8(STRING_ELT(names, i));
+    src_child.array_view = src->array_view->children[i];
+    dst_child.vec_sexp = VECTOR_ELT(dst->vec_sexp, i);
+    NANOARROW_RETURN_NOT_OK(
+        nanoarrow_materialize(&src_child, &dst_child, options, &child_context));
+  }
+
+  return NANOARROW_OK;
+}
+
+static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
+                                         struct VectorSlice* dst,
+                                         struct MaterializeOptions* options,
+                                         struct MaterializeContext* context) {
+  Rf_error("Materialize to list_of not implemented");
+}
+
+static int nanoarrow_materialize_matrix(struct ArrayViewSlice* src,
+                                        struct VectorSlice* dst,
+                                        struct MaterializeOptions* options,
+                                        struct MaterializeContext* context) {
+  Rf_error("Materialize to matrix not implemented");
+}
+
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
                           struct MaterializeOptions* options,
                           struct MaterializeContext* context) {
@@ -447,6 +477,7 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
     return NANOARROW_OK;
   }
 
+  // Dispatch to the right method for S3 objects that need special handling
   if (Rf_isObject(dst->vec_sexp)) {
     if (Rf_inherits(dst->vec_sexp, "data.frame")) {
       return nanoarrow_materialize_data_frame(src, dst, options, context);
@@ -456,6 +487,14 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
       return nanoarrow_materialize_unspecified(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "blob")) {
       return nanoarrow_materialize_blob(src, dst, options, context);
+    } else if (Rf_inherits(dst->vec_sexp, "vctrs_list_of")) {
+      return nanoarrow_materialize_list_of(src, dst, options, context);
+    } else {
+      // TODO: unlike array materialization where the pattern is "call a function
+      // that gets me an SEXP", here we do something more like "preallocate + fill in
+      // a chunk". That's harder to generalize but we could just call materialize_array()
+      // and copy the resulting SEXP into our preallocated structure.
+      Rf_error("materialize for custom S3 objects not supported");
     }
   }
 
@@ -473,4 +512,10 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
   }
 
   return EINVAL;
+}
+
+int nanoarrow_copy_vector(struct VectorSlice* src, struct VectorSlice* dst,
+                          struct MaterializeOptions* options,
+                          struct MaterializeContext* context) {
+  Rf_error("nanoarrow_copy_vector not implemented");
 }

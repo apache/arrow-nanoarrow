@@ -84,11 +84,19 @@ static inline struct MaterializeContext DefaultMaterializeContext() {
   return context;
 }
 
-// These functions allocate an SEXP result of a specified size
-// The type version allows allocating a result without allocating
-// an intermediary ptype if we don't need one.
+// Utility for "length" in the context of a materialized value.
+// This is the same as vctrs::vec_size(): Rf_xlength() for vectors and
+// the number of rows for data.frame()/matrix().
+R_xlen_t nanoarrow_vec_size(SEXP vec_sexp);
+
+// Reallocate ptype to a given length. Currently only zero-size ptypes
+// are supported but in the future this could also copy existing values
+// from ptype to provide growable behaviour.
+SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
+
+// A shortuct version of nanoarrow_materialize_realloc() that doesn't require
+// allocating a ptype first.
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
-SEXP nanoarrow_alloc_ptype(SEXP ptype, R_xlen_t len);
 
 // This function populates the given VectorSlice from the ArrayViewSlice,
 // returning 0 on success or something else if the type conversion is not
@@ -96,5 +104,20 @@ SEXP nanoarrow_alloc_ptype(SEXP ptype, R_xlen_t len);
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
                           struct MaterializeOptions* options,
                           struct MaterializeContext* context);
+
+// This function populates a VectorSlice from a VectorSlice (i.e., copies existing
+// values). This is used to support calling into the R-level materialize_array()
+// from nanoarrow_materialize() when we have already preallocated a result.
+// This is similar to rlang::vec_poke_range() except it also supports matrices.
+int nanoarrow_copy_vector(struct VectorSlice* src, struct VectorSlice* dst,
+                          struct MaterializeOptions* options,
+                          struct MaterializeContext* context);
+
+// This function mus be called after an alloc + zero or more materialize calls to finalize
+// the R object. Note that the returned SEXP can be different than result_sexp (e.g., if
+// the result of finalizing required a reallocation). Currently this function just checks
+// that the value of len and returns result_sexp.
+SEXP nanoarrow_materialize_finish(SEXP result_sexp, R_xlen_t len,
+                                  struct MaterializeOptions* options);
 
 #endif

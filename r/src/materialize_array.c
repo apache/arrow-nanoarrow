@@ -62,7 +62,8 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
 
   SEXP result_sexp;
   if (vector_type == VECTOR_TYPE_OTHER) {
-    result_sexp = PROTECT(nanoarrow_alloc_ptype(ptype, array_view->array->length));
+    result_sexp =
+        PROTECT(nanoarrow_materialize_realloc(ptype, array_view->array->length));
   } else {
     result_sexp = PROTECT(nanoarrow_alloc_type(vector_type, array_view->array->length));
   }
@@ -76,8 +77,10 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
     call_stop_cant_materialize_array(array_xptr, vector_type);
   }
 
-  UNPROTECT(2);
-  return result_sexp;
+  SEXP finished_sexp = PROTECT(
+      nanoarrow_materialize_finish(result_sexp, array_view->array->length, &options));
+  UNPROTECT(3);
+  return finished_sexp;
 }
 
 static SEXP materialize_array_chr(SEXP array_xptr) {
