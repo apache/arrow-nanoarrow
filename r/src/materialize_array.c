@@ -142,7 +142,7 @@ static SEXP materialize_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
 }
 
 // borrow nanoarrow_c_infer_ptype() from infer_ptype.c
-SEXP nanoarrow_c_infer_ptype(SEXP array_xptr);
+SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr);
 
 SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
@@ -164,7 +164,7 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
 
     // Otherwise, resolve the ptype and use it (this will also error
     // for ptypes that can't be resolved)
-    ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr));
+    ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
     SEXP result = nanoarrow_c_materialize_array(array_xptr, ptype_sexp);
     UNPROTECT(1);
     return result;

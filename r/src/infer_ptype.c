@@ -23,6 +23,7 @@
 
 #include "altrep.h"
 #include "array.h"
+#include "schema.h"
 #include "array_view.h"
 #include "materialize.h"
 
@@ -63,45 +64,50 @@ enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
   }
 }
 
-// The same as the above, but from a nanoarrow_array()
-enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr) {
-  struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
+// The same as the above, but from a nanoarrow_schema()
+enum VectorType nanoarrow_infer_vector_type_schema(SEXP schema_xptr) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
 
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
   if (ArrowSchemaViewInit(&schema_view, schema, &error) != NANOARROW_OK) {
-    Rf_error("nanoarrow_infer_vector_type_array(): %s", ArrowErrorMessage(&error));
+    Rf_error("nanoarrow_infer_vector_type_schema(): %s", ArrowErrorMessage(&error));
   }
 
   return nanoarrow_infer_vector_type(schema_view.data_type);
 }
 
+// The same as the above, but from a nanoarrow_array()
+enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr) {
+  return nanoarrow_infer_vector_type_schema(array_xptr_get_schema(array_xptr));
+}
+
 // Call nanoarrow::infer_ptype_other(), which handles less common types that
 // are easier to compute in R or gives an informative error if this is
 // not possible.
-static SEXP call_infer_ptype_other(SEXP array_xptr) {
+static SEXP call_infer_ptype_other(SEXP schema_xptr) {
   SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call = PROTECT(Rf_lang2(Rf_install("infer_ptype_other"), array_xptr));
+  SEXP call = PROTECT(Rf_lang2(Rf_install("infer_ptype_other"), schema_xptr));
   SEXP result = PROTECT(Rf_eval(call, ns));
   UNPROTECT(3);
   return result;
 }
 
-SEXP nanoarrow_c_infer_ptype(SEXP array_xptr);
+SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 
-static SEXP infer_ptype_data_frame(SEXP array_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  SEXP result = PROTECT(Rf_allocVector(VECSXP, array->n_children));
-  SEXP result_names = PROTECT(Rf_allocVector(STRSXP, array->n_children));
+static SEXP infer_ptype_data_frame(SEXP schema_xptr) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  SEXP result = PROTECT(Rf_allocVector(VECSXP, schema->n_children));
+  SEXP result_names = PROTECT(Rf_allocVector(STRSXP, schema->n_children));
 
-  for (R_xlen_t i = 0; i < array->n_children; i++) {
-    SEXP child_xptr = PROTECT(borrow_array_child_xptr(array_xptr, i));
+  for (R_xlen_t i = 0; i < schema->n_children; i++) {
+    SEXP child_xptr = PROTECT(borrow_schema_child_xptr(schema_xptr, i));
     SET_VECTOR_ELT(result, i, nanoarrow_c_infer_ptype(child_xptr));
     UNPROTECT(1);
 
-    struct ArrowSchema* schema = schema_from_array_xptr(child_xptr);
-    if (schema->name != NULL) {
-      SET_STRING_ELT(result_names, i, Rf_mkCharCE(schema->name, CE_UTF8));
+    struct ArrowSchema* child = schema->children[i];
+    if (child->name != NULL) {
+      SET_STRING_ELT(result_names, i, Rf_mkCharCE(child->name, CE_UTF8));
     } else {
       SET_STRING_ELT(result_names, i, Rf_mkChar(""));
     }
@@ -117,8 +123,8 @@ static SEXP infer_ptype_data_frame(SEXP array_xptr) {
   return result;
 }
 
-SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
-  enum VectorType vector_type = nanoarrow_infer_vector_type_array(array_xptr);
+SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr) {
+  enum VectorType vector_type = nanoarrow_infer_vector_type_schema(schema_xptr);
   SEXP ptype = R_NilValue;
 
   switch (vector_type) {
@@ -129,10 +135,10 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
       ptype = PROTECT(nanoarrow_alloc_type(vector_type, 0));
       break;
     case VECTOR_TYPE_DATA_FRAME:
-      ptype = PROTECT(infer_ptype_data_frame(array_xptr));
+      ptype = PROTECT(infer_ptype_data_frame(schema_xptr));
       break;
     default:
-      ptype = PROTECT(call_infer_ptype_other(array_xptr));
+      ptype = PROTECT(call_infer_ptype_other(schema_xptr));
       break;
   }
 

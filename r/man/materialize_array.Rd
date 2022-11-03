@@ -2,12 +2,9 @@
 % Please edit documentation in R/materialize-array.R
 \name{materialize_array}
 \alias{materialize_array}
-\alias{infer_nanoarrow_ptype}
 \title{Materialize an Array into an R vector}
 \usage{
 materialize_array(array, to = NULL, ...)
-
-infer_nanoarrow_ptype(array)
 }
 \arguments{
 \item{array}{A \link[=as_nanoarrow_array]{nanoarrow_array}.}

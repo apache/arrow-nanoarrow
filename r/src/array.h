@@ -82,6 +82,10 @@ static inline void array_xptr_set_schema(SEXP array_xptr, SEXP schema_xptr) {
   R_SetExternalPtrTag(array_xptr, schema_xptr);
 }
 
+static inline SEXP array_xptr_get_schema(SEXP array_xptr) {
+  return R_ExternalPtrTag(array_xptr);
+}
+
 // Retrieves a schema from an array external pointer if it exists or returns
 // NULL otherwise.
 static inline struct ArrowSchema* schema_from_array_xptr(SEXP array_xptr) {
@@ -113,7 +117,7 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
   array_copy->private_data = independent_array_xptr;
   array_copy->release = &finalize_exported_array;
   R_PreserveObject(independent_array_xptr);
-  UNPROTECT(1); 
+  UNPROTECT(1);
 }
 
 // When arrays arrive as a nanoarrow_array, they are responsible for
