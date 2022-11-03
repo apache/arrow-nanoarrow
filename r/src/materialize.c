@@ -535,27 +535,105 @@ static int nanoarrow_materialize_date(struct ArrayViewSlice* src, struct VectorS
   return EINVAL;
 }
 
-static int nanoarrow_materialize_hms(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                     struct MaterializeOptions* options,
-                                     struct MaterializeContext* context) {
-  // Need to scale on units (hms units are the same as difftime)
-  Rf_error("Materialize to hms not implemented");
+static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
+                                          struct VectorSlice* dst,
+                                          struct MaterializeOptions* options,
+                                          struct MaterializeContext* context) {
+  if (TYPEOF(dst->vec_sexp) == REALSXP) {
+    switch (src->schema_view.data_type) {
+      case NANOARROW_TYPE_NA:
+      case NANOARROW_TYPE_TIME32:
+      case NANOARROW_TYPE_TIME64:
+      case NANOARROW_TYPE_DURATION:
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        break;
+      default:
+        return EINVAL;
+    }
+
+    double scale;
+    const void* vmax = vmaxget();
+    const char* dst_units = Rf_translateCharUTF8(
+        STRING_ELT(Rf_getAttrib(dst->vec_sexp, Rf_install("units")), 0));
+    if (strcmp(dst_units, "secs") == 0) {
+      scale = 1;
+    } else {
+      return EINVAL;
+    }
+    vmaxset(vmax);
+
+    switch (src->schema_view.time_unit) {
+      case NANOARROW_TIME_UNIT_SECOND:
+        scale *= 1;
+        break;
+      case NANOARROW_TIME_UNIT_MILLI:
+        scale *= 1e-3;
+        break;
+      case NANOARROW_TIME_UNIT_MICRO:
+        scale *= 1e-6;
+        break;
+      case NANOARROW_TIME_UNIT_NANO:
+        scale *= 1e-9;
+        break;
+      default:
+        return EINVAL;
+    }
+
+    if (scale != 1) {
+      double* result = REAL(dst->vec_sexp);
+      for (int64_t i = 0; i < dst->length; i++) {
+        result[dst->offset + i] = result[dst->offset + i] * scale;
+      }
+    }
+
+    return NANOARROW_OK;
+  }
+
+  return EINVAL;
 }
 
 static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
                                          struct VectorSlice* dst,
                                          struct MaterializeOptions* options,
                                          struct MaterializeContext* context) {
-  // Need to scale on units (posixct is seconds)
-  Rf_error("Materialize to posixct not implemented");
-}
+  if (TYPEOF(dst->vec_sexp) == REALSXP) {
+    switch (src->schema_view.data_type) {
+      case NANOARROW_TYPE_NA:
+      case NANOARROW_TYPE_TIMESTAMP:
+        break;
+      default:
+        return EINVAL;
+    }
 
-static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
-                                          struct VectorSlice* dst,
-                                          struct MaterializeOptions* options,
-                                          struct MaterializeContext* context) {
-  // Need to scale on units (hms units are the same as difftime)
-  Rf_error("Materialize to difftime not implemented");
+    double scale = 1;
+    switch (src->schema_view.time_unit) {
+      case NANOARROW_TIME_UNIT_SECOND:
+        scale *= 1;
+        break;
+      case NANOARROW_TIME_UNIT_MILLI:
+        scale *= 1e-3;
+        break;
+      case NANOARROW_TIME_UNIT_MICRO:
+        scale *= 1e-6;
+        break;
+      case NANOARROW_TIME_UNIT_NANO:
+        scale *= 1e-9;
+        break;
+      default:
+        return EINVAL;
+    }
+
+    if (scale != 1) {
+      double* result = REAL(dst->vec_sexp);
+      for (int64_t i = 0; i < dst->length; i++) {
+        result[dst->offset + i] = result[dst->offset + i] * scale;
+      }
+    }
+
+    return NANOARROW_OK;
+  }
+
+  return EINVAL;
 }
 
 static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
@@ -612,8 +690,6 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
       return nanoarrow_materialize_list_of(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "Date")) {
       return nanoarrow_materialize_date(src, dst, options, context);
-    } else if (Rf_inherits(dst->vec_sexp, "hms")) {
-      return nanoarrow_materialize_hms(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "POSIXct")) {
       return nanoarrow_materialize_posixct(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "difftime")) {
