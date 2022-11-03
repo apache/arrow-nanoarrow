@@ -60,7 +60,7 @@ test_that("materialize_array() errors for unsupported array", {
   )
 })
 
-test_that("convert to vector works for data.frame", {
+test_that("materialize to vector works for data.frame", {
   df <- data.frame(a = 1L, b = "two", c = 3, d = TRUE)
   array <- as_nanoarrow_array(df)
 
@@ -79,7 +79,7 @@ test_that("convert to vector works for data.frame", {
   )
 })
 
-test_that("convert to vector works for partial_frame", {
+test_that("materialize to vector works for partial_frame", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
   expect_identical(
     materialize_array(array, vctrs::partial_frame()),
@@ -87,7 +87,7 @@ test_that("convert to vector works for partial_frame", {
   )
 })
 
-test_that("convert to vector works for tibble", {
+test_that("materialize to vector works for tibble", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
   expect_identical(
     materialize_array(array, tibble::tibble(a = integer(), b = character())),
@@ -111,7 +111,7 @@ test_that("convert to vector works for tibble", {
   )
 })
 
-test_that("convert to vector works for unspecified()", {
+test_that("materialize to vector works for unspecified()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
 
   # implicit for null type
@@ -144,7 +144,7 @@ test_that("convert to vector works for unspecified()", {
   )
 })
 
-test_that("convert to vector works for valid logical()", {
+test_that("materialize to vector works for valid logical()", {
   arrow_numeric_types <- list(
     int8 = arrow::int8(),
     uint8 = arrow::uint8(),
@@ -198,7 +198,7 @@ test_that("convert to vector works for valid logical()", {
   )
 })
 
-test_that("convert to vector works for null -> logical()", {
+test_that("materialize to vector works for null -> logical()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
     materialize_array(array, logical()),
@@ -206,14 +206,14 @@ test_that("convert to vector works for null -> logical()", {
   )
 })
 
-test_that("convert to vector errors for bad array to logical()", {
+test_that("materialize to vector errors for bad array to logical()", {
   expect_error(
     materialize_array(as_nanoarrow_array(letters), logical()),
     "Can't convert array <string> to R vector of type logical"
   )
 })
 
-test_that("convert to vector works for valid integer()", {
+test_that("materialize to vector works for valid integer()", {
   arrow_int_types <- list(
     int8 = arrow::int8(),
     uint8 = arrow::uint8(),
@@ -267,7 +267,7 @@ test_that("convert to vector works for valid integer()", {
   )
 })
 
-test_that("convert to vector works for null -> logical()", {
+test_that("materialize to vector works for null -> logical()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
     materialize_array(array, integer()),
@@ -275,7 +275,7 @@ test_that("convert to vector works for null -> logical()", {
   )
 })
 
-test_that("convert to vector warns for invalid integer()", {
+test_that("materialize to vector warns for invalid integer()", {
   array <- as_nanoarrow_array(arrow::as_arrow_array(.Machine$double.xmax))
   expect_warning(
     expect_identical(materialize_array(array, integer()), NA_integer_),
@@ -289,14 +289,14 @@ test_that("convert to vector warns for invalid integer()", {
   )
 })
 
-test_that("convert to vector errors for bad array to integer()", {
+test_that("materialize to vector errors for bad array to integer()", {
   expect_error(
     materialize_array(as_nanoarrow_array(letters), integer()),
     "Can't convert array <string> to R vector of type integer"
   )
 })
 
-test_that("convert to vector works for valid double()", {
+test_that("materialize to vector works for valid double()", {
   arrow_numeric_types <- list(
     int8 = arrow::int8(),
     uint8 = arrow::uint8(),
@@ -350,7 +350,7 @@ test_that("convert to vector works for valid double()", {
   )
 })
 
-test_that("convert to vector works for null -> double()", {
+test_that("materialize to vector works for null -> double()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
     materialize_array(array, double()),
@@ -358,14 +358,14 @@ test_that("convert to vector works for null -> double()", {
   )
 })
 
-test_that("convert to vector errors for bad array to double()", {
+test_that("materialize to vector errors for bad array to double()", {
   expect_error(
     materialize_array(as_nanoarrow_array(letters), double()),
     "Can't convert array <string> to R vector of type numeric"
   )
 })
 
-test_that("convert to vector works for character()", {
+test_that("materialize to vector works for character()", {
   array <- as_nanoarrow_array(letters)
   expect_identical(
     materialize_array(array, character()),
@@ -382,7 +382,7 @@ test_that("convert to vector works for character()", {
   )
 })
 
-test_that("convert to vector works for null -> character()", {
+test_that("materialize to vector works for null -> character()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
     materialize_array(array, character()),
@@ -390,7 +390,7 @@ test_that("convert to vector works for null -> character()", {
   )
 })
 
-test_that("convert to vector works for blob::blob()", {
+test_that("materialize to vector works for blob::blob()", {
   array <- as_nanoarrow_array(list(as.raw(1:5)), schema = arrow::binary())
   expect_identical(
     materialize_array(array),
@@ -403,7 +403,7 @@ test_that("convert to vector works for blob::blob()", {
   )
 })
 
-test_that("convert to vector works for null -> blob::blob()", {
+test_that("materialize to vector works for null -> blob::blob()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
     materialize_array(array, blob::blob()),
