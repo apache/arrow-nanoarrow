@@ -375,7 +375,7 @@ static int nanoarrow_materialize_chr(struct ArrayViewSlice* src, struct VectorSl
     default:
       return EINVAL;
   }
-  
+
   if (src->array_view->storage_type == NANOARROW_TYPE_NA) {
     for (R_xlen_t i = 0; i < dst->length; i++) {
       SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
@@ -456,9 +456,11 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
           child_src.offset = offsets[raw_src_offset + i];
           child_src.length = offsets[raw_src_offset + i + 1] - child_src.offset;
 
-          child_dst.vec_sexp = PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
+          child_dst.vec_sexp =
+              PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
           child_dst.length = child_src.length;
-          convert_result = nanoarrow_materialize(&child_src, &child_dst, options, context);
+          convert_result =
+              nanoarrow_materialize(&child_src, &child_dst, options, context);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
@@ -475,9 +477,11 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
           child_src.offset = large_offsets[raw_src_offset + i];
           child_src.length = large_offsets[raw_src_offset + i + 1] - child_src.offset;
 
-          child_dst.vec_sexp = PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
+          child_dst.vec_sexp =
+              PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
           child_dst.length = child_src.length;
-          convert_result = nanoarrow_materialize(&child_src, &child_dst, options, context);
+          convert_result =
+              nanoarrow_materialize(&child_src, &child_dst, options, context);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
@@ -494,8 +498,10 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
           child_src.offset = (raw_src_offset + i) * child_src.length;
-          child_dst.vec_sexp = PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
-          convert_result = nanoarrow_materialize(&child_src, &child_dst, options, context);
+          child_dst.vec_sexp =
+              PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
+          convert_result =
+              nanoarrow_materialize(&child_src, &child_dst, options, context);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
@@ -511,6 +517,32 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
   }
 
   return NANOARROW_OK;
+}
+
+static int nanoarrow_materialize_date(struct ArrayViewSlice* src, struct VectorSlice* dst,
+                                      struct MaterializeOptions* options,
+                                      struct MaterializeContext* context) {
+  Rf_error("Materialize to date not implemented");
+}
+
+static int nanoarrow_materialize_hms(struct ArrayViewSlice* src, struct VectorSlice* dst,
+                                     struct MaterializeOptions* options,
+                                     struct MaterializeContext* context) {
+  Rf_error("Materialize to hms not implemented");
+}
+
+static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
+                                         struct VectorSlice* dst,
+                                         struct MaterializeOptions* options,
+                                         struct MaterializeContext* context) {
+  Rf_error("Materialize to posixct not implemented");
+}
+
+static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
+                                          struct VectorSlice* dst,
+                                          struct MaterializeOptions* options,
+                                          struct MaterializeContext* context) {
+  Rf_error("Materialize to difftime not implemented");
 }
 
 static int nanoarrow_materialize_matrix(struct ArrayViewSlice* src,
@@ -574,6 +606,14 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
       return nanoarrow_materialize_blob(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "vctrs_list_of")) {
       return nanoarrow_materialize_list_of(src, dst, options, context);
+    } else if (Rf_inherits(dst->vec_sexp, "Date")) {
+      return nanoarrow_materialize_date(src, dst, options, context);
+    } else if (Rf_inherits(dst->vec_sexp, "hms")) {
+      return nanoarrow_materialize_hms(src, dst, options, context);
+    } else if (Rf_inherits(dst->vec_sexp, "POSIXct")) {
+      return nanoarrow_materialize_posixct(src, dst, options, context);
+    } else if (Rf_inherits(dst->vec_sexp, "difftime")) {
+      return nanoarrow_materialize_difftime(src, dst, options, context);
     } else {
       // TODO: unlike array materialization where the pattern is "call a function
       // that gets me an SEXP", here we do something more like "preallocate + fill in

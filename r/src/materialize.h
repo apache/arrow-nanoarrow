@@ -23,9 +23,8 @@
 
 #include "nanoarrow.h"
 
-// These are the vector types that have some special casing
-// internally to avoid unnecessary allocations or looping at
-// the R level. Other types are represented by an SEXP ptype.
+// Vector types that have some special casing internally to avoid unnecessary allocations
+// or looping at the R level. Other types are represented by an SEXP ptype.
 enum VectorType {
   VECTOR_TYPE_LGL,
   VECTOR_TYPE_INT,
@@ -35,22 +34,29 @@ enum VectorType {
   VECTOR_TYPE_OTHER
 };
 
+// A wrapper around the ArrayView with an additional offset + length
+// representing a source of a materialization
 struct ArrayViewSlice {
+  struct ArrowSchemaView schema_view;
   struct ArrowArrayView* array_view;
   int64_t offset;
   int64_t length;
 };
 
+// A wapper around an SEXP vector with an additional offset + length.
+// This can be both a source and/or a target for copying from/to.
 struct VectorSlice {
   SEXP vec_sexp;
   R_xlen_t offset;
   R_xlen_t length;
 };
 
+// Options for resolving a ptype and for materializing values.
 struct MaterializeOptions {
   double scale;
 };
 
+// A context to be populated when returning an error message
 struct MaterializeContext {
   const char* context;
 };
@@ -58,6 +64,8 @@ struct MaterializeContext {
 static inline struct ArrayViewSlice DefaultArrayViewSlice(
     struct ArrowArrayView* array_view) {
   struct ArrayViewSlice slice;
+  slice.schema_view.data_type = NANOARROW_TYPE_UNINITIALIZED;
+  slice.schema_view.storage_data_type = NANOARROW_TYPE_UNINITIALIZED;
   slice.array_view = array_view;
   slice.offset = 0;
   slice.length = array_view->array->length;

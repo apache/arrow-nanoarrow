@@ -485,3 +485,25 @@ test_that("materialize to vector works for fixed_size_list -> vctrs::list_of", {
     "Can't convert array"
   )
 })
+
+test_that("materialize to vector works for Date", {
+  array_date <- as_nanoarrow_array(as.Date("2000-01-01"))
+  materialize_array(array_date)
+})
+
+test_that("materialize to vector works for hms", {
+  array_time <- as_nanoarrow_array(hms::parse_hm("12:34"))
+  materialize_array(array_time)
+})
+
+test_that("materialize to vector works for POSIXct", {
+  array_timestamp <- as_nanoarrow_array(
+    as.POSIXct("2000-01-01 12:33", tz = "America/Halifax")
+  )
+  materialize_array(array_timestamp)
+})
+
+test_that("materialize to vector works for difftime", {
+  array_duration <- as_nanoarrow_array(as.difftime(123, units = "secs"))
+  materialize_array(array_duration)
+})

@@ -73,6 +73,9 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
   struct MaterializeOptions options = DefaultMaterializeOptions();
   struct MaterializeContext context = DefaultMaterializeContext();
 
+  // Needed for datetime types to pass on source units.
+  ArrowSchemaViewInit(&src.schema_view, schema_from_array_xptr(array_xptr), NULL);
+
   if (nanoarrow_materialize(&src, &dst, &options, &context) != NANOARROW_OK) {
     call_stop_cant_materialize_array(array_xptr, vector_type);
   }
@@ -180,7 +183,11 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
       return materialize_array_data_frame(array_xptr, ptype_sexp);
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified") ||
                Rf_inherits(ptype_sexp, "blob") ||
-               Rf_inherits(ptype_sexp, "vctrs_list_of")) {
+               Rf_inherits(ptype_sexp, "vctrs_list_of") ||
+               Rf_inherits(ptype_sexp, "Date") ||
+               Rf_inherits(ptype_sexp, "hms") ||
+               Rf_inherits(ptype_sexp, "POSIXct") ||
+               Rf_inherits(ptype_sexp, "difftime")) {
       return materialize_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
     } else {
       return call_materialize_array(array_xptr, ptype_sexp);
