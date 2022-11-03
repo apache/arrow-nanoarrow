@@ -410,3 +410,78 @@ test_that("materialize to vector works for null -> blob::blob()", {
     blob::new_blob(rep(list(NULL), 10))
   )
 })
+
+test_that("materialize to vector works for list -> vctrs::list_of", {
+  array_list <- as_nanoarrow_array(
+    arrow::Array$create(
+      list(1:5, 6:10, NULL),
+      type = arrow::list_of(arrow::int32())
+    )
+  )
+
+  # Default conversion
+  expect_identical(
+    materialize_array(array_list),
+    vctrs::list_of(1:5, 6:10, NULL, .ptype = integer())
+  )
+
+  # With explicit ptype
+  expect_identical(
+    materialize_array(array_list, vctrs::list_of(.ptype = double())),
+    vctrs::list_of(as.double(1:5), as.double(6:10), NULL, .ptype = double())
+  )
+
+  # With bad ptype
+  expect_error(
+    materialize_array(array_list, vctrs::list_of(.ptype = character())),
+    "Can't convert array"
+  )
+})
+
+test_that("materialize to vector works for large_list -> vctrs::list_of", {
+  array_list <- as_nanoarrow_array(
+    arrow::Array$create(
+      list(1:5, 6:10, NULL),
+      type = arrow::large_list_of(arrow::int32())
+    )
+  )
+
+  # Default conversion
+  expect_identical(
+    materialize_array(array_list),
+    vctrs::list_of(1:5, 6:10, NULL, .ptype = integer())
+  )
+
+  # With explicit ptype
+  expect_identical(
+    materialize_array(array_list, vctrs::list_of(.ptype = double())),
+    vctrs::list_of(as.double(1:5), as.double(6:10), NULL, .ptype = double())
+  )
+
+  # With bad ptype
+  expect_error(
+    materialize_array(array_list, vctrs::list_of(.ptype = character())),
+    "Can't convert array"
+  )
+})
+
+test_that("materialize to vector works for fixed_size_list -> vctrs::list_of", {
+  array_list <- as_nanoarrow_array(
+    arrow::Array$create(
+      list(1:5, 6:10, NULL),
+      type = arrow::fixed_size_list_of(arrow::int32(), 5)
+    )
+  )
+
+  # With explicit ptype
+  expect_identical(
+    materialize_array(array_list, vctrs::list_of(.ptype = double())),
+    vctrs::list_of(as.double(1:5), as.double(6:10), NULL, .ptype = double())
+  )
+
+  # With bad ptype
+  expect_error(
+    materialize_array(array_list, vctrs::list_of(.ptype = character())),
+    "Can't convert array"
+  )
+})

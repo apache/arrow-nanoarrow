@@ -367,6 +367,15 @@ static int nanoarrow_materialize_dbl(struct ArrayViewSlice* src, struct VectorSl
 static int nanoarrow_materialize_chr(struct ArrayViewSlice* src, struct VectorSlice* dst,
                                      struct MaterializeOptions* options,
                                      struct MaterializeContext* context) {
+  switch (src->array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
+      break;
+    default:
+      return EINVAL;
+  }
+  
   if (src->array_view->storage_type == NANOARROW_TYPE_NA) {
     for (R_xlen_t i = 0; i < dst->length; i++) {
       SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
@@ -421,6 +430,96 @@ static int nanoarrow_materialize_blob(struct ArrayViewSlice* src, struct VectorS
   return NANOARROW_OK;
 }
 
+static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
+                                         struct VectorSlice* dst,
+                                         struct MaterializeOptions* options,
+                                         struct MaterializeContext* context) {
+  const int32_t* offsets = src->array_view->buffer_views[1].data.as_int32;
+  const int64_t* large_offsets = src->array_view->buffer_views[1].data.as_int64;
+  int64_t raw_src_offset = src->array_view->array->offset + src->offset;
+
+  struct ArrayViewSlice child_src;
+  child_src.array_view = src->array_view->children[0];
+
+  struct VectorSlice child_dst;
+  child_dst.offset = 0;
+  SEXP ptype = Rf_getAttrib(dst->vec_sexp, Rf_install("ptype"));
+
+  int convert_result;
+
+  switch (src->array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_LIST:
+      for (int64_t i = 0; i < dst->length; i++) {
+        if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+          child_src.offset = offsets[raw_src_offset + i];
+          child_src.length = offsets[raw_src_offset + i + 1] - child_src.offset;
+
+          child_dst.vec_sexp = PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
+          child_dst.length = child_src.length;
+          convert_result = nanoarrow_materialize(&child_src, &child_dst, options, context);
+          if (convert_result != NANOARROW_OK) {
+            UNPROTECT(1);
+            return EINVAL;
+          }
+
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst.vec_sexp);
+          UNPROTECT(1);
+        }
+      }
+      break;
+    case NANOARROW_TYPE_LARGE_LIST:
+      for (int64_t i = 0; i < dst->length; i++) {
+        if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+          child_src.offset = large_offsets[raw_src_offset + i];
+          child_src.length = large_offsets[raw_src_offset + i + 1] - child_src.offset;
+
+          child_dst.vec_sexp = PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
+          child_dst.length = child_src.length;
+          convert_result = nanoarrow_materialize(&child_src, &child_dst, options, context);
+          if (convert_result != NANOARROW_OK) {
+            UNPROTECT(1);
+            return EINVAL;
+          }
+
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst.vec_sexp);
+          UNPROTECT(1);
+        }
+      }
+      break;
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      child_src.length = src->array_view->layout.child_size_elements;
+      child_dst.length = child_src.length;
+      for (int64_t i = 0; i < dst->length; i++) {
+        if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+          child_src.offset = (raw_src_offset + i) * child_src.length;
+          child_dst.vec_sexp = PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
+          convert_result = nanoarrow_materialize(&child_src, &child_dst, options, context);
+          if (convert_result != NANOARROW_OK) {
+            UNPROTECT(1);
+            return EINVAL;
+          }
+
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst.vec_sexp);
+          UNPROTECT(1);
+        }
+      }
+      break;
+    default:
+      return EINVAL;
+  }
+
+  return NANOARROW_OK;
+}
+
+static int nanoarrow_materialize_matrix(struct ArrayViewSlice* src,
+                                        struct VectorSlice* dst,
+                                        struct MaterializeOptions* options,
+                                        struct MaterializeContext* context) {
+  Rf_error("Materialize to matrix not implemented");
+}
+
 static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
                                             struct VectorSlice* dst,
                                             struct MaterializeOptions* options,
@@ -447,20 +546,6 @@ static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
   }
 
   return NANOARROW_OK;
-}
-
-static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
-                                         struct VectorSlice* dst,
-                                         struct MaterializeOptions* options,
-                                         struct MaterializeContext* context) {
-  Rf_error("Materialize to list_of not implemented");
-}
-
-static int nanoarrow_materialize_matrix(struct ArrayViewSlice* src,
-                                        struct VectorSlice* dst,
-                                        struct MaterializeOptions* options,
-                                        struct MaterializeContext* context) {
-  Rf_error("Materialize to matrix not implemented");
 }
 
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,

@@ -179,7 +179,8 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
     if (Rf_inherits(ptype_sexp, "data.frame") && !Rf_inherits(ptype_sexp, "tbl_df")) {
       return materialize_array_data_frame(array_xptr, ptype_sexp);
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified") ||
-               Rf_inherits(ptype_sexp, "blob")) {
+               Rf_inherits(ptype_sexp, "blob") ||
+               Rf_inherits(ptype_sexp, "vctrs_list_of")) {
       return materialize_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
     } else {
       return call_materialize_array(array_xptr, ptype_sexp);
