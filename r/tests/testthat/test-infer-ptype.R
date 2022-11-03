@@ -64,6 +64,12 @@ test_that("infer_nanoarrow_ptype() works for basic types", {
 })
 
 test_that("infer_nanoarrow_ptype() infers ptypes for date/time types", {
+  array_date <- as_nanoarrow_array(as.Date("2000-01-01"))
+  expect_identical(
+    infer_nanoarrow_ptype(array_date),
+    as.Date(character())
+  )
+
   array_time <- as_nanoarrow_array(hms::parse_hm("12:34"))
   expect_identical(
     infer_nanoarrow_ptype(array_time),
