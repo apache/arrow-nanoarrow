@@ -31,10 +31,6 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
   SEXP result;
 
   switch (vector_type) {
-    case VECTOR_TYPE_UNSPECIFIED:
-      result = PROTECT(Rf_allocVector(LGLSXP, len));
-      Rf_setAttrib(result, R_ClassSymbol, Rf_mkString("vctrs_unspecified"));
-      break;
     case VECTOR_TYPE_LGL:
       result = PROTECT(Rf_allocVector(LGLSXP, len));
       break;
@@ -404,6 +400,39 @@ static int nanoarrow_materialize_chr(struct ArrayViewSlice* src, struct VectorSl
   return NANOARROW_OK;
 }
 
+static int nanoarrow_materialize_blob(struct ArrayViewSlice* src, struct VectorSlice* dst,
+                                      struct MaterializeOptions* options,
+                                      struct MaterializeContext* context) {
+  switch (src->array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      break;
+    default:
+      return EINVAL;
+  }
+
+  if (src->array_view->storage_type == NANOARROW_TYPE_NA) {
+    return NANOARROW_OK;
+  }
+
+  struct ArrowBufferView item;
+  SEXP item_sexp;
+  for (R_xlen_t i = 0; i < dst->length; i++) {
+    if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+      item = ArrowArrayViewGetBytesUnsafe(src->array_view, src->offset + i);
+      item_sexp = PROTECT(Rf_allocVector(RAWSXP, item.n_bytes));
+      memcpy(RAW(item_sexp), item.data.data, item.n_bytes);
+      SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, item_sexp);
+      UNPROTECT(1);
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
                           struct MaterializeOptions* options,
                           struct MaterializeContext* context) {
@@ -425,6 +454,8 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
       return nanoarrow_materialize_matrix(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "vctrs_unspecified")) {
       return nanoarrow_materialize_unspecified(src, dst, options, context);
+    } else if (Rf_inherits(dst->vec_sexp, "blob")) {
+      return nanoarrow_materialize_blob(src, dst, options, context);
     }
   }
 

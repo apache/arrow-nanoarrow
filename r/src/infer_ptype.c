@@ -34,9 +34,6 @@
 // when this occurs.
 enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
   switch (type) {
-    case NANOARROW_TYPE_NA:
-      return VECTOR_TYPE_UNSPECIFIED;
-
     case NANOARROW_TYPE_BOOL:
       return VECTOR_TYPE_LGL;
 
@@ -57,10 +54,6 @@ enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
       return VECTOR_TYPE_CHR;
-
-    case NANOARROW_TYPE_BINARY:
-    case NANOARROW_TYPE_LARGE_BINARY:
-      return VECTOR_TYPE_LIST_OF_RAW;
 
     case NANOARROW_TYPE_STRUCT:
       return VECTOR_TYPE_DATA_FRAME;
@@ -129,7 +122,6 @@ SEXP nanoarrow_c_infer_ptype(SEXP array_xptr) {
   SEXP ptype = R_NilValue;
 
   switch (vector_type) {
-    case VECTOR_TYPE_UNSPECIFIED:
     case VECTOR_TYPE_LGL:
     case VECTOR_TYPE_INT:
     case VECTOR_TYPE_DBL:

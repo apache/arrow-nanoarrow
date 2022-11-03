@@ -479,23 +479,23 @@ test_that("convert to vector works for null -> character()", {
   )
 })
 
-test_that("convert to vector works for list() of raw()", {
+test_that("convert to vector works for blob::blob()", {
   array <- as_nanoarrow_array(list(as.raw(1:5)), schema = arrow::binary())
   expect_identical(
     materialize_array(array),
-    list(as.raw(1:5))
+    blob::blob(as.raw(1:5))
   )
 
   expect_identical(
-    materialize_array(array, list()),
-    list(as.raw(1:5))
+    materialize_array(array, blob::blob()),
+    blob::blob(as.raw(1:5))
   )
 })
 
-test_that("convert to vector works for null -> list()", {
+test_that("convert to vector works for null -> blob::blob()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, list()),
-    rep(list(NULL), 10)
+    materialize_array(array, blob::blob()),
+    blob::new_blob(rep(list(NULL), 10))
   )
 })

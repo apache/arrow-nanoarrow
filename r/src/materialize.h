@@ -27,12 +27,10 @@
 // internally to avoid unnecessary allocations or looping at
 // the R level. Other types are represented by an SEXP ptype.
 enum VectorType {
-  VECTOR_TYPE_UNSPECIFIED,
   VECTOR_TYPE_LGL,
   VECTOR_TYPE_INT,
   VECTOR_TYPE_DBL,
   VECTOR_TYPE_CHR,
-  VECTOR_TYPE_LIST_OF_RAW,
   VECTOR_TYPE_DATA_FRAME,
   VECTOR_TYPE_OTHER
 };
@@ -92,6 +90,9 @@ static inline struct MaterializeContext DefaultMaterializeContext() {
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
 SEXP nanoarrow_alloc_ptype(SEXP ptype, R_xlen_t len);
 
+// This function populates the given VectorSlice from the ArrayViewSlice,
+// returning 0 on success or something else if the type conversion is not
+// possible.
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
                           struct MaterializeOptions* options,
                           struct MaterializeContext* context);

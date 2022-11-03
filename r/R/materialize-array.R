@@ -84,6 +84,9 @@ infer_ptype_other <- function(array) {
 
   switch(
     parsed$type,
+    "na" = vctrs::unspecified(),
+    "binary" = ,
+    "large_binary" = blob::new_blob(),
     "time32" = ,
     "time64" = hms::hms(),
     "duration" = structure(numeric(), class = "difftime", units = "secs"),
