@@ -522,12 +522,23 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
 static int nanoarrow_materialize_date(struct ArrayViewSlice* src, struct VectorSlice* dst,
                                       struct MaterializeOptions* options,
                                       struct MaterializeContext* context) {
-  Rf_error("Materialize to date not implemented");
+  if (TYPEOF(dst->vec_sexp) == REALSXP) {
+    switch (src->schema_view.data_type) {
+      case NANOARROW_TYPE_NA:
+      case NANOARROW_TYPE_DATE32:
+        return nanoarrow_materialize_dbl(src, dst, options, context);
+      default:
+        break;
+    }
+  }
+
+  return EINVAL;
 }
 
 static int nanoarrow_materialize_hms(struct ArrayViewSlice* src, struct VectorSlice* dst,
                                      struct MaterializeOptions* options,
                                      struct MaterializeContext* context) {
+  // Need to scale on units (hms units are the same as difftime)
   Rf_error("Materialize to hms not implemented");
 }
 
@@ -535,6 +546,7 @@ static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
                                          struct VectorSlice* dst,
                                          struct MaterializeOptions* options,
                                          struct MaterializeContext* context) {
+  // Need to scale on units (posixct is seconds)
   Rf_error("Materialize to posixct not implemented");
 }
 
@@ -542,14 +554,8 @@ static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
                                           struct VectorSlice* dst,
                                           struct MaterializeOptions* options,
                                           struct MaterializeContext* context) {
+  // Need to scale on units (hms units are the same as difftime)
   Rf_error("Materialize to difftime not implemented");
-}
-
-static int nanoarrow_materialize_matrix(struct ArrayViewSlice* src,
-                                        struct VectorSlice* dst,
-                                        struct MaterializeOptions* options,
-                                        struct MaterializeContext* context) {
-  Rf_error("Materialize to matrix not implemented");
 }
 
 static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
@@ -598,8 +604,6 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
   if (Rf_isObject(dst->vec_sexp)) {
     if (Rf_inherits(dst->vec_sexp, "data.frame")) {
       return nanoarrow_materialize_data_frame(src, dst, options, context);
-    } else if (Rf_inherits(dst->vec_sexp, "matrix")) {
-      return nanoarrow_materialize_matrix(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "vctrs_unspecified")) {
       return nanoarrow_materialize_unspecified(src, dst, options, context);
     } else if (Rf_inherits(dst->vec_sexp, "blob")) {

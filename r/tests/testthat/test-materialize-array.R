@@ -473,6 +473,12 @@ test_that("materialize to vector works for fixed_size_list -> vctrs::list_of", {
     )
   )
 
+  # Default conversion
+  expect_identical(
+    materialize_array(array_list),
+    vctrs::list_of(1:5, 6:10, NULL, .ptype = integer())
+  )
+
   # With explicit ptype
   expect_identical(
     materialize_array(array_list, vctrs::list_of(.ptype = double())),
@@ -487,8 +493,11 @@ test_that("materialize to vector works for fixed_size_list -> vctrs::list_of", {
 })
 
 test_that("materialize to vector works for Date", {
-  array_date <- as_nanoarrow_array(as.Date("2000-01-01"))
-  materialize_array(array_date)
+  array_date <- as_nanoarrow_array(as.Date(c(NA, "2000-01-01")))
+  expect_identical(
+    materialize_array(array_date),
+    as.Date(c(NA, "2000-01-01"))
+  )
 })
 
 test_that("materialize to vector works for hms", {

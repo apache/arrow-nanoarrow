@@ -75,13 +75,10 @@ infer_ptype_other <- function(schema) {
       )
     },
     "large_list" = ,
-    "list" = {
-      ptype <- infer_nanoarrow_ptype(schema$children[[1]])
-      vctrs::list_of(.ptype = ptype)
-    },
+    "list" = ,
     "fixed_size_list" = {
       ptype <- infer_nanoarrow_ptype(schema$children[[1]])
-      matrix(ptype, nrow = 0, ncol = parsed$fixed_size)
+      vctrs::list_of(.ptype = ptype)
     },
     stop_cant_infer_ptype(schema)
   )

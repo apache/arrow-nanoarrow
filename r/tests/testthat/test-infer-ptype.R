@@ -106,7 +106,7 @@ test_that("infer_nanoarrow_ptype() infers ptypes for nested types", {
   )
   expect_identical(
     infer_nanoarrow_ptype(array_fixed_size),
-    matrix(integer(), nrow = 0, ncol = 5)
+    vctrs::list_of(.ptype = integer())
   )
 })
 
