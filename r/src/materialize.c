@@ -64,7 +64,7 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   ArrowArrayViewInit(&converter->array_view, NANOARROW_TYPE_UNINITIALIZED);
   converter->schema_view.data_type = NANOARROW_TYPE_UNINITIALIZED;
   converter->schema_view.storage_data_type = NANOARROW_TYPE_UNINITIALIZED;
-  converter->src.array_view = NULL;
+  converter->src.array_view = &converter->array_view;
   converter->dst.vec_sexp = R_NilValue;
   converter->dst.data_ptr = NULL;
   converter->options = NULL;
@@ -73,6 +73,7 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   converter->capacity = 0;
 
   converter->ptype_view.vector_type = vector_type;
+  converter->ptype_view.ptype = R_NilValue;
 
   switch (vector_type) {
     case VECTOR_TYPE_LGL:
@@ -150,6 +151,8 @@ int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
   converter->dst.vec_sexp = result_sexp;
   converter->dst.offset = 0;
   converter->dst.length = 0;
+  converter->size = 0;
+  converter->capacity = additional_size;
 
   return NANOARROW_OK;
 }

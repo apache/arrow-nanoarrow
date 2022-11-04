@@ -57,7 +57,7 @@ static void call_stop_cant_materialize_array(SEXP array_xptr, enum VectorType ty
 
 static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_type,
                                       SEXP ptype) {
-  
+
   if (ptype == R_NilValue) {
     SEXP converter_xptr = PROTECT(nanoarrow_converter_from_type(vector_type));
     if (nanoarrow_converter_set_schema(converter_xptr, array_xptr_get_schema(array_xptr)) != NANOARROW_OK) {
@@ -69,7 +69,7 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
     }
 
     if (nanoarrow_converter_materialize_all(converter_xptr) != NANOARROW_OK) {
-      Rf_error("nanoarrow_converter_materialize_all() failed");
+      call_stop_cant_materialize_array(array_xptr, vector_type);
     }
 
     if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
