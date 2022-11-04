@@ -609,9 +609,18 @@ static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
                                          struct MaterializeOptions* options,
                                          struct MaterializeContext* context) {
   if (TYPEOF(dst->vec_sexp) == REALSXP) {
+    enum ArrowTimeUnit time_unit;
     switch (src->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
+        time_unit = NANOARROW_TIME_UNIT_SECOND;
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        break;
+      case NANOARROW_TYPE_DATE64:
+        time_unit = NANOARROW_TIME_UNIT_MILLI;
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        break;
       case NANOARROW_TYPE_TIMESTAMP:
+        time_unit = src->schema_view.time_unit;
         NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
         break;
       default:
@@ -619,7 +628,7 @@ static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
     }
 
     double scale;
-    switch (src->schema_view.time_unit) {
+    switch (time_unit) {
       case NANOARROW_TIME_UNIT_SECOND:
         scale = 1;
         break;

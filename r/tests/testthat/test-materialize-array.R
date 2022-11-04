@@ -492,11 +492,35 @@ test_that("materialize to vector works for fixed_size_list -> vctrs::list_of", {
   )
 })
 
+test_that("materialize to vector works for null -> vctrs::list_of()", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    materialize_array(array, vctrs::list_of(.ptype = integer())),
+    vctrs::new_list_of(rep(list(NULL), 10), ptype = integer())
+  )
+})
+
 test_that("materialize to vector works for Date", {
   array_date <- as_nanoarrow_array(as.Date(c(NA, "2000-01-01")))
   expect_identical(
     materialize_array(array_date),
     as.Date(c(NA, "2000-01-01"))
+  )
+
+  array_date <- as_nanoarrow_array(
+    arrow::Array$create(as.Date(c(NA, "2000-01-01")), arrow::date64())
+  )
+  expect_identical(
+    materialize_array(array_date),
+    as.POSIXct(c(NA, "2000-01-01"), tz = "UTC")
+  )
+})
+
+test_that("materialize to vector works for null -> Date", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    materialize_array(array, as.Date(character())),
+    as.Date(rep(NA_character_, 10))
   )
 })
 

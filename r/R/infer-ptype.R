@@ -54,13 +54,13 @@ infer_ptype_other <- function(schema) {
     "na" = vctrs::unspecified(),
     "binary" = ,
     "large_binary" = blob::new_blob(),
-    "date32" = ,
-    "date64" = structure(numeric(), class = "Date"),
+    "date32" = structure(numeric(), class = "Date"),
     "time32" = ,
     "time64" = hms::hms(),
     "duration" = structure(numeric(), class = "difftime", units = "secs"),
+    "date64" = ,
     "timestamp" = {
-      if (parsed$timezone == "") {
+      if (is.null(parsed$timezone) || parsed$timezone == "") {
         # We almost never want to assume the user's timezone here, which is
         # what would happen if we passed on "". This is consistent with how
         # readr handles reading timezones (assign "UTC" since it's DST-free
