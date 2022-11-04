@@ -26,7 +26,7 @@
 #include "array.h"
 #include "nanoarrow.h"
 
-#include "materialize.h"
+#include "convert.h"
 
 #ifdef HAS_ALTREP
 

@@ -87,6 +87,8 @@ struct MaterializeOptions {
 // A house for a conversion operation (i.e., zero or more arrays
 // getting converted into an R vector)). The structure of this
 // may change in the future but the API below should be relatively stable.
+// This is typically accessed via the external pointer whose API is defined
+// in convert.h
 struct RConverter {
   struct PTypeView ptype_view;
   struct ArrowSchemaView schema_view;
@@ -101,46 +103,11 @@ struct RConverter {
   struct RConverter** children;
 };
 
-// Create and initialize a converter. A converter's output R vector type
-// never changes once it has been created.
-SEXP nanoarrow_converter_from_type(enum VectorType vector_type);
-SEXP nanoarrow_converter_from_ptype(SEXP ptype);
+// Perform actual materializing of values (e.g., loop through buffers)
+int nanoarrow_materialize(struct RConverter* converter);
 
-// Set the schema for the next array that will be materialized into
-// the R vector. In theory this could change although this has not been
-// implemented. This will also validate the schema. Returns an errno code.
-int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr);
-
-// Set the array target. This will also validate the array against the last
-// schema that was set. Returns an errno code.
-int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr);
-
-// Reserve space in the R vector output for additional elements. In theory
-// this could be used to provide growable behaviour; however, this is not
-// implemented. Returns an errno code.
-int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size);
-
-// Materialize the next n elements into the output. Returns the number of elements
-// that were actualy materialized which may be less than n.
-R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n);
-
-// Materialize the entire array into the output. Returns an errno code.
-int nanoarrow_converter_materialize_all(SEXP converter_xptr);
-
-// Finalize the output. Currently this just validates the length of the
-// output. Returns an errno code.
-int nanoarrow_converter_finalize(SEXP converter_xptr);
-
-// Returns the resulting SEXP and moves the result out of the protection
-// of the converter.
-SEXP nanoarrow_converter_result(SEXP converter_xptr);
-
-// Calls Rf_error() with the internal error buffer populated by above calls
-// that return a non-zero errno value.
-void nanoarrow_converter_stop(SEXP converter_xptr);
-
-// Shortcut to allocate a vector based on a vector type. This is used in
-// infer_ptype.c.
+// Shortcut to allocate a vector based on a vector type or ptype
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
+SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
 
 #endif

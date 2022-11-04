@@ -23,9 +23,9 @@
 
 #include "altrep.h"
 #include "array.h"
-#include "schema.h"
 #include "array_view.h"
 #include "materialize.h"
+#include "schema.h"
 
 // These conversions are the default R-native type guesses for
 // an array that don't require extra information from the ptype (e.g.,

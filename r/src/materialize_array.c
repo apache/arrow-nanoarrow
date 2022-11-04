@@ -24,11 +24,11 @@
 #include "altrep.h"
 #include "array.h"
 #include "array_view.h"
-#include "materialize.h"
+#include "convert.h"
 
-// The common case of materializing a single array into a single vector is
-// defined here, powered by the generic materialization available via
-// materialize.h but special-casing the common case of "just use the defaults"
+// The common case of converting a single array into a single vector is
+// defined here, powered by the generic conversion available via
+// convert.h but special-casing the common case of "just use the defaults"
 // (i.e., no need to allocate a zero-size ptype) and returning ALTREP
 // where possible.
 
