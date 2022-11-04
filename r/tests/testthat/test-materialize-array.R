@@ -384,8 +384,10 @@ test_that("materialize to vector works for character()", {
 
 test_that("materialize to vector works for null -> character()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  all_nulls <- materialize_array(array, character())
+  nanoarrow_altrep_force_materialize(all_nulls)
   expect_identical(
-    materialize_array(array, character()),
+    all_nulls,
     rep(NA_character_, 10)
   )
 })
@@ -435,6 +437,14 @@ test_that("materialize to vector works for list -> vctrs::list_of", {
   expect_error(
     materialize_array(array_list, vctrs::list_of(.ptype = character())),
     "Can't convert array"
+  )
+
+  # With malformed ptype
+  ptype <- vctrs::list_of(.ptype = character())
+  attr(ptype, "ptype") <- NULL
+  expect_error(
+    materialize_array(array_list, ptype),
+    "Expected attribute 'ptype'"
   )
 })
 

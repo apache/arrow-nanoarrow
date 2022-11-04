@@ -192,7 +192,8 @@ static enum RTimeUnits time_units_from_difftime(SEXP ptype) {
   }
 }
 
-static void set_converter_list_of(SEXP converter_xptr, struct RConverter* converter, SEXP ptype) {
+static void set_converter_list_of(SEXP converter_xptr, struct RConverter* converter,
+                                  SEXP ptype) {
   SEXP child_ptype = Rf_getAttrib(ptype, Rf_install("ptype"));
   if (child_ptype == R_NilValue) {
     Rf_error("Expected attribute 'ptype' for conversion to list_of");
@@ -221,8 +222,8 @@ static int set_converter_children_schema(SEXP converter_xptr, SEXP schema_xptr) 
 
   if (schema->n_children != converter->n_children) {
     ArrowErrorSet(&converter->error,
-      "Expected schema with %ld children but got schema with %ld children",
-      (long)converter->n_children, (long)schema->n_children);
+                  "Expected schema with %ld children but got schema with %ld children",
+                  (long)converter->n_children, (long)schema->n_children);
     return EINVAL;
   }
 
@@ -248,8 +249,8 @@ static int set_converter_children_array(SEXP converter_xptr, SEXP array_xptr) {
 
   if (array->n_children != converter->n_children) {
     ArrowErrorSet(&converter->error,
-      "Expected array with %ld children but got array with %ld children",
-      (long)converter->n_children, (long)array->n_children);
+                  "Expected array with %ld children but got array with %ld children",
+                  (long)converter->n_children, (long)array->n_children);
     return EINVAL;
   }
 
@@ -812,8 +813,8 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter) {
           child_src->offset = offsets[raw_src_offset + i];
           child_src->length = offsets[raw_src_offset + i + 1] - child_src->offset;
 
-          child_dst->vec_sexp =
-              PROTECT(nanoarrow_materialize_realloc(child_converter->ptype_view.ptype, child_src->length));
+          child_dst->vec_sexp = PROTECT(nanoarrow_materialize_realloc(
+              child_converter->ptype_view.ptype, child_src->length));
           child_dst->length = child_src->length;
           convert_result = nanoarrow_materialize(child_converter);
           if (convert_result != NANOARROW_OK) {
@@ -832,8 +833,8 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter) {
           child_src->offset = large_offsets[raw_src_offset + i];
           child_src->length = large_offsets[raw_src_offset + i + 1] - child_src->offset;
 
-          child_dst->vec_sexp =
-              PROTECT(nanoarrow_materialize_realloc(child_converter->ptype_view.ptype, child_src->length));
+          child_dst->vec_sexp = PROTECT(nanoarrow_materialize_realloc(
+              child_converter->ptype_view.ptype, child_src->length));
           child_dst->length = child_src->length;
           convert_result = nanoarrow_materialize(child_converter);
           if (convert_result != NANOARROW_OK) {
@@ -852,8 +853,8 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter) {
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
           child_src->offset = (raw_src_offset + i) * child_src->length;
-          child_dst->vec_sexp =
-              PROTECT(nanoarrow_materialize_realloc(child_converter->ptype_view.ptype, child_src->length));
+          child_dst->vec_sexp = PROTECT(nanoarrow_materialize_realloc(
+              child_converter->ptype_view.ptype, child_src->length));
           convert_result = nanoarrow_materialize(child_converter);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
@@ -1013,28 +1014,28 @@ int nanoarrow_materialize(struct RConverter* converter) {
   struct MaterializeOptions* options = converter->options;
 
   switch (converter->ptype_view.vector_type) {
-  case VECTOR_TYPE_UNSPECIFIED:
-    return nanoarrow_materialize_unspecified(src, dst, options);
-  case VECTOR_TYPE_LGL:
-    return nanoarrow_materialize_lgl(src, dst, options);
-  case VECTOR_TYPE_INT:
-    return nanoarrow_materialize_int(src, dst, options);
-  case VECTOR_TYPE_DBL:
-    return nanoarrow_materialize_dbl(src, dst, options);
-  // case VECTOR_TYPE_ALTREP_CHR:
-  case VECTOR_TYPE_CHR:
-    return nanoarrow_materialize_chr(src, dst, options);
-  case VECTOR_TYPE_POSIXCT:
-    return nanoarrow_materialize_posixct(converter);
-  case VECTOR_TYPE_DATE:
-    return nanoarrow_materialize_date(converter);
-  case VECTOR_TYPE_DIFFTIME:
-    return nanoarrow_materialize_difftime(converter);
-  case VECTOR_TYPE_BLOB:
-    return nanoarrow_materialize_blob(src, dst, options);
-  case VECTOR_TYPE_LIST_OF:
-    return nanoarrow_materialize_list_of(converter);
-  default:
-    return ENOTSUP;
+    case VECTOR_TYPE_UNSPECIFIED:
+      return nanoarrow_materialize_unspecified(src, dst, options);
+    case VECTOR_TYPE_LGL:
+      return nanoarrow_materialize_lgl(src, dst, options);
+    case VECTOR_TYPE_INT:
+      return nanoarrow_materialize_int(src, dst, options);
+    case VECTOR_TYPE_DBL:
+      return nanoarrow_materialize_dbl(src, dst, options);
+    // case VECTOR_TYPE_ALTREP_CHR:
+    case VECTOR_TYPE_CHR:
+      return nanoarrow_materialize_chr(src, dst, options);
+    case VECTOR_TYPE_POSIXCT:
+      return nanoarrow_materialize_posixct(converter);
+    case VECTOR_TYPE_DATE:
+      return nanoarrow_materialize_date(converter);
+    case VECTOR_TYPE_DIFFTIME:
+      return nanoarrow_materialize_difftime(converter);
+    case VECTOR_TYPE_BLOB:
+      return nanoarrow_materialize_blob(src, dst, options);
+    case VECTOR_TYPE_LIST_OF:
+      return nanoarrow_materialize_list_of(converter);
+    default:
+      return ENOTSUP;
   }
 }

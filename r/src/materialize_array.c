@@ -202,11 +202,11 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
   // If we're here, these are non-S3 objects
   switch (TYPEOF(ptype_sexp)) {
     case LGLSXP:
-      return materialize_array_default(array_xptr, VECTOR_TYPE_LGL, R_NilValue);
+      return materialize_array_default(array_xptr, VECTOR_TYPE_LGL, ptype_sexp);
     case INTSXP:
-      return materialize_array_default(array_xptr, VECTOR_TYPE_INT, R_NilValue);
+      return materialize_array_default(array_xptr, VECTOR_TYPE_INT, ptype_sexp);
     case REALSXP:
-      return materialize_array_default(array_xptr, VECTOR_TYPE_DBL, R_NilValue);
+      return materialize_array_default(array_xptr, VECTOR_TYPE_DBL, ptype_sexp);
     case STRSXP:
       return materialize_array_chr(array_xptr);
     default:
