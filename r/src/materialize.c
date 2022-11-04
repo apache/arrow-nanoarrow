@@ -553,12 +553,24 @@ static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
 
     double scale;
     const void* vmax = vmaxget();
-    const char* dst_units = Rf_translateCharUTF8(
-        STRING_ELT(Rf_getAttrib(dst->vec_sexp, Rf_install("units")), 0));
+    SEXP units_attr = Rf_getAttrib(dst->vec_sexp, Rf_install("units"));
+    if (units_attr == R_NilValue || TYPEOF(units_attr) != STRSXP ||
+        Rf_length(units_attr) != 1) {
+      Rf_error("Expected difftime 'units' attribute of type character(1)");
+    }
+    const char* dst_units = Rf_translateCharUTF8(STRING_ELT(units_attr, 0));
     if (strcmp(dst_units, "secs") == 0) {
-      scale = 1;
+      scale = 1.0;
+    } else if (strcmp(dst_units, "mins") == 0) {
+      scale = 1.0 / 60;
+    } else if (strcmp(dst_units, "hours") == 0) {
+      scale = 1.0 / (60 * 60);
+    } else if (strcmp(dst_units, "days") == 0) {
+      scale = 1.0 / (60 * 60 * 24);
+    } else if (strcmp(dst_units, "weeks") == 0) {
+      scale = 1.0 / (60 * 60 * 24 * 7);
     } else {
-      return EINVAL;
+      Rf_error("Unexpected value for difftime 'units' attribute");
     }
     vmaxset(vmax);
 
@@ -600,24 +612,25 @@ static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
     switch (src->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
       case NANOARROW_TYPE_TIMESTAMP:
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
         break;
       default:
         return EINVAL;
     }
 
-    double scale = 1;
+    double scale;
     switch (src->schema_view.time_unit) {
       case NANOARROW_TIME_UNIT_SECOND:
-        scale *= 1;
+        scale = 1;
         break;
       case NANOARROW_TIME_UNIT_MILLI:
-        scale *= 1e-3;
+        scale = 1e-3;
         break;
       case NANOARROW_TIME_UNIT_MICRO:
-        scale *= 1e-6;
+        scale = 1e-6;
         break;
       case NANOARROW_TIME_UNIT_NANO:
-        scale *= 1e-9;
+        scale = 1e-9;
         break;
       default:
         return EINVAL;
@@ -650,15 +663,12 @@ static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
 
   struct ArrayViewSlice src_child = *src;
   struct VectorSlice dst_child = *dst;
-  struct MaterializeContext child_context;
-  SEXP names = Rf_getAttrib(dst_child.vec_sexp, R_NamesSymbol);
 
   for (int64_t i = 0; i < src->array_view->n_children; i++) {
-    child_context.context = Rf_translateCharUTF8(STRING_ELT(names, i));
     src_child.array_view = src->array_view->children[i];
     dst_child.vec_sexp = VECTOR_ELT(dst->vec_sexp, i);
     NANOARROW_RETURN_NOT_OK(
-        nanoarrow_materialize(&src_child, &dst_child, options, &child_context));
+        nanoarrow_materialize(&src_child, &dst_child, options, context));
   }
 
   return NANOARROW_OK;

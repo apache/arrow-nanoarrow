@@ -520,9 +520,78 @@ test_that("materialize to vector works for POSIXct", {
 })
 
 test_that("materialize to vector works for difftime", {
-  array_duration <- as_nanoarrow_array(as.difftime(123, units = "secs"))
-  expect_identical(
-    materialize_array(array_duration),
-    as.difftime(123, units = "secs")
+  x <- as.difftime(123, units = "secs")
+  array_duration <- as_nanoarrow_array(x)
+
+  # default
+  expect_identical(materialize_array(array_duration), x)
+
+  # explicit
+  expect_identical(materialize_array(array_duration, x), x)
+
+  # explicit with other difftime units
+  units(x) <- "mins"
+  expect_identical(materialize_array(array_duration, x), x)
+
+  units(x) <- "hours"
+  expect_identical(materialize_array(array_duration, x), x)
+
+  units(x) <- "days"
+  expect_identical(materialize_array(array_duration, x), x)
+
+  units(x) <- "weeks"
+  expect_equal(materialize_array(array_duration, x), x)
+
+  # with all Arrow units
+  x <- as.difftime(123, units = "secs")
+  array_duration <- as_nanoarrow_array(
+    arrow::Array$create(x, arrow::duration("s"))
+  )
+  expect_identical(materialize_array(array_duration), x)
+
+  array_duration <- as_nanoarrow_array(
+    arrow::Array$create(x, arrow::duration("ms"))
+  )
+  expect_identical(materialize_array(array_duration), x)
+
+  array_duration <- as_nanoarrow_array(
+    arrow::Array$create(x, arrow::duration("us"))
+  )
+  expect_identical(materialize_array(array_duration), x)
+
+  array_duration <- as_nanoarrow_array(
+    arrow::Array$create(x, arrow::duration("ns"))
+  )
+  expect_equal(materialize_array(array_duration), x)
+
+  # bad ptype values
+  attr(x, "units") <- NULL
+  expect_error(
+    materialize_array(array_duration, x),
+    "Expected difftime 'units' attribute of type"
+  )
+
+  attr(x, "units") <- character()
+  expect_error(
+    materialize_array(array_duration, x),
+    "Expected difftime 'units' attribute of type"
+  )
+
+  attr(x, "units") <- integer(1)
+  expect_error(
+    materialize_array(array_duration, x),
+    "Expected difftime 'units' attribute of type"
+  )
+
+  attr(x, "units") <- "gazornenplat"
+  expect_error(
+    materialize_array(array_duration, x),
+    "Unexpected value for difftime 'units' attribute"
+  )
+
+  attr(x, "units") <- NA_character_
+  expect_error(
+    materialize_array(array_duration, x),
+    "Unexpected value for difftime 'units' attribute"
   )
 })

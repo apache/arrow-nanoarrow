@@ -51,14 +51,15 @@ struct VectorSlice {
   R_xlen_t length;
 };
 
-// Options for resolving a ptype and for materializing values.
+// Options for resolving a ptype and for materializing values. These are
+// currently unused.
 struct MaterializeOptions {
   double scale;
 };
 
-// A context to be populated when returning an error message
+// A context to be populated when returning an error message.
 struct MaterializeContext {
-  const char* context;
+  char context[1024];
 };
 
 static inline struct ArrayViewSlice DefaultArrayViewSlice(
@@ -88,7 +89,7 @@ static inline struct MaterializeOptions DefaultMaterializeOptions() {
 
 static inline struct MaterializeContext DefaultMaterializeContext() {
   struct MaterializeContext context;
-  context.context = "";
+  memset(context.context, 0, sizeof(context.context));
   return context;
 }
 
