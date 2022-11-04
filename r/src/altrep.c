@@ -174,7 +174,7 @@ SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr) {
 
   if (nanoarrow_converter_set_array(converter_xptr, array_xptr_independent) !=
       NANOARROW_OK) {
-    Rf_error("nanoarrow_converter_set_array() failed");
+    nanoarrow_converter_stop(converter_xptr);
   }
 
   Rf_setAttrib(converter_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::altrep_chr"));

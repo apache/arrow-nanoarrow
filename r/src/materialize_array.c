@@ -73,11 +73,11 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
 
   if (nanoarrow_converter_set_schema(converter_xptr, array_xptr_get_schema(array_xptr)) !=
       NANOARROW_OK) {
-    Rf_error("nanoarrow_converter_set_schema() failed");
+    nanoarrow_converter_stop(converter_xptr);
   }
 
   if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
-    Rf_error("nanoarrow_converter_set_array() failed");
+    nanoarrow_converter_stop(converter_xptr);
   }
 
   if (nanoarrow_converter_materialize_all(converter_xptr) != NANOARROW_OK) {
@@ -85,7 +85,7 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
   }
 
   if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
-    Rf_error("nanoarrow_converter_finalize() failed");
+    nanoarrow_converter_stop(converter_xptr);
   }
 
   SEXP result = PROTECT(nanoarrow_converter_result(converter_xptr));

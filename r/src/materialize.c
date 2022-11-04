@@ -25,6 +25,8 @@
 #include "materialize.h"
 #include "schema.h"
 
+int nanoarrow_materialize(struct RConverter* converter);
+
 R_xlen_t nanoarrow_vec_size(SEXP vec_sexp) {
   if (Rf_isObject(vec_sexp)) {
     if (Rf_inherits(vec_sexp, "data.frame") && Rf_length(vec_sexp) > 0) {
@@ -40,10 +42,75 @@ R_xlen_t nanoarrow_vec_size(SEXP vec_sexp) {
   return Rf_xlength(vec_sexp);
 }
 
+SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
+  SEXP result;
+
+  switch (vector_type) {
+    case VECTOR_TYPE_LGL:
+      result = PROTECT(Rf_allocVector(LGLSXP, len));
+      break;
+    case VECTOR_TYPE_INT:
+      result = PROTECT(Rf_allocVector(INTSXP, len));
+      break;
+    case VECTOR_TYPE_DBL:
+      result = PROTECT(Rf_allocVector(REALSXP, len));
+      break;
+    case VECTOR_TYPE_CHR:
+      result = PROTECT(Rf_allocVector(STRSXP, len));
+      break;
+    default:
+      return R_NilValue;
+  }
+
+  UNPROTECT(1);
+  return result;
+}
+
+SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
+  SEXP result;
+
+  if (Rf_isObject(ptype)) {
+    if (Rf_inherits(ptype, "data.frame")) {
+      R_xlen_t num_cols = Rf_xlength(ptype);
+      result = PROTECT(Rf_allocVector(VECSXP, num_cols));
+      for (R_xlen_t i = 0; i < num_cols; i++) {
+        SET_VECTOR_ELT(result, i,
+                       nanoarrow_materialize_realloc(VECTOR_ELT(ptype, i), len));
+      }
+
+      // Set attributes from ptype
+      Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(ptype, R_NamesSymbol));
+      Rf_setAttrib(result, R_ClassSymbol, Rf_getAttrib(ptype, R_ClassSymbol));
+
+      // ...except rownames
+      SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
+      INTEGER(rownames)[0] = NA_INTEGER;
+      INTEGER(rownames)[1] = len;
+      Rf_setAttrib(result, R_RowNamesSymbol, rownames);
+    } else if (Rf_inherits(ptype, "matrix")) {
+      result = PROTECT(Rf_allocMatrix(TYPEOF(ptype), len, Rf_ncols(ptype)));
+      Rf_copyMostAttrib(ptype, result);
+    } else {
+      result = PROTECT(Rf_allocVector(TYPEOF(ptype), len));
+      Rf_copyMostAttrib(ptype, result);
+    }
+  } else {
+    result = PROTECT(Rf_allocVector(TYPEOF(ptype), len));
+  }
+
+  UNPROTECT(1);
+  return result;
+}
+
 static void finalize_converter(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   if (converter != NULL) {
     ArrowArrayViewReset(&converter->array_view);
+
+    if (converter->children != NULL) {
+      ArrowFree(converter->children);
+    }
+
     ArrowFree(converter);
   }
 }
@@ -70,6 +137,8 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   converter->error.message[0] = '\0';
   converter->size = 0;
   converter->capacity = 0;
+  converter->n_children = 0;
+  converter->children = NULL;
 
   converter->ptype_view.vector_type = vector_type;
   converter->ptype_view.ptype = R_NilValue;
@@ -123,6 +192,82 @@ static enum RTimeUnits time_units_from_difftime(SEXP ptype) {
   }
 }
 
+static void set_converter_list_of(SEXP converter_xptr, struct RConverter* converter, SEXP ptype) {
+  SEXP child_ptype = Rf_getAttrib(ptype, Rf_install("ptype"));
+  if (child_ptype == R_NilValue) {
+    Rf_error("Expected attribute 'ptype' for conversion to list_of");
+  }
+
+  converter->children = (struct RConverter**)ArrowMalloc(1 * sizeof(struct RConverter*));
+  if (converter->children == NULL) {
+    Rf_error("Failed to allocate converter children array");
+  }
+  converter->n_children = 1;
+
+  SEXP child_converter_xptrs = PROTECT(Rf_allocVector(VECSXP, 1));
+  SEXP child_converter = PROTECT(nanoarrow_converter_from_ptype(child_ptype));
+  converter->children[0] = (struct RConverter*)R_ExternalPtrAddr(child_converter);
+  SET_VECTOR_ELT(child_converter_xptrs, 0, child_converter);
+
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SET_VECTOR_ELT(converter_shelter, 3, child_converter_xptrs);
+  UNPROTECT(2);
+}
+
+static int set_converter_children_schema(SEXP converter_xptr, SEXP schema_xptr) {
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+
+  if (schema->n_children != converter->n_children) {
+    ArrowErrorSet(&converter->error,
+      "Expected schema with %ld children but got schema with %ld children",
+      (long)converter->n_children, (long)schema->n_children);
+    return EINVAL;
+  }
+
+  SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
+
+  for (R_xlen_t i = 0; i < converter->n_children; i++) {
+    SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, i);
+    SEXP child_schema_xptr = PROTECT(borrow_schema_child_xptr(schema_xptr, i));
+    int result = nanoarrow_converter_set_schema(child_converter_xptr, child_schema_xptr);
+    UNPROTECT(1);
+    if (result != NANOARROW_OK) {
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+static int set_converter_children_array(SEXP converter_xptr, SEXP array_xptr) {
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+
+  if (array->n_children != converter->n_children) {
+    ArrowErrorSet(&converter->error,
+      "Expected array with %ld children but got array with %ld children",
+      (long)converter->n_children, (long)array->n_children);
+    return EINVAL;
+  }
+
+  SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
+
+  for (R_xlen_t i = 0; i < converter->n_children; i++) {
+    SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, i);
+    SEXP child_array_xptr = PROTECT(borrow_array_child_xptr(array_xptr, i));
+    int result = nanoarrow_converter_set_array(child_converter_xptr, child_array_xptr);
+    UNPROTECT(1);
+    if (result != NANOARROW_OK) {
+      return result;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
 SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
   SEXP converter_xptr = PROTECT(nanoarrow_converter_from_type(VECTOR_TYPE_NULL));
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
@@ -132,12 +277,13 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
     if (Rf_inherits(ptype, "data.frame")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_DATA_FRAME;
       Rf_error("data.frame currently not supported by converter");
-    } else if (Rf_inherits(ptype, "vctrs_list_of")) {
-      converter->ptype_view.vector_type = VECTOR_TYPE_LIST_OF;
-    } else if (Rf_inherits(ptype, "vctrs_unspecified")) {
-      converter->ptype_view.vector_type = VECTOR_TYPE_UNSPECIFIED;
     } else if (Rf_inherits(ptype, "blob")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_BLOB;
+    } else if (Rf_inherits(ptype, "vctrs_list_of")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_LIST_OF;
+      set_converter_list_of(converter_xptr, converter, ptype);
+    } else if (Rf_inherits(ptype, "vctrs_unspecified")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_UNSPECIFIED;
     } else if (Rf_inherits(ptype, "Date")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_DATE;
       converter->ptype_view.r_time_units = R_TIME_UNIT_DAYS;
@@ -171,6 +317,7 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
   }
 
   converter->ptype_view.ptype = ptype;
+  converter->ptype_view.sexp_type = TYPEOF(ptype);
   SET_VECTOR_ELT(converter_shelter, 0, ptype);
 
   UNPROTECT(1);
@@ -183,13 +330,17 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
   struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
   NANOARROW_RETURN_NOT_OK(
       ArrowSchemaViewInit(&converter->schema_view, schema, &converter->error));
-  converter->src.schema_view = converter->schema_view;
   SET_VECTOR_ELT(converter_shelter, 1, schema_xptr);
 
   ArrowArrayViewReset(&converter->array_view);
   SET_VECTOR_ELT(converter_shelter, 2, R_NilValue);
   NANOARROW_RETURN_NOT_OK(
       ArrowArrayViewInitFromSchema(&converter->array_view, schema, &converter->error));
+
+  if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF) {
+    set_converter_children_schema(converter_xptr, schema_xptr);
+  }
+
   return NANOARROW_OK;
 }
 
@@ -202,6 +353,11 @@ int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr) {
   SET_VECTOR_ELT(converter_shelter, 2, array_xptr);
   converter->src.offset = 0;
   converter->src.length = 0;
+
+  if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF) {
+    set_converter_children_array(converter_xptr, array_xptr);
+  }
+
   return NANOARROW_OK;
 }
 
@@ -251,8 +407,7 @@ R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n) {
   }
 
   converter->src.length = converter->dst.length = n;
-  int result =
-      nanoarrow_materialize(&converter->src, &converter->dst, converter->options);
+  int result = nanoarrow_materialize(converter);
   if (result != NANOARROW_OK) {
     ArrowErrorSet(&converter->error, "Error in nanoarrow_materialize()");
     return 0;
@@ -316,77 +471,6 @@ SEXP nanoarrow_converter_result(SEXP converter_xptr) {
 void nanoarrow_converter_stop(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   Rf_error("%s", ArrowErrorMessage(&converter->error));
-}
-
-SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
-  SEXP result;
-
-  switch (vector_type) {
-    case VECTOR_TYPE_LGL:
-      result = PROTECT(Rf_allocVector(LGLSXP, len));
-      break;
-    case VECTOR_TYPE_INT:
-      result = PROTECT(Rf_allocVector(INTSXP, len));
-      break;
-    case VECTOR_TYPE_DBL:
-      result = PROTECT(Rf_allocVector(REALSXP, len));
-      break;
-    case VECTOR_TYPE_CHR:
-      result = PROTECT(Rf_allocVector(STRSXP, len));
-      break;
-    default:
-      return R_NilValue;
-  }
-
-  UNPROTECT(1);
-  return result;
-}
-
-SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
-  SEXP result;
-
-  if (Rf_isObject(ptype)) {
-    if (Rf_inherits(ptype, "data.frame")) {
-      R_xlen_t num_cols = Rf_xlength(ptype);
-      result = PROTECT(Rf_allocVector(VECSXP, num_cols));
-      for (R_xlen_t i = 0; i < num_cols; i++) {
-        SET_VECTOR_ELT(result, i,
-                       nanoarrow_materialize_realloc(VECTOR_ELT(ptype, i), len));
-      }
-
-      // Set attributes from ptype
-      Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(ptype, R_NamesSymbol));
-      Rf_setAttrib(result, R_ClassSymbol, Rf_getAttrib(ptype, R_ClassSymbol));
-
-      // ...except rownames
-      SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
-      INTEGER(rownames)[0] = NA_INTEGER;
-      INTEGER(rownames)[1] = len;
-      Rf_setAttrib(result, R_RowNamesSymbol, rownames);
-    } else if (Rf_inherits(ptype, "matrix")) {
-      result = PROTECT(Rf_allocMatrix(TYPEOF(ptype), len, Rf_ncols(ptype)));
-      Rf_copyMostAttrib(ptype, result);
-    } else {
-      result = PROTECT(Rf_allocVector(TYPEOF(ptype), len));
-      Rf_copyMostAttrib(ptype, result);
-    }
-  } else {
-    result = PROTECT(Rf_allocVector(TYPEOF(ptype), len));
-  }
-
-  UNPROTECT(1);
-  return result;
-}
-
-SEXP nanoarrow_materialize_finish(SEXP result_sexp, R_xlen_t len,
-                                  struct MaterializeOptions* options) {
-  R_xlen_t actual_len = nanoarrow_vec_size(result_sexp);
-  if (actual_len != len) {
-    Rf_error("Expected finished vector of size %ld but got vector of size %ld", len,
-             actual_len);
-  }
-
-  return result_sexp;
 }
 
 static int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
@@ -704,19 +788,18 @@ static int nanoarrow_materialize_blob(struct ArrayViewSlice* src, struct VectorS
   return NANOARROW_OK;
 }
 
-static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
-                                         struct VectorSlice* dst,
-                                         struct MaterializeOptions* options) {
+static int nanoarrow_materialize_list_of(struct RConverter* converter) {
+  struct ArrayViewSlice* src = &converter->src;
+  struct VectorSlice* dst = &converter->dst;
+
   const int32_t* offsets = src->array_view->buffer_views[1].data.as_int32;
   const int64_t* large_offsets = src->array_view->buffer_views[1].data.as_int64;
   int64_t raw_src_offset = src->array_view->array->offset + src->offset;
 
-  struct ArrayViewSlice child_src;
-  child_src.array_view = src->array_view->children[0];
-
-  struct VectorSlice child_dst;
-  child_dst.offset = 0;
-  SEXP ptype = Rf_getAttrib(dst->vec_sexp, Rf_install("ptype"));
+  struct RConverter* child_converter = converter->children[0];
+  struct ArrayViewSlice* child_src = &child_converter->src;
+  struct VectorSlice* child_dst = &child_converter->dst;
+  child_dst->offset = 0;
 
   int convert_result;
 
@@ -726,19 +809,19 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
     case NANOARROW_TYPE_LIST:
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-          child_src.offset = offsets[raw_src_offset + i];
-          child_src.length = offsets[raw_src_offset + i + 1] - child_src.offset;
+          child_src->offset = offsets[raw_src_offset + i];
+          child_src->length = offsets[raw_src_offset + i + 1] - child_src->offset;
 
-          child_dst.vec_sexp =
-              PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
-          child_dst.length = child_src.length;
-          convert_result = nanoarrow_materialize(&child_src, &child_dst, options);
+          child_dst->vec_sexp =
+              PROTECT(nanoarrow_materialize_realloc(child_converter->ptype_view.ptype, child_src->length));
+          child_dst->length = child_src->length;
+          convert_result = nanoarrow_materialize(child_converter);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
           }
 
-          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst.vec_sexp);
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst->vec_sexp);
           UNPROTECT(1);
         }
       }
@@ -746,38 +829,38 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
     case NANOARROW_TYPE_LARGE_LIST:
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-          child_src.offset = large_offsets[raw_src_offset + i];
-          child_src.length = large_offsets[raw_src_offset + i + 1] - child_src.offset;
+          child_src->offset = large_offsets[raw_src_offset + i];
+          child_src->length = large_offsets[raw_src_offset + i + 1] - child_src->offset;
 
-          child_dst.vec_sexp =
-              PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
-          child_dst.length = child_src.length;
-          convert_result = nanoarrow_materialize(&child_src, &child_dst, options);
+          child_dst->vec_sexp =
+              PROTECT(nanoarrow_materialize_realloc(child_converter->ptype_view.ptype, child_src->length));
+          child_dst->length = child_src->length;
+          convert_result = nanoarrow_materialize(child_converter);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
           }
 
-          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst.vec_sexp);
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst->vec_sexp);
           UNPROTECT(1);
         }
       }
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      child_src.length = src->array_view->layout.child_size_elements;
-      child_dst.length = child_src.length;
+      child_src->length = src->array_view->layout.child_size_elements;
+      child_dst->length = child_src->length;
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-          child_src.offset = (raw_src_offset + i) * child_src.length;
-          child_dst.vec_sexp =
-              PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
-          convert_result = nanoarrow_materialize(&child_src, &child_dst, options);
+          child_src->offset = (raw_src_offset + i) * child_src->length;
+          child_dst->vec_sexp =
+              PROTECT(nanoarrow_materialize_realloc(child_converter->ptype_view.ptype, child_src->length));
+          convert_result = nanoarrow_materialize(child_converter);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
           }
 
-          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst.vec_sexp);
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst->vec_sexp);
           UNPROTECT(1);
         }
       }
@@ -789,13 +872,13 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
   return NANOARROW_OK;
 }
 
-static int nanoarrow_materialize_date(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                      struct MaterializeOptions* options) {
-  if (TYPEOF(dst->vec_sexp) == REALSXP) {
-    switch (src->schema_view.data_type) {
+static int nanoarrow_materialize_date(struct RConverter* converter) {
+  if (converter->ptype_view.sexp_type == REALSXP) {
+    switch (converter->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
       case NANOARROW_TYPE_DATE32:
-        return nanoarrow_materialize_dbl(src, dst, options);
+        return nanoarrow_materialize_dbl(&converter->src, &converter->dst,
+                                         converter->options);
       default:
         break;
     }
@@ -804,47 +887,43 @@ static int nanoarrow_materialize_date(struct ArrayViewSlice* src, struct VectorS
   return EINVAL;
 }
 
-static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
-                                          struct VectorSlice* dst,
-                                          struct MaterializeOptions* options) {
-  if (TYPEOF(dst->vec_sexp) == REALSXP) {
-    switch (src->schema_view.data_type) {
+static int nanoarrow_materialize_difftime(struct RConverter* converter) {
+  if (converter->ptype_view.sexp_type == REALSXP) {
+    switch (converter->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(
+            &converter->src, &converter->dst, converter->options));
         return NANOARROW_OK;
       case NANOARROW_TYPE_TIME32:
       case NANOARROW_TYPE_TIME64:
       case NANOARROW_TYPE_DURATION:
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(
+            &converter->src, &converter->dst, converter->options));
         break;
       default:
         return EINVAL;
     }
 
     double scale;
-    const void* vmax = vmaxget();
-    SEXP units_attr = Rf_getAttrib(dst->vec_sexp, Rf_install("units"));
-    if (units_attr == R_NilValue || TYPEOF(units_attr) != STRSXP ||
-        Rf_length(units_attr) != 1) {
-      Rf_error("Expected difftime 'units' attribute of type character(1)");
+    switch (converter->ptype_view.r_time_units) {
+      case R_TIME_UNIT_MINUTES:
+        scale = 1.0 / 60;
+        break;
+      case R_TIME_UNIT_HOURS:
+        scale = 1.0 / (60 * 60);
+        break;
+      case R_TIME_UNIT_DAYS:
+        scale = 1.0 / (60 * 60 * 24);
+        break;
+      case R_TIME_UNIT_WEEKS:
+        scale = 1.0 / (60 * 60 * 24 * 7);
+        break;
+      default:
+        scale = 1.0;
+        break;
     }
-    const char* dst_units = Rf_translateCharUTF8(STRING_ELT(units_attr, 0));
-    if (strcmp(dst_units, "secs") == 0) {
-      scale = 1.0;
-    } else if (strcmp(dst_units, "mins") == 0) {
-      scale = 1.0 / 60;
-    } else if (strcmp(dst_units, "hours") == 0) {
-      scale = 1.0 / (60 * 60);
-    } else if (strcmp(dst_units, "days") == 0) {
-      scale = 1.0 / (60 * 60 * 24);
-    } else if (strcmp(dst_units, "weeks") == 0) {
-      scale = 1.0 / (60 * 60 * 24 * 7);
-    } else {
-      Rf_error("Unexpected value for difftime 'units' attribute");
-    }
-    vmaxset(vmax);
 
-    switch (src->schema_view.time_unit) {
+    switch (converter->schema_view.time_unit) {
       case NANOARROW_TIME_UNIT_SECOND:
         scale *= 1;
         break;
@@ -862,9 +941,9 @@ static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
     }
 
     if (scale != 1) {
-      double* result = REAL(dst->vec_sexp);
-      for (int64_t i = 0; i < dst->length; i++) {
-        result[dst->offset + i] = result[dst->offset + i] * scale;
+      double* result = REAL(converter->dst.vec_sexp);
+      for (int64_t i = 0; i < converter->dst.length; i++) {
+        result[converter->dst.offset + i] = result[converter->dst.offset + i] * scale;
       }
     }
 
@@ -874,23 +953,24 @@ static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
   return EINVAL;
 }
 
-static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
-                                         struct VectorSlice* dst,
-                                         struct MaterializeOptions* options) {
-  if (TYPEOF(dst->vec_sexp) == REALSXP) {
+static int nanoarrow_materialize_posixct(struct RConverter* converter) {
+  if (converter->ptype_view.sexp_type == REALSXP) {
     enum ArrowTimeUnit time_unit;
-    switch (src->schema_view.data_type) {
+    switch (converter->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
         time_unit = NANOARROW_TIME_UNIT_SECOND;
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(
+            &converter->src, &converter->dst, converter->options));
         break;
       case NANOARROW_TYPE_DATE64:
         time_unit = NANOARROW_TIME_UNIT_MILLI;
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(
+            &converter->src, &converter->dst, converter->options));
         break;
       case NANOARROW_TYPE_TIMESTAMP:
-        time_unit = src->schema_view.time_unit;
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
+        time_unit = converter->schema_view.time_unit;
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(
+            &converter->src, &converter->dst, converter->options));
         break;
       default:
         return EINVAL;
@@ -915,9 +995,9 @@ static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
     }
 
     if (scale != 1) {
-      double* result = REAL(dst->vec_sexp);
-      for (int64_t i = 0; i < dst->length; i++) {
-        result[dst->offset + i] = result[dst->offset + i] * scale;
+      double* result = REAL(converter->dst.vec_sexp);
+      for (int64_t i = 0; i < converter->dst.length; i++) {
+        result[converter->dst.offset + i] = result[converter->dst.offset + i] * scale;
       }
     }
 
@@ -927,84 +1007,34 @@ static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
   return EINVAL;
 }
 
-static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
-                                            struct VectorSlice* dst,
-                                            struct MaterializeOptions* options) {
-  if (src->array_view->storage_type != NANOARROW_TYPE_STRUCT) {
-    return EINVAL;
+int nanoarrow_materialize(struct RConverter* converter) {
+  struct ArrayViewSlice* src = &converter->src;
+  struct VectorSlice* dst = &converter->dst;
+  struct MaterializeOptions* options = converter->options;
+
+  switch (converter->ptype_view.vector_type) {
+  case VECTOR_TYPE_UNSPECIFIED:
+    return nanoarrow_materialize_unspecified(src, dst, options);
+  case VECTOR_TYPE_LGL:
+    return nanoarrow_materialize_lgl(src, dst, options);
+  case VECTOR_TYPE_INT:
+    return nanoarrow_materialize_int(src, dst, options);
+  case VECTOR_TYPE_DBL:
+    return nanoarrow_materialize_dbl(src, dst, options);
+  // case VECTOR_TYPE_ALTREP_CHR:
+  case VECTOR_TYPE_CHR:
+    return nanoarrow_materialize_chr(src, dst, options);
+  case VECTOR_TYPE_POSIXCT:
+    return nanoarrow_materialize_posixct(converter);
+  case VECTOR_TYPE_DATE:
+    return nanoarrow_materialize_date(converter);
+  case VECTOR_TYPE_DIFFTIME:
+    return nanoarrow_materialize_difftime(converter);
+  case VECTOR_TYPE_BLOB:
+    return nanoarrow_materialize_blob(src, dst, options);
+  case VECTOR_TYPE_LIST_OF:
+    return nanoarrow_materialize_list_of(converter);
+  default:
+    return ENOTSUP;
   }
-
-  if (src->array_view->n_children != Rf_xlength(dst->vec_sexp)) {
-    return EINVAL;
-  }
-
-  struct ArrayViewSlice src_child = *src;
-  struct VectorSlice dst_child = *dst;
-
-  for (int64_t i = 0; i < src->array_view->n_children; i++) {
-    src_child.array_view = src->array_view->children[i];
-    dst_child.vec_sexp = VECTOR_ELT(dst->vec_sexp, i);
-    NANOARROW_RETURN_NOT_OK(nanoarrow_materialize(&src_child, &dst_child, options));
-  }
-
-  return NANOARROW_OK;
-}
-
-int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                          struct MaterializeOptions* options) {
-  if (src->length != dst->length) {
-    Rf_error(
-        "Can't materialize ArrayViewSlice with length %ld into VectorSlice of length %ld",
-        (long)src->length, (long)dst->length);
-  }
-
-  // Skip it all if there is no materializing to do
-  if (src->length == 0) {
-    return NANOARROW_OK;
-  }
-
-  // Dispatch to the right method for S3 objects that need special handling
-  if (Rf_isObject(dst->vec_sexp)) {
-    if (Rf_inherits(dst->vec_sexp, "data.frame")) {
-      return nanoarrow_materialize_data_frame(src, dst, options);
-    } else if (Rf_inherits(dst->vec_sexp, "vctrs_unspecified")) {
-      return nanoarrow_materialize_unspecified(src, dst, options);
-    } else if (Rf_inherits(dst->vec_sexp, "blob")) {
-      return nanoarrow_materialize_blob(src, dst, options);
-    } else if (Rf_inherits(dst->vec_sexp, "vctrs_list_of")) {
-      return nanoarrow_materialize_list_of(src, dst, options);
-    } else if (Rf_inherits(dst->vec_sexp, "Date")) {
-      return nanoarrow_materialize_date(src, dst, options);
-    } else if (Rf_inherits(dst->vec_sexp, "POSIXct")) {
-      return nanoarrow_materialize_posixct(src, dst, options);
-    } else if (Rf_inherits(dst->vec_sexp, "difftime")) {
-      return nanoarrow_materialize_difftime(src, dst, options);
-    } else {
-      // TODO: unlike array materialization where the pattern is "call a function
-      // that gets me an SEXP", here we do something more like "preallocate + fill in
-      // a chunk". That's harder to generalize but we could just call materialize_array()
-      // and copy the resulting SEXP into our preallocated structure.
-      Rf_error("materialize for custom S3 objects not supported");
-    }
-  }
-
-  switch (TYPEOF(dst->vec_sexp)) {
-    case LGLSXP:
-      return nanoarrow_materialize_lgl(src, dst, options);
-    case INTSXP:
-      return nanoarrow_materialize_int(src, dst, options);
-    case REALSXP:
-      return nanoarrow_materialize_dbl(src, dst, options);
-    case STRSXP:
-      return nanoarrow_materialize_chr(src, dst, options);
-    default:
-      break;
-  }
-
-  return EINVAL;
-}
-
-int nanoarrow_copy_vector(struct VectorSlice* src, struct VectorSlice* dst,
-                          struct MaterializeOptions* options) {
-  Rf_error("nanoarrow_copy_vector not implemented");
 }
