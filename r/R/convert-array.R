@@ -16,7 +16,7 @@
 # under the License.
 
 
-#' Materialize an Array into an R vector
+#' Convert an Array into an R vector
 #'
 #' @param array A [nanoarrow_array][as_nanoarrow_array].
 #' @param to A target prototype object describing the type to which `array`
