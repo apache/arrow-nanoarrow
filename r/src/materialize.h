@@ -29,7 +29,14 @@ enum VectorType {
   VECTOR_TYPE_LGL,
   VECTOR_TYPE_INT,
   VECTOR_TYPE_DBL,
+  VECTOR_TYPE_ALTREP_CHR,
   VECTOR_TYPE_CHR,
+  VECTOR_TYPE_POSIXCT,
+  VECTOR_TYPE_DATE,
+  VECTOR_TYPE_TIME,
+  VECTOR_TYPE_DIFFTIME,
+  VECTOR_TYPE_BLOB,
+  VECTOR_TYPE_LIST_OF,
   VECTOR_TYPE_DATA_FRAME,
   VECTOR_TYPE_OTHER
 };
@@ -44,7 +51,7 @@ enum RTimeUnits {
 struct PTypeView {
   enum VectorType vector_type;
   int sexp_type;
-  enum RTimeUnits difftime_units;
+  enum RTimeUnits r_time_units;
   SEXP ptype;
 };
 
@@ -61,6 +68,7 @@ struct ArrayViewSlice {
 // This can be both a source and/or a target for copying from/to.
 struct VectorSlice {
   SEXP vec_sexp;
+  void* data_ptr;
   R_xlen_t offset;
   R_xlen_t length;
 };
@@ -74,10 +82,25 @@ struct MaterializeOptions {
 struct RConverter {
   struct PTypeView ptype_view;
   struct ArrowSchemaView schema_view;
+  struct ArrowArrayView array_view;
   struct ArrayViewSlice src;
   struct VectorSlice dst;
-  struct MaterializeOptions options;
+  struct MaterializeOptions* options;
+  struct ArrowError error;
+  R_xlen_t size;
+  R_xlen_t capacity;
 };
+
+
+SEXP nanoarrow_converter_from_type(enum VectorType vector_type);
+SEXP nanoarrow_converter_from_ptype(SEXP ptype);
+int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr);
+int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr);
+int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size);
+R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n);
+int nanoarrow_converter_finalize(SEXP converter_xptr);
+SEXP nanoarrow_converter_result(SEXP converter_xptr);
+
 
 static inline struct ArrayViewSlice DefaultArrayViewSlice(
     struct ArrowArrayView* array_view) {
