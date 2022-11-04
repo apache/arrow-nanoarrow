@@ -36,7 +36,7 @@
 //
 // All ALTREP classes follow some common patterns:
 //
-// - R_altrep_data1() holds an external pointer to a struct ArrowArrayView
+// - R_altrep_data1() holds an external pointer to a struct RConverter.
 // - R_altrep_data2() holds the materialized version of the vector.
 // - When materialization happens, we set R_altrep_data1() to R_NilValue
 //   to ensure we don't hold on to any more resources than needed.
@@ -141,6 +141,8 @@ static void register_nanoarrow_altstring(DllInfo* info) {
   // - It may be beneficial to implement the Extract_subset method to defer string
   //   conversion even longer since this is expensive compared to rearranging integer
   //   indices.
+  // - The duplicate method may be useful because it's used when setting attributes
+  //   or unclassing the vector.
 #endif
 }
 
@@ -153,7 +155,7 @@ SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr) {
   // Create the converter
   SEXP converter_xptr = PROTECT(nanoarrow_converter_from_type(VECTOR_TYPE_CHR));
   if (nanoarrow_converter_set_schema(converter_xptr, schema_xptr) != NANOARROW_OK) {
-    Rf_error("nanoarrow_converter_set_schema() failed");
+    nanoarrow_converter_stop(converter_xptr);
   }
 
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
