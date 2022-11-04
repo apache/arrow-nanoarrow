@@ -26,48 +26,48 @@
 #' @return An R vector of type `to`.
 #' @export
 #'
-materialize_array <- function(array, to = NULL, ...) {
+convert_array <- function(array, to = NULL, ...) {
   stopifnot(inherits(array, "nanoarrow_array"))
-  UseMethod("materialize_array", to)
+  UseMethod("convert_array", to)
 }
 
 #' @export
-materialize_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
+convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
   if (.from_c) {
-    stop_cant_materialize_array(array, to)
+    stop_cant_convert_array(array, to)
   }
 
-  .Call(nanoarrow_c_materialize_array, array, to)
+  .Call(nanoarrow_c_convert_array, array, to)
 }
 
 # This is defined because it's verbose to pass named arguments from C.
 # When converting data frame columns, we try the internal C conversions
 # first to save R evaluation overhead. When the internal conversions fail,
-# we call materialize_array() to dispatch to conversions defined via S3
+# we call convert_array() to dispatch to conversions defined via S3
 # dispatch, making sure to let the default method know that we've already
 # tried the internal C conversions.
-materialize_array_from_c <- function(array, to) {
-  materialize_array(array, to, .from_c = TRUE)
+convert_array_from_c <- function(array, to) {
+  convert_array(array, to, .from_c = TRUE)
 }
 
 #' @export
-materialize_array.vctrs_partial_frame <- function(array, to, ...) {
+convert_array.vctrs_partial_frame <- function(array, to, ...) {
   ptype <- infer_nanoarrow_ptype(array)
   if (!is.data.frame(ptype)) {
-    stop_cant_materialize_array(array, to)
+    stop_cant_convert_array(array, to)
   }
 
   ptype <- vctrs::vec_ptype_common(ptype, to)
-  .Call(nanoarrow_c_materialize_array, array, ptype)
+  .Call(nanoarrow_c_convert_array, array, ptype)
 }
 
 #' @export
-materialize_array.tbl_df <- function(array, to, ...) {
-  df <- materialize_array(array, as.data.frame(to))
+convert_array.tbl_df <- function(array, to, ...) {
+  df <- convert_array(array, as.data.frame(to))
   tibble::as_tibble(df)
 }
 
-stop_cant_materialize_array <- function(array, to) {
+stop_cant_convert_array <- function(array, to) {
   schema <- infer_nanoarrow_schema(array)
   schema_label <- nanoarrow_schema_formatted(schema)
 

@@ -46,7 +46,7 @@ as_nanoarrow_array <- function(x, ..., schema = NULL) {
 #' @export
 as.vector.nanoarrow_array <- function(x, mode = "any") {
   stopifnot(identical(mode, "any"))
-  materialize_array(x, to = infer_nanoarrow_ptype(x))
+  convert_array(x, to = infer_nanoarrow_ptype(x))
 }
 
 #' @export
@@ -61,7 +61,7 @@ as.data.frame.nanoarrow_array <- function(x, ...) {
     )
   }
 
-  .Call(nanoarrow_c_materialize_array, x, NULL)
+  .Call(nanoarrow_c_convert_array, x, NULL)
 }
 
 # exported in zzz.R

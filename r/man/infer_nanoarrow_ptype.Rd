@@ -16,7 +16,7 @@ An R vector of zero size describing the target into which
 the array should be materialized.
 }
 \description{
-Resolves the default \code{ptype} value to use in \code{\link[=materialize_array]{materialize_array()}}.
+Resolves the default \code{ptype} value to use in \code{\link[=convert_array]{convert_array()}}.
 }
 \examples{
 infer_nanoarrow_ptype(as_nanoarrow_array(1:10))

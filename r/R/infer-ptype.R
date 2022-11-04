@@ -17,7 +17,7 @@
 
 #' Infer an R vector prototype
 #'
-#' Resolves the default `ptype` value to use in [materialize_array()].
+#' Resolves the default `ptype` value to use in [convert_array()].
 #'
 #' @param x A [nanoarrow_schema][as_nanoarrow_schema],
 #'   [nanoarrow_array][as_nanoarrow_array], or

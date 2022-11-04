@@ -31,7 +31,7 @@
 // an array that don't require extra information from the ptype (e.g.,
 // factor with levels). Some of these guesses may result in a conversion
 // that later warns for out-of-range values (e.g., int64 to double());
-// however, a user can use the materialize_array(x, ptype = something_safer())
+// however, a user can use the convert_array(x, ptype = something_safer())
 // when this occurs.
 enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
   switch (type) {

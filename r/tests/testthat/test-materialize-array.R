@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("materialize_array() errors for invalid arrays", {
+test_that("convert_array() errors for invalid arrays", {
   array <- as_nanoarrow_array(1:10)
   nanoarrow_array_set_schema(
     array,
@@ -24,38 +24,38 @@ test_that("materialize_array() errors for invalid arrays", {
   )
 
   expect_error(
-    materialize_array(array),
+    convert_array(array),
     "Expected array with 3 buffer"
   )
 })
 
-test_that("materialize_array() errors for unsupported ptype", {
+test_that("convert_array() errors for unsupported ptype", {
   array <- as_nanoarrow_array(1:10)
 
   # an S3 unsupported type
   expect_error(
-    materialize_array(array, structure(list(), class = "some_class")),
+    convert_array(array, structure(list(), class = "some_class")),
     "Can't convert array <int32> to R vector of type some_class"
   )
 
   # A non-S3 unsupported type
   expect_error(
-    materialize_array(array, environment()),
+    convert_array(array, environment()),
     "Can't convert array <int32> to R vector of type environment"
   )
 
   # An array with a name to an unsupported type
   struct_array <- as_nanoarrow_array(data.frame(x = 1L))
   expect_error(
-    materialize_array(struct_array$children$x, environment()),
+    convert_array(struct_array$children$x, environment()),
     "Can't convert `x`"
   )
 })
 
-test_that("materialize_array() errors for unsupported array", {
+test_that("convert_array() errors for unsupported array", {
   unsupported_array <- arrow::concat_arrays(type = arrow::decimal256(3, 4))
   expect_error(
-    materialize_array(as_nanoarrow_array(unsupported_array)),
+    convert_array(as_nanoarrow_array(unsupported_array)),
     "Can't infer R vector type for array <d:3,4,256>"
   )
 })
@@ -64,17 +64,17 @@ test_that("materialize to vector works for data.frame", {
   df <- data.frame(a = 1L, b = "two", c = 3, d = TRUE)
   array <- as_nanoarrow_array(df)
 
-  expect_identical(materialize_array(array, NULL), df)
-  expect_identical(materialize_array(array, df), df)
+  expect_identical(convert_array(array, NULL), df)
+  expect_identical(convert_array(array, df), df)
 
   expect_error(
-    materialize_array(array, data.frame(a = integer(), b = raw())),
+    convert_array(array, data.frame(a = integer(), b = raw())),
     "Expected data.frame\\(\\) ptype with 4 column\\(s\\) but found 2 column\\(s\\)"
   )
 
   bad_ptype <- data.frame(a = integer(), b = raw(), c = double(), d = integer())
   expect_error(
-    materialize_array(array, bad_ptype),
+    convert_array(array, bad_ptype),
     "Can't convert `b` <string> to R vector of type raw"
   )
 })
@@ -82,7 +82,7 @@ test_that("materialize to vector works for data.frame", {
 test_that("materialize to vector works for partial_frame", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
   expect_identical(
-    materialize_array(array, vctrs::partial_frame()),
+    convert_array(array, vctrs::partial_frame()),
     data.frame(a = 1L, b = "two")
   )
 })
@@ -90,7 +90,7 @@ test_that("materialize to vector works for partial_frame", {
 test_that("materialize to vector works for tibble", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
   expect_identical(
-    materialize_array(array, tibble::tibble(a = integer(), b = character())),
+    convert_array(array, tibble::tibble(a = integer(), b = character())),
     tibble::tibble(a = 1L, b = "two")
   )
 
@@ -99,14 +99,14 @@ test_that("materialize to vector works for tibble", {
   array_nested <- as_nanoarrow_array(tbl_nested_df)
 
   expect_identical(
-    materialize_array(array_nested, tbl_nested_df),
+    convert_array(array_nested, tbl_nested_df),
     tbl_nested_df
   )
 
   df_nested_tbl <- as.data.frame(tbl_nested_df)
   df_nested_tbl$c <- tibble::as_tibble(df_nested_tbl$c)
   expect_identical(
-    materialize_array(array_nested, df_nested_tbl),
+    convert_array(array_nested, df_nested_tbl),
     df_nested_tbl
   )
 })
@@ -116,20 +116,20 @@ test_that("materialize to vector works for unspecified()", {
 
   # implicit for null type
   expect_identical(
-    materialize_array(array, to = NULL),
+    convert_array(array, to = NULL),
     vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
   )
 
   # explicit for null type
   expect_identical(
-    materialize_array(array, vctrs::unspecified()),
+    convert_array(array, vctrs::unspecified()),
     vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
   )
 
   # explicit for non-null type that is all NAs
   array <- as_nanoarrow_array(rep(NA_integer_, 10))
   expect_identical(
-    materialize_array(array, vctrs::unspecified()),
+    convert_array(array, vctrs::unspecified()),
     vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
   )
 
@@ -137,7 +137,7 @@ test_that("materialize to vector works for unspecified()", {
   array <- as_nanoarrow_array(c(1L, rep(NA_integer_, 9)))
   expect_warning(
     expect_identical(
-      materialize_array(array, vctrs::unspecified()),
+      convert_array(array, vctrs::unspecified()),
       vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
     ),
     "1 non-null value\\(s\\) set to NA"
@@ -161,7 +161,7 @@ test_that("materialize to vector works for valid logical()", {
   vals <- c(NA, 0:10)
   for (nm in names(arrow_numeric_types)) {
     expect_identical(
-      materialize_array(
+      convert_array(
         as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
         logical()
       ),
@@ -172,7 +172,7 @@ test_that("materialize to vector works for valid logical()", {
   vals_no_na <- 0:10
   for (nm in names(arrow_numeric_types)) {
     expect_identical(
-      materialize_array(
+      convert_array(
         as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
         logical()
       ),
@@ -182,7 +182,7 @@ test_that("materialize to vector works for valid logical()", {
 
   # Boolean array to logical
   expect_identical(
-    materialize_array(
+    convert_array(
       as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
       logical()
     ),
@@ -190,7 +190,7 @@ test_that("materialize to vector works for valid logical()", {
   )
 
   expect_identical(
-    materialize_array(
+    convert_array(
       as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
       logical()
     ),
@@ -201,14 +201,14 @@ test_that("materialize to vector works for valid logical()", {
 test_that("materialize to vector works for null -> logical()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, logical()),
+    convert_array(array, logical()),
     rep(NA, 10)
   )
 })
 
 test_that("materialize to vector errors for bad array to logical()", {
   expect_error(
-    materialize_array(as_nanoarrow_array(letters), logical()),
+    convert_array(as_nanoarrow_array(letters), logical()),
     "Can't convert array <string> to R vector of type logical"
   )
 })
@@ -230,7 +230,7 @@ test_that("materialize to vector works for valid integer()", {
   ints <- c(NA, 0:10)
   for (nm in names(arrow_int_types)) {
     expect_identical(
-      materialize_array(
+      convert_array(
         as_nanoarrow_array(ints, schema = arrow_int_types[[!!nm]]),
         integer()
       ),
@@ -241,7 +241,7 @@ test_that("materialize to vector works for valid integer()", {
   ints_no_na <- 0:10
   for (nm in names(arrow_int_types)) {
     expect_identical(
-      materialize_array(
+      convert_array(
         as_nanoarrow_array(ints_no_na, schema = arrow_int_types[[!!nm]]),
         integer()
       ),
@@ -251,7 +251,7 @@ test_that("materialize to vector works for valid integer()", {
 
   # Boolean array to integer
   expect_identical(
-    materialize_array(
+    convert_array(
       as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
       integer()
     ),
@@ -259,7 +259,7 @@ test_that("materialize to vector works for valid integer()", {
   )
 
   expect_identical(
-    materialize_array(
+    convert_array(
       as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
       integer()
     ),
@@ -270,7 +270,7 @@ test_that("materialize to vector works for valid integer()", {
 test_that("materialize to vector works for null -> logical()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, integer()),
+    convert_array(array, integer()),
     rep(NA_integer_, 10)
   )
 })
@@ -278,20 +278,20 @@ test_that("materialize to vector works for null -> logical()", {
 test_that("materialize to vector warns for invalid integer()", {
   array <- as_nanoarrow_array(arrow::as_arrow_array(.Machine$double.xmax))
   expect_warning(
-    expect_identical(materialize_array(array, integer()), NA_integer_),
+    expect_identical(convert_array(array, integer()), NA_integer_),
     "1 value\\(s\\) outside integer range set to NA"
   )
 
   array <- as_nanoarrow_array(arrow::as_arrow_array(c(NA, .Machine$double.xmax)))
   expect_warning(
-    expect_identical(materialize_array(array, integer()), c(NA_integer_, NA_integer_)),
+    expect_identical(convert_array(array, integer()), c(NA_integer_, NA_integer_)),
     "1 value\\(s\\) outside integer range set to NA"
   )
 })
 
 test_that("materialize to vector errors for bad array to integer()", {
   expect_error(
-    materialize_array(as_nanoarrow_array(letters), integer()),
+    convert_array(as_nanoarrow_array(letters), integer()),
     "Can't convert array <string> to R vector of type integer"
   )
 })
@@ -313,7 +313,7 @@ test_that("materialize to vector works for valid double()", {
   vals <- as.double(c(NA, 0:10))
   for (nm in names(arrow_numeric_types)) {
     expect_identical(
-      materialize_array(
+      convert_array(
         as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
         double()
       ),
@@ -324,7 +324,7 @@ test_that("materialize to vector works for valid double()", {
   vals_no_na <- as.double(0:10)
   for (nm in names(arrow_numeric_types)) {
     expect_identical(
-      materialize_array(
+      convert_array(
         as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
         double()
       ),
@@ -334,7 +334,7 @@ test_that("materialize to vector works for valid double()", {
 
   # Boolean array to double
   expect_identical(
-    materialize_array(
+    convert_array(
       as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
       double()
     ),
@@ -342,7 +342,7 @@ test_that("materialize to vector works for valid double()", {
   )
 
   expect_identical(
-    materialize_array(
+    convert_array(
       as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
       double()
     ),
@@ -353,14 +353,14 @@ test_that("materialize to vector works for valid double()", {
 test_that("materialize to vector works for null -> double()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, double()),
+    convert_array(array, double()),
     rep(NA_real_, 10)
   )
 })
 
 test_that("materialize to vector errors for bad array to double()", {
   expect_error(
-    materialize_array(as_nanoarrow_array(letters), double()),
+    convert_array(as_nanoarrow_array(letters), double()),
     "Can't convert array <string> to R vector of type numeric"
   )
 })
@@ -368,23 +368,23 @@ test_that("materialize to vector errors for bad array to double()", {
 test_that("materialize to vector works for character()", {
   array <- as_nanoarrow_array(letters)
   expect_identical(
-    materialize_array(array, character()),
+    convert_array(array, character()),
     letters
   )
 
   # make sure we get altrep here
-  expect_true(is_nanoarrow_altrep(materialize_array(array, character())))
+  expect_true(is_nanoarrow_altrep(convert_array(array, character())))
 
   # check an array that we can't convert
   expect_error(
-    materialize_array(as_nanoarrow_array(1:5), character()),
+    convert_array(as_nanoarrow_array(1:5), character()),
     "Can't convert array <int32> to R vector of type character"
   )
 })
 
 test_that("materialize to vector works for null -> character()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
-  all_nulls <- materialize_array(array, character())
+  all_nulls <- convert_array(array, character())
   nanoarrow_altrep_force_materialize(all_nulls)
   expect_identical(
     all_nulls,
@@ -395,12 +395,12 @@ test_that("materialize to vector works for null -> character()", {
 test_that("materialize to vector works for blob::blob()", {
   array <- as_nanoarrow_array(list(as.raw(1:5)), schema = arrow::binary())
   expect_identical(
-    materialize_array(array),
+    convert_array(array),
     blob::blob(as.raw(1:5))
   )
 
   expect_identical(
-    materialize_array(array, blob::blob()),
+    convert_array(array, blob::blob()),
     blob::blob(as.raw(1:5))
   )
 })
@@ -408,7 +408,7 @@ test_that("materialize to vector works for blob::blob()", {
 test_that("materialize to vector works for null -> blob::blob()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, blob::blob()),
+    convert_array(array, blob::blob()),
     blob::new_blob(rep(list(NULL), 10))
   )
 })
@@ -423,19 +423,19 @@ test_that("materialize to vector works for list -> vctrs::list_of", {
 
   # Default conversion
   expect_identical(
-    materialize_array(array_list),
+    convert_array(array_list),
     vctrs::list_of(1:5, 6:10, NULL, .ptype = integer())
   )
 
   # With explicit ptype
   expect_identical(
-    materialize_array(array_list, vctrs::list_of(.ptype = double())),
+    convert_array(array_list, vctrs::list_of(.ptype = double())),
     vctrs::list_of(as.double(1:5), as.double(6:10), NULL, .ptype = double())
   )
 
   # With bad ptype
   expect_error(
-    materialize_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = character())),
     "Can't convert array"
   )
 
@@ -443,7 +443,7 @@ test_that("materialize to vector works for list -> vctrs::list_of", {
   ptype <- vctrs::list_of(.ptype = character())
   attr(ptype, "ptype") <- NULL
   expect_error(
-    materialize_array(array_list, ptype),
+    convert_array(array_list, ptype),
     "Expected attribute 'ptype'"
   )
 })
@@ -458,19 +458,19 @@ test_that("materialize to vector works for large_list -> vctrs::list_of", {
 
   # Default conversion
   expect_identical(
-    materialize_array(array_list),
+    convert_array(array_list),
     vctrs::list_of(1:5, 6:10, NULL, .ptype = integer())
   )
 
   # With explicit ptype
   expect_identical(
-    materialize_array(array_list, vctrs::list_of(.ptype = double())),
+    convert_array(array_list, vctrs::list_of(.ptype = double())),
     vctrs::list_of(as.double(1:5), as.double(6:10), NULL, .ptype = double())
   )
 
   # With bad ptype
   expect_error(
-    materialize_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = character())),
     "Can't convert array"
   )
 })
@@ -485,19 +485,19 @@ test_that("materialize to vector works for fixed_size_list -> vctrs::list_of", {
 
   # Default conversion
   expect_identical(
-    materialize_array(array_list),
+    convert_array(array_list),
     vctrs::list_of(1:5, 6:10, NULL, .ptype = integer())
   )
 
   # With explicit ptype
   expect_identical(
-    materialize_array(array_list, vctrs::list_of(.ptype = double())),
+    convert_array(array_list, vctrs::list_of(.ptype = double())),
     vctrs::list_of(as.double(1:5), as.double(6:10), NULL, .ptype = double())
   )
 
   # With bad ptype
   expect_error(
-    materialize_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = character())),
     "Can't convert array"
   )
 })
@@ -505,7 +505,7 @@ test_that("materialize to vector works for fixed_size_list -> vctrs::list_of", {
 test_that("materialize to vector works for null -> vctrs::list_of()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, vctrs::list_of(.ptype = integer())),
+    convert_array(array, vctrs::list_of(.ptype = integer())),
     vctrs::new_list_of(rep(list(NULL), 10), ptype = integer())
   )
 })
@@ -513,7 +513,7 @@ test_that("materialize to vector works for null -> vctrs::list_of()", {
 test_that("materialize to vector works for Date", {
   array_date <- as_nanoarrow_array(as.Date(c(NA, "2000-01-01")))
   expect_identical(
-    materialize_array(array_date),
+    convert_array(array_date),
     as.Date(c(NA, "2000-01-01"))
   )
 
@@ -521,7 +521,7 @@ test_that("materialize to vector works for Date", {
     arrow::Array$create(as.Date(c(NA, "2000-01-01")), arrow::date64())
   )
   expect_identical(
-    materialize_array(array_date),
+    convert_array(array_date),
     as.POSIXct(c(NA, "2000-01-01"), tz = "UTC")
   )
 })
@@ -529,7 +529,7 @@ test_that("materialize to vector works for Date", {
 test_that("materialize to vector works for null -> Date", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, as.Date(character())),
+    convert_array(array, as.Date(character())),
     as.Date(rep(NA_character_, 10))
   )
 })
@@ -537,7 +537,7 @@ test_that("materialize to vector works for null -> Date", {
 test_that("materialize to vector works for hms", {
   array_time <- as_nanoarrow_array(hms::parse_hm("12:34"))
   expect_identical(
-    materialize_array(array_time),
+    convert_array(array_time),
     hms::parse_hm("12:34")
   )
 })
@@ -545,7 +545,7 @@ test_that("materialize to vector works for hms", {
 test_that("materialize to vector works for null -> hms", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, hms::hms()),
+    convert_array(array, hms::hms()),
     hms::parse_hms(rep(NA_character_, 10))
   )
 })
@@ -556,7 +556,7 @@ test_that("materialize to vector works for POSIXct", {
   )
 
   expect_identical(
-    materialize_array(array_timestamp),
+    convert_array(array_timestamp),
     as.POSIXct("2000-01-01 12:33", tz = "America/Halifax")
   )
 })
@@ -564,7 +564,7 @@ test_that("materialize to vector works for POSIXct", {
 test_that("materialize to vector works for null -> POSIXct", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, as.POSIXct(character(), tz = "America/Halifax")),
+    convert_array(array, as.POSIXct(character(), tz = "America/Halifax")),
     as.POSIXct(rep(NA_character_, 10), tz = "America/Halifax")
   )
 })
@@ -574,74 +574,74 @@ test_that("materialize to vector works for difftime", {
   array_duration <- as_nanoarrow_array(x)
 
   # default
-  expect_identical(materialize_array(array_duration), x)
+  expect_identical(convert_array(array_duration), x)
 
   # explicit
-  expect_identical(materialize_array(array_duration, x), x)
+  expect_identical(convert_array(array_duration, x), x)
 
   # explicit with other difftime units
   units(x) <- "mins"
-  expect_identical(materialize_array(array_duration, x), x)
+  expect_identical(convert_array(array_duration, x), x)
 
   units(x) <- "hours"
-  expect_identical(materialize_array(array_duration, x), x)
+  expect_identical(convert_array(array_duration, x), x)
 
   units(x) <- "days"
-  expect_identical(materialize_array(array_duration, x), x)
+  expect_identical(convert_array(array_duration, x), x)
 
   units(x) <- "weeks"
-  expect_equal(materialize_array(array_duration, x), x)
+  expect_equal(convert_array(array_duration, x), x)
 
   # with all Arrow units
   x <- as.difftime(123, units = "secs")
   array_duration <- as_nanoarrow_array(
     arrow::Array$create(x, arrow::duration("s"))
   )
-  expect_identical(materialize_array(array_duration), x)
+  expect_identical(convert_array(array_duration), x)
 
   array_duration <- as_nanoarrow_array(
     arrow::Array$create(x, arrow::duration("ms"))
   )
-  expect_identical(materialize_array(array_duration), x)
+  expect_identical(convert_array(array_duration), x)
 
   array_duration <- as_nanoarrow_array(
     arrow::Array$create(x, arrow::duration("us"))
   )
-  expect_identical(materialize_array(array_duration), x)
+  expect_identical(convert_array(array_duration), x)
 
   array_duration <- as_nanoarrow_array(
     arrow::Array$create(x, arrow::duration("ns"))
   )
-  expect_equal(materialize_array(array_duration), x)
+  expect_equal(convert_array(array_duration), x)
 
   # bad ptype values
   attr(x, "units") <- NULL
   expect_error(
-    materialize_array(array_duration, x),
+    convert_array(array_duration, x),
     "Expected difftime 'units' attribute of type"
   )
 
   attr(x, "units") <- character()
   expect_error(
-    materialize_array(array_duration, x),
+    convert_array(array_duration, x),
     "Expected difftime 'units' attribute of type"
   )
 
   attr(x, "units") <- integer(1)
   expect_error(
-    materialize_array(array_duration, x),
+    convert_array(array_duration, x),
     "Expected difftime 'units' attribute of type"
   )
 
   attr(x, "units") <- "gazornenplat"
   expect_error(
-    materialize_array(array_duration, x),
+    convert_array(array_duration, x),
     "Unexpected value for difftime 'units' attribute"
   )
 
   attr(x, "units") <- NA_character_
   expect_error(
-    materialize_array(array_duration, x),
+    convert_array(array_duration, x),
     "Unexpected value for difftime 'units' attribute"
   )
 })
@@ -649,7 +649,7 @@ test_that("materialize to vector works for difftime", {
 test_that("materialize to vector works for null -> difftime", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(
-    materialize_array(array, as.difftime(numeric(), units = "secs")),
+    convert_array(array, as.difftime(numeric(), units = "secs")),
     as.difftime(rep(NA_real_, 10), units = "secs")
   )
 })

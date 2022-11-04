@@ -32,21 +32,21 @@
 // (i.e., no need to allocate a zero-size ptype) and returning ALTREP
 // where possible.
 
-// This calls nanoarrow::materialize_array() (via a package helper) to try S3
-// dispatch to find a materialize_array() method (or error if there
+// This calls nanoarrow::convert_array() (via a package helper) to try S3
+// dispatch to find a convert_array() method (or error if there
 // isn't one)
-static SEXP call_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
+static SEXP call_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
   SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
   SEXP call =
-      PROTECT(Rf_lang3(Rf_install("materialize_array_from_c"), array_xptr, ptype_sexp));
+      PROTECT(Rf_lang3(Rf_install("convert_array_from_c"), array_xptr, ptype_sexp));
   SEXP result = PROTECT(Rf_eval(call, ns));
   UNPROTECT(3);
   return result;
 }
 
-// Call stop_cant_materialize_array(), which gives a more informative error
+// Call stop_cant_convert_array(), which gives a more informative error
 // message than we can provide in a reasonable amount of C code here
-static void call_stop_cant_materialize_array(SEXP array_xptr, enum VectorType type,
+static void call_stop_cant_convert_array(SEXP array_xptr, enum VectorType type,
                                              SEXP ptype_sexp) {
   int n_protected = 2;
   if (ptype_sexp == R_NilValue) {
@@ -56,13 +56,13 @@ static void call_stop_cant_materialize_array(SEXP array_xptr, enum VectorType ty
 
   SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
   SEXP call = PROTECT(
-      Rf_lang3(Rf_install("stop_cant_materialize_array"), array_xptr, ptype_sexp));
+      Rf_lang3(Rf_install("stop_cant_convert_array"), array_xptr, ptype_sexp));
   Rf_eval(call, ns);
 
   UNPROTECT(n_protected);
 }
 
-static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_type,
+static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,
                                       SEXP ptype) {
   SEXP converter_xptr;
   if (ptype == R_NilValue) {
@@ -81,7 +81,7 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
   }
 
   if (nanoarrow_converter_materialize_all(converter_xptr) != NANOARROW_OK) {
-    call_stop_cant_materialize_array(array_xptr, vector_type, ptype);
+    call_stop_cant_convert_array(array_xptr, vector_type, ptype);
   }
 
   if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
@@ -93,18 +93,18 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
   return result;
 }
 
-static SEXP materialize_array_chr(SEXP array_xptr) {
+static SEXP convert_array_chr(SEXP array_xptr) {
   SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_xptr));
   if (result == R_NilValue) {
-    call_stop_cant_materialize_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
+    call_stop_cant_convert_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
   }
   UNPROTECT(1);
   return result;
 }
 
-SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp);
+SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
 
-static SEXP materialize_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
+static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
   struct ArrowArray* array = array_from_xptr(array_xptr);
   R_xlen_t n_col = array->n_children;
   SEXP result = PROTECT(Rf_allocVector(VECSXP, n_col));
@@ -114,7 +114,7 @@ static SEXP materialize_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
 
     for (R_xlen_t i = 0; i < n_col; i++) {
       SEXP child_xptr = PROTECT(borrow_array_child_xptr(array_xptr, i));
-      SET_VECTOR_ELT(result, i, nanoarrow_c_materialize_array(child_xptr, R_NilValue));
+      SET_VECTOR_ELT(result, i, nanoarrow_c_convert_array(child_xptr, R_NilValue));
       UNPROTECT(1);
 
       struct ArrowSchema* schema = schema_from_array_xptr(child_xptr);
@@ -136,7 +136,7 @@ static SEXP materialize_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
     for (R_xlen_t i = 0; i < n_col; i++) {
       SEXP child_xptr = PROTECT(borrow_array_child_xptr(array_xptr, i));
       SEXP child_ptype = VECTOR_ELT(ptype_sexp, i);
-      SET_VECTOR_ELT(result, i, nanoarrow_c_materialize_array(child_xptr, child_ptype));
+      SET_VECTOR_ELT(result, i, nanoarrow_c_convert_array(child_xptr, child_ptype));
       UNPROTECT(1);
     }
 
@@ -157,7 +157,7 @@ static SEXP materialize_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
 SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr);
 
-SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
+SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
   // See if we can skip any ptype resolution at all
   if (ptype_sexp == R_NilValue) {
     enum VectorType vector_type = nanoarrow_infer_vector_type_array(array_xptr);
@@ -165,11 +165,11 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
       case VECTOR_TYPE_LGL:
       case VECTOR_TYPE_INT:
       case VECTOR_TYPE_DBL:
-        return materialize_array_default(array_xptr, vector_type, R_NilValue);
+        return convert_array_default(array_xptr, vector_type, R_NilValue);
       case VECTOR_TYPE_CHR:
-        return materialize_array_chr(array_xptr);
+        return convert_array_chr(array_xptr);
       case VECTOR_TYPE_DATA_FRAME:
-        return materialize_array_data_frame(array_xptr, R_NilValue);
+        return convert_array_data_frame(array_xptr, R_NilValue);
       default:
         break;
     }
@@ -177,7 +177,7 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
     // Otherwise, resolve the ptype and use it (this will also error
     // for ptypes that can't be resolved)
     ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
-    SEXP result = nanoarrow_c_materialize_array(array_xptr, ptype_sexp);
+    SEXP result = nanoarrow_c_convert_array(array_xptr, ptype_sexp);
     UNPROTECT(1);
     return result;
   }
@@ -186,30 +186,30 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
   // (e.g., when looping over a data frame with a lot of columns)
   if (Rf_isObject(ptype_sexp)) {
     if (Rf_inherits(ptype_sexp, "data.frame") && !Rf_inherits(ptype_sexp, "tbl_df")) {
-      return materialize_array_data_frame(array_xptr, ptype_sexp);
+      return convert_array_data_frame(array_xptr, ptype_sexp);
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified") ||
                Rf_inherits(ptype_sexp, "blob") ||
                Rf_inherits(ptype_sexp, "vctrs_list_of") ||
                Rf_inherits(ptype_sexp, "Date") || Rf_inherits(ptype_sexp, "hms") ||
                Rf_inherits(ptype_sexp, "POSIXct") ||
                Rf_inherits(ptype_sexp, "difftime")) {
-      return materialize_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
+      return convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
     } else {
-      return call_materialize_array(array_xptr, ptype_sexp);
+      return call_convert_array(array_xptr, ptype_sexp);
     }
   }
 
   // If we're here, these are non-S3 objects
   switch (TYPEOF(ptype_sexp)) {
     case LGLSXP:
-      return materialize_array_default(array_xptr, VECTOR_TYPE_LGL, ptype_sexp);
+      return convert_array_default(array_xptr, VECTOR_TYPE_LGL, ptype_sexp);
     case INTSXP:
-      return materialize_array_default(array_xptr, VECTOR_TYPE_INT, ptype_sexp);
+      return convert_array_default(array_xptr, VECTOR_TYPE_INT, ptype_sexp);
     case REALSXP:
-      return materialize_array_default(array_xptr, VECTOR_TYPE_DBL, ptype_sexp);
+      return convert_array_default(array_xptr, VECTOR_TYPE_DBL, ptype_sexp);
     case STRSXP:
-      return materialize_array_chr(array_xptr);
+      return convert_array_chr(array_xptr);
     default:
-      return call_materialize_array(array_xptr, ptype_sexp);
+      return call_convert_array(array_xptr, ptype_sexp);
   }
 }
