@@ -98,6 +98,7 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr);
 int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr);
 int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size);
 R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n);
+int nanoarrow_converter_materialize_all(SEXP converter_xptr);
 int nanoarrow_converter_finalize(SEXP converter_xptr);
 SEXP nanoarrow_converter_result(SEXP converter_xptr);
 

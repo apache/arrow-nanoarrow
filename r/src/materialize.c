@@ -178,7 +178,19 @@ R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n) {
 
   converter->src.offset += n;
   converter->dst.offset += n;
+  converter->size += n;
   return n;
+}
+
+int nanoarrow_converter_materialize_all(SEXP converter_xptr) {
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  R_xlen_t remaining = converter->array_view.array->length;
+  NANOARROW_RETURN_NOT_OK(nanoarrow_converter_reserve(converter_xptr, remaining));
+  if (nanoarrow_converter_materialize_n(converter_xptr, remaining) != remaining) {
+    return ERANGE;
+  } else {
+    return NANOARROW_OK;
+  }
 }
 
 int nanoarrow_converter_finalize(SEXP converter_xptr) {

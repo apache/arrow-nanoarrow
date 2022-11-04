@@ -57,6 +57,30 @@ static void call_stop_cant_materialize_array(SEXP array_xptr, enum VectorType ty
 
 static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_type,
                                       SEXP ptype) {
+  
+  if (ptype == R_NilValue) {
+    SEXP converter_xptr = PROTECT(nanoarrow_converter_from_type(vector_type));
+    if (nanoarrow_converter_set_schema(converter_xptr, array_xptr_get_schema(array_xptr)) != NANOARROW_OK) {
+      Rf_error("nanoarrow_converter_set_schema() failed");
+    }
+
+    if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
+      Rf_error("nanoarrow_converter_set_array() failed");
+    }
+
+    if (nanoarrow_converter_materialize_all(converter_xptr) != NANOARROW_OK) {
+      Rf_error("nanoarrow_converter_materialize_all() failed");
+    }
+
+    if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
+      Rf_error("nanoarrow_converter_finalize() failed");
+    }
+
+    SEXP result = PROTECT(nanoarrow_converter_result(converter_xptr));
+    UNPROTECT(2);
+    return result;
+  }
+
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   struct ArrowArrayView* array_view = array_view_from_xptr(array_view_xptr);
 
