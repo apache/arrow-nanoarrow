@@ -42,21 +42,20 @@
 //   to ensure we don't hold on to any more resources than needed.
 
 static R_xlen_t nanoarrow_altrep_length(SEXP altrep_sexp) {
-  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
-  if (array_view_xptr == R_NilValue) {
+  SEXP converter_xptr = R_altrep_data1(altrep_sexp);
+  if (converter_xptr == R_NilValue) {
     return Rf_xlength(R_altrep_data2(altrep_sexp));
   }
 
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
-  return array_view->array->length;
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  return converter->array_view.array->length;
 }
 
 static Rboolean nanoarrow_altrep_inspect(SEXP altrep_sexp, int pre, int deep, int pvec,
                                          void (*inspect_subtree)(SEXP, int, int, int)) {
-  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
+  SEXP converter_xptr = R_altrep_data1(altrep_sexp);
   const char* materialized = "";
-  if (array_view_xptr == R_NilValue) {
+  if (converter_xptr == R_NilValue) {
     materialized = "materialized ";
   }
 
@@ -67,42 +66,35 @@ static Rboolean nanoarrow_altrep_inspect(SEXP altrep_sexp, int pre, int deep, in
 }
 
 static SEXP nanoarrow_altstring_elt(SEXP altrep_sexp, R_xlen_t i) {
-  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
-  if (array_view_xptr == R_NilValue) {
+  SEXP converter_xptr = R_altrep_data1(altrep_sexp);
+  if (converter_xptr == R_NilValue) {
     return STRING_ELT(R_altrep_data2(altrep_sexp), i);
   }
 
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
-
-  if (ArrowArrayViewIsNull(array_view, i)) {
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  if (ArrowArrayViewIsNull(&converter->array_view, i)) {
     return NA_STRING;
   }
 
-  struct ArrowStringView item = ArrowArrayViewGetStringUnsafe(array_view, i);
+  struct ArrowStringView item = ArrowArrayViewGetStringUnsafe(&converter->array_view, i);
   return Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8);
 }
 
 static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
-  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
-  if (array_view_xptr == R_NilValue) {
+  SEXP converter_xptr = R_altrep_data1(altrep_sexp);
+  if (converter_xptr == R_NilValue) {
     return R_altrep_data2(altrep_sexp);
   }
 
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
-
-  SEXP result_sexp =
-      PROTECT(nanoarrow_alloc_type(VECTOR_TYPE_CHR, array_view->array->length));
-
-  struct ArrayViewSlice src = DefaultArrayViewSlice(array_view);
-  struct VectorSlice dst = DefaultVectorSlice(result_sexp);
-  struct MaterializeOptions options = DefaultMaterializeOptions();
-
-  if (nanoarrow_materialize(&src, &dst, &options) != NANOARROW_OK) {
+  if (nanoarrow_converter_materialize_all(converter_xptr) != NANOARROW_OK) {
     Rf_error("Error materializing altstring");
   }
 
+  if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
+    Rf_error("Error finalizing materialized altstring");
+  }
+
+  SEXP result_sexp = PROTECT(nanoarrow_converter_result(converter_xptr));
   R_set_altrep_data2(altrep_sexp, result_sexp);
   R_set_altrep_data1(altrep_sexp, R_NilValue);
   UNPROTECT(1);
@@ -114,8 +106,8 @@ static void* nanoarrow_altrep_dataptr(SEXP altrep_sexp, Rboolean writable) {
 }
 
 static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
-  SEXP array_view_xptr = R_altrep_data1(altrep_sexp);
-  if (array_view_xptr == R_NilValue) {
+  SEXP converter_xptr = R_altrep_data1(altrep_sexp);
+  if (converter_xptr == R_NilValue) {
     return DATAPTR_OR_NULL(R_altrep_data2(altrep_sexp));
   }
 
@@ -154,33 +146,41 @@ static void register_nanoarrow_altstring(DllInfo* info) {
 
 void register_nanoarrow_altrep(DllInfo* info) { register_nanoarrow_altstring(info); }
 
-SEXP nanoarrow_c_make_altrep_chr(SEXP array_view_xptr) {
+SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr) {
 #ifdef HAS_ALTREP
-  struct ArrowArrayView* array_view =
-      (struct ArrowArrayView*)R_ExternalPtrAddr(array_view_xptr);
+  SEXP schema_xptr = array_xptr_get_schema(array_xptr);
 
-  switch (array_view->storage_type) {
+  // Create the converter
+  SEXP converter_xptr = PROTECT(nanoarrow_converter_from_type(VECTOR_TYPE_CHR));
+  if (nanoarrow_converter_set_schema(converter_xptr, schema_xptr) != NANOARROW_OK) {
+    Rf_error("nanoarrow_converter_set_schema() failed");
+  }
+
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  switch (converter->array_view.storage_type) {
     case NANOARROW_TYPE_NA:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
       break;
     default:
+      UNPROTECT(1);
       return R_NilValue;
   }
 
   // Ensure the array that we're attaching to this ALTREP object does not keep its
   // parent struct alive unnecessarily (i.e., a user can select only a few columns
   // and the memory for the unused columns will be released).
-  SEXP array_xptr_independent =
-      PROTECT(array_xptr_ensure_independent(R_ExternalPtrProtected(array_view_xptr)));
-  array_view->array = array_from_xptr(array_xptr_independent);
-  R_SetExternalPtrProtected(array_view_xptr, array_xptr_independent);
-  UNPROTECT(1);
+  SEXP array_xptr_independent = PROTECT(array_xptr_ensure_independent(array_xptr));
 
-  Rf_setAttrib(array_view_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::altrep_chr"));
-  SEXP out = PROTECT(R_new_altrep(nanoarrow_altrep_chr_cls, array_view_xptr, R_NilValue));
+  if (nanoarrow_converter_set_array(converter_xptr, array_xptr_independent) !=
+      NANOARROW_OK) {
+    Rf_error("nanoarrow_converter_set_array() failed");
+  }
+
+  Rf_setAttrib(converter_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::altrep_chr"));
+  SEXP out = PROTECT(R_new_altrep(nanoarrow_altrep_chr_cls, converter_xptr, R_NilValue));
   MARK_NOT_MUTABLE(out);
-  UNPROTECT(1);
+  UNPROTECT(3);
   return out;
 #else
   return R_NilValue;

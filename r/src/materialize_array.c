@@ -94,12 +94,11 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
 }
 
 static SEXP materialize_array_chr(SEXP array_xptr) {
-  SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
-  SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_view_xptr));
+  SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_xptr));
   if (result == R_NilValue) {
     call_stop_cant_materialize_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
   }
-  UNPROTECT(2);
+  UNPROTECT(1);
   return result;
 }
 

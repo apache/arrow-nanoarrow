@@ -102,6 +102,7 @@ R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n);
 int nanoarrow_converter_materialize_all(SEXP converter_xptr);
 int nanoarrow_converter_finalize(SEXP converter_xptr);
 SEXP nanoarrow_converter_result(SEXP converter_xptr);
+void nanoarrow_converter_stop(SEXP converter_xptr);
 
 
 static inline struct ArrayViewSlice DefaultArrayViewSlice(

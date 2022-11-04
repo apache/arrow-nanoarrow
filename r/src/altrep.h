@@ -56,6 +56,6 @@ static inline int is_nanoarrow_altrep(SEXP x) {
 
 // Creates an altstring vector backed by a nanoarrow array or returns
 // R_NilValue if the conversion is not possible.
-SEXP nanoarrow_c_make_altrep_chr(SEXP array_view_xptr);
+SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr);
 
 #endif

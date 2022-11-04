@@ -313,6 +313,11 @@ SEXP nanoarrow_converter_result(SEXP converter_xptr) {
   return result;
 }
 
+void nanoarrow_converter_stop(SEXP converter_xptr) {
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  Rf_error("%s", ArrowErrorMessage(&converter->error));
+}
+
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
   SEXP result;
 
