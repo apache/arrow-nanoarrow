@@ -532,6 +532,14 @@ test_that("materialize to vector works for hms", {
   )
 })
 
+test_that("materialize to vector works for null -> hms", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    materialize_array(array, hms::hms()),
+    hms::parse_hms(rep(NA_character_, 10))
+  )
+})
+
 test_that("materialize to vector works for POSIXct", {
   array_timestamp <- as_nanoarrow_array(
     as.POSIXct("2000-01-01 12:33", tz = "America/Halifax")
@@ -540,6 +548,14 @@ test_that("materialize to vector works for POSIXct", {
   expect_identical(
     materialize_array(array_timestamp),
     as.POSIXct("2000-01-01 12:33", tz = "America/Halifax")
+  )
+})
+
+test_that("materialize to vector works for null -> POSIXct", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    materialize_array(array, as.POSIXct(character(), tz = "America/Halifax")),
+    as.POSIXct(rep(NA_character_, 10), tz = "America/Halifax")
   )
 })
 
@@ -617,5 +633,13 @@ test_that("materialize to vector works for difftime", {
   expect_error(
     materialize_array(array_duration, x),
     "Unexpected value for difftime 'units' attribute"
+  )
+})
+
+test_that("materialize to vector works for null -> difftime", {
+  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  expect_identical(
+    materialize_array(array, as.difftime(numeric(), units = "secs")),
+    as.difftime(rep(NA_real_, 10), units = "secs")
   )
 })

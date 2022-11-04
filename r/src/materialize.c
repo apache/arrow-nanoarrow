@@ -542,6 +542,8 @@ static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
   if (TYPEOF(dst->vec_sexp) == REALSXP) {
     switch (src->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        return NANOARROW_OK;
       case NANOARROW_TYPE_TIME32:
       case NANOARROW_TYPE_TIME64:
       case NANOARROW_TYPE_DURATION:
