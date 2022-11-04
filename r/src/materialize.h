@@ -26,6 +26,8 @@
 // Vector types that have some special casing internally to avoid unnecessary allocations
 // or looping at the R level. Other types are represented by an SEXP ptype.
 enum VectorType {
+  VECTOR_TYPE_NULL,
+  VECTOR_TYPE_UNSPECIFIED,
   VECTOR_TYPE_LGL,
   VECTOR_TYPE_INT,
   VECTOR_TYPE_DBL,
@@ -33,7 +35,6 @@ enum VectorType {
   VECTOR_TYPE_CHR,
   VECTOR_TYPE_POSIXCT,
   VECTOR_TYPE_DATE,
-  VECTOR_TYPE_TIME,
   VECTOR_TYPE_DIFFTIME,
   VECTOR_TYPE_BLOB,
   VECTOR_TYPE_LIST_OF,
@@ -43,6 +44,7 @@ enum VectorType {
 
 enum RTimeUnits {
   R_TIME_UNIT_SECONDS,
+  R_TIME_UNIT_MINUTES,
   R_TIME_UNIT_HOURS,
   R_TIME_UNIT_DAYS,
   R_TIME_UNIT_WEEKS
@@ -68,7 +70,6 @@ struct ArrayViewSlice {
 // This can be both a source and/or a target for copying from/to.
 struct VectorSlice {
   SEXP vec_sexp;
-  void* data_ptr;
   R_xlen_t offset;
   R_xlen_t length;
 };

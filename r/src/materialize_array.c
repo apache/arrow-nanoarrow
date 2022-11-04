@@ -46,74 +46,58 @@ static SEXP call_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
 
 // Call stop_cant_materialize_array(), which gives a more informative error
 // message than we can provide in a reasonable amount of C code here
-static void call_stop_cant_materialize_array(SEXP array_xptr, enum VectorType type) {
+static void call_stop_cant_materialize_array(SEXP array_xptr, enum VectorType type,
+                                             SEXP ptype_sexp) {
+  int n_protected = 2;
+  if (ptype_sexp == R_NilValue) {
+    ptype_sexp = PROTECT(nanoarrow_alloc_type(type, 0));
+    n_protected++;
+  }
+
   SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP ptype_sexp = PROTECT(nanoarrow_alloc_type(type, 0));
   SEXP call = PROTECT(
       Rf_lang3(Rf_install("stop_cant_materialize_array"), array_xptr, ptype_sexp));
   Rf_eval(call, ns);
-  UNPROTECT(3);
+
+  UNPROTECT(n_protected);
 }
 
 static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_type,
                                       SEXP ptype) {
-
+  SEXP converter_xptr;
   if (ptype == R_NilValue) {
-    SEXP converter_xptr = PROTECT(nanoarrow_converter_from_type(vector_type));
-    if (nanoarrow_converter_set_schema(converter_xptr, array_xptr_get_schema(array_xptr)) != NANOARROW_OK) {
-      Rf_error("nanoarrow_converter_set_schema() failed");
-    }
-
-    if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
-      Rf_error("nanoarrow_converter_set_array() failed");
-    }
-
-    if (nanoarrow_converter_materialize_all(converter_xptr) != NANOARROW_OK) {
-      call_stop_cant_materialize_array(array_xptr, vector_type);
-    }
-
-    if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
-      Rf_error("nanoarrow_converter_finalize() failed");
-    }
-
-    SEXP result = PROTECT(nanoarrow_converter_result(converter_xptr));
-    UNPROTECT(2);
-    return result;
-  }
-
-  SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
-  struct ArrowArrayView* array_view = array_view_from_xptr(array_view_xptr);
-
-  SEXP result_sexp;
-  if (vector_type == VECTOR_TYPE_OTHER) {
-    result_sexp =
-        PROTECT(nanoarrow_materialize_realloc(ptype, array_view->array->length));
+    converter_xptr = PROTECT(nanoarrow_converter_from_type(vector_type));
   } else {
-    result_sexp = PROTECT(nanoarrow_alloc_type(vector_type, array_view->array->length));
+    converter_xptr = PROTECT(nanoarrow_converter_from_ptype(ptype));
   }
 
-  struct ArrayViewSlice src = DefaultArrayViewSlice(array_view);
-  struct VectorSlice dst = DefaultVectorSlice(result_sexp);
-  struct MaterializeOptions options = DefaultMaterializeOptions();
-
-  // Needed for datetime types to pass on source units.
-  ArrowSchemaViewInit(&src.schema_view, schema_from_array_xptr(array_xptr), NULL);
-
-  if (nanoarrow_materialize(&src, &dst, &options) != NANOARROW_OK) {
-    call_stop_cant_materialize_array(array_xptr, vector_type);
+  if (nanoarrow_converter_set_schema(converter_xptr, array_xptr_get_schema(array_xptr)) !=
+      NANOARROW_OK) {
+    Rf_error("nanoarrow_converter_set_schema() failed");
   }
 
-  SEXP finished_sexp = PROTECT(
-      nanoarrow_materialize_finish(result_sexp, array_view->array->length, &options));
-  UNPROTECT(3);
-  return finished_sexp;
+  if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
+    Rf_error("nanoarrow_converter_set_array() failed");
+  }
+
+  if (nanoarrow_converter_materialize_all(converter_xptr) != NANOARROW_OK) {
+    call_stop_cant_materialize_array(array_xptr, vector_type, ptype);
+  }
+
+  if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
+    Rf_error("nanoarrow_converter_finalize() failed");
+  }
+
+  SEXP result = PROTECT(nanoarrow_converter_result(converter_xptr));
+  UNPROTECT(2);
+  return result;
 }
 
 static SEXP materialize_array_chr(SEXP array_xptr) {
   SEXP array_view_xptr = PROTECT(array_view_xptr_from_array_xptr(array_xptr));
   SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_view_xptr));
   if (result == R_NilValue) {
-    call_stop_cant_materialize_array(array_xptr, VECTOR_TYPE_CHR);
+    call_stop_cant_materialize_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
   }
   UNPROTECT(2);
   return result;
@@ -207,8 +191,7 @@ SEXP nanoarrow_c_materialize_array(SEXP array_xptr, SEXP ptype_sexp) {
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified") ||
                Rf_inherits(ptype_sexp, "blob") ||
                Rf_inherits(ptype_sexp, "vctrs_list_of") ||
-               Rf_inherits(ptype_sexp, "Date") ||
-               Rf_inherits(ptype_sexp, "hms") ||
+               Rf_inherits(ptype_sexp, "Date") || Rf_inherits(ptype_sexp, "hms") ||
                Rf_inherits(ptype_sexp, "POSIXct") ||
                Rf_inherits(ptype_sexp, "difftime")) {
       return materialize_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);

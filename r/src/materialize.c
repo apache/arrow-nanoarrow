@@ -66,7 +66,6 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   converter->schema_view.storage_data_type = NANOARROW_TYPE_UNINITIALIZED;
   converter->src.array_view = &converter->array_view;
   converter->dst.vec_sexp = R_NilValue;
-  converter->dst.data_ptr = NULL;
   converter->options = NULL;
   converter->error.message[0] = '\0';
   converter->size = 0;
@@ -76,6 +75,9 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   converter->ptype_view.ptype = R_NilValue;
 
   switch (vector_type) {
+    case VECTOR_TYPE_NULL:
+      converter->ptype_view.sexp_type = NILSXP;
+      break;
     case VECTOR_TYPE_LGL:
       converter->ptype_view.sexp_type = LGLSXP;
       break;
@@ -97,7 +99,83 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   return converter_xptr;
 }
 
-SEXP nanoarrow_converter_from_ptype(SEXP ptype) { return R_NilValue; }
+static enum RTimeUnits time_units_from_difftime(SEXP ptype) {
+  SEXP units_attr = Rf_getAttrib(ptype, Rf_install("units"));
+  if (units_attr == R_NilValue || TYPEOF(units_attr) != STRSXP ||
+      Rf_length(units_attr) != 1) {
+    Rf_error("Expected difftime 'units' attribute of type character(1)");
+  }
+
+  const char* dst_units = Rf_translateCharUTF8(STRING_ELT(units_attr, 0));
+  if (strcmp(dst_units, "secs") == 0) {
+    return R_TIME_UNIT_SECONDS;
+  } else if (strcmp(dst_units, "mins") == 0) {
+    return R_TIME_UNIT_MINUTES;
+  } else if (strcmp(dst_units, "hours") == 0) {
+    return R_TIME_UNIT_HOURS;
+  } else if (strcmp(dst_units, "days") == 0) {
+    return R_TIME_UNIT_DAYS;
+  } else if (strcmp(dst_units, "weeks") == 0) {
+    return R_TIME_UNIT_WEEKS;
+  } else {
+    Rf_error("Unexpected value for difftime 'units' attribute");
+    return R_TIME_UNIT_SECONDS;
+  }
+}
+
+SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
+  SEXP converter_xptr = PROTECT(nanoarrow_converter_from_type(VECTOR_TYPE_NULL));
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+
+  if (Rf_isObject(ptype)) {
+    if (Rf_inherits(ptype, "data.frame")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_DATA_FRAME;
+      Rf_error("data.frame currently not supported by converter");
+    } else if (Rf_inherits(ptype, "vctrs_list_of")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_LIST_OF;
+    } else if (Rf_inherits(ptype, "vctrs_unspecified")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_UNSPECIFIED;
+    } else if (Rf_inherits(ptype, "blob")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_BLOB;
+    } else if (Rf_inherits(ptype, "Date")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_DATE;
+      converter->ptype_view.r_time_units = R_TIME_UNIT_DAYS;
+    } else if (Rf_inherits(ptype, "POSIXct")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_POSIXCT;
+      converter->ptype_view.r_time_units = R_TIME_UNIT_SECONDS;
+    } else if (Rf_inherits(ptype, "difftime")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_DIFFTIME;
+      converter->ptype_view.r_time_units = time_units_from_difftime(ptype);
+    } else {
+      converter->ptype_view.vector_type = VECTOR_TYPE_OTHER;
+    }
+  } else {
+    switch (TYPEOF(ptype)) {
+      case LGLSXP:
+        converter->ptype_view.vector_type = VECTOR_TYPE_LGL;
+        break;
+      case INTSXP:
+        converter->ptype_view.vector_type = VECTOR_TYPE_INT;
+        break;
+      case REALSXP:
+        converter->ptype_view.vector_type = VECTOR_TYPE_DBL;
+        break;
+      case STRSXP:
+        converter->ptype_view.vector_type = VECTOR_TYPE_CHR;
+        break;
+      default:
+        converter->ptype_view.vector_type = VECTOR_TYPE_OTHER;
+        break;
+    }
+  }
+
+  converter->ptype_view.ptype = ptype;
+  SET_VECTOR_ELT(converter_shelter, 0, ptype);
+
+  UNPROTECT(1);
+  return converter_xptr;
+}
 
 int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
@@ -105,6 +183,7 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
   struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
   NANOARROW_RETURN_NOT_OK(
       ArrowSchemaViewInit(&converter->schema_view, schema, &converter->error));
+  converter->src.schema_view = converter->schema_view;
   SET_VECTOR_ELT(converter_shelter, 1, schema_xptr);
 
   ArrowArrayViewReset(&converter->array_view);
@@ -221,9 +300,15 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
 }
 
 SEXP nanoarrow_converter_result(SEXP converter_xptr) {
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SEXP result = PROTECT(VECTOR_ELT(converter_shelter, 4));
   SET_VECTOR_ELT(converter_shelter, 4, R_NilValue);
+  converter->dst.vec_sexp = R_NilValue;
+  converter->dst.offset = 0;
+  converter->dst.length = 0;
+  converter->size = 0;
+  converter->capacity = 0;
   UNPROTECT(1);
   return result;
 }
