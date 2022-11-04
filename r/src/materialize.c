@@ -111,8 +111,7 @@ SEXP nanoarrow_materialize_finish(SEXP result_sexp, R_xlen_t len,
 
 static int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
                                              struct VectorSlice* dst,
-                                             struct MaterializeOptions* options,
-                                             struct MaterializeContext* context) {
+                                             struct MaterializeOptions* options) {
   int* result = LOGICAL(dst->vec_sexp);
 
   int64_t total_offset = src->array_view->array->offset + src->offset;
@@ -142,8 +141,7 @@ static int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
 }
 
 static int nanoarrow_materialize_lgl(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                     struct MaterializeOptions* options,
-                                     struct MaterializeContext* context) {
+                                     struct MaterializeOptions* options) {
   // True for all the types supported here
   const uint8_t* is_valid = src->array_view->buffer_views[0].data.as_uint8;
   const uint8_t* data_buffer = src->array_view->buffer_views[1].data.as_uint8;
@@ -204,8 +202,7 @@ static int nanoarrow_materialize_lgl(struct ArrayViewSlice* src, struct VectorSl
 }
 
 static int nanoarrow_materialize_int(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                     struct MaterializeOptions* options,
-                                     struct MaterializeContext* context) {
+                                     struct MaterializeOptions* options) {
   int* result = INTEGER(dst->vec_sexp);
   int64_t n_bad_values = 0;
 
@@ -300,8 +297,7 @@ static int nanoarrow_materialize_int(struct ArrayViewSlice* src, struct VectorSl
 }
 
 static int nanoarrow_materialize_dbl(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                     struct MaterializeOptions* options,
-                                     struct MaterializeContext* context) {
+                                     struct MaterializeOptions* options) {
   double* result = REAL(dst->vec_sexp);
 
   // True for all the types supported here
@@ -365,8 +361,7 @@ static int nanoarrow_materialize_dbl(struct ArrayViewSlice* src, struct VectorSl
 }
 
 static int nanoarrow_materialize_chr(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                     struct MaterializeOptions* options,
-                                     struct MaterializeContext* context) {
+                                     struct MaterializeOptions* options) {
   switch (src->array_view->storage_type) {
     case NANOARROW_TYPE_NA:
     case NANOARROW_TYPE_STRING:
@@ -398,8 +393,7 @@ static int nanoarrow_materialize_chr(struct ArrayViewSlice* src, struct VectorSl
 }
 
 static int nanoarrow_materialize_blob(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                      struct MaterializeOptions* options,
-                                      struct MaterializeContext* context) {
+                                      struct MaterializeOptions* options) {
   switch (src->array_view->storage_type) {
     case NANOARROW_TYPE_NA:
     case NANOARROW_TYPE_STRING:
@@ -432,8 +426,7 @@ static int nanoarrow_materialize_blob(struct ArrayViewSlice* src, struct VectorS
 
 static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
                                          struct VectorSlice* dst,
-                                         struct MaterializeOptions* options,
-                                         struct MaterializeContext* context) {
+                                         struct MaterializeOptions* options) {
   const int32_t* offsets = src->array_view->buffer_views[1].data.as_int32;
   const int64_t* large_offsets = src->array_view->buffer_views[1].data.as_int64;
   int64_t raw_src_offset = src->array_view->array->offset + src->offset;
@@ -460,7 +453,7 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
               PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
           child_dst.length = child_src.length;
           convert_result =
-              nanoarrow_materialize(&child_src, &child_dst, options, context);
+              nanoarrow_materialize(&child_src, &child_dst, options);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
@@ -481,7 +474,7 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
               PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
           child_dst.length = child_src.length;
           convert_result =
-              nanoarrow_materialize(&child_src, &child_dst, options, context);
+              nanoarrow_materialize(&child_src, &child_dst, options);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
@@ -501,7 +494,7 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
           child_dst.vec_sexp =
               PROTECT(nanoarrow_materialize_realloc(ptype, child_src.length));
           convert_result =
-              nanoarrow_materialize(&child_src, &child_dst, options, context);
+              nanoarrow_materialize(&child_src, &child_dst, options);
           if (convert_result != NANOARROW_OK) {
             UNPROTECT(1);
             return EINVAL;
@@ -520,13 +513,12 @@ static int nanoarrow_materialize_list_of(struct ArrayViewSlice* src,
 }
 
 static int nanoarrow_materialize_date(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                                      struct MaterializeOptions* options,
-                                      struct MaterializeContext* context) {
+                                      struct MaterializeOptions* options) {
   if (TYPEOF(dst->vec_sexp) == REALSXP) {
     switch (src->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
       case NANOARROW_TYPE_DATE32:
-        return nanoarrow_materialize_dbl(src, dst, options, context);
+        return nanoarrow_materialize_dbl(src, dst, options);
       default:
         break;
     }
@@ -537,17 +529,16 @@ static int nanoarrow_materialize_date(struct ArrayViewSlice* src, struct VectorS
 
 static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
                                           struct VectorSlice* dst,
-                                          struct MaterializeOptions* options,
-                                          struct MaterializeContext* context) {
+                                          struct MaterializeOptions* options) {
   if (TYPEOF(dst->vec_sexp) == REALSXP) {
     switch (src->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
         return NANOARROW_OK;
       case NANOARROW_TYPE_TIME32:
       case NANOARROW_TYPE_TIME64:
       case NANOARROW_TYPE_DURATION:
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
         break;
       default:
         return EINVAL;
@@ -608,22 +599,21 @@ static int nanoarrow_materialize_difftime(struct ArrayViewSlice* src,
 
 static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
                                          struct VectorSlice* dst,
-                                         struct MaterializeOptions* options,
-                                         struct MaterializeContext* context) {
+                                         struct MaterializeOptions* options) {
   if (TYPEOF(dst->vec_sexp) == REALSXP) {
     enum ArrowTimeUnit time_unit;
     switch (src->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
         time_unit = NANOARROW_TIME_UNIT_SECOND;
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
         break;
       case NANOARROW_TYPE_DATE64:
         time_unit = NANOARROW_TIME_UNIT_MILLI;
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
         break;
       case NANOARROW_TYPE_TIMESTAMP:
         time_unit = src->schema_view.time_unit;
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options, context));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(src, dst, options));
         break;
       default:
         return EINVAL;
@@ -662,8 +652,7 @@ static int nanoarrow_materialize_posixct(struct ArrayViewSlice* src,
 
 static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
                                             struct VectorSlice* dst,
-                                            struct MaterializeOptions* options,
-                                            struct MaterializeContext* context) {
+                                            struct MaterializeOptions* options) {
   if (src->array_view->storage_type != NANOARROW_TYPE_STRUCT) {
     return EINVAL;
   }
@@ -679,15 +668,14 @@ static int nanoarrow_materialize_data_frame(struct ArrayViewSlice* src,
     src_child.array_view = src->array_view->children[i];
     dst_child.vec_sexp = VECTOR_ELT(dst->vec_sexp, i);
     NANOARROW_RETURN_NOT_OK(
-        nanoarrow_materialize(&src_child, &dst_child, options, context));
+        nanoarrow_materialize(&src_child, &dst_child, options));
   }
 
   return NANOARROW_OK;
 }
 
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                          struct MaterializeOptions* options,
-                          struct MaterializeContext* context) {
+                          struct MaterializeOptions* options) {
   if (src->length != dst->length) {
     Rf_error(
         "Can't materialize ArrayViewSlice with length %ld into VectorSlice of length %ld",
@@ -702,19 +690,19 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
   // Dispatch to the right method for S3 objects that need special handling
   if (Rf_isObject(dst->vec_sexp)) {
     if (Rf_inherits(dst->vec_sexp, "data.frame")) {
-      return nanoarrow_materialize_data_frame(src, dst, options, context);
+      return nanoarrow_materialize_data_frame(src, dst, options);
     } else if (Rf_inherits(dst->vec_sexp, "vctrs_unspecified")) {
-      return nanoarrow_materialize_unspecified(src, dst, options, context);
+      return nanoarrow_materialize_unspecified(src, dst, options);
     } else if (Rf_inherits(dst->vec_sexp, "blob")) {
-      return nanoarrow_materialize_blob(src, dst, options, context);
+      return nanoarrow_materialize_blob(src, dst, options);
     } else if (Rf_inherits(dst->vec_sexp, "vctrs_list_of")) {
-      return nanoarrow_materialize_list_of(src, dst, options, context);
+      return nanoarrow_materialize_list_of(src, dst, options);
     } else if (Rf_inherits(dst->vec_sexp, "Date")) {
-      return nanoarrow_materialize_date(src, dst, options, context);
+      return nanoarrow_materialize_date(src, dst, options);
     } else if (Rf_inherits(dst->vec_sexp, "POSIXct")) {
-      return nanoarrow_materialize_posixct(src, dst, options, context);
+      return nanoarrow_materialize_posixct(src, dst, options);
     } else if (Rf_inherits(dst->vec_sexp, "difftime")) {
-      return nanoarrow_materialize_difftime(src, dst, options, context);
+      return nanoarrow_materialize_difftime(src, dst, options);
     } else {
       // TODO: unlike array materialization where the pattern is "call a function
       // that gets me an SEXP", here we do something more like "preallocate + fill in
@@ -726,13 +714,13 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
 
   switch (TYPEOF(dst->vec_sexp)) {
     case LGLSXP:
-      return nanoarrow_materialize_lgl(src, dst, options, context);
+      return nanoarrow_materialize_lgl(src, dst, options);
     case INTSXP:
-      return nanoarrow_materialize_int(src, dst, options, context);
+      return nanoarrow_materialize_int(src, dst, options);
     case REALSXP:
-      return nanoarrow_materialize_dbl(src, dst, options, context);
+      return nanoarrow_materialize_dbl(src, dst, options);
     case STRSXP:
-      return nanoarrow_materialize_chr(src, dst, options, context);
+      return nanoarrow_materialize_chr(src, dst, options);
     default:
       break;
   }
@@ -741,7 +729,6 @@ int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
 }
 
 int nanoarrow_copy_vector(struct VectorSlice* src, struct VectorSlice* dst,
-                          struct MaterializeOptions* options,
-                          struct MaterializeContext* context) {
+                          struct MaterializeOptions* options) {
   Rf_error("nanoarrow_copy_vector not implemented");
 }

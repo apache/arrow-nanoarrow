@@ -98,9 +98,8 @@ static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
   struct ArrayViewSlice src = DefaultArrayViewSlice(array_view);
   struct VectorSlice dst = DefaultVectorSlice(result_sexp);
   struct MaterializeOptions options = DefaultMaterializeOptions();
-  struct MaterializeContext context = DefaultMaterializeContext();
 
-  if (nanoarrow_materialize(&src, &dst, &options, &context) != NANOARROW_OK) {
+  if (nanoarrow_materialize(&src, &dst, &options) != NANOARROW_OK) {
     Rf_error("Error materializing altstring");
   }
 

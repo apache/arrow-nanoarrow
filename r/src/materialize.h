@@ -34,6 +34,20 @@ enum VectorType {
   VECTOR_TYPE_OTHER
 };
 
+enum RTimeUnits {
+  R_TIME_UNIT_SECONDS,
+  R_TIME_UNIT_HOURS,
+  R_TIME_UNIT_DAYS,
+  R_TIME_UNIT_WEEKS
+};
+
+struct PTypeView {
+  enum VectorType vector_type;
+  int sexp_type;
+  enum RTimeUnits difftime_units;
+  SEXP ptype;
+};
+
 // A wrapper around the ArrayView with an additional offset + length
 // representing a source of a materialization
 struct ArrayViewSlice {
@@ -57,9 +71,12 @@ struct MaterializeOptions {
   double scale;
 };
 
-// A context to be populated when returning an error message.
-struct MaterializeContext {
-  char context[1024];
+struct RConverter {
+  struct PTypeView ptype_view;
+  struct ArrowSchemaView schema_view;
+  struct ArrayViewSlice src;
+  struct VectorSlice dst;
+  struct MaterializeOptions options;
 };
 
 static inline struct ArrayViewSlice DefaultArrayViewSlice(
@@ -87,12 +104,6 @@ static inline struct MaterializeOptions DefaultMaterializeOptions() {
   return options;
 }
 
-static inline struct MaterializeContext DefaultMaterializeContext() {
-  struct MaterializeContext context;
-  memset(context.context, 0, sizeof(context.context));
-  return context;
-}
-
 // Utility for "length" in the context of a materialized value.
 // This is the same as vctrs::vec_size(): Rf_xlength() for vectors and
 // the number of rows for data.frame()/matrix().
@@ -111,16 +122,14 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
 // returning 0 on success or something else if the type conversion is not
 // possible.
 int nanoarrow_materialize(struct ArrayViewSlice* src, struct VectorSlice* dst,
-                          struct MaterializeOptions* options,
-                          struct MaterializeContext* context);
+                          struct MaterializeOptions* options);
 
 // This function populates a VectorSlice from a VectorSlice (i.e., copies existing
 // values). This is used to support calling into the R-level materialize_array()
 // from nanoarrow_materialize() when we have already preallocated a result.
 // This is similar to rlang::vec_poke_range() except it also supports matrices.
 int nanoarrow_copy_vector(struct VectorSlice* src, struct VectorSlice* dst,
-                          struct MaterializeOptions* options,
-                          struct MaterializeContext* context);
+                          struct MaterializeOptions* options);
 
 // This function mus be called after an alloc + zero or more materialize calls to finalize
 // the R object. Note that the returned SEXP can be different than result_sexp (e.g., if

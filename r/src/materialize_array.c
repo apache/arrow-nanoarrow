@@ -71,12 +71,11 @@ static SEXP materialize_array_default(SEXP array_xptr, enum VectorType vector_ty
   struct ArrayViewSlice src = DefaultArrayViewSlice(array_view);
   struct VectorSlice dst = DefaultVectorSlice(result_sexp);
   struct MaterializeOptions options = DefaultMaterializeOptions();
-  struct MaterializeContext context = DefaultMaterializeContext();
 
   // Needed for datetime types to pass on source units.
   ArrowSchemaViewInit(&src.schema_view, schema_from_array_xptr(array_xptr), NULL);
 
-  if (nanoarrow_materialize(&src, &dst, &options, &context) != NANOARROW_OK) {
+  if (nanoarrow_materialize(&src, &dst, &options) != NANOARROW_OK) {
     call_stop_cant_materialize_array(array_xptr, vector_type);
   }
 
