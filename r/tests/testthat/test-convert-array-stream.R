@@ -35,3 +35,33 @@ test_that("convert array stream works", {
   stream2 <- as_nanoarrow_array_stream(stream2)
   expect_identical(convert_array_stream(stream2), data.frame(x = 1:10))
 })
+
+test_that("convert array stream with explicit size works", {
+  stream0 <- arrow::RecordBatchReader$create(
+    schema = arrow::schema(x = arrow::int32())
+  )
+  stream0 <- as_nanoarrow_array_stream(stream0)
+  expect_identical(
+    convert_array_stream(stream0, size = 0),
+    data.frame(x = integer())
+  )
+
+  stream1 <- arrow::RecordBatchReader$create(
+    arrow::record_batch(x = 1:5)
+  )
+  stream1 <- as_nanoarrow_array_stream(stream1)
+  expect_identical(
+    convert_array_stream(stream1, size = 5),
+    data.frame(x = 1:5)
+  )
+
+  stream2 <- arrow::RecordBatchReader$create(
+    arrow::record_batch(x = 1:5),
+    arrow::record_batch(x = 6:10)
+  )
+  stream2 <- as_nanoarrow_array_stream(stream2)
+  expect_identical(
+    convert_array_stream(stream2, size = 10),
+    data.frame(x = 1:10)
+  )
+})

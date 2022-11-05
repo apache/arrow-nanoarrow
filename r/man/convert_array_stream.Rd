@@ -4,13 +4,15 @@
 \alias{convert_array_stream}
 \title{Convert an Array Stream into an R vector}
 \usage{
-convert_array_stream(array_stream, to = NULL)
+convert_array_stream(array_stream, to = NULL, size = NULL)
 }
 \arguments{
 \item{array_stream}{A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}.}
 
 \item{to}{A target prototype object describing the type to which \code{array}
 should be converted, or \code{NULL} to use the default conversion.}
+
+\item{size}{The exact length of the output, if known.}
 }
 \value{
 An R vector of type \code{to}.

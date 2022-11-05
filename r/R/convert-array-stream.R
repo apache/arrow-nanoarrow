@@ -18,6 +18,7 @@
 #' Convert an Array Stream into an R vector
 #'
 #' @param array_stream A [nanoarrow_array_stream][as_nanoarrow_array_stream].
+#' @param size The exact length of the output, if known.
 #' @inheritParams convert_array
 #'
 #' @return An R vector of type `to`.
@@ -28,11 +29,15 @@
 #' str(convert_array_stream(stream))
 #' str(convert_array_stream(stream, to = data.frame(x = double())))
 #'
-convert_array_stream <- function(array_stream, to = NULL) {
+convert_array_stream <- function(array_stream, to = NULL, size = NULL) {
   stopifnot(inherits(array_stream, "nanoarrow_array_stream"))
   schema <- .Call(nanoarrow_c_array_stream_get_schema, array_stream)
   if (is.null(to)) {
     to <- infer_nanoarrow_ptype(schema)
+  }
+
+  if (!is.null(size)) {
+    return(.Call(nanoarrow_c_convert_array_stream, array_stream, to, as.double(size)[1]))
   }
 
   batches <- vector("list", 1024L)
