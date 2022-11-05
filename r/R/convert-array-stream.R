@@ -1,0 +1,55 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+#' Convert an Array Stream into an R vector
+#'
+#' @param array_stream A [nanoarrow_array_stream][as_nanoarrow_array_stream].
+#' @inheritParams convert_array
+#'
+#' @return An R vector of type `to`.
+#' @export
+#'
+#' @examples
+#' stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+#' str(convert_array_stream(stream))
+#' str(convert_array_stream(stream, to = data.frame(x = double())))
+#'
+convert_array_stream <- function(array_stream, to = NULL) {
+  stopifnot(inherits(array_stream, "nanoarrow_array_stream"))
+  schema <- .Call(nanoarrow_c_array_stream_get_schema, array_stream)
+  if (is.null(to)) {
+    to <- infer_nanoarrow_ptype(schema)
+  }
+
+  batches <- vector("list", 1024L)
+  n_batches <- 0L
+  get_next <- array_stream$get_next
+  while (!is.null(array <- get_next(schema, validate = FALSE))) {
+    n_batches <- n_batches + 1L
+    batches[[n_batches]] <- .Call(nanoarrow_c_convert_array, array, to)
+  }
+
+  if (n_batches == 0L) {
+    to
+  } else if (n_batches == 1L) {
+    batches[[1]]
+  } else if (inherits(to, "data.frame")) {
+    do.call(rbind, batches[seq_len(n_batches)])
+  } else {
+    do.call(c, batches[seq_len(n_batches)])
+  }
+}

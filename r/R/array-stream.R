@@ -71,6 +71,21 @@ infer_nanoarrow_schema.nanoarrow_array_stream <- function(x, ...) {
   x$get_schema()
 }
 
+#' @export
+as.data.frame.nanoarrow_array_stream <- function(x, ...) {
+  to <- infer_nanoarrow_ptype(x$get_schema())
+  if (!inherits(to, "data.frame")) {
+    stop("Can't convert non-struct array stream to data.frame")
+  }
+
+  convert_array_stream(x, to)
+}
+
+#' @export
+as.vector.nanoarrow_array_stream <- function(x, mode) {
+  convert_array_stream(x)
+}
+
 #' @importFrom utils str
 #' @export
 str.nanoarrow_array_stream <- function(object, ...) {

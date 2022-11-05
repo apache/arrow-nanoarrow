@@ -26,6 +26,11 @@
 #' @return An R vector of type `to`.
 #' @export
 #'
+#' @examples
+#' array <- as_nanoarrow_array(data.frame(x = 1:5))
+#' str(convert_array(array))
+#' str(convert_array(array, to = data.frame(x = double())))
+#'
 convert_array <- function(array, to = NULL, ...) {
   stopifnot(inherits(array, "nanoarrow_array"))
   UseMethod("convert_array", to)

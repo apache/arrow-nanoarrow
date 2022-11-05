@@ -2,7 +2,7 @@
 % Please edit documentation in R/convert-array.R
 \name{convert_array}
 \alias{convert_array}
-\title{Materialize an Array into an R vector}
+\title{Convert an Array into an R vector}
 \usage{
 convert_array(array, to = NULL, ...)
 }
@@ -18,5 +18,11 @@ should be converted, or \code{NULL} to use the default conversion.}
 An R vector of type \code{to}.
 }
 \description{
-Materialize an Array into an R vector
+Convert an Array into an R vector
+}
+\examples{
+array <- as_nanoarrow_array(data.frame(x = 1:5))
+str(convert_array(array))
+str(convert_array(array, to = data.frame(x = double())))
+
 }
