@@ -42,6 +42,10 @@ convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
     stop_cant_convert_array(array, to)
   }
 
+  if (is.function(to)) {
+    to <- to(array, infer_nanoarrow_ptype(array))
+  }
+
   .Call(nanoarrow_c_convert_array, array, to)
 }
 
@@ -66,8 +70,11 @@ convert_array.vctrs_partial_frame <- function(array, to, ...) {
   .Call(nanoarrow_c_convert_array, array, ptype)
 }
 
-stop_cant_convert_array <- function(array, to) {
-  schema <- infer_nanoarrow_schema(array)
+stop_cant_convert_array <- function(array, to, n = 0) {
+  stop_cant_convert_schema(infer_nanoarrow_schema(array), to, n - 1)
+}
+
+stop_cant_convert_schema <- function(schema, to, n = 0) {
   schema_label <- nanoarrow_schema_formatted(schema)
 
   if (is.null(schema$name) || identical(schema$name, "")) {
@@ -77,7 +84,7 @@ stop_cant_convert_array <- function(array, to) {
         schema_label,
         class(to)[1]
       ),
-      call = sys.call(-1)
+      call = sys.call(n - 1)
     )
   } else {
     cnd <- simpleError(
@@ -87,7 +94,7 @@ stop_cant_convert_array <- function(array, to) {
         schema_label,
         class(to)[1]
       ),
-      call = sys.call(-1)
+      call = sys.call(n - 1)
     )
   }
 

@@ -87,6 +87,26 @@ test_that("convert to vector works for partial_frame", {
   )
 })
 
+test_that("convert to vector works for function()", {
+  tibble_or_bust <- function(array, ptype) {
+    if (is.data.frame(ptype)) {
+      ptype <- tibble::as_tibble(ptype)
+      ptype[] <- Map(tibble_or_bust, list(NULL), ptype)
+    }
+
+    ptype
+  }
+
+  df_nested_df <- as.data.frame(
+    tibble::tibble(a = 1L, b = "two", c = data.frame(a = 3))
+  )
+  array_nested <- as_nanoarrow_array(df_nested_df)
+  expect_identical(
+    convert_array(array_nested, tibble_or_bust),
+    tibble::tibble(a = 1L, b = "two", c = tibble::tibble(a = 3))
+  )
+})
+
 test_that("convert to vector works for tibble", {
   array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
   expect_identical(
@@ -112,10 +132,10 @@ test_that("convert to vector works for tibble", {
 })
 
 test_that("convert to vector works for struct-style vectors", {
-  array <- as_nanoarrow_array(as.POSIXlt("2021-01-01"))
+  array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "UTC"))
   expect_identical(
     convert_array(array),
-    as.data.frame(unclass(as.POSIXlt("2021-01-01")))
+    as.data.frame(unclass(as.POSIXlt("2021-01-01", tz = "UTC")))
   )
 
   array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))

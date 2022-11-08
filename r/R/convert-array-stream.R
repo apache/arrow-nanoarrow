@@ -34,6 +34,8 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL) {
   schema <- .Call(nanoarrow_c_array_stream_get_schema, array_stream)
   if (is.null(to)) {
     to <- infer_nanoarrow_ptype(schema)
+  } else if (is.function(to)) {
+    to <- to(schema, infer_nanoarrow_ptype(schema))
   }
 
   if (!is.null(size)) {
