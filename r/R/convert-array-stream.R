@@ -17,14 +17,16 @@
 
 #' Convert an Array Stream into an R vector
 #'
-#' Converts `array` to the type specified by `to`. This is a low-level interface;
-#' most users should use `as.data.frame()` or `as.vector()` unless finer-grained
-#' control is needed over the conversion. See [convert_array()] for details
-#' of the conversion process.
+#' Converts `array_stream` to the type specified by `to`. This is a low-level
+#' interface; most users should use `as.data.frame()` or `as.vector()` unless
+#' finer-grained control is needed over the conversion. See [convert_array()]
+#' for details of the conversion process; see [infer_nanoarrow_ptype()] for
+#' default inferences of `to`.
 #'
 #' @param array_stream A [nanoarrow_array_stream][as_nanoarrow_array_stream].
-#' @param size The exact length of the output, if known.
-#' @param n The number of batches to pull from the array stream.
+#' @param size The exact size of the output, if known. If specified,
+#'   slightly more efficient implementation may be used to collect the output.
+#' @param n The maximum number of batches to pull from the array stream.
 #' @inheritParams convert_array
 #'
 #' @return An R vector of type `to`.

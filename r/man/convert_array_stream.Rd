@@ -15,18 +15,20 @@ returned by \code{\link[=infer_nanoarrow_ptype]{infer_nanoarrow_ptype()}}. Alter
 passed to perform an alternative calculation of the default ptype as
 a function of \code{array} and the default inference of the prototype.}
 
-\item{size}{The exact length of the output, if known.}
+\item{size}{The exact size of the output, if known. If specified,
+slightly more efficient implementation may be used to collect the output.}
 
-\item{n}{The number of batches to pull from the array stream.}
+\item{n}{The maximum number of batches to pull from the array stream.}
 }
 \value{
 An R vector of type \code{to}.
 }
 \description{
-Converts \code{array} to the type specified by \code{to}. This is a low-level interface;
-most users should use \code{as.data.frame()} or \code{as.vector()} unless finer-grained
-control is needed over the conversion. See \code{\link[=convert_array]{convert_array()}} for details
-of the conversion process.
+Converts \code{array_stream} to the type specified by \code{to}. This is a low-level
+interface; most users should use \code{as.data.frame()} or \code{as.vector()} unless
+finer-grained control is needed over the conversion. See \code{\link[=convert_array]{convert_array()}}
+for details of the conversion process; see \code{\link[=infer_nanoarrow_ptype]{infer_nanoarrow_ptype()}} for
+default inferences of \code{to}.
 }
 \examples{
 stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
