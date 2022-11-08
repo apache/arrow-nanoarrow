@@ -325,6 +325,27 @@ int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr) {
   return NANOARROW_OK;
 }
 
+void sync_after_converter_reallocate(SEXP converter_xptr, struct RConverter* converter,
+                                     SEXP result_sexp, R_xlen_t capacity) {
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SET_VECTOR_ELT(converter_shelter, 4, result_sexp);
+
+  converter->dst.vec_sexp = result_sexp;
+  converter->dst.offset = 0;
+  converter->dst.length = 0;
+  converter->size = 0;
+  converter->capacity = capacity;
+
+  if (converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
+    SEXP child_converters = VECTOR_ELT(converter_shelter, 3);
+    for (R_xlen_t i = 0; i < converter->n_children; i++) {
+      sync_after_converter_reallocate(VECTOR_ELT(child_converters, i),
+                                      converter->children[i], VECTOR_ELT(result_sexp, i),
+                                      capacity);
+    }
+  }
+}
+
 int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
@@ -344,21 +365,9 @@ int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
         PROTECT(nanoarrow_alloc_type(converter->ptype_view.vector_type, additional_size));
   }
 
-  SET_VECTOR_ELT(converter_shelter, 4, result_sexp);
+  sync_after_converter_reallocate(converter_xptr, converter, result_sexp,
+                                  additional_size);
   UNPROTECT(1);
-
-  if (converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
-    for (R_xlen_t i = 0; i < converter->n_children; i++) {
-      converter->children[i]->dst.vec_sexp = VECTOR_ELT(result_sexp, i);
-    }
-  }
-
-  converter->dst.vec_sexp = result_sexp;
-  converter->dst.offset = 0;
-  converter->dst.length = 0;
-  converter->size = 0;
-  converter->capacity = additional_size;
-
   return NANOARROW_OK;
 }
 

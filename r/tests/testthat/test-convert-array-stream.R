@@ -66,6 +66,28 @@ test_that("convert array stream with explicit size works", {
   )
 })
 
+test_that("convert array stream works for nested data.frames", {
+  tbl_nested_df <- tibble::tibble(a = 1L, b = "two", c = data.frame(a = 3))
+
+  stream_nested <- as_nanoarrow_array_stream(tbl_nested_df)
+  expect_identical(
+    convert_array_stream(stream_nested, tbl_nested_df),
+    tbl_nested_df
+  )
+
+  stream_nested <- as_nanoarrow_array_stream(tbl_nested_df)
+  expect_identical(
+    convert_array_stream(stream_nested, size = 1L),
+    as.data.frame(tbl_nested_df)
+  )
+
+  stream_nested <- as_nanoarrow_array_stream(tbl_nested_df)
+  expect_identical(
+    convert_array_stream(stream_nested, tbl_nested_df, size = 1L),
+    tbl_nested_df
+  )
+})
+
 test_that("convert array stream works for struct-style vectors", {
   raw_posixlt <- as.data.frame(unclass(as.POSIXlt("2021-01-01")))
 
