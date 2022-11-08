@@ -23,6 +23,11 @@
 
 #include "materialize_common.h"
 
+// A heuristic to identify prototypes that should be treated like data frames
+// (i.e., including record-style vectors like POSIXct). This heuristic returns
+// true if ptype is a data.frame or is an S3 list with names.
+int nanoarrow_ptype_is_data_frame(SEXP ptype);
+
 // Perform actual materializing of values (e.g., loop through buffers)
 int nanoarrow_materialize(struct RConverter* converter);
 

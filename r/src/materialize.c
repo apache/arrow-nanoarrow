@@ -56,11 +56,17 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
   return result;
 }
 
+int nanoarrow_ptype_is_data_frame(SEXP ptype) {
+  return Rf_isObject(ptype) && TYPEOF(ptype) == VECSXP &&
+         (Rf_inherits(ptype, "data.frame") ||
+          (Rf_xlength(ptype) > 0 && Rf_getAttrib(ptype, R_NamesSymbol) != R_NilValue));
+}
+
 SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   SEXP result;
 
   if (Rf_isObject(ptype)) {
-    if (Rf_inherits(ptype, "data.frame")) {
+    if (nanoarrow_ptype_is_data_frame(ptype)) {
       R_xlen_t num_cols = Rf_xlength(ptype);
       result = PROTECT(Rf_allocVector(VECSXP, num_cols));
       for (R_xlen_t i = 0; i < num_cols; i++) {
@@ -70,16 +76,16 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
 
       // Set attributes from ptype
       Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(ptype, R_NamesSymbol));
-      Rf_setAttrib(result, R_ClassSymbol, Rf_getAttrib(ptype, R_ClassSymbol));
+      Rf_copyMostAttrib(ptype, result);
 
       // ...except rownames
-      SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
-      INTEGER(rownames)[0] = NA_INTEGER;
-      INTEGER(rownames)[1] = len;
-      Rf_setAttrib(result, R_RowNamesSymbol, rownames);
-    } else if (Rf_inherits(ptype, "matrix")) {
-      result = PROTECT(Rf_allocMatrix(TYPEOF(ptype), len, Rf_ncols(ptype)));
-      Rf_copyMostAttrib(ptype, result);
+      if (Rf_inherits(ptype, "data.frame")) {
+        SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
+        INTEGER(rownames)[0] = NA_INTEGER;
+        INTEGER(rownames)[1] = len;
+        Rf_setAttrib(result, R_RowNamesSymbol, rownames);
+        UNPROTECT(1);
+      }
     } else {
       result = PROTECT(Rf_allocVector(TYPEOF(ptype), len));
       Rf_copyMostAttrib(ptype, result);

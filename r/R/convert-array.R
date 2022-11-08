@@ -66,12 +66,6 @@ convert_array.vctrs_partial_frame <- function(array, to, ...) {
   .Call(nanoarrow_c_convert_array, array, ptype)
 }
 
-#' @export
-convert_array.tbl_df <- function(array, to, ...) {
-  df <- convert_array(array, as.data.frame(to))
-  tibble::as_tibble(df)
-}
-
 stop_cant_convert_array <- function(array, to) {
   schema <- infer_nanoarrow_schema(array)
   schema_label <- nanoarrow_schema_formatted(schema)

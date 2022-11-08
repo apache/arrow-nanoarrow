@@ -111,6 +111,20 @@ test_that("convert to vector works for tibble", {
   )
 })
 
+test_that("convert to vector works for struct-style vectors", {
+  array <- as_nanoarrow_array(as.POSIXlt("2021-01-01"))
+  expect_identical(
+    convert_array(array),
+    as.data.frame(unclass(as.POSIXlt("2021-01-01")))
+  )
+
+  array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))
+  expect_identical(
+    convert_array(array, as.POSIXlt(character(), tz = "America/Halifax")),
+    as.POSIXlt("2021-01-01", tz = "America/Halifax")
+  )
+})
+
 test_that("convert to vector works for unspecified()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
 

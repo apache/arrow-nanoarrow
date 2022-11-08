@@ -126,6 +126,7 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
     }
 
     Rf_setAttrib(result, R_NamesSymbol, result_names);
+    Rf_setAttrib(result, R_ClassSymbol, Rf_mkString("data.frame"));
     UNPROTECT(1);
   } else {
     if (n_col != Rf_xlength(ptype_sexp)) {
@@ -141,15 +142,18 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
     }
 
     Rf_setAttrib(result, R_NamesSymbol, Rf_getAttrib(ptype_sexp, R_NamesSymbol));
+    Rf_copyMostAttrib(ptype_sexp, result);
   }
 
-  Rf_setAttrib(result, R_ClassSymbol, Rf_mkString("data.frame"));
-  SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
-  INTEGER(rownames)[0] = NA_INTEGER;
-  INTEGER(rownames)[1] = array->length;
-  Rf_setAttrib(result, R_RowNamesSymbol, rownames);
+  if (Rf_inherits(result, "data.frame")) {
+    SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
+    INTEGER(rownames)[0] = NA_INTEGER;
+    INTEGER(rownames)[1] = array->length;
+    Rf_setAttrib(result, R_RowNamesSymbol, rownames);
+    UNPROTECT(1);
+  }
 
-  UNPROTECT(2);
+  UNPROTECT(1);
   return result;
 }
 
@@ -185,7 +189,7 @@ SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
   // Handle some S3 objects internally to avoid S3 dispatch
   // (e.g., when looping over a data frame with a lot of columns)
   if (Rf_isObject(ptype_sexp)) {
-    if (Rf_inherits(ptype_sexp, "data.frame") && !Rf_inherits(ptype_sexp, "tbl_df")) {
+    if (nanoarrow_ptype_is_data_frame(ptype_sexp)) {
       return convert_array_data_frame(array_xptr, ptype_sexp);
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified") ||
                Rf_inherits(ptype_sexp, "blob") ||

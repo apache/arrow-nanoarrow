@@ -65,3 +65,36 @@ test_that("convert array stream with explicit size works", {
     data.frame(x = 1:10)
   )
 })
+
+test_that("convert array stream works for struct-style vectors", {
+  raw_posixlt <- as.data.frame(unclass(as.POSIXlt("2021-01-01")))
+
+  stream <- as_nanoarrow_array_stream(raw_posixlt)
+  expect_identical(
+    convert_array_stream(stream),
+    raw_posixlt
+  )
+
+  stream <- as_nanoarrow_array_stream(raw_posixlt)
+  expect_identical(
+    convert_array_stream(stream, as.POSIXlt(character(), tz = "America/Halifax")),
+    as.POSIXlt("2021-01-01", tz = "America/Halifax")
+  )
+
+  # Check with fixed size since this takes a different code path
+  stream <- as_nanoarrow_array_stream(raw_posixlt)
+  expect_identical(
+    convert_array_stream(stream, size = 1L),
+    raw_posixlt
+  )
+
+  stream <- as_nanoarrow_array_stream(raw_posixlt)
+  expect_identical(
+    convert_array_stream(
+      stream,
+      as.POSIXlt(character(), tz = "America/Halifax"),
+      size = 1
+    ),
+    as.POSIXlt("2021-01-01", tz = "America/Halifax")
+  )
+})

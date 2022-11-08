@@ -26,19 +26,17 @@
 #include "materialize.h"
 #include "schema.h"
 
-R_xlen_t nanoarrow_vec_size(SEXP vec_sexp) {
-  if (Rf_isObject(vec_sexp)) {
-    if (Rf_inherits(vec_sexp, "data.frame") && Rf_length(vec_sexp) > 0) {
+static R_xlen_t nanoarrow_vec_size(SEXP vec_sexp, struct PTypeView* ptype_view) {
+  if (ptype_view->vector_type == VECTOR_TYPE_DATA_FRAME) {
+    if (Rf_length(vec_sexp) > 0) {
       // Avoid materializing the row.names if we can
       return Rf_xlength(VECTOR_ELT(vec_sexp, 0));
-    } else if (Rf_inherits(vec_sexp, "data.frame")) {
+    } else {
       return Rf_xlength(Rf_getAttrib(vec_sexp, R_RowNamesSymbol));
-    } else if (Rf_inherits(vec_sexp, "matrix")) {
-      return Rf_nrows(vec_sexp);
     }
+  } else {
+    return Rf_xlength(vec_sexp);
   }
-
-  return Rf_xlength(vec_sexp);
 }
 
 static void finalize_converter(SEXP converter_xptr) {
@@ -147,11 +145,12 @@ static void set_converter_data_frame(SEXP converter_xptr, struct RConverter* con
     SEXP child_converter = PROTECT(nanoarrow_converter_from_ptype(child_ptype));
     converter->children[i] = (struct RConverter*)R_ExternalPtrAddr(child_converter);
     SET_VECTOR_ELT(child_converter_xptrs, i, child_converter);
+    UNPROTECT(1);
   }
 
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SET_VECTOR_ELT(converter_shelter, 3, child_converter_xptrs);
-  UNPROTECT(2);
+  UNPROTECT(1);
 }
 
 static void set_converter_list_of(SEXP converter_xptr, struct RConverter* converter,
@@ -237,7 +236,7 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
 
   if (Rf_isObject(ptype)) {
-    if (Rf_inherits(ptype, "data.frame")) {
+    if (nanoarrow_ptype_is_data_frame(ptype)) {
       converter->ptype_view.vector_type = VECTOR_TYPE_DATA_FRAME;
       set_converter_data_frame(converter_xptr, converter, ptype);
     } else if (Rf_inherits(ptype, "blob")) {
@@ -414,7 +413,8 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
 
   // Check result size. A future implementation could also shrink the length
   // or reallocate a shorter vector.
-  R_xlen_t current_result_size = nanoarrow_vec_size(current_result);
+  R_xlen_t current_result_size =
+      nanoarrow_vec_size(current_result, &converter->ptype_view);
   if (current_result_size != converter->size) {
     ArrowErrorSet(&converter->error,
                   "Expected result of size %ld but got result of size %ld",
