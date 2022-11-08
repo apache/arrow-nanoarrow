@@ -16,7 +16,26 @@ An R vector of zero size describing the target into which
 the array should be materialized.
 }
 \description{
-Resolves the default \code{ptype} value to use in \code{\link[=convert_array]{convert_array()}}.
+Resolves the default \code{to} value to use in \code{\link[=convert_array]{convert_array()}} and
+\code{\link[=convert_array_stream]{convert_array_stream()}}. The default conversions are:
+}
+\details{
+\itemize{
+\item null to \code{\link[vctrs:unspecified]{vctrs::unspecified()}}
+\item boolean to \code{\link[=logical]{logical()}}
+\item int8, uint8, int16, uint16, and int13 to \code{\link[=integer]{integer()}}
+\item uint32, int64, uint64, float, and double to \code{\link[=double]{double()}}
+\item string and large string to \code{\link[=character]{character()}}
+\item struct to \code{\link[=data.frame]{data.frame()}}
+\item binary and large binary to \code{\link[blob:blob]{blob::blob()}}
+\item list, large_list, and fixed_size_list to \code{\link[vctrs:list_of]{vctrs::list_of()}}
+\item time32 and time64 to \code{\link[hms:hms]{hms::hms()}}
+\item date32 to \code{\link[=as.Date]{as.Date()}}
+\item timestamp to \code{\link[=as.POSIXct]{as.POSIXct()}}
+}
+
+Additional conversions are possible by specifying an explicit value for
+\code{to}.
 }
 \examples{
 infer_nanoarrow_ptype(as_nanoarrow_array(1:10))

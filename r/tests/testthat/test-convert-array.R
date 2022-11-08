@@ -56,7 +56,7 @@ test_that("convert_array() errors for unsupported array", {
   unsupported_array <- arrow::concat_arrays(type = arrow::decimal256(3, 4))
   expect_error(
     convert_array(as_nanoarrow_array(unsupported_array)),
-    "Can't infer R vector type for array <d:3,4,256>"
+    "Can't infer R vector type for array <decimal256\\(3, 4\\)>"
   )
 })
 

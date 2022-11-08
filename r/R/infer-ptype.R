@@ -17,7 +17,23 @@
 
 #' Infer an R vector prototype
 #'
-#' Resolves the default `ptype` value to use in [convert_array()].
+#' Resolves the default `to` value to use in [convert_array()] and
+#' [convert_array_stream()]. The default conversions are:
+#'
+#' - null to [vctrs::unspecified()]
+#' - boolean to [logical()]
+#' - int8, uint8, int16, uint16, and int13 to [integer()]
+#' - uint32, int64, uint64, float, and double to [double()]
+#' - string and large string to [character()]
+#' - struct to [data.frame()]
+#' - binary and large binary to [blob::blob()]
+#' - list, large_list, and fixed_size_list to [vctrs::list_of()]
+#' - time32 and time64 to [hms::hms()]
+#' - date32 to [as.Date()]
+#' - timestamp to [as.POSIXct()]
+#'
+#' Additional conversions are possible by specifying an explicit value for
+#' `to`.
 #'
 #' @param x A [nanoarrow_schema][as_nanoarrow_schema],
 #'   [nanoarrow_array][as_nanoarrow_array], or
@@ -80,27 +96,29 @@ infer_ptype_other <- function(schema) {
       ptype <- infer_nanoarrow_ptype(schema$children[[1]])
       vctrs::list_of(.ptype = ptype)
     },
-    stop_cant_infer_ptype(schema)
+    stop_cant_infer_ptype(schema, n = -1)
   )
 }
 
-stop_cant_infer_ptype <- function(schema) {
+stop_cant_infer_ptype <- function(schema, n = 0) {
+  schema_label <- nanoarrow_schema_formatted(schema)
+
   if (is.null(schema$name) || identical(schema$name, "")) {
     cnd <- simpleError(
       sprintf(
         "Can't infer R vector type for array <%s>",
-        schema$format
+        schema_label
       ),
-      call = sys.call(-1)
+      call = sys.call(n - 1)
     )
   } else {
     cnd <- simpleError(
       sprintf(
         "Can't infer R vector type for `%s` <%s>",
         schema$name,
-        schema$format
+        schema_label
       ),
-      call = sys.call(-1)
+      call = sys.call(n - 1)
     )
   }
 
