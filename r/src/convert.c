@@ -134,7 +134,8 @@ static enum RTimeUnits time_units_from_difftime(SEXP ptype) {
 static void set_converter_data_frame(SEXP converter_xptr, struct RConverter* converter,
                                      SEXP ptype) {
   converter->n_children = Rf_xlength(ptype);
-  converter->children = (struct RConverter**)ArrowMalloc(converter->n_children * sizeof(struct RConverter*));
+  converter->children = (struct RConverter**)ArrowMalloc(converter->n_children *
+                                                         sizeof(struct RConverter*));
   if (converter->children == NULL) {
     Rf_error("Failed to allocate converter children array");
   }
@@ -177,8 +178,7 @@ static void set_converter_list_of(SEXP converter_xptr, struct RConverter* conver
 }
 
 static int set_converter_children_schema(SEXP converter_xptr, SEXP schema_xptr) {
-  struct RConverter* converter = (struct RConverter*)
-  R_ExternalPtrAddr(converter_xptr);
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
 
@@ -350,7 +350,6 @@ int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
 
   if (converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
     for (R_xlen_t i = 0; i < converter->n_children; i++) {
-      Rprintf("setting child dst\n");
       converter->children[i]->dst.vec_sexp = VECTOR_ELT(result_sexp, i);
     }
   }
