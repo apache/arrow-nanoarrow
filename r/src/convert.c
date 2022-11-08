@@ -131,6 +131,28 @@ static enum RTimeUnits time_units_from_difftime(SEXP ptype) {
   }
 }
 
+static void set_converter_data_frame(SEXP converter_xptr, struct RConverter* converter,
+                                     SEXP ptype) {
+  converter->n_children = Rf_xlength(ptype);
+  converter->children = (struct RConverter**)ArrowMalloc(converter->n_children * sizeof(struct RConverter*));
+  if (converter->children == NULL) {
+    Rf_error("Failed to allocate converter children array");
+  }
+
+  SEXP child_converter_xptrs = PROTECT(Rf_allocVector(VECSXP, converter->n_children));
+
+  for (R_xlen_t i = 0; i < converter->n_children; i++) {
+    SEXP child_ptype = VECTOR_ELT(ptype, i);
+    SEXP child_converter = PROTECT(nanoarrow_converter_from_ptype(child_ptype));
+    converter->children[i] = (struct RConverter*)R_ExternalPtrAddr(child_converter);
+    SET_VECTOR_ELT(child_converter_xptrs, 0, child_converter);
+  }
+
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SET_VECTOR_ELT(converter_shelter, 3, child_converter_xptrs);
+  UNPROTECT(2);
+}
+
 static void set_converter_list_of(SEXP converter_xptr, struct RConverter* converter,
                                   SEXP ptype) {
   SEXP child_ptype = Rf_getAttrib(ptype, Rf_install("ptype"));
@@ -155,7 +177,8 @@ static void set_converter_list_of(SEXP converter_xptr, struct RConverter* conver
 }
 
 static int set_converter_children_schema(SEXP converter_xptr, SEXP schema_xptr) {
-  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
+  struct RConverter* converter = (struct RConverter*)
+  R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
 
@@ -216,7 +239,7 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
   if (Rf_isObject(ptype)) {
     if (Rf_inherits(ptype, "data.frame")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_DATA_FRAME;
-      Rf_error("data.frame currently not supported by converter");
+      set_converter_data_frame(converter_xptr, converter, ptype);
     } else if (Rf_inherits(ptype, "blob")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_BLOB;
     } else if (Rf_inherits(ptype, "vctrs_list_of")) {
@@ -277,7 +300,8 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
   NANOARROW_RETURN_NOT_OK(
       ArrowArrayViewInitFromSchema(&converter->array_view, schema, &converter->error));
 
-  if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF) {
+  if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF ||
+      converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
     set_converter_children_schema(converter_xptr, schema_xptr);
   }
 
@@ -294,7 +318,8 @@ int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr) {
   converter->src.offset = 0;
   converter->src.length = 0;
 
-  if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF) {
+  if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF ||
+      converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
     set_converter_children_array(converter_xptr, array_xptr);
   }
 
@@ -322,6 +347,13 @@ int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
 
   SET_VECTOR_ELT(converter_shelter, 4, result_sexp);
   UNPROTECT(1);
+
+  if (converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
+    for (R_xlen_t i = 0; i < converter->n_children; i++) {
+      Rprintf("setting child dst\n");
+      converter->children[i]->dst.vec_sexp = VECTOR_ELT(result_sexp, i);
+    }
+  }
 
   converter->dst.vec_sexp = result_sexp;
   converter->dst.offset = 0;

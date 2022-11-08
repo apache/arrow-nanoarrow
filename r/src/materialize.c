@@ -617,6 +617,18 @@ static int nanoarrow_materialize_posixct(struct RConverter* converter) {
   return EINVAL;
 }
 
+static int nanoarrow_materialize_data_frame(struct RConverter* converter) {
+  for (R_xlen_t i = 0; i < converter->n_children; i++) {
+    converter->children[i]->src.offset = converter->src.offset;
+    converter->children[i]->src.length = converter->src.length;
+    converter->children[i]->dst.offset = converter->dst.offset;
+    converter->children[i]->dst.length = converter->dst.length;
+    NANOARROW_RETURN_NOT_OK(nanoarrow_materialize(converter->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
 int nanoarrow_materialize(struct RConverter* converter) {
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
@@ -644,6 +656,8 @@ int nanoarrow_materialize(struct RConverter* converter) {
       return nanoarrow_materialize_blob(src, dst, options);
     case VECTOR_TYPE_LIST_OF:
       return nanoarrow_materialize_list_of(converter);
+    case VECTOR_TYPE_DATA_FRAME:
+      return nanoarrow_materialize_data_frame(converter);
     default:
       return ENOTSUP;
   }
