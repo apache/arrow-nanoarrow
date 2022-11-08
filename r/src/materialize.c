@@ -356,10 +356,11 @@ static int nanoarrow_materialize_chr(struct ArrayViewSlice* src, struct VectorSl
   struct ArrowStringView item;
   for (R_xlen_t i = 0; i < dst->length; i++) {
     if (ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-      SET_STRING_ELT(dst->vec_sexp, i, NA_STRING);
+      SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
     } else {
       item = ArrowArrayViewGetStringUnsafe(src->array_view, src->offset + i);
-      SET_STRING_ELT(dst->vec_sexp, i, Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
+      SET_STRING_ELT(dst->vec_sexp, dst->offset + i,
+                     Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
     }
   }
 

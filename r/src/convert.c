@@ -146,7 +146,7 @@ static void set_converter_data_frame(SEXP converter_xptr, struct RConverter* con
     SEXP child_ptype = VECTOR_ELT(ptype, i);
     SEXP child_converter = PROTECT(nanoarrow_converter_from_ptype(child_ptype));
     converter->children[i] = (struct RConverter*)R_ExternalPtrAddr(child_converter);
-    SET_VECTOR_ELT(child_converter_xptrs, 0, child_converter);
+    SET_VECTOR_ELT(child_converter_xptrs, i, child_converter);
   }
 
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
