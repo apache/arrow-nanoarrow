@@ -1,3 +1,4 @@
+
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -15,19 +16,29 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_MATERIALIZE_H_INCLUDED
-#define R_MATERIALIZE_H_INCLUDED
+#ifndef R_MATERIALIZE_DATE_H_INCLUDED
+#define R_MATERIALIZE_DATE_H_INCLUDED
 
 #include <R.h>
 #include <Rinternals.h>
 
 #include "materialize_common.h"
+#include "materialize_dbl.h"
+#include "nanoarrow.h"
 
-// Perform actual materializing of values (e.g., loop through buffers)
-int nanoarrow_materialize(struct RConverter* converter);
+static int nanoarrow_materialize_date(struct RConverter* converter) {
+  if (converter->ptype_view.sexp_type == REALSXP) {
+    switch (converter->schema_view.data_type) {
+      case NANOARROW_TYPE_NA:
+      case NANOARROW_TYPE_DATE32:
+        return nanoarrow_materialize_dbl(&converter->src, &converter->dst,
+                                         converter->options);
+      default:
+        break;
+    }
+  }
 
-// Shortcut to allocate a vector based on a vector type or ptype
-SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
-SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
+  return EINVAL;
+}
 
 #endif
