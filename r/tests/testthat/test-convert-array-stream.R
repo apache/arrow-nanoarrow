@@ -198,3 +198,11 @@ test_that("fixed-size convert array stream respects the value of n", {
     data.frame(x = 1:10)
   )
 })
+
+test_that("fixed-size stream conversion errors when the output has insufficient size", {
+  stream <- as_nanoarrow_array_stream(data.frame(x = 1:100))
+  expect_error(
+    convert_array_stream(stream, size = 2),
+    "Expected to materialize 100 values in batch 1 but materialized 2"
+  )
+})
