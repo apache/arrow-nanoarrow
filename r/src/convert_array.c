@@ -47,7 +47,7 @@ static SEXP call_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
 // Call stop_cant_convert_array(), which gives a more informative error
 // message than we can provide in a reasonable amount of C code here
 static void call_stop_cant_convert_array(SEXP array_xptr, enum VectorType type,
-                                             SEXP ptype_sexp) {
+                                         SEXP ptype_sexp) {
   int n_protected = 2;
   if (ptype_sexp == R_NilValue) {
     ptype_sexp = PROTECT(nanoarrow_alloc_type(type, 0));
@@ -55,15 +55,15 @@ static void call_stop_cant_convert_array(SEXP array_xptr, enum VectorType type,
   }
 
   SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call = PROTECT(
-      Rf_lang3(Rf_install("stop_cant_convert_array"), array_xptr, ptype_sexp));
+  SEXP call =
+      PROTECT(Rf_lang3(Rf_install("stop_cant_convert_array"), array_xptr, ptype_sexp));
   Rf_eval(call, ns);
 
   UNPROTECT(n_protected);
 }
 
 static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,
-                                      SEXP ptype) {
+                                  SEXP ptype) {
   SEXP converter_xptr;
   if (ptype == R_NilValue) {
     converter_xptr = PROTECT(nanoarrow_converter_from_type(vector_type));
