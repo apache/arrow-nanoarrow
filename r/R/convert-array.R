@@ -18,13 +18,51 @@
 
 #' Convert an Array into an R vector
 #'
+#' Converts `array` to the type specified by `to`. This is a low-level interface;
+#' most users should use `as.data.frame()` or `as.vector()` unless finer-grained
+#' control is needed over the conversion. This function is an S3 generic
+#' dispatching on `to`: developers may implement their own S3 methods for
+#' custom vector types.
+#'
 #' @param array A [nanoarrow_array][as_nanoarrow_array].
 #' @param to A target prototype object describing the type to which `array`
-#'   should be converted, or `NULL` to use the default conversion.
+#'   should be converted, or `NULL` to use the default conversion as
+#'   returned by [infer_nanoarrow_ptype()]. Alternatively, a function can be
+#'   passed to perform an alternative calculation of the default ptype as
+#'   a function of `array` and the default inference of the prototype.
 #' @param ... Passed to S3 methods
 #'
 #' @return An R vector of type `to`.
 #' @export
+#'
+#' @details
+#' Conversions are implemented for the following R vector types:
+#'
+#' - [logical()]: Any numeric type can be converted to [logical()] in addition
+#'   to the bool type. For numeric types, any non-zero value is considered `TRUE`.
+#' - [integer()]: Any numeric type can be converted to [integer()]; however,
+#'   a warning will be signaled if the any value is outside the range of the
+#'   32-bit integer.
+#' - [double()]: Any numeric type can be converted to [double()]. This
+#'   conversion currently does not warn for values that may not roundtrip
+#'   through a floating-point double (e.g., very large uint64 and int64 values).
+#' - [character()]: String and large string types can be converted to
+#'   [character()]. The conversion does not check for valid UTF-8: if you need
+#'   finer-grained control over encodings, use `to = blob::blob()`.
+#' - [Date][as.Date]: Only the date32 type can be converted to an R Date vector.
+#' - [hms::hms()]: Time32 and time64 types can be converted to [hms::hms()].
+#' - [difftime()]: Time32, time64, and duration types can be converted to
+#'   R [difftime()] vectors. The value is converted to match the [units()]
+#'   attribute of `to`.
+#' - [blob::blob()]: String, large string, binary, and large binary types can
+#'   be converted to [blob::blob()].
+#' - [vctrs::list_of()]: List, large list, and fixed-size list types can be
+#'   converted to [vctrs::list_of()].
+#' - [vctrs::unspecified()]: Any type can be converted to [vctrs::unspecified()];
+#'   however, a warning will be raised if any non-null values are encountered.
+#'
+#' In addition to the above conversions, a null array may be converted to any
+#' target prototype.
 #'
 #' @examples
 #' array <- as_nanoarrow_array(data.frame(x = 1:5))

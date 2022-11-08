@@ -26,9 +26,10 @@
 #include "convert.h"
 #include "schema.h"
 
-SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp, SEXP size_sexp) {
+SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp, SEXP size_sexp, SEXP n_sexp) {
   struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
   double size = REAL(size_sexp)[0];
+  double n = REAL(n_sexp)[0];
 
   SEXP schema_xptr = PROTECT(schema_owning_xptr());
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
@@ -49,23 +50,32 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp, S
   SEXP array_xptr = PROTECT(array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
 
-  result = array_stream->get_next(array_stream, array);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayStream::get_next(): %s", array_stream->get_last_error(array_stream));
-  }
-
-  while (array->release != NULL) {
-    if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
-        nanoarrow_converter_stop(converter_xptr);
-    }
-
-    if (nanoarrow_converter_materialize_n(converter_xptr, array->length) != array->length) {
-        nanoarrow_converter_stop(converter_xptr);
-    }
-
+  int64_t n_batches = 0;
+  if (n > 0) {
     result = array_stream->get_next(array_stream, array);
+    n_batches++;
     if (result != NANOARROW_OK) {
-        Rf_error("ArrowArrayStream::get_next(): %s", array_stream->get_last_error(array_stream));
+      Rf_error("ArrowArrayStream::get_next(): %s", array_stream->get_last_error(array_stream));
+    }
+
+    while (array->release != NULL) {
+      if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
+          nanoarrow_converter_stop(converter_xptr);
+      }
+
+      if (nanoarrow_converter_materialize_n(converter_xptr, array->length) != array->length) {
+          nanoarrow_converter_stop(converter_xptr);
+      }
+
+      if (n_batches >= n) {
+        break;
+      }
+
+      result = array_stream->get_next(array_stream, array);
+      n_batches++;
+      if (result != NANOARROW_OK) {
+          Rf_error("ArrowArrayStream::get_next(): %s", array_stream->get_last_error(array_stream));
+      }
     }
   }
 

@@ -4,21 +4,29 @@
 \alias{convert_array_stream}
 \title{Convert an Array Stream into an R vector}
 \usage{
-convert_array_stream(array_stream, to = NULL, size = NULL)
+convert_array_stream(array_stream, to = NULL, size = NULL, n = Inf)
 }
 \arguments{
 \item{array_stream}{A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}.}
 
 \item{to}{A target prototype object describing the type to which \code{array}
-should be converted, or \code{NULL} to use the default conversion.}
+should be converted, or \code{NULL} to use the default conversion as
+returned by \code{\link[=infer_nanoarrow_ptype]{infer_nanoarrow_ptype()}}. Alternatively, a function can be
+passed to perform an alternative calculation of the default ptype as
+a function of \code{array} and the default inference of the prototype.}
 
 \item{size}{The exact length of the output, if known.}
+
+\item{n}{The number of batches to pull from the array stream.}
 }
 \value{
 An R vector of type \code{to}.
 }
 \description{
-Convert an Array Stream into an R vector
+Converts \code{array} to the type specified by \code{to}. This is a low-level interface;
+most users should use \code{as.data.frame()} or \code{as.vector()} unless finer-grained
+control is needed over the conversion. See \code{\link[=convert_array]{convert_array()}} for details
+of the conversion process.
 }
 \examples{
 stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))

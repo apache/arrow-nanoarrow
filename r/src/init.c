@@ -36,7 +36,7 @@ extern SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr);
 extern SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr);
 extern SEXP nanoarrow_c_build_id();
 extern SEXP nanoarrow_c_build_id_runtime();
-extern SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp, SEXP size_sexp);
+extern SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp, SEXP size_sexp, SEXP n_sexp);
 extern SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
 extern SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 extern SEXP nanoarrow_c_allocate_schema();
@@ -70,7 +70,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_buffer_as_raw", (DL_FUNC)&nanoarrow_c_buffer_as_raw, 1},
     {"nanoarrow_c_build_id", (DL_FUNC)&nanoarrow_c_build_id, 0},
     {"nanoarrow_c_build_id_runtime", (DL_FUNC)&nanoarrow_c_build_id_runtime, 0},
-    {"nanoarrow_c_convert_array_stream", (DL_FUNC)&nanoarrow_c_convert_array_stream, 3},
+    {"nanoarrow_c_convert_array_stream", (DL_FUNC)&nanoarrow_c_convert_array_stream, 4},
     {"nanoarrow_c_convert_array", (DL_FUNC)&nanoarrow_c_convert_array, 2},
     {"nanoarrow_c_infer_ptype", (DL_FUNC)&nanoarrow_c_infer_ptype, 1},
     {"nanoarrow_c_allocate_schema", (DL_FUNC)&nanoarrow_c_allocate_schema, 0},

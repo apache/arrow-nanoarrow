@@ -30,12 +30,13 @@ Resolves the default \code{to} value to use in \code{\link[=convert_array]{conve
 \item binary and large binary to \code{\link[blob:blob]{blob::blob()}}
 \item list, large_list, and fixed_size_list to \code{\link[vctrs:list_of]{vctrs::list_of()}}
 \item time32 and time64 to \code{\link[hms:hms]{hms::hms()}}
+\item duration to \code{\link[=difftime]{difftime()}}
 \item date32 to \code{\link[=as.Date]{as.Date()}}
 \item timestamp to \code{\link[=as.POSIXct]{as.POSIXct()}}
 }
 
 Additional conversions are possible by specifying an explicit value for
-\code{to}.
+\code{to}. For details of each conversion, see \code{\link[=convert_array]{convert_array()}}.
 }
 \examples{
 infer_nanoarrow_ptype(as_nanoarrow_array(1:10))

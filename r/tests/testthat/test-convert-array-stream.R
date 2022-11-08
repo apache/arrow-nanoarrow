@@ -140,3 +140,61 @@ test_that("convert array stream works for struct-style vectors", {
     as.POSIXlt("2021-01-01", tz = "America/Halifax")
   )
 })
+
+test_that("convert array stream respects the value of n", {
+  batches <- list(
+    arrow::record_batch(x = 1:5),
+    arrow::record_batch(x = 6:10),
+    arrow::record_batch(x = 11:15)
+  )
+
+  reader3 <- arrow::RecordBatchReader$create(batches = batches)
+  stream3 <- as_nanoarrow_array_stream(reader3)
+  expect_identical(
+    convert_array_stream(stream3, n = 0),
+    data.frame(x = integer())
+  )
+
+  reader3 <- arrow::RecordBatchReader$create(batches = batches)
+  stream3 <- as_nanoarrow_array_stream(reader3)
+  expect_identical(
+    convert_array_stream(stream3, n = 1),
+    data.frame(x = 1:5)
+  )
+
+  reader3 <- arrow::RecordBatchReader$create(batches = batches)
+  stream3 <- as_nanoarrow_array_stream(reader3)
+  expect_identical(
+    convert_array_stream(stream3, n = 2),
+    data.frame(x = 1:10)
+  )
+})
+
+test_that("fixed-size convert array stream respects the value of n", {
+  batches <- list(
+    arrow::record_batch(x = 1:5),
+    arrow::record_batch(x = 6:10),
+    arrow::record_batch(x = 11:15)
+  )
+
+  reader3 <- arrow::RecordBatchReader$create(batches = batches)
+  stream3 <- as_nanoarrow_array_stream(reader3)
+  expect_identical(
+    convert_array_stream(stream3, n = 0, size = 0),
+    data.frame(x = integer())
+  )
+
+  reader3 <- arrow::RecordBatchReader$create(batches = batches)
+  stream3 <- as_nanoarrow_array_stream(reader3)
+  expect_identical(
+    convert_array_stream(stream3, n = 1, size = 5),
+    data.frame(x = 1:5)
+  )
+
+  reader3 <- arrow::RecordBatchReader$create(batches = batches)
+  stream3 <- as_nanoarrow_array_stream(reader3)
+  expect_identical(
+    convert_array_stream(stream3, n = 2, size = 10),
+    data.frame(x = 1:10)
+  )
+})

@@ -29,11 +29,12 @@
 #' - binary and large binary to [blob::blob()]
 #' - list, large_list, and fixed_size_list to [vctrs::list_of()]
 #' - time32 and time64 to [hms::hms()]
+#' - duration to [difftime()]
 #' - date32 to [as.Date()]
 #' - timestamp to [as.POSIXct()]
 #'
 #' Additional conversions are possible by specifying an explicit value for
-#' `to`.
+#' `to`. For details of each conversion, see [convert_array()].
 #'
 #' @param x A [nanoarrow_schema][as_nanoarrow_schema],
 #'   [nanoarrow_array][as_nanoarrow_array], or
