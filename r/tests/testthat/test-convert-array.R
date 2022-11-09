@@ -725,3 +725,31 @@ test_that("convert to vector works for lists nested in data frames", {
     df_in_list_in_df
   )
 })
+
+test_that("convert to vector warns for stripped extension type", {
+  ext_arr <- as_nanoarrow_array(
+    arrow::Array$create(vctrs::new_vctr(1:5, class = "my_vctr"))
+  )
+  expect_warning(
+    expect_identical(convert_array(ext_arr), 1:5),
+    "Converting unknown extension arrow.r.vctrs"
+  )
+
+  nested_ext_array <- as_nanoarrow_array(
+    arrow::record_batch(
+      x = vctrs::new_vctr(1:5, class = "my_vctr")
+    )
+  )
+  expect_warning(
+    expect_identical(convert_array(nested_ext_array), data.frame(x = 1:5)),
+    "x: Converting unknown extension arrow.r.vctrs"
+  )
+})
+
+test_that("convert to vector errors for dictionary types", {
+  dict_array <- as_nanoarrow_array(factor(letters[1:5]))
+  expect_error(
+    convert_array(dict_array, character()),
+    "Conversion to dictionary-encoded array is not supported"
+  )
+})

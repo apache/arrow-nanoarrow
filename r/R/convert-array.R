@@ -63,7 +63,9 @@
 #'   however, a warning will be raised if any non-null values are encountered.
 #'
 #' In addition to the above conversions, a null array may be converted to any
-#' target prototype except [data.frame()].
+#' target prototype except [data.frame()]. Extension arrays are currently
+#' converted as their storage type; dictionary-encoded arrays are not
+#' currently supported.
 #'
 #' @examples
 #' array <- as_nanoarrow_array(data.frame(x = 1:5))
