@@ -58,11 +58,12 @@
 #'   be converted to [blob::blob()].
 #' - [vctrs::list_of()]: List, large list, and fixed-size list types can be
 #'   converted to [vctrs::list_of()].
+#' - [data.frame()]: Struct types can be converted to [data.frame()].
 #' - [vctrs::unspecified()]: Any type can be converted to [vctrs::unspecified()];
 #'   however, a warning will be raised if any non-null values are encountered.
 #'
 #' In addition to the above conversions, a null array may be converted to any
-#' target prototype.
+#' target prototype except [data.frame()].
 #'
 #' @examples
 #' array <- as_nanoarrow_array(data.frame(x = 1:5))

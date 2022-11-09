@@ -103,6 +103,10 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
 
 static int nanoarrow_materialize_data_frame(struct RConverter* converter,
                                             SEXP converter_xptr) {
+  if (converter->ptype_view.vector_type != VECTOR_TYPE_DATA_FRAME) {
+    return EINVAL;
+  }
+
   for (R_xlen_t i = 0; i < converter->n_children; i++) {
     converter->children[i]->src.offset = converter->src.offset;
     converter->children[i]->src.length = converter->src.length;

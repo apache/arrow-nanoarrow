@@ -119,7 +119,7 @@ test_that("convert array stream works for struct-style vectors", {
 
   stream <- as_nanoarrow_array_stream(raw_posixlt)
   expect_identical(
-    convert_array_stream(stream, as.POSIXlt(character(), tz = "America/Halifax")),
+    convert_array_stream(stream, as.POSIXlt("2021-01-01", tz = "America/Halifax")),
     as.POSIXlt("2021-01-01", tz = "America/Halifax")
   )
 
@@ -134,7 +134,7 @@ test_that("convert array stream works for struct-style vectors", {
   expect_identical(
     convert_array_stream(
       stream,
-      as.POSIXlt(character(), tz = "America/Halifax"),
+      as.POSIXlt("2021-01-01", tz = "America/Halifax"),
       size = 1
     ),
     as.POSIXlt("2021-01-01", tz = "America/Halifax")

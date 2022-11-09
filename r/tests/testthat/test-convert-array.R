@@ -140,7 +140,7 @@ test_that("convert to vector works for struct-style vectors", {
 
   array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))
   expect_identical(
-    convert_array(array, as.POSIXlt(character(), tz = "America/Halifax")),
+    convert_array(array, as.POSIXlt("2021-01-01", tz = "America/Halifax")),
     as.POSIXlt("2021-01-01", tz = "America/Halifax")
   )
 })
@@ -693,5 +693,35 @@ test_that("convert to vector works for null -> difftime", {
   expect_identical(
     convert_array(array, as.difftime(numeric(), units = "secs")),
     as.difftime(rep(NA_real_, 10), units = "secs")
+  )
+})
+
+test_that("convert to vector works for data frames nested inside lists", {
+  df_in_list <- vctrs::list_of(
+    data.frame(x = 1:5),
+    data.frame(x = 6:10),
+    data.frame(x = 11:15)
+  )
+
+  nested_array <- as_nanoarrow_array(df_in_list)
+  expect_identical(
+    convert_array(nested_array),
+    df_in_list
+  )
+})
+
+test_that("convert to vector works for lists nested in data frames", {
+  df_in_list_in_df <- data.frame(
+    x = vctrs::list_of(
+      data.frame(x = 1:5),
+      data.frame(x = 6:10),
+      data.frame(x = 11:15)
+    )
+  )
+
+  nested_array <- as_nanoarrow_array(df_in_list_in_df)
+  expect_identical(
+    convert_array(nested_array),
+    df_in_list_in_df
   )
 })
