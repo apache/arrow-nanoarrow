@@ -21,6 +21,9 @@
 
 #include "nanoarrow.h"
 
+// Needed for the list_of materializer
+#include "convert.h"
+
 #include "materialize.h"
 #include "materialize_blob.h"
 #include "materialize_chr.h"
@@ -98,19 +101,46 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   return result;
 }
 
-static int nanoarrow_materialize_data_frame(struct RConverter* converter) {
+static int nanoarrow_materialize_data_frame(struct RConverter* converter,
+                                            SEXP converter_xptr) {
   for (R_xlen_t i = 0; i < converter->n_children; i++) {
     converter->children[i]->src.offset = converter->src.offset;
     converter->children[i]->src.length = converter->src.length;
     converter->children[i]->dst.offset = converter->dst.offset;
     converter->children[i]->dst.length = converter->dst.length;
-    NANOARROW_RETURN_NOT_OK(nanoarrow_materialize(converter->children[i]));
+    NANOARROW_RETURN_NOT_OK(
+        nanoarrow_materialize(converter->children[i], converter_xptr));
   }
 
   return NANOARROW_OK;
 }
 
-static int nanoarrow_materialize_list_of(struct RConverter* converter) {
+static int materialize_list_element(struct RConverter* converter, SEXP converter_xptr,
+                                    int64_t offset, int64_t length) {
+  if (nanoarrow_converter_reserve(converter_xptr, length) != NANOARROW_OK) {
+    nanoarrow_converter_stop(converter_xptr);
+  }
+
+  converter->src.offset = offset;
+  converter->src.length = length;
+  converter->dst.offset = 0;
+  converter->dst.length = length;
+
+  if (nanoarrow_converter_materialize_n(converter_xptr, length) != length) {
+    return EINVAL;
+  }
+
+  NANOARROW_RETURN_NOT_OK(nanoarrow_converter_finalize(converter_xptr));
+  return NANOARROW_OK;
+}
+
+static int nanoarrow_materialize_list_of(struct RConverter* converter,
+                                         SEXP converter_xptr) {
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
+  struct RConverter* child_converter = converter->children[0];
+  SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, 0);
+
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
 
@@ -118,12 +148,8 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter) {
   const int64_t* large_offsets = src->array_view->buffer_views[1].data.as_int64;
   int64_t raw_src_offset = src->array_view->array->offset + src->offset;
 
-  struct RConverter* child_converter = converter->children[0];
-  struct ArrayViewSlice* child_src = &child_converter->src;
-  struct VectorSlice* child_dst = &child_converter->dst;
-  child_dst->offset = 0;
-
-  int convert_result;
+  int64_t offset;
+  int64_t length;
 
   switch (src->array_view->storage_type) {
     case NANOARROW_TYPE_NA:
@@ -131,59 +157,36 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter) {
     case NANOARROW_TYPE_LIST:
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-          child_src->offset = offsets[raw_src_offset + i];
-          child_src->length = offsets[raw_src_offset + i + 1] - child_src->offset;
-
-          child_dst->vec_sexp = PROTECT(nanoarrow_materialize_realloc(
-              child_converter->ptype_view.ptype, child_src->length));
-          child_dst->length = child_src->length;
-          convert_result = nanoarrow_materialize(child_converter);
-          if (convert_result != NANOARROW_OK) {
-            UNPROTECT(1);
-            return EINVAL;
-          }
-
-          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst->vec_sexp);
-          UNPROTECT(1);
+          offset = offsets[raw_src_offset + i];
+          length = offsets[raw_src_offset + i + 1] - offset;
+          NANOARROW_RETURN_NOT_OK(
+              materialize_list_element(child_converter, child_converter_xptr, offset, length));
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
+                         nanoarrow_converter_result(child_converter_xptr));
         }
       }
       break;
     case NANOARROW_TYPE_LARGE_LIST:
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-          child_src->offset = large_offsets[raw_src_offset + i];
-          child_src->length = large_offsets[raw_src_offset + i + 1] - child_src->offset;
-
-          child_dst->vec_sexp = PROTECT(nanoarrow_materialize_realloc(
-              child_converter->ptype_view.ptype, child_src->length));
-          child_dst->length = child_src->length;
-          convert_result = nanoarrow_materialize(child_converter);
-          if (convert_result != NANOARROW_OK) {
-            UNPROTECT(1);
-            return EINVAL;
-          }
-
-          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst->vec_sexp);
-          UNPROTECT(1);
+          offset = large_offsets[raw_src_offset + i];
+          length = large_offsets[raw_src_offset + i + 1] - offset;
+          NANOARROW_RETURN_NOT_OK(
+              materialize_list_element(child_converter, child_converter_xptr, offset, length));
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
+                         nanoarrow_converter_result(child_converter_xptr));
         }
       }
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      child_src->length = src->array_view->layout.child_size_elements;
-      child_dst->length = child_src->length;
+      length = src->array_view->layout.child_size_elements;
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-          child_src->offset = (raw_src_offset + i) * child_src->length;
-          child_dst->vec_sexp = PROTECT(nanoarrow_materialize_realloc(
-              child_converter->ptype_view.ptype, child_src->length));
-          convert_result = nanoarrow_materialize(child_converter);
-          if (convert_result != NANOARROW_OK) {
-            UNPROTECT(1);
-            return EINVAL;
-          }
-
-          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, child_dst->vec_sexp);
-          UNPROTECT(1);
+          offset = (raw_src_offset + i) * length;
+          NANOARROW_RETURN_NOT_OK(
+              materialize_list_element(child_converter, child_converter_xptr, offset, length));
+          SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
+                         nanoarrow_converter_result(child_converter_xptr));
         }
       }
       break;
@@ -194,7 +197,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter) {
   return NANOARROW_OK;
 }
 
-int nanoarrow_materialize(struct RConverter* converter) {
+int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
   struct MaterializeOptions* options = converter->options;
@@ -219,9 +222,9 @@ int nanoarrow_materialize(struct RConverter* converter) {
     case VECTOR_TYPE_BLOB:
       return nanoarrow_materialize_blob(src, dst, options);
     case VECTOR_TYPE_LIST_OF:
-      return nanoarrow_materialize_list_of(converter);
+      return nanoarrow_materialize_list_of(converter, converter_xptr);
     case VECTOR_TYPE_DATA_FRAME:
-      return nanoarrow_materialize_data_frame(converter);
+      return nanoarrow_materialize_data_frame(converter, converter_xptr);
     default:
       return ENOTSUP;
   }

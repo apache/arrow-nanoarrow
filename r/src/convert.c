@@ -337,7 +337,7 @@ void sync_after_converter_reallocate(SEXP converter_xptr, struct RConverter* con
   converter->capacity = capacity;
 
   if (converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
-    SEXP child_converters = VECTOR_ELT(converter_shelter, 3);
+  SEXP child_converters = VECTOR_ELT(converter_shelter, 3);
     for (R_xlen_t i = 0; i < converter->n_children; i++) {
       sync_after_converter_reallocate(VECTOR_ELT(child_converters, i),
                                       converter->children[i], VECTOR_ELT(result_sexp, i),
@@ -386,7 +386,7 @@ R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n) {
   }
 
   converter->src.length = converter->dst.length = n;
-  int result = nanoarrow_materialize(converter);
+  int result = nanoarrow_materialize(converter, converter_xptr);
   if (result != NANOARROW_OK) {
     ArrowErrorSet(&converter->error, "Error in nanoarrow_materialize()");
     return 0;

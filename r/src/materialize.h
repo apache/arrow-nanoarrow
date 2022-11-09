@@ -29,7 +29,7 @@
 int nanoarrow_ptype_is_data_frame(SEXP ptype);
 
 // Perform actual materializing of values (e.g., loop through buffers)
-int nanoarrow_materialize(struct RConverter* converter);
+int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr);
 
 // Shortcut to allocate a vector based on a vector type or ptype
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
