@@ -50,6 +50,7 @@ enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
     case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_DECIMAL128:
       return VECTOR_TYPE_DBL;
 
     case NANOARROW_TYPE_STRING:

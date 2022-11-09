@@ -384,6 +384,14 @@ test_that("convert to vector works for valid double()", {
   )
 })
 
+test_that("convert to vector works for decimal128 -> double()", {
+  array <- as_nanoarrow_array(arrow::Array$create(1:10)$cast(arrow::decimal128(20, 10)))
+  expect_equal(
+    convert_array(array, double()),
+    as.double(1:10)
+  )
+})
+
 test_that("convert to vector works for null -> double()", {
   array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
   expect_identical(

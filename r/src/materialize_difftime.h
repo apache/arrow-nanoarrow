@@ -29,14 +29,12 @@ static inline int nanoarrow_materialize_difftime(struct RConverter* converter) {
   if (converter->ptype_view.sexp_type == REALSXP) {
     switch (converter->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(
-            &converter->src, &converter->dst, converter->options));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(converter));
         return NANOARROW_OK;
       case NANOARROW_TYPE_TIME32:
       case NANOARROW_TYPE_TIME64:
       case NANOARROW_TYPE_DURATION:
-        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(
-            &converter->src, &converter->dst, converter->options));
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(converter));
         break;
       default:
         return EINVAL;

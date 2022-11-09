@@ -31,8 +31,7 @@ static int nanoarrow_materialize_date(struct RConverter* converter) {
     switch (converter->schema_view.data_type) {
       case NANOARROW_TYPE_NA:
       case NANOARROW_TYPE_DATE32:
-        return nanoarrow_materialize_dbl(&converter->src, &converter->dst,
-                                         converter->options);
+        return nanoarrow_materialize_dbl(converter);
       default:
         break;
     }

@@ -207,8 +207,7 @@ int nanoarrow_materialize(struct RConverter* converter) {
     case VECTOR_TYPE_INT:
       return nanoarrow_materialize_int(src, dst, options);
     case VECTOR_TYPE_DBL:
-      return nanoarrow_materialize_dbl(src, dst, options);
-    // case VECTOR_TYPE_ALTREP_CHR:
+      return nanoarrow_materialize_dbl(converter);
     case VECTOR_TYPE_CHR:
       return nanoarrow_materialize_chr(src, dst, options);
     case VECTOR_TYPE_POSIXCT:

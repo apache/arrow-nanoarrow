@@ -138,3 +138,13 @@ stop_cant_convert_schema <- function(schema, to, n = 0) {
 
   stop(cnd)
 }
+
+# Called from C for decimal types
+convert_decimal_to_double <- function(array, schema, offset, length) {
+  array2 <- nanoarrow_allocate_array()
+  schema2 <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(array, array2)
+  nanoarrow_pointer_export(schema, schema2)
+  arrow_array <- arrow::Array$import_from_c(array2, schema2)
+  arrow_array$Slice(offset, length)$as_vector()
+}

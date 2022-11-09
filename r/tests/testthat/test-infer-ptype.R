@@ -53,6 +53,11 @@ test_that("infer_nanoarrow_ptype() works for basic types", {
   )
 
   expect_identical(
+    infer_nanoarrow_ptype(as_nanoarrow_schema(arrow::decimal128(2, 3))),
+    double()
+  )
+
+  expect_identical(
     infer_nanoarrow_ptype(as_nanoarrow_array(character())),
     character()
   )
