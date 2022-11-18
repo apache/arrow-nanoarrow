@@ -50,17 +50,18 @@ static SEXP call_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
 // have to allocate one here.
 static void call_stop_cant_convert_array(SEXP array_xptr, enum VectorType type,
                                          SEXP ptype_sexp) {
-  int had_to_alloc_ptype = ptype_sexp == R_NilValue;
+  SEXP fun = PROTECT(Rf_install("stop_cant_convert_array"));
+  
   if (ptype_sexp == R_NilValue) {
     ptype_sexp = PROTECT(nanoarrow_alloc_type(type, 0));
+    SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));
+    Rf_eval(call, nanoarrow_ns_pkg);
+    UNPROTECT(3);
+  } else {
+    SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));
+    Rf_eval(call, nanoarrow_ns_pkg);
+    UNPROTECT(2);
   }
-
-  SEXP fun = PROTECT(Rf_install("stop_cant_convert_array"));
-  SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));
-  Rf_eval(call, nanoarrow_ns_pkg);
-
-  // In any normal situation this should never be reached
-  UNPROTECT(2 + had_to_alloc_ptype);
 }
 
 static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,
