@@ -46,6 +46,22 @@ test_that("infer_nanoarrow_schema() is implemented for streams", {
   expect_identical(schema$children$x$format, "i")
 })
 
+test_that("as.data.frame() is implemented for streams", {
+  stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(x = 1:5)
+  )
+})
+
+test_that("as.vector() is implemented for streams", {
+  stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+  expect_identical(
+    as.vector(stream),
+    data.frame(x = 1:5)
+  )
+})
+
 test_that("nanoarrow_array_stream list interface works", {
   stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
   expect_identical(length(stream), 3L)

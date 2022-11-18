@@ -39,6 +39,42 @@ test_that("infer_nanoarrow_schema() default method works", {
   expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
 })
 
+test_that("nanoarrow_schema_parse() works", {
+  simple_info <- nanoarrow_schema_parse(arrow::int32())
+  expect_identical(simple_info$type, "int32")
+  expect_identical(simple_info$storage_type, "int32")
+
+  fixed_size_info <- nanoarrow_schema_parse(arrow::fixed_size_binary(1234))
+  expect_identical(fixed_size_info$fixed_size, 1234L)
+
+  decimal_info <- nanoarrow_schema_parse(arrow::decimal128(4, 5))
+  expect_identical(decimal_info$decimal_bitwidth, 128L)
+  expect_identical(decimal_info$decimal_precision, 4L)
+  expect_identical(decimal_info$decimal_scale, 5L)
+
+  time_unit_info <- nanoarrow_schema_parse(arrow::time32("s"))
+  expect_identical(time_unit_info$time_unit, "s")
+
+  timezone_info <- nanoarrow_schema_parse(arrow::timestamp("s", "America/Halifax"))
+  expect_identical(timezone_info$timezone, "America/Halifax")
+
+  recursive_info <- nanoarrow_schema_parse(
+    infer_nanoarrow_schema(data.frame(x = 1L)),
+    recursive = FALSE
+  )
+  expect_null(recursive_info$children)
+
+  recursive_info <- nanoarrow_schema_parse(
+    infer_nanoarrow_schema(data.frame(x = 1L)),
+    recursive = TRUE
+  )
+  expect_length(recursive_info$children, 1L)
+  expect_identical(
+    recursive_info$children$x,
+    nanoarrow_schema_parse(infer_nanoarrow_schema(1L))
+  )
+})
+
 test_that("schema list interface works for non-nested types", {
   schema <- infer_nanoarrow_schema(1:10)
   expect_identical(length(schema), 6L)

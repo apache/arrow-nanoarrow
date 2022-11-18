@@ -37,12 +37,12 @@ test_that("schemaless nanoarrow_array format, print, and str methods work", {
   expect_output(expect_identical(print(array), array), "nanoarrow_array")
 })
 
-test_that("as_nanoarrow_array() / from_nanoarrow_array() default method works", {
+test_that("as_nanoarrow_array() / convert_array() default method works", {
   array <- as_nanoarrow_array(1:10)
-  expect_identical(from_nanoarrow_array(array), 1:10)
+  expect_identical(convert_array(array), 1:10)
 
   array <- as_nanoarrow_array(as.double(1:10), schema = arrow::float64())
-  expect_identical(from_nanoarrow_array(array), as.double(1:10))
+  expect_identical(convert_array(array), as.double(1:10))
 })
 
 test_that("infer_nanoarrow_schema() works for nanoarrow_array", {

@@ -22,6 +22,7 @@
 #include "array.h"
 #include "nanoarrow.h"
 #include "schema.h"
+#include "util.h"
 
 void finalize_array_xptr(SEXP array_xptr) {
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
@@ -77,7 +78,7 @@ SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr) {
 
 static SEXP borrow_array_xptr(struct ArrowArray* array, SEXP shelter) {
   SEXP array_xptr = PROTECT(R_MakeExternalPtr(array, R_NilValue, shelter));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_array"));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
   UNPROTECT(1);
   return array_xptr;
 }
@@ -86,7 +87,9 @@ SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i) {
   struct ArrowArray* array = array_from_xptr(array_xptr);
   SEXP schema_xptr = R_ExternalPtrTag(array_xptr);
   SEXP child_xptr = PROTECT(borrow_array_xptr(array->children[i], array_xptr));
-  array_xptr_set_schema(child_xptr, borrow_schema_child_xptr(schema_xptr, i));
+  if (schema_xptr != R_NilValue) {
+    array_xptr_set_schema(child_xptr, borrow_schema_child_xptr(schema_xptr, i));
+  }
   UNPROTECT(1);
   return child_xptr;
 }

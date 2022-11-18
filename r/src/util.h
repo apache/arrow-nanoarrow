@@ -15,27 +15,20 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_MATERIALIZE_H_INCLUDED
-#define R_MATERIALIZE_H_INCLUDED
+#ifndef R_UTIL_H_INCLUDED
+#define R_UTIL_H_INCLUDED
 
 #include <R.h>
 #include <Rinternals.h>
 
-#include "materialize_common.h"
+extern SEXP nanoarrow_ns_pkg;
+extern SEXP nanoarrow_cls_array;
+extern SEXP nanoarrow_cls_altrep_chr;
+extern SEXP nanoarrow_cls_array_view;
+extern SEXP nanoarrow_cls_data_frame;
+extern SEXP nanoarrow_cls_schema;
+extern SEXP nanoarrow_cls_array_stream;
 
-// A heuristic to identify prototypes that should be treated like data frames
-// (i.e., including record-style vectors like POSIXct). This heuristic returns
-// true if ptype is a data.frame or is an S3 list with names.
-int nanoarrow_ptype_is_data_frame(SEXP ptype);
-
-// Set rownames of a data.frame (with special handling if len > INT_MAX)
-void nanoarrow_set_rownames(SEXP x, R_xlen_t len);
-
-// Perform actual materializing of values (e.g., loop through buffers)
-int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr);
-
-// Shortcut to allocate a vector based on a vector type or ptype
-SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
-SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
+void nanoarrow_init_cached_sexps();
 
 #endif

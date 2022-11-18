@@ -23,6 +23,7 @@
 
 #include "array.h"
 #include "schema.h"
+#include "util.h"
 
 static void finalize_array_view_xptr(SEXP array_view_xptr) {
   struct ArrowArrayView* array_view =
@@ -56,7 +57,7 @@ SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
     Rf_error("<ArrowArrayViewSetArray> %s", error.message);
   }
 
-  Rf_setAttrib(xptr, R_ClassSymbol, Rf_mkString("nanoarrow_array_view"));
+  Rf_setAttrib(xptr, R_ClassSymbol, nanoarrow_cls_array_view);
   UNPROTECT(1);
   return xptr;
 }

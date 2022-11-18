@@ -1,9 +1,7 @@
 
 # For testing the altrep chr conversion
 nanoarrow_altrep_chr <- function(array) {
-  schema <- infer_nanoarrow_schema(array)
-  array_view <- .Call(nanoarrow_c_array_view, array, schema)
-  .Call(nanoarrow_c_make_altrep_chr, array_view)
+  .Call(nanoarrow_c_make_altrep_chr, array)
 }
 
 is_nanoarrow_altrep <- function(x) {

@@ -22,6 +22,7 @@
 #include <Rinternals.h>
 
 #include "nanoarrow.h"
+#include "util.h"
 
 void finalize_schema_xptr(SEXP schema_xptr);
 
@@ -72,7 +73,7 @@ static inline SEXP schema_owning_xptr() {
   schema->release = NULL;
 
   SEXP schema_xptr = PROTECT(R_MakeExternalPtr(schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_schema"));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
   R_RegisterCFinalizer(schema_xptr, &finalize_schema_xptr);
   UNPROTECT(1);
   return schema_xptr;
