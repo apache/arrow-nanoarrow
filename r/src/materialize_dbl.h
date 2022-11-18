@@ -23,6 +23,7 @@
 
 #include "materialize_common.h"
 #include "nanoarrow.h"
+#include "util.h"
 
 // Fall back to arrow for decimal conversion via a package helper
 static inline void nanoarrow_materialize_decimal_to_dbl(struct RConverter* converter) {
@@ -39,10 +40,9 @@ static inline void nanoarrow_materialize_decimal_to_dbl(struct RConverter* conve
   SEXP offset_sexp = PROTECT(Rf_ScalarReal(converter->src.offset));
   SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
 
-  SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call = PROTECT(Rf_lang5(Rf_install("convert_decimal_to_double"), array_xptr,
-                               schema_xptr, offset_sexp, length_sexp));
-  SEXP result_src = PROTECT(Rf_eval(call, ns));
+  SEXP fun = PROTECT(Rf_install("convert_decimal_to_double"));
+  SEXP call = PROTECT(Rf_lang5(fun, array_xptr, schema_xptr, offset_sexp, length_sexp));
+  SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
   if (Rf_xlength(result_src) != converter->dst.length) {
     Rf_error("Unexpected result in call to Arrow for decimal conversion");
   }

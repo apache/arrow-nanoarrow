@@ -25,6 +25,7 @@
 #include "array.h"
 #include "array_view.h"
 #include "convert.h"
+#include "util.h"
 
 // The common case of converting a single array into a single vector is
 // defined here, powered by the generic conversion available via
@@ -36,30 +37,30 @@
 // dispatch to find a convert_array() method (or error if there
 // isn't one)
 static SEXP call_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
-  SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call =
-      PROTECT(Rf_lang3(Rf_install("convert_array_from_c"), array_xptr, ptype_sexp));
-  SEXP result = PROTECT(Rf_eval(call, ns));
+  SEXP fun = PROTECT(Rf_install("convert_array_from_c"));
+  SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));
+  SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
   UNPROTECT(3);
   return result;
 }
 
 // Call stop_cant_convert_array(), which gives a more informative error
-// message than we can provide in a reasonable amount of C code here
+// message than we can provide in a reasonable amount of C code here.
+// Because we opportunistically avoid allocating a ptype object, we might
+// have to allocate one here.
 static void call_stop_cant_convert_array(SEXP array_xptr, enum VectorType type,
                                          SEXP ptype_sexp) {
-  int n_protected = 2;
+  int had_to_alloc_ptype = ptype_sexp == R_NilValue;
   if (ptype_sexp == R_NilValue) {
     ptype_sexp = PROTECT(nanoarrow_alloc_type(type, 0));
-    n_protected++;
   }
 
-  SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call =
-      PROTECT(Rf_lang3(Rf_install("stop_cant_convert_array"), array_xptr, ptype_sexp));
-  Rf_eval(call, ns);
+  SEXP fun = PROTECT(Rf_install("stop_cant_convert_array"));
+  SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));
+  Rf_eval(call, nanoarrow_ns_pkg);
 
-  UNPROTECT(n_protected);
+  // In any normal situation this should never be reached
+  UNPROTECT(2 + had_to_alloc_ptype);
 }
 
 static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,

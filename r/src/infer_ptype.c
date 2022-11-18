@@ -26,6 +26,7 @@
 #include "array_view.h"
 #include "materialize.h"
 #include "schema.h"
+#include "util.h"
 
 // These conversions are the default R-native type guesses for
 // an array that don't require extra information from the ptype (e.g.,
@@ -87,9 +88,9 @@ enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr) {
 // are easier to compute in R or gives an informative error if this is
 // not possible.
 static SEXP call_infer_ptype_other(SEXP schema_xptr) {
-  SEXP ns = PROTECT(R_FindNamespace(Rf_mkString("nanoarrow")));
-  SEXP call = PROTECT(Rf_lang2(Rf_install("infer_ptype_other"), schema_xptr));
-  SEXP result = PROTECT(Rf_eval(call, ns));
+  SEXP fun = PROTECT(Rf_install("infer_ptype_other"));
+  SEXP call = PROTECT(Rf_lang2(fun, schema_xptr));
+  SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
   UNPROTECT(3);
   return result;
 }
