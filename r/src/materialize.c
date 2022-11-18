@@ -36,27 +36,18 @@
 #include "materialize_unspecified.h"
 
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
-  SEXP result;
-
   switch (vector_type) {
     case VECTOR_TYPE_LGL:
-      result = PROTECT(Rf_allocVector(LGLSXP, len));
-      break;
+      return Rf_allocVector(LGLSXP, len);
     case VECTOR_TYPE_INT:
-      result = PROTECT(Rf_allocVector(INTSXP, len));
-      break;
+      return Rf_allocVector(INTSXP, len);
     case VECTOR_TYPE_DBL:
-      result = PROTECT(Rf_allocVector(REALSXP, len));
-      break;
+      return Rf_allocVector(REALSXP, len);
     case VECTOR_TYPE_CHR:
-      result = PROTECT(Rf_allocVector(STRSXP, len));
-      break;
+      return Rf_allocVector(STRSXP, len);
     default:
       return R_NilValue;
   }
-
-  UNPROTECT(1);
-  return result;
 }
 
 void nanoarrow_set_rownames(SEXP x, R_xlen_t len) {
