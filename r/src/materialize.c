@@ -59,6 +59,31 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
   return result;
 }
 
+void nanoarrow_set_rownames(SEXP x, R_xlen_t len) {
+  // If len fits in the integer range, we can use the c(NA, -nrow)
+  // shortcut for the row.names attribute. R expands this when
+  // the actual value is accessed (even from Rf_getAttrib()).
+  // If len does not fit in the integer range, we need
+  // as.character(seq_len(nrow)) (which returns a deferred ALTREP
+  // string conversion of an ALTREP sequence in recent R). Manipulating
+  // data frames with more than INT_MAX rows is not supported in most
+  // places but column access still works.
+  if (len <= INT_MAX) {
+    SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
+    INTEGER(rownames)[0] = NA_INTEGER;
+    INTEGER(rownames)[1] = -len;
+    Rf_setAttrib(x, R_RowNamesSymbol, rownames);
+    UNPROTECT(1);
+  } else {
+    SEXP length_dbl = PROTECT(Rf_ScalarReal(len));
+    SEXP seq_len_symbol = PROTECT(Rf_install("seq_len"));
+    SEXP seq_len_call = PROTECT(Rf_lang2(seq_len_symbol, length_dbl));
+    SEXP rownames_call = PROTECT(Rf_lang2(R_AsCharacterSymbol, seq_len_call));
+    Rf_setAttrib(x, R_RowNamesSymbol, Rf_eval(rownames_call, R_BaseNamespace));
+    UNPROTECT(4);
+  }
+}
+
 int nanoarrow_ptype_is_data_frame(SEXP ptype) {
   return Rf_isObject(ptype) && TYPEOF(ptype) == VECSXP &&
          (Rf_inherits(ptype, "data.frame") ||
@@ -83,11 +108,7 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
 
       // ...except rownames
       if (Rf_inherits(ptype, "data.frame")) {
-        SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
-        INTEGER(rownames)[0] = NA_INTEGER;
-        INTEGER(rownames)[1] = -len;
-        Rf_setAttrib(result, R_RowNamesSymbol, rownames);
-        UNPROTECT(1);
+        nanoarrow_set_rownames(result, len);
       }
     } else {
       result = PROTECT(Rf_allocVector(TYPEOF(ptype), len));
@@ -163,8 +184,8 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
           offset = offsets[raw_src_offset + i];
           length = offsets[raw_src_offset + i + 1] - offset;
-          NANOARROW_RETURN_NOT_OK(
-              materialize_list_element(child_converter, child_converter_xptr, offset, length));
+          NANOARROW_RETURN_NOT_OK(materialize_list_element(
+              child_converter, child_converter_xptr, offset, length));
           SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
                          nanoarrow_converter_result(child_converter_xptr));
         }
@@ -175,8 +196,8 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
           offset = large_offsets[raw_src_offset + i];
           length = large_offsets[raw_src_offset + i + 1] - offset;
-          NANOARROW_RETURN_NOT_OK(
-              materialize_list_element(child_converter, child_converter_xptr, offset, length));
+          NANOARROW_RETURN_NOT_OK(materialize_list_element(
+              child_converter, child_converter_xptr, offset, length));
           SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
                          nanoarrow_converter_result(child_converter_xptr));
         }
@@ -187,8 +208,8 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
           offset = (raw_src_offset + i) * length;
-          NANOARROW_RETURN_NOT_OK(
-              materialize_list_element(child_converter, child_converter_xptr, offset, length));
+          NANOARROW_RETURN_NOT_OK(materialize_list_element(
+              child_converter, child_converter_xptr, offset, length));
           SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
                          nanoarrow_converter_result(child_converter_xptr));
         }

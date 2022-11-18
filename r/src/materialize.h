@@ -28,6 +28,9 @@
 // true if ptype is a data.frame or is an S3 list with names.
 int nanoarrow_ptype_is_data_frame(SEXP ptype);
 
+// Set rownames of a data.frame (with special handling if len > INT_MAX)
+void nanoarrow_set_rownames(SEXP x, R_xlen_t len);
+
 // Perform actual materializing of values (e.g., loop through buffers)
 int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr);
 

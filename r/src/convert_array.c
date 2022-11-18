@@ -146,11 +146,7 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
   }
 
   if (Rf_inherits(result, "data.frame")) {
-    SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
-    INTEGER(rownames)[0] = NA_INTEGER;
-    INTEGER(rownames)[1] = array->length;
-    Rf_setAttrib(result, R_RowNamesSymbol, rownames);
-    UNPROTECT(1);
+    nanoarrow_set_rownames(result, array->length);
   }
 
   UNPROTECT(1);
