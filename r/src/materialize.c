@@ -50,6 +50,15 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
   }
 }
 
+// A version of Rf_getAttrib(x, sym) != R_NilValue that never
+// expands the row.names attribute
+static int has_attrib_safe(SEXP x, SEXP sym) {
+  for (SEXP atts = ATTRIB(x); atts != R_NilValue; atts = CDR(atts)) {
+    if (TAG(atts) == sym) return TRUE;
+  }
+  return FALSE;
+}
+
 void nanoarrow_set_rownames(SEXP x, R_xlen_t len) {
   // If len fits in the integer range, we can use the c(NA, -nrow)
   // shortcut for the row.names attribute. R expands this when
@@ -78,7 +87,7 @@ void nanoarrow_set_rownames(SEXP x, R_xlen_t len) {
 int nanoarrow_ptype_is_data_frame(SEXP ptype) {
   return Rf_isObject(ptype) && TYPEOF(ptype) == VECSXP &&
          (Rf_inherits(ptype, "data.frame") ||
-          (Rf_xlength(ptype) > 0 && Rf_getAttrib(ptype, R_NamesSymbol) != R_NilValue));
+          (Rf_xlength(ptype) > 0 && has_attrib_safe(ptype, R_NamesSymbol)));
 }
 
 SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
