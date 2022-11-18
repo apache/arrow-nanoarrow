@@ -21,6 +21,7 @@
 
 #include "nanoarrow.h"
 #include "schema.h"
+#include "util.h"
 
 void finalize_schema_xptr(SEXP schema_xptr) {
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
@@ -63,7 +64,7 @@ static SEXP schema_metadata_to_list(const char* metadata) {
 
 static SEXP borrow_schema_xptr(struct ArrowSchema* schema, SEXP shelter) {
   SEXP schema_xptr = PROTECT(R_MakeExternalPtr(schema, R_NilValue, shelter));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_schema"));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
   UNPROTECT(1);
   return schema_xptr;
 }
@@ -152,22 +153,15 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
     Rf_error("ArrowSchemaViewInit(): %s", ArrowErrorMessage(&error));
   }
 
-  const char* names[] = {"type",
-                         "storage_type",
-                         "extension_name",
-                         "extension_metadata",
-                         "fixed_size",
-                         "decimal_bitwidth",
-                         "decimal_precision",
-                         "decimal_scale",
-                         "time_unit",
-                         "timezone",
-                         "union_type_ids",
-                         ""};
+  const char* names[] = {
+      "type",       "storage_type",     "extension_name",    "extension_metadata",
+      "fixed_size", "decimal_bitwidth", "decimal_precision", "decimal_scale",
+      "time_unit",  "timezone",         "union_type_ids",    ""};
 
   SEXP result = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(result, 0, Rf_mkString(ArrowTypeString((schema_view.data_type))));
-  SET_VECTOR_ELT(result, 1, Rf_mkString(ArrowTypeString((schema_view.storage_data_type))));
+  SET_VECTOR_ELT(result, 1,
+                 Rf_mkString(ArrowTypeString((schema_view.storage_data_type))));
 
   if (schema_view.extension_name.data != NULL) {
     SET_VECTOR_ELT(result, 2, mkStringView(&schema_view.extension_name));

@@ -22,6 +22,7 @@
 #include <Rinternals.h>
 
 #include "nanoarrow.h"
+#include "util.h"
 
 void finalize_array_xptr(SEXP array_xptr);
 void finalize_exported_array(struct ArrowArray* array);
@@ -70,7 +71,7 @@ static inline SEXP array_owning_xptr() {
   array->release = NULL;
 
   SEXP array_xptr = PROTECT(R_MakeExternalPtr(array, R_NilValue, R_NilValue));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_array"));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
   R_RegisterCFinalizer(array_xptr, &finalize_array_xptr);
   UNPROTECT(1);
   return array_xptr;

@@ -32,10 +32,10 @@ static inline void nanoarrow_materialize_decimal_to_dbl(struct RConverter* conve
   // then to be garbage collected and invalidate the converter
   SEXP array_xptr =
       PROTECT(R_MakeExternalPtr(converter->array_view.array, R_NilValue, R_NilValue));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_array"));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
   SEXP schema_xptr =
       PROTECT(R_MakeExternalPtr(converter->schema_view.schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_schema"));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
 
   SEXP offset_sexp = PROTECT(Rf_ScalarReal(converter->src.offset));
   SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));

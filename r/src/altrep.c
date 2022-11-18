@@ -24,9 +24,9 @@
 
 #include "altrep.h"
 #include "array.h"
-#include "nanoarrow.h"
-
 #include "convert.h"
+#include "nanoarrow.h"
+#include "util.h"
 
 #ifdef HAS_ALTREP
 
@@ -179,7 +179,7 @@ SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr) {
     nanoarrow_converter_stop(converter_xptr);
   }
 
-  Rf_setAttrib(converter_xptr, R_ClassSymbol, Rf_mkString("nanoarrow::altrep_chr"));
+  Rf_setAttrib(converter_xptr, R_ClassSymbol, nanoarrow_cls_altrep_chr);
   SEXP out = PROTECT(R_new_altrep(nanoarrow_altrep_chr_cls, converter_xptr, R_NilValue));
   MARK_NOT_MUTABLE(out);
   UNPROTECT(3);

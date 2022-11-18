@@ -115,7 +115,7 @@ static SEXP infer_ptype_data_frame(SEXP schema_xptr) {
     }
   }
 
-  Rf_setAttrib(result, R_ClassSymbol, Rf_mkString("data.frame"));
+  Rf_setAttrib(result, R_ClassSymbol, nanoarrow_cls_data_frame);
   Rf_setAttrib(result, R_NamesSymbol, result_names);
   SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
   INTEGER(rownames)[0] = NA_INTEGER;

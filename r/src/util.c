@@ -22,10 +22,30 @@
 #include "util.h"
 
 SEXP nanoarrow_ns_pkg = NULL;
+SEXP nanoarrow_cls_array = NULL;
+SEXP nanoarrow_cls_altrep_chr = NULL;
+SEXP nanoarrow_cls_array_view = NULL;
+SEXP nanoarrow_cls_data_frame = NULL;
+SEXP nanoarrow_cls_schema = NULL;
+SEXP nanoarrow_cls_array_stream = NULL;
 
 void nanoarrow_init_cached_sexps() {
   SEXP nanoarrow_str = PROTECT(Rf_mkString("nanoarrow"));
   nanoarrow_ns_pkg = PROTECT(R_FindNamespace(nanoarrow_str));
+  nanoarrow_cls_array = PROTECT(Rf_mkString("nanoarrow_array")); 
+  nanoarrow_cls_altrep_chr = PROTECT(Rf_mkString("nanoarrow::altrep_chr")); 
+  nanoarrow_cls_array_view = PROTECT(Rf_mkString("nanoarrow_array_view")); 
+  nanoarrow_cls_data_frame = PROTECT(Rf_mkString("data.frame")); 
+  nanoarrow_cls_schema = PROTECT(Rf_mkString("nanoarrow_schema")); 
+  nanoarrow_cls_array_stream = PROTECT(Rf_mkString("nanoarrow_array_stream")); 
+
   R_PreserveObject(nanoarrow_ns_pkg);
-  UNPROTECT(2);
+  R_PreserveObject(nanoarrow_cls_array);
+  R_PreserveObject(nanoarrow_cls_altrep_chr);
+  R_PreserveObject(nanoarrow_cls_array_view);
+  R_PreserveObject(nanoarrow_cls_data_frame);
+  R_PreserveObject(nanoarrow_cls_schema);
+  R_PreserveObject(nanoarrow_cls_array_stream);
+
+  UNPROTECT(8);
 }

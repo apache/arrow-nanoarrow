@@ -22,6 +22,7 @@
 #include <Rinternals.h>
 
 #include "nanoarrow.h"
+#include "util.h"
 
 void finalize_array_stream_xptr(SEXP array_stream_xptr);
 
@@ -54,7 +55,7 @@ static inline SEXP array_stream_owning_xptr() {
 
   SEXP array_stream_xptr =
       PROTECT(R_MakeExternalPtr(array_stream, R_NilValue, R_NilValue));
-  Rf_setAttrib(array_stream_xptr, R_ClassSymbol, Rf_mkString("nanoarrow_array_stream"));
+  Rf_setAttrib(array_stream_xptr, R_ClassSymbol, nanoarrow_cls_array_stream);
   R_RegisterCFinalizer(array_stream_xptr, &finalize_array_stream_xptr);
   UNPROTECT(1);
   return array_stream_xptr;

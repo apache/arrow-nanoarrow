@@ -127,7 +127,7 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
     }
 
     Rf_setAttrib(result, R_NamesSymbol, result_names);
-    Rf_setAttrib(result, R_ClassSymbol, Rf_mkString("data.frame"));
+    Rf_setAttrib(result, R_ClassSymbol, nanoarrow_cls_data_frame);
     UNPROTECT(1);
   } else {
     if (n_col != Rf_xlength(ptype_sexp)) {

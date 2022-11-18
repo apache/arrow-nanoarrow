@@ -22,6 +22,12 @@
 #include <Rinternals.h>
 
 extern SEXP nanoarrow_ns_pkg;
+extern SEXP nanoarrow_cls_array;
+extern SEXP nanoarrow_cls_altrep_chr;
+extern SEXP nanoarrow_cls_array_view;
+extern SEXP nanoarrow_cls_data_frame;
+extern SEXP nanoarrow_cls_schema;
+extern SEXP nanoarrow_cls_array_stream;
 
 void nanoarrow_init_cached_sexps();
 
