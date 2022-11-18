@@ -30,7 +30,7 @@ static R_xlen_t nanoarrow_vec_size(SEXP vec_sexp, struct PTypeView* ptype_view) 
   if (ptype_view->vector_type == VECTOR_TYPE_DATA_FRAME) {
     if (Rf_length(vec_sexp) > 0) {
       // This both avoids materializing the row.names attribute and
-      // makes this work with struct-style vctrs that don't have a 
+      // makes this work with struct-style vctrs that don't have a
       // row.names attribute but that always have one or more element
       return Rf_xlength(VECTOR_ELT(vec_sexp, 0));
     } else {
@@ -469,7 +469,7 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
   return NANOARROW_OK;
 }
 
-SEXP nanoarrow_converter_result(SEXP converter_xptr) {
+SEXP nanoarrow_converter_release_result(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SEXP result = PROTECT(VECTOR_ELT(converter_shelter, 4));

@@ -94,7 +94,7 @@ static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
     Rf_error("Error finalizing materialized altstring");
   }
 
-  SEXP result_sexp = PROTECT(nanoarrow_converter_result(converter_xptr));
+  SEXP result_sexp = PROTECT(nanoarrow_converter_release_result(converter_xptr));
   R_set_altrep_data2(altrep_sexp, result_sexp);
   R_set_altrep_data1(altrep_sexp, R_NilValue);
   UNPROTECT(1);

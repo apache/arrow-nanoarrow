@@ -187,7 +187,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
           NANOARROW_RETURN_NOT_OK(materialize_list_element(
               child_converter, child_converter_xptr, offset, length));
           SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
-                         nanoarrow_converter_result(child_converter_xptr));
+                         nanoarrow_converter_release_result(child_converter_xptr));
         }
       }
       break;
@@ -199,7 +199,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
           NANOARROW_RETURN_NOT_OK(materialize_list_element(
               child_converter, child_converter_xptr, offset, length));
           SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
-                         nanoarrow_converter_result(child_converter_xptr));
+                         nanoarrow_converter_release_result(child_converter_xptr));
         }
       }
       break;
@@ -211,7 +211,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
           NANOARROW_RETURN_NOT_OK(materialize_list_element(
               child_converter, child_converter_xptr, offset, length));
           SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i,
-                         nanoarrow_converter_result(child_converter_xptr));
+                         nanoarrow_converter_release_result(child_converter_xptr));
         }
       }
       break;

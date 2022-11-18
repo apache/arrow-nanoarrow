@@ -69,9 +69,8 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
 
       n_materialized = nanoarrow_converter_materialize_n(converter_xptr, array->length);
       if (n_materialized != array->length) {
-        Rf_error(
-            "Expected to materialize %ld values in batch %ld but materialized %ld",
-            (long)array->length, (long)n_batches, (long)n_materialized);
+        Rf_error("Expected to materialize %ld values in batch %ld but materialized %ld",
+                 (long)array->length, (long)n_batches, (long)n_materialized);
       }
 
       if (n_batches >= n) {
@@ -91,7 +90,7 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
     nanoarrow_converter_stop(converter_xptr);
   }
 
-  SEXP result_sexp = PROTECT(nanoarrow_converter_result(converter_xptr));
+  SEXP result_sexp = PROTECT(nanoarrow_converter_release_result(converter_xptr));
   UNPROTECT(4);
   return result_sexp;
 }

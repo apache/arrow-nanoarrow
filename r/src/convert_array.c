@@ -89,7 +89,7 @@ static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,
     nanoarrow_converter_stop(converter_xptr);
   }
 
-  SEXP result = PROTECT(nanoarrow_converter_result(converter_xptr));
+  SEXP result = PROTECT(nanoarrow_converter_release_result(converter_xptr));
   UNPROTECT(2);
   return result;
 }

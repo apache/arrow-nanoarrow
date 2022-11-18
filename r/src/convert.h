@@ -57,7 +57,7 @@ int nanoarrow_converter_finalize(SEXP converter_xptr);
 
 // Returns the resulting SEXP and moves the result out of the protection
 // of the converter.
-SEXP nanoarrow_converter_result(SEXP converter_xptr);
+SEXP nanoarrow_converter_release_result(SEXP converter_xptr);
 
 // Calls Rf_error() with the internal error buffer populated by above calls
 // that return a non-zero errno value.
