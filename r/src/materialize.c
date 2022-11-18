@@ -85,7 +85,7 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
       if (Rf_inherits(ptype, "data.frame")) {
         SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
         INTEGER(rownames)[0] = NA_INTEGER;
-        INTEGER(rownames)[1] = len;
+        INTEGER(rownames)[1] = -len;
         Rf_setAttrib(result, R_RowNamesSymbol, rownames);
         UNPROTECT(1);
       }
