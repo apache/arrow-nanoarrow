@@ -472,6 +472,8 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
 SEXP nanoarrow_converter_release_result(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  // PROTECT()ing here because we are about to release the object from the
+  // shelter of the converter and return it
   SEXP result = PROTECT(VECTOR_ELT(converter_shelter, 4));
   SET_VECTOR_ELT(converter_shelter, 4, R_NilValue);
   converter->dst.vec_sexp = R_NilValue;
