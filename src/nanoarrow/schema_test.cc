@@ -408,6 +408,24 @@ TEST(SchemaTest, SchemaCopyDictType) {
   schema_copy.release(&schema_copy);
 }
 
+TEST(SchemaTest, SchemaCopyFlags) {
+  struct ArrowSchema schema;
+  ARROW_EXPECT_OK(ExportType(*int32(), &schema));
+  ASSERT_TRUE(schema.flags & ARROW_FLAG_NULLABLE);
+  schema.flags &= ~ARROW_FLAG_NULLABLE;
+  ASSERT_FALSE(schema.flags & ARROW_FLAG_NULLABLE);
+
+  struct ArrowSchema schema_copy;
+  ArrowSchemaDeepCopy(&schema, &schema_copy);
+
+  ASSERT_NE(schema_copy.release, nullptr);
+  ASSERT_EQ(schema.flags, schema_copy.flags);
+  ASSERT_FALSE(schema_copy.flags & ARROW_FLAG_NULLABLE);
+
+  schema.release(&schema);
+  schema_copy.release(&schema_copy);
+}
+
 TEST(SchemaTest, SchemaCopyMetadata) {
   struct ArrowSchema schema;
   auto arrow_meta = std::make_shared<KeyValueMetadata>();
