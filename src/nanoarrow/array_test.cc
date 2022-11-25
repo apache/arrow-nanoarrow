@@ -849,6 +849,79 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
+TEST(ArrayTest, ArrayTestAppendToMapArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.children[0], 2), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[0]->children[0], "key"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInit(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[0]->children[1], "value"), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve recursively without erroring
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
+
+  struct ArrowStringView string_value;
+  string_value.data = "foobar";
+  string_value.n_bytes = 6;
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0]->children[0], 123), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.children[0]->children[1], string_value),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(array.children[0]), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 1 child of list array but found 0 child arrays");
+  array.n_children = 1;
+
+  // Make sure final child size is checked at finish
+  array.children[0]->length = array.children[0]->length - 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected child of list array with length >= 1 but found array with length 0");
+
+  array.children[0]->length = array.children[0]->length + 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
+
+  auto maybe_arrow_array = ImportArray(&array, &schema);
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = std::move(maybe_arrow_array).MoveValueUnsafe();
+
+  auto key_builder = std::make_shared<Int32Builder>();
+  auto value_builder = std::make_shared<StringBuilder>();
+  auto builder =
+      MapBuilder(default_memory_pool(), key_builder, value_builder, map(int32(), utf8()));
+  ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(key_builder->Append(123));
+  ARROW_EXPECT_OK(value_builder->Append("foobar"));
+  ARROW_EXPECT_OK(builder.AppendNull());
+  auto maybe_expected_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_expected_array);
+  auto expected_array = std::move(maybe_expected_array).MoveValueUnsafe();
+
+  EXPECT_TRUE(arrow_array->Equals(expected_array));
+}
+
 TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
