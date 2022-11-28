@@ -303,10 +303,10 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
     case NANOARROW_TYPE_DOUBLE:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &value, sizeof(double)));
       break;
-    case NANOARROW_TYPE_FLOAT:
-      _NANOARROW_CHECK_RANGE(value, FLT_MIN, FLT_MAX);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
+    case NANOARROW_TYPE_FLOAT: {
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
+    }
     default:
       return EINVAL;
   }

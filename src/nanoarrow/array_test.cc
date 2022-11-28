@@ -16,12 +16,14 @@
 // under the License.
 
 #include <gtest/gtest.h>
+#include <math.h>
 
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
 #include <arrow/array/builder_nested.h>
 #include <arrow/array/builder_primitive.h>
 #include <arrow/c/bridge.h>
+#include <arrow/compare.h>
 
 #include "nanoarrow/nanoarrow.h"
 
@@ -553,18 +555,33 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<double>::max()),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, NAN), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(array.length, 5);
+  EXPECT_EQ(array.length, 11);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto data_buffer = reinterpret_cast<const double*>(array.buffers[1]);
-  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08 | 0x10);
+  EXPECT_EQ(validity_buffer[0], 0b11111001);
+  EXPECT_EQ(validity_buffer[1], 0b00000111);
   EXPECT_EQ(data_buffer[0], 1);
   EXPECT_EQ(data_buffer[1], 0);
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_EQ(data_buffer[3], 3);
   EXPECT_DOUBLE_EQ(data_buffer[4], 3.14);
+  EXPECT_FLOAT_EQ(data_buffer[4], 3.14);
+  EXPECT_FLOAT_EQ(data_buffer[5], std::numeric_limits<double>::max());
+  EXPECT_TRUE(std::isnan(data_buffer[6])) << data_buffer[6];
+  EXPECT_FLOAT_EQ(data_buffer[7], INFINITY);
+  EXPECT_FLOAT_EQ(data_buffer[8], -INFINITY);
+  EXPECT_FLOAT_EQ(data_buffer[9], -1);
+  EXPECT_FLOAT_EQ(data_buffer[10], 0);
 
   auto arrow_array = ImportArray(&array, float64());
   ARROW_EXPECT_OK(arrow_array);
@@ -574,9 +591,16 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append(3));
   ARROW_EXPECT_OK(builder.Append(3.14));
+  ARROW_EXPECT_OK(builder.Append(std::numeric_limits<double>::max()));
+  ARROW_EXPECT_OK(builder.Append(NAN));
+  ARROW_EXPECT_OK(builder.Append(INFINITY));
+  ARROW_EXPECT_OK(builder.Append(-INFINITY));
+  ARROW_EXPECT_OK(builder.Append(-1));
+  ARROW_EXPECT_OK(builder.Append(0));
   auto expected_array = builder.Finish();
 
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+  auto options = arrow::EqualOptions::Defaults().nans_equal(true);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe(), options));
 }
 
 TEST(ArrayTest, ArrayTestAppendToFloatArray) {
@@ -588,19 +612,32 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<double>::max()), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<double>::max()),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, NAN), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(array.length, 5);
+  EXPECT_EQ(array.length, 11);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto data_buffer = reinterpret_cast<const float*>(array.buffers[1]);
-  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08 | 0x10);
+  EXPECT_EQ(validity_buffer[0], 0b11111001);
+  EXPECT_EQ(validity_buffer[1], 0b00000111);
   EXPECT_EQ(data_buffer[0], 1);
   EXPECT_EQ(data_buffer[1], 0);
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_EQ(data_buffer[3], 3);
   EXPECT_FLOAT_EQ(data_buffer[4], 3.14);
+  EXPECT_FLOAT_EQ(data_buffer[5], std::numeric_limits<float>::max());
+  EXPECT_TRUE(std::isnan(data_buffer[6])) << data_buffer[6];
+  EXPECT_FLOAT_EQ(data_buffer[7], INFINITY);
+  EXPECT_FLOAT_EQ(data_buffer[8], -INFINITY);
+  EXPECT_FLOAT_EQ(data_buffer[9], -1);
+  EXPECT_FLOAT_EQ(data_buffer[10], 0);
 
   auto arrow_array = ImportArray(&array, float32());
   ARROW_EXPECT_OK(arrow_array);
@@ -610,9 +647,16 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append(3));
   ARROW_EXPECT_OK(builder.Append(3.14));
+  ARROW_EXPECT_OK(builder.Append(std::numeric_limits<double>::max()));
+  ARROW_EXPECT_OK(builder.Append(NAN));
+  ARROW_EXPECT_OK(builder.Append(INFINITY));
+  ARROW_EXPECT_OK(builder.Append(-INFINITY));
+  ARROW_EXPECT_OK(builder.Append(-1));
+  ARROW_EXPECT_OK(builder.Append(0));
   auto expected_array = builder.Finish();
 
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+  auto options = arrow::EqualOptions::Defaults().nans_equal(true);
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe(), options));
 }
 
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {
