@@ -875,9 +875,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
 
-  struct ArrowStringView string_value;
-  string_value.data = "foobar";
-  string_value.n_bytes = 6;
+  struct ArrowStringView string_value = ArrowCharView("foobar");
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0]->children[0], 123), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(array.children[0]->children[1], string_value),
             NANOARROW_OK);
