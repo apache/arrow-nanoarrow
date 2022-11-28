@@ -20,7 +20,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha52688b5d12fb5c93414250d5d6829bb741954610"
+#define NANOARROW_BUILD_ID "ghabf2418ab92053614ad3354f3386e56f393a6a0c8"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -2268,6 +2268,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       child_length = array->children[0]->length;
       if (child_length > INT32_MAX) {
         return EINVAL;
