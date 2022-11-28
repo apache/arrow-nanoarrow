@@ -888,7 +888,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected 1 child of list array but found 0 child arrays");
+               "Expected 1 child of map array but found 0 child arrays");
   array.n_children = 1;
 
   // Make sure final child size is checked at finish
@@ -896,7 +896,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
-      "Expected child of list array with length >= 1 but found array with length 0");
+      "Expected child of map array with length >= 1 but found array with length 0");
 
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
