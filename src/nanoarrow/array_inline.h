@@ -401,6 +401,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       child_length = array->children[0]->length;
       if (child_length > INT32_MAX) {
         return EINVAL;
