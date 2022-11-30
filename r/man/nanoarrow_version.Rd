@@ -18,6 +18,6 @@ was compiled against.
 Underlying 'nanoarrow' C library build
 }
 \examples{
-nanoarrow_build_id()
+nanoarrow_version()
 
 }

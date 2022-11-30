@@ -34,7 +34,7 @@ NULL
 #' @export
 #'
 #' @examples
-#' nanoarrow_build_id()
+#' nanoarrow_version()
 #'
 nanoarrow_version <- function(runtime = TRUE) {
   if (runtime) {
