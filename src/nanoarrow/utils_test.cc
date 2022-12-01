@@ -29,6 +29,11 @@ TEST(BuildIdTest, BuildIdTest) {
   EXPECT_STREQ(ArrowNanoarrowBuildId(), NANOARROW_BUILD_ID);
 }
 
+TEST(BuildIdTest, VersionTest) {
+  EXPECT_STREQ(ArrowNanoarrowVersion(), NANOARROW_VERSION);
+  EXPECT_EQ(ArrowNanoarrowVersionInt(), NANOARROW_VERSION_INT);
+}
+
 TEST(ErrorTest, ErrorTestSet) {
   ArrowError error;
   EXPECT_EQ(ArrowErrorSet(&error, "there were %d foxes", 4), NANOARROW_OK);
