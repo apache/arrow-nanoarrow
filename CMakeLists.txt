@@ -93,6 +93,7 @@ else()
         nanoarrow
         src/nanoarrow/array.c
         src/nanoarrow/schema.c
+        src/nanoarrow/array_stream.c
         src/nanoarrow/utils.c)
 
     target_include_directories(nanoarrow PUBLIC

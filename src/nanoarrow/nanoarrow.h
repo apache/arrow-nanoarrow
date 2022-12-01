@@ -859,6 +859,44 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
 
 /// @}
 
+/// \defgroup nanoarrow-basic-array-stream Basic ArrowArrayStream implementation
+///
+/// An implementation of an ArrowArrayStream based on a collection of
+/// zero or more previously-existing ArrowArray objects. Users should
+/// initialize and/or validate the contents before transferring the
+/// responsibility of the ArrowArrayStream elsewhere.
+///
+/// @{
+
+/// \brief Initialize an ArrowArrayStream backed by this implementation
+///
+/// This function moves the ownership of schema to the array_stream. If
+/// this function returns NANOARROW_OK, the caller is responsible for
+/// releasing the ArrowArrayStream.
+ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
+                                         struct ArrowSchema* schema,
+                                         int64_t n_arrays);
+
+/// \brief Set the ith ArrowArray in this ArrowArrayStream.
+///
+/// array_stream must have been initialized with ArrowBasicArrayStreamInit().
+/// This function move the ownership of array to the array_stream. i must
+/// be greater than zero and less than the value of n_arrays passed in
+/// ArrowBasicArrayStreamInit(). Callers are not required to fill all
+/// n_arrays members (i.e., n_arrays is a maximum bound).
+void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream,
+                                   int64_t i, struct ArrowArray* array);
+
+/// \brief Validate the contents of this ArrowArrayStream
+///
+/// array_stream must have been initialized with ArrowBasicArrayStreamInit().
+/// This function uses ArrowArrayStreamInitFromSchema() and ArrowArrayStreamSetAray()
+/// to validate the contents of the arrays.
+ArrowErrorCode ArrowBasicArrayStreamValidate(struct ArrowArrayStream* array_stream,
+                                             struct ArrowError* error);
+
+/// @}
+
 // Inline function definitions
 #include "array_inline.h"
 #include "buffer_inline.h"
