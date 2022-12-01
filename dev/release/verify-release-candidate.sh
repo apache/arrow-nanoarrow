@@ -20,6 +20,7 @@
 # Requirements
 # - cmake >= 3.16
 # - R >= 3.5.0
+# - Arrow C++ >= 10.0.0
 
 set -e
 set -o pipefail
@@ -46,18 +47,19 @@ case $# in
      echo "    $0 X.Y.Z RC_NUMBER"
      echo "  Verify only the source distribution:"
      echo "    TEST_DEFAULT=0 TEST_SOURCE=1 $0 X.Y.Z RC_NUMBER"
-     echo "  Verify only the binary distributions:"
-     echo "    TEST_DEFAULT=0 TEST_BINARIES=1 $0 X.Y.Z RC_NUMBER"
-     echo "  Verify only the wheels:"
-     echo "    TEST_DEFAULT=0 TEST_WHEELS=1 $0 X.Y.Z RC_NUMBER"
      echo ""
      echo "  Run the source verification tasks on a remote git revision:"
      echo "    $0 GIT-REF"
-     echo "  Run the source verification tasks on this arrow checkout:"
+     echo "  Run the source verification tasks on this nanoarrow checkout:"
      echo "    $0"
      exit 1
      ;;
 esac
+
+# Note that these point to the current verify-release-candidate.sh directories
+# which is different from the NANOARROW_SOURCE_DIR set in ensure_source_directory()
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+NANOARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
 show_header() {
   echo ""
@@ -78,7 +80,7 @@ download_dist_file() {
     --show-error \
     --fail \
     --location \
-    --remote-name $ARROW_DIST_URL/$1
+    --remote-name $NANOARROW_DIST_URL/$1
 }
 
 download_rc_file() {
@@ -167,7 +169,9 @@ test_and_install_c() {
   mkdir -p $NANOARROW_TMPDIR/build
   pushd $NANOARROW_TMPDIR/build
 
-  cmake ${NANOARROW_SOURCE_DIR} -DNANOARROW_BUILD_TESTS=ON
+  cmake ${NANOARROW_SOURCE_DIR} \
+    -DNANOARROW_BUILD_TESTS=ON \
+    ${NANOARROW_CMAKE_OPTIONS:-}
   cmake --build .
   cmake --install . --prefix=$NANOARROW_HOME
   ctest --output-on-failure
@@ -181,7 +185,10 @@ test_c_bundled() {
   mkdir -p $NANOARROW_TMPDIR/build_bundled
   pushd $NANOARROW_TMPDIR/build_bundled
 
-  cmake ${NANOARROW_SOURCE_DIR} -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
+  cmake ${NANOARROW_SOURCE_DIR} \
+    -DNANOARROW_BUILD_TESTS=ON \
+    -DNANOARROW_BUNDLE=ON \
+    ${NANOARROW_CMAKE_OPTIONS:-}
   cmake --build .
   ctest --output-on-failure
 
@@ -191,23 +198,28 @@ test_c_bundled() {
 test_r() {
   show_header "Build and test R package"
 
-  if [ -z "${R_HOME}" ]; then
+  if [ ! -z "${R_HOME}" ]; then
     R_BIN=${R_HOME}/bin/R
   else
     R_BIN=R
   fi
 
-  $R_BIN -e 'install.packages("pak"); pak::local_install_dev_deps("r")'
+  $R_BIN -e 'install.packages("pak", repos = "https://cloud.r-project.org"); pak::local_install_dev_deps("r")'
 
+  # Vendors the local checkout version of nanoarrow
   pushd r
-  ./cleanup
   ./configure
   popd
 
-  R_PACKAGE_TARBALL=`$R_BIN CMD build r`
-  $R_BIN CMD install $R_PACKAGE_TARBALL
-  $R_BIN -e 'testthat::test_local("r")'
-  $R_BIN CMD check $R_PACKAGE_TARBALL
+  # Builds the R source tarball
+  pushd $NANOARROW_TMPDIR
+  $R_BIN CMD build $NANOARROW_SOURCE_DIR/r
+  R_PACKAGE_TARBALL_NAME=`ls nanoarrow_*.tar.gz`
+
+  # Runs R CMD check on the tarball
+  $R_BIN CMD check $R_PACKAGE_TARBALL_NAME
+
+  popd
 }
 
 ensure_source_directory() {
@@ -216,23 +228,23 @@ ensure_source_directory() {
   dist_name="apache-arrow-nanoarrow-${VERSION}"
 
   if [ "${SOURCE_KIND}" = "local" ]; then
-    # Local nanoarrow repository, testing repositories should be already present
-    if [ -z "$ARROW_SOURCE_DIR" ]; then
-      export ARROW_SOURCE_DIR="${ARROW_DIR}"
+    # Local nanoarrow repository
+    if [ -z "$NANOARROW_SOURCE_DIR" ]; then
+      export NANOARROW_SOURCE_DIR="${NANOARROW_DIR}"
     fi
-    echo "Verifying local Arrow checkout at ${ARROW_SOURCE_DIR}"
+    echo "Verifying local nanoarrow checkout at ${NANOARROW_SOURCE_DIR}"
   elif [ "${SOURCE_KIND}" = "git" ]; then
-    # Remote nanoarrow repository, testing repositories must be cloned
+    # Remote nanoarrow repository
     : ${SOURCE_REPOSITORY:="https://github.com/apache/arrow-nanoarrow"}
     echo "Verifying nanoarrow repository ${SOURCE_REPOSITORY} with revision checkout ${VERSION}"
     export NANOARROW_SOURCE_DIR="${NANOARROW_TMPDIR}/arrow-nanoarrow"
-    if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
+    if [ ! -d "${NANOARROW_SOURCE_DIR}" ]; then
       git clone --recurse-submodules $SOURCE_REPOSITORY $NANOARROW_SOURCE_DIR
       git -C $NANOARROW_SOURCE_DIR checkout $VERSION
     fi
   else
-    # Release tarball, testing repositories must be cloned separately
-    echo "Verifying official nano release candidate ${VERSION}-rc${RC_NUMBER}"
+    # Release tarball
+    echo "Verifying official nanoarrow release candidate ${VERSION}-rc${RC_NUMBER}"
     export NANOARROW_SOURCE_DIR="${NANOARROW_TMPDIR}/${dist_name}"
     if [ ! -d "${NANOARROW_SOURCE_DIR}" ]; then
       pushd $NANOARROW_TMPDIR
@@ -241,23 +253,12 @@ ensure_source_directory() {
       popd
     fi
   fi
-
-  # Ensure that the testing repositories are cloned
-  if [ ! -d "${NANOARROW_SOURCE_DIR}/testing/data" ]; then
-    git clone https://github.com/apache/arrow-testing.git ${ARROW_SOURCE_DIR}/testing
-  fi
-
-  export NANOARROW_TEST_DATA=$ARROW_SOURCE_DIR/testing/data
 }
 
 
 test_source_distribution() {
   export NANOARROW_HOME=$NANOARROW_TMPDIR/install
   pushd $NANOARROW_SOURCE_DIR
-
-
-  test_and_install_c
-  test_and_install_c_bundled
 
   if [ ${TEST_C} -gt 0 ]; then
     test_and_install_c
@@ -280,13 +281,15 @@ test_source_distribution() {
 : ${TEST_DEFAULT:=1}
 
 : ${TEST_SOURCE:=${TEST_DEFAULT}}
+: ${TEST_C:=${TEST_SOURCE}}
+: ${TEST_C_BUNDLED:=${TEST_SOURCE}}
+: ${TEST_R:=${TEST_SOURCE}}
 
 TEST_SUCCESS=no
 
 setup_tempdir
 ensure_source_directory
 test_source_distribution
-test_binary_distribution
 
 TEST_SUCCESS=yes
 
