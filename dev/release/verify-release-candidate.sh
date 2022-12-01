@@ -83,7 +83,7 @@ show_info() {
   echo "└ ${1}"
 }
 
-NANOARROW_DIST_URL='https://dist.apache.org/repos/dist/dev/nanoarrow'
+NANOARROW_DIST_URL='https://dist.apache.org/repos/dist/dev/arrow'
 
 download_dist_file() {
   curl \
