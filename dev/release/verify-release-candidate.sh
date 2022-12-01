@@ -73,10 +73,14 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 NANOARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
 show_header() {
-  echo ""
-  printf '=%.0s' $(seq ${#1}); printf '\n'
-  echo "${1}"
-  printf '=%.0s' $(seq ${#1}); printf '\n'
+  if [ -z "$GITHUB_WORKSPACE" ]; then
+    echo ""
+    printf '=%.0s' $(seq ${#1}); printf '\n'
+    echo "${1}"
+    printf '=%.0s' $(seq ${#1}); printf '\n'
+  else
+    echo "::group::${1}"; printf '\n'
+  fi
 }
 
 show_info() {
