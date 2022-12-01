@@ -68,6 +68,10 @@ static void ArrowBasicArrayStreamRelease(struct ArrowArrayStream* array_stream) 
   struct BasicArrayStreamPrivate* private =
       (struct BasicArrayStreamPrivate*)array_stream->private_data;
 
+  if (private->schema.release != NULL) {
+    private->schema.release(&private->schema);
+  }
+
   for (int64_t i = 0; i < private->n_arrays; i++) {
     if (private->arrays[i].release != NULL) {
       private->arrays[i].release(&private->arrays[i]);
@@ -79,6 +83,7 @@ static void ArrowBasicArrayStreamRelease(struct ArrowArrayStream* array_stream) 
   }
 
   ArrowFree(private);
+  array_stream->release = NULL;
 }
 
 ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
@@ -89,7 +94,8 @@ ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
     return ENOMEM;
   }
 
-  private->schema.release = NULL;
+  ArrowSchemaMove(schema, &private->schema);
+
   private->n_arrays = n_arrays;
   private->arrays = NULL;
   private->arrays_i = 0;
@@ -98,7 +104,7 @@ ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
     private->arrays =
         (struct ArrowArray*)ArrowMalloc(n_arrays * sizeof(struct ArrowArray));
     if (private->arrays == NULL) {
-      ArrowFree(private);
+      ArrowBasicArrayStreamRelease(array_stream);
       return ENOMEM;
     }
   }
