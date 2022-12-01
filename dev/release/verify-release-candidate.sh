@@ -21,6 +21,17 @@
 # - cmake >= 3.16
 # - R >= 3.5.0
 # - Arrow C++ >= 10.0.0
+#
+# Environment Variables
+# - NANOARROW_CMAKE_OPTIONS (e.g., to help cmake find Arrow C++)
+# - R_HOME: Path to the desired R installation. Defaults to `R` on PATH.
+# - TEST_SOURCE: Set to 0 to selectively run component verification.
+# - TEST_C: Builds the C library and tests using the default CMake 
+#   configuration. Defaults to the value of TEST_SOURCE.
+# - TEST_C_BUNDLED: Bundles and builds the nanoarrow.h/nanorrow.c distribution
+#   and runs tests. Defaults to the value of TEST_SOURCE.
+# - TEST_R: Builds the R package source tarball and runs R CMD check.
+#   Defaults to the value of TEST_SOURCE.
 
 set -e
 set -o pipefail
