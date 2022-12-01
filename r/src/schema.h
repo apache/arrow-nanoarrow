@@ -63,7 +63,7 @@ static inline struct ArrowSchema* nullable_schema_from_xptr(SEXP schema_xptr) {
 
 // Create an external pointer with the proper class and that will release any
 // non-null, non-released pointer when garbage collected.
-static inline SEXP schema_owning_xptr() {
+static inline SEXP schema_owning_xptr(void) {
   struct ArrowSchema* schema =
       (struct ArrowSchema*)ArrowMalloc(sizeof(struct ArrowSchema));
   if (schema == NULL) {

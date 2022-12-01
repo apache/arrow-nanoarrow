@@ -111,7 +111,7 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
-const char* my_library_last_error();
+const char* my_library_last_error(void);
 
 // Creates the integer array [1, 2, 3]
 int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_out);

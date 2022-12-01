@@ -21,10 +21,10 @@
 
 #include "nanoarrow.h"
 
-SEXP nanoarrow_c_build_id() {
+SEXP nanoarrow_c_build_id(void) {
   return Rf_mkString(NANOARROW_BUILD_ID);
 }
 
-SEXP nanoarrow_c_build_id_runtime() {
+SEXP nanoarrow_c_build_id_runtime(void) {
   return Rf_mkString(ArrowNanoarrowBuildId());
 }

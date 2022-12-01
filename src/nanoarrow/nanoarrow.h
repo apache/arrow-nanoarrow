@@ -140,7 +140,7 @@ void ArrowFree(void* ptr);
 ///
 /// The default allocator uses ArrowMalloc(), ArrowRealloc(), and
 /// ArrowFree().
-struct ArrowBufferAllocator ArrowBufferAllocatorDefault();
+struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 
 /// \brief Create a custom deallocator
 ///
@@ -184,7 +184,7 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 /// @{
 
 /// \brief Return the build id against which the library was compiled
-const char* ArrowNanoarrowBuildId();
+const char* ArrowNanoarrowBuildId(void);
 
 /// \brief Initialize a description of buffer arrangements from a storage type
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);

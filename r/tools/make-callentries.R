@@ -38,7 +38,7 @@ defs <- tibble(
     str_remove("SEXP nanoarrow_c_[^\\(]+\\(") %>%
     str_remove("\\)$") %>%
     str_split("\\s*,\\s*") %>%
-    map(~{if(identical(.x, "")) character(0) else .x}),
+    map(~{if(identical(.x, "") || identical(.x, "void")) character(0) else .x}),
   n_args = map(args, length)
 )
 

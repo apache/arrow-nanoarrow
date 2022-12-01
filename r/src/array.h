@@ -66,7 +66,7 @@ static inline struct ArrowArray* nullable_array_from_xptr(SEXP array_xptr) {
 
 // Create an external pointer with the proper class and that will release any
 // non-null, non-released pointer when garbage collected.
-static inline SEXP array_owning_xptr() {
+static inline SEXP array_owning_xptr(void) {
   struct ArrowArray* array = (struct ArrowArray*)ArrowMalloc(sizeof(struct ArrowArray));
   array->release = NULL;
 

@@ -24,7 +24,7 @@
 
 #include "nanoarrow.h"
 
-const char* ArrowNanoarrowBuildId() { return NANOARROW_BUILD_ID; }
+const char* ArrowNanoarrowBuildId(void) { return NANOARROW_BUILD_ID; }
 
 int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   if (error == NULL) {
@@ -178,7 +178,7 @@ static void ArrowBufferAllocatorMallocFree(struct ArrowBufferAllocator* allocato
 static struct ArrowBufferAllocator ArrowBufferAllocatorMalloc = {
     &ArrowBufferAllocatorMallocReallocate, &ArrowBufferAllocatorMallocFree, NULL};
 
-struct ArrowBufferAllocator ArrowBufferAllocatorDefault() {
+struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void) {
   return ArrowBufferAllocatorMalloc;
 }
 

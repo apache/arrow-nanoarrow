@@ -29,7 +29,7 @@ SEXP nanoarrow_cls_data_frame = NULL;
 SEXP nanoarrow_cls_schema = NULL;
 SEXP nanoarrow_cls_array_stream = NULL;
 
-void nanoarrow_init_cached_sexps() {
+void nanoarrow_init_cached_sexps(void) {
   SEXP nanoarrow_str = PROTECT(Rf_mkString("nanoarrow"));
   nanoarrow_ns_pkg = PROTECT(R_FindNamespace(nanoarrow_str));
   nanoarrow_cls_array = PROTECT(Rf_mkString("nanoarrow_array")); 
