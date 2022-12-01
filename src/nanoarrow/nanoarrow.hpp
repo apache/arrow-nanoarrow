@@ -40,8 +40,7 @@ namespace internal {
 static inline void init_pointer(struct ArrowSchema* data) { data->release = nullptr; }
 
 static inline void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
-  memcpy(dst, src, sizeof(struct ArrowSchema));
-  src->release = nullptr;
+  ArrowSchemaMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowSchema* data) {
@@ -53,8 +52,7 @@ static inline void release_pointer(struct ArrowSchema* data) {
 static inline void init_pointer(struct ArrowArray* data) { data->release = nullptr; }
 
 static inline void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
-  memcpy(dst, src, sizeof(struct ArrowArray));
-  src->release = nullptr;
+  ArrowArrayMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowArray* data) {
@@ -69,8 +67,7 @@ static inline void init_pointer(struct ArrowArrayStream* data) {
 
 static inline void move_pointer(struct ArrowArrayStream* src,
                                 struct ArrowArrayStream* dst) {
-  memcpy(dst, src, sizeof(struct ArrowArrayStream));
-  src->release = nullptr;
+  ArrowArrayStreamMove(src, dst);
 }
 
 static inline void release_pointer(ArrowArrayStream* data) {
