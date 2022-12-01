@@ -180,11 +180,18 @@ test_and_install_c() {
   mkdir -p $NANOARROW_TMPDIR/build
   pushd $NANOARROW_TMPDIR/build
 
+  show_info "Configure CMake Project"
   cmake ${NANOARROW_SOURCE_DIR} \
     -DNANOARROW_BUILD_TESTS=ON \
     ${NANOARROW_CMAKE_OPTIONS:-}
+  
+  show_info "Build CMake Project"
   cmake --build .
+
+  show_info "Install CMake Project"
   cmake --install . --prefix=$NANOARROW_HOME
+
+  show_info "Run Tests"
   ctest --output-on-failure
 
   popd
@@ -196,11 +203,16 @@ test_c_bundled() {
   mkdir -p $NANOARROW_TMPDIR/build_bundled
   pushd $NANOARROW_TMPDIR/build_bundled
 
+  show_info "Configure CMake Project"
   cmake ${NANOARROW_SOURCE_DIR} \
     -DNANOARROW_BUILD_TESTS=ON \
     -DNANOARROW_BUNDLE=ON \
     ${NANOARROW_CMAKE_OPTIONS:-}
+  
+  show_info "Build CMake Project"
   cmake --build .
+
+  show_info "Run Tests"
   ctest --output-on-failure
 
   popd
@@ -215,9 +227,10 @@ test_r() {
     R_BIN=R
   fi
 
+  show_info "Install nanoarrow test dependencies"
   $R_BIN -e 'install.packages("pak", repos = "https://cloud.r-project.org"); pak::local_install_dev_deps("r")'
 
-  # Vendors the local checkout version of nanoarrow
+  show_info "Build the R package source tarball"
   pushd r
   ./configure
   popd
@@ -227,6 +240,7 @@ test_r() {
   $R_BIN CMD build $NANOARROW_SOURCE_DIR/r
   R_PACKAGE_TARBALL_NAME=`ls nanoarrow_*.tar.gz`
 
+  show_info "Run R CMD check"
   # Runs R CMD check on the tarball
   $R_BIN CMD check $R_PACKAGE_TARBALL_NAME
 
