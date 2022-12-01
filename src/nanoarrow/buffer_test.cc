@@ -222,6 +222,19 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   EXPECT_EQ(ArrowBufferAppendFloat(&buffer, 123), NANOARROW_OK);
   EXPECT_EQ(reinterpret_cast<float*>(buffer.data)[0], 123);
   ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendStringView(&buffer, ArrowCharView("a")), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<char*>(buffer.data)[0], 'a');
+  EXPECT_EQ(buffer.size_bytes, 1);
+  ArrowBufferReset(&buffer);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = "a";
+  buffer_view.n_bytes = 1;
+  EXPECT_EQ(ArrowBufferAppendBufferView(&buffer, buffer_view), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<char*>(buffer.data)[0], 'a');
+  EXPECT_EQ(buffer.size_bytes, 1);
+  ArrowBufferReset(&buffer);
 }
 
 TEST(BitmapTest, BitmapTestElement) {

@@ -564,6 +564,14 @@ static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
 static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value);
 
+/// \brief Write an ArrowStringView to a buffer
+static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
+                                                         struct ArrowStringView value);
+
+/// \brief Write an ArrowBufferView to a buffer
+static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buffer,
+                                                         struct ArrowBufferView value);
+
 /// @}
 
 /// \defgroup nanoarrow-bitmap Bitmap utilities

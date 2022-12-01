@@ -176,6 +176,16 @@ static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
   return ArrowBufferAppend(buffer, &value, sizeof(float));
 }
 
+static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
+                                                         struct ArrowStringView value) {
+  return ArrowBufferAppend(buffer, value.data, value.n_bytes);
+}
+
+static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buffer,
+                                                         struct ArrowBufferView value) {
+  return ArrowBufferAppend(buffer, value.data.data, value.n_bytes);
+}
+
 static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
                                                    uint8_t value, int64_t size_bytes) {
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
