@@ -79,6 +79,8 @@ if(NANOARROW_BUNDLE)
     file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
     file(READ src/nanoarrow/array.c SRC_FILE_CONTENTS)
     file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
+    file(READ src/nanoarrow/array_stream.c SRC_FILE_CONTENTS)
+    file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
 
     # Add a library that the tests can link against (but don't install it)
     if(NANOARROW_BUILD_TESTS)
