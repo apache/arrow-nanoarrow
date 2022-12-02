@@ -29,7 +29,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha5eccbdd1cdcfaafd0493d96283963dc73dfa4b59"
+#define NANOARROW_BUILD_ID "gha36025e25999301f77b0447bee93e00055ff89541"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -158,6 +158,25 @@ struct ArrowArrayStream {
 
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
+
+/// \brief Move the contents of src into dst and set src->release to NULL
+static inline void ArrowSchemaMove(struct ArrowSchema* src, struct ArrowSchema* dst) {
+  memcpy(dst, src, sizeof(struct ArrowSchema));
+  src->release = NULL;
+}
+
+/// \brief Move the contents of src into dst and set src->release to NULL
+static inline void ArrowArrayMove(struct ArrowArray* src, struct ArrowArray* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArray));
+  src->release = NULL;
+}
+
+/// \brief Move the contents of src into dst and set src->release to NULL
+static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
+                                        struct ArrowArrayStream* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArrayStream));
+  src->release = NULL;
+}
 
 /// @}
 
@@ -649,6 +668,12 @@ struct ArrowArrayPrivateData {
 #define ArrowArrayViewSetArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArray)
 #define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
+#define ArrowBasicArrayStreamInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBasicArrayStreamInit)
+#define ArrowBasicArrayStreamSetArray \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBasicArrayStreamSetArray)
+#define ArrowBasicArrayStreamValidate \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBasicArrayStreamValidate)
 
 #endif
 
@@ -1027,8 +1052,7 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer);
 ///
 /// Transfers the buffer data and lifecycle management to another
 /// address and resets buffer.
-static inline void ArrowBufferMove(struct ArrowBuffer* buffer,
-                                   struct ArrowBuffer* buffer_out);
+static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst);
 
 /// \brief Grow or shrink a buffer to a given capacity
 ///
@@ -1108,6 +1132,14 @@ static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
 static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value);
 
+/// \brief Write an ArrowStringView to a buffer
+static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
+                                                         struct ArrowStringView value);
+
+/// \brief Write an ArrowBufferView to a buffer
+static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buffer,
+                                                         struct ArrowBufferView value);
+
 /// @}
 
 /// \defgroup nanoarrow-bitmap Bitmap utilities
@@ -1137,6 +1169,12 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t i_from, int6
 ///
 /// Initialize the builder's buffer, empty its cache, and reset the size to zero
 static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap);
+
+/// \brief Move an ArrowBitmap
+///
+/// Transfers the underlying buffer data and lifecycle management to another
+/// address and resets the bitmap.
+static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* dst);
 
 /// \brief Ensure a bitmap builder has at least a given additional capacity
 ///
@@ -1336,6 +1374,13 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 /// \brief Initialize the contents of an ArrowArrayView
 void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
 
+/// \brief Move an ArrowArrayView
+///
+/// Transfers the ArrowArrayView data and lifecycle management to another
+/// address and resets the contents of src.
+static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
+                                      struct ArrowArrayView* dst);
+
 /// \brief Initialize the contents of an ArrowArrayView from an ArrowSchema
 ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
                                             struct ArrowSchema* schema,
@@ -1392,6 +1437,43 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
 /// This function does not check for null values.
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     struct ArrowArrayView* array_view, int64_t i);
+
+/// @}
+
+/// \defgroup nanoarrow-basic-array-stream Basic ArrowArrayStream implementation
+///
+/// An implementation of an ArrowArrayStream based on a collection of
+/// zero or more previously-existing ArrowArray objects. Users should
+/// initialize and/or validate the contents before transferring the
+/// responsibility of the ArrowArrayStream elsewhere.
+///
+/// @{
+
+/// \brief Initialize an ArrowArrayStream backed by this implementation
+///
+/// This function moves the ownership of schema to the array_stream. If
+/// this function returns NANOARROW_OK, the caller is responsible for
+/// releasing the ArrowArrayStream.
+ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
+                                         struct ArrowSchema* schema, int64_t n_arrays);
+
+/// \brief Set the ith ArrowArray in this ArrowArrayStream.
+///
+/// array_stream must have been initialized with ArrowBasicArrayStreamInit().
+/// This function move the ownership of array to the array_stream. i must
+/// be greater than zero and less than the value of n_arrays passed in
+/// ArrowBasicArrayStreamInit(). Callers are not required to fill all
+/// n_arrays members (i.e., n_arrays is a maximum bound).
+void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream, int64_t i,
+                                   struct ArrowArray* array);
+
+/// \brief Validate the contents of this ArrowArrayStream
+///
+/// array_stream must have been initialized with ArrowBasicArrayStreamInit().
+/// This function uses ArrowArrayStreamInitFromSchema() and ArrowArrayStreamSetArray()
+/// to validate the contents of the arrays.
+ArrowErrorCode ArrowBasicArrayStreamValidate(struct ArrowArrayStream* array_stream,
+                                             struct ArrowError* error);
 
 /// @}
 
@@ -1471,11 +1553,10 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
   buffer->size_bytes = 0;
 }
 
-static inline void ArrowBufferMove(struct ArrowBuffer* buffer,
-                                   struct ArrowBuffer* buffer_out) {
-  memcpy(buffer_out, buffer, sizeof(struct ArrowBuffer));
-  buffer->data = NULL;
-  ArrowBufferReset(buffer);
+static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
+  memcpy(dst, src, sizeof(struct ArrowBuffer));
+  src->data = NULL;
+  ArrowBufferReset(src);
 }
 
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
@@ -1580,6 +1661,16 @@ static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
 static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value) {
   return ArrowBufferAppend(buffer, &value, sizeof(float));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
+                                                         struct ArrowStringView value) {
+  return ArrowBufferAppend(buffer, value.data, value.n_bytes);
+}
+
+static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buffer,
+                                                         struct ArrowBufferView value) {
+  return ArrowBufferAppend(buffer, value.data.data, value.n_bytes);
 }
 
 static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
@@ -1730,6 +1821,12 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t start_offset
 static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap) {
   ArrowBufferInit(&bitmap->buffer);
   bitmap->size_bits = 0;
+}
+
+static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
+  ArrowBufferMove(&src->buffer, &dst->buffer);
+  dst->size_bits = src->size_bits;
+  src->size_bits = 0;
 }
 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
@@ -2323,6 +2420,12 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
 
   array->length++;
   return NANOARROW_OK;
+}
+
+static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
+                                      struct ArrowArrayView* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArrayView));
+  ArrowArrayViewInit(src, NANOARROW_TYPE_UNINITIALIZED);
 }
 
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i) {
