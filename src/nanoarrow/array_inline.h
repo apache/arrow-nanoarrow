@@ -440,6 +440,12 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
   return NANOARROW_OK;
 }
 
+static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
+                                      struct ArrowArrayView* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArrayView));
+  ArrowArrayViewInit(src, NANOARROW_TYPE_UNINITIALIZED);
+}
+
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i) {
   const uint8_t* validity_buffer = array_view->buffer_views[0].data.as_uint8;
   i += array_view->array->offset;

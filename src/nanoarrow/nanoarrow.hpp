@@ -87,9 +87,7 @@ static inline void release_pointer(struct ArrowBuffer* data) { ArrowBufferReset(
 static inline void init_pointer(struct ArrowBitmap* data) { ArrowBitmapInit(data); }
 
 static inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
-  ArrowBufferMove(&src->buffer, &dst->buffer);
-  dst->size_bits = src->size_bits;
-  src->size_bits = 0;
+  ArrowBitmapMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }

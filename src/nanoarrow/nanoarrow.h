@@ -812,6 +812,13 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 /// \brief Initialize the contents of an ArrowArrayView
 void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
 
+/// \brief Move an ArrowArrayView
+///
+/// Transfers the ArrowArrayView data and lifecycle management to another
+/// address and resets the contents of src.
+static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
+                                      struct ArrowArrayView* dst);
+
 /// \brief Initialize the contents of an ArrowArrayView from an ArrowSchema
 ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
                                             struct ArrowSchema* schema,
