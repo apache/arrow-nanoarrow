@@ -15,9 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("nanoarrow_build_id() works", {
+test_that("nanoarrow_version() works", {
   expect_identical(
-    nanoarrow_build_id(runtime = TRUE),
-    nanoarrow_build_id(runtime = FALSE)
+    nanoarrow_version(runtime = TRUE),
+    nanoarrow_version(runtime = FALSE)
   )
 })

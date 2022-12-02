@@ -34,12 +34,12 @@ NULL
 #' @export
 #'
 #' @examples
-#' nanoarrow_build_id()
+#' nanoarrow_version()
 #'
-nanoarrow_build_id <- function(runtime = TRUE) {
+nanoarrow_version <- function(runtime = TRUE) {
   if (runtime) {
-    .Call(nanoarrow_c_build_id_runtime)
+    .Call(nanoarrow_c_version_runtime)
   } else {
-    .Call(nanoarrow_c_build_id)
+    .Call(nanoarrow_c_version)
   }
 }

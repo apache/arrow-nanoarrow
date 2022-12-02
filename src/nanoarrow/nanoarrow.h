@@ -36,6 +36,9 @@
 #define NANOARROW_SYMBOL(A, B) NANOARROW_CAT(A, B)
 
 #define ArrowNanoarrowBuildId NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowBuildId)
+#define ArrowNanoarrowVersion NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersion)
+#define ArrowNanoarrowVersionInt \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersionInt)
 #define ArrowErrorMessage NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorMessage)
 #define ArrowMalloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMalloc)
 #define ArrowRealloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowRealloc)
@@ -185,6 +188,12 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \brief Return the build id against which the library was compiled
 const char* ArrowNanoarrowBuildId(void);
+
+/// \brief Return a version string in the form "major.minor.patch"
+const char* ArrowNanoarrowVersion();
+
+/// \brief Return an integer that can be used to compare versions sequentially
+int ArrowNanoarrowVersionInt();
 
 /// \brief Initialize a description of buffer arrangements from a storage type
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
