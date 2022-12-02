@@ -48,7 +48,7 @@ static inline struct ArrowArrayStream* array_stream_from_xptr(SEXP array_stream_
 
 // Create an external pointer with the proper class and that will release any
 // non-null, non-released pointer when garbage collected.
-static inline SEXP array_stream_owning_xptr() {
+static inline SEXP array_stream_owning_xptr(void) {
   struct ArrowArrayStream* array_stream =
       (struct ArrowArrayStream*)ArrowMalloc(sizeof(struct ArrowArrayStream));
   array_stream->release = NULL;

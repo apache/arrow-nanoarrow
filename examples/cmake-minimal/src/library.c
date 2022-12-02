@@ -26,7 +26,7 @@
 
 static struct ArrowError global_error;
 
-const char* my_library_last_error() { return ArrowErrorMessage(&global_error); }
+const char* my_library_last_error(void) { return ArrowErrorMessage(&global_error); }
 
 int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_out) {
   ArrowErrorSet(&global_error, "");

@@ -26,7 +26,7 @@
 
 static struct ArrowError global_error;
 
-const char* my_library_last_error() { return ArrowErrorMessage(&global_error); }
+const char* my_library_last_error(void) { return ArrowErrorMessage(&global_error); }
 
 int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_out) {
   ArrowErrorSet(&global_error, "");
@@ -40,7 +40,7 @@ int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_o
   NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 2));
   NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 3));
   NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array_out, &global_error));
-  
+
   NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema_out, NANOARROW_TYPE_INT32));
 
   return NANOARROW_OK;
@@ -48,7 +48,8 @@ int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_o
 
 int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema) {
   struct ArrowArrayView array_view;
-  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, &global_error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayViewInitFromSchema(&array_view, schema, &global_error));
 
   if (array_view.storage_type != NANOARROW_TYPE_INT32) {
     printf("Array has storage that is not int32\n");
