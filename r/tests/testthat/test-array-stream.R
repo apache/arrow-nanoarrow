@@ -15,6 +15,59 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("basic_array_stream() can create empty streams", {
+  stream <- basic_array_stream(list(), infer_nanoarrow_schema(integer()))
+  expect_identical(stream$get_schema()$format, "i")
+  expect_null(stream$get_next())
+
+  expect_error(
+    basic_array_stream(list()),
+    "Can't infer schema from first batch if there are zero batches"
+  )
+})
+
+test_that("basic_array_stream() can create streams from batches", {
+  stream <- basic_array_stream(
+    list(
+      data.frame(a = 1, b = "two", stringsAsFactors = FALSE),
+      data.frame(a = 2, b = "three", stringsAsFactors = FALSE)
+    )
+  )
+
+  expect_identical(stream$get_schema()$format, "+s")
+  expect_identical(
+    as.data.frame(stream$get_next()),
+    data.frame(a = 1, b = "two", stringsAsFactors = FALSE)
+  )
+  expect_identical(
+    as.data.frame(stream$get_next()),
+    data.frame(a = 2, b = "three", stringsAsFactors = FALSE)
+  )
+  expect_null(stream$get_next())
+})
+
+test_that("basic_array_stream() can validate input or skip validation", {
+  invalid_stream <- basic_array_stream(
+    list(
+      as_nanoarrow_array(1:5),
+      as_nanoarrow_array(data.frame(a = 1:5))
+    ),
+    validate = FALSE
+  )
+  expect_s3_class(invalid_stream, "nanoarrow_array_stream")
+
+  expect_error(
+    basic_array_stream(
+      list(
+        as_nanoarrow_array(1:5),
+        as_nanoarrow_array(data.frame(a = 1:5))
+      ),
+      validate = TRUE
+    ),
+    "Expected array with 2 buffer"
+  )
+})
+
 test_that("nanoarrow_array_stream format, print, and str methods work", {
   array_stream <- as_nanoarrow_array_stream(data.frame(x = 1:10))
   expect_identical(format(array_stream), "<nanoarrow_array_stream struct<x: int32>>")

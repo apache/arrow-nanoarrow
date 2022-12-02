@@ -125,6 +125,25 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
+/// \brief Move the contents of src into dst and set src->release to NULL
+static inline void ArrowSchemaMove(struct ArrowSchema* src, struct ArrowSchema* dst) {
+  memcpy(dst, src, sizeof(struct ArrowSchema));
+  src->release = NULL;
+}
+
+/// \brief Move the contents of src into dst and set src->release to NULL
+static inline void ArrowArrayMove(struct ArrowArray* src, struct ArrowArray* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArray));
+  src->release = NULL;
+}
+
+/// \brief Move the contents of src into dst and set src->release to NULL
+static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
+                                        struct ArrowArrayStream* dst) {
+  memcpy(dst, src, sizeof(struct ArrowArrayStream));
+  src->release = NULL;
+}
+
 /// @}
 
 // Utility macros

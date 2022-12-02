@@ -65,11 +65,10 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
   buffer->size_bytes = 0;
 }
 
-static inline void ArrowBufferMove(struct ArrowBuffer* buffer,
-                                   struct ArrowBuffer* buffer_out) {
-  memcpy(buffer_out, buffer, sizeof(struct ArrowBuffer));
-  buffer->data = NULL;
-  ArrowBufferReset(buffer);
+static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
+  memcpy(dst, src, sizeof(struct ArrowBuffer));
+  src->data = NULL;
+  ArrowBufferReset(src);
 }
 
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
@@ -174,6 +173,16 @@ static inline ArrowErrorCode ArrowBufferAppendDouble(struct ArrowBuffer* buffer,
 static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value) {
   return ArrowBufferAppend(buffer, &value, sizeof(float));
+}
+
+static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
+                                                         struct ArrowStringView value) {
+  return ArrowBufferAppend(buffer, value.data, value.n_bytes);
+}
+
+static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buffer,
+                                                         struct ArrowBufferView value) {
+  return ArrowBufferAppend(buffer, value.data.data, value.n_bytes);
 }
 
 static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
@@ -324,6 +333,12 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t start_offset
 static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap) {
   ArrowBufferInit(&bitmap->buffer);
   bitmap->size_bits = 0;
+}
+
+static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
+  ArrowBufferMove(&src->buffer, &dst->buffer);
+  dst->size_bits = src->size_bits;
+  src->size_bits = 0;
 }
 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,

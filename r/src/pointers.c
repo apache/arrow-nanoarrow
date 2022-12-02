@@ -137,10 +137,8 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
     if (obj_src == NULL || obj_src->release == NULL) {
       Rf_error("`ptr_src` is not a valid struct ArrowSchema");
     }
-
-    memcpy(obj_dst, obj_src, sizeof(struct ArrowSchema));
-    obj_src->release = NULL;
-
+    
+    ArrowSchemaMove(obj_src, obj_dst);
   } else if (Rf_inherits(ptr_dst, "nanoarrow_array")) {
     struct ArrowArray* obj_dst = (struct ArrowArray*)R_ExternalPtrAddr(ptr_dst);
     if (obj_dst == NULL) {
@@ -156,9 +154,7 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
       Rf_error("`ptr_src` is not a valid struct ArrowArray");
     }
 
-    memcpy(obj_dst, obj_src, sizeof(struct ArrowArray));
-    obj_src->release = NULL;
-
+    ArrowArrayMove(obj_src, obj_dst);
   } else if (Rf_inherits(ptr_dst, "nanoarrow_array_stream")) {
     struct ArrowArrayStream* obj_dst =
         (struct ArrowArrayStream*)R_ExternalPtrAddr(ptr_dst);
@@ -176,9 +172,7 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
       Rf_error("`ptr_src` is not a valid struct ArrowArrayStream");
     }
 
-    memcpy(obj_dst, obj_src, sizeof(struct ArrowArrayStream));
-    obj_src->release = NULL;
-
+    ArrowArrayStreamMove(obj_src, obj_dst);
   } else {
     Rf_error(
         "`ptr_dst` must inherit from 'nanoarrow_schema', 'nanoarrow_array', or "

@@ -1127,6 +1127,22 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewTestMove) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_STRING);
+  ASSERT_EQ(array_view.storage_type, NANOARROW_TYPE_STRING);
+
+  struct ArrowArrayView array_view2;
+  ArrowArrayViewInit(&array_view2, NANOARROW_TYPE_UNINITIALIZED);
+  ASSERT_EQ(array_view2.storage_type, NANOARROW_TYPE_UNINITIALIZED);
+
+  ArrowArrayViewMove(&array_view, &array_view2);
+  EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(array_view2.storage_type, NANOARROW_TYPE_STRING);
+
+  ArrowArrayViewReset(&array_view2);
+}
+
 TEST(ArrayTest, ArrayViewTestString) {
   struct ArrowArrayView array_view;
   struct ArrowError error;

@@ -15,6 +15,41 @@
 # specific language governing permissions and limitations
 # under the License.
 
+#' Create ArrayStreams from batches
+#'
+#' @param batches A [list()] of [nanoarrow_array][as_nanoarrow_array] objects
+#'   or objects that can be coerced via [as_nanoarrow_array()].
+#' @param schema A [nanoarrow_schema][as_nanoarrow_schema] or `NULL` to guess
+#'   based on the first schema.
+#' @param validate Use `FALSE` to skip the validation step (i.e., if you
+#'   know that the arrays are valid).
+#'
+#' @return An [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#' @export
+#'
+#' @examples
+#' (stream <- basic_array_stream(list(data.frame(a = 1, b = 2))))
+#' as.data.frame(stream$get_next())
+#' stream$get_next()
+#'
+basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
+  # Error for everything except a bare list (e.g., so that calling with
+  # a data.frame() does not unintentionally loop over columns)
+  if (!identical(class(batches), "list")) {
+    stop("`batches` must be an unclassed `list()`")
+  }
+
+  batches <- lapply(batches, as_nanoarrow_array, schema = schema)
+
+  if (is.null(schema) && length(batches) > 0) {
+    schema <- infer_nanoarrow_schema(batches[[1]])
+  } else if (is.null(schema)) {
+    stop("Can't infer schema from first batch if there are zero batches")
+  }
+
+  .Call(nanoarrow_c_basic_array_stream, batches, schema, validate)
+}
+
 #' Convert an object to a nanoarrow array_stream
 #'
 #' In nanoarrow, an 'array stream' corresponds to the `struct ArrowArrayStream`

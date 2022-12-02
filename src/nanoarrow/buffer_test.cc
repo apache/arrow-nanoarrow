@@ -222,6 +222,19 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   EXPECT_EQ(ArrowBufferAppendFloat(&buffer, 123), NANOARROW_OK);
   EXPECT_EQ(reinterpret_cast<float*>(buffer.data)[0], 123);
   ArrowBufferReset(&buffer);
+
+  EXPECT_EQ(ArrowBufferAppendStringView(&buffer, ArrowCharView("a")), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<char*>(buffer.data)[0], 'a');
+  EXPECT_EQ(buffer.size_bytes, 1);
+  ArrowBufferReset(&buffer);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = "a";
+  buffer_view.n_bytes = 1;
+  EXPECT_EQ(ArrowBufferAppendBufferView(&buffer, buffer_view), NANOARROW_OK);
+  EXPECT_EQ(reinterpret_cast<char*>(buffer.data)[0], 'a');
+  EXPECT_EQ(buffer.size_bytes, 1);
+  ArrowBufferReset(&buffer);
 }
 
 TEST(BitmapTest, BitmapTestElement) {
@@ -364,6 +377,24 @@ TEST(BitmapTest, BitmapTestAppend) {
   }
 
   ArrowBitmapReset(&bitmap);
+}
+
+TEST(BitmapTest, BitmapTestMove) {
+  struct ArrowBitmap bitmap;
+  ArrowBitmapInit(&bitmap);
+  ASSERT_EQ(ArrowBitmapAppend(&bitmap, 1, 1), NANOARROW_OK);
+  ASSERT_NE(bitmap.buffer.data, nullptr);
+  ASSERT_EQ(bitmap.size_bits, 1);
+
+  struct ArrowBitmap bitmap2;
+  bitmap2.buffer.data = NULL;
+  ArrowBitmapMove(&bitmap, &bitmap2);
+  EXPECT_EQ(bitmap.buffer.data, nullptr);
+  EXPECT_EQ(bitmap.size_bits, 0);
+  EXPECT_NE(bitmap2.buffer.data, nullptr);
+  EXPECT_EQ(bitmap2.size_bits, 1);
+
+  ArrowBitmapReset(&bitmap2);
 }
 
 TEST(BitmapTest, BitmapTestResize) {

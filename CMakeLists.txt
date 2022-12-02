@@ -79,6 +79,8 @@ if(NANOARROW_BUNDLE)
     file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
     file(READ src/nanoarrow/array.c SRC_FILE_CONTENTS)
     file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
+    file(READ src/nanoarrow/array_stream.c SRC_FILE_CONTENTS)
+    file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
 
     # Add a library that the tests can link against (but don't install it)
     if(NANOARROW_BUILD_TESTS)
@@ -93,6 +95,7 @@ else()
         nanoarrow
         src/nanoarrow/array.c
         src/nanoarrow/schema.c
+        src/nanoarrow/array_stream.c
         src/nanoarrow/utils.c)
 
     target_include_directories(nanoarrow PUBLIC
@@ -154,6 +157,7 @@ if(NANOARROW_BUILD_TESTS)
     add_executable(buffer_test src/nanoarrow/buffer_test.cc)
     add_executable(array_test src/nanoarrow/array_test.cc)
     add_executable(schema_test src/nanoarrow/schema_test.cc)
+    add_executable(array_stream_test src/nanoarrow/array_stream_test.cc)
     add_executable(nanoarrow_hpp_test src/nanoarrow/nanoarrow_hpp_test.cc)
 
     if(NANOARROW_CODE_COVERAGE)
@@ -168,6 +172,7 @@ if(NANOARROW_BUILD_TESTS)
     target_link_libraries(buffer_test nanoarrow GTest::gtest_main)
     target_link_libraries(array_test nanoarrow GTest::gtest_main arrow_shared)
     target_link_libraries(schema_test nanoarrow GTest::gtest_main arrow_shared)
+    target_link_libraries(array_stream_test nanoarrow GTest::gtest_main)
     target_link_libraries(nanoarrow_hpp_test nanoarrow GTest::gtest_main)
 
     include(GoogleTest)
@@ -175,5 +180,6 @@ if(NANOARROW_BUILD_TESTS)
     gtest_discover_tests(buffer_test)
     gtest_discover_tests(array_test)
     gtest_discover_tests(schema_test)
+    gtest_discover_tests(array_stream_test)
     gtest_discover_tests(nanoarrow_hpp_test)
 endif()
