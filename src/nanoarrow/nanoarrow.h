@@ -907,7 +907,7 @@ void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream, int64_
 /// \brief Validate the contents of this ArrowArrayStream
 ///
 /// array_stream must have been initialized with ArrowBasicArrayStreamInit().
-/// This function uses ArrowArrayStreamInitFromSchema() and ArrowArrayStreamSetAray()
+/// This function uses ArrowArrayStreamInitFromSchema() and ArrowArrayStreamSetArray()
 /// to validate the contents of the arrays.
 ArrowErrorCode ArrowBasicArrayStreamValidate(struct ArrowArrayStream* array_stream,
                                              struct ArrowError* error);
