@@ -36,6 +36,8 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   ArrowBasicArrayStreamSetArray(&array_stream, 0, &array);
   EXPECT_EQ(array.release, nullptr);
 
+  EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
+
   struct ArrowSchema schema_copy;
   EXPECT_EQ(array_stream.get_schema(&array_stream, &schema_copy), NANOARROW_OK);
   EXPECT_STREQ(schema_copy.format, "i");
@@ -63,7 +65,8 @@ TEST(ArrayStreamTest, ArrayStreamTestEmpty) {
 
   ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 0), NANOARROW_OK);
-
+  EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
+  
   for (int i = 0; i < 5; i++) {
     EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
     EXPECT_EQ(array.release, nullptr);
@@ -97,5 +100,26 @@ TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
   array.release(&array);
 
   // The remaining arrays, owned by the stream, should be released here
+  array_stream.release(&array_stream);
+}
+
+TEST(ArrayStreamTest, ArrayStreamTestInvalid) {
+  struct ArrowArrayStream array_stream;
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 1), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(&array_stream, 0, &array);
+
+  EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected array with 2 buffer(s) but found 3 buffer(s)");
+
   array_stream.release(&array_stream);
 }
