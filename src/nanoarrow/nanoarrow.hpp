@@ -97,8 +97,7 @@ static inline void init_pointer(struct ArrowArrayView* data) {
 }
 
 static inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
-  memcpy(dst, src, sizeof(struct ArrowArrayView));
-  init_pointer(src);
+  ArrowArrayViewMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowArrayView* data) {
