@@ -23,7 +23,6 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   struct ArrowArrayStream array_stream;
   struct ArrowArray array;
   struct ArrowSchema schema;
-  struct ArrowError error;
 
   ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 1), NANOARROW_OK);
@@ -52,7 +51,51 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   EXPECT_EQ(array_copy.release, nullptr);
 
   EXPECT_EQ(array_stream.get_last_error(&array_stream), nullptr);
-  
+
   array_stream.release(&array_stream);
   EXPECT_EQ(array_stream.release, nullptr);
+}
+
+TEST(ArrayStreamTest, ArrayStreamTestEmpty) {
+  struct ArrowArrayStream array_stream;
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 0), NANOARROW_OK);
+
+  for (int i = 0; i < 5; i++) {
+    EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
+    EXPECT_EQ(array.release, nullptr);
+  }
+
+  array_stream.release(&array_stream);
+}
+
+TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
+  struct ArrowArrayStream array_stream;
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 5), NANOARROW_OK);
+
+  // Add five arrays with length == i
+  for (int i = 0; i < 5; i++) {
+    ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+    for (int j = 0; j < i; j++) {
+      ASSERT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+    ArrowBasicArrayStreamSetArray(&array_stream, i, &array);
+  }
+
+  // Pull only one of them
+  EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
+  EXPECT_EQ(array.length, 0);
+  array.release(&array);
+
+  // The remaining arrays, owned by the stream, should be released here
+  array_stream.release(&array_stream);
 }
