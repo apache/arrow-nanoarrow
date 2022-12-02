@@ -20,7 +20,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha3d9bcca1e1effe1590437e8f8d9a77fef2ac4d59"
+#define NANOARROW_BUILD_ID "gha3a04ea08fe636b0ba58bd7c29575570d37266092"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -675,7 +675,7 @@ void ArrowFree(void* ptr);
 ///
 /// The default allocator uses ArrowMalloc(), ArrowRealloc(), and
 /// ArrowFree().
-struct ArrowBufferAllocator ArrowBufferAllocatorDefault();
+struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 
 /// \brief Create a custom deallocator
 ///
@@ -719,7 +719,7 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 /// @{
 
 /// \brief Return the build id against which the library was compiled
-const char* ArrowNanoarrowBuildId();
+const char* ArrowNanoarrowBuildId(void);
 
 /// \brief Initialize a description of buffer arrangements from a storage type
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
