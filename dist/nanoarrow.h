@@ -18,9 +18,18 @@
 #ifndef NANOARROW_BUILD_ID_H_INCLUDED
 #define NANOARROW_BUILD_ID_H_INCLUDED
 
+#define NANOARROW_VERSION_MAJOR 0
+#define NANOARROW_VERSION_MINOR 1
+#define NANOARROW_VERSION_PATCH 0
+#define NANOARROW_VERSION "0.1.0-SNAPSHOT"
+
+#define NANOARROW_VERSION_INT                                        \
+  (NANOARROW_VERSION_MAJOR * 10000 + NANOARROW_VERSION_MINOR * 100 + \
+   NANOARROW_VERSION_PATCH)
+
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha3a04ea08fe636b0ba58bd7c29575570d37266092"
+#define NANOARROW_BUILD_ID "gha5eccbdd1cdcfaafd0493d96283963dc73dfa4b59"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -571,6 +580,9 @@ struct ArrowArrayPrivateData {
 #define NANOARROW_SYMBOL(A, B) NANOARROW_CAT(A, B)
 
 #define ArrowNanoarrowBuildId NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowBuildId)
+#define ArrowNanoarrowVersion NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersion)
+#define ArrowNanoarrowVersionInt \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersionInt)
 #define ArrowErrorMessage NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorMessage)
 #define ArrowMalloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMalloc)
 #define ArrowRealloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowRealloc)
@@ -720,6 +732,12 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// \brief Return the build id against which the library was compiled
 const char* ArrowNanoarrowBuildId(void);
+
+/// \brief Return a version string in the form "major.minor.patch"
+const char* ArrowNanoarrowVersion();
+
+/// \brief Return an integer that can be used to compare versions sequentially
+int ArrowNanoarrowVersionInt();
 
 /// \brief Initialize a description of buffer arrangements from a storage type
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);

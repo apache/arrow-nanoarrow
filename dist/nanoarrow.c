@@ -26,6 +26,10 @@
 
 const char* ArrowNanoarrowBuildId(void) { return NANOARROW_BUILD_ID; }
 
+const char* ArrowNanoarrowVersion() { return NANOARROW_VERSION; }
+
+int ArrowNanoarrowVersionInt() { return NANOARROW_VERSION_INT; }
+
 int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   if (error == NULL) {
     return NANOARROW_OK;
