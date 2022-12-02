@@ -489,8 +489,7 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer);
 ///
 /// Transfers the buffer data and lifecycle management to another
 /// address and resets buffer.
-static inline void ArrowBufferMove(struct ArrowBuffer* buffer,
-                                   struct ArrowBuffer* buffer_out);
+static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst);
 
 /// \brief Grow or shrink a buffer to a given capacity
 ///

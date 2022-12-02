@@ -65,11 +65,10 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
   buffer->size_bytes = 0;
 }
 
-static inline void ArrowBufferMove(struct ArrowBuffer* buffer,
-                                   struct ArrowBuffer* buffer_out) {
-  memcpy(buffer_out, buffer, sizeof(struct ArrowBuffer));
-  buffer->data = NULL;
-  ArrowBufferReset(buffer);
+static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
+  memcpy(dst, src, sizeof(struct ArrowBuffer));
+  src->data = NULL;
+  ArrowBufferReset(src);
 }
 
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
