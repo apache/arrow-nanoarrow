@@ -336,6 +336,12 @@ static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap) {
   bitmap->size_bits = 0;
 }
 
+static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
+  ArrowBufferMove(&src->buffer, &dst->buffer);
+  dst->size_bits = src->size_bits;
+  src->size_bits = 0;
+}
+
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits) {
   int64_t min_capacity_bits = bitmap->size_bits + additional_size_bits;

@@ -608,6 +608,12 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t i_from, int6
 /// Initialize the builder's buffer, empty its cache, and reset the size to zero
 static inline void ArrowBitmapInit(struct ArrowBitmap* bitmap);
 
+/// \brief Move an ArrowBitmap
+///
+/// Transfers the underlying buffer data and lifecycle management to another
+/// address and resets the bitmap.
+static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* dst);
+
 /// \brief Ensure a bitmap builder has at least a given additional capacity
 ///
 /// Ensures that the buffer has space to append at least

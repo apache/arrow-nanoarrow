@@ -379,6 +379,24 @@ TEST(BitmapTest, BitmapTestAppend) {
   ArrowBitmapReset(&bitmap);
 }
 
+TEST(BitmapTest, BitmapTestMove) {
+  struct ArrowBitmap bitmap;
+  ArrowBitmapInit(&bitmap);
+  ASSERT_EQ(ArrowBitmapAppend(&bitmap, 1, 1), NANOARROW_OK);
+  ASSERT_NE(bitmap.buffer.data, nullptr);
+  ASSERT_EQ(bitmap.size_bits, 1);
+
+  struct ArrowBitmap bitmap2;
+  bitmap2.buffer.data = NULL;
+  ArrowBitmapMove(&bitmap, &bitmap2);
+  EXPECT_EQ(bitmap.buffer.data, nullptr);
+  EXPECT_EQ(bitmap.size_bits, 0);
+  EXPECT_NE(bitmap2.buffer.data, nullptr);
+  EXPECT_EQ(bitmap2.size_bits, 1);
+
+  ArrowBitmapReset(&bitmap2);
+}
+
 TEST(BitmapTest, BitmapTestResize) {
   struct ArrowBitmap bitmap;
   ArrowBitmapInit(&bitmap);
