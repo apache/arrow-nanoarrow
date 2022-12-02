@@ -19,10 +19,10 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include "array_stream.h"
-#include "schema.h"
 #include "array.h"
+#include "array_stream.h"
 #include "nanoarrow.h"
+#include "schema.h"
 
 void finalize_array_stream_xptr(SEXP array_stream_xptr) {
   struct ArrowArrayStream* array_stream =
@@ -61,7 +61,7 @@ SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
   SEXP array_xptr = PROTECT(array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
   int result = array_stream->get_next(array_stream, array);
-  
+
   if (result != 0) {
     const char* last_error = array_stream->get_last_error(array_stream);
     if (last_error == NULL) {
@@ -72,4 +72,35 @@ SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
 
   UNPROTECT(1);
   return array_xptr;
+}
+
+SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
+                                    SEXP validate_sexp) {
+  int validate = LOGICAL(validate_sexp)[0];
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+
+  SEXP array_stream_xptr = PROTECT(array_stream_owning_xptr());
+  struct ArrowArrayStream* array_stream =
+      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
+
+  int64_t n_arrays = Rf_xlength(batches_sexp);
+  if (ArrowBasicArrayStreamInit(array_stream, schema, n_arrays) != NANOARROW_OK) {
+    Rf_error("Failed to initialize array stream");
+  }
+
+  struct ArrowArray array;
+  for (int64_t i = 0; i < n_arrays; i++) {
+    array_export(VECTOR_ELT(batches_sexp, i), &array);
+    ArrowBasicArrayStreamSetArray(array_stream, i, &array);
+  }
+
+  if (validate) {
+    struct ArrowError error;
+    if (ArrowBasicArrayStreamValidate(array_stream, &error) != NANOARROW_OK) {
+      Rf_error("ArrowBasicArrayStreamValidate(): %s", ArrowErrorMessage(&error));
+    }
+  }
+
+  UNPROTECT(1);
+  return array_stream_xptr;
 }

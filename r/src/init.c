@@ -29,6 +29,7 @@ extern SEXP nanoarrow_c_altrep_is_materialized(SEXP x_sexp);
 extern SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sexp);
 extern SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr);
+extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr);
 extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr);
@@ -63,6 +64,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_altrep_force_materialize", (DL_FUNC)&nanoarrow_c_altrep_force_materialize, 2},
     {"nanoarrow_c_array_stream_get_schema", (DL_FUNC)&nanoarrow_c_array_stream_get_schema, 1},
     {"nanoarrow_c_array_stream_get_next", (DL_FUNC)&nanoarrow_c_array_stream_get_next, 1},
+    {"nanoarrow_c_basic_array_stream", (DL_FUNC)&nanoarrow_c_basic_array_stream, 3},
     {"nanoarrow_c_array_view", (DL_FUNC)&nanoarrow_c_array_view, 2},
     {"nanoarrow_c_array_set_schema", (DL_FUNC)&nanoarrow_c_array_set_schema, 3},
     {"nanoarrow_c_infer_schema_array", (DL_FUNC)&nanoarrow_c_infer_schema_array, 1},
