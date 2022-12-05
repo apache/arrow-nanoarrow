@@ -57,8 +57,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeFixedSize)
 #define ArrowSchemaSetTypeDecimal \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDecimal)
-#define ArrowSchemaInitDateTime \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitDateTime)
+#define ArrowSchemaSetTypeDateTime \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDateTime)
+#define ArrowSchemaSetTypeUnion \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeUnion)
 #define ArrowSchemaDeepCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaDeepCopy)
 #define ArrowSchemaSetFormat NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetFormat)
 #define ArrowSchemaSetName NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetName)
@@ -284,6 +286,14 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
                                           enum ArrowType data_type,
                                           enum ArrowTimeUnit time_unit,
                                           const char* timezone);
+
+/// \brief Seet the format field of a union schema
+///
+/// Returns EINVAL for a data_type that is not NANOARROW_TYPE_DENSE_UNION
+/// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
+/// allocated, initialized, and named.
+ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
+                                       enum ArrowType data_type, int64_t n_children);
 
 /// \brief Make a (recursive) copy of a schema
 ///

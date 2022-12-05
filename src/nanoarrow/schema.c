@@ -318,6 +318,11 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
   return ArrowSchemaSetFormat(schema, buffer);
 }
 
+ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
+                                       enum ArrowType data_type, int64_t n_children) {
+  return EINVAL;
+}
+
 ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format) {
   if (schema->format != NULL) {
     ArrowFree((void*)schema->format);
