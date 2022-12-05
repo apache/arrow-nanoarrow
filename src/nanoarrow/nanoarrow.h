@@ -226,6 +226,8 @@ void ArrowSchemaInit(struct ArrowSchema* schema);
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType type);
 
+ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType type);
+
 /// \brief Get a human-readable summary of a Schema
 ///
 /// Writes a summary of an ArrowSchema to out (up to n - 1 characters)

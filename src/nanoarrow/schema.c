@@ -137,8 +137,7 @@ int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 1));
-      NANOARROW_RETURN_NOT_OK(
-          ArrowSchemaInitType(schema->children[0], NANOARROW_TYPE_UNINITIALIZED));
+      ArrowSchemaInit(schema->children[0]);
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "item"));
       break;
     case NANOARROW_TYPE_MAP:
@@ -147,6 +146,8 @@ int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
           ArrowSchemaInitType(schema->children[0], NANOARROW_TYPE_STRUCT));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema->children[0], 2));
+      ArrowSchemaInit(schema->children[0]->children[0]);
+      ArrowSchemaInit(schema->children[0]->children[1]);
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaSetName(schema->children[0]->children[0], "key"));
       NANOARROW_RETURN_NOT_OK(
@@ -186,8 +187,7 @@ ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType dat
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, template_format));
 
   // For types with an umabiguous child structure, allocate children
-  // return ArrowSchemaInitChildrenIfNeeded(schema, data_type);
-  return NANOARROW_OK;
+  return ArrowSchemaInitChildrenIfNeeded(schema, data_type);
 }
 
 ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType data_type) {
@@ -224,13 +224,9 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
   buffer[n_chars] = '\0';
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, buffer));
 
-  // if (data_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
-  //   result = ArrowSchemaInitChildrenIfNeeded(schema, data_type);
-  //   if (result != NANOARROW_OK) {
-  //     schema->release(schema);
-  //     return result;
-  //   }
-  // }
+  if (data_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaInitChildrenIfNeeded(schema, data_type));
+  }
 
   return NANOARROW_OK;
 }
@@ -427,8 +423,9 @@ ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema) {
   return NANOARROW_OK;
 }
 
-int ArrowSchemaDeepCopy(struct ArrowSchema* schema, struct ArrowSchema* schema_out) {
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitType(schema_out, NANOARROW_TYPE_NA));
+ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
+                                   struct ArrowSchema* schema_out) {
+  ArrowSchemaInit(schema_out);
 
   int result = ArrowSchemaSetFormat(schema_out, schema->format);
   if (result != NANOARROW_OK) {

@@ -101,9 +101,7 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
 
   EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+l");
-  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
@@ -111,9 +109,7 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
 
   EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+L");
-  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
@@ -139,16 +135,10 @@ TEST(SchemaTest, SchemaTestInitNestedMap) {
 
   EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+m");
-  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_STRUCT), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "entries"), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.children[0], 2), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema.children[0]->children[0], "key"), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema.children[0]->children[1], "value"), NANOARROW_OK);
 
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
@@ -175,9 +165,7 @@ TEST(SchemaTest, SchemaInitFixedSize) {
   EXPECT_EQ(ArrowSchemaSetTypeFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 12),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+w:12");
-  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
@@ -1097,14 +1085,16 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+m"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected schema with 1 children but found 2 children");
   schema.release(&schema);
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+m"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
             NANOARROW_OK);
@@ -1114,7 +1104,8 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
                "Expected child of map type to have 2 children but found 0");
   schema.release(&schema);
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+m"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
             NANOARROW_OK);
