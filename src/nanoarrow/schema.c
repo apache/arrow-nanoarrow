@@ -159,6 +159,18 @@ int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
+void ArrowSchemaInit(struct ArrowSchema* schema) {
+  schema->format = NULL;
+  schema->name = NULL;
+  schema->metadata = NULL;
+  schema->flags = ARROW_FLAG_NULLABLE;
+  schema->n_children = 0;
+  schema->children = NULL;
+  schema->dictionary = NULL;
+  schema->private_data = NULL;
+  schema->release = &ArrowSchemaRelease;
+}
+
 ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType data_type) {
   // We don't allocate the dictionary because it has to be nullptr
   // for non-dictionary-encoded arrays.
@@ -178,18 +190,6 @@ ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType dat
   return NANOARROW_OK;
 }
 
-void ArrowSchemaInit(struct ArrowSchema* schema) {
-  schema->format = NULL;
-  schema->name = NULL;
-  schema->metadata = NULL;
-  schema->flags = ARROW_FLAG_NULLABLE;
-  schema->n_children = 0;
-  schema->children = NULL;
-  schema->dictionary = NULL;
-  schema->private_data = NULL;
-  schema->release = &ArrowSchemaRelease;
-}
-
 ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType data_type) {
   ArrowSchemaInit(schema);
 
@@ -202,12 +202,9 @@ ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType da
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
-                                        enum ArrowType data_type, int32_t fixed_size) {
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitType(schema, NANOARROW_TYPE_UNINITIALIZED));
-
+ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
+                                           enum ArrowType data_type, int32_t fixed_size) {
   if (fixed_size <= 0) {
-    schema->release(schema);
     return EINVAL;
   }
 
@@ -221,16 +218,11 @@ ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
       n_chars = snprintf(buffer, sizeof(buffer), "+w:%d", (int)fixed_size);
       break;
     default:
-      schema->release(schema);
       return EINVAL;
   }
 
   buffer[n_chars] = '\0';
-  int result = ArrowSchemaSetFormat(schema, buffer);
-  if (result != NANOARROW_OK) {
-    schema->release(schema);
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, buffer));
 
   // if (data_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
   //   result = ArrowSchemaInitChildrenIfNeeded(schema, data_type);
@@ -239,6 +231,18 @@ ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
   //     return result;
   //   }
   // }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
+                                        enum ArrowType data_type, int32_t fixed_size) {
+  ArrowSchemaInit(schema);
+  int result = ArrowSchemaSetTypeFixedSize(schema, data_type, fixed_size);
+  if (result != NANOARROW_OK) {
+    schema->release(schema);
+    return result;
+  }
 
   return NANOARROW_OK;
 }
