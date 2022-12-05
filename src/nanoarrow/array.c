@@ -189,9 +189,9 @@ static ArrowErrorCode ArrowArrayInitFromTypeFromArrayView(
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowArrayInitFromTypeFromSchema(struct ArrowArray* array,
-                                                struct ArrowSchema* schema,
-                                                struct ArrowError* error) {
+ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
+                                        struct ArrowSchema* schema,
+                                        struct ArrowError* error) {
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromTypeFromArrayView(array, &array_view, error));
