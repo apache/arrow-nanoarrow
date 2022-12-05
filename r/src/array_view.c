@@ -43,7 +43,7 @@ SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
 
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)ArrowMalloc(sizeof(struct ArrowArrayView));
-  ArrowArrayViewInit(array_view, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(array_view, NANOARROW_TYPE_UNINITIALIZED);
   SEXP xptr = PROTECT(R_MakeExternalPtr(array_view, R_NilValue, array_xptr));
   R_RegisterCFinalizer(xptr, &finalize_array_view_xptr);
 

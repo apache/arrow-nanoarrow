@@ -99,7 +99,8 @@
 #define ArrowArrayReserve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayReserve)
 #define ArrowArrayFinishBuilding \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuilding)
-#define ArrowArrayViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInit)
+#define ArrowArrayViewInitFromType \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromType)
 #define ArrowArrayViewInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromSchema)
 #define ArrowArrayViewAllocateChildren \
@@ -819,7 +820,8 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 /// @{
 
 /// \brief Initialize the contents of an ArrowArrayView
-void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
+void ArrowArrayViewInitFromType(struct ArrowArrayView* array_view,
+                                enum ArrowType storage_type);
 
 /// \brief Move an ArrowArrayView
 ///

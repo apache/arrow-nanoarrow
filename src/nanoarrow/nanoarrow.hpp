@@ -93,7 +93,7 @@ static inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst
 static inline void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }
 
 static inline void init_pointer(struct ArrowArrayView* data) {
-  ArrowArrayViewInit(data, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(data, NANOARROW_TYPE_UNINITIALIZED);
 }
 
 static inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {

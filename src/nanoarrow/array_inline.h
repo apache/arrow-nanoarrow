@@ -443,7 +443,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
 static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
                                       struct ArrowArrayView* dst) {
   memcpy(dst, src, sizeof(struct ArrowArrayView));
-  ArrowArrayViewInit(src, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(src, NANOARROW_TYPE_UNINITIALIZED);
 }
 
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i) {

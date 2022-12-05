@@ -1073,7 +1073,7 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
 TEST(ArrayTest, ArrayViewTestBasic) {
   struct ArrowArrayView array_view;
   struct ArrowError error;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_INT32);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_INT32);
 
   EXPECT_EQ(array_view.array, nullptr);
   EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_INT32);
@@ -1115,7 +1115,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
 
   // Expect error for the wrong number of buffers
   ArrowArrayViewReset(&array_view);
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_STRING);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
 
   array.release(&array);
@@ -1124,11 +1124,11 @@ TEST(ArrayTest, ArrayViewTestBasic) {
 
 TEST(ArrayTest, ArrayViewTestMove) {
   struct ArrowArrayView array_view;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_STRING);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
   ASSERT_EQ(array_view.storage_type, NANOARROW_TYPE_STRING);
 
   struct ArrowArrayView array_view2;
-  ArrowArrayViewInit(&array_view2, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(&array_view2, NANOARROW_TYPE_UNINITIALIZED);
   ASSERT_EQ(array_view2.storage_type, NANOARROW_TYPE_UNINITIALIZED);
 
   ArrowArrayViewMove(&array_view, &array_view2);
@@ -1141,7 +1141,7 @@ TEST(ArrayTest, ArrayViewTestMove) {
 TEST(ArrayTest, ArrayViewTestString) {
   struct ArrowArrayView array_view;
   struct ArrowError error;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_STRING);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
 
   EXPECT_EQ(array_view.array, nullptr);
   EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_STRING);
@@ -1193,7 +1193,7 @@ TEST(ArrayTest, ArrayViewTestString) {
 TEST(ArrayTest, ArrayViewTestLargeString) {
   struct ArrowArrayView array_view;
   struct ArrowError error;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_LARGE_STRING);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_STRING);
 
   EXPECT_EQ(array_view.array, nullptr);
   EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_LARGE_STRING);
@@ -1244,7 +1244,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
 
 TEST(ArrayTest, ArrayViewTestStruct) {
   struct ArrowArrayView array_view;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_STRUCT);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRUCT);
 
   EXPECT_EQ(array_view.array, nullptr);
   EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_STRUCT);
@@ -1258,9 +1258,9 @@ TEST(ArrayTest, ArrayViewTestStruct) {
 
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 2), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 2);
-  ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
-  ArrowArrayViewInit(array_view.children[1], NANOARROW_TYPE_NA);
+  ArrowArrayViewInitFromType(array_view.children[1], NANOARROW_TYPE_NA);
   EXPECT_EQ(array_view.children[1]->storage_type, NANOARROW_TYPE_NA);
 
   ArrowArrayViewSetLength(&array_view, 5);
@@ -1275,7 +1275,7 @@ TEST(ArrayTest, ArrayViewTestStruct) {
 
 TEST(ArrayTest, ArrayViewTestList) {
   struct ArrowArrayView array_view;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_LIST);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LIST);
 
   EXPECT_EQ(array_view.array, nullptr);
   EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_LIST);
@@ -1286,7 +1286,7 @@ TEST(ArrayTest, ArrayViewTestList) {
 
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 1);
-  ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
 
   ArrowArrayViewSetLength(&array_view, 5);
@@ -1298,7 +1298,7 @@ TEST(ArrayTest, ArrayViewTestList) {
 
 TEST(ArrayTest, ArrayViewTestLargeList) {
   struct ArrowArrayView array_view;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_LARGE_LIST);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_LIST);
 
   EXPECT_EQ(array_view.array, nullptr);
   EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_LARGE_LIST);
@@ -1309,7 +1309,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
 
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 1);
-  ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
 
   ArrowArrayViewSetLength(&array_view, 5);
@@ -1321,7 +1321,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
 
 TEST(ArrayTest, ArrayViewTestFixedSizeList) {
   struct ArrowArrayView array_view;
-  ArrowArrayViewInit(&array_view, NANOARROW_TYPE_FIXED_SIZE_LIST);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_FIXED_SIZE_LIST);
   array_view.layout.child_size_elements = 3;
 
   EXPECT_EQ(array_view.array, nullptr);
@@ -1331,7 +1331,7 @@ TEST(ArrayTest, ArrayViewTestFixedSizeList) {
 
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 1);
-  ArrowArrayViewInit(array_view.children[0], NANOARROW_TYPE_INT32);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
 
   ArrowArrayViewSetLength(&array_view, 5);

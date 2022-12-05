@@ -281,7 +281,7 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  ArrowArrayViewInit(array_view, private_data->storage_type);
+  ArrowArrayViewInitFromType(array_view, private_data->storage_type);
   array_view->layout = private_data->layout;
   array_view->array = array;
 
@@ -455,7 +455,8 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   return result;
 }
 
-void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type) {
+void ArrowArrayViewInitFromType(struct ArrowArrayView* array_view,
+                                enum ArrowType storage_type) {
   memset(array_view, 0, sizeof(struct ArrowArrayView));
   array_view->storage_type = storage_type;
   ArrowLayoutInit(&array_view->layout, storage_type);
@@ -485,7 +486,7 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
     if (array_view->children[i] == NULL) {
       return ENOMEM;
     }
-    ArrowArrayViewInit(array_view->children[i], NANOARROW_TYPE_UNINITIALIZED);
+    ArrowArrayViewInitFromType(array_view->children[i], NANOARROW_TYPE_UNINITIALIZED);
   }
 
   return NANOARROW_OK;
@@ -500,7 +501,7 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
     return result;
   }
 
-  ArrowArrayViewInit(array_view, schema_view.storage_data_type);
+  ArrowArrayViewInitFromType(array_view, schema_view.storage_data_type);
   array_view->layout = schema_view.layout;
 
   result = ArrowArrayViewAllocateChildren(array_view, schema->n_children);
@@ -533,7 +534,7 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
     ArrowFree(array_view->children);
   }
 
-  ArrowArrayViewInit(array_view, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(array_view, NANOARROW_TYPE_UNINITIALIZED);
 }
 
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {
