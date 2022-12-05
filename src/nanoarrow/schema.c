@@ -178,7 +178,7 @@ ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType dat
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType data_type) {
+void ArrowSchemaInit(struct ArrowSchema* schema) {
   schema->format = NULL;
   schema->name = NULL;
   schema->metadata = NULL;
@@ -188,6 +188,10 @@ ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType da
   schema->dictionary = NULL;
   schema->private_data = NULL;
   schema->release = &ArrowSchemaRelease;
+}
+
+ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType data_type) {
+  ArrowSchemaInit(schema);
 
   int result = ArrowSchemaSetType(schema, data_type);
   if (result != NANOARROW_OK) {
