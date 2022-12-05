@@ -35,7 +35,7 @@ std::string ArrowSchemaToStdString(struct ArrowSchema* schema, bool recursive = 
 
 TEST(SchemaTest, SchemaInit) {
   struct ArrowSchema schema;
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 2), NANOARROW_OK);
 
   ASSERT_NE(schema.release, nullptr);
@@ -49,7 +49,7 @@ TEST(SchemaTest, SchemaInit) {
   schema.release(&schema);
   EXPECT_EQ(schema.release, nullptr);
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaAllocateChildren(
                 &schema, std::numeric_limits<int64_t>::max() / sizeof(void*)),
             ENOMEM);
@@ -59,7 +59,7 @@ TEST(SchemaTest, SchemaInit) {
 static void ExpectSchemaInitOk(enum ArrowType data_type,
                                std::shared_ptr<DataType> expected_arrow_type) {
   struct ArrowSchema schema;
-  EXPECT_EQ(ArrowSchemaInitType(&schema, data_type), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, data_type), NANOARROW_OK);
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(expected_arrow_type));
@@ -92,14 +92,14 @@ TEST(SchemaTest, SchemaInitSimple) {
 
 TEST(SchemaTest, SchemaInitSimpleError) {
   struct ArrowSchema schema;
-  EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_DECIMAL128), EINVAL);
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_DECIMAL128), EINVAL);
   EXPECT_EQ(schema.release, nullptr);
 }
 
 TEST(SchemaTest, SchemaTestInitNestedList) {
   struct ArrowSchema schema;
 
-  EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+l");
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
@@ -107,7 +107,7 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(list(int32())));
 
-  EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+L");
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
@@ -119,10 +119,11 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
 TEST(SchemaTest, SchemaTestInitNestedStruct) {
   struct ArrowSchema schema;
 
-  EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
 
   auto arrow_type = ImportType(&schema);
@@ -133,7 +134,7 @@ TEST(SchemaTest, SchemaTestInitNestedStruct) {
 TEST(SchemaTest, SchemaTestInitNestedMap) {
   struct ArrowSchema schema;
 
-  EXPECT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+m");
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
@@ -305,7 +306,7 @@ TEST(SchemaTest, SchemaInitDateTime) {
 
 TEST(SchemaTest, SchemaSetFormat) {
   struct ArrowSchema schema;
-  ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
 
   EXPECT_EQ(ArrowSchemaSetFormat(&schema, "i"), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "i");
@@ -318,7 +319,7 @@ TEST(SchemaTest, SchemaSetFormat) {
 
 TEST(SchemaTest, SchemaSetName) {
   struct ArrowSchema schema;
-  ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
 
   EXPECT_EQ(ArrowSchemaSetName(&schema, "a_name"), NANOARROW_OK);
   EXPECT_STREQ(schema.name, "a_name");
@@ -331,7 +332,7 @@ TEST(SchemaTest, SchemaSetName) {
 
 TEST(SchemaTest, SchemaSetMetadata) {
   struct ArrowSchema schema;
-  ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
 
   // (test will only work on little endian)
   char simple_metadata[] = {'\1', '\0', '\0', '\0', '\3', '\0', '\0', '\0', 'k', 'e',
@@ -348,7 +349,7 @@ TEST(SchemaTest, SchemaSetMetadata) {
 
 TEST(SchemaTest, SchemaAllocateDictionary) {
   struct ArrowSchema schema;
-  ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
 
   EXPECT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
   EXPECT_EQ(schema.dictionary->release, nullptr);
@@ -456,7 +457,7 @@ TEST(SchemaViewTest, SchemaViewInitErrors) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error), "Expected non-released schema");
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
@@ -535,7 +536,7 @@ TEST(SchemaViewTest, SchemaViewInitSimpleErrors) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
@@ -586,7 +587,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimalErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
 
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "d"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -703,7 +704,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndStringErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
 
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "w"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -893,7 +894,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
 
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "t*"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -990,7 +991,7 @@ TEST(SchemaViewTest, SchemaViewNestedListErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
 
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+w"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -1040,7 +1041,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedStructErrors) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(
@@ -1048,7 +1049,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedStructErrors) {
       "Expected valid schema at schema->children[0] but found a released schema");
 
   // Make sure validation passes even with an inspectable but invalid child
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
             NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, schema.children[0], &error), EINVAL);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
@@ -1096,7 +1097,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+m"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetFormat(schema.children[0], "n"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -1107,13 +1108,13 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+m"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.children[0], NANOARROW_TYPE_UNINITIALIZED),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema.children[0], 2), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetFormat(schema.children[0], "+us:0,1"), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0]->children[0], NANOARROW_TYPE_NA),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.children[0]->children[0], NANOARROW_TYPE_NA),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.children[0]->children[1], NANOARROW_TYPE_NA),
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.children[0]->children[1], NANOARROW_TYPE_NA),
             NANOARROW_OK);
 
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -1164,7 +1165,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnionErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
 
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+u*"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -1186,7 +1187,7 @@ TEST(SchemaViewTest, SchemaViewInitInvalidSpecErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_NA), NANOARROW_OK);
 
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+Z"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
@@ -1215,15 +1216,16 @@ TEST(SchemaViewTest, SchemaViewInitDictionaryErrors) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error), "Expected non-released schema");
   schema.release(&schema);
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitType(schema.dictionary, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
@@ -1304,7 +1306,7 @@ TEST(SchemaViewTest, SchemaFormatInvalid) {
   schema.release = nullptr;
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "[invalid: schema is released]");
 
-  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaToStdString(&schema),
             "[invalid: Error parsing schema->format: Expected a null-terminated string "
             "but found NULL]");

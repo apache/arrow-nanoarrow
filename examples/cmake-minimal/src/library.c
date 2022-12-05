@@ -41,7 +41,7 @@ int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_o
   NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 3));
   NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(array_out, &global_error));
   
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitType(schema_out, NANOARROW_TYPE_INT32));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema_out, NANOARROW_TYPE_INT32));
 
   return NANOARROW_OK;
 }

@@ -143,7 +143,7 @@ int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
     case NANOARROW_TYPE_MAP:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 1));
       NANOARROW_RETURN_NOT_OK(
-          ArrowSchemaInitType(schema->children[0], NANOARROW_TYPE_STRUCT));
+          ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_STRUCT));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema->children[0], 2));
       ArrowSchemaInit(schema->children[0]->children[0]);
@@ -190,7 +190,8 @@ ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType dat
   return ArrowSchemaInitChildrenIfNeeded(schema, data_type);
 }
 
-ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType data_type) {
+ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema,
+                                       enum ArrowType data_type) {
   ArrowSchemaInit(schema);
 
   int result = ArrowSchemaSetType(schema, data_type);
