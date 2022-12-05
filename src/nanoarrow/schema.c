@@ -247,13 +247,11 @@ ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
-                                      enum ArrowType data_type, int32_t decimal_precision,
-                                      int32_t decimal_scale) {
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitType(schema, NANOARROW_TYPE_UNINITIALIZED));
-
+ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
+                                         enum ArrowType data_type,
+                                         int32_t decimal_precision,
+                                         int32_t decimal_scale) {
   if (decimal_precision <= 0) {
-    schema->release(schema);
     return EINVAL;
   }
 
@@ -269,13 +267,19 @@ ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
                          decimal_scale);
       break;
     default:
-      schema->release(schema);
       return EINVAL;
   }
 
   buffer[n_chars] = '\0';
+  return ArrowSchemaSetFormat(schema, buffer);
+}
 
-  int result = ArrowSchemaSetFormat(schema, buffer);
+ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
+                                      enum ArrowType data_type, int32_t decimal_precision,
+                                      int32_t decimal_scale) {
+  ArrowSchemaInit(schema);
+  int result =
+      ArrowSchemaSetTypeDecimal(schema, data_type, decimal_precision, decimal_scale);
   if (result != NANOARROW_OK) {
     schema->release(schema);
     return result;
@@ -299,18 +303,12 @@ static const char* ArrowTimeUnitFormatString(enum ArrowTimeUnit time_unit) {
   }
 }
 
-ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
-                                       enum ArrowType data_type,
-                                       enum ArrowTimeUnit time_unit,
-                                       const char* timezone) {
-  int result = ArrowSchemaInitType(schema, NANOARROW_TYPE_UNINITIALIZED);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
-
+ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
+                                          enum ArrowType data_type,
+                                          enum ArrowTimeUnit time_unit,
+                                          const char* timezone) {
   const char* time_unit_str = ArrowTimeUnitFormatString(time_unit);
   if (time_unit_str == NULL) {
-    schema->release(schema);
     return EINVAL;
   }
 
@@ -320,7 +318,6 @@ ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
     case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64:
       if (timezone != NULL) {
-        schema->release(schema);
         return EINVAL;
       }
       n_chars = snprintf(buffer, sizeof(buffer), "tt%s", time_unit_str);
@@ -333,24 +330,29 @@ ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
       break;
     case NANOARROW_TYPE_DURATION:
       if (timezone != NULL) {
-        schema->release(schema);
         return EINVAL;
       }
       n_chars = snprintf(buffer, sizeof(buffer), "tD%s", time_unit_str);
       break;
     default:
-      schema->release(schema);
       return EINVAL;
   }
 
   if (((size_t)n_chars) >= sizeof(buffer)) {
-    schema->release(schema);
     return ERANGE;
   }
 
   buffer[n_chars] = '\0';
 
-  result = ArrowSchemaSetFormat(schema, buffer);
+  return ArrowSchemaSetFormat(schema, buffer);
+}
+
+ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
+                                       enum ArrowType data_type,
+                                       enum ArrowTimeUnit time_unit,
+                                       const char* timezone) {
+  ArrowSchemaInit(schema);
+  int result = ArrowSchemaSetTypeDateTime(schema, data_type, time_unit, timezone);
   if (result != NANOARROW_OK) {
     schema->release(schema);
     return result;
