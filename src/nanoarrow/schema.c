@@ -138,13 +138,13 @@ int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 1));
       NANOARROW_RETURN_NOT_OK(
-          ArrowSchemaInit(schema->children[0], NANOARROW_TYPE_UNINITIALIZED));
+          ArrowSchemaInitType(schema->children[0], NANOARROW_TYPE_UNINITIALIZED));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "item"));
       break;
     case NANOARROW_TYPE_MAP:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 1));
       NANOARROW_RETURN_NOT_OK(
-          ArrowSchemaInit(schema->children[0], NANOARROW_TYPE_STRUCT));
+          ArrowSchemaInitType(schema->children[0], NANOARROW_TYPE_STRUCT));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema->children[0], 2));
       NANOARROW_RETURN_NOT_OK(
@@ -178,7 +178,7 @@ ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType dat
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType data_type) {
+ArrowErrorCode ArrowSchemaInitType(struct ArrowSchema* schema, enum ArrowType data_type) {
   schema->format = NULL;
   schema->name = NULL;
   schema->metadata = NULL;
@@ -200,7 +200,7 @@ ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType data_t
 
 ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
                                         enum ArrowType data_type, int32_t fixed_size) {
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema, NANOARROW_TYPE_UNINITIALIZED));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitType(schema, NANOARROW_TYPE_UNINITIALIZED));
 
   if (fixed_size <= 0) {
     schema->release(schema);
@@ -242,7 +242,7 @@ ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
 ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
                                       enum ArrowType data_type, int32_t decimal_precision,
                                       int32_t decimal_scale) {
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema, NANOARROW_TYPE_UNINITIALIZED));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitType(schema, NANOARROW_TYPE_UNINITIALIZED));
 
   if (decimal_precision <= 0) {
     schema->release(schema);
@@ -295,7 +295,7 @@ ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
                                        enum ArrowType data_type,
                                        enum ArrowTimeUnit time_unit,
                                        const char* timezone) {
-  int result = ArrowSchemaInit(schema, NANOARROW_TYPE_UNINITIALIZED);
+  int result = ArrowSchemaInitType(schema, NANOARROW_TYPE_UNINITIALIZED);
   if (result != NANOARROW_OK) {
     return result;
   }
@@ -458,7 +458,7 @@ ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema) {
 }
 
 int ArrowSchemaDeepCopy(struct ArrowSchema* schema, struct ArrowSchema* schema_out) {
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInit(schema_out, NANOARROW_TYPE_NA));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitType(schema_out, NANOARROW_TYPE_NA));
 
   int result = ArrowSchemaSetFormat(schema_out, schema->format);
   if (result != NANOARROW_OK) {

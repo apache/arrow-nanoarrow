@@ -114,10 +114,10 @@ TEST(ArrayTest, ArrayTestInitFromSchema) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 2), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(array.n_children, 2);
@@ -777,9 +777,9 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
@@ -837,9 +837,9 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
@@ -898,16 +898,16 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "entries"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema.children[0], 2), NANOARROW_OK);
 
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0]->children[0], "key"), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0]->children[1], "value"), NANOARROW_OK);
 
@@ -972,7 +972,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   ASSERT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 2),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
@@ -1033,9 +1033,9 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "col1"), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
@@ -1352,9 +1352,9 @@ TEST(ArrayTest, ArrayViewTestStructArray) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 1);
@@ -1395,7 +1395,7 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   ASSERT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 3),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInit(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 1);

@@ -48,7 +48,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueSchemaTest) {
   nanoarrow::UniqueSchema schema;
   EXPECT_EQ(schema->release, nullptr);
 
-  ArrowSchemaInit(schema.get(), NANOARROW_TYPE_INT32);
+  ArrowSchemaInitType(schema.get(), NANOARROW_TYPE_INT32);
   EXPECT_NE(schema->release, nullptr);
   EXPECT_STREQ(schema->format, "i");
 
@@ -73,7 +73,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayStreamTest) {
   EXPECT_EQ(array_stream_default->release, nullptr);
 
   nanoarrow::UniqueSchema schema_in;
-  EXPECT_EQ(ArrowSchemaInit(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitType(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(schema_in.get());
   EXPECT_NE(array_stream->release, nullptr);
   EXPECT_EQ(array_stream->get_schema(array_stream.get(), schema.get()), NANOARROW_OK);
@@ -172,7 +172,7 @@ TEST(NanoarrowHppTest, NanoarrowHppEmptyArrayStreamTest) {
   struct ArrowArray array;
 
   nanoarrow::UniqueSchema schema_in;
-  EXPECT_EQ(ArrowSchemaInit(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitType(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(schema_in.get());
 
   EXPECT_EQ(array_stream->get_schema(array_stream.get(), schema.get()), NANOARROW_OK);
@@ -194,7 +194,7 @@ TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
   EXPECT_EQ(ArrowArrayFinishBuilding(array_in.get(), nullptr), NANOARROW_OK);
 
   nanoarrow::UniqueSchema schema_in;
-  EXPECT_EQ(ArrowSchemaInit(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaInitType(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   auto array_stream =
       nanoarrow::VectorArrayStream::MakeUnique(schema_in.get(), array_in.get());

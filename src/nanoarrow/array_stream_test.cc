@@ -24,7 +24,7 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   struct ArrowArray array;
   struct ArrowSchema schema;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 1), NANOARROW_OK);
   EXPECT_EQ(schema.release, nullptr);
 
@@ -63,10 +63,10 @@ TEST(ArrayStreamTest, ArrayStreamTestEmpty) {
   struct ArrowArray array;
   struct ArrowSchema schema;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
-  
+
   for (int i = 0; i < 5; i++) {
     EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
     EXPECT_EQ(array.release, nullptr);
@@ -80,7 +80,7 @@ TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
   struct ArrowArray array;
   struct ArrowSchema schema;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 5), NANOARROW_OK);
 
   // Add five arrays with length == i
@@ -109,7 +109,7 @@ TEST(ArrayStreamTest, ArrayStreamTestInvalid) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
-  ASSERT_EQ(ArrowSchemaInit(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 1), NANOARROW_OK);
 
   ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
