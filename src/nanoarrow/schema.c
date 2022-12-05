@@ -130,8 +130,8 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
   }
 }
 
-int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
-                                    enum ArrowType data_type) {
+static int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
+                                           enum ArrowType data_type) {
   switch (data_type) {
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
