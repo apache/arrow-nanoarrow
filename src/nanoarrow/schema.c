@@ -130,6 +130,54 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType data_type) {
   }
 }
 
+int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
+                                    enum ArrowType data_type) {
+  switch (data_type) {
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 1));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaInit(schema->children[0], NANOARROW_TYPE_UNINITIALIZED));
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "item"));
+      break;
+    case NANOARROW_TYPE_MAP:
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 1));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaInit(schema->children[0], NANOARROW_TYPE_STRUCT));
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema->children[0], 2));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaSetName(schema->children[0]->children[0], "key"));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaSetName(schema->children[0]->children[1], "value"));
+      break;
+    default:
+      break;
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType data_type) {
+  // We don't allocate the dictionary because it has to be nullptr
+  // for non-dictionary-encoded arrays.
+
+  // Set the format to a valid format string for data_type
+  const char* template_format = ArrowSchemaFormatTemplate(data_type);
+
+  // If data_type isn't recognized and not explicitly unset
+  if (template_format == NULL && data_type != NANOARROW_TYPE_UNINITIALIZED) {
+    return EINVAL;
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, template_format));
+
+  // For types with an umabiguous child structure, allocate children
+  // return ArrowSchemaInitChildrenIfNeeded(schema, data_type);
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType data_type) {
   schema->format = NULL;
   schema->name = NULL;
@@ -141,19 +189,7 @@ ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType data_t
   schema->private_data = NULL;
   schema->release = &ArrowSchemaRelease;
 
-  // We don't allocate the dictionary because it has to be nullptr
-  // for non-dictionary-encoded arrays.
-
-  // Set the format to a valid format string for data_type
-  const char* template_format = ArrowSchemaFormatTemplate(data_type);
-
-  // If data_type isn't recognized and not explicitly unset
-  if (template_format == NULL && data_type != NANOARROW_TYPE_UNINITIALIZED) {
-    schema->release(schema);
-    return EINVAL;
-  }
-
-  int result = ArrowSchemaSetFormat(schema, template_format);
+  int result = ArrowSchemaSetType(schema, data_type);
   if (result != NANOARROW_OK) {
     schema->release(schema);
     return result;
@@ -191,6 +227,14 @@ ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
     schema->release(schema);
     return result;
   }
+
+  // if (data_type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
+  //   result = ArrowSchemaInitChildrenIfNeeded(schema, data_type);
+  //   if (result != NANOARROW_OK) {
+  //     schema->release(schema);
+  //     return result;
+  //   }
+  // }
 
   return NANOARROW_OK;
 }
