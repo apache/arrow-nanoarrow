@@ -50,7 +50,8 @@
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
 #define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
-#define ArrowSchemaInitFromType NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFromType)
+#define ArrowSchemaInitFromType \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFromType)
 #define ArrowSchemaSetType NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetType)
 #define ArrowSchemaSetTypeFixedSize \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeFixedSize)
@@ -84,9 +85,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderRemove)
 #define ArrowSchemaViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaViewInit)
 #define ArrowSchemaToString NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaToString)
-#define ArrowArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInit)
-#define ArrowArrayInitFromSchema \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
+#define ArrowArrayInitFromType \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromType)
+#define ArrowArrayInitFromTypeFromSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromTypeFromSchema)
 #define ArrowArrayAllocateChildren \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayAllocateChildren)
 #define ArrowArrayAllocateDictionary \
@@ -675,51 +677,52 @@ static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 /// Initializes the fields and release callback of array. Caller
 /// is responsible for calling the array->release callback if
 /// NANOARROW_OK is returned.
-ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type);
+ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
+                                      enum ArrowType storage_type);
 
 /// \brief Initialize the contents of an ArrowArray from an ArrowSchema
 ///
 /// Caller is responsible for calling the array->release callback if
 /// NANOARROW_OK is returned.
-ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
-                                        struct ArrowSchema* schema,
-                                        struct ArrowError* error);
+ArrowErrorCode ArrowArrayInitFromTypeFromSchema(struct ArrowArray* array,
+                                                struct ArrowSchema* schema,
+                                                struct ArrowError* error);
 
 /// \brief Allocate the array->children array
 ///
 /// Includes the memory for each child struct ArrowArray,
 /// whose members are marked as released and may be subsequently initialized
-/// with ArrowArrayInit() or moved from an existing ArrowArray.
-/// schema must have been allocated using ArrowArrayInit().
+/// with ArrowArrayInitFromType() or moved from an existing ArrowArray.
+/// schema must have been allocated using ArrowArrayInitFromType().
 ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children);
 
 /// \brief Allocate the array->dictionary member
 ///
 /// Includes the memory for the struct ArrowArray, whose contents
 /// is marked as released and may be subsequently initialized
-/// with ArrowArrayInit() or moved from an existing ArrowArray.
-/// array must have been allocated using ArrowArrayInit()
+/// with ArrowArrayInitFromType() or moved from an existing ArrowArray.
+/// array must have been allocated using ArrowArrayInitFromType()
 ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
 
 /// \brief Set the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap);
 
 /// \brief Set a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer);
 
 /// \brief Get the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* array);
 
 /// \brief Get a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
 
 /// \brief Start element-wise appending to an ArrowArray
@@ -727,7 +730,7 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 /// Initializes any values needed to use ArrowArrayAppend*() functions.
 /// All element-wise appenders append by value and return EINVAL if the exact value
 /// cannot be represented by the underlying storage type.
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
 
 /// \brief Reserve space for future appends
@@ -795,7 +798,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
 /// \brief Shrink buffer capacity to the size required
 ///
 /// Also applies shrinking to any child arrays. array must have been allocated using
-/// ArrowArrayInit
+/// ArrowArrayInitFromType
 static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 
 /// \brief Finish building an ArrowArray
@@ -803,7 +806,7 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 /// Flushes any pointers from internal buffers that may have been reallocated
 /// into the array->buffers array and checks the actual size of the buffers
 /// against the expected size based on the final length.
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error);
 

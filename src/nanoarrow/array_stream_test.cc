@@ -28,7 +28,7 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   EXPECT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 1), NANOARROW_OK);
   EXPECT_EQ(schema.release, nullptr);
 
-  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
@@ -85,7 +85,7 @@ TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
 
   // Add five arrays with length == i
   for (int i = 0; i < 5; i++) {
-    ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
     ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
     for (int j = 0; j < i; j++) {
       ASSERT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
@@ -112,7 +112,7 @@ TEST(ArrayStreamTest, ArrayStreamTestInvalid) {
   ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowBasicArrayStreamInit(&array_stream, &schema, 1), NANOARROW_OK);
 
-  ASSERT_EQ(ArrowArrayInit(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
   ArrowBasicArrayStreamSetArray(&array_stream, 0, &array);

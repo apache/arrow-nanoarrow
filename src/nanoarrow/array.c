@@ -122,7 +122,8 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type) {
+ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
+                                      enum ArrowType storage_type) {
   array->length = 0;
   array->null_count = 0;
   array->offset = 0;
@@ -161,10 +162,10 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                                  struct ArrowArrayView* array_view,
-                                                  struct ArrowError* error) {
-  ArrowArrayInit(array, array_view->storage_type);
+static ArrowErrorCode ArrowArrayInitFromTypeFromArrayView(
+    struct ArrowArray* array, struct ArrowArrayView* array_view,
+    struct ArrowError* error) {
+  ArrowArrayInitFromType(array, array_view->storage_type);
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
@@ -177,8 +178,8 @@ static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
   private_data->layout = array_view->layout;
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
-    int result =
-        ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
+    int result = ArrowArrayInitFromTypeFromArrayView(array->children[i],
+                                                     array_view->children[i], error);
     if (result != NANOARROW_OK) {
       array->release(array);
       return result;
@@ -188,12 +189,12 @@ static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
-                                        struct ArrowSchema* schema,
-                                        struct ArrowError* error) {
+ArrowErrorCode ArrowArrayInitFromTypeFromSchema(struct ArrowArray* array,
+                                                struct ArrowSchema* schema,
+                                                struct ArrowError* error) {
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(array, &array_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromTypeFromArrayView(array, &array_view, error));
   ArrowArrayViewReset(&array_view);
   return NANOARROW_OK;
 }
