@@ -320,7 +320,51 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
 
 ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
                                        enum ArrowType data_type, int64_t n_children) {
-  return EINVAL;
+  if (n_children < 1 || n_children > 127) {
+    return EINVAL;
+  }
+
+  // Max valid size would be +ud:0,1,...126 = 401 characters + null terminator
+  char format_out[512];
+  int64_t format_out_size = 512;
+  memset(format_out, 0, format_out_size);
+  int n_chars;
+  char* format_cursor = format_out;
+
+
+  switch (data_type) {
+    case NANOARROW_TYPE_SPARSE_UNION:
+      n_chars = snprintf(format_cursor, format_out_size, "+us:");
+      format_cursor += n_chars;
+      format_out_size -= n_chars;
+      break;
+    case NANOARROW_TYPE_DENSE_UNION:
+      n_chars = snprintf(format_cursor, format_out_size, "+ud:");
+      format_cursor += n_chars;
+      format_out_size -= n_chars;
+      break;
+    default:
+      return EINVAL;
+  }
+
+  n_chars = snprintf(format_cursor, format_out_size, "0");
+  format_cursor += n_chars;
+  format_out_size -= n_chars;
+
+  for (int64_t i = 1; i < n_children; i++) {
+    n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
+    format_cursor += n_chars;
+    format_out_size -= n_chars;
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, format_out));
+
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, n_children));
+  for (int64_t i = 0; i < n_children; i++) {
+    ArrowSchemaInit(schema->children[i]);
+  }
+
+  return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format) {

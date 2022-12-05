@@ -291,7 +291,7 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
 ///
 /// Returns EINVAL for a data_type that is not NANOARROW_TYPE_DENSE_UNION
 /// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
-/// allocated, initialized, and named.
+/// allocated, and initialized.
 ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
                                        enum ArrowType data_type, int64_t n_children);
 

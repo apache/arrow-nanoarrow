@@ -304,6 +304,26 @@ TEST(SchemaTest, SchemaInitDateTime) {
       arrow_type.ValueUnsafe()->Equals(timestamp(TimeUnit::SECOND, "America/Halifax")));
 }
 
+TEST(SchemaTest, SchemaInitUnion) {
+  struct ArrowSchema schema;
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_NA, 1), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 0), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 128), EINVAL);
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 2), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+us:0,1");
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 2), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+ud:0,1");
+  schema.release(&schema);
+}
+
 TEST(SchemaTest, SchemaSetFormat) {
   struct ArrowSchema schema;
   ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
