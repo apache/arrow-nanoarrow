@@ -235,18 +235,6 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
-                                        enum ArrowType data_type, int32_t fixed_size) {
-  ArrowSchemaInit(schema);
-  int result = ArrowSchemaSetTypeFixedSize(schema, data_type, fixed_size);
-  if (result != NANOARROW_OK) {
-    schema->release(schema);
-    return result;
-  }
-
-  return NANOARROW_OK;
-}
-
 ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
                                          enum ArrowType data_type,
                                          int32_t decimal_precision,
@@ -272,20 +260,6 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
 
   buffer[n_chars] = '\0';
   return ArrowSchemaSetFormat(schema, buffer);
-}
-
-ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
-                                      enum ArrowType data_type, int32_t decimal_precision,
-                                      int32_t decimal_scale) {
-  ArrowSchemaInit(schema);
-  int result =
-      ArrowSchemaSetTypeDecimal(schema, data_type, decimal_precision, decimal_scale);
-  if (result != NANOARROW_OK) {
-    schema->release(schema);
-    return result;
-  }
-
-  return NANOARROW_OK;
 }
 
 static const char* ArrowTimeUnitFormatString(enum ArrowTimeUnit time_unit) {
@@ -345,20 +319,6 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
   buffer[n_chars] = '\0';
 
   return ArrowSchemaSetFormat(schema, buffer);
-}
-
-ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
-                                       enum ArrowType data_type,
-                                       enum ArrowTimeUnit time_unit,
-                                       const char* timezone) {
-  ArrowSchemaInit(schema);
-  int result = ArrowSchemaSetTypeDateTime(schema, data_type, time_unit, timezone);
-  if (result != NANOARROW_OK) {
-    schema->release(schema);
-    return result;
-  }
-
-  return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format) {

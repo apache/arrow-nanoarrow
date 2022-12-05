@@ -157,14 +157,13 @@ TEST(SchemaTest, SchemaTestInitNestedMap) {
 
 TEST(SchemaTest, SchemaInitFixedSize) {
   struct ArrowSchema schema;
+  ArrowSchemaInit(&schema);
 
-  EXPECT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_DOUBLE, 1), EINVAL);
-  EXPECT_EQ(schema.release, nullptr);
-  EXPECT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, 0),
+  EXPECT_EQ(ArrowSchemaSetTypeFixedSize(&schema, NANOARROW_TYPE_DOUBLE, 1), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, 0),
             EINVAL);
-  EXPECT_EQ(schema.release, nullptr);
 
-  EXPECT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, 45),
+  EXPECT_EQ(ArrowSchemaSetTypeFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, 45),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "w:45");
 
@@ -172,7 +171,8 @@ TEST(SchemaTest, SchemaInitFixedSize) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(fixed_size_binary(45)));
 
-  EXPECT_EQ(ArrowSchemaInitFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 12),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeFixedSize(&schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 12),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+w:12");
   ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
@@ -187,12 +187,11 @@ TEST(SchemaTest, SchemaInitFixedSize) {
 TEST(SchemaTest, SchemaInitDecimal) {
   struct ArrowSchema schema;
 
-  EXPECT_EQ(ArrowSchemaInitDecimal(&schema, NANOARROW_TYPE_DECIMAL128, -1, 1), EINVAL);
-  EXPECT_EQ(schema.release, nullptr);
-  EXPECT_EQ(ArrowSchemaInitDecimal(&schema, NANOARROW_TYPE_DOUBLE, 1, 2), EINVAL);
-  EXPECT_EQ(schema.release, nullptr);
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL128, -1, 1), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DOUBLE, 1, 2), EINVAL);
 
-  EXPECT_EQ(ArrowSchemaInitDecimal(&schema, NANOARROW_TYPE_DECIMAL128, 1, 2),
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL128, 1, 2),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "d:1,2");
 
@@ -200,7 +199,8 @@ TEST(SchemaTest, SchemaInitDecimal) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal128(1, 2)));
 
-  EXPECT_EQ(ArrowSchemaInitDecimal(&schema, NANOARROW_TYPE_DECIMAL256, 3, 4),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL256, 3, 4),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "d:3,4,256");
   arrow_type = ImportType(&schema);
@@ -211,30 +211,31 @@ TEST(SchemaTest, SchemaInitDecimal) {
 TEST(SchemaTest, SchemaInitDateTime) {
   struct ArrowSchema schema;
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_DOUBLE,
-                                    NANOARROW_TIME_UNIT_SECOND, nullptr),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_DOUBLE,
+                                       NANOARROW_TIME_UNIT_SECOND, nullptr),
             EINVAL);
-  EXPECT_EQ(schema.release, nullptr);
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIME32,
-                                    NANOARROW_TIME_UNIT_SECOND, "non-null timezone"),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIME32,
+                                       NANOARROW_TIME_UNIT_SECOND, "non-null timezone"),
             EINVAL);
-  EXPECT_EQ(schema.release, nullptr);
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_DURATION,
-                                    NANOARROW_TIME_UNIT_SECOND, "non-null timezone"),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_DURATION,
+                                       NANOARROW_TIME_UNIT_SECOND, "non-null timezone"),
             EINVAL);
-  EXPECT_EQ(schema.release, nullptr);
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(
                 &schema, NANOARROW_TYPE_TIMESTAMP, NANOARROW_TIME_UNIT_SECOND,
                 "a really really really really really really really really really really "
                 "long timezone that causes a buffer overflow on snprintf"),
             ERANGE);
-  EXPECT_EQ(schema.release, nullptr);
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIME32,
-                                    NANOARROW_TIME_UNIT_SECOND, NULL),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIME32,
+                                       NANOARROW_TIME_UNIT_SECOND, NULL),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tts");
 
@@ -242,8 +243,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(time32(TimeUnit::SECOND)));
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIME64,
-                                    NANOARROW_TIME_UNIT_NANO, NULL),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIME64,
+                                       NANOARROW_TIME_UNIT_NANO, NULL),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "ttn");
 
@@ -251,8 +253,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(time64(TimeUnit::NANO)));
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_DURATION,
-                                    NANOARROW_TIME_UNIT_SECOND, NULL),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_DURATION,
+                                       NANOARROW_TIME_UNIT_SECOND, NULL),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tDs");
 
@@ -260,8 +263,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(duration(TimeUnit::SECOND)));
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
-                                    NANOARROW_TIME_UNIT_SECOND, NULL),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_SECOND, NULL),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tss:");
 
@@ -269,8 +273,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(timestamp(TimeUnit::SECOND)));
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
-                                    NANOARROW_TIME_UNIT_MILLI, NULL),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MILLI, NULL),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tsm:");
 
@@ -278,8 +283,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(timestamp(TimeUnit::MILLI)));
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
-                                    NANOARROW_TIME_UNIT_MICRO, NULL),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_MICRO, NULL),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tsu:");
 
@@ -287,8 +293,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(timestamp(TimeUnit::MICRO)));
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
-                                    NANOARROW_TIME_UNIT_NANO, NULL),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_NANO, NULL),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tsn:");
 
@@ -296,8 +303,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(timestamp(TimeUnit::NANO)));
 
-  EXPECT_EQ(ArrowSchemaInitDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
-                                    NANOARROW_TIME_UNIT_SECOND, "America/Halifax"),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIMESTAMP,
+                                       NANOARROW_TIME_UNIT_SECOND, "America/Halifax"),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tss:America/Halifax");
 

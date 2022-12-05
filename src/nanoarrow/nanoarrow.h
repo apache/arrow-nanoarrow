@@ -49,11 +49,13 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
+#define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
 #define ArrowSchemaInitType NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitType)
-#define ArrowSchemaInitFixedSize \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFixedSize)
-#define ArrowSchemaInitDecimal \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitDecimal)
+#define ArrowSchemaSetType NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetType)
+#define ArrowSchemaSetTypeFixedSize \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeFixedSize)
+#define ArrowSchemaSetTypeDecimal \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDecimal)
 #define ArrowSchemaInitDateTime \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitDateTime)
 #define ArrowSchemaDeepCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaDeepCopy)
@@ -215,6 +217,8 @@ static inline struct ArrowStringView ArrowCharView(const char* value);
 ///
 /// @{
 
+void ArrowSchemaInit(struct ArrowSchema* schema);
+
 /// \brief Initialize the fields of a schema
 ///
 /// Initializes the fields and release callback of schema_out. Caller
@@ -235,16 +239,17 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
 ///
 /// Returns EINVAL for fixed_size <= 0 or for data_type that is not
 /// NANOARROW_TYPE_FIXED_SIZE_BINARY or NANOARROW_TYPE_FIXED_SIZE_LIST.
-ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
-                                        enum ArrowType data_type, int32_t fixed_size);
+ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
+                                           enum ArrowType data_type, int32_t fixed_size);
 
 /// \brief Initialize the fields of a decimal schema
 ///
 /// Returns EINVAL for scale <= 0 or for data_type that is not
 /// NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256.
-ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
-                                      enum ArrowType data_type, int32_t decimal_precision,
-                                      int32_t decimal_scale);
+ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
+                                         enum ArrowType data_type,
+                                         int32_t decimal_precision,
+                                         int32_t decimal_scale);
 
 /// \brief Initialize the fields of a time, timestamp, or duration schema
 ///
@@ -252,10 +257,10 @@ ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
 /// NANOARROW_TYPE_TIME32, NANOARROW_TYPE_TIME64,
 /// NANOARROW_TYPE_TIMESTAMP, or NANOARROW_TYPE_DURATION. The
 /// timezone parameter must be NULL for a non-timestamp data_type.
-ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
-                                       enum ArrowType data_type,
-                                       enum ArrowTimeUnit time_unit,
-                                       const char* timezone);
+ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
+                                          enum ArrowType data_type,
+                                          enum ArrowTimeUnit time_unit,
+                                          const char* timezone);
 
 /// \brief Make a (recursive) copy of a schema
 ///
