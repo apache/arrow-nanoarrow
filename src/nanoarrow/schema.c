@@ -320,7 +320,7 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
 
 ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
                                        enum ArrowType data_type, int64_t n_children) {
-  if (n_children < 1 || n_children > 127) {
+  if (n_children < 0 || n_children > 127) {
     return EINVAL;
   }
 
@@ -330,7 +330,6 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
   memset(format_out, 0, format_out_size);
   int n_chars;
   char* format_cursor = format_out;
-
 
   switch (data_type) {
     case NANOARROW_TYPE_SPARSE_UNION:
@@ -347,14 +346,16 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
       return EINVAL;
   }
 
-  n_chars = snprintf(format_cursor, format_out_size, "0");
-  format_cursor += n_chars;
-  format_out_size -= n_chars;
-
-  for (int64_t i = 1; i < n_children; i++) {
-    n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
+  if (n_children > 0) {
+    n_chars = snprintf(format_cursor, format_out_size, "0");
     format_cursor += n_chars;
     format_out_size -= n_chars;
+
+    for (int64_t i = 1; i < n_children; i++) {
+      n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
+      format_cursor += n_chars;
+      format_out_size -= n_chars;
+    }
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, format_out));

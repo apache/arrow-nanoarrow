@@ -309,18 +309,32 @@ TEST(SchemaTest, SchemaInitUnion) {
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_NA, 1), EINVAL);
-  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 0), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, -1), EINVAL);
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 128), EINVAL);
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 0), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+us:");
+  EXPECT_EQ(schema.n_children, 0);
+  schema.release(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 1), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+us:0");
+  EXPECT_EQ(schema.n_children, 1);
   schema.release(&schema);
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 2), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:0,1");
+  EXPECT_EQ(schema.n_children, 2);
   schema.release(&schema);
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 2), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+ud:0,1");
+  EXPECT_EQ(schema.n_children, 2);
   schema.release(&schema);
 }
 
