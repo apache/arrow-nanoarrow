@@ -125,7 +125,7 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
     case NANOARROW_TYPE_DENSE_UNION:
       // Add one null to the first child and append n references to that child
       // (Currently assumes type_id == child_index)
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[0], 1));
+      NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendEmptyInternal(array->children[0], 1, is_valid));
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
       for (int64_t i = 0; i < n; i++) {
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
@@ -137,7 +137,7 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
     case NANOARROW_TYPE_SPARSE_UNION:
       // Add n nulls to the first child and append n references to that child
       // (Currently assumes type_id == child_index)
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[0], n));
+      NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendEmptyInternal(array->children[0], n, is_valid));
       for (int64_t i = 1; i < array->n_children; i++) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(array->children[i], n));
       }
@@ -148,12 +148,12 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(
           array->children[0], n * private_data->layout.child_size_elements));
       break;
     case NANOARROW_TYPE_STRUCT:
       for (int64_t i = 0; i < array->n_children; i++) {
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], n));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(array->children[i], n));
       }
       break;
 
