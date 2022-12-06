@@ -785,6 +785,9 @@ ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
 /// \brief Append a null value to an array
 static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n);
 
+/// \brief Append an empty, non-null value to an array
+static inline ArrowErrorCode ArrowArrayAppendEmpty(struct ArrowArray* array, int64_t n);
+
 /// \brief Append a signed integer value to an array
 ///
 /// Returns NANOARROW_OK if value can be exactly represented by

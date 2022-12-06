@@ -1144,11 +1144,14 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
                                                          child_builder_string};
   auto builder = SparseUnionBuilder(default_memory_pool(), children,
                                     arrow_array.ValueUnsafe()->type());
+  // Arrow's SparseUnionBuilder requires explicit empty value appends?
   ARROW_EXPECT_OK(builder.Append(0));
   ARROW_EXPECT_OK(child_builder_int->Append(123));
+  ARROW_EXPECT_OK(child_builder_string->AppendEmptyValue());
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append(1));
   ARROW_EXPECT_OK(child_builder_string->Append("one twenty four"));
+  ARROW_EXPECT_OK(child_builder_int->AppendEmptyValue());
 
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);

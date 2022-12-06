@@ -107,7 +107,8 @@ static inline ArrowErrorCode _ArrowArrayAppendBits(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n) {
+static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* array,
+                                                            int64_t n, uint8_t is_valid) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
@@ -115,10 +116,10 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
     return NANOARROW_OK;
   }
 
-  // Some type-specific appending for null and union types
+  // Some type-specific handling
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_NA:
-      array->null_count += n;
+      array->null_count += n * !is_valid;
       array->length += n;
       return NANOARROW_OK;
     case NANOARROW_TYPE_DENSE_UNION:
@@ -130,6 +131,7 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
             ArrowArrayBuffer(array, 1), (int32_t)array->children[0]->length - 1));
       }
+      // Null count for unions?
       array->length += n;
       return NANOARROW_OK;
     case NANOARROW_TYPE_SPARSE_UNION:
@@ -137,25 +139,37 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
       // (Currently assumes type_id == child_index)
       NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[0], n));
       for (int64_t i = 1; i < array->n_children; i++) {
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], n));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(array->children[i], n));
       }
 
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
+      // Null count for unions?
       array->length += n;
       return NANOARROW_OK;
+
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(
+          array->children[0], n * private_data->layout.child_size_elements));
+      break;
+    case NANOARROW_TYPE_STRUCT:
+      for (int64_t i = 0; i < array->n_children; i++) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], n));
+      }
+      break;
+
     default:
       break;
   }
 
-  // Append n 0 bits to the validity bitmap. If we haven't allocated a bitmap yet, do it
-  // now
-  if (private_data->bitmap.buffer.data == NULL) {
+  // Append n is_valid bits to the validity bitmap. If we haven't allocated a bitmap yet
+  // and we need to append nulls, do it now.
+  if (!is_valid && private_data->bitmap.buffer.data == NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowBitmapReserve(&private_data->bitmap, array->length + n));
     ArrowBitmapAppendUnsafe(&private_data->bitmap, 1, array->length);
-    ArrowBitmapAppendUnsafe(&private_data->bitmap, 0, n);
-  } else {
+    ArrowBitmapAppendUnsafe(&private_data->bitmap, is_valid, n);
+  } else if (private_data->bitmap.buffer.data != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowBitmapReserve(&private_data->bitmap, n));
-    ArrowBitmapAppendUnsafe(&private_data->bitmap, 0, n);
+    ArrowBitmapAppendUnsafe(&private_data->bitmap, is_valid, n);
   }
 
   // Add appropriate buffer fill
@@ -198,24 +212,17 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
     }
   }
 
-  // For fixed-size list and struct we need to append some nulls to
-  // children for the lengths to line up properly
-  switch (private_data->storage_type) {
-    case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(
-          array->children[0], n * private_data->layout.child_size_elements));
-      break;
-    case NANOARROW_TYPE_STRUCT:
-      for (int64_t i = 0; i < array->n_children; i++) {
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], n));
-      }
-    default:
-      break;
-  }
-
   array->length += n;
-  array->null_count += n;
+  array->null_count += n * !is_valid;
   return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n) {
+  return _ArrowArrayAppendEmptyInternal(array, n, 0);
+}
+
+static inline ArrowErrorCode ArrowArrayAppendEmpty(struct ArrowArray* array, int64_t n) {
+  return _ArrowArrayAppendEmptyInternal(array, n, 1);
 }
 
 static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
@@ -496,7 +503,7 @@ static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* arr
           return EINVAL;
         }
 
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], 1));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(array->children[i], 1));
       }
 
       break;
