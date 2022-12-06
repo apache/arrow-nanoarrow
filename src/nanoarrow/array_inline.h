@@ -115,10 +115,32 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
     return NANOARROW_OK;
   }
 
-  if (private_data->storage_type == NANOARROW_TYPE_NA) {
-    array->null_count += n;
-    array->length += n;
-    return NANOARROW_OK;
+  // Some type-specific appending for null and union types
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_NA:
+      array->null_count += n;
+      array->length += n;
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_DENSE_UNION:
+      // Add one null to the first child and append n references to that child
+      // (Currently assumes type_id == child_index)
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[0], 1));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
+      for (int64_t i = 0; i < n; i++) {
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
+            ArrowArrayBuffer(array, 1), (int32_t)array->children[0]->length - 1));
+      }
+      array->length += n;
+      return NANOARROW_OK;
+    case NANOARROW_TYPE_SPARSE_UNION:
+      // Add n nulls to the first child and append n references to that child
+      // (Currently assumes type_id == child_index)
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[0], n));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
+      array->length += n;
+      return NANOARROW_OK;
+    default:
+      break;
   }
 
   // Append n 0 bits to the validity bitmap. If we haven't allocated a bitmap yet, do it
@@ -167,7 +189,7 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
 
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-        // Not supported
+        // These cases are handled above
         return EINVAL;
     }
   }
@@ -436,6 +458,51 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
     NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
   }
 
+  array->length++;
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* array,
+                                                          int32_t type_id) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  // Currently this assumes type_ids == child index
+  int64_t child_index = type_id;
+  if (child_index < 0 || child_index >= array->n_children) {
+    return EINVAL;
+  }
+
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_DENSE_UNION:
+      // Apppend the target child length to the union offsets buffer
+      _NANOARROW_CHECK_RANGE(array->children[child_index]->length, 0, INT32_MAX);
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
+          ArrowArrayBuffer(array, 1), (int32_t)array->children[child_index]->length - 1));
+      break;
+    case NANOARROW_TYPE_SPARSE_UNION:
+      // Append one null any non-target column that isn't already the right length
+      // or abort if appending a null will result in a column with invalid length
+      for (int64_t i = 0; i < array->n_children; i++) {
+        if (i == child_index || array->children[i]->length == (array->length + 1)) {
+          continue;
+        }
+
+        if (array->children[i]->length != array->length) {
+          return EINVAL;
+        }
+
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], 1));
+      }
+
+      break;
+    default:
+      return EINVAL;
+  }
+
+  // Write to the type_ids buffer
+  NANOARROW_RETURN_NOT_OK(
+      ArrowBufferAppendInt8(ArrowArrayBuffer(array, 0), (int8_t)type_id));
   array->length++;
   return NANOARROW_OK;
 }

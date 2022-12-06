@@ -835,6 +835,15 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
 /// length of the child array(s) did not match the expected length.
 static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
 
+/// \brief Finish a union array element
+///
+/// Appends an element to the union type ids buffer and increments array->length.
+/// For sparse unions, up to one element is added to non type-id children. Returns
+/// EINVAL if the underlying storage type is not a union, if type_id is not valid,
+/// or if child sizes after appending are inconsistent.
+static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* array,
+                                                          int32_t type_id);
+
 /// \brief Shrink buffer capacity to the size required
 ///
 /// Also applies shrinking to any child arrays. array must have been allocated using
