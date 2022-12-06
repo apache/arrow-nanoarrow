@@ -122,7 +122,8 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type) {
+ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
+                                      enum ArrowType storage_type) {
   array->length = 0;
   array->null_count = 0;
   array->offset = 0;
@@ -161,10 +162,10 @@ ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_t
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                                  struct ArrowArrayView* array_view,
-                                                  struct ArrowError* error) {
-  ArrowArrayInit(array, array_view->storage_type);
+static ArrowErrorCode ArrowArrayInitFromTypeFromArrayView(
+    struct ArrowArray* array, struct ArrowArrayView* array_view,
+    struct ArrowError* error) {
+  ArrowArrayInitFromType(array, array_view->storage_type);
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
@@ -177,8 +178,8 @@ static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
   private_data->layout = array_view->layout;
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
-    int result =
-        ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
+    int result = ArrowArrayInitFromTypeFromArrayView(array->children[i],
+                                                     array_view->children[i], error);
     if (result != NANOARROW_OK) {
       array->release(array);
       return result;
@@ -193,7 +194,7 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
                                         struct ArrowError* error) {
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(array, &array_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromTypeFromArrayView(array, &array_view, error));
   ArrowArrayViewReset(&array_view);
   return NANOARROW_OK;
 }
@@ -280,7 +281,7 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  ArrowArrayViewInit(array_view, private_data->storage_type);
+  ArrowArrayViewInitFromType(array_view, private_data->storage_type);
   array_view->layout = private_data->layout;
   array_view->array = array;
 
@@ -454,7 +455,8 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   return result;
 }
 
-void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type) {
+void ArrowArrayViewInitFromType(struct ArrowArrayView* array_view,
+                                enum ArrowType storage_type) {
   memset(array_view, 0, sizeof(struct ArrowArrayView));
   array_view->storage_type = storage_type;
   ArrowLayoutInit(&array_view->layout, storage_type);
@@ -484,7 +486,7 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
     if (array_view->children[i] == NULL) {
       return ENOMEM;
     }
-    ArrowArrayViewInit(array_view->children[i], NANOARROW_TYPE_UNINITIALIZED);
+    ArrowArrayViewInitFromType(array_view->children[i], NANOARROW_TYPE_UNINITIALIZED);
   }
 
   return NANOARROW_OK;
@@ -499,7 +501,7 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
     return result;
   }
 
-  ArrowArrayViewInit(array_view, schema_view.storage_data_type);
+  ArrowArrayViewInitFromType(array_view, schema_view.storage_data_type);
   array_view->layout = schema_view.layout;
 
   result = ArrowArrayViewAllocateChildren(array_view, schema->n_children);
@@ -532,7 +534,7 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
     ArrowFree(array_view->children);
   }
 
-  ArrowArrayViewInit(array_view, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(array_view, NANOARROW_TYPE_UNINITIALIZED);
 }
 
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {

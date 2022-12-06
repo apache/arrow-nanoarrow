@@ -71,7 +71,7 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
       PROTECT(R_MakeExternalPtr(converter, R_NilValue, converter_shelter));
   R_RegisterCFinalizer(converter_xptr, &finalize_converter);
 
-  ArrowArrayViewInit(&converter->array_view, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(&converter->array_view, NANOARROW_TYPE_UNINITIALIZED);
   converter->schema_view.data_type = NANOARROW_TYPE_UNINITIALIZED;
   converter->schema_view.storage_data_type = NANOARROW_TYPE_UNINITIALIZED;
   converter->src.array_view = &converter->array_view;

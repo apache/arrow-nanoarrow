@@ -50,12 +50,19 @@
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
 #define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
-#define ArrowSchemaInitFixedSize \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFixedSize)
-#define ArrowSchemaInitDecimal \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitDecimal)
-#define ArrowSchemaInitDateTime \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitDateTime)
+#define ArrowSchemaInitFromType \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFromType)
+#define ArrowSchemaSetType NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetType)
+#define ArrowSchemaSetTypeStruct \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeStruct)
+#define ArrowSchemaSetTypeFixedSize \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeFixedSize)
+#define ArrowSchemaSetTypeDecimal \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDecimal)
+#define ArrowSchemaSetTypeDateTime \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDateTime)
+#define ArrowSchemaSetTypeUnion \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeUnion)
 #define ArrowSchemaDeepCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaDeepCopy)
 #define ArrowSchemaSetFormat NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetFormat)
 #define ArrowSchemaSetName NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetName)
@@ -82,7 +89,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderRemove)
 #define ArrowSchemaViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaViewInit)
 #define ArrowSchemaToString NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaToString)
-#define ArrowArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInit)
+#define ArrowArrayInitFromType \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromType)
 #define ArrowArrayInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
 #define ArrowArrayAllocateChildren \
@@ -95,7 +103,8 @@
 #define ArrowArrayReserve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayReserve)
 #define ArrowArrayFinishBuilding \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuilding)
-#define ArrowArrayViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInit)
+#define ArrowArrayViewInitFromType \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromType)
 #define ArrowArrayViewInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromSchema)
 #define ArrowArrayViewAllocateChildren \
@@ -215,12 +224,20 @@ static inline struct ArrowStringView ArrowCharView(const char* value);
 ///
 /// @{
 
-/// \brief Initialize the fields of a schema
+/// \brief Initialize an ArrowSchema
 ///
 /// Initializes the fields and release callback of schema_out. Caller
 /// is responsible for calling the schema->release callback if
 /// NANOARROW_OK is returned.
-ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
+void ArrowSchemaInit(struct ArrowSchema* schema);
+
+/// \brief Initialize an ArrowSchema from an ArrowType
+///
+/// A convenience constructor for that calls ArrowSchemaInit() and
+/// ArrowSchemaSetType() for the common case of constructing an
+/// unparameterized type. The caller is responsible for calling the schema->release
+/// callback if NANOARROW_OK is returned.
+ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema, enum ArrowType type);
 
 /// \brief Get a human-readable summary of a Schema
 ///
@@ -231,31 +248,63 @@ ArrowErrorCode ArrowSchemaInit(struct ArrowSchema* schema, enum ArrowType type);
 int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
                             char recursive);
 
-/// \brief Initialize the fields of a fixed-size schema
+/// \brief Set the format field of a schema from an ArrowType
+///
+/// Initializes the fields and release callback of schema_out. For
+/// NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST, and
+/// NANOARROW_TYPE_MAP, the appropriate number of children are
+/// allocated, initialized, and named; however, the caller must
+/// ArrowSchemaSetType() on the preinitialized children. Schema must have been initialized
+/// using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType type);
+
+/// \brief Set the format field and initialize children of a struct schema
+///
+/// The specified number of children are initialized; however, the caller is responsible
+/// for calling ArrowSchemaSetType() and ArrowSchemaSetName() on each child.
+/// Schema must have been initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_children);
+
+/// \brief Set the format field of a fixed-size schema
 ///
 /// Returns EINVAL for fixed_size <= 0 or for data_type that is not
 /// NANOARROW_TYPE_FIXED_SIZE_BINARY or NANOARROW_TYPE_FIXED_SIZE_LIST.
-ArrowErrorCode ArrowSchemaInitFixedSize(struct ArrowSchema* schema,
-                                        enum ArrowType data_type, int32_t fixed_size);
+/// For NANOARROW_TYPE_FIXED_SIZE_LIST, the appropriate number of children are
+/// allocated, initialized, and named; however, the caller must
+/// ArrowSchemaSetType() the first child. Schema must have been initialized using
+/// ArrowSchemaInit() or ArrowSchemaDeepCopy().
+ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
+                                           enum ArrowType data_type, int32_t fixed_size);
 
-/// \brief Initialize the fields of a decimal schema
+/// \brief Set the format field of a decimal schema
 ///
 /// Returns EINVAL for scale <= 0 or for data_type that is not
-/// NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256.
-ArrowErrorCode ArrowSchemaInitDecimal(struct ArrowSchema* schema,
-                                      enum ArrowType data_type, int32_t decimal_precision,
-                                      int32_t decimal_scale);
+/// NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256. Schema must have been
+/// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
+                                         enum ArrowType data_type,
+                                         int32_t decimal_precision,
+                                         int32_t decimal_scale);
 
-/// \brief Initialize the fields of a time, timestamp, or duration schema
+/// \brief Set the format field of a time, timestamp, or duration schema
 ///
 /// Returns EINVAL for data_type that is not
 /// NANOARROW_TYPE_TIME32, NANOARROW_TYPE_TIME64,
 /// NANOARROW_TYPE_TIMESTAMP, or NANOARROW_TYPE_DURATION. The
-/// timezone parameter must be NULL for a non-timestamp data_type.
-ArrowErrorCode ArrowSchemaInitDateTime(struct ArrowSchema* schema,
-                                       enum ArrowType data_type,
-                                       enum ArrowTimeUnit time_unit,
-                                       const char* timezone);
+/// timezone parameter must be NULL for a non-timestamp data_type. Schema must have been
+/// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
+                                          enum ArrowType data_type,
+                                          enum ArrowTimeUnit time_unit,
+                                          const char* timezone);
+
+/// \brief Seet the format field of a union schema
+///
+/// Returns EINVAL for a data_type that is not NANOARROW_TYPE_DENSE_UNION
+/// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
+/// allocated, and initialized.
+ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
+                                       enum ArrowType data_type, int64_t n_children);
 
 /// \brief Make a (recursive) copy of a schema
 ///
@@ -265,33 +314,33 @@ ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
 
 /// \brief Copy format into schema->format
 ///
-/// schema must have been allocated using ArrowSchemaInit() or
+/// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format);
 
 /// \brief Copy name into schema->name
 ///
-/// schema must have been allocated using ArrowSchemaInit() or
+/// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema, const char* name);
 
 /// \brief Copy metadata into schema->metadata
 ///
-/// schema must have been allocated using ArrowSchemaInit() or
+/// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy.
 ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema, const char* metadata);
 
 /// \brief Allocate the schema->children array
 ///
 /// Includes the memory for each child struct ArrowSchema.
-/// schema must have been allocated using ArrowSchemaInit() or
+/// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
                                            int64_t n_children);
 
 /// \brief Allocate the schema->dictionary member
 ///
-/// schema must have been allocated using ArrowSchemaInit() or
+/// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
 
@@ -668,7 +717,8 @@ static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 /// Initializes the fields and release callback of array. Caller
 /// is responsible for calling the array->release callback if
 /// NANOARROW_OK is returned.
-ArrowErrorCode ArrowArrayInit(struct ArrowArray* array, enum ArrowType storage_type);
+ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
+                                      enum ArrowType storage_type);
 
 /// \brief Initialize the contents of an ArrowArray from an ArrowSchema
 ///
@@ -682,37 +732,37 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
 ///
 /// Includes the memory for each child struct ArrowArray,
 /// whose members are marked as released and may be subsequently initialized
-/// with ArrowArrayInit() or moved from an existing ArrowArray.
-/// schema must have been allocated using ArrowArrayInit().
+/// with ArrowArrayInitFromType() or moved from an existing ArrowArray.
+/// schema must have been allocated using ArrowArrayInitFromType().
 ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_children);
 
 /// \brief Allocate the array->dictionary member
 ///
 /// Includes the memory for the struct ArrowArray, whose contents
 /// is marked as released and may be subsequently initialized
-/// with ArrowArrayInit() or moved from an existing ArrowArray.
-/// array must have been allocated using ArrowArrayInit()
+/// with ArrowArrayInitFromType() or moved from an existing ArrowArray.
+/// array must have been allocated using ArrowArrayInitFromType()
 ArrowErrorCode ArrowArrayAllocateDictionary(struct ArrowArray* array);
 
 /// \brief Set the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 void ArrowArraySetValidityBitmap(struct ArrowArray* array, struct ArrowBitmap* bitmap);
 
 /// \brief Set a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                    struct ArrowBuffer* buffer);
 
 /// \brief Get the validity bitmap of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 static inline struct ArrowBitmap* ArrowArrayValidityBitmap(struct ArrowArray* array);
 
 /// \brief Get a buffer of an ArrowArray
 ///
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int64_t i);
 
 /// \brief Start element-wise appending to an ArrowArray
@@ -720,7 +770,7 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 /// Initializes any values needed to use ArrowArrayAppend*() functions.
 /// All element-wise appenders append by value and return EINVAL if the exact value
 /// cannot be represented by the underlying storage type.
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array);
 
 /// \brief Reserve space for future appends
@@ -788,7 +838,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
 /// \brief Shrink buffer capacity to the size required
 ///
 /// Also applies shrinking to any child arrays. array must have been allocated using
-/// ArrowArrayInit
+/// ArrowArrayInitFromType
 static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 
 /// \brief Finish building an ArrowArray
@@ -796,7 +846,7 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 /// Flushes any pointers from internal buffers that may have been reallocated
 /// into the array->buffers array and checks the actual size of the buffers
 /// against the expected size based on the final length.
-/// array must have been allocated using ArrowArrayInit()
+/// array must have been allocated using ArrowArrayInitFromType()
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         struct ArrowError* error);
 
@@ -809,7 +859,8 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 /// @{
 
 /// \brief Initialize the contents of an ArrowArrayView
-void ArrowArrayViewInit(struct ArrowArrayView* array_view, enum ArrowType storage_type);
+void ArrowArrayViewInitFromType(struct ArrowArrayView* array_view,
+                                enum ArrowType storage_type);
 
 /// \brief Move an ArrowArrayView
 ///
