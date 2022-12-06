@@ -1113,6 +1113,51 @@ TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
+TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 2),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "integers"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[1], "strings"), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], ArrowCharView("one twenty four")),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+
+  auto arrow_array = ImportArray(&array, &schema);
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto child_builder_int = std::make_shared<Int64Builder>();
+  auto child_builder_string = std::make_shared<StringBuilder>();
+  std::vector<std::shared_ptr<ArrayBuilder>> children = {child_builder_int,
+                                                         child_builder_string};
+  auto builder = SparseUnionBuilder(default_memory_pool(), children,
+                                    arrow_array.ValueUnsafe()->type());
+  ARROW_EXPECT_OK(builder.Append(0));
+  ARROW_EXPECT_OK(child_builder_int->Append(123));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(child_builder_string->Append("one twenty four"));
+
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_EQ(arrow_array.ValueUnsafe()->ToString(),
+            expected_array.ValueUnsafe()->ToString());
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
 TEST(ArrayTest, ArrayViewTestBasic) {
   struct ArrowArrayView array_view;
   struct ArrowError error;

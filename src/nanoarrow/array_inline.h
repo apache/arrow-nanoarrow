@@ -136,6 +136,10 @@ static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int6
       // Add n nulls to the first child and append n references to that child
       // (Currently assumes type_id == child_index)
       NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[0], n));
+      for (int64_t i = 1; i < array->n_children; i++) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array->children[i], n));
+      }
+
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
       array->length += n;
       return NANOARROW_OK;
