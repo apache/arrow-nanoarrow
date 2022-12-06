@@ -119,10 +119,10 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
 TEST(SchemaTest, SchemaTestInitNestedStruct) {
   struct ArrowSchema schema;
 
-  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
-  ASSERT_EQ(ArrowSchemaAllocateChildren(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitFromType(schema.children[0], NANOARROW_TYPE_INT32),
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
 
@@ -317,25 +317,45 @@ TEST(SchemaTest, SchemaInitUnion) {
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 0), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:");
   EXPECT_EQ(schema.n_children, 0);
+  // The zero-case union isn't supported by Arrow C++'s C data inferface implementation
   schema.release(&schema);
-
+  
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetName(schema.children[0], "u1"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:0");
   EXPECT_EQ(schema.n_children, 1);
-  schema.release(&schema);
+
+  auto arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(sparse_union({field("u1", int32())})));
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetName(schema.children[0], "u1"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetName(schema.children[1], "u2"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:0,1");
   EXPECT_EQ(schema.n_children, 2);
-  schema.release(&schema);
+  
+  arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(sparse_union({field("u1", int32()), field("u2", utf8())})));
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetName(schema.children[0], "u1"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetName(schema.children[1], "u2"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+ud:0,1");
   EXPECT_EQ(schema.n_children, 2);
-  schema.release(&schema);
+  
+  arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(dense_union({field("u1", int32()), field("u2", utf8())})));
 }
 
 TEST(SchemaTest, SchemaSetFormat) {

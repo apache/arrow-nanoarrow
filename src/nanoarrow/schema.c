@@ -190,6 +190,16 @@ ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType dat
   return ArrowSchemaInitChildrenIfNeeded(schema, data_type);
 }
 
+ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_children) {
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, n_children));
+  for (int64_t i = 0; i < n_children; i++) {
+    ArrowSchemaInit(schema->children[i]);
+  }
+
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema,
                                        enum ArrowType data_type) {
   ArrowSchemaInit(schema);

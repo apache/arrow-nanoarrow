@@ -53,6 +53,8 @@
 #define ArrowSchemaInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFromType)
 #define ArrowSchemaSetType NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetType)
+#define ArrowSchemaSetTypeStruct \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeStruct)
 #define ArrowSchemaSetTypeFixedSize \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeFixedSize)
 #define ArrowSchemaSetTypeDecimal \
@@ -251,16 +253,25 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
 /// Initializes the fields and release callback of schema_out. For
 /// NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST, and
 /// NANOARROW_TYPE_MAP, the appropriate number of children are
-/// allocated, initialized, and named. Schema must have been initialized using
-/// ArrowSchemaInit() or ArrowSchemaDeepCopy().
+/// allocated, initialized, and named; however, the caller must
+/// ArrowSchemaSetType() on the preinitialized children. Schema must have been initialized
+/// using ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType type);
+
+/// \brief Set the format field and initialize children of a struct schema
+///
+/// The specified number of children are initialized; however, the caller is responsible
+/// for calling ArrowSchemaSetType() and ArrowSchemaSetName() on each child.
+/// Schema must have been initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_children);
 
 /// \brief Set the format field of a fixed-size schema
 ///
 /// Returns EINVAL for fixed_size <= 0 or for data_type that is not
 /// NANOARROW_TYPE_FIXED_SIZE_BINARY or NANOARROW_TYPE_FIXED_SIZE_LIST.
 /// For NANOARROW_TYPE_FIXED_SIZE_LIST, the appropriate number of children are
-/// allocated, initialized, and named. Schema must have been initialized using
+/// allocated, initialized, and named; however, the caller must
+/// ArrowSchemaSetType() the first child. Schema must have been initialized using
 /// ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
                                            enum ArrowType data_type, int32_t fixed_size);
