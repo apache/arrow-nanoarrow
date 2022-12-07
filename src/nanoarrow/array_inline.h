@@ -115,6 +115,20 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_UNINITIALIZED:
+      return EINVAL;
+    case NANOARROW_TYPE_SPARSE_UNION:
+    case NANOARROW_TYPE_DENSE_UNION:
+      // Note that this value could be -1 if the type_ids string was invalid
+      if (private_data->union_type_id_is_child_index != 1) {
+        return EINVAL;
+      } else {
+        break;
+      }
+    default:
+      break;
+  }
   if (private_data->storage_type == NANOARROW_TYPE_UNINITIALIZED) {
     return EINVAL;
   }

@@ -1091,13 +1091,12 @@ TEST(ArrayTest, ArrayTestUnionUtils) {
   EXPECT_TRUE(_ArrowUnionTypeIdsWillEqualChildIndices("", 0));
   EXPECT_TRUE(_ArrowUnionTypeIdsWillEqualChildIndices("0", 1));
   EXPECT_TRUE(_ArrowUnionTypeIdsWillEqualChildIndices("0,1", 2));
-  
+
   EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("0,1", 1));
   EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices(",", 0));
   EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("1", 1));
   EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("0,2", 2));
   EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("0,2", 2));
-
 }
 
 TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
@@ -1189,6 +1188,18 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
   EXPECT_EQ(arrow_array.ValueUnsafe()->ToString(),
             expected_array.ValueUnsafe()->ToString());
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToUnionArrayErrors) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+us:0"), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), EINVAL);
+  schema.release(&schema);
+  array.release(&array);
 }
 
 TEST(ArrayTest, ArrayViewTestBasic) {
