@@ -502,7 +502,7 @@ struct ArrowSchemaView {
   /// This value is set when parsing a union type and represents
   /// type ids parameter. The ArrowStringView points to
   /// data within the schema and the value is undefined for other types.
-  struct ArrowStringView union_type_ids;
+  const char* union_type_ids;
 };
 
 /// \brief Initialize an ArrowSchemaView
@@ -785,6 +785,9 @@ ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
 /// \brief Append a null value to an array
 static inline ArrowErrorCode ArrowArrayAppendNull(struct ArrowArray* array, int64_t n);
 
+/// \brief Append an empty, non-null value to an array
+static inline ArrowErrorCode ArrowArrayAppendEmpty(struct ArrowArray* array, int64_t n);
+
 /// \brief Append a signed integer value to an array
 ///
 /// Returns NANOARROW_OK if value can be exactly represented by
@@ -834,6 +837,15 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
 /// list, or if there was an attempt to add a struct or fixed-size list element where the
 /// length of the child array(s) did not match the expected length.
 static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
+
+/// \brief Finish a union array element
+///
+/// Appends an element to the union type ids buffer and increments array->length.
+/// For sparse unions, up to one element is added to non type-id children. Returns
+/// EINVAL if the underlying storage type is not a union, if type_id is not valid,
+/// or if child sizes after appending are inconsistent.
+static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* array,
+                                                          int8_t type_id);
 
 /// \brief Shrink buffer capacity to the size required
 ///

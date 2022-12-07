@@ -159,12 +159,15 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   }
 
   ArrowLayoutInit(&private_data->layout, storage_type);
+  // We can only know this not to be true when initializing based on a schema
+  // so assume this to be true.
+  private_data->union_type_id_is_child_index = 1;
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayInitFromTypeFromArrayView(
-    struct ArrowArray* array, struct ArrowArrayView* array_view,
-    struct ArrowError* error) {
+static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                                  struct ArrowArrayView* array_view,
+                                                  struct ArrowError* error) {
   ArrowArrayInitFromType(array, array_view->storage_type);
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -178,8 +181,8 @@ static ArrowErrorCode ArrowArrayInitFromTypeFromArrayView(
   private_data->layout = array_view->layout;
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
-    int result = ArrowArrayInitFromTypeFromArrayView(array->children[i],
-                                                     array_view->children[i], error);
+    int result =
+        ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
     if (result != NANOARROW_OK) {
       array->release(array);
       return result;
@@ -194,7 +197,18 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
                                         struct ArrowError* error) {
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromTypeFromArrayView(array, &array_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(array, &array_view, error));
+  if (array_view.storage_type == NANOARROW_TYPE_DENSE_UNION ||
+      array_view.storage_type == NANOARROW_TYPE_SPARSE_UNION) {
+    struct ArrowArrayPrivateData* private_data =
+        (struct ArrowArrayPrivateData*)array->private_data;
+    // We can still build arrays if this isn't true; however, the append
+    // functions won't work. Instead, we store this value and error only
+    // when StartAppending is called.
+    private_data->union_type_id_is_child_index =
+        _ArrowUnionTypeIdsWillEqualChildIndices(schema->format + 4, schema->n_children);
+  }
+
   ArrowArrayViewReset(&array_view);
   return NANOARROW_OK;
 }

@@ -520,6 +520,11 @@ struct ArrowArrayPrivateData {
 
   // The buffer arrangement for the storage type
   struct ArrowLayout layout;
+
+  // Flag to indicate if there are non-sequence union type ids.
+  // In the future this could be replaced with a type id<->child mapping
+  // to support constructing unions in append mode where type_id != child_index
+  int8_t union_type_id_is_child_index;
 };
 
 #ifdef __cplusplus
