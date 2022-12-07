@@ -201,19 +201,12 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
 
   if (schema_view.data_type == NANOARROW_TYPE_DENSE_UNION ||
       schema_view.data_type == NANOARROW_TYPE_SPARSE_UNION) {
-    int num_type_ids = 1;
-    for (int64_t i = 0; i < schema_view.union_type_ids.n_bytes; i++) {
-      num_type_ids += schema_view.union_type_ids.data[i] == ',';
-    }
-
+    int8_t type_ids[128];
+    int num_type_ids = _ArrowParseUnionTypeIds(schema_view.union_type_ids, type_ids);
+    
     SEXP union_type_ids = PROTECT(Rf_allocVector(INTSXP, num_type_ids));
-    const char* ptr = schema_view.union_type_ids.data;
-    char* end_ptr = (char*)ptr;
-    int i = 0;
-    while (*end_ptr != '\0') {
-      INTEGER(union_type_ids)[i] = strtol(ptr, &end_ptr, 10);
-      i++;
-      ptr = end_ptr + 1;
+    for (int i = 0; i < num_type_ids; i++) {
+      INTEGER(union_type_ids)[i] = type_ids[i];
     }
     SET_VECTOR_ELT(result, 10, union_type_ids);
     UNPROTECT(1);
