@@ -29,9 +29,6 @@ static void ArrowArrayRelease(struct ArrowArray* array) {
     ArrowBitmapReset(&private_data->bitmap);
     ArrowBufferReset(&private_data->buffers[0]);
     ArrowBufferReset(&private_data->buffers[1]);
-    if (private_data->union_child_index_map != NULL) {
-      ArrowFree(private_data->union_child_index_map);
-    }
     ArrowFree(private_data);
   }
 
@@ -162,7 +159,6 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   }
 
   ArrowLayoutInit(&private_data->layout, storage_type);
-  private_data->union_child_index_map = NULL;
   return NANOARROW_OK;
 }
 

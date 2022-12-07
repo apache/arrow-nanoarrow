@@ -520,10 +520,6 @@ struct ArrowArrayPrivateData {
 
   // The buffer arrangement for the storage type
   struct ArrowLayout layout;
-
-  // An ArrowMalloc-ed 128-byte lookup table mapping type_id -> child_index or NULL
-  // if storage_type is not a union type.
-  int8_t* union_child_index_map;
 };
 
 #ifdef __cplusplus

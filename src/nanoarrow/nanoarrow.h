@@ -845,7 +845,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
 /// EINVAL if the underlying storage type is not a union, if type_id is not valid,
 /// or if child sizes after appending are inconsistent.
 static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* array,
-                                                          int32_t type_id);
+                                                          int8_t type_id);
 
 /// \brief Shrink buffer capacity to the size required
 ///

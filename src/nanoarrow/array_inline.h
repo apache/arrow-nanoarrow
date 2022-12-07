@@ -48,6 +48,19 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
   }
 }
 
+// We don't currently support the case of unions where type_id != child_index;
+// however, these two functions are used to keep track of where that assumption
+// is made.
+static inline int8_t _ArrowArrayUnionChildIndex(struct ArrowArray* array,
+                                                int8_t type_id) {
+  return type_id;
+}
+
+static inline int8_t _ArrowArrayUnionTypeId(struct ArrowArray* array,
+                                            int8_t child_index) {
+  return child_index;
+}
+
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -123,32 +136,40 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
       array->null_count += n;
       array->length += n;
       return NANOARROW_OK;
-    case NANOARROW_TYPE_DENSE_UNION:
+
+    case NANOARROW_TYPE_DENSE_UNION: {
       // Add one null to the first child and append n references to that child
-      // (Currently assumes type_id == child_index)
+      int8_t type_id = _ArrowArrayUnionTypeId(array, 0);
       NANOARROW_RETURN_NOT_OK(
           _ArrowArrayAppendEmptyInternal(array->children[0], 1, is_valid));
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), type_id, n));
       for (int64_t i = 0; i < n; i++) {
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
             ArrowArrayBuffer(array, 1), (int32_t)array->children[0]->length - 1));
       }
-      // Null count for unions?
+      // For the purposes of array->null_count, union elements are never considered "null"
+      // even if some children contain nulls.
       array->length += n;
       return NANOARROW_OK;
-    case NANOARROW_TYPE_SPARSE_UNION:
+    }
+
+    case NANOARROW_TYPE_SPARSE_UNION: {
       // Add n nulls to the first child and append n references to that child
-      // (Currently assumes type_id == child_index)
+      int8_t type_id = _ArrowArrayUnionTypeId(array, 0);
       NANOARROW_RETURN_NOT_OK(
           _ArrowArrayAppendEmptyInternal(array->children[0], n, is_valid));
       for (int64_t i = 1; i < array->n_children; i++) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(array->children[i], n));
       }
 
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
-      // Null count for unions?
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), type_id, n));
+      // For the purposes of array->null_count, union elements are never considered "null"
+      // even if some children contain nulls.
       array->length += n;
       return NANOARROW_OK;
+    }
 
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(
@@ -477,12 +498,11 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
 }
 
 static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* array,
-                                                          int32_t type_id) {
+                                                          int8_t type_id) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  // Currently this assumes type_ids == child index
-  int64_t child_index = type_id;
+  int64_t child_index = _ArrowArrayUnionChildIndex(array, type_id);
   if (child_index < 0 || child_index >= array->n_children) {
     return EINVAL;
   }
