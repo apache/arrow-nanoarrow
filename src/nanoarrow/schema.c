@@ -753,6 +753,16 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
 
           if (format[3] == ':') {
             schema_view->union_type_ids = format + 4;
+            int64_t n_type_ids =
+                _ArrowParseUnionTypeIds(schema_view->union_type_ids, NULL);
+            if (n_type_ids != schema_view->schema->n_children) {
+              ArrowErrorSet(
+                  error,
+                  "Expected union type_ids parameter to be a comma-separated list of %ld "
+                  "values between 0 and 127 but found '%s'",
+                  (long)schema_view->schema->n_children, schema_view->union_type_ids);
+              return EINVAL;
+            }
             *format_end_out = format + strlen(format);
             return NANOARROW_OK;
           } else {
@@ -1116,9 +1126,12 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
       ArrowSchemaViewParse(schema_view, format, &format_end_out, error);
 
   if (result != NANOARROW_OK) {
-    char child_error[1024];
-    memcpy(child_error, ArrowErrorMessage(error), 1024);
-    ArrowErrorSet(error, "Error parsing schema->format: %s", child_error);
+    if (error != NULL) {
+      char child_error[1024];
+      memcpy(child_error, ArrowErrorMessage(error), 1024);
+      ArrowErrorSet(error, "Error parsing schema->format: %s", child_error);
+    }
+    
     return result;
   }
 

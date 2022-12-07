@@ -1226,9 +1226,14 @@ TEST(ArrayTest, ArrayTestAppendToUnionArrayErrors) {
   struct ArrowArray array;
   struct ArrowSchema schema;
 
+  // Make an valid union that won't work during appending (because
+  // the type_id != child_index)
   ArrowSchemaInit(&schema);
-  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+us:0"), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 1),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+us:1"), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), EINVAL);
   schema.release(&schema);
   array.release(&array);

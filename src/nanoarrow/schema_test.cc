@@ -1235,6 +1235,20 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnionErrors) {
                "Error parsing schema->format: Expected union format string "
                "+us:<type_ids> or +ud:<type_ids> but found '+us'");
 
+  // bad type_ids (wrong number of children)
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+us:0"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected union type_ids parameter to be a "
+               "comma-separated list of 0 values between 0 and 127 but found '0'");
+
+  // bad type_ids (not comma separated integers)
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+us:,"), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Error parsing schema->format: Expected union type_ids parameter to be a "
+               "comma-separated list of 0 values between 0 and 127 but found ','");
+
   schema.release(&schema);
 }
 
