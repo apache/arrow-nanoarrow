@@ -119,13 +119,15 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
   // Some type-specific handling
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_NA:
-      array->null_count += n * !is_valid;
+      // (An empty value for a null array *is* a null)
+      array->null_count += n;
       array->length += n;
       return NANOARROW_OK;
     case NANOARROW_TYPE_DENSE_UNION:
       // Add one null to the first child and append n references to that child
       // (Currently assumes type_id == child_index)
-      NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendEmptyInternal(array->children[0], 1, is_valid));
+      NANOARROW_RETURN_NOT_OK(
+          _ArrowArrayAppendEmptyInternal(array->children[0], 1, is_valid));
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(ArrowArrayBuffer(array, 0), 0, n));
       for (int64_t i = 0; i < n; i++) {
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
@@ -137,7 +139,8 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
     case NANOARROW_TYPE_SPARSE_UNION:
       // Add n nulls to the first child and append n references to that child
       // (Currently assumes type_id == child_index)
-      NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendEmptyInternal(array->children[0], n, is_valid));
+      NANOARROW_RETURN_NOT_OK(
+          _ArrowArrayAppendEmptyInternal(array->children[0], n, is_valid));
       for (int64_t i = 1; i < array->n_children; i++) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendEmpty(array->children[i], n));
       }
@@ -492,7 +495,7 @@ static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* arr
           ArrowArrayBuffer(array, 1), (int32_t)array->children[child_index]->length - 1));
       break;
     case NANOARROW_TYPE_SPARSE_UNION:
-      // Append one null any non-target column that isn't already the right length
+      // Append one empty to any non-target column that isn't already the right length
       // or abort if appending a null will result in a column with invalid length
       for (int64_t i = 0; i < array->n_children; i++) {
         if (i == child_index || array->children[i]->length == (array->length + 1)) {
