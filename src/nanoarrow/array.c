@@ -29,6 +29,9 @@ static void ArrowArrayRelease(struct ArrowArray* array) {
     ArrowBitmapReset(&private_data->bitmap);
     ArrowBufferReset(&private_data->buffers[0]);
     ArrowBufferReset(&private_data->buffers[1]);
+    if (private_data->union_child_index_map != NULL) {
+      ArrowFree(private_data->union_child_index_map);
+    }
     ArrowFree(private_data);
   }
 
@@ -159,12 +162,13 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   }
 
   ArrowLayoutInit(&private_data->layout, storage_type);
+  private_data->union_child_index_map = NULL;
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayInitFromTypeFromArrayView(
-    struct ArrowArray* array, struct ArrowArrayView* array_view,
-    struct ArrowError* error) {
+static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                                  struct ArrowArrayView* array_view,
+                                                  struct ArrowError* error) {
   ArrowArrayInitFromType(array, array_view->storage_type);
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -178,8 +182,8 @@ static ArrowErrorCode ArrowArrayInitFromTypeFromArrayView(
   private_data->layout = array_view->layout;
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
-    int result = ArrowArrayInitFromTypeFromArrayView(array->children[i],
-                                                     array_view->children[i], error);
+    int result =
+        ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
     if (result != NANOARROW_OK) {
       array->release(array);
       return result;
@@ -194,7 +198,7 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
                                         struct ArrowError* error) {
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromTypeFromArrayView(array, &array_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(array, &array_view, error));
   ArrowArrayViewReset(&array_view);
   return NANOARROW_OK;
 }
