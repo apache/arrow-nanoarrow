@@ -1070,6 +1070,24 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
+TEST(ArrayTest, ArrayTestUnionUtils) {
+  // Check length calculation with nullptr
+  EXPECT_EQ(_ArrowParseUnionTypeIds("", nullptr), 0);
+  EXPECT_EQ(_ArrowParseUnionTypeIds("0", nullptr), 1);
+  EXPECT_EQ(_ArrowParseUnionTypeIds("0,1", nullptr), 2);
+  // Invalid
+  EXPECT_EQ(_ArrowParseUnionTypeIds("0,1,", nullptr), -1);
+  EXPECT_EQ(_ArrowParseUnionTypeIds("0,1A", nullptr), -1);
+
+  // Check output
+  int8_t type_ids[] = {-1, -1, -1, -1};
+  EXPECT_EQ(_ArrowParseUnionTypeIds("4,5,6,7", type_ids), 4);
+  EXPECT_EQ(type_ids[0], 4);
+  EXPECT_EQ(type_ids[1], 5);
+  EXPECT_EQ(type_ids[2], 6);
+  EXPECT_EQ(type_ids[3], 7);
+}
+
 TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;

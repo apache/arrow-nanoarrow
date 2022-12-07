@@ -49,7 +49,7 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 }
 
 // We don't currently support the case of unions where type_id != child_index;
-// however, these two functions are used to keep track of where that assumption
+// however, these functions are used to keep track of where that assumption
 // is made.
 static inline int8_t _ArrowArrayUnionChildIndex(struct ArrowArray* array,
                                                 int8_t type_id) {
@@ -59,6 +59,39 @@ static inline int8_t _ArrowArrayUnionChildIndex(struct ArrowArray* array,
 static inline int8_t _ArrowArrayUnionTypeId(struct ArrowArray* array,
                                             int8_t child_index) {
   return child_index;
+}
+
+static inline int8_t _ArrowParseUnionTypeIds(const char* type_ids, int8_t* out) {
+  if (*type_ids == '\0') {
+    return 0;
+  }
+
+  int32_t i = 0;
+  long type_id;
+  char* end_ptr;
+  do {
+    type_id = strtol(type_ids, &end_ptr, 10);
+    if (end_ptr == type_ids) {
+      return -1;
+    }
+
+    if (out != NULL) {
+      out[i] = type_id;
+    }
+
+    i++;
+
+    type_ids = end_ptr;
+    if (*type_ids == '\0') {
+      return i;
+    } else if (*type_ids != ',') {
+      return -1;
+    } else {
+      type_ids++;
+    }
+  } while (1);
+
+  return -1;
 }
 
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) {
