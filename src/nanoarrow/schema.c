@@ -752,8 +752,7 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           }
 
           if (format[3] == ':') {
-            schema_view->union_type_ids.data = format + 4;
-            schema_view->union_type_ids.n_bytes = strlen(format + 4);
+            schema_view->union_type_ids = format + 4;
             *format_end_out = format + strlen(format);
             return NANOARROW_OK;
           } else {
@@ -1185,9 +1184,7 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
       return snprintf(out, n, "%s(%ld)", type_string, (long)schema_view->fixed_size);
     case NANOARROW_TYPE_SPARSE_UNION:
     case NANOARROW_TYPE_DENSE_UNION:
-      return snprintf(out, n, "%s([%.*s])", type_string,
-                      (int)schema_view->union_type_ids.n_bytes,
-                      schema_view->union_type_ids.data);
+      return snprintf(out, n, "%s([%s])", type_string, schema_view->union_type_ids);
     default:
       return snprintf(out, n, "%s", type_string);
   }

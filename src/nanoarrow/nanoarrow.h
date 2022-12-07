@@ -502,7 +502,7 @@ struct ArrowSchemaView {
   /// This value is set when parsing a union type and represents
   /// type ids parameter. The ArrowStringView points to
   /// data within the schema and the value is undefined for other types.
-  struct ArrowStringView union_type_ids;
+  const char* union_type_ids;
 };
 
 /// \brief Initialize an ArrowSchemaView

@@ -122,8 +122,7 @@ TEST(SchemaTest, SchemaTestInitNestedStruct) {
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
 
   auto arrow_type = ImportType(&schema);
@@ -314,14 +313,16 @@ TEST(SchemaTest, SchemaInitUnion) {
   schema.release(&schema);
 
   ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 0), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 0),
+            NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:");
   EXPECT_EQ(schema.n_children, 0);
   // The zero-case union isn't supported by Arrow C++'s C data inferface implementation
   schema.release(&schema);
-  
+
   ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 1),
+            NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetName(schema.children[0], "u1"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:0");
@@ -332,30 +333,34 @@ TEST(SchemaTest, SchemaInitUnion) {
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(sparse_union({field("u1", int32())})));
 
   ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 2),
+            NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetName(schema.children[0], "u1"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetName(schema.children[1], "u2"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:0,1");
   EXPECT_EQ(schema.n_children, 2);
-  
+
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
-  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(sparse_union({field("u1", int32()), field("u2", utf8())})));
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(
+      sparse_union({field("u1", int32()), field("u2", utf8())})));
 
   ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 2),
+            NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetName(schema.children[0], "u1"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetName(schema.children[1], "u2"), NANOARROW_OK);
   EXPECT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+ud:0,1");
   EXPECT_EQ(schema.n_children, 2);
-  
+
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
-  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(dense_union({field("u1", int32()), field("u2", utf8())})));
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(
+      dense_union({field("u1", int32()), field("u2", utf8())})));
 }
 
 TEST(SchemaTest, SchemaSetFormat) {
@@ -1192,9 +1197,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(
-      std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
-      std::string("0"));
+  EXPECT_EQ(std::string(schema_view.union_type_ids), std::string("0"));
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "dense_union([0])<col: int32>");
   schema.release(&schema);
 
@@ -1208,9 +1211,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(
-      std::string(schema_view.union_type_ids.data, schema_view.union_type_ids.n_bytes),
-      std::string("0"));
+  EXPECT_EQ(std::string(schema_view.union_type_ids), std::string("0"));
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "sparse_union([0])<col: int32>");
   schema.release(&schema);
 }
