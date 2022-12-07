@@ -243,14 +243,15 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(array.length, 2);
-  EXPECT_EQ(array.null_count, 2);
+  EXPECT_EQ(array.length, 3);
+  EXPECT_EQ(array.null_count, 3);
 
   auto arrow_array = ImportArray(&array, null());
   ARROW_EXPECT_OK(arrow_array);
-  auto expected_array = MakeArrayOfNull(null(), 2);
+  auto expected_array = MakeArrayOfNull(null(), 3);
   ARROW_EXPECT_OK(expected_array);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 
@@ -274,18 +275,20 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto data_buffer = reinterpret_cast<const int64_t*>(array.buffers[1]);
-  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(validity_buffer[0], 0b00011001);
   EXPECT_EQ(data_buffer[0], 1);
   EXPECT_EQ(data_buffer[1], 0);
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_EQ(data_buffer[3], 3);
+  EXPECT_EQ(data_buffer[4], 0);
 
   auto arrow_array = ImportArray(&array, int64());
   ARROW_EXPECT_OK(arrow_array);
@@ -294,6 +297,7 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   ARROW_EXPECT_OK(builder.Append(1));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append(3));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
@@ -390,14 +394,15 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto offset_buffer = reinterpret_cast<const int32_t*>(array.buffers[1]);
   auto data_buffer = reinterpret_cast<const char*>(array.buffers[2]);
-  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(validity_buffer[0], 0b00011001);
   EXPECT_EQ(offset_buffer[0], 0);
   EXPECT_EQ(offset_buffer[1], 4);
   EXPECT_EQ(offset_buffer[2], 4);
@@ -412,6 +417,7 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   ARROW_EXPECT_OK(builder.Append("1234"));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append("56789"));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
@@ -710,14 +716,15 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto offset_buffer = reinterpret_cast<const int64_t*>(array.buffers[1]);
   auto data_buffer = reinterpret_cast<const char*>(array.buffers[2]);
-  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
+  EXPECT_EQ(validity_buffer[0], 0b00011001);
   EXPECT_EQ(offset_buffer[0], 0);
   EXPECT_EQ(offset_buffer[1], 4);
   EXPECT_EQ(offset_buffer[2], 4);
@@ -732,6 +739,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ARROW_EXPECT_OK(builder.Append("1234"));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append("56789"));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
@@ -755,16 +763,18 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_EQ(ArrowArrayAppendBytes(&array, {"12345", 5}), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendBytes(&array, {"67890", 5}), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto data_buffer = reinterpret_cast<const char*>(array.buffers[1]);
-  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
-  char expected_data[] = {'1',  '2',  '3',  '4',  '5',  0x00, 0x00, 0x00, 0x00, 0x00,
-                          0x00, 0x00, 0x00, 0x00, 0x00, '6',  '7',  '8',  '9',  '0'};
-  EXPECT_EQ(memcmp(data_buffer, expected_data, 20), 0);
+  EXPECT_EQ(validity_buffer[0], 0b00011001);
+  char expected_data[] = {'1',  '2',  '3',  '4',  '5',  0x00, 0x00, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, '6',  '7',  '8',
+                          '9',  '0',  0x00, 0x00, 0x00, 0x00, 0x00};
+  EXPECT_EQ(memcmp(data_buffer, expected_data, 25), 0);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -773,6 +783,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   ARROW_EXPECT_OK(builder.Append("12345"));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append("67890"));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 
@@ -803,6 +814,8 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+
   // Make sure number of children is checked at finish
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
@@ -831,6 +844,7 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   ARROW_EXPECT_OK(builder.Append());
   ARROW_EXPECT_OK(child_builder->Append(456));
   ARROW_EXPECT_OK(child_builder->Append(789));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 
@@ -861,6 +875,8 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+
   // Make sure number of children is checked at finish
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
@@ -890,6 +906,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   ARROW_EXPECT_OK(builder.Append());
   ARROW_EXPECT_OK(child_builder->Append(456));
   ARROW_EXPECT_OK(child_builder->Append(789));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 
@@ -923,6 +940,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
 
   // Make sure number of children is checked at finish
   array.n_children = 0;
@@ -953,6 +971,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   ARROW_EXPECT_OK(key_builder->Append(123));
   ARROW_EXPECT_OK(value_builder->Append("foobar"));
   ARROW_EXPECT_OK(builder.AppendNull());
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto maybe_expected_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_expected_array);
   auto expected_array = std::move(maybe_expected_array).MoveValueUnsafe();
@@ -988,6 +1007,8 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 12), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+
   // Make sure number of children is checked at finish
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
@@ -999,8 +1020,8 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   array.children[0]->length = array.children[0]->length - 1;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected child of fixed-size list array with length >= 6 but found array "
-               "with length 5");
+               "Expected child of fixed-size list array with length >= 8 but found array "
+               "with length 7");
 
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
@@ -1018,6 +1039,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   ARROW_EXPECT_OK(builder.Append());
   ARROW_EXPECT_OK(child_builder->Append(789));
   ARROW_EXPECT_OK(child_builder->Append(12));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 
@@ -1051,6 +1073,8 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
 
+  ASSERT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
@@ -1064,6 +1088,7 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   ARROW_EXPECT_OK(builder.AppendNull());
   ARROW_EXPECT_OK(child_builder->Append(456));
   ARROW_EXPECT_OK(builder.Append());
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 
@@ -1119,6 +1144,8 @@ TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   ASSERT_EQ(ArrowArrayAppendString(array.children[1], ArrowCharView("one twenty four")),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
@@ -1135,6 +1162,7 @@ TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append(1));
   ARROW_EXPECT_OK(child_builder_string->Append("one twenty four"));
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
 
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
@@ -1162,6 +1190,7 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
   ASSERT_EQ(ArrowArrayAppendString(array.children[1], ArrowCharView("one twenty four")),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
@@ -1181,6 +1210,7 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
   ARROW_EXPECT_OK(builder.Append(1));
   ARROW_EXPECT_OK(child_builder_string->Append("one twenty four"));
   ARROW_EXPECT_OK(child_builder_int->AppendEmptyValue());
+  ARROW_EXPECT_OK(builder.AppendEmptyValue());
 
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
