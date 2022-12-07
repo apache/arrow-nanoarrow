@@ -71,7 +71,7 @@ static inline int8_t _ArrowParseUnionTypeIds(const char* type_ids, int8_t* out) 
   char* end_ptr;
   do {
     type_id = strtol(type_ids, &end_ptr, 10);
-    if (end_ptr == type_ids) {
+    if (end_ptr == type_ids || type_id < 0 || type_id > 127) {
       return -1;
     }
 

@@ -1103,6 +1103,8 @@ TEST(ArrayTest, ArrayTestUnionUtils) {
   // Invalid
   EXPECT_EQ(_ArrowParseUnionTypeIds("0,1,", nullptr), -1);
   EXPECT_EQ(_ArrowParseUnionTypeIds("0,1A", nullptr), -1);
+  EXPECT_EQ(_ArrowParseUnionTypeIds("128", nullptr), -1);
+  EXPECT_EQ(_ArrowParseUnionTypeIds("-1", nullptr), -1);
 
   // Check output
   int8_t type_ids[] = {-1, -1, -1, -1};

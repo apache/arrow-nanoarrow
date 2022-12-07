@@ -1197,7 +1197,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(std::string(schema_view.union_type_ids), std::string("0"));
+  EXPECT_STREQ(schema_view.union_type_ids, "0");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "dense_union([0])<col: int32>");
   schema.release(&schema);
 
@@ -1211,7 +1211,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
-  EXPECT_EQ(std::string(schema_view.union_type_ids), std::string("0"));
+  EXPECT_STREQ(schema_view.union_type_ids, "0");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "sparse_union([0])<col: int32>");
   schema.release(&schema);
 }
