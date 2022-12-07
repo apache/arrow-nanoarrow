@@ -203,7 +203,10 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
       schema_view.data_type == NANOARROW_TYPE_SPARSE_UNION) {
     int8_t type_ids[128];
     int num_type_ids = _ArrowParseUnionTypeIds(schema_view.union_type_ids, type_ids);
-    
+    if (num_type_ids == -1) {
+      Rf_error("Invalid type IDs in union type: '%s'", schema_view.union_type_ids);
+    }
+
     SEXP union_type_ids = PROTECT(Rf_allocVector(INTSXP, num_type_ids));
     for (int i = 0; i < num_type_ids; i++) {
       INTEGER(union_type_ids)[i] = type_ids[i];
