@@ -1086,6 +1086,18 @@ TEST(ArrayTest, ArrayTestUnionUtils) {
   EXPECT_EQ(type_ids[1], 5);
   EXPECT_EQ(type_ids[2], 6);
   EXPECT_EQ(type_ids[3], 7);
+
+  // Check the "ids will equal child indices" checker
+  EXPECT_TRUE(_ArrowUnionTypeIdsWillEqualChildIndices("", 0));
+  EXPECT_TRUE(_ArrowUnionTypeIdsWillEqualChildIndices("0", 1));
+  EXPECT_TRUE(_ArrowUnionTypeIdsWillEqualChildIndices("0,1", 2));
+  
+  EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("0,1", 1));
+  EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices(",", 0));
+  EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("1", 1));
+  EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("0,2", 2));
+  EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("0,2", 2));
+
 }
 
 TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {

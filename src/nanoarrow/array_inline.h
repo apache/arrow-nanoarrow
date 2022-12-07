@@ -94,6 +94,23 @@ static inline int8_t _ArrowParseUnionTypeIds(const char* type_ids, int8_t* out) 
   return -1;
 }
 
+static inline int8_t _ArrowUnionTypeIdsWillEqualChildIndices(const char* type_id_str,
+                                                             int64_t n_children) {
+  int8_t type_ids[128];
+  int8_t n_type_ids = _ArrowParseUnionTypeIds(type_id_str, type_ids);
+  if (n_type_ids != n_children) {
+    return 0;
+  }
+
+  for (int8_t i = 0; i < n_type_ids; i++) {
+    if (type_ids[i] != i) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
