@@ -498,6 +498,13 @@ struct ArrowArrayView {
 
   /// \brief Pointers to views of this array's children
   struct ArrowArrayView** children;
+
+  /// \brief Union type id to child index mapping
+  ///
+  /// If storage_type is a union type, a 256-byte ArrowMalloc()ed buffer
+  /// such that child_index == union_type_id_map[type_id] and
+  /// type_id == union_type_id_map[128 + child_index]
+  int8_t* union_type_id_map;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed

@@ -1594,6 +1594,69 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   array.release(&array);
 }
 
+TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
+  struct ArrowArrayView array_view;
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  // Build a simple union with one int and one string
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 2),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], ArrowCharView("one twenty four")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+
+  // The ArrayView for a union could in theroy be created without a schema,
+  // in which case the type_ids are assumed to equal child indices
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_DENSE_UNION);
+  ASSERT_EQ(ArrowArrayViewAllocateChildren(&array_view, 2), NANOARROW_OK);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
+  ArrowArrayViewInitFromType(array_view.children[1], NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
+
+  ArrowArrayViewReset(&array_view);
+
+  // The test schema explicitly sets the type_ids 0,1 and this should work too
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
+
+  ArrowArrayViewReset(&array_view);
+
+  // Reversing the type ids should result in the same type ids but
+  // reversed child indices
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+ud:1,0"), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 1);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 0);
+
+  ArrowArrayViewReset(&array_view);
+  schema.release(&schema);
+  array.release(&array);
+}
+
 template <typename TypeClass>
 void TestGetFromNumericArrayView() {
   struct ArrowArray array;
