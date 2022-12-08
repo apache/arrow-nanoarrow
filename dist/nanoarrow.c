@@ -2266,6 +2266,22 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
     }
   }
 
+  if (array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION ||
+      array_view->storage_type == NANOARROW_TYPE_DENSE_UNION) {
+    array_view->union_type_id_map = (int8_t*)ArrowMalloc(256 * sizeof(int8_t));
+    if (array_view->union_type_id_map == NULL) {
+      return ENOMEM;
+    }
+
+    memset(array_view->union_type_id_map, -1, 256);
+    int8_t n_type_ids = _ArrowParseUnionTypeIds(schema_view.union_type_ids,
+                                                array_view->union_type_id_map + 128);
+    for (int8_t child_index = 0; child_index < n_type_ids; child_index++) {
+      int8_t type_id = array_view->union_type_id_map[128 + child_index];
+      array_view->union_type_id_map[type_id] = child_index;
+    }
+  }
+
   return NANOARROW_OK;
 }
 
@@ -2279,6 +2295,10 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
     }
 
     ArrowFree(array_view->children);
+  }
+
+  if (array_view->union_type_id_map != NULL) {
+    ArrowFree(array_view->union_type_id_map);
   }
 
   ArrowArrayViewInitFromType(array_view, NANOARROW_TYPE_UNINITIALIZED);

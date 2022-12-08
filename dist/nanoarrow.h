@@ -29,7 +29,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "ghaec0824dcf064448648cc6eb5ef7873962fa23339"
+#define NANOARROW_BUILD_ID "gha695f08d7a07a64c0e13eb3444d61b2a6a8d8e5df"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -532,6 +532,13 @@ struct ArrowArrayView {
 
   /// \brief Pointers to views of this array's children
   struct ArrowArrayView** children;
+
+  /// \brief Union type id to child index mapping
+  ///
+  /// If storage_type is a union type, a 256-byte ArrowMalloc()ed buffer
+  /// such that child_index == union_type_id_map[type_id] and
+  /// type_id == union_type_id_map[128 + child_index]
+  int8_t* union_type_id_map;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed
@@ -1472,6 +1479,16 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
 /// \brief Check for a null element in an ArrowArrayView
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
+
+/// \brief Get the type id of a union array element
+static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view, int64_t i);
+
+/// \brief Get the child index of a union array element
+static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view, int64_t i);
+
+/// \brief Get the index to use into the relevant union child array
+static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,
+                                                     int64_t i);
 
 /// \brief Get an element in an ArrowArrayView as an integer
 ///
@@ -2669,10 +2686,43 @@ static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int
       return 0x01;
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_SPARSE_UNION:
-      // Not supported yet
-      return -1;
+      // Unions are "never null" in Arrow land
+      return 0x00;
     default:
       return validity_buffer != NULL && !ArrowBitGet(validity_buffer, i);
+  }
+}
+
+static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view,
+                                               int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DENSE_UNION:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      return array_view->buffer_views[0].data.as_int8[i];
+    default:
+      return -1;
+  }
+}
+
+static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view,
+                                                   int64_t i) {
+  int8_t type_id = ArrowArrayViewUnionTypeId(array_view, i);
+  if (array_view->union_type_id_map == NULL) {
+    return type_id;
+  } else {
+    return array_view->union_type_id_map[type_id];
+  }
+}
+
+static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,
+                                                     int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DENSE_UNION:
+      return array_view->buffer_views[1].data.as_int32[i];
+    case NANOARROW_TYPE_SPARSE_UNION:
+      return i;
+    default:
+      return -1;
   }
 }
 
