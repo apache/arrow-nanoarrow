@@ -1653,6 +1653,16 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 0);
 
   ArrowArrayViewReset(&array_view);
+
+  // Check the raw mapping in the array view for numbers that are easier to check
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+ud:6,2"), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array_view.union_type_id_map[6], 0);
+  EXPECT_EQ(array_view.union_type_id_map[2], 1);
+  EXPECT_EQ(array_view.union_type_id_map[128 + 0], 6);
+  EXPECT_EQ(array_view.union_type_id_map[128 + 1], 2);
+
+  ArrowArrayViewReset(&array_view);
   schema.release(&schema);
   array.release(&array);
 }
