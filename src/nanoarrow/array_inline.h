@@ -619,10 +619,43 @@ static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int
       return 0x01;
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_SPARSE_UNION:
-      // Not supported yet
-      return -1;
+      // Unions are "never null" in Arrow land
+      return 0x00;
     default:
       return validity_buffer != NULL && !ArrowBitGet(validity_buffer, i);
+  }
+}
+
+static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view,
+                                               int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DENSE_UNION:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      return array_view->buffer_views[0].data.as_int8[i];
+    default:
+      return -1;
+  }
+}
+
+static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view,
+                                                   int64_t i) {
+  int8_t type_id = ArrowArrayViewUnionTypeId(array_view, i);
+  if (array_view->union_type_id_map == NULL) {
+    return type_id;
+  } else {
+    return array_view->union_type_id_map[type_id];
+  }
+}
+
+static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,
+                                                     int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DENSE_UNION:
+      return array_view->buffer_views[1].data.as_int32[i];
+    case NANOARROW_TYPE_SPARSE_UNION:
+      return i;
+    default:
+      return -1;
   }
 }
 
