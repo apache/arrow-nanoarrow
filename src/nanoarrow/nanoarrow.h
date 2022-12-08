@@ -911,6 +911,10 @@ static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view
 /// \brief Get the child index of a union array element
 static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view, int64_t i);
 
+/// \brief Get the index to use into the relevant union child array
+static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,
+                                                     int64_t i);
+
 /// \brief Get an element in an ArrowArrayView as an integer
 ///
 /// This function does not check for null values, that values are actually integers, or

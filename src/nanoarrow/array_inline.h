@@ -647,6 +647,18 @@ static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_
   }
 }
 
+static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,
+                                                     int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DENSE_UNION:
+      return array_view->buffer_views[1].data.as_int32[i];
+    case NANOARROW_TYPE_SPARSE_UNION:
+      return i;
+    default:
+      return -1;
+  }
+}
+
 static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_view,
                                                  int64_t i) {
   struct ArrowBufferView* data_view = &array_view->buffer_views[1];

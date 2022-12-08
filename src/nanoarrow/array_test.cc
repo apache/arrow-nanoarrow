@@ -1667,6 +1667,94 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   array.release(&array);
 }
 
+TEST(ArrayTest, ArrayViewTestDenseUnionGet) {
+  struct ArrowArrayView array_view;
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  // Build a simple union with one int and one string and one null int
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_DENSE_UNION, 2),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], ArrowCharView("one twenty four")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+
+  // Initialize the array view
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+
+  // Check the values that will be used to index into children
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 2), 0);
+
+  // Check the values that will be used to index into the child arrays
+  EXPECT_EQ(ArrowArrayViewUnionChildOffset(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionChildOffset(&array_view, 1), 0);
+  EXPECT_EQ(ArrowArrayViewUnionChildOffset(&array_view, 2), 1);
+
+  // Union elements are "never null" (even if the corresponding child element is)
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), NANOARROW_OK);
+
+  ArrowArrayViewReset(&array_view);
+  schema.release(&schema);
+  array.release(&array);
+}
+
+TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
+  struct ArrowArrayView array_view;
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+
+  // Build a simple union with one int and one string and one null int
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeUnion(&schema, NANOARROW_TYPE_SPARSE_UNION, 2),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], ArrowCharView("one twenty four")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+
+  // Initialize the array view
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+
+  // Check the values that will be used to index into children
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 2), 0);
+
+  // Check the values that will be used to index into the child arrays
+  EXPECT_EQ(ArrowArrayViewUnionChildOffset(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewUnionChildOffset(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewUnionChildOffset(&array_view, 2), 2);
+
+  // Union elements are "never null" (even if the corresponding child element is)
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), NANOARROW_OK);
+
+  ArrowArrayViewReset(&array_view);
+  schema.release(&schema);
+  array.release(&array);
+}
+
 template <typename TypeClass>
 void TestGetFromNumericArrayView() {
   struct ArrowArray array;
