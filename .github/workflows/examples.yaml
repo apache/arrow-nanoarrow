@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Build and run examples
+name: examples
 
 on:
   push:
@@ -24,6 +24,10 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/examples.yaml'
+      - 'src/nanoarrow/**'
 
 jobs:
   examples:

@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+name: verify-rc
+
 on:
   push:
     branches:
@@ -23,12 +25,8 @@ on:
     branches:
       - main
     paths:
-      - 'CMakeLists.txt'
       - '.github/workflows/verify-source.yaml'
       - 'dev/release/verify-release-candidate.sh'
-      - 'src/nanoarrow/**'
-
-name: Release Candidate Verification
 
 jobs:
   verify-rc:
@@ -58,6 +56,10 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          needs: check
+          working-directory: src/r
 
       - name: Run dev/release/verify-release-candidate.sh
         run: |
