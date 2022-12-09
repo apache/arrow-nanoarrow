@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+name: test-c
+
 on:
   push:
     branches:
@@ -28,7 +30,7 @@ on:
       - 'src/nanoarrow/**'
 
 jobs:
-  build-and-test-c:
+  test-c:
 
     runs-on: ubuntu-latest
 
@@ -141,7 +143,7 @@ jobs:
           directory: build/cov
 
   bundle-dist:
-    needs: build-and-test-c
+    needs: test-c
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
