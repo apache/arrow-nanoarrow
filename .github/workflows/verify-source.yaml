@@ -61,7 +61,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           needs: check
-          working-directory: r
+          working-directory: src/r
 
       - name: Run dev/release/verify-release-candidate.sh
         run: |

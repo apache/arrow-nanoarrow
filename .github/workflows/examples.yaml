@@ -24,6 +24,10 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/build-and-test.yaml'
+      - 'src/nanoarrow/**'
 
 jobs:
   examples:
