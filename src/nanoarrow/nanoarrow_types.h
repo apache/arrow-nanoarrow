@@ -354,7 +354,7 @@ enum ArrowBufferType {
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
   ///
-  /// If n_bytes is 0, this value may be NULL.
+  /// If size_bytes is 0, this value may be NULL.
   const char* data;
 
   /// \brief The size of the string in bytes,
@@ -383,7 +383,7 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
 struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
-  /// If n_bytes is 0, this value may be NULL.
+  /// If size_bytes is 0, this value may be NULL.
   union {
     const void* data;
     const int8_t* as_int8;
