@@ -842,44 +842,44 @@ ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_ch
 
 /// \brief Set the format field of a fixed-size schema
 ///
-/// Returns EINVAL for fixed_size <= 0 or for data_type that is not
+/// Returns EINVAL for fixed_size <= 0 or for type that is not
 /// NANOARROW_TYPE_FIXED_SIZE_BINARY or NANOARROW_TYPE_FIXED_SIZE_LIST.
 /// For NANOARROW_TYPE_FIXED_SIZE_LIST, the appropriate number of children are
 /// allocated, initialized, and named; however, the caller must
 /// ArrowSchemaSetType() the first child. Schema must have been initialized using
 /// ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
-                                           enum ArrowType data_type, int32_t fixed_size);
+                                           enum ArrowType type, int32_t fixed_size);
 
 /// \brief Set the format field of a decimal schema
 ///
-/// Returns EINVAL for scale <= 0 or for data_type that is not
+/// Returns EINVAL for scale <= 0 or for type that is not
 /// NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
-                                         enum ArrowType data_type,
+                                         enum ArrowType type,
                                          int32_t decimal_precision,
                                          int32_t decimal_scale);
 
 /// \brief Set the format field of a time, timestamp, or duration schema
 ///
-/// Returns EINVAL for data_type that is not
+/// Returns EINVAL for type that is not
 /// NANOARROW_TYPE_TIME32, NANOARROW_TYPE_TIME64,
 /// NANOARROW_TYPE_TIMESTAMP, or NANOARROW_TYPE_DURATION. The
-/// timezone parameter must be NULL for a non-timestamp data_type. Schema must have been
+/// timezone parameter must be NULL for a non-timestamp type. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
-                                          enum ArrowType data_type,
+                                          enum ArrowType type,
                                           enum ArrowTimeUnit time_unit,
                                           const char* timezone);
 
 /// \brief Seet the format field of a union schema
 ///
-/// Returns EINVAL for a data_type that is not NANOARROW_TYPE_DENSE_UNION
+/// Returns EINVAL for a type that is not NANOARROW_TYPE_DENSE_UNION
 /// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
 /// allocated, and initialized.
 ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
-                                       enum ArrowType data_type, int64_t n_children);
+                                       enum ArrowType type, int64_t n_children);
 
 /// \brief Make a (recursive) copy of a schema
 ///
@@ -1008,14 +1008,14 @@ struct ArrowSchemaView {
   /// This value will never be NANOARROW_TYPE_EXTENSION (see
   /// extension_name and/or extension_metadata to check for
   /// an extension type).
-  enum ArrowType data_type;
+  enum ArrowType type;
 
   /// \brief The storage data type represented by the schema
   ///
   /// This value will never be NANOARROW_TYPE_DICTIONARY, NANOARROW_TYPE_EXTENSION
   /// or any datetime type. This value represents only the type required to
   /// interpret the buffers in the array.
-  enum ArrowType storage_data_type;
+  enum ArrowType storage_type;
 
   /// \brief The storage layout represented by the schema
   struct ArrowLayout layout;

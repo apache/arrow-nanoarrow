@@ -28,7 +28,7 @@
 static inline int nanoarrow_materialize_posixct(struct RConverter* converter) {
   if (converter->ptype_view.sexp_type == REALSXP) {
     enum ArrowTimeUnit time_unit;
-    switch (converter->schema_view.data_type) {
+    switch (converter->schema_view.type) {
       case NANOARROW_TYPE_NA:
         time_unit = NANOARROW_TIME_UNIT_SECOND;
         NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_dbl(converter));

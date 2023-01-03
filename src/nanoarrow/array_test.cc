@@ -1762,7 +1762,7 @@ void TestGetFromNumericArrayView() {
   struct ArrowArrayView array_view;
   struct ArrowError error;
 
-  auto data_type = TypeTraits<TypeClass>::type_singleton();
+  auto type = TypeTraits<TypeClass>::type_singleton();
 
   // Array with nulls
   auto builder = NumericBuilder<TypeClass>();
@@ -1841,7 +1841,7 @@ void TestGetFromBinary(BuilderClass& builder) {
   struct ArrowArrayView array_view;
   struct ArrowError error;
 
-  auto data_type = builder.type();
+  auto type = builder.type();
   ARROW_EXPECT_OK(builder.Append("1234"));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append("four"));

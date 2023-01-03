@@ -36,7 +36,7 @@ test_that("as_nanoarrow_schema() works for nanoarrow_schema", {
 
 test_that("infer_nanoarrow_schema() default method works", {
   schema <- infer_nanoarrow_schema(1:10)
-  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
+  expect_true(arrow::as_type(schema)$Equals(arrow::int32()))
 })
 
 test_that("nanoarrow_schema_parse() works", {

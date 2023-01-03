@@ -17,10 +17,10 @@
 
 # exported in zzz.R
 infer_type.nanoarrow_array <- function(x, ...) {
-  arrow::as_data_type(infer_nanoarrow_schema(x, ...))
+  arrow::as_type(infer_nanoarrow_schema(x, ...))
 }
 
-as_data_type.nanoarrow_schema <- function(x, ...) {
+as_type.nanoarrow_schema <- function(x, ...) {
   exportable_schema <- nanoarrow_allocate_schema()
   nanoarrow_pointer_export(x, exportable_schema)
   getFromNamespace("DataType", "arrow")$import_from_c(exportable_schema)
@@ -114,7 +114,7 @@ as_nanoarrow_array.Array <- function(x, ..., schema = NULL) {
   array <- nanoarrow_allocate_array()
 
   if (!is.null(schema)) {
-    x <- x$cast(arrow::as_data_type(schema))
+    x <- x$cast(arrow::as_type(schema))
   }
 
   x$export_to_c(array, imported_schema)
@@ -128,7 +128,7 @@ as_nanoarrow_array.ChunkedArray <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
     array <- arrow::as_arrow_array(x)
   } else {
-    array <- arrow::as_arrow_array(x, type = arrow::as_data_type(schema))
+    array <- arrow::as_arrow_array(x, type = arrow::as_type(schema))
   }
 
   as_nanoarrow_array.Array(array)

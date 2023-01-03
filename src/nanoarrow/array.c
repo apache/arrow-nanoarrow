@@ -515,7 +515,7 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
     return result;
   }
 
-  ArrowArrayViewInitFromType(array_view, schema_view.storage_data_type);
+  ArrowArrayViewInitFromType(array_view, schema_view.storage_type);
   array_view->layout = schema_view.layout;
 
   result = ArrowArrayViewAllocateChildren(array_view, schema->n_children);

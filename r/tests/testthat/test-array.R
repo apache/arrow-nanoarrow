@@ -48,7 +48,7 @@ test_that("as_nanoarrow_array() / convert_array() default method works", {
 test_that("infer_nanoarrow_schema() works for nanoarrow_array", {
   array <- as_nanoarrow_array(1:10)
   schema <- infer_nanoarrow_schema(array)
-  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
+  expect_true(arrow::as_type(schema)$Equals(arrow::int32()))
 
   nanoarrow_array_set_schema(array, NULL)
   expect_error(infer_nanoarrow_schema(array), "has no associated schema")

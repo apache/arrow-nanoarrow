@@ -72,8 +72,8 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   R_RegisterCFinalizer(converter_xptr, &finalize_converter);
 
   ArrowArrayViewInitFromType(&converter->array_view, NANOARROW_TYPE_UNINITIALIZED);
-  converter->schema_view.data_type = NANOARROW_TYPE_UNINITIALIZED;
-  converter->schema_view.storage_data_type = NANOARROW_TYPE_UNINITIALIZED;
+  converter->schema_view.type = NANOARROW_TYPE_UNINITIALIZED;
+  converter->schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED;
   converter->src.array_view = &converter->array_view;
   converter->dst.vec_sexp = R_NilValue;
   converter->options = NULL;
@@ -321,7 +321,7 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
   }
 
   // Sub-par error for dictionary types until we have a way to deal with them
-  if (converter->schema_view.data_type == NANOARROW_TYPE_DICTIONARY) {
+  if (converter->schema_view.type == NANOARROW_TYPE_DICTIONARY) {
     ArrowErrorSet(&converter->error,
                   "Conversion to dictionary-encoded array is not supported");
     return ENOTSUP;
