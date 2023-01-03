@@ -76,7 +76,7 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
     as_nanoarrow_array(arrow::as_arrow_array(x))
   } else {
     schema <- as_nanoarrow_schema(schema)
-    as_nanoarrow_array(arrow::as_arrow_array(x, type = arrow::as_type(schema)))
+    as_nanoarrow_array(arrow::as_arrow_array(x, type = arrow::as_data_type(schema)))
   }
 }
 

@@ -196,7 +196,7 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
   }
 
   if (schema_view.type == NANOARROW_TYPE_TIMESTAMP) {
-    SET_VECTOR_ELT(result, 9, mkStringView(&schema_view.timezone));
+    SET_VECTOR_ELT(result, 9, Rf_mkString(schema_view.timezone));
   }
 
   if (schema_view.type == NANOARROW_TYPE_DENSE_UNION ||

@@ -28,7 +28,7 @@ test_that("infer_nanoarrow_schema() works for arrow objects", {
   skip_if_not_installed("arrow")
 
   int_schema <- infer_nanoarrow_schema(arrow::Array$create(1:10))
-  expect_true(arrow::as_type(int_schema)$Equals(arrow::int32()))
+  expect_true(arrow::as_data_type(int_schema)$Equals(arrow::int32()))
 })
 
 test_that("nanoarrow_array to Array works", {
@@ -258,7 +258,7 @@ test_that("nanoarrow_schema to DataType works", {
   skip_if_not_installed("arrow")
 
   int_schema <- as_nanoarrow_schema(arrow::int32())
-  arrow_type <- arrow::as_type(int_schema)
+  arrow_type <- arrow::as_data_type(int_schema)
   expect_true(arrow_type$Equals(arrow::int32()))
 })
 
@@ -267,7 +267,7 @@ test_that("DataType to nanoarrow_schema", {
 
   schema <- as_nanoarrow_schema(arrow::int32())
   expect_s3_class(schema, "nanoarrow_schema")
-  expect_true(arrow::as_type(schema)$Equals(arrow::int32()))
+  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
 })
 
 test_that("Field to nanoarrow_schema", {
@@ -275,7 +275,7 @@ test_that("Field to nanoarrow_schema", {
 
   schema <- as_nanoarrow_schema(arrow::field("name", arrow::int32()))
   expect_s3_class(schema, "nanoarrow_schema")
-  expect_true(arrow::as_type(schema)$Equals(arrow::int32()))
+  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
 })
 
 test_that("nanoarrow_schema to Schema works", {
