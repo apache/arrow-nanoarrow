@@ -1,6 +1,6 @@
 
-#include <string>
 #include <cstring>
+#include <string>
 
 extern "C" void intptr_as_string(intptr_t ptr_int, char* buf) {
   std::string ptr_str = std::to_string(ptr_int);

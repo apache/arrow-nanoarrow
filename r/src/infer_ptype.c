@@ -76,7 +76,7 @@ enum VectorType nanoarrow_infer_vector_type_schema(SEXP schema_xptr) {
     Rf_error("nanoarrow_infer_vector_type_schema(): %s", ArrowErrorMessage(&error));
   }
 
-  return nanoarrow_infer_vector_type(schema_view.data_type);
+  return nanoarrow_infer_vector_type(schema_view.type);
 }
 
 // The same as the above, but from a nanoarrow_array()

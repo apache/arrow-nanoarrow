@@ -51,7 +51,7 @@ static SEXP call_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
 static void call_stop_cant_convert_array(SEXP array_xptr, enum VectorType type,
                                          SEXP ptype_sexp) {
   SEXP fun = PROTECT(Rf_install("stop_cant_convert_array"));
-  
+
   if (ptype_sexp == R_NilValue) {
     ptype_sexp = PROTECT(nanoarrow_alloc_type(type, 0));
     SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));

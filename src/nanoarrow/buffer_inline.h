@@ -177,12 +177,12 @@ static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
 
 static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
                                                          struct ArrowStringView value) {
-  return ArrowBufferAppend(buffer, value.data, value.n_bytes);
+  return ArrowBufferAppend(buffer, value.data, value.size_bytes);
 }
 
 static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buffer,
                                                          struct ArrowBufferView value) {
-  return ArrowBufferAppend(buffer, value.data.data, value.n_bytes);
+  return ArrowBufferAppend(buffer, value.data.data, value.size_bytes);
 }
 
 static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,

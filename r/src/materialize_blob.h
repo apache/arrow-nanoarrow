@@ -47,8 +47,8 @@ static inline int nanoarrow_materialize_blob(struct ArrayViewSlice* src,
   for (R_xlen_t i = 0; i < dst->length; i++) {
     if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
       item = ArrowArrayViewGetBytesUnsafe(src->array_view, src->offset + i);
-      item_sexp = PROTECT(Rf_allocVector(RAWSXP, item.n_bytes));
-      memcpy(RAW(item_sexp), item.data.data, item.n_bytes);
+      item_sexp = PROTECT(Rf_allocVector(RAWSXP, item.size_bytes));
+      memcpy(RAW(item_sexp), item.data.data, item.size_bytes);
       SET_VECTOR_ELT(dst->vec_sexp, dst->offset + i, item_sexp);
       UNPROTECT(1);
     }

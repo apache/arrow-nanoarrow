@@ -72,8 +72,8 @@ SEXP nanoarrow_converter_from_type(enum VectorType vector_type) {
   R_RegisterCFinalizer(converter_xptr, &finalize_converter);
 
   ArrowArrayViewInitFromType(&converter->array_view, NANOARROW_TYPE_UNINITIALIZED);
-  converter->schema_view.data_type = NANOARROW_TYPE_UNINITIALIZED;
-  converter->schema_view.storage_data_type = NANOARROW_TYPE_UNINITIALIZED;
+  converter->schema_view.type = NANOARROW_TYPE_UNINITIALIZED;
+  converter->schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED;
   converter->src.array_view = &converter->array_view;
   converter->dst.vec_sexp = R_NilValue;
   converter->options = NULL;
@@ -304,7 +304,7 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
 
   // For extension types, warn that we are about to strip the extension type, as we don't
   // have a mechanism for dealing with them yet
-  if (converter->schema_view.extension_name.n_bytes > 0) {
+  if (converter->schema_view.extension_name.size_bytes > 0) {
     int64_t schema_chars = ArrowSchemaToString(schema, NULL, 0, 1);
     SEXP fmt_shelter = PROTECT(Rf_allocVector(RAWSXP, schema_chars + 1));
     ArrowSchemaToString(schema, (char*)RAW(fmt_shelter), schema_chars + 1, 1);
@@ -321,7 +321,7 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
   }
 
   // Sub-par error for dictionary types until we have a way to deal with them
-  if (converter->schema_view.data_type == NANOARROW_TYPE_DICTIONARY) {
+  if (converter->schema_view.type == NANOARROW_TYPE_DICTIONARY) {
     ArrowErrorSet(&converter->error,
                   "Conversion to dictionary-encoded array is not supported");
     return ENOTSUP;

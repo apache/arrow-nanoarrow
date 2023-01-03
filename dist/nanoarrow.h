@@ -388,13 +388,13 @@ enum ArrowBufferType {
 struct ArrowStringView {
   /// \brief A pointer to the start of the string
   ///
-  /// If n_bytes is 0, this value may be NULL.
+  /// If size_bytes is 0, this value may be NULL.
   const char* data;
 
   /// \brief The size of the string in bytes,
   ///
   /// (Not including the null terminator.)
-  int64_t n_bytes;
+  int64_t size_bytes;
 };
 
 /// \brief Return a view of a const C string
@@ -404,9 +404,9 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
 
   out.data = value;
   if (value) {
-    out.n_bytes = (int64_t)strlen(value);
+    out.size_bytes = (int64_t)strlen(value);
   } else {
-    out.n_bytes = 0;
+    out.size_bytes = 0;
   }
 
   return out;
@@ -417,7 +417,7 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
 struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
-  /// If n_bytes is 0, this value may be NULL.
+  /// If size_bytes is 0, this value may be NULL.
   union {
     const void* data;
     const int8_t* as_int8;
@@ -434,7 +434,7 @@ struct ArrowBufferView {
   } data;
 
   /// \brief The size of the buffer in bytes
-  int64_t n_bytes;
+  int64_t size_bytes;
 };
 
 /// \brief Array buffer allocation and deallocation
@@ -842,44 +842,44 @@ ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_ch
 
 /// \brief Set the format field of a fixed-size schema
 ///
-/// Returns EINVAL for fixed_size <= 0 or for data_type that is not
+/// Returns EINVAL for fixed_size <= 0 or for type that is not
 /// NANOARROW_TYPE_FIXED_SIZE_BINARY or NANOARROW_TYPE_FIXED_SIZE_LIST.
 /// For NANOARROW_TYPE_FIXED_SIZE_LIST, the appropriate number of children are
 /// allocated, initialized, and named; however, the caller must
 /// ArrowSchemaSetType() the first child. Schema must have been initialized using
 /// ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
-                                           enum ArrowType data_type, int32_t fixed_size);
+                                           enum ArrowType type, int32_t fixed_size);
 
 /// \brief Set the format field of a decimal schema
 ///
-/// Returns EINVAL for scale <= 0 or for data_type that is not
+/// Returns EINVAL for scale <= 0 or for type that is not
 /// NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
-                                         enum ArrowType data_type,
+                                         enum ArrowType type,
                                          int32_t decimal_precision,
                                          int32_t decimal_scale);
 
 /// \brief Set the format field of a time, timestamp, or duration schema
 ///
-/// Returns EINVAL for data_type that is not
+/// Returns EINVAL for type that is not
 /// NANOARROW_TYPE_TIME32, NANOARROW_TYPE_TIME64,
 /// NANOARROW_TYPE_TIMESTAMP, or NANOARROW_TYPE_DURATION. The
-/// timezone parameter must be NULL for a non-timestamp data_type. Schema must have been
+/// timezone parameter must be NULL for a non-timestamp type. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
-                                          enum ArrowType data_type,
+                                          enum ArrowType type,
                                           enum ArrowTimeUnit time_unit,
                                           const char* timezone);
 
 /// \brief Seet the format field of a union schema
 ///
-/// Returns EINVAL for a data_type that is not NANOARROW_TYPE_DENSE_UNION
+/// Returns EINVAL for a type that is not NANOARROW_TYPE_DENSE_UNION
 /// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
 /// allocated, and initialized.
 ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
-                                       enum ArrowType data_type, int64_t n_children);
+                                       enum ArrowType type, int64_t n_children);
 
 /// \brief Make a (recursive) copy of a schema
 ///
@@ -1008,14 +1008,14 @@ struct ArrowSchemaView {
   /// This value will never be NANOARROW_TYPE_EXTENSION (see
   /// extension_name and/or extension_metadata to check for
   /// an extension type).
-  enum ArrowType data_type;
+  enum ArrowType type;
 
   /// \brief The storage data type represented by the schema
   ///
   /// This value will never be NANOARROW_TYPE_DICTIONARY, NANOARROW_TYPE_EXTENSION
   /// or any datetime type. This value represents only the type required to
   /// interpret the buffers in the array.
-  enum ArrowType storage_data_type;
+  enum ArrowType storage_type;
 
   /// \brief The storage layout represented by the schema
   struct ArrowLayout layout;
@@ -1750,12 +1750,12 @@ static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
 
 static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
                                                          struct ArrowStringView value) {
-  return ArrowBufferAppend(buffer, value.data, value.n_bytes);
+  return ArrowBufferAppend(buffer, value.data, value.size_bytes);
 }
 
 static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buffer,
                                                          struct ArrowBufferView value) {
-  return ArrowBufferAppend(buffer, value.data.data, value.n_bytes);
+  return ArrowBufferAppend(buffer, value.data.data, value.size_bytes);
 }
 
 static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
@@ -2522,33 +2522,33 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       offset = ((int32_t*)offset_buffer->data)[array->length];
-      if ((offset + value.n_bytes) > INT32_MAX) {
+      if ((offset + value.size_bytes) > INT32_MAX) {
         return EINVAL;
       }
 
-      offset += value.n_bytes;
+      offset += value.size_bytes;
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t)));
       NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes));
+          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
       break;
 
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       large_offset = ((int64_t*)offset_buffer->data)[array->length];
-      large_offset += value.n_bytes;
+      large_offset += value.size_bytes;
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(offset_buffer, &large_offset, sizeof(int64_t)));
       NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes));
+          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
       break;
 
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      if (value.n_bytes != fixed_size_bytes) {
+      if (value.size_bytes != fixed_size_bytes) {
         return EINVAL;
       }
 
       NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.n_bytes));
+          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
       break;
     default:
       return EINVAL;
@@ -2569,7 +2569,7 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
 
   struct ArrowBufferView buffer_view;
   buffer_view.data.data = value.data;
-  buffer_view.n_bytes = value.n_bytes;
+  buffer_view.size_bytes = value.size_bytes;
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_STRING:
@@ -2833,20 +2833,20 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       view.data = data_view + offsets_view->data.as_int32[i];
-      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      view.size_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       view.data = data_view + offsets_view->data.as_int64[i];
-      view.n_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
+      view.size_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
       break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      view.n_bytes = array_view->layout.element_size_bits[1] / 8;
-      view.data = array_view->buffer_views[1].data.as_char + (i * view.n_bytes);
+      view.size_bytes = array_view->layout.element_size_bits[1] / 8;
+      view.data = array_view->buffer_views[1].data.as_char + (i * view.size_bytes);
       break;
     default:
       view.data = NULL;
-      view.n_bytes = 0;
+      view.size_bytes = 0;
       break;
   }
 
@@ -2863,21 +2863,21 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      view.n_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      view.size_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
       view.data.as_uint8 = data_view + offsets_view->data.as_int32[i];
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      view.n_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
+      view.size_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
       view.data.as_uint8 = data_view + offsets_view->data.as_int64[i];
       break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      view.n_bytes = array_view->layout.element_size_bits[1] / 8;
-      view.data.as_uint8 = array_view->buffer_views[1].data.as_uint8 + (i * view.n_bytes);
+      view.size_bytes = array_view->layout.element_size_bits[1] / 8;
+      view.data.as_uint8 = array_view->buffer_views[1].data.as_uint8 + (i * view.size_bytes);
       break;
     default:
       view.data.data = NULL;
-      view.n_bytes = 0;
+      view.size_bytes = 0;
       break;
   }
 

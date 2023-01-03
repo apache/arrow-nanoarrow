@@ -77,7 +77,7 @@ static SEXP nanoarrow_altstring_elt(SEXP altrep_sexp, R_xlen_t i) {
   }
 
   struct ArrowStringView item = ArrowArrayViewGetStringUnsafe(&converter->array_view, i);
-  return Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8);
+  return Rf_mkCharLenCE(item.data, item.size_bytes, CE_UTF8);
 }
 
 static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {

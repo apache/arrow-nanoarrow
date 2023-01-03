@@ -28,7 +28,7 @@
 
 static int nanoarrow_materialize_date(struct RConverter* converter) {
   if (converter->ptype_view.sexp_type == REALSXP) {
-    switch (converter->schema_view.data_type) {
+    switch (converter->schema_view.type) {
       case NANOARROW_TYPE_NA:
       case NANOARROW_TYPE_DATE32:
         return nanoarrow_materialize_dbl(converter);

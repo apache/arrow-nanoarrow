@@ -25,7 +25,7 @@ cdef extern from "nanoarrow.h":
         const char* format
         int64_t n_children
         void (*release)(ArrowSchema*)
-        
+
     struct ArrowArray:
         int64_t length
         int64_t null_count
@@ -104,7 +104,7 @@ cdef extern from "nanoarrow.h":
 
     struct ArrowBufferView:
         buffer_data data
-        int64_t n_bytes
+        int64_t size_bytes
 
     struct ArrowBuffer:
         uint8_t* data

@@ -49,9 +49,9 @@ static SEXP schema_metadata_to_list(const char* metadata) {
   R_xlen_t i = 0;
   while (reader.remaining_keys > 0) {
     ArrowMetadataReaderRead(&reader, &key, &value);
-    SET_STRING_ELT(names, i, Rf_mkCharLenCE(key.data, key.n_bytes, CE_UTF8));
-    SEXP value_raw = PROTECT(Rf_allocVector(RAWSXP, value.n_bytes));
-    memcpy(RAW(value_raw), value.data, value.n_bytes);
+    SET_STRING_ELT(names, i, Rf_mkCharLenCE(key.data, key.size_bytes, CE_UTF8));
+    SEXP value_raw = PROTECT(Rf_allocVector(RAWSXP, value.size_bytes));
+    memcpy(RAW(value_raw), value.data, value.size_bytes);
     SET_VECTOR_ELT(values, i, value_raw);
     UNPROTECT(1);
     i++;
@@ -136,7 +136,7 @@ static SEXP mkStringView(struct ArrowStringView* view) {
     return R_NilValue;
   }
 
-  SEXP chr = PROTECT(Rf_mkCharLenCE(view->data, view->n_bytes, CE_UTF8));
+  SEXP chr = PROTECT(Rf_mkCharLenCE(view->data, view->size_bytes, CE_UTF8));
   SEXP str = PROTECT(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(str, 0, chr);
   UNPROTECT(2);
@@ -159,9 +159,9 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
       "time_unit",  "timezone",         "union_type_ids",    ""};
 
   SEXP result = PROTECT(Rf_mkNamed(VECSXP, names));
-  SET_VECTOR_ELT(result, 0, Rf_mkString(ArrowTypeString((schema_view.data_type))));
+  SET_VECTOR_ELT(result, 0, Rf_mkString(ArrowTypeString((schema_view.type))));
   SET_VECTOR_ELT(result, 1,
-                 Rf_mkString(ArrowTypeString((schema_view.storage_data_type))));
+                 Rf_mkString(ArrowTypeString((schema_view.storage_type))));
 
   if (schema_view.extension_name.data != NULL) {
     SET_VECTOR_ELT(result, 2, mkStringView(&schema_view.extension_name));
@@ -169,38 +169,38 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
 
   if (schema_view.extension_metadata.data != NULL) {
     SEXP metadata_sexp =
-        PROTECT(Rf_allocVector(RAWSXP, schema_view.extension_metadata.n_bytes));
+        PROTECT(Rf_allocVector(RAWSXP, schema_view.extension_metadata.size_bytes));
     memcpy(RAW(metadata_sexp), schema_view.extension_metadata.data,
-           schema_view.extension_metadata.n_bytes);
+           schema_view.extension_metadata.size_bytes);
     SET_VECTOR_ELT(result, 3, metadata_sexp);
     UNPROTECT(1);
   }
 
-  if (schema_view.data_type == NANOARROW_TYPE_FIXED_SIZE_LIST ||
-      schema_view.data_type == NANOARROW_TYPE_FIXED_SIZE_BINARY) {
+  if (schema_view.type == NANOARROW_TYPE_FIXED_SIZE_LIST ||
+      schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY) {
     SET_VECTOR_ELT(result, 4, Rf_ScalarInteger(schema_view.fixed_size));
   }
 
-  if (schema_view.data_type == NANOARROW_TYPE_DECIMAL128 ||
-      schema_view.data_type == NANOARROW_TYPE_DECIMAL256) {
+  if (schema_view.type == NANOARROW_TYPE_DECIMAL128 ||
+      schema_view.type == NANOARROW_TYPE_DECIMAL256) {
     SET_VECTOR_ELT(result, 5, Rf_ScalarInteger(schema_view.decimal_bitwidth));
     SET_VECTOR_ELT(result, 6, Rf_ScalarInteger(schema_view.decimal_precision));
     SET_VECTOR_ELT(result, 7, Rf_ScalarInteger(schema_view.decimal_scale));
   }
 
-  if (schema_view.data_type == NANOARROW_TYPE_TIME32 ||
-      schema_view.data_type == NANOARROW_TYPE_TIME64 ||
-      schema_view.data_type == NANOARROW_TYPE_TIMESTAMP ||
-      schema_view.data_type == NANOARROW_TYPE_DURATION) {
+  if (schema_view.type == NANOARROW_TYPE_TIME32 ||
+      schema_view.type == NANOARROW_TYPE_TIME64 ||
+      schema_view.type == NANOARROW_TYPE_TIMESTAMP ||
+      schema_view.type == NANOARROW_TYPE_DURATION) {
     SET_VECTOR_ELT(result, 8, Rf_mkString(ArrowTimeUnitString((schema_view.time_unit))));
   }
 
-  if (schema_view.data_type == NANOARROW_TYPE_TIMESTAMP) {
-    SET_VECTOR_ELT(result, 9, mkStringView(&schema_view.timezone));
+  if (schema_view.type == NANOARROW_TYPE_TIMESTAMP) {
+    SET_VECTOR_ELT(result, 9, Rf_mkString(schema_view.timezone));
   }
 
-  if (schema_view.data_type == NANOARROW_TYPE_DENSE_UNION ||
-      schema_view.data_type == NANOARROW_TYPE_SPARSE_UNION) {
+  if (schema_view.type == NANOARROW_TYPE_DENSE_UNION ||
+      schema_view.type == NANOARROW_TYPE_SPARSE_UNION) {
     int8_t type_ids[128];
     int num_type_ids = _ArrowParseUnionTypeIds(schema_view.union_type_ids, type_ids);
     if (num_type_ids == -1) {

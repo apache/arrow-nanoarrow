@@ -230,7 +230,7 @@ TEST(BufferTest, BufferTestAppendHelpers) {
 
   struct ArrowBufferView buffer_view;
   buffer_view.data.data = "a";
-  buffer_view.n_bytes = 1;
+  buffer_view.size_bytes = 1;
   EXPECT_EQ(ArrowBufferAppendBufferView(&buffer, buffer_view), NANOARROW_OK);
   EXPECT_EQ(reinterpret_cast<char*>(buffer.data)[0], 'a');
   EXPECT_EQ(buffer.size_bytes, 1);
