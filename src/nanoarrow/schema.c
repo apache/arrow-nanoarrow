@@ -1229,9 +1229,10 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
 
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
-    n_chars_last = snprintf(
-        out + n_chars, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.size_bytes,
-        schema_view.extension_name.data, ArrowTypeString(schema_view.storage_data_type));
+    n_chars_last = snprintf(out + n_chars, n, "%.*s{dictionary(%s)<",
+                            (int)schema_view.extension_name.size_bytes,
+                            schema_view.extension_name.data,
+                            ArrowTypeString(schema_view.storage_data_type));
   } else if (is_extension) {
     n_chars_last =
         snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.size_bytes,

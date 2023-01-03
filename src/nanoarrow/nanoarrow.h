@@ -906,10 +906,12 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get the type id of a union array element
-static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view, int64_t i);
+static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view,
+                                               int64_t i);
 
 /// \brief Get the child index of a union array element
-static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view, int64_t i);
+static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view,
+                                                   int64_t i);
 
 /// \brief Get the index to use into the relevant union child array
 static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,

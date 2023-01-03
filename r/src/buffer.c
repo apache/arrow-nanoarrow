@@ -21,9 +21,7 @@
 
 #include <string.h>
 
-SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
-  return R_ExternalPtrTag(buffer_xptr);
-}
+SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) { return R_ExternalPtrTag(buffer_xptr); }
 
 SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr) {
   SEXP info = R_ExternalPtrTag(buffer_xptr);
