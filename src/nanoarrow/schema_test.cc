@@ -856,6 +856,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
+  EXPECT_STREQ(schema_view.timezone, "America/Halifax");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('s', 'America/Halifax')");
   schema.release(&schema);
 
@@ -864,6 +865,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
+  EXPECT_STREQ(schema_view.timezone, "America/Halifax");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('ms', 'America/Halifax')");
   schema.release(&schema);
 
@@ -872,6 +874,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MICRO);
+  EXPECT_STREQ(schema_view.timezone, "America/Halifax");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('us', 'America/Halifax')");
   schema.release(&schema);
 
@@ -880,6 +883,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_TIMESTAMP);
   EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_NANO);
+  EXPECT_STREQ(schema_view.timezone, "America/Halifax");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('ns', 'America/Halifax')");
   schema.release(&schema);
 }

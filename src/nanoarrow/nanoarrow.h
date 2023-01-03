@@ -491,15 +491,15 @@ struct ArrowSchemaView {
   /// \brief Format timezone parameter
   ///
   /// This value is set when parsing a timestamp type and represents
-  /// the timezone format parameter. The ArrowStrintgView points to
-  /// data within the schema and the value is undefined for other types.
-  struct ArrowStringView timezone;
+  /// the timezone format parameter. This value points to
+  /// data within the schema and is undefined for other types.
+  const char* timezone;
 
   /// \brief Union type ids parameter
   ///
   /// This value is set when parsing a union type and represents
-  /// type ids parameter. The ArrowStringView points to
-  /// data within the schema and the value is undefined for other types.
+  /// type ids parameter. This value points to
+  /// data within the schema and is undefined for other types.
   const char* union_type_ids;
 };
 

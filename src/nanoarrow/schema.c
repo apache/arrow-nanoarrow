@@ -868,8 +868,7 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
             return EINVAL;
           }
 
-          schema_view->timezone.data = format + 4;
-          schema_view->timezone.size_bytes = strlen(format + 4);
+          schema_view->timezone = format + 4;
           *format_end_out = format + strlen(format);
           return NANOARROW_OK;
 
@@ -1181,9 +1180,8 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
                       (int)schema_view->decimal_precision,
                       (int)schema_view->decimal_scale);
     case NANOARROW_TYPE_TIMESTAMP:
-      return snprintf(out, n, "%s('%s', '%.*s')", type_string,
-                      ArrowTimeUnitString(schema_view->time_unit),
-                      (int)schema_view->timezone.size_bytes, schema_view->timezone.data);
+      return snprintf(out, n, "%s('%s', '%s')", type_string,
+                      ArrowTimeUnitString(schema_view->time_unit), schema_view->timezone);
     case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64:
     case NANOARROW_TYPE_DURATION:
