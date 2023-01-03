@@ -327,7 +327,7 @@ static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
     }
 
     int64_t additional_size_bytes =
-        array_view->buffer_views[i].n_bytes - ArrowArrayBuffer(array, i)->size_bytes;
+        array_view->buffer_views[i].size_bytes - ArrowArrayBuffer(array, i)->size_bytes;
 
     if (additional_size_bytes > 0) {
       NANOARROW_RETURN_NOT_OK(
@@ -414,7 +414,7 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
       continue;
     }
 
-    int64_t expected_size = array_view->buffer_views[i].n_bytes;
+    int64_t expected_size = array_view->buffer_views[i].size_bytes;
     int64_t actual_size = ArrowArrayBuffer(array, i)->size_bytes;
 
     if (actual_size < expected_size) {
@@ -578,25 +578,25 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
 
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_VALIDITY:
-        array_view->buffer_views[i].n_bytes = _ArrowBytesForBits(length);
+        array_view->buffer_views[i].size_bytes = _ArrowBytesForBits(length);
         continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Probably don't want/need to rely on the producer to have allocated an
         // offsets buffer of length 1 for a zero-size array
-        array_view->buffer_views[i].n_bytes =
+        array_view->buffer_views[i].size_bytes =
             (length != 0) * element_size_bytes * (length + 1);
         continue;
       case NANOARROW_BUFFER_TYPE_DATA:
-        array_view->buffer_views[i].n_bytes =
+        array_view->buffer_views[i].size_bytes =
             _ArrowRoundUpToMultipleOf8(array_view->layout.element_size_bits[i] * length) /
             8;
         continue;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-        array_view->buffer_views[i].n_bytes = element_size_bytes * length;
+        array_view->buffer_views[i].size_bytes = element_size_bytes * length;
         continue;
       case NANOARROW_BUFFER_TYPE_NONE:
-        array_view->buffer_views[i].n_bytes = 0;
+        array_view->buffer_views[i].size_bytes = 0;
         continue;
     }
   }
@@ -635,7 +635,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
     // If the null_count is 0, the validity buffer can be NULL
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
         array->null_count == 0 && array->buffers[i] == NULL) {
-      array_view->buffer_views[i].n_bytes = 0;
+      array_view->buffer_views[i].size_bytes = 0;
     }
 
     array_view->buffer_views[i].data.data = array->buffers[i];
@@ -656,18 +656,18 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
-        array_view->buffer_views[2].n_bytes = last_offset;
+        array_view->buffer_views[2].size_bytes = last_offset;
       }
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];
-        array_view->buffer_views[2].n_bytes = last_offset;
+        array_view->buffer_views[2].size_bytes = last_offset;
       }
       break;
     case NANOARROW_TYPE_STRUCT:
@@ -693,7 +693,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         return EINVAL;
       }
 
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
         if (array->children[0]->length < last_offset) {
@@ -715,7 +715,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         return EINVAL;
       }
 
-      if (array_view->buffer_views[1].n_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes != 0) {
         last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];
         if (array->children[0]->length < last_offset) {

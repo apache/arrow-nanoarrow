@@ -49,9 +49,9 @@ static SEXP schema_metadata_to_list(const char* metadata) {
   R_xlen_t i = 0;
   while (reader.remaining_keys > 0) {
     ArrowMetadataReaderRead(&reader, &key, &value);
-    SET_STRING_ELT(names, i, Rf_mkCharLenCE(key.data, key.n_bytes, CE_UTF8));
-    SEXP value_raw = PROTECT(Rf_allocVector(RAWSXP, value.n_bytes));
-    memcpy(RAW(value_raw), value.data, value.n_bytes);
+    SET_STRING_ELT(names, i, Rf_mkCharLenCE(key.data, key.size_bytes, CE_UTF8));
+    SEXP value_raw = PROTECT(Rf_allocVector(RAWSXP, value.size_bytes));
+    memcpy(RAW(value_raw), value.data, value.size_bytes);
     SET_VECTOR_ELT(values, i, value_raw);
     UNPROTECT(1);
     i++;
@@ -136,7 +136,7 @@ static SEXP mkStringView(struct ArrowStringView* view) {
     return R_NilValue;
   }
 
-  SEXP chr = PROTECT(Rf_mkCharLenCE(view->data, view->n_bytes, CE_UTF8));
+  SEXP chr = PROTECT(Rf_mkCharLenCE(view->data, view->size_bytes, CE_UTF8));
   SEXP str = PROTECT(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(str, 0, chr);
   UNPROTECT(2);
@@ -169,9 +169,9 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
 
   if (schema_view.extension_metadata.data != NULL) {
     SEXP metadata_sexp =
-        PROTECT(Rf_allocVector(RAWSXP, schema_view.extension_metadata.n_bytes));
+        PROTECT(Rf_allocVector(RAWSXP, schema_view.extension_metadata.size_bytes));
     memcpy(RAW(metadata_sexp), schema_view.extension_metadata.data,
-           schema_view.extension_metadata.n_bytes);
+           schema_view.extension_metadata.size_bytes);
     SET_VECTOR_ELT(result, 3, metadata_sexp);
     UNPROTECT(1);
   }

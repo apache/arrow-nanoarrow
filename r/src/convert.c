@@ -304,7 +304,7 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
 
   // For extension types, warn that we are about to strip the extension type, as we don't
   // have a mechanism for dealing with them yet
-  if (converter->schema_view.extension_name.n_bytes > 0) {
+  if (converter->schema_view.extension_name.size_bytes > 0) {
     int64_t schema_chars = ArrowSchemaToString(schema, NULL, 0, 1);
     SEXP fmt_shelter = PROTECT(Rf_allocVector(RAWSXP, schema_chars + 1));
     ArrowSchemaToString(schema, (char*)RAW(fmt_shelter), schema_chars + 1, 1);

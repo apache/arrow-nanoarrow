@@ -872,7 +872,7 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           }
 
           schema_view->timezone.data = format + 4;
-          schema_view->timezone.n_bytes = strlen(format + 4);
+          schema_view->timezone.size_bytes = strlen(format + 4);
           *format_end_out = format + strlen(format);
           return NANOARROW_OK;
 
@@ -1131,7 +1131,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
       memcpy(child_error, ArrowErrorMessage(error), 1024);
       ArrowErrorSet(error, "Error parsing schema->format: %s", child_error);
     }
-    
+
     return result;
   }
 
@@ -1186,7 +1186,7 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
     case NANOARROW_TYPE_TIMESTAMP:
       return snprintf(out, n, "%s('%s', '%.*s')", type_string,
                       ArrowTimeUnitString(schema_view->time_unit),
-                      (int)schema_view->timezone.n_bytes, schema_view->timezone.data);
+                      (int)schema_view->timezone.size_bytes, schema_view->timezone.data);
     case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64:
     case NANOARROW_TYPE_DURATION:
@@ -1222,7 +1222,7 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
 
   // Extension type and dictionary should include both the top-level type
   // and the storage type.
-  int is_extension = schema_view.extension_name.n_bytes > 0;
+  int is_extension = schema_view.extension_name.size_bytes > 0;
   int is_dictionary = schema->dictionary != NULL;
   int64_t n_chars = 0;
   int64_t n_chars_last = 0;
@@ -1230,11 +1230,11 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
     n_chars_last = snprintf(
-        out + n_chars, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.n_bytes,
+        out + n_chars, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.size_bytes,
         schema_view.extension_name.data, ArrowTypeString(schema_view.storage_data_type));
   } else if (is_extension) {
     n_chars_last =
-        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.n_bytes,
+        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.size_bytes,
                  schema_view.extension_name.data);
   } else if (is_dictionary) {
     n_chars_last = snprintf(out + n_chars, n, "dictionary(%s)<",
@@ -1346,7 +1346,7 @@ ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
   pos += sizeof(int32_t);
 
   key_out->data = reader->metadata + reader->offset + pos;
-  key_out->n_bytes = key_size;
+  key_out->size_bytes = key_size;
   pos += key_size;
 
   int32_t value_size;
@@ -1354,7 +1354,7 @@ ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
   pos += sizeof(int32_t);
 
   value_out->data = reader->metadata + reader->offset + pos;
-  value_out->n_bytes = value_size;
+  value_out->size_bytes = value_size;
   pos += value_size;
 
   reader->offset += pos;
@@ -1374,7 +1374,7 @@ int64_t ArrowMetadataSizeOf(const char* metadata) {
 
   int64_t size = sizeof(int32_t);
   while (ArrowMetadataReaderRead(&reader, &key, &value) == NANOARROW_OK) {
-    size += sizeof(int32_t) + key.n_bytes + sizeof(int32_t) + value.n_bytes;
+    size += sizeof(int32_t) + key.size_bytes + sizeof(int32_t) + value.size_bytes;
   }
 
   return size;
@@ -1390,11 +1390,11 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
 
   while (ArrowMetadataReaderRead(&reader, &existing_key, &existing_value) ==
          NANOARROW_OK) {
-    int key_equal = key->n_bytes == existing_key.n_bytes &&
-                    strncmp(key->data, existing_key.data, existing_key.n_bytes) == 0;
+    int key_equal = key->size_bytes == existing_key.size_bytes &&
+                    strncmp(key->data, existing_key.data, existing_key.size_bytes) == 0;
     if (key_equal) {
       value_out->data = existing_value.data;
-      value_out->n_bytes = existing_value.n_bytes;
+      value_out->size_bytes = existing_value.size_bytes;
       break;
     }
   }
@@ -1441,8 +1441,8 @@ static ArrowErrorCode ArrowMetadataBuilderAppendInternal(struct ArrowBuffer* buf
   int32_t n_keys;
   memcpy(&n_keys, buffer->data, sizeof(int32_t));
 
-  int32_t key_size = (int32_t)key->n_bytes;
-  int32_t value_size = (int32_t)value->n_bytes;
+  int32_t key_size = (int32_t)key->size_bytes;
+  int32_t value_size = (int32_t)value->size_bytes;
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(
       buffer, sizeof(int32_t) + key_size + sizeof(int32_t) + value_size));
 
@@ -1490,9 +1490,9 @@ static ArrowErrorCode ArrowMetadataBuilderSetInternal(struct ArrowBuffer* buffer
       return result;
     }
 
-    if (key->n_bytes == existing_key.n_bytes &&
+    if (key->size_bytes == existing_key.size_bytes &&
         strncmp((const char*)key->data, (const char*)existing_key.data,
-                existing_key.n_bytes) == 0) {
+                existing_key.size_bytes) == 0) {
       result = ArrowMetadataBuilderAppendInternal(&new_buffer, key, value);
       value = NULL;
     } else {

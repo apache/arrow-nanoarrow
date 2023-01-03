@@ -51,7 +51,7 @@ static inline int nanoarrow_materialize_chr(struct ArrayViewSlice* src,
     } else {
       item = ArrowArrayViewGetStringUnsafe(src->array_view, src->offset + i);
       SET_STRING_ELT(dst->vec_sexp, dst->offset + i,
-                     Rf_mkCharLenCE(item.data, item.n_bytes, CE_UTF8));
+                     Rf_mkCharLenCE(item.data, item.size_bytes, CE_UTF8));
     }
   }
 

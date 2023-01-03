@@ -360,7 +360,7 @@ struct ArrowStringView {
   /// \brief The size of the string in bytes,
   ///
   /// (Not including the null terminator.)
-  int64_t n_bytes;
+  int64_t size_bytes;
 };
 
 /// \brief Return a view of a const C string
@@ -370,9 +370,9 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
 
   out.data = value;
   if (value) {
-    out.n_bytes = (int64_t)strlen(value);
+    out.size_bytes = (int64_t)strlen(value);
   } else {
-    out.n_bytes = 0;
+    out.size_bytes = 0;
   }
 
   return out;
@@ -400,7 +400,7 @@ struct ArrowBufferView {
   } data;
 
   /// \brief The size of the buffer in bytes
-  int64_t n_bytes;
+  int64_t size_bytes;
 };
 
 /// \brief Array buffer allocation and deallocation

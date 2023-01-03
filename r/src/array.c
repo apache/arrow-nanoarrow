@@ -224,7 +224,7 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
 
   const char* names[] = {"size_bytes", "element_size_bits", ""};
   SEXP buffer_info = PROTECT(Rf_mkNamed(VECSXP, names));
-  SET_VECTOR_ELT(buffer_info, 0, length_from_int64(array_view->buffer_views[i].n_bytes));
+  SET_VECTOR_ELT(buffer_info, 0, length_from_int64(array_view->buffer_views[i].size_bytes));
   SET_VECTOR_ELT(buffer_info, 1,
                  length_from_int64(array_view->layout.element_size_bits[i]));
 

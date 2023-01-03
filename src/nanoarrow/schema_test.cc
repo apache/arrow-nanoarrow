@@ -1315,10 +1315,10 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
   ARROW_EXPECT_OK(ExportField(*int_field, &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(
-      std::string(schema_view.extension_name.data, schema_view.extension_name.n_bytes),
+      std::string(schema_view.extension_name.data, schema_view.extension_name.size_bytes),
       "arrow.test.ext_name");
   EXPECT_EQ(std::string(schema_view.extension_metadata.data,
-                        schema_view.extension_metadata.n_bytes),
+                        schema_view.extension_metadata.size_bytes),
             "test metadata");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "arrow.test.ext_name{int32}");
 
@@ -1340,10 +1340,10 @@ TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
   EXPECT_EQ(schema_view.data_type, NANOARROW_TYPE_DICTIONARY);
   EXPECT_EQ(schema_view.storage_data_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(
-      std::string(schema_view.extension_name.data, schema_view.extension_name.n_bytes),
+      std::string(schema_view.extension_name.data, schema_view.extension_name.size_bytes),
       "arrow.test.ext_name");
   EXPECT_EQ(std::string(schema_view.extension_metadata.data,
-                        schema_view.extension_metadata.n_bytes),
+                        schema_view.extension_metadata.size_bytes),
             "test metadata");
   EXPECT_EQ(ArrowSchemaToStdString(&schema),
             "arrow.test.ext_name{dictionary(int32)<string>}");
@@ -1397,12 +1397,12 @@ TEST(MetadataTest, Metadata) {
   struct ArrowStringView value = ArrowCharView("default_val");
   EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, ArrowCharView("key"), &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.n_bytes), "value");
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "value");
 
   value = ArrowCharView("default_val");
   EXPECT_EQ(ArrowMetadataGetValue(simple_metadata, ArrowCharView("not_a_key"), &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.n_bytes), "default_val");
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "default_val");
 }
 
 TEST(MetadataTest, MetadataBuild) {
@@ -1449,7 +1449,7 @@ TEST(MetadataTest, MetadataBuild) {
   ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
                                   ArrowCharView("key2"), &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "value2");
 
   // Set an existing key
   ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, ArrowCharView("key"),
@@ -1459,12 +1459,12 @@ TEST(MetadataTest, MetadataBuild) {
   ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
                                   ArrowCharView("key"), &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.n_bytes), "value3");
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "value3");
   value = ArrowCharView(nullptr);
   ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
                                   ArrowCharView("key2"), &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "value2");
 
   // Remove a key that does exist
   ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, ArrowCharView("key")),
@@ -1475,7 +1475,7 @@ TEST(MetadataTest, MetadataBuild) {
   ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
                                   ArrowCharView("key2"), &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.n_bytes), "value2");
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "value2");
 
   ArrowBufferReset(&metadata_builder);
 }
