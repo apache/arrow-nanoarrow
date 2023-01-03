@@ -29,7 +29,7 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "gha695f08d7a07a64c0e13eb3444d61b2a6a8d8e5df"
+#define NANOARROW_BUILD_ID "ghae134b4adbf8d8d5861b3bb30c4dc0cb046d0b5e7"
 
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
@@ -856,8 +856,7 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
 /// Returns EINVAL for scale <= 0 or for type that is not
 /// NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
-                                         enum ArrowType type,
+ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
                                          int32_t decimal_precision,
                                          int32_t decimal_scale);
 
@@ -868,8 +867,7 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema,
 /// NANOARROW_TYPE_TIMESTAMP, or NANOARROW_TYPE_DURATION. The
 /// timezone parameter must be NULL for a non-timestamp type. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
-                                          enum ArrowType type,
+ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum ArrowType type,
                                           enum ArrowTimeUnit time_unit,
                                           const char* timezone);
 
@@ -878,8 +876,8 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
 /// Returns EINVAL for a type that is not NANOARROW_TYPE_DENSE_UNION
 /// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
 /// allocated, and initialized.
-ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
-                                       enum ArrowType type, int64_t n_children);
+ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowType type,
+                                       int64_t n_children);
 
 /// \brief Make a (recursive) copy of a schema
 ///
@@ -1068,15 +1066,15 @@ struct ArrowSchemaView {
   /// \brief Format timezone parameter
   ///
   /// This value is set when parsing a timestamp type and represents
-  /// the timezone format parameter. The ArrowStrintgView points to
-  /// data within the schema and the value is undefined for other types.
-  struct ArrowStringView timezone;
+  /// the timezone format parameter. This value points to
+  /// data within the schema and is undefined for other types.
+  const char* timezone;
 
   /// \brief Union type ids parameter
   ///
   /// This value is set when parsing a union type and represents
-  /// type ids parameter. The ArrowStringView points to
-  /// data within the schema and the value is undefined for other types.
+  /// type ids parameter. This value points to
+  /// data within the schema and is undefined for other types.
   const char* union_type_ids;
 };
 
@@ -1481,10 +1479,12 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get the type id of a union array element
-static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view, int64_t i);
+static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view,
+                                               int64_t i);
 
 /// \brief Get the child index of a union array element
-static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view, int64_t i);
+static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view,
+                                                   int64_t i);
 
 /// \brief Get the index to use into the relevant union child array
 static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,
@@ -2833,12 +2833,14 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       view.data = data_view + offsets_view->data.as_int32[i];
-      view.size_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      view.size_bytes =
+          offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       view.data = data_view + offsets_view->data.as_int64[i];
-      view.size_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
+      view.size_bytes =
+          offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
       break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       view.size_bytes = array_view->layout.element_size_bits[1] / 8;
@@ -2863,17 +2865,20 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      view.size_bytes = offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+      view.size_bytes =
+          offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
       view.data.as_uint8 = data_view + offsets_view->data.as_int32[i];
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      view.size_bytes = offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
+      view.size_bytes =
+          offsets_view->data.as_int64[i + 1] - offsets_view->data.as_int64[i];
       view.data.as_uint8 = data_view + offsets_view->data.as_int64[i];
       break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       view.size_bytes = array_view->layout.element_size_bits[1] / 8;
-      view.data.as_uint8 = array_view->buffer_views[1].data.as_uint8 + (i * view.size_bytes);
+      view.data.as_uint8 =
+          array_view->buffer_views[1].data.as_uint8 + (i * view.size_bytes);
       break;
     default:
       view.data.data = NULL;
