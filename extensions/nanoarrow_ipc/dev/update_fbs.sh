@@ -18,9 +18,17 @@
 # get the .fbs files from the arrow repo
 mkdir format && cd format
 curl -L https://github.com/apache/arrow/raw/master/format/Schema.fbs --output Schema.fbs
+curl -L https://github.com/apache/arrow/raw/master/format/Tensor.fbs --output Tensor.fbs
+curl -L https://github.com/apache/arrow/raw/master/format/SparseTensor.fbs --output SparseTensor.fbs
+curl -L https://github.com/apache/arrow/raw/master/format/Message.fbs --output Message.fbs
+curl -L https://github.com/apache/arrow/raw/master/format/File.fbs --output File.fbs
 
 # compile using flatcc
-flatcc --common --reader --builder --recursive Schema.fbs
+flatcc --common --reader --builder --recursive *.fbs
 
 # copy to src/
 cp *.h ../../src/nanoarrow_ipc
+
+# clean up
+cd ..
+rm -rf format

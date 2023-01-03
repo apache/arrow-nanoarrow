@@ -20,6 +20,10 @@
 #include "nanoarrow_ipc.h"
 #include "Schema_builder.h"
 #include "Schema_reader.h"
+#include "Message_builder.h"
+#include "Message_reader.h"
+#include "File_builder.h"
+#include "File_reader.h"
 
 ArrowIpcErrorCode ArrowIpcInitStreamReader(struct ArrowArrayStream* stream_out,
                                            struct ArrowIpcIO* io) {
