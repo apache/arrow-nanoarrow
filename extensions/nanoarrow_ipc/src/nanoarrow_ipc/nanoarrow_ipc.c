@@ -29,6 +29,8 @@
 
 #include "nanoarrow_ipc.h"
 
+#define ArrowIpcErrorSet(err, ...) ArrowErrorSet((struct ArrowError*)err, __VA_ARGS__)
+
 static inline uint32_t ArrowIpcReadUint32LE(struct ArrowIpcBufferView* data) {
   uint32_t value;
   memcpy(&value, data->data, sizeof(uint32_t));
@@ -51,21 +53,32 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
 ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
-                                        int* message_type,
-                                        struct ArrowArray* array_out,
-                                        struct ArrowSchema* schema_out) {
+                                        int* message_type, struct ArrowArray* array_out,
+                                        struct ArrowSchema* schema_out,
+                                        struct ArrowError* error) {
   array_out->release = NULL;
   schema_out->release = NULL;
   *message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   struct ArrowIpcBufferView data_mut = *data;
 
+  if (data_mut.size_bytes < 8) {
+    ArrowIpcErrorSet(error,
+                     "Expected message of at least 8 bytes but only %ld bytes remain",
+                     (long)data->size_bytes);
+  }
+
   uint32_t continuation = ArrowIpcReadUint32LE(&data_mut);
   if (continuation != 0xFFFFFFFF) {
+    ArrowIpcErrorSet(error, "Expected 0xFFFFFFFF at start of message but found %dx",
+                     (unsigned int)continuation);
     return EINVAL;
   }
 
   int32_t message_size_bytes = ArrowIpcReadInt32LE(&data_mut);
   if (message_size_bytes > data_mut.size_bytes) {
+    ArrowIpcErrorSet(
+        error, "Expected message size >= 0 bytes but found message size of %ld bytes",
+        (long)message_size_bytes);
     return ERANGE;
   }
 
@@ -79,6 +92,22 @@ ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
     case ns(MetadataVersion_V5):
       break;
     default:
+      ArrowIpcErrorSet(error, "Expected metadata version V5(4L) but found %d", version);
+      return EINVAL;
+  }
+
+  *message_type = ns(Message_header_type(message));
+  switch (*message_type) {
+    case ns(MessageHeader_Schema):
+    case ns(MessageHeader_DictionaryBatch):
+    case ns(MessageHeader_RecordBatch):
+    case ns(MessageHeader_Tensor):
+    case ns(MessageHeader_SparseTensor):
+      ArrowIpcErrorSet(error, "Unsupported message type: '%s'",
+                       ns(MessageHeader_type_name(*message_type)));
+      return ENOTSUP;
+    default:
+      ArrowIpcErrorSet(error, "Unnown message type: %d", (int)(*message_type));
       return EINVAL;
   }
 
@@ -101,6 +130,4 @@ ArrowIpcErrorCode ArrowIpcWriteBatches(struct ArrowArrayStream* stream_in,
   return ENOTSUP;
 }
 
-ArrowIpcErrorCode ArrowIpcWriteEndOfStream(struct ArrowIpcIO* io) {
-  return ENOTSUP;
-}
+ArrowIpcErrorCode ArrowIpcWriteEndOfStream(struct ArrowIpcIO* io) { return ENOTSUP; }

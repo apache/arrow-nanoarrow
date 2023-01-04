@@ -140,8 +140,10 @@ struct ArrowIpcBufferView {
 enum ArrowIpcMessageType {
   NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED,
   NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
+  NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
   NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
-  NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH
+  NANOARROW_IPC_MESSAGE_TYPE_TENSOR,
+  NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSOR
 };
 
 struct ArrowIpcIO {
@@ -156,8 +158,11 @@ struct ArrowIpcIO {
   void* private_data;
 };
 
-ArrowIpcErrorCode ArrowIpcDecodeSchema(struct ArrowIpcBufferView data,
-                                       struct ArrowSchema* schema_out);
+ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
+                                        int* message_type,
+                                        struct ArrowArray* array_out,
+                                        struct ArrowSchema* schema_out,
+                                        struct ArrowError* error);
 
 ArrowIpcErrorCode ArrowIpcInitStreamReader(struct ArrowArrayStream* stream_out,
                                            struct ArrowIpcIO* io);
