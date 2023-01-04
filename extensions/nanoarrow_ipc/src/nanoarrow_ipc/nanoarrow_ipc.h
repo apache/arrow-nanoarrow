@@ -132,32 +132,42 @@ struct ArrowIpcError {
   char message[1024];
 };
 
+struct ArrowIpcBufferView {
+  const uint8_t* data;
+  int64_t size_bytes;
+};
+
+enum ArrowIpcMessageType {
+  NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED,
+  NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
+  NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
+  NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH
+};
+
 struct ArrowIpcIO {
   ArrowIpcErrorCode (*read)(struct ArrowIpcIO* io, uint8_t* dst, int64_t dst_size,
                             int64_t* size_read_out);
   ArrowIpcErrorCode (*write)(struct ArrowIpcIO* io, const uint8_t* src, int64_t src_size);
   ArrowIpcErrorCode (*size)(struct ArrowIpcIO* io, int64_t* size_out);
   ArrowIpcErrorCode (*seek)(struct ArrowIpcIO* io, int64_t position);
+  ArrowIpcErrorCode (*tell)(struct ArrowIpcIO* io, int64_t* position_out);
   const char* (*get_last_error)(struct ArrowIpcIO* io);
   void (*release)(struct ArrowIpcIO* io);
   void* private_data;
 };
 
-ArrowIpcErrorCode ArrowIpcInitBufferViewReader(struct ArrowIpcIO* io, const void* data,
-                                               int64_t size_bytes);
+ArrowIpcErrorCode ArrowIpcDecodeSchema(struct ArrowIpcBufferView data,
+                                       struct ArrowSchema* schema_out);
 
 ArrowIpcErrorCode ArrowIpcInitStreamReader(struct ArrowArrayStream* stream_out,
-                                           struct ArrowIpcIO* io,
-                                           struct ArrowIpcError* error);
+                                           struct ArrowIpcIO* io);
 
 ArrowIpcErrorCode ArrowIpcWriteSchema(struct ArrowArrayStream* stream_in,
-                                      struct ArrowIpcIO* io, struct ArrowIpcError* error);
+                                      struct ArrowIpcIO* io);
 
 ArrowIpcErrorCode ArrowIpcWriteBatches(struct ArrowArrayStream* stream_in,
-                                       struct ArrowIpcIO* io, int64_t num_batches,
-                                       struct ArrowIpcError* error);
+                                       struct ArrowIpcIO* io, int64_t num_batches);
 
-ArrowIpcErrorCode ArrowIpcWriteEndOfStream(struct ArrowIpcIO* io,
-                                           struct ArrowIpcError* error);
+ArrowIpcErrorCode ArrowIpcWriteEndOfStream(struct ArrowIpcIO* io);
 
 #endif
