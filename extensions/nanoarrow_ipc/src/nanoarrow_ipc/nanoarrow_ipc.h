@@ -122,10 +122,6 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
-#ifdef __cplusplus
-}
-#endif
-
 typedef int ArrowIpcErrorCode;
 
 struct ArrowIpcError {
@@ -159,10 +155,9 @@ struct ArrowIpcIO {
 };
 
 ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
-                                        int* message_type,
-                                        struct ArrowArray* array_out,
+                                        int* message_type, struct ArrowArray* array_out,
                                         struct ArrowSchema* schema_out,
-                                        struct ArrowError* error);
+                                        struct ArrowIpcError* error);
 
 ArrowIpcErrorCode ArrowIpcInitStreamReader(struct ArrowArrayStream* stream_out,
                                            struct ArrowIpcIO* io);
@@ -175,4 +170,8 @@ ArrowIpcErrorCode ArrowIpcWriteBatches(struct ArrowArrayStream* stream_in,
 
 ArrowIpcErrorCode ArrowIpcWriteEndOfStream(struct ArrowIpcIO* io);
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

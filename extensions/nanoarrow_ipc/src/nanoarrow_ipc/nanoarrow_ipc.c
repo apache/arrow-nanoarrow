@@ -55,7 +55,7 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
                                         int* message_type, struct ArrowArray* array_out,
                                         struct ArrowSchema* schema_out,
-                                        struct ArrowError* error) {
+                                        struct ArrowIpcError* error) {
   array_out->release = NULL;
   schema_out->release = NULL;
   *message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
