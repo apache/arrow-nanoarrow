@@ -69,19 +69,35 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
 static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
-                                      struct ArrowIpcBufferView* data,
+                                      flatbuffers_generic_t message_header,
                                       struct ArrowIpcError* error) {
+  org_apache_arrow_flatbuf_Schema_table_t schema =
+      (org_apache_arrow_flatbuf_Schema_table_t)message_header;
+  int endianness = org_apache_arrow_flatbuf_Schema_endianness(schema);
+  switch (endianness) {
+    case org_apache_arrow_flatbuf_Endianness_Little:
+      reader->endianness = NANOARROW_IPC_ENDIANNESS_LITTLE;
+      break;
+    case org_apache_arrow_flatbuf_Endianness_Big:
+      reader->endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+      break;
+    default:
+      ArrowIpcErrorSet(error,
+                       "Expected Schema endianness of 0 (little) or 1 (big) but got %d",
+                       (int)endianness);
+  }
+
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderDecodeDictionaryBatch(struct ArrowIpcReader* reader,
-                                               struct ArrowIpcBufferView* data,
+                                               flatbuffers_generic_t message_header,
                                                struct ArrowIpcError* error) {
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderDecodeRecordBatch(struct ArrowIpcReader* reader,
-                                           struct ArrowIpcBufferView* data,
+                                           flatbuffers_generic_t message_header,
                                            struct ArrowIpcError* error) {
   return ENOTSUP;
 }
@@ -128,16 +144,19 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
   }
 
   reader->message_type = ns(Message_header_type(message));
+  flatbuffers_generic_t message_header = ns(Message_header_get(message));
+
   switch (reader->message_type) {
     case ns(MessageHeader_Schema):
-      NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeSchema(reader, &data_mut, error));
+      NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeSchema(reader, message_header, error));
       break;
     case ns(MessageHeader_DictionaryBatch):
       NANOARROW_RETURN_NOT_OK(
-          ArrowIpcReaderDecodeDictionaryBatch(reader, &data_mut, error));
+          ArrowIpcReaderDecodeDictionaryBatch(reader, message_header, error));
       break;
     case ns(MessageHeader_RecordBatch):
-      NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeRecordBatch(reader, &data_mut, error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcReaderDecodeRecordBatch(reader, message_header, error));
       break;
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
