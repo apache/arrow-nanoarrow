@@ -68,6 +68,24 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 #undef ns
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
+static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
+                                      struct ArrowIpcBufferView* data,
+                                      struct ArrowIpcError* error) {
+  return ENOTSUP;
+}
+
+static int ArrowIpcReaderDecodeDictionaryBatch(struct ArrowIpcReader* reader,
+                                               struct ArrowIpcBufferView* data,
+                                               struct ArrowIpcError* error) {
+  return ENOTSUP;
+}
+
+static int ArrowIpcReaderDecodeRecordBatch(struct ArrowIpcReader* reader,
+                                           struct ArrowIpcBufferView* data,
+                                           struct ArrowIpcError* error) {
+  return ENOTSUP;
+}
+
 ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
                                        struct ArrowIpcBufferView* data,
                                        struct ArrowIpcError* error) {
@@ -112,8 +130,15 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
   reader->message_type = ns(Message_header_type(message));
   switch (reader->message_type) {
     case ns(MessageHeader_Schema):
+      NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeSchema(reader, &data_mut, error));
+      break;
     case ns(MessageHeader_DictionaryBatch):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcReaderDecodeDictionaryBatch(reader, &data_mut, error));
+      break;
     case ns(MessageHeader_RecordBatch):
+      NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeRecordBatch(reader, &data_mut, error));
+      break;
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowIpcErrorSet(error, "Unsupported message type: '%s'",
