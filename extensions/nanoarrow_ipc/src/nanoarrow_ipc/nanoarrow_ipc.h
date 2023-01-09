@@ -142,10 +142,30 @@ enum ArrowIpcMessageType {
   NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSOR
 };
 
-ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
-                                        int* message_type, struct ArrowArray* array_out,
-                                        struct ArrowSchema* schema_out,
-                                        struct ArrowIpcError* error);
+enum ArrowIpcEndianness {
+  NANOARROW_IPC_ENDIANNESS_UNINITIALIZED,
+  NANOARROW_IPC_ENDIANNESS_LITTLE,
+  NANOARROW_IPC_ENDIANNESS_BIG
+};
+
+#define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
+#define NANOARROW_IPC_FEATURE_COMPRESSED_BUFFERS 2
+
+struct ArrowIpcReader {
+  int32_t metadata_version;
+  int32_t message_type;
+  int32_t endianness;
+  struct ArrowSchema schema;
+  struct ArrowArray batch_index;
+};
+
+void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
+
+void ArrowIpcReaderReset(struct ArrowIpcReader* reader);
+
+ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
+                                       struct ArrowIpcBufferView* data,
+                                       struct ArrowIpcError* error);
 
 #endif
 

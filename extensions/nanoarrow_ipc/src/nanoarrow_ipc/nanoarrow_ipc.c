@@ -31,6 +31,22 @@
 
 #define ArrowIpcErrorSet(err, ...) ArrowErrorSet((struct ArrowError*)err, __VA_ARGS__)
 
+void ArrowIpcReaderInit(struct ArrowIpcReader* reader) {
+  memset(reader, 0, sizeof(struct ArrowIpcReader));
+}
+
+void ArrowIpcReaderReset(struct ArrowIpcReader* reader) {
+  if (reader->schema.release != NULL) {
+    reader->schema.release(&reader->schema);
+  }
+
+  if (reader->batch_index.release != NULL) {
+    reader->batch_index.release(&reader->batch_index);
+  }
+
+  ArrowIpcReaderInit(reader);
+}
+
 static inline uint32_t ArrowIpcReadUint32LE(struct ArrowIpcBufferView* data) {
   uint32_t value;
   memcpy(&value, data->data, sizeof(uint32_t));
@@ -52,13 +68,10 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 #undef ns
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
-ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
-                                        int* message_type, struct ArrowArray* array_out,
-                                        struct ArrowSchema* schema_out,
-                                        struct ArrowIpcError* error) {
-  array_out->release = NULL;
-  schema_out->release = NULL;
-  *message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
+ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
+                                       struct ArrowIpcBufferView* data,
+                                       struct ArrowIpcError* error) {
+  reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   struct ArrowIpcBufferView data_mut = *data;
 
   if (data_mut.size_bytes < 8) {
@@ -96,18 +109,18 @@ ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
       return EINVAL;
   }
 
-  *message_type = ns(Message_header_type(message));
-  switch (*message_type) {
+  reader->message_type = ns(Message_header_type(message));
+  switch (reader->message_type) {
     case ns(MessageHeader_Schema):
     case ns(MessageHeader_DictionaryBatch):
     case ns(MessageHeader_RecordBatch):
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowIpcErrorSet(error, "Unsupported message type: '%s'",
-                       ns(MessageHeader_type_name(*message_type)));
+                       ns(MessageHeader_type_name(reader->message_type)));
       return ENOTSUP;
     default:
-      ArrowIpcErrorSet(error, "Unnown message type: %d", (int)(*message_type));
+      ArrowIpcErrorSet(error, "Unnown message type: %d", (int)(reader->message_type));
       return EINVAL;
   }
 

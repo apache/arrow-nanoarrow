@@ -57,15 +57,17 @@ static uint8_t kSimpleSchema[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
-  struct ArrowArray array;
-  struct ArrowSchema schema;
+  struct ArrowIpcReader reader;
   struct ArrowIpcError error;
-  int message_type;
 
   struct ArrowIpcBufferView data;
   data.data = kSimpleSchema;
   data.size_bytes = sizeof(kSimpleSchema);
 
-  EXPECT_EQ(ArrowIpcDecodeMessage(&data, &message_type, &array, &schema, &error), ENOTSUP);
-  EXPECT_EQ(message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+  ArrowIpcReaderInit(&reader);
+
+  EXPECT_EQ(ArrowIpcReaderDecode(&reader, &data, &error), ENOTSUP);
+  EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+
+  ArrowIpcReaderReset(&reader);
 }
