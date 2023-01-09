@@ -114,20 +114,3 @@ ArrowIpcErrorCode ArrowIpcDecodeMessage(struct ArrowIpcBufferView* data,
   *data = data_mut;
   return NANOARROW_OK;
 }
-
-ArrowIpcErrorCode ArrowIpcInitStreamReader(struct ArrowArrayStream* stream_out,
-                                           struct ArrowIpcIO* io) {
-  return ENOTSUP;
-}
-
-ArrowIpcErrorCode ArrowIpcWriteSchema(struct ArrowArrayStream* stream_in,
-                                      struct ArrowIpcIO* io) {
-  return ENOTSUP;
-}
-
-ArrowIpcErrorCode ArrowIpcWriteBatches(struct ArrowArrayStream* stream_in,
-                                       struct ArrowIpcIO* io, int64_t num_batches) {
-  return ENOTSUP;
-}
-
-ArrowIpcErrorCode ArrowIpcWriteEndOfStream(struct ArrowIpcIO* io) { return ENOTSUP; }
