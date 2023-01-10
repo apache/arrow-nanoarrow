@@ -83,18 +83,17 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
                        (int)endianness);
   }
 
-  org_apache_arrow_flatbuf_Feature_vec_t features =
-      org_apache_arrow_flatbuf_Schema_features(schema);
-  int64_t n_features = org_apache_arrow_flatbuf_Feature_vec_len(features);
+  ns(Feature_vec_t) features = ns(Schema_features(schema));
+  int64_t n_features = ns(Feature_vec_len(features));
   reader->features = 0;
 
   for (int64_t i = 0; i < n_features; i++) {
-    int feature = org_apache_arrow_flatbuf_Feature_vec_at(features, i);
+    int feature = ns(Feature_vec_at(features, i));
     switch (feature) {
-      case org_apache_arrow_flatbuf_Feature_COMPRESSED_BODY:
+      case ns(Feature_COMPRESSED_BODY):
         reader->features &= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
         break;
-      case org_apache_arrow_flatbuf_Feature_DICTIONARY_REPLACEMENT:
+      case ns(Feature_DICTIONARY_REPLACEMENT):
         reader->features &= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
         break;
       default:
