@@ -69,6 +69,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   EXPECT_EQ(ArrowIpcReaderDecode(&reader, &data, &error), ENOTSUP);
   EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
   EXPECT_EQ(reader.endianness, NANOARROW_IPC_ENDIANNESS_LITTLE);
+  EXPECT_EQ(reader.features, 0);
+
+  ASSERT_EQ(reader.schema.n_children, 1);
+  EXPECT_STREQ(reader.schema.children[0]->name, "some_col");
+  EXPECT_EQ(reader.schema.children[0]->flags, ARROW_FLAG_NULLABLE);
+  EXPECT_STREQ(reader.schema.children[0]->format, "i");
 
   ArrowIpcReaderReset(&reader);
 }

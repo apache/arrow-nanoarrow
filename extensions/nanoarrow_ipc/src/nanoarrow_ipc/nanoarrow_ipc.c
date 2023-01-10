@@ -97,12 +97,118 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
         reader->features |= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
         break;
       default:
-        ArrowIpcErrorSet(error, "Unexpected Schema feature with value %d", (int)feature);
+        ArrowIpcErrorSet(error, "Unrecognized Schema feature with value %d",
+                         (int)feature);
         return EINVAL;
     }
   }
 
+  ns(Field_vec_t) fields = ns(Schema_fields(schema));
+  int64_t n_fields = ns(Schema_vec_len(fields));
+  if (reader->schema.release != NULL) {
+    reader->schema.release(&reader->schema);
+  }
 
+  ArrowSchemaInit(&reader->schema);
+  int result = ArrowSchemaSetTypeStruct(&reader->schema, n_fields);
+  if (result != NANOARROW_OK) {
+    ArrowIpcErrorSet(error, "Failed to allocate struct schema with %ld children",
+                     (long)n_fields);
+    return result;
+  }
+
+  for (int64_t i = 0; i < n_fields; i++) {
+    ns(Field_table_t) field = ns(Field_vec_at(fields, i));
+    struct ArrowSchema* schema = reader->schema.children[i];
+
+    if (ns(Field_name_is_present(field))) {
+      result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
+    } else {
+      result = ArrowSchemaSetName(schema, "");
+    }
+
+    if (result != NANOARROW_OK) {
+      ArrowIpcErrorSet(error, "ArrowSchemaSetName() failed for schema field %ld",
+                       (long)i);
+      return result;
+    }
+
+    if (ns(Field_nullable_get(field))) {
+      schema->flags |= ARROW_FLAG_NULLABLE;
+    }
+
+    int type_type = ns(Field_type_type(field));
+    switch (type_type) {
+      case ns(Type_Null):
+        result = ArrowSchemaSetType(schema, NANOARROW_TYPE_NA);
+        break;
+      case ns(Type_Int): {
+        ns(Int_table_t) field_int = (ns(Int_table_t))ns(Field_type_get(field));
+
+        int is_signed = ns(Int_is_signed_get(field_int));
+        int bitwidth = ns(Int_bitWidth_get(field_int));
+        int nanoarrow_type = NANOARROW_TYPE_UNINITIALIZED;
+
+        if (is_signed) {
+          switch (bitwidth) {
+            case 8:
+              nanoarrow_type = NANOARROW_TYPE_INT8;
+              break;
+            case 16:
+              nanoarrow_type = NANOARROW_TYPE_INT16;
+              break;
+            case 32:
+              nanoarrow_type = NANOARROW_TYPE_INT32;
+              break;
+            case 64:
+              nanoarrow_type = NANOARROW_TYPE_INT64;
+              break;
+            default:
+              break;
+          }
+        } else {
+          switch (bitwidth) {
+            case 8:
+              nanoarrow_type = NANOARROW_TYPE_UINT8;
+              break;
+            case 16:
+              nanoarrow_type = NANOARROW_TYPE_UINT16;
+              break;
+            case 32:
+              nanoarrow_type = NANOARROW_TYPE_UINT32;
+              break;
+            case 64:
+              nanoarrow_type = NANOARROW_TYPE_UINT64;
+              break;
+            default:
+              break;
+          }
+        }
+
+        if (nanoarrow_type == NANOARROW_TYPE_UNINITIALIZED) {
+          result = EINVAL;
+        } else {
+          result = ArrowSchemaSetType(schema, nanoarrow_type);
+        }
+
+        break;
+      }
+      case ns(Type_Utf8):
+        result = ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING);
+      case ns(Type_LargeUtf8):
+        result = ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_STRING);
+        break;
+      default:
+        ArrowIpcErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
+        return EINVAL;
+    }
+
+    if (result != NANOARROW_OK) {
+      ArrowIpcErrorSet(
+          error, "ArrowSchemaSetType() failed for schema field %ld ('%s'; type='%s')",
+          (long)i, schema->name, ns(Type_type_name(type_type)));
+    }
+  }
 
   return ENOTSUP;
 }
