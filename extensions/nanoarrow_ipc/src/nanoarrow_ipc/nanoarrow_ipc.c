@@ -71,14 +71,14 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
                                       flatbuffers_generic_t message_header,
                                       struct ArrowIpcError* error) {
-  org_apache_arrow_flatbuf_Schema_table_t schema =
-      (org_apache_arrow_flatbuf_Schema_table_t)message_header;
-  int endianness = org_apache_arrow_flatbuf_Schema_endianness(schema);
+  ns(Schema_table_t) schema =
+      (ns(Schema_table_t))message_header;
+  int endianness = ns(Schema_endianness(schema));
   switch (endianness) {
-    case org_apache_arrow_flatbuf_Endianness_Little:
+    case ns(Endianness_Little):
       reader->endianness = NANOARROW_IPC_ENDIANNESS_LITTLE;
       break;
-    case org_apache_arrow_flatbuf_Endianness_Big:
+    case ns(Endianness_Big):
       reader->endianness = NANOARROW_IPC_ENDIANNESS_BIG;
       break;
     default:
