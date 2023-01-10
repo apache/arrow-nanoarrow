@@ -91,16 +91,18 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
     int feature = ns(Feature_vec_at(features, i));
     switch (feature) {
       case ns(Feature_COMPRESSED_BODY):
-        reader->features &= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
+        reader->features |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
         break;
       case ns(Feature_DICTIONARY_REPLACEMENT):
-        reader->features &= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
+        reader->features |= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
         break;
       default:
         ArrowIpcErrorSet(error, "Unexpected Schema feature with value %d", (int)feature);
         return EINVAL;
     }
   }
+
+
 
   return ENOTSUP;
 }
