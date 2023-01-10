@@ -149,12 +149,13 @@ enum ArrowIpcEndianness {
 };
 
 #define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
-#define NANOARROW_IPC_FEATURE_COMPRESSED_BUFFERS 2
+#define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
 struct ArrowIpcReader {
   int32_t metadata_version;
   int32_t message_type;
   int32_t endianness;
+  int32_t features;
   struct ArrowSchema schema;
   struct ArrowArray batch_index;
 };

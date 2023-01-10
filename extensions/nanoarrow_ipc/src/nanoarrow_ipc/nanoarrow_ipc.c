@@ -20,11 +20,8 @@
 
 #include "nanoarrow/nanoarrow.h"
 
-#include "File_builder.h"
 #include "File_reader.h"
-#include "Message_builder.h"
 #include "Message_reader.h"
-#include "Schema_builder.h"
 #include "Schema_reader.h"
 
 #include "nanoarrow_ipc.h"
@@ -71,8 +68,7 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
                                       flatbuffers_generic_t message_header,
                                       struct ArrowIpcError* error) {
-  ns(Schema_table_t) schema =
-      (ns(Schema_table_t))message_header;
+  ns(Schema_table_t) schema = (ns(Schema_table_t))message_header;
   int endianness = ns(Schema_endianness(schema));
   switch (endianness) {
     case ns(Endianness_Little):
@@ -85,6 +81,26 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
       ArrowIpcErrorSet(error,
                        "Expected Schema endianness of 0 (little) or 1 (big) but got %d",
                        (int)endianness);
+  }
+
+  org_apache_arrow_flatbuf_Feature_vec_t features =
+      org_apache_arrow_flatbuf_Schema_features(schema);
+  int64_t n_features = org_apache_arrow_flatbuf_Feature_vec_len(features);
+  reader->features = 0;
+
+  for (int64_t i = 0; i < n_features; i++) {
+    int feature = org_apache_arrow_flatbuf_Feature_vec_at(features, i);
+    switch (feature) {
+      case org_apache_arrow_flatbuf_Feature_COMPRESSED_BODY:
+        reader->features &= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
+        break;
+      case org_apache_arrow_flatbuf_Feature_DICTIONARY_REPLACEMENT:
+        reader->features &= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
+        break;
+      default:
+        ArrowIpcErrorSet(error, "Unexpected Schema feature with value %d", (int)feature);
+        return EINVAL;
+    }
   }
 
   return ENOTSUP;
@@ -136,6 +152,7 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
 
   int version = ns(Message_version(message));
   switch (version) {
+    case ns(MetadataVersion_V4):
     case ns(MetadataVersion_V5):
       break;
     default:
