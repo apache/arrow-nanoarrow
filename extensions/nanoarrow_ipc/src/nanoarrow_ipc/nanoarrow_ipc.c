@@ -65,6 +65,82 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 #undef ns
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
+static int ArrowIpcReaderSetTypeSimple(struct ArrowSchema* schema, int nanoarrow_type,
+                                       struct ArrowIpcError* error) {
+  int result = ArrowSchemaSetType(schema, nanoarrow_type);
+  if (result != NANOARROW_OK) {
+    ArrowIpcErrorSet(error, "ArrowSchemaSetType() failed for type %s",
+                     ArrowTypeString(nanoarrow_type));
+    return result;
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowIpcReaderSetTypeInt(struct ArrowSchema* schema,
+                                    flatbuffers_generic_t type_generic,
+                                    struct ArrowIpcError* error) {
+  ns(Int_table_t) type = (ns(Int_table_t))type_generic;
+
+  int is_signed = ns(Int_is_signed_get(type));
+  int bitwidth = ns(Int_bitWidth_get(type));
+  int nanoarrow_type = NANOARROW_TYPE_UNINITIALIZED;
+
+  if (is_signed) {
+    switch (bitwidth) {
+      case 8:
+        nanoarrow_type = NANOARROW_TYPE_INT8;
+        break;
+      case 16:
+        nanoarrow_type = NANOARROW_TYPE_INT16;
+        break;
+      case 32:
+        nanoarrow_type = NANOARROW_TYPE_INT32;
+        break;
+      case 64:
+        nanoarrow_type = NANOARROW_TYPE_INT64;
+        break;
+      default:
+        ArrowIpcErrorSet(error,
+                         "Expected signed int bitwidth of 8, 16, 32, or 64 but got %d",
+                         (int)bitwidth);
+        return EINVAL;
+    }
+  } else {
+    switch (bitwidth) {
+      case 8:
+        nanoarrow_type = NANOARROW_TYPE_UINT8;
+        break;
+      case 16:
+        nanoarrow_type = NANOARROW_TYPE_UINT16;
+        break;
+      case 32:
+        nanoarrow_type = NANOARROW_TYPE_UINT32;
+        break;
+      case 64:
+        nanoarrow_type = NANOARROW_TYPE_UINT64;
+        break;
+      default:
+        ArrowIpcErrorSet(error,
+                         "Expected unsigned int bitwidth of 8, 16, 32, or 64 but got %d",
+                         (int)bitwidth);
+        return EINVAL;
+    }
+  }
+
+  return ArrowIpcReaderSetTypeSimple(schema, nanoarrow_type, error);
+}
+
+static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field) {
+  // TODO
+  return EINVAL;
+}
+
+static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields) {
+  // TODO
+  return EINVAL;
+}
+
 static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
                                       flatbuffers_generic_t message_header,
                                       struct ArrowIpcError* error) {
@@ -140,73 +216,24 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
     int type_type = ns(Field_type_type(field));
     switch (type_type) {
       case ns(Type_Null):
-        result = ArrowSchemaSetType(schema, NANOARROW_TYPE_NA);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_NA, error));
         break;
-      case ns(Type_Int): {
-        ns(Int_table_t) field_int = (ns(Int_table_t))ns(Field_type_get(field));
-
-        int is_signed = ns(Int_is_signed_get(field_int));
-        int bitwidth = ns(Int_bitWidth_get(field_int));
-        int nanoarrow_type = NANOARROW_TYPE_UNINITIALIZED;
-
-        if (is_signed) {
-          switch (bitwidth) {
-            case 8:
-              nanoarrow_type = NANOARROW_TYPE_INT8;
-              break;
-            case 16:
-              nanoarrow_type = NANOARROW_TYPE_INT16;
-              break;
-            case 32:
-              nanoarrow_type = NANOARROW_TYPE_INT32;
-              break;
-            case 64:
-              nanoarrow_type = NANOARROW_TYPE_INT64;
-              break;
-            default:
-              break;
-          }
-        } else {
-          switch (bitwidth) {
-            case 8:
-              nanoarrow_type = NANOARROW_TYPE_UINT8;
-              break;
-            case 16:
-              nanoarrow_type = NANOARROW_TYPE_UINT16;
-              break;
-            case 32:
-              nanoarrow_type = NANOARROW_TYPE_UINT32;
-              break;
-            case 64:
-              nanoarrow_type = NANOARROW_TYPE_UINT64;
-              break;
-            default:
-              break;
-          }
-        }
-
-        if (nanoarrow_type == NANOARROW_TYPE_UNINITIALIZED) {
-          result = EINVAL;
-        } else {
-          result = ArrowSchemaSetType(schema, nanoarrow_type);
-        }
-
+      case ns(Type_Int):
+        NANOARROW_RETURN_NOT_OK(
+            ArrowIpcReaderSetTypeInt(schema, ns(Field_type_get(field)), error));
         break;
-      }
       case ns(Type_Utf8):
-        result = ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_STRING, error));
+        break;
       case ns(Type_LargeUtf8):
-        result = ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_STRING);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_STRING, error));
         break;
       default:
         ArrowIpcErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
         return EINVAL;
-    }
-
-    if (result != NANOARROW_OK) {
-      ArrowIpcErrorSet(
-          error, "ArrowSchemaSetType() failed for schema field %ld ('%s'; type='%s')",
-          (long)i, schema->name, ns(Type_type_name(type_type)));
     }
   }
 
