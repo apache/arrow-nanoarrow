@@ -131,9 +131,48 @@ static int ArrowIpcReaderSetTypeInt(struct ArrowSchema* schema,
   return ArrowIpcReaderSetTypeSimple(schema, nanoarrow_type, error);
 }
 
-static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field) {
-  // TODO
-  return EINVAL;
+static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
+                                  struct ArrowIpcError* error) {
+  int result;
+  if (ns(Field_name_is_present(field))) {
+    result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
+  } else {
+    result = ArrowSchemaSetName(schema, "");
+  }
+
+  if (result != NANOARROW_OK) {
+    ArrowIpcErrorSet(error, "ArrowSchemaSetName() failed");
+    return result;
+  }
+
+  if (ns(Field_nullable_get(field))) {
+    schema->flags |= ARROW_FLAG_NULLABLE;
+  }
+
+  int type_type = ns(Field_type_type(field));
+  switch (type_type) {
+    case ns(Type_Null):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_NA, error));
+      break;
+    case ns(Type_Int):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcReaderSetTypeInt(schema, ns(Field_type_get(field)), error));
+      break;
+    case ns(Type_Utf8):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_STRING, error));
+      break;
+    case ns(Type_LargeUtf8):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_STRING, error));
+      break;
+    default:
+      ArrowIpcErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
+      return EINVAL;
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields) {
@@ -196,45 +235,7 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
   for (int64_t i = 0; i < n_fields; i++) {
     ns(Field_table_t) field = ns(Field_vec_at(fields, i));
     struct ArrowSchema* schema = reader->schema.children[i];
-
-    if (ns(Field_name_is_present(field))) {
-      result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
-    } else {
-      result = ArrowSchemaSetName(schema, "");
-    }
-
-    if (result != NANOARROW_OK) {
-      ArrowIpcErrorSet(error, "ArrowSchemaSetName() failed for schema field %ld",
-                       (long)i);
-      return result;
-    }
-
-    if (ns(Field_nullable_get(field))) {
-      schema->flags |= ARROW_FLAG_NULLABLE;
-    }
-
-    int type_type = ns(Field_type_type(field));
-    switch (type_type) {
-      case ns(Type_Null):
-        NANOARROW_RETURN_NOT_OK(
-            ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_NA, error));
-        break;
-      case ns(Type_Int):
-        NANOARROW_RETURN_NOT_OK(
-            ArrowIpcReaderSetTypeInt(schema, ns(Field_type_get(field)), error));
-        break;
-      case ns(Type_Utf8):
-        NANOARROW_RETURN_NOT_OK(
-            ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_STRING, error));
-        break;
-      case ns(Type_LargeUtf8):
-        NANOARROW_RETURN_NOT_OK(
-            ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_STRING, error));
-        break;
-      default:
-        ArrowIpcErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
-        return EINVAL;
-    }
+    NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetField(schema, field, error));
   }
 
   return ENOTSUP;
