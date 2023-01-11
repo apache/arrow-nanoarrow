@@ -22,6 +22,7 @@
 
 #include "File_reader.h"
 #include "Message_reader.h"
+#include "Message_verifier.h"
 #include "Schema_reader.h"
 
 #include "nanoarrow_ipc.h"
@@ -35,10 +36,6 @@ void ArrowIpcReaderInit(struct ArrowIpcReader* reader) {
 void ArrowIpcReaderReset(struct ArrowIpcReader* reader) {
   if (reader->schema.release != NULL) {
     reader->schema.release(&reader->schema);
-  }
-
-  if (reader->batch_index.release != NULL) {
-    reader->batch_index.release(&reader->batch_index);
   }
 
   ArrowIpcReaderInit(reader);
@@ -151,21 +148,9 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
 
   int type_type = ns(Field_type_type(field));
   switch (type_type) {
-    case ns(Type_Null):
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_NA, error));
-      break;
     case ns(Type_Int):
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcReaderSetTypeInt(schema, ns(Field_type_get(field)), error));
-      break;
-    case ns(Type_Utf8):
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_STRING, error));
-      break;
-    case ns(Type_LargeUtf8):
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_STRING, error));
       break;
     default:
       ArrowIpcErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
@@ -203,6 +188,7 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
       ArrowIpcErrorSet(error,
                        "Expected Schema endianness of 0 (little) or 1 (big) but got %d",
                        (int)endianness);
+      return EINVAL;
   }
 
   ns(Feature_vec_t) features = ns(Schema_features(schema));
@@ -242,16 +228,53 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
   return ArrowIpcReaderSetChildren(&reader->schema, fields, error);
 }
 
-static int ArrowIpcReaderDecodeDictionaryBatch(struct ArrowIpcReader* reader,
-                                               flatbuffers_generic_t message_header,
-                                               struct ArrowIpcError* error) {
-  return ENOTSUP;
+static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
+                                            struct ArrowIpcBufferView* data_mut,
+                                            int32_t* message_size_bytes,
+                                            struct ArrowIpcError* error) {
+  if (data_mut->size_bytes < 8) {
+    ArrowIpcErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
+                     (long)data_mut->size_bytes);
+    return ERANGE;
+  }
+
+  uint32_t continuation = ArrowIpcReadUint32LE(data_mut);
+  if (continuation != 0xFFFFFFFF) {
+    ArrowIpcErrorSet(error, "Expected 0xFFFFFFFF at start of message but found 0x%08X",
+                     (unsigned int)continuation);
+    return ERANGE;
+  }
+
+  *message_size_bytes = ArrowIpcReadInt32LE(data_mut);
+  if ((*message_size_bytes) > data_mut->size_bytes || (*message_size_bytes) < 0) {
+    ArrowIpcErrorSet(error,
+                     "Expected 0 <= message body size <= %ld bytes but found message "
+                     "body size of %ld bytes",
+                     (long)data_mut->size_bytes, (long)(*message_size_bytes));
+    return ERANGE;
+  }
+
+  return NANOARROW_OK;
 }
 
-static int ArrowIpcReaderDecodeRecordBatch(struct ArrowIpcReader* reader,
-                                           flatbuffers_generic_t message_header,
-                                           struct ArrowIpcError* error) {
-  return ENOTSUP;
+ArrowIpcErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
+                                       struct ArrowIpcBufferView* data,
+                                       struct ArrowIpcError* error) {
+  struct ArrowIpcBufferView data_mut = *data;
+  int32_t message_size_bytes;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
+
+  if (ns(Message_verify_as_root(data_mut.data, data_mut.size_bytes)) ==
+      flatcc_verify_ok) {
+    data_mut.data += message_size_bytes;
+    data_mut.size_bytes -= message_size_bytes;
+    *data = data_mut;
+    return NANOARROW_OK;
+  } else {
+    ArrowIpcErrorSet(error, "Message flatbuffer verification failed");
+    return ERANGE;
+  }
 }
 
 ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
@@ -260,27 +283,13 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   struct ArrowIpcBufferView data_mut = *data;
 
-  if (data_mut.size_bytes < 8) {
-    ArrowIpcErrorSet(error,
-                     "Expected message of at least 8 bytes but only %ld bytes remain",
-                     (long)data->size_bytes);
-  }
+  int32_t message_size_bytes;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
 
-  uint32_t continuation = ArrowIpcReadUint32LE(&data_mut);
-  if (continuation != 0xFFFFFFFF) {
-    ArrowIpcErrorSet(error, "Expected 0xFFFFFFFF at start of message but found %dx",
-                     (unsigned int)continuation);
-    return EINVAL;
-  }
-
-  int32_t message_size_bytes = ArrowIpcReadInt32LE(&data_mut);
-  if (message_size_bytes > data_mut.size_bytes) {
-    ArrowIpcErrorSet(
-        error, "Expected message size >= 0 bytes but found message size of %ld bytes",
-        (long)message_size_bytes);
-    return ERANGE;
-  }
-
+  // TODO: Is there any way to check for buffer overrun here? Everything below
+  // blindly assumes that the void* passed to Message_as_root() will not access memory
+  // outside the buffer specified by `data`.
   ns(Message_table_t) message = ns(Message_as_root(data_mut.data));
   if (!message) {
     return EINVAL;
@@ -304,13 +313,7 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
       NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeSchema(reader, message_header, error));
       break;
     case ns(MessageHeader_DictionaryBatch):
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcReaderDecodeDictionaryBatch(reader, message_header, error));
-      break;
     case ns(MessageHeader_RecordBatch):
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcReaderDecodeRecordBatch(reader, message_header, error));
-      break;
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowIpcErrorSet(error, "Unsupported message type: '%s'",

@@ -161,12 +161,15 @@ struct ArrowIpcReader {
   int32_t endianness;
   int32_t features;
   struct ArrowSchema schema;
-  struct ArrowArray batch_index;
 };
 
 void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
 
 void ArrowIpcReaderReset(struct ArrowIpcReader* reader);
+
+ArrowIpcErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
+                                       struct ArrowIpcBufferView* data,
+                                       struct ArrowIpcError* error);
 
 ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
                                        struct ArrowIpcBufferView* data,
