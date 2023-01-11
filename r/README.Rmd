@@ -45,7 +45,7 @@ You can install the development version of nanoarrow from [GitHub](https://githu
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("apache/arrow-nanoarrow/r", build = FALSE)
+remotes::install_github("apache/arrow-nanoarrow/r")
 ```
 
 If you can load the package, you're good to go!
