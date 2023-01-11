@@ -175,9 +175,16 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
   return NANOARROW_OK;
 }
 
-static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields) {
-  // TODO
-  return EINVAL;
+static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
+                                     struct ArrowIpcError* error) {
+  int64_t n_fields = ns(Schema_vec_len(fields));
+
+  for (int64_t i = 0; i < n_fields; i++) {
+    ns(Field_table_t) field = ns(Field_vec_at(fields, i));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetField(schema->children[i], field, error));
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
@@ -232,13 +239,7 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
     return result;
   }
 
-  for (int64_t i = 0; i < n_fields; i++) {
-    ns(Field_table_t) field = ns(Field_vec_at(fields, i));
-    struct ArrowSchema* schema = reader->schema.children[i];
-    NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetField(schema, field, error));
-  }
-
-  return ENOTSUP;
+  return ArrowIpcReaderSetChildren(&reader->schema, fields, error);
 }
 
 static int ArrowIpcReaderDecodeDictionaryBatch(struct ArrowIpcReader* reader,

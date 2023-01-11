@@ -66,7 +66,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
 
   ArrowIpcReaderInit(&reader);
 
-  EXPECT_EQ(ArrowIpcReaderDecode(&reader, &data, &error), ENOTSUP);
+  EXPECT_EQ(ArrowIpcReaderDecode(&reader, &data, &error), NANOARROW_OK);
   EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
   EXPECT_EQ(reader.endianness, NANOARROW_IPC_ENDIANNESS_LITTLE);
   EXPECT_EQ(reader.features, 0);

@@ -124,6 +124,10 @@ struct ArrowArrayStream {
 
 typedef int ArrowIpcErrorCode;
 
+#ifndef NANOARROW_OK
+#define NANOARROW_OK 0
+#endif
+
 struct ArrowIpcError {
   char message[1024];
 };
