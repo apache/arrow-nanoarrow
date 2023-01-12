@@ -235,14 +235,14 @@ static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
   if (data_mut->size_bytes < 8) {
     ArrowIpcErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
                      (long)data_mut->size_bytes);
-    return ERANGE;
+    return EINVAL;
   }
 
   uint32_t continuation = ArrowIpcReadUint32LE(data_mut);
   if (continuation != 0xFFFFFFFF) {
     ArrowIpcErrorSet(error, "Expected 0xFFFFFFFF at start of message but found 0x%08X",
                      (unsigned int)continuation);
-    return ERANGE;
+    return EINVAL;
   }
 
   *message_size_bytes = ArrowIpcReadInt32LE(data_mut);
@@ -251,9 +251,29 @@ static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
                      "Expected 0 <= message body size <= %ld bytes but found message "
                      "body size of %ld bytes",
                      (long)data_mut->size_bytes, (long)(*message_size_bytes));
-    return ERANGE;
+    return EINVAL;
   }
 
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcReaderAdvanceData(struct ArrowIpcBufferView* data,
+                                      int32_t message_size_bytes) {
+  message_size_bytes += (message_size_bytes + 8) % 8;
+  data->data += message_size_bytes;
+  data->size_bytes -= message_size_bytes;
+}
+
+ArrowIpcErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
+                                     struct ArrowIpcBufferView* data,
+                                     struct ArrowIpcError* error) {
+  struct ArrowIpcBufferView data_mut = *data;
+  int32_t message_size_bytes;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
+
+  ArrowIpcReaderAdvanceData(&data_mut, message_size_bytes);
+  *data = data_mut;
   return NANOARROW_OK;
 }
 
@@ -267,13 +287,12 @@ ArrowIpcErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
 
   if (ns(Message_verify_as_root(data_mut.data, data_mut.size_bytes)) ==
       flatcc_verify_ok) {
-    data_mut.data += message_size_bytes;
-    data_mut.size_bytes -= message_size_bytes;
+    ArrowIpcReaderAdvanceData(&data_mut, message_size_bytes);
     *data = data_mut;
     return NANOARROW_OK;
   } else {
     ArrowIpcErrorSet(error, "Message flatbuffer verification failed");
-    return ERANGE;
+    return EINVAL;
   }
 }
 
@@ -287,9 +306,6 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
 
-  // TODO: Is there any way to check for buffer overrun here? Everything below
-  // blindly assumes that the void* passed to Message_as_root() will not access memory
-  // outside the buffer specified by `data`.
   ns(Message_table_t) message = ns(Message_as_root(data_mut.data));
   if (!message) {
     return EINVAL;
@@ -300,8 +316,14 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
     case ns(MetadataVersion_V4):
     case ns(MetadataVersion_V5):
       break;
+    case ns(MetadataVersion_V1):
+    case ns(MetadataVersion_V2):
+    case ns(MetadataVersion_V3):
+      ArrowIpcErrorSet(error, "Expected metadata version V4 or V5 but found %s",
+                       ns(MetadataVersion_name(version)));
+      break;
     default:
-      ArrowIpcErrorSet(error, "Expected metadata version V5(4L) but found %d", version);
+      ArrowIpcErrorSet(error, "Unexpected value for Message metadata version (%d)", version);
       return EINVAL;
   }
 
@@ -324,6 +346,7 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
       return EINVAL;
   }
 
+  ArrowIpcReaderAdvanceData(&data_mut, message_size_bytes);
   *data = data_mut;
   return NANOARROW_OK;
 }

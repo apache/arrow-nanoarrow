@@ -167,6 +167,10 @@ void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
 
 void ArrowIpcReaderReset(struct ArrowIpcReader* reader);
 
+ArrowIpcErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
+                                     struct ArrowIpcBufferView* data,
+                                     struct ArrowIpcError* error);
+
 ArrowIpcErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
                                        struct ArrowIpcBufferView* data,
                                        struct ArrowIpcError* error);

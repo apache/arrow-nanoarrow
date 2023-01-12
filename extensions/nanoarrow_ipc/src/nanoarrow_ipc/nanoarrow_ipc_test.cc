@@ -62,18 +62,20 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
 
   struct ArrowIpcBufferView data;
   data.data = kSimpleSchema;
-  data.size_bytes = 0;
+  data.size_bytes = 1;
 
   ArrowIpcReaderInit(&reader);
 
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), ERANGE);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected data of at least 8 bytes but only 0 bytes remain");
+               "Expected data of at least 8 bytes but only 1 bytes remain");
+  EXPECT_EQ(data.data, kSimpleSchema);
+  EXPECT_EQ(data.size_bytes, 1);
 
   uint32_t eight_bad_bytes[] = {0, 0};
   data.data = reinterpret_cast<uint8_t*>(eight_bad_bytes);
   data.size_bytes = 8;
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), ERANGE);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0xFFFFFFFF at start of message but found 0x00000000");
   EXPECT_EQ(data.data, reinterpret_cast<uint8_t*>(eight_bad_bytes));
@@ -81,16 +83,36 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = static_cast<uint32_t>(-1);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), ERANGE);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of -1 bytes");
+  EXPECT_EQ(data.data, reinterpret_cast<uint8_t*>(eight_bad_bytes));
+  EXPECT_EQ(data.size_bytes, 8);
 
   eight_bad_bytes[1] = static_cast<uint32_t>(1);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), ERANGE);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of 1 bytes");
+  EXPECT_EQ(data.data, reinterpret_cast<uint8_t*>(eight_bad_bytes));
+  EXPECT_EQ(data.size_bytes, 8);
+
+  ArrowIpcReaderReset(&reader);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcPeekSimpleSchema) {
+  struct ArrowIpcReader reader;
+  struct ArrowIpcError error;
+
+  struct ArrowIpcBufferView data;
+  data.data = kSimpleSchema;
+  data.size_bytes = sizeof(kSimpleSchema);
+
+  ArrowIpcReaderInit(&reader);
+  EXPECT_EQ(ArrowIpcReaderPeek(&reader, &data, &error), NANOARROW_OK);
+  EXPECT_EQ(data.data, kSimpleSchema + sizeof(kSimpleSchema));
+  EXPECT_EQ(data.size_bytes, 0);
 
   ArrowIpcReaderReset(&reader);
 }
@@ -105,6 +127,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
 
   ArrowIpcReaderInit(&reader);
   EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), NANOARROW_OK);
+  EXPECT_EQ(data.data, kSimpleSchema + sizeof(kSimpleSchema));
+  EXPECT_EQ(data.size_bytes, 0);
 
   uint8_t simple_schema_invalid[280];
   memcpy(simple_schema_invalid, kSimpleSchema, sizeof(simple_schema_invalid));
@@ -112,8 +136,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
 
   data.data = simple_schema_invalid;
   data.size_bytes = sizeof(kSimpleSchema);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), ERANGE);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, &data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Message flatbuffer verification failed");
+  EXPECT_EQ(data.data, simple_schema_invalid);
+  EXPECT_EQ(data.size_bytes, sizeof(kSimpleSchema));
 
   ArrowIpcReaderReset(&reader);
 }
@@ -129,6 +155,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   ArrowIpcReaderInit(&reader);
 
   EXPECT_EQ(ArrowIpcReaderDecode(&reader, &data, &error), NANOARROW_OK);
+  EXPECT_EQ(data.data, kSimpleSchema + sizeof(kSimpleSchema));
+  EXPECT_EQ(data.size_bytes, 0);
 
   EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
   EXPECT_EQ(reader.endianness, NANOARROW_IPC_ENDIANNESS_LITTLE);
