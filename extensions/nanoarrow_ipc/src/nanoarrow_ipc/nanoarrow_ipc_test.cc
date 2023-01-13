@@ -25,6 +25,28 @@
 
 using namespace arrow;
 
+TEST(NanoarrowIpcTest, ErrorSet) {
+  struct ArrowIpcError error;
+  EXPECT_EQ(ArrowIpcErrorSet(&error, "there were %d foxes", 4), NANOARROW_OK);
+  EXPECT_STREQ(error.message, "there were 4 foxes");
+}
+
+TEST(NanoarrowIpcTest, ErrorSetOverrun) {
+  struct ArrowIpcError error;
+  char big_error[2048];
+  const char* a_few_chars = "abcdefg";
+  for (int i = 0; i < 2047; i++) {
+    big_error[i] = a_few_chars[i % strlen(a_few_chars)];
+  }
+  big_error[2047] = '\0';
+
+  EXPECT_EQ(ArrowIpcErrorSet(&error, "%s", big_error), ERANGE);
+  EXPECT_EQ(std::string(error.message), std::string(big_error, 1023));
+
+  wchar_t bad_string[] = {0xFFFF, 0};
+  EXPECT_EQ(ArrowIpcErrorSet(&error, "%ls", bad_string), EINVAL);
+}
+
 // library(arrow, warn.conflicts = FALSE)
 
 // # R package doesn't do field metadata yet, so this hack is needed

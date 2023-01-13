@@ -17,6 +17,8 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 #include "nanoarrow/nanoarrow.h"
 
@@ -27,7 +29,26 @@
 
 #include "nanoarrow_ipc.h"
 
-#define ArrowIpcErrorSet(err, ...) ArrowErrorSet((struct ArrowError*)err, __VA_ARGS__)
+ArrowIpcErrorCode ArrowIpcErrorSet(struct ArrowIpcError* error, const char* fmt, ...) {
+  if (error == NULL) {
+    return NANOARROW_OK;
+  }
+
+  memset(error->message, 0, sizeof(error->message));
+
+  va_list args;
+  va_start(args, fmt);
+  int chars_needed = vsnprintf(error->message, sizeof(error->message), fmt, args);
+  va_end(args);
+
+  if (chars_needed < 0) {
+    return EINVAL;
+  } else if (((size_t)chars_needed) >= sizeof(error->message)) {
+    return ERANGE;
+  } else {
+    return NANOARROW_OK;
+  }
+}
 
 void ArrowIpcReaderInit(struct ArrowIpcReader* reader) {
   memset(reader, 0, sizeof(struct ArrowIpcReader));

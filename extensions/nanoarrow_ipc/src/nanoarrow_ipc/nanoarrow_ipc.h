@@ -155,6 +155,8 @@ enum ArrowIpcEndianness {
 #define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
+ArrowIpcErrorCode ArrowIpcErrorSet(struct ArrowIpcError* error, const char* fmt, ...);
+
 struct ArrowIpcReader {
   int32_t metadata_version;
   int32_t message_type;
