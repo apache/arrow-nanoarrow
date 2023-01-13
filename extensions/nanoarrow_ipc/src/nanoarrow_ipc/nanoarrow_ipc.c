@@ -44,7 +44,7 @@ void ArrowIpcReaderReset(struct ArrowIpcReader* reader) {
 static inline uint32_t ArrowIpcReadUint32LE(struct ArrowIpcBufferView* data) {
   uint32_t value;
   memcpy(&value, data->data, sizeof(uint32_t));
-  // bswap32() if big endian
+  // TODO: bswap32() if big endian
   data->data += sizeof(uint32_t);
   data->size_bytes -= sizeof(uint32_t);
   return value;
@@ -53,7 +53,7 @@ static inline uint32_t ArrowIpcReadUint32LE(struct ArrowIpcBufferView* data) {
 static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
   int32_t value;
   memcpy(&value, data->data, sizeof(int32_t));
-  // bswap32() if big endian
+  // TODO: bswap32() if big endian
   data->data += sizeof(int32_t);
   data->size_bytes -= sizeof(int32_t);
   return value;
