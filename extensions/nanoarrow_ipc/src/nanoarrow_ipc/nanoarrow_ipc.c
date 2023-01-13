@@ -59,7 +59,6 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
   return value;
 }
 
-#undef ns
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
 static int ArrowIpcReaderSetTypeSimple(struct ArrowSchema* schema, int nanoarrow_type,
