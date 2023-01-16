@@ -1,0 +1,29 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+      "major": 3,
+      "minor": 21,
+      "patch": 0
+    },
+    "configurePresets": [
+        {
+          "name": "user-local",
+          "inherits": ["default-with-tests"],
+          "displayName": "(user) local build",
+          "cacheVariables": {
+              "Arrow_DIR": "/path/to/arrow/dist/lib/cmake/arrow"
+          }
+        }
+    ],
+    "testPresets": [
+      {
+          "name": "user-test-preset",
+          "description": "",
+          "displayName": "(user) test preset)",
+          "configurePreset": "user-local",
+          "environment": {
+            "CTEST_OUTPUT_ON_FAILURE": "1"
+          }
+      }
+    ]
+}
