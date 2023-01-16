@@ -22,6 +22,10 @@ include(FetchContent)
 project(NanoArrowIpc)
 
 option(NANOARROW_IPC_BUILD_TESTS "Build tests" OFF)
+option(NANOARROW_IPC_FLATCC_ROOT_DIR "Root directory for flatcc include and lib directories" OFF)
+option(NANOARROW_IPC_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
+option(NANOARROW_IPC_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
+
 option(NANOARROW_IPC_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(ipc_coverage_config INTERFACE)
 
@@ -32,16 +36,36 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nanoarrow_for_nanoarrow_ipc)
 
 # Add the flatcc (runtime) dependency
-# TODO: Make it more flexible to use an existing flatcc
 set(FLATCC_RTONLY ON CACHE INTERNAL "")
-FetchContent_Declare(
-  flatcc
-  URL https://github.com/dvidelabs/flatcc/archive/refs/tags/v0.6.1.zip
-)
-FetchContent_MakeAvailable(flatcc)
+set(FLATCC_REFLECTION OFF CACHE INTERNAL "")
+
+# Timestamps for fetch aren't really applicable here...this silences a warning
+cmake_policy(SET CMP0135 NEW)
+
+# A flatcc installation is unlikely, so default to building the vendored one
+if (NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR AND NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
+  FetchContent_Declare(
+    flatcc_for_nanoarrow
+    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc)
+  FetchContent_MakeAvailable(flatcc_for_nanoarrow)
+  set(NANOARROW_IPC_FLATCC_INCLUDE_DIR ${flatcc_for_nanoarrow_SOURCE_DIR}/include)
+elseif(NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
+  add_library(flatccrt STATIC IMPORTED)
+  set_target_properties(flatccrt PROPERTIES
+    IMPORTED_LOCATION "${NANOARROW_IPC_FLATCC_LIB_DIR}/libflatccrt.a"
+    INTERFACE_INCLUDE_DIRECTORIES "${NANOARROW_IPC_FLATCC_INCLUDE_DIR}"
+  )
+elseif(NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR)
+  set(NANOARROW_IPC_FLATCC_INCLUDE_DIR ${NANOARROW_IPC_FLATCC_ROOT_DIR}/include)
+  add_library(flatccrt STATIC IMPORTED)
+  set_target_properties(flatccrt PROPERTIES
+    IMPORTED_LOCATION "${NANOARROW_IPC_FLATCC_ROOT_DIR}/lib/libflatccrt.a"
+    INTERFACE_INCLUDE_DIRECTORIES "${NANOARROW_IPC_FLATCC_INCLUDE_DIR}"
+  )
+endif()
 
 include_directories(src)
-include_directories(${flatcc_SOURCE_DIR}/include)
+include_directories(${NANOARROW_IPC_FLATCC_INCLUDE_DIR})
 add_library(nanoarrow_ipc src/nanoarrow_ipc/nanoarrow_ipc.c)
 target_link_libraries(nanoarrow_ipc PRIVATE nanoarrow flatccrt)
 
