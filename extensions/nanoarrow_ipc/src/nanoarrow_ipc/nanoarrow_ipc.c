@@ -22,8 +22,7 @@
 
 #include "nanoarrow/nanoarrow.h"
 
-#include "flatcc_generated/Message_reader.h"
-#include "flatcc_generated/Message_verifier.h"
+#include "nanoarrow_ipc_flatcc_generated.h"
 
 #include "nanoarrow_ipc.h"
 

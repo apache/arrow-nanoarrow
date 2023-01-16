@@ -24,11 +24,7 @@ curl -L https://github.com/apache/arrow/raw/master/format/Message.fbs --output M
 curl -L https://github.com/apache/arrow/raw/master/format/File.fbs --output File.fbs
 
 # compile using flatcc
-flatcc --common --reader --builder --verifier --recursive *.fbs
-
-# copy to src/
-rm -rf ../../src/nanoarrow_ipc/flatcc_generated
-cp *.h ../../src/nanoarrow_ipc/flatcc_generated
+flatcc --common --reader --builder --verifier --recursive --outfile ../../src/nanoarrow_ipc/nanoarrow_ipc_flatcc_generated.h *.fbs
 
 # clean up
 cd ..
