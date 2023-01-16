@@ -147,6 +147,11 @@ typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Bool_ref_t;
 static org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Bool_table_t t);
 __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_Bool, 0)
 
+static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_RunEndEncoded_required[] = { 0 };
+typedef flatbuffers_ref_t org_apache_arrow_flatbuf_RunEndEncoded_ref_t;
+static org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_RunEndEncoded_table_t t);
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_RunEndEncoded, 0)
+
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Decimal_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Decimal_ref_t;
 static org_apache_arrow_flatbuf_Decimal_ref_t org_apache_arrow_flatbuf_Decimal_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Decimal_table_t t);
@@ -272,6 +277,11 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FixedSiz
 static inline org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Bool_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Bool, org_apache_arrow_flatbuf_Bool_file_identifier, org_apache_arrow_flatbuf_Bool_type_identifier)
 
+#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args 
+#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args 
+static inline org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_RunEndEncoded_formal_args);
+__flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_RunEndEncoded, org_apache_arrow_flatbuf_RunEndEncoded_file_identifier, org_apache_arrow_flatbuf_RunEndEncoded_type_identifier)
+
 #define __org_apache_arrow_flatbuf_Decimal_formal_args , int32_t v0, int32_t v1, int32_t v2
 #define __org_apache_arrow_flatbuf_Decimal_call_args , v0, v1, v2
 static inline org_apache_arrow_flatbuf_Decimal_ref_t org_apache_arrow_flatbuf_Decimal_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Decimal_formal_args);
@@ -368,6 +378,8 @@ static inline org_apache_arrow_flatbuf_Type_union_ref_t org_apache_arrow_flatbuf
 { org_apache_arrow_flatbuf_Type_union_ref_t uref; uref.type = org_apache_arrow_flatbuf_Type_LargeUtf8; uref.value = ref; return uref; }
 static inline org_apache_arrow_flatbuf_Type_union_ref_t org_apache_arrow_flatbuf_Type_as_LargeList(org_apache_arrow_flatbuf_LargeList_ref_t ref)
 { org_apache_arrow_flatbuf_Type_union_ref_t uref; uref.type = org_apache_arrow_flatbuf_Type_LargeList; uref.value = ref; return uref; }
+static inline org_apache_arrow_flatbuf_Type_union_ref_t org_apache_arrow_flatbuf_Type_as_RunEndEncoded(org_apache_arrow_flatbuf_RunEndEncoded_ref_t ref)
+{ org_apache_arrow_flatbuf_Type_union_ref_t uref; uref.type = org_apache_arrow_flatbuf_Type_RunEndEncoded; uref.value = ref; return uref; }
 __flatbuffers_build_union_vector(flatbuffers_, org_apache_arrow_flatbuf_Type)
 
 static org_apache_arrow_flatbuf_Type_union_ref_t org_apache_arrow_flatbuf_Type_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Type_union_t u)
@@ -394,6 +406,7 @@ static org_apache_arrow_flatbuf_Type_union_ref_t org_apache_arrow_flatbuf_Type_c
     case 19: return org_apache_arrow_flatbuf_Type_as_LargeBinary(org_apache_arrow_flatbuf_LargeBinary_clone(B, (org_apache_arrow_flatbuf_LargeBinary_table_t)u.value));
     case 20: return org_apache_arrow_flatbuf_Type_as_LargeUtf8(org_apache_arrow_flatbuf_LargeUtf8_clone(B, (org_apache_arrow_flatbuf_LargeUtf8_table_t)u.value));
     case 21: return org_apache_arrow_flatbuf_Type_as_LargeList(org_apache_arrow_flatbuf_LargeList_clone(B, (org_apache_arrow_flatbuf_LargeList_table_t)u.value));
+    case 22: return org_apache_arrow_flatbuf_Type_as_RunEndEncoded(org_apache_arrow_flatbuf_RunEndEncoded_clone(B, (org_apache_arrow_flatbuf_RunEndEncoded_table_t)u.value));
     default: return org_apache_arrow_flatbuf_Type_as_NONE();
     }
 }
@@ -692,6 +705,24 @@ static org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_clone(f
     __flatbuffers_memoize_end(B, t, org_apache_arrow_flatbuf_Bool_end(B));
 }
 
+
+static inline org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_RunEndEncoded_formal_args)
+{
+    if (org_apache_arrow_flatbuf_RunEndEncoded_start(B)) {
+        return 0;
+    }
+    return org_apache_arrow_flatbuf_RunEndEncoded_end(B);
+}
+
+static org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_RunEndEncoded_table_t t)
+{
+    __flatbuffers_memoize_begin(B, t);
+    if (org_apache_arrow_flatbuf_RunEndEncoded_start(B)) {
+        return 0;
+    }
+    __flatbuffers_memoize_end(B, t, org_apache_arrow_flatbuf_RunEndEncoded_end(B));
+}
+
 __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Decimal_precision, flatbuffers_int32, int32_t, 4, 4, INT32_C(0), org_apache_arrow_flatbuf_Decimal)
 __flatbuffers_build_scalar_field(1, flatbuffers_, org_apache_arrow_flatbuf_Decimal_scale, flatbuffers_int32, int32_t, 4, 4, INT32_C(0), org_apache_arrow_flatbuf_Decimal)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_Decimal_bitWidth, flatbuffers_int32, int32_t, 4, 4, INT32_C(128), org_apache_arrow_flatbuf_Decimal)
@@ -908,6 +939,7 @@ __flatbuffers_build_union_table_value_field(flatbuffers_, org_apache_arrow_flatb
 __flatbuffers_build_union_table_value_field(flatbuffers_, org_apache_arrow_flatbuf_Field_type, org_apache_arrow_flatbuf_Type, LargeBinary, org_apache_arrow_flatbuf_LargeBinary)
 __flatbuffers_build_union_table_value_field(flatbuffers_, org_apache_arrow_flatbuf_Field_type, org_apache_arrow_flatbuf_Type, LargeUtf8, org_apache_arrow_flatbuf_LargeUtf8)
 __flatbuffers_build_union_table_value_field(flatbuffers_, org_apache_arrow_flatbuf_Field_type, org_apache_arrow_flatbuf_Type, LargeList, org_apache_arrow_flatbuf_LargeList)
+__flatbuffers_build_union_table_value_field(flatbuffers_, org_apache_arrow_flatbuf_Field_type, org_apache_arrow_flatbuf_Type, RunEndEncoded, org_apache_arrow_flatbuf_RunEndEncoded)
 __flatbuffers_build_table_field(4, flatbuffers_, org_apache_arrow_flatbuf_Field_dictionary, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_Field)
 __flatbuffers_build_table_vector_field(5, flatbuffers_, org_apache_arrow_flatbuf_Field_children, org_apache_arrow_flatbuf_Field, org_apache_arrow_flatbuf_Field)
 __flatbuffers_build_table_vector_field(6, flatbuffers_, org_apache_arrow_flatbuf_Field_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_Field)

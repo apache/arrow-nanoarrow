@@ -24,6 +24,7 @@ static int org_apache_arrow_flatbuf_LargeUtf8_verify_table(flatcc_table_verifier
 static int org_apache_arrow_flatbuf_LargeBinary_verify_table(flatcc_table_verifier_descriptor_t *td);
 static int org_apache_arrow_flatbuf_FixedSizeBinary_verify_table(flatcc_table_verifier_descriptor_t *td);
 static int org_apache_arrow_flatbuf_Bool_verify_table(flatcc_table_verifier_descriptor_t *td);
+static int org_apache_arrow_flatbuf_RunEndEncoded_verify_table(flatcc_table_verifier_descriptor_t *td);
 static int org_apache_arrow_flatbuf_Decimal_verify_table(flatcc_table_verifier_descriptor_t *td);
 static int org_apache_arrow_flatbuf_Date_verify_table(flatcc_table_verifier_descriptor_t *td);
 static int org_apache_arrow_flatbuf_Time_verify_table(flatcc_table_verifier_descriptor_t *td);
@@ -59,6 +60,7 @@ static int org_apache_arrow_flatbuf_Type_union_verifier(flatcc_union_verifier_de
     case 19: return flatcc_verify_union_table(ud, org_apache_arrow_flatbuf_LargeBinary_verify_table); /* LargeBinary */
     case 20: return flatcc_verify_union_table(ud, org_apache_arrow_flatbuf_LargeUtf8_verify_table); /* LargeUtf8 */
     case 21: return flatcc_verify_union_table(ud, org_apache_arrow_flatbuf_LargeList_verify_table); /* LargeList */
+    case 22: return flatcc_verify_union_table(ud, org_apache_arrow_flatbuf_RunEndEncoded_verify_table); /* RunEndEncoded */
     default: return flatcc_verify_ok;
     }
 }
@@ -470,6 +472,31 @@ static inline int org_apache_arrow_flatbuf_Bool_verify_as_root_with_identifier(c
 static inline int org_apache_arrow_flatbuf_Bool_verify_as_root_with_type_hash(const void *buf, size_t bufsiz, flatbuffers_thash_t thash)
 {
     return flatcc_verify_table_as_typed_root(buf, bufsiz, thash, &org_apache_arrow_flatbuf_Bool_verify_table);
+}
+
+static int org_apache_arrow_flatbuf_RunEndEncoded_verify_table(flatcc_table_verifier_descriptor_t *td)
+{
+    return flatcc_verify_ok;
+}
+
+static inline int org_apache_arrow_flatbuf_RunEndEncoded_verify_as_root(const void *buf, size_t bufsiz)
+{
+    return flatcc_verify_table_as_root(buf, bufsiz, org_apache_arrow_flatbuf_RunEndEncoded_identifier, &org_apache_arrow_flatbuf_RunEndEncoded_verify_table);
+}
+
+static inline int org_apache_arrow_flatbuf_RunEndEncoded_verify_as_typed_root(const void *buf, size_t bufsiz)
+{
+    return flatcc_verify_table_as_root(buf, bufsiz, org_apache_arrow_flatbuf_RunEndEncoded_type_identifier, &org_apache_arrow_flatbuf_RunEndEncoded_verify_table);
+}
+
+static inline int org_apache_arrow_flatbuf_RunEndEncoded_verify_as_root_with_identifier(const void *buf, size_t bufsiz, const char *fid)
+{
+    return flatcc_verify_table_as_root(buf, bufsiz, fid, &org_apache_arrow_flatbuf_RunEndEncoded_verify_table);
+}
+
+static inline int org_apache_arrow_flatbuf_RunEndEncoded_verify_as_root_with_type_hash(const void *buf, size_t bufsiz, flatbuffers_thash_t thash)
+{
+    return flatcc_verify_table_as_typed_root(buf, bufsiz, thash, &org_apache_arrow_flatbuf_RunEndEncoded_verify_table);
 }
 
 static int org_apache_arrow_flatbuf_Decimal_verify_table(flatcc_table_verifier_descriptor_t *td)

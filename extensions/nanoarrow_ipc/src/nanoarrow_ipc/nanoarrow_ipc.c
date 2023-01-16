@@ -16,16 +16,14 @@
 // under the License.
 
 #include <errno.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "nanoarrow/nanoarrow.h"
 
-#include "File_reader.h"
-#include "Message_reader.h"
-#include "Message_verifier.h"
-#include "Schema_reader.h"
+#include "flatcc_generated/Message_reader.h"
+#include "flatcc_generated/Message_verifier.h"
 
 #include "nanoarrow_ipc.h"
 
@@ -343,7 +341,8 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
                        ns(MetadataVersion_name(version)));
       break;
     default:
-      ArrowIpcErrorSet(error, "Unexpected value for Message metadata version (%d)", version);
+      ArrowIpcErrorSet(error, "Unexpected value for Message metadata version (%d)",
+                       version);
       return EINVAL;
   }
 

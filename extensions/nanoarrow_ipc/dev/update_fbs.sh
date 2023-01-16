@@ -27,7 +27,8 @@ curl -L https://github.com/apache/arrow/raw/master/format/File.fbs --output File
 flatcc --common --reader --builder --verifier --recursive *.fbs
 
 # copy to src/
-cp *.h ../../src/nanoarrow_ipc
+rm -rf ../../src/nanoarrow_ipc/flatcc_generated
+cp *.h ../../src/nanoarrow_ipc/flatcc_generated
 
 # clean up
 cd ..

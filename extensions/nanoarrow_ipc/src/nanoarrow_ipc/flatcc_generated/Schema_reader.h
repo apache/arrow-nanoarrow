@@ -84,6 +84,10 @@ typedef const struct org_apache_arrow_flatbuf_Bool_table *org_apache_arrow_flatb
 typedef struct org_apache_arrow_flatbuf_Bool_table *org_apache_arrow_flatbuf_Bool_mutable_table_t;
 typedef const flatbuffers_uoffset_t *org_apache_arrow_flatbuf_Bool_vec_t;
 typedef flatbuffers_uoffset_t *org_apache_arrow_flatbuf_Bool_mutable_vec_t;
+typedef const struct org_apache_arrow_flatbuf_RunEndEncoded_table *org_apache_arrow_flatbuf_RunEndEncoded_table_t;
+typedef struct org_apache_arrow_flatbuf_RunEndEncoded_table *org_apache_arrow_flatbuf_RunEndEncoded_mutable_table_t;
+typedef const flatbuffers_uoffset_t *org_apache_arrow_flatbuf_RunEndEncoded_vec_t;
+typedef flatbuffers_uoffset_t *org_apache_arrow_flatbuf_RunEndEncoded_mutable_vec_t;
 typedef const struct org_apache_arrow_flatbuf_Decimal_table *org_apache_arrow_flatbuf_Decimal_table_t;
 typedef struct org_apache_arrow_flatbuf_Decimal_table *org_apache_arrow_flatbuf_Decimal_mutable_table_t;
 typedef const flatbuffers_uoffset_t *org_apache_arrow_flatbuf_Decimal_vec_t;
@@ -303,6 +307,18 @@ typedef flatbuffers_uoffset_t *org_apache_arrow_flatbuf_Schema_mutable_vec_t;
 #define org_apache_arrow_flatbuf_Bool_type_identifier "\xf0\x83\xbf\x96"
 #ifndef org_apache_arrow_flatbuf_Bool_file_extension
 #define org_apache_arrow_flatbuf_Bool_file_extension "bin"
+#endif
+#ifndef org_apache_arrow_flatbuf_RunEndEncoded_file_identifier
+#define org_apache_arrow_flatbuf_RunEndEncoded_file_identifier 0
+#endif
+/* deprecated, use org_apache_arrow_flatbuf_RunEndEncoded_file_identifier */
+#ifndef org_apache_arrow_flatbuf_RunEndEncoded_identifier
+#define org_apache_arrow_flatbuf_RunEndEncoded_identifier 0
+#endif
+#define org_apache_arrow_flatbuf_RunEndEncoded_type_hash ((flatbuffers_thash_t)0x5a98bcc)
+#define org_apache_arrow_flatbuf_RunEndEncoded_type_identifier "\xcc\x8b\xa9\x05"
+#ifndef org_apache_arrow_flatbuf_RunEndEncoded_file_extension
+#define org_apache_arrow_flatbuf_RunEndEncoded_file_extension "bin"
 #endif
 #ifndef org_apache_arrow_flatbuf_Decimal_file_identifier
 #define org_apache_arrow_flatbuf_Decimal_file_identifier 0
@@ -907,6 +923,20 @@ __flatbuffers_offset_vec_at(org_apache_arrow_flatbuf_Bool_table_t, vec, i, 0)
 __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Bool)
 
 
+/**  Contains two child arrays, run_ends and values.
+ *  The run_ends child array must be a 16/32/64-bit integer array
+ *  which encodes the indices at which the run with the value in 
+ *  each corresponding index in the values child array ends.
+ *  Like list/struct types, the value array can be of any type. */
+struct org_apache_arrow_flatbuf_RunEndEncoded_table { uint8_t unused__; };
+
+static inline size_t org_apache_arrow_flatbuf_RunEndEncoded_vec_len(org_apache_arrow_flatbuf_RunEndEncoded_vec_t vec)
+__flatbuffers_vec_len(vec)
+static inline org_apache_arrow_flatbuf_RunEndEncoded_table_t org_apache_arrow_flatbuf_RunEndEncoded_vec_at(org_apache_arrow_flatbuf_RunEndEncoded_vec_t vec, size_t i)
+__flatbuffers_offset_vec_at(org_apache_arrow_flatbuf_RunEndEncoded_table_t, vec, i, 0)
+__flatbuffers_table_as_root(org_apache_arrow_flatbuf_RunEndEncoded)
+
+
 /**  Exact decimal value represented as an integer value in two's
  *  complement. Currently only 128-bit (16-byte) and 256-bit (32-byte) integers
  *  are used. The representation uses the endianness indicated
@@ -1144,6 +1174,7 @@ __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_Type)
 #define org_apache_arrow_flatbuf_Type_LargeBinary ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(19))
 #define org_apache_arrow_flatbuf_Type_LargeUtf8 ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(20))
 #define org_apache_arrow_flatbuf_Type_LargeList ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(21))
+#define org_apache_arrow_flatbuf_Type_RunEndEncoded ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(22))
 
 static inline const char *org_apache_arrow_flatbuf_Type_type_name(org_apache_arrow_flatbuf_Type_union_type_t type)
 {
@@ -1170,6 +1201,7 @@ static inline const char *org_apache_arrow_flatbuf_Type_type_name(org_apache_arr
     case org_apache_arrow_flatbuf_Type_LargeBinary: return "LargeBinary";
     case org_apache_arrow_flatbuf_Type_LargeUtf8: return "LargeUtf8";
     case org_apache_arrow_flatbuf_Type_LargeList: return "LargeList";
+    case org_apache_arrow_flatbuf_Type_RunEndEncoded: return "RunEndEncoded";
     default: return "";
     }
 }
@@ -1199,6 +1231,7 @@ static inline int org_apache_arrow_flatbuf_Type_is_known_type(org_apache_arrow_f
     case org_apache_arrow_flatbuf_Type_LargeBinary: return 1;
     case org_apache_arrow_flatbuf_Type_LargeUtf8: return 1;
     case org_apache_arrow_flatbuf_Type_LargeList: return 1;
+    case org_apache_arrow_flatbuf_Type_RunEndEncoded: return 1;
     default: return 0;
     }
 }
