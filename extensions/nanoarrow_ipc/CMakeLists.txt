@@ -69,7 +69,7 @@ endif()
 include_directories(
   src
   ${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
-  ${nanoarrow_for_nanoarrow_ipc_SOURCE_DIR}/src
+  ${nanoarrow_for_nanoarrow_ipc_SOURCE_DIR}/src/nanoarrow
   ${nanoarrow_for_nanoarrow_ipc_BINARY_DIR}/generated)
 
 add_library(nanoarrow_ipc src/nanoarrow_ipc/nanoarrow_ipc.c)

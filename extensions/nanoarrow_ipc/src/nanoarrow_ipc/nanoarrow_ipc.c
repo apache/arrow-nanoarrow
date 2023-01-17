@@ -20,41 +20,19 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow.h"
 
 #include "nanoarrow_ipc_flatcc_generated.h"
 
 #include "nanoarrow_ipc.h"
 
-ArrowIpcErrorCode ArrowIpcErrorSet(struct ArrowIpcError* error, const char* fmt, ...) {
-  if (error == NULL) {
-    return NANOARROW_OK;
-  }
-
-  memset(error->message, 0, sizeof(error->message));
-
-  va_list args;
-  va_start(args, fmt);
-  int chars_needed = vsnprintf(error->message, sizeof(error->message), fmt, args);
-  va_end(args);
-
-  if (chars_needed < 0) {
-    return EINVAL;
-  } else if (((size_t)chars_needed) >= sizeof(error->message)) {
-    return ERANGE;
-  } else {
-    return NANOARROW_OK;
-  }
-}
-
-ArrowIpcErrorCode ArrowIpcCheckRuntime(struct ArrowIpcError* error) {
+ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
   const char* nanoarrow_ipc_build_time_version = NANOARROW_VERSION;
 
   if (strcmp(nanoarrow_runtime_version, nanoarrow_ipc_build_time_version) != 0) {
-    ArrowIpcErrorSet(error,
-                     "Expected nanoarrow runtime version '%s' but found version '%s'",
-                     nanoarrow_ipc_build_time_version, nanoarrow_runtime_version);
+    ArrowErrorSet(error, "Expected nanoarrow runtime version '%s' but found version '%s'",
+                  nanoarrow_ipc_build_time_version, nanoarrow_runtime_version);
     return EINVAL;
   }
 
@@ -73,20 +51,20 @@ void ArrowIpcReaderReset(struct ArrowIpcReader* reader) {
   ArrowIpcReaderInit(reader);
 }
 
-static inline uint32_t ArrowIpcReadUint32LE(struct ArrowIpcBufferView* data) {
+static inline uint32_t ArrowIpcReadUint32LE(struct ArrowBufferView* data) {
   uint32_t value;
-  memcpy(&value, data->data, sizeof(uint32_t));
+  memcpy(&value, data->data.as_uint8, sizeof(uint32_t));
   // TODO: bswap32() if big endian
-  data->data += sizeof(uint32_t);
+  data->data.as_uint8 += sizeof(uint32_t);
   data->size_bytes -= sizeof(uint32_t);
   return value;
 }
 
-static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
+static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data) {
   int32_t value;
-  memcpy(&value, data->data, sizeof(int32_t));
+  memcpy(&value, data->data.as_uint8, sizeof(int32_t));
   // TODO: bswap32() if big endian
-  data->data += sizeof(int32_t);
+  data->data.as_uint8 += sizeof(int32_t);
   data->size_bytes -= sizeof(int32_t);
   return value;
 }
@@ -94,11 +72,11 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowIpcBufferView* data) {
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
 static int ArrowIpcReaderSetTypeSimple(struct ArrowSchema* schema, int nanoarrow_type,
-                                       struct ArrowIpcError* error) {
+                                       struct ArrowError* error) {
   int result = ArrowSchemaSetType(schema, nanoarrow_type);
   if (result != NANOARROW_OK) {
-    ArrowIpcErrorSet(error, "ArrowSchemaSetType() failed for type %s",
-                     ArrowTypeString(nanoarrow_type));
+    ArrowErrorSet(error, "ArrowSchemaSetType() failed for type %s",
+                  ArrowTypeString(nanoarrow_type));
     return result;
   }
 
@@ -107,7 +85,7 @@ static int ArrowIpcReaderSetTypeSimple(struct ArrowSchema* schema, int nanoarrow
 
 static int ArrowIpcReaderSetTypeInt(struct ArrowSchema* schema,
                                     flatbuffers_generic_t type_generic,
-                                    struct ArrowIpcError* error) {
+                                    struct ArrowError* error) {
   ns(Int_table_t) type = (ns(Int_table_t))type_generic;
 
   int is_signed = ns(Int_is_signed_get(type));
@@ -129,9 +107,9 @@ static int ArrowIpcReaderSetTypeInt(struct ArrowSchema* schema,
         nanoarrow_type = NANOARROW_TYPE_INT64;
         break;
       default:
-        ArrowIpcErrorSet(error,
-                         "Expected signed int bitwidth of 8, 16, 32, or 64 but got %d",
-                         (int)bitwidth);
+        ArrowErrorSet(error,
+                      "Expected signed int bitwidth of 8, 16, 32, or 64 but got %d",
+                      (int)bitwidth);
         return EINVAL;
     }
   } else {
@@ -149,9 +127,9 @@ static int ArrowIpcReaderSetTypeInt(struct ArrowSchema* schema,
         nanoarrow_type = NANOARROW_TYPE_UINT64;
         break;
       default:
-        ArrowIpcErrorSet(error,
-                         "Expected unsigned int bitwidth of 8, 16, 32, or 64 but got %d",
-                         (int)bitwidth);
+        ArrowErrorSet(error,
+                      "Expected unsigned int bitwidth of 8, 16, 32, or 64 but got %d",
+                      (int)bitwidth);
         return EINVAL;
     }
   }
@@ -160,7 +138,7 @@ static int ArrowIpcReaderSetTypeInt(struct ArrowSchema* schema,
 }
 
 static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
-                                  struct ArrowIpcError* error) {
+                                  struct ArrowError* error) {
   int result;
   if (ns(Field_name_is_present(field))) {
     result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
@@ -169,7 +147,7 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
   }
 
   if (result != NANOARROW_OK) {
-    ArrowIpcErrorSet(error, "ArrowSchemaSetName() failed");
+    ArrowErrorSet(error, "ArrowSchemaSetName() failed");
     return result;
   }
 
@@ -184,7 +162,7 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
           ArrowIpcReaderSetTypeInt(schema, ns(Field_type_get(field)), error));
       break;
     default:
-      ArrowIpcErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
+      ArrowErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
       return EINVAL;
   }
 
@@ -192,7 +170,7 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
 }
 
 static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
-                                     struct ArrowIpcError* error) {
+                                     struct ArrowError* error) {
   int64_t n_fields = ns(Schema_vec_len(fields));
 
   for (int64_t i = 0; i < n_fields; i++) {
@@ -205,7 +183,7 @@ static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t)
 
 static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
                                       flatbuffers_generic_t message_header,
-                                      struct ArrowIpcError* error) {
+                                      struct ArrowError* error) {
   ns(Schema_table_t) schema = (ns(Schema_table_t))message_header;
   int endianness = ns(Schema_endianness(schema));
   switch (endianness) {
@@ -216,9 +194,9 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
       reader->endianness = NANOARROW_IPC_ENDIANNESS_BIG;
       break;
     default:
-      ArrowIpcErrorSet(error,
-                       "Expected Schema endianness of 0 (little) or 1 (big) but got %d",
-                       (int)endianness);
+      ArrowErrorSet(error,
+                    "Expected Schema endianness of 0 (little) or 1 (big) but got %d",
+                    (int)endianness);
       return EINVAL;
   }
 
@@ -236,8 +214,7 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
         reader->features |= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
         break;
       default:
-        ArrowIpcErrorSet(error, "Unrecognized Schema feature with value %d",
-                         (int)feature);
+        ArrowErrorSet(error, "Unrecognized Schema feature with value %d", (int)feature);
         return EINVAL;
     }
   }
@@ -251,8 +228,8 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
   ArrowSchemaInit(&reader->schema);
   int result = ArrowSchemaSetTypeStruct(&reader->schema, n_fields);
   if (result != NANOARROW_OK) {
-    ArrowIpcErrorSet(error, "Failed to allocate struct schema with %ld children",
-                     (long)n_fields);
+    ArrowErrorSet(error, "Failed to allocate struct schema with %ld children",
+                  (long)n_fields);
     return result;
   }
 
@@ -260,45 +237,45 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
 }
 
 static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
-                                            struct ArrowIpcBufferView* data_mut,
+                                            struct ArrowBufferView* data_mut,
                                             int32_t* message_size_bytes,
-                                            struct ArrowIpcError* error) {
+                                            struct ArrowError* error) {
   if (data_mut->size_bytes < 8) {
-    ArrowIpcErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
-                     (long)data_mut->size_bytes);
+    ArrowErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
+                  (long)data_mut->size_bytes);
     return EINVAL;
   }
 
   uint32_t continuation = ArrowIpcReadUint32LE(data_mut);
   if (continuation != 0xFFFFFFFF) {
-    ArrowIpcErrorSet(error, "Expected 0xFFFFFFFF at start of message but found 0x%08X",
-                     (unsigned int)continuation);
+    ArrowErrorSet(error, "Expected 0xFFFFFFFF at start of message but found 0x%08X",
+                  (unsigned int)continuation);
     return EINVAL;
   }
 
   *message_size_bytes = ArrowIpcReadInt32LE(data_mut);
   if ((*message_size_bytes) > data_mut->size_bytes || (*message_size_bytes) < 0) {
-    ArrowIpcErrorSet(error,
-                     "Expected 0 <= message body size <= %ld bytes but found message "
-                     "body size of %ld bytes",
-                     (long)data_mut->size_bytes, (long)(*message_size_bytes));
+    ArrowErrorSet(error,
+                  "Expected 0 <= message body size <= %ld bytes but found message "
+                  "body size of %ld bytes",
+                  (long)data_mut->size_bytes, (long)(*message_size_bytes));
     return EINVAL;
   }
 
   return NANOARROW_OK;
 }
 
-static void ArrowIpcReaderAdvanceData(struct ArrowIpcBufferView* data,
+static void ArrowIpcReaderAdvanceData(struct ArrowBufferView* data,
                                       int32_t message_size_bytes) {
   message_size_bytes += (message_size_bytes + 8) % 8;
-  data->data += message_size_bytes;
+  data->data.as_uint8 += message_size_bytes;
   data->size_bytes -= message_size_bytes;
 }
 
-ArrowIpcErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
-                                     struct ArrowIpcBufferView* data,
-                                     struct ArrowIpcError* error) {
-  struct ArrowIpcBufferView data_mut = *data;
+ArrowErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
+                                  struct ArrowBufferView* data,
+                                  struct ArrowError* error) {
+  struct ArrowBufferView data_mut = *data;
   int32_t message_size_bytes;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
@@ -308,36 +285,36 @@ ArrowIpcErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
   return NANOARROW_OK;
 }
 
-ArrowIpcErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
-                                       struct ArrowIpcBufferView* data,
-                                       struct ArrowIpcError* error) {
-  struct ArrowIpcBufferView data_mut = *data;
+ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
+                                    struct ArrowBufferView* data,
+                                    struct ArrowError* error) {
+  struct ArrowBufferView data_mut = *data;
   int32_t message_size_bytes;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
 
-  if (ns(Message_verify_as_root(data_mut.data, data_mut.size_bytes)) ==
+  if (ns(Message_verify_as_root(data_mut.data.as_uint8, data_mut.size_bytes)) ==
       flatcc_verify_ok) {
     ArrowIpcReaderAdvanceData(&data_mut, message_size_bytes);
     *data = data_mut;
     return NANOARROW_OK;
   } else {
-    ArrowIpcErrorSet(error, "Message flatbuffer verification failed");
+    ArrowErrorSet(error, "Message flatbuffer verification failed");
     return EINVAL;
   }
 }
 
-ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
-                                       struct ArrowIpcBufferView* data,
-                                       struct ArrowIpcError* error) {
+ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
+                                    struct ArrowBufferView* data,
+                                    struct ArrowError* error) {
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  struct ArrowIpcBufferView data_mut = *data;
+  struct ArrowBufferView data_mut = *data;
 
   int32_t message_size_bytes;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
 
-  ns(Message_table_t) message = ns(Message_as_root(data_mut.data));
+  ns(Message_table_t) message = ns(Message_as_root(data_mut.data.as_uint8));
   if (!message) {
     return EINVAL;
   }
@@ -350,12 +327,11 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
     case ns(MetadataVersion_V1):
     case ns(MetadataVersion_V2):
     case ns(MetadataVersion_V3):
-      ArrowIpcErrorSet(error, "Expected metadata version V4 or V5 but found %s",
-                       ns(MetadataVersion_name(version)));
+      ArrowErrorSet(error, "Expected metadata version V4 or V5 but found %s",
+                    ns(MetadataVersion_name(version)));
       break;
     default:
-      ArrowIpcErrorSet(error, "Unexpected value for Message metadata version (%d)",
-                       version);
+      ArrowErrorSet(error, "Unexpected value for Message metadata version (%d)", version);
       return EINVAL;
   }
 
@@ -370,11 +346,11 @@ ArrowIpcErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
     case ns(MessageHeader_RecordBatch):
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
-      ArrowIpcErrorSet(error, "Unsupported message type: '%s'",
-                       ns(MessageHeader_type_name(reader->message_type)));
+      ArrowErrorSet(error, "Unsupported message type: '%s'",
+                    ns(MessageHeader_type_name(reader->message_type)));
       return ENOTSUP;
     default:
-      ArrowIpcErrorSet(error, "Unnown message type: %d", (int)(reader->message_type));
+      ArrowErrorSet(error, "Unnown message type: %d", (int)(reader->message_type));
       return EINVAL;
   }
 
