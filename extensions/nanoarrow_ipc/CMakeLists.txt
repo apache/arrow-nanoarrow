@@ -72,7 +72,7 @@ include_directories(
   ${nanoarrow_for_nanoarrow_ipc_SOURCE_DIR}/src/nanoarrow
   ${nanoarrow_for_nanoarrow_ipc_BINARY_DIR}/generated)
 
-add_library(nanoarrow_ipc src/nanoarrow_ipc/nanoarrow_ipc.c)
+add_library(nanoarrow_ipc src/nanoarrow/nanoarrow_ipc.c)
 target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
 
 if(NANOARROW_IPC_CODE_COVERAGE)
@@ -102,7 +102,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
 
   enable_testing()
 
-  add_executable(nanoarrow_ipc_test src/nanoarrow_ipc/nanoarrow_ipc_test.cc)
+  add_executable(nanoarrow_ipc_test src/nanoarrow/nanoarrow_ipc_test.cc)
 
   target_link_libraries(nanoarrow_ipc_test nanoarrow_ipc nanoarrow arrow_shared gtest_main)
 
