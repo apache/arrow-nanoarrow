@@ -201,7 +201,7 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
   reader->features = 0;
 
   for (int64_t i = 0; i < n_features; i++) {
-    int feature = ns(Feature_vec_at(features, i));
+    ns(Feature_enum_t) feature = ns(Feature_vec_at(features, i));
     switch (feature) {
       case ns(Feature_COMPRESSED_BODY):
         reader->features |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
