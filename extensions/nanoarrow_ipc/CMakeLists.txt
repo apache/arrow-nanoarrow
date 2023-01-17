@@ -19,7 +19,7 @@ message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 cmake_minimum_required(VERSION 3.11)
 include(FetchContent)
 
-project(NanoArrowIpc)
+project(nanoarrow_ipc)
 
 option(NANOARROW_IPC_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_IPC_BUNDLE "Create bundled nanoarrow_ipc.h and nanoarrow_ipc.c" OFF)
@@ -30,21 +30,21 @@ option(NANOARROW_IPC_FLATCC_LIB_DIR "Library directory that contains libflatccrt
 option(NANOARROW_IPC_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(ipc_coverage_config INTERFACE)
 
-# Add the nanoarrow dependency. nanoarrow is not linked into the
-# nanoarrow_ipc library (the caller must link this themselves);
-# however, we need nanoarrow.h to build nanoarrow_ipc.c.
-FetchContent_Declare(
-  nanoarrow
-  SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
-
-# Don't install nanoarrow because of this configuration
-FetchContent_GetProperties(cmark)
-if(NOT nanoarrow_POPULATED)
-  FetchContent_Populate(nanoarrow)
-  add_subdirectory(${nanoarrow_SOURCE_DIR} ${nanoarrow_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
-
 if (NANOARROW_IPC_BUILD_TESTS OR NOT NANOARROW_IPC_BUNDLE)
+  # Add the nanoarrow dependency. nanoarrow is not linked into the
+  # nanoarrow_ipc library (the caller must link this themselves);
+  # however, we need nanoarrow.h to build nanoarrow_ipc.c.
+  FetchContent_Declare(
+    nanoarrow
+    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
+
+  # Don't install nanoarrow because of this configuration
+  FetchContent_GetProperties(nanoarrow)
+  if(NOT nanoarrow_POPULATED)
+    FetchContent_Populate(nanoarrow)
+    add_subdirectory(${nanoarrow_SOURCE_DIR} ${nanoarrow_BINARY_DIR} EXCLUDE_FROM_ALL)
+  endif()
+
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY ON CACHE INTERNAL "")
   set(FLATCC_REFLECTION OFF CACHE INTERNAL "")
