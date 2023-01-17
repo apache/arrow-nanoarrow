@@ -16,14 +16,10 @@
 // under the License.
 
 #include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "nanoarrow.h"
-
 #include "nanoarrow_ipc_flatcc_generated.h"
-
 #include "nanoarrow_ipc.h"
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
