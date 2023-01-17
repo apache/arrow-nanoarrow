@@ -47,6 +47,20 @@ ArrowIpcErrorCode ArrowIpcErrorSet(struct ArrowIpcError* error, const char* fmt,
   }
 }
 
+ArrowIpcErrorCode ArrowIpcCheckRuntime(struct ArrowIpcError* error) {
+  const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
+  const char* nanoarrow_ipc_build_time_version = NANOARROW_VERSION;
+
+  if (strcmp(nanoarrow_runtime_version, nanoarrow_ipc_build_time_version) != 0) {
+    ArrowIpcErrorSet(error,
+                     "Expected nanoarrow runtime version '%s' but found version '%s'",
+                     nanoarrow_ipc_build_time_version, nanoarrow_runtime_version);
+    return EINVAL;
+  }
+
+  return NANOARROW_OK;
+}
+
 void ArrowIpcReaderInit(struct ArrowIpcReader* reader) {
   memset(reader, 0, sizeof(struct ArrowIpcReader));
 }

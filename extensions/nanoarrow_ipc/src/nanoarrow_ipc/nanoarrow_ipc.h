@@ -157,6 +157,8 @@ enum ArrowIpcEndianness {
 
 ArrowIpcErrorCode ArrowIpcErrorSet(struct ArrowIpcError* error, const char* fmt, ...);
 
+ArrowIpcErrorCode ArrowIpcCheckRuntime(struct ArrowIpcError* error);
+
 struct ArrowIpcReader {
   int32_t metadata_version;
   int32_t message_type;

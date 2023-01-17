@@ -47,6 +47,10 @@ TEST(NanoarrowIpcTest, ErrorSetOverrun) {
   EXPECT_EQ(ArrowIpcErrorSet(&error, "%ls", bad_string), EINVAL);
 }
 
+TEST(NanoarrowIpcCheckRuntime, CheckRuntime) {
+  EXPECT_EQ(ArrowIpcCheckRuntime(nullptr), NANOARROW_OK);
+}
+
 // library(arrow, warn.conflicts = FALSE)
 
 // # R package doesn't do field metadata yet, so this hack is needed

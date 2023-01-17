@@ -29,7 +29,9 @@ option(NANOARROW_IPC_FLATCC_LIB_DIR "Library directory that contains libflatccrt
 option(NANOARROW_IPC_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(ipc_coverage_config INTERFACE)
 
-# Add the nanoarrow dependency
+# Add the nanoarrow dependency. nanoarrow is not linked into the
+# nanoarrow_ipc library (the caller must link this themselves);
+# however, we need nanoarrow.h to build nanoarrow_ipc.c.
 FetchContent_Declare(
   nanoarrow_for_nanoarrow_ipc
   SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
@@ -64,10 +66,14 @@ elseif(NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR)
   )
 endif()
 
-include_directories(src)
-include_directories(${NANOARROW_IPC_FLATCC_INCLUDE_DIR})
+include_directories(
+  src
+  ${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
+  ${nanoarrow_for_nanoarrow_ipc_SOURCE_DIR}/src
+  ${nanoarrow_for_nanoarrow_ipc_BINARY_DIR}/generated)
+
 add_library(nanoarrow_ipc src/nanoarrow_ipc/nanoarrow_ipc.c)
-target_link_libraries(nanoarrow_ipc PRIVATE nanoarrow flatccrt)
+target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
 
 if(NANOARROW_IPC_CODE_COVERAGE)
   target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
@@ -77,7 +83,6 @@ endif()
 
 
 if (NANOARROW_IPC_BUILD_TESTS)
-
   set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/../../valgrind.supp --error-exitcode=1")
   include(CTest)
   include(FetchContent)
@@ -99,7 +104,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
 
   add_executable(nanoarrow_ipc_test src/nanoarrow_ipc/nanoarrow_ipc_test.cc)
 
-  target_link_libraries(nanoarrow_ipc_test nanoarrow_ipc arrow_shared gtest_main)
+  target_link_libraries(nanoarrow_ipc_test nanoarrow_ipc nanoarrow arrow_shared gtest_main)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_ipc_test)
