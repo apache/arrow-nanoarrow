@@ -20,6 +20,17 @@
 
 #include "nanoarrow.h"
 
+#ifdef NANOARROW_NAMESPACE
+
+#define ArrowIpcCheckRuntime NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCheckRuntime)
+#define ArrowIpcReaderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderInit)
+#define ArrowIpcReaderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderReset)
+#define ArrowIpcReaderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderPeek)
+#define ArrowIpcReaderVerify NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderVerify)
+#define ArrowIpcReaderDecode NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderDecode)
+
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
