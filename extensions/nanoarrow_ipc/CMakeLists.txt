@@ -44,40 +44,75 @@ if(NOT nanoarrow_POPULATED)
   add_subdirectory(${nanoarrow_SOURCE_DIR} ${nanoarrow_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
-# Add the flatcc (runtime) dependency
-set(FLATCC_RTONLY ON CACHE INTERNAL "")
-set(FLATCC_REFLECTION OFF CACHE INTERNAL "")
+if (NANOARROW_IPC_BUILD_TESTS OR NOT NANOARROW_IPC_BUNDLE)
+  # Add the flatcc (runtime) dependency
+  set(FLATCC_RTONLY ON CACHE INTERNAL "")
+  set(FLATCC_REFLECTION OFF CACHE INTERNAL "")
 
-# Timestamps for fetch aren't really applicable here...this silences a warning
-cmake_policy(SET CMP0135 NEW)
-
-# A flatcc installation is unlikely, so default to building the vendored one
-if (NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR AND NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
-  FetchContent_Declare(
-    flatcc_for_nanoarrow
-    SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc)
-  FetchContent_MakeAvailable(flatcc_for_nanoarrow)
-  set(NANOARROW_IPC_FLATCC_INCLUDE_DIR ${flatcc_for_nanoarrow_SOURCE_DIR}/include)
-elseif(NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
-  add_library(flatccrt STATIC IMPORTED)
-  set_target_properties(flatccrt PROPERTIES
-    IMPORTED_LOCATION "${NANOARROW_IPC_FLATCC_LIB_DIR}/libflatccrt.a"
-    INTERFACE_INCLUDE_DIRECTORIES "${NANOARROW_IPC_FLATCC_INCLUDE_DIR}"
-  )
-elseif(NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR)
-  set(NANOARROW_IPC_FLATCC_INCLUDE_DIR ${NANOARROW_IPC_FLATCC_ROOT_DIR}/include)
-  add_library(flatccrt STATIC IMPORTED)
-  set_target_properties(flatccrt PROPERTIES
-    IMPORTED_LOCATION "${NANOARROW_IPC_FLATCC_ROOT_DIR}/lib/libflatccrt.a"
-    INTERFACE_INCLUDE_DIRECTORIES "${NANOARROW_IPC_FLATCC_INCLUDE_DIR}"
-  )
+  # A flatcc installation is unlikely, so default to building the vendored one
+  if (NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR AND NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
+    FetchContent_Declare(
+      flatcc_for_nanoarrow
+      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc)
+    FetchContent_MakeAvailable(flatcc_for_nanoarrow)
+    set(NANOARROW_IPC_FLATCC_INCLUDE_DIR ${flatcc_for_nanoarrow_SOURCE_DIR}/include)
+  elseif(NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
+    add_library(flatccrt STATIC IMPORTED)
+    set_target_properties(flatccrt PROPERTIES
+      IMPORTED_LOCATION "${NANOARROW_IPC_FLATCC_LIB_DIR}/libflatccrt.a"
+      INTERFACE_INCLUDE_DIRECTORIES "${NANOARROW_IPC_FLATCC_INCLUDE_DIR}"
+    )
+  elseif(NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR)
+    set(NANOARROW_IPC_FLATCC_INCLUDE_DIR ${NANOARROW_IPC_FLATCC_ROOT_DIR}/include)
+    add_library(flatccrt STATIC IMPORTED)
+    set_target_properties(flatccrt PROPERTIES
+      IMPORTED_LOCATION "${NANOARROW_IPC_FLATCC_ROOT_DIR}/lib/libflatccrt.a"
+      INTERFACE_INCLUDE_DIRECTORIES "${NANOARROW_IPC_FLATCC_INCLUDE_DIR}"
+    )
+  endif()
 endif()
 
 if (NANOARROW_IPC_BUNDLE)
+  # The CMake build step is creating nanoarrow_ipc.c and nanoarrow_ipc.h;
+  # the CMake install step is copying them to a specific location
+  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation)
+  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow)
 
+  # nanoarrow_ipc.h is already standalone
+  set(NANOARROW_IPC_H_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_ipc.h)
+  file(READ src/nanoarrow/nanoarrow_ipc.h SRC_FILE_CONTENTS)
+  file(WRITE ${NANOARROW_IPC_H_TEMP} "${SRC_FILE_CONTENTS}")
+
+  # combine flatcc-generated headers and nanoarrow_ipc.c
+  set(NANOARROW_IPC_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_ipc.c)
+  file(READ src/nanoarrow/nanoarrow_ipc_flatcc_generated.h SRC_FILE_CONTENTS)
+  file(WRITE ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
+  file(READ src/nanoarrow/nanoarrow_ipc.c SRC_FILE_CONTENTS)
+  file(APPEND ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
+
+  # remove the include for the generated files in the bundled version
+  file(READ ${NANOARROW_IPC_C_TEMP} SRC_FILE_CONTENTS)
+  string(
+    REGEX REPLACE "#include \"nanoarrow_ipc_flatcc_generated.h\"" ""
+    SRC_FILE_CONTENTS "${SRC_FILE_CONTENTS}")
+  file(WRITE ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
+
+  # Add a library that the tests can link against (but don't install it)
+  if(NANOARROW_IPC_BUILD_TESTS)
+    add_library(nanoarrow_ipc ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_ipc.c)
+    target_include_directories(nanoarrow_ipc PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+      $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
+      $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>)
+    target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
+  endif()
+
+  # Install the amalgamated header and source
+  install(FILES ${NANOARROW_IPC_H_TEMP} ${NANOARROW_IPC_C_TEMP} DESTINATION ".")
 
 else()
-
+  # This is a normal CMake build that builds + installs some includes and a static lib
   add_library(nanoarrow_ipc src/nanoarrow/nanoarrow_ipc.c)
   target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
 
@@ -136,6 +171,8 @@ if (NANOARROW_IPC_BUILD_TESTS)
   message(STATUS "Arrow version: ${ARROW_VERSION}")
   message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
+  # Warning about timestamps of downloaded files
+  cmake_policy(SET CMP0135 NEW)
   FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/release-1.11.0.zip
