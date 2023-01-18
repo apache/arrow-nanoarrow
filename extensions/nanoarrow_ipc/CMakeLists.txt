@@ -51,11 +51,18 @@ if (NANOARROW_IPC_BUILD_TESTS OR NOT NANOARROW_IPC_BUNDLE)
 
   # A flatcc installation is unlikely, so default to building the vendored one
   if (NOT NANOARROW_IPC_FLATCC_INCLUDE_DIR AND NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
-    FetchContent_Declare(
-      flatcc_for_nanoarrow
-      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc)
-    FetchContent_MakeAvailable(flatcc_for_nanoarrow)
-    set(NANOARROW_IPC_FLATCC_INCLUDE_DIR ${flatcc_for_nanoarrow_SOURCE_DIR}/include)
+    add_library(
+      flatccrt STATIC
+      thirdparty/flatcc/src/runtime/builder.c
+      thirdparty/flatcc/src/runtime/emitter.c
+      thirdparty/flatcc/src/runtime/verifier.c)
+
+    set(NANOARROW_IPC_FLATCC_INCLUDE_DIR
+      ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc/include)
+    target_include_directories(flatccrt PUBLIC
+      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
+      $<INSTALL_INTERFACE:include>)
+  
   elseif(NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt PROPERTIES
