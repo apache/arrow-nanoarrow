@@ -55,7 +55,8 @@ if (NANOARROW_IPC_BUILD_TESTS OR NOT NANOARROW_IPC_BUNDLE)
       flatccrt STATIC
       thirdparty/flatcc/src/runtime/builder.c
       thirdparty/flatcc/src/runtime/emitter.c
-      thirdparty/flatcc/src/runtime/verifier.c)
+      thirdparty/flatcc/src/runtime/verifier.c
+      thirdparty/flatcc/src/runtime/refmap.c)
 
     set(NANOARROW_IPC_FLATCC_INCLUDE_DIR
       ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc/include)
