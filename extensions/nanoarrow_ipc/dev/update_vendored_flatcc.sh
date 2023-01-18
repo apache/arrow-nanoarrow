@@ -39,6 +39,9 @@ cp $FLATCC_SRC_DIR/src/runtime/emitter.c \
 pushd $FLATCC_SRC_DIR/include
 
 # List object dependencies (warns that it can't find system headers, which is OK)
+# This list is in topological order and could be used for a single-file include;
+# however, this approach is easier to support alongside a previous installation
+# of the flatcc runtime.
 makedepend -s#: -f- -- -I. -DFLATCC_PORTABLE -- 2>/dev/null \
   ../src/runtime/emitter.c \
   ../src/runtime/builder.c \
