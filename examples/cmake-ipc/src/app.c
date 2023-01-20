@@ -17,6 +17,7 @@
 
 #include "library.h"
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -34,7 +35,7 @@ int main(int argc, char* argv[]) {
 
   int result = verify_ipc_message(data, in_size);
   if (result != 0) {
-    fprintf(stderr, my_library_last_error());
+    fprintf(stderr, "%s", my_library_last_error());
   }
 
   return result;
