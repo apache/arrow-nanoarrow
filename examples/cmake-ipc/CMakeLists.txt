@@ -50,4 +50,7 @@ target_link_libraries(example_cmake_ipc_library PRIVATE nanoarrow nanoarrow_ipc)
 
 # Add the executable and link it against the library
 add_executable(example_cmake_ipc_app src/app.c)
+
+# TODO: Why is the link to nanoarrow_ipc needed here? Shouldn't that be statically linked
+# in to example_cmake_ipc_library?
 target_link_libraries(example_cmake_ipc_app example_cmake_ipc_library nanoarrow_ipc)
