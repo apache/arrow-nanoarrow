@@ -21,6 +21,9 @@ include(FetchContent)
 
 project(NanoArrowExampleCMakeIpc)
 
+# See examples/cmake-minimal for why this is a good idea
+set(NANOARROW_NAMESPACE "ExampleCmakeIpc")
+
 FetchContent_Declare(
   # The name 'nanoarrow' is important here: it allows the IPC extension
   # to link to the same version of nanoarrow as your library/application
@@ -47,4 +50,4 @@ target_link_libraries(example_cmake_ipc_library PRIVATE nanoarrow nanoarrow_ipc)
 
 # Add the executable and link it against the library
 add_executable(example_cmake_ipc_app src/app.c)
-target_link_libraries(example_cmake_ipc_app example_cmake_ipc_library)
+target_link_libraries(example_cmake_ipc_app example_cmake_ipc_library nanoarrow_ipc)
