@@ -33,6 +33,8 @@ FetchContent_Declare(
   SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 FetchContent_MakeAvailable(nanoarrow)
 
+
+set(NANOARROW_NAMESPACE "ExampleCmakeIpc")
 FetchContent_Declare(
   nanoarrow_ipc_example_cmake
   SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../../extensions/nanoarrow_ipc)
