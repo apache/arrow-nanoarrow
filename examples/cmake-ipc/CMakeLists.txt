@@ -22,7 +22,7 @@ include(FetchContent)
 project(NanoArrowExampleCMakeIpc)
 
 # See examples/cmake-minimal for why this is a good idea
-set(NANOARROW_NAMESPACE "ExampleCmakeIpc")
+set(NANOARROW_NAMESPACE "ExampleCmakeIpc" CACHE INTERNAL "")
 
 FetchContent_Declare(
   # The name 'nanoarrow' is important here: it allows the IPC extension
@@ -33,8 +33,6 @@ FetchContent_Declare(
   SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 FetchContent_MakeAvailable(nanoarrow)
 
-
-set(NANOARROW_NAMESPACE "ExampleCmakeIpc")
 FetchContent_Declare(
   nanoarrow_ipc_example_cmake
   SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../../extensions/nanoarrow_ipc)
