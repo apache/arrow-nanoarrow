@@ -46,9 +46,9 @@ add_library(example_cmake_ipc_library src/library.c)
 
 # Always use PRIVATE to hide nanoarrow's headers from a
 # target that in turn uses your library.
-# target_link_libraries(example_cmake_ipc_library PRIVATE nanoarrow_ipc PRIVATE nanoarrow)
+target_link_libraries(example_cmake_ipc_library PRIVATE nanoarrow_ipc PRIVATE nanoarrow)
 
 # Add the executable and link it against the library
 add_executable(example_cmake_ipc_app src/app.c)
 
-target_link_libraries(example_cmake_ipc_app example_cmake_ipc_library nanoarrow_ipc nanoarrow)
+target_link_libraries(example_cmake_ipc_app example_cmake_ipc_library)
