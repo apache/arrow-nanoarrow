@@ -63,7 +63,7 @@ if (NANOARROW_IPC_BUILD_TESTS OR NOT NANOARROW_IPC_BUNDLE)
     target_include_directories(flatccrt PUBLIC
       $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
       $<INSTALL_INTERFACE:include>)
-  
+
   elseif(NOT NANOARROW_IPC_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt PROPERTIES
@@ -130,7 +130,7 @@ else()
         $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
         $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:include>)
-  
+
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
       target_compile_options(
