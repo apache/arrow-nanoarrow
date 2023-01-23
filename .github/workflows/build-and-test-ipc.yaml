@@ -158,7 +158,7 @@ jobs:
           directory: extensions/nanoarrow_ipc/build/cov
 
   bundle-dist-ipc:
-    needs: test-c
+    needs: test-c-ipc
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
