@@ -72,7 +72,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_CODE_COVERAGE=ON -DNANOARROW_IPC_BUILD_TESTS=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON
           cmake --build .
 
       - name: Build (namespaced)
@@ -83,7 +83,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_CODE_COVERAGE=ON -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_NAMESPACE=SomeUserNamespace
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_NAMESPACE=SomeUserNamespace
           cmake --build .
 
       - name: Build (bundled)
@@ -140,22 +140,6 @@ jobs:
         with:
           name: nanoarrow-ipc-memcheck
           path: extensions/nanoarrow_ipc/build/Testing/Temporary/MemoryChecker.*.log
-
-      - name: Calculate coverage
-        if: success() && matrix.config.label == 'default-build'
-        run: |
-          cd $SUBDIR
-
-          SOURCE_PREFIX=`pwd`
-          mkdir build/cov
-          cd build/cov
-          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
-
-      - name: Upload coverage
-        if: success() && matrix.config.label == 'default-build'
-        uses: codecov/codecov-action@v2
-        with:
-          directory: extensions/nanoarrow_ipc/build/cov
 
   bundle-dist-ipc:
     needs: test-c-ipc
