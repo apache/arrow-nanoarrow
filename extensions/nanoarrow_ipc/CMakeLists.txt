@@ -131,32 +131,6 @@ else()
         $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:include>)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-      target_compile_options(
-          nanoarrow_ipc
-          PRIVATE
-          -Wall
-          -Werror
-          -Wextra
-          -Wno-type-limits
-          -Wno-unused-parameter
-          -Wpedantic
-          -Wunused-result)
-    elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR
-           CMAKE_C_COMPILER_ID STREQUAL "Clang")
-      target_compile_options(
-          nanoarrow_ipc
-          PRIVATE
-          -Wall
-          -Werror
-          -Wextra
-          -Wdocumentation
-          -Wno-unused-parameter
-          -Wshorten-64-to-32)
-    endif()
-  endif()
-
   install(TARGETS nanoarrow_ipc DESTINATION lib)
   install(
     FILES
