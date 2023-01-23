@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 
   int result = verify_ipc_message(data, in_size);
   if (result != 0) {
-    fprintf(stderr, "%s", my_library_last_error());
+    fprintf(stderr, "%s\n", my_library_last_error());
   }
 
   return result;
