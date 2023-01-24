@@ -105,20 +105,42 @@ if (NANOARROW_IPC_BUNDLE)
     SRC_FILE_CONTENTS "${SRC_FILE_CONTENTS}")
   file(WRITE ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
 
+  # combine the flatcc sources
+  set(FLATCC_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/flatcc.c)
+  file(READ thirdparty/flatcc/src/runtime/builder.c SRC_FILE_CONTENTS)
+  file(WRITE ${FLATCC_C_TEMP} "${SRC_FILE_CONTENTS}")
+  file(READ thirdparty/flatcc/src/runtime/emitter.c SRC_FILE_CONTENTS)
+  file(APPEND ${FLATCC_C_TEMP} "${SRC_FILE_CONTENTS}")
+  file(READ thirdparty/flatcc/src/runtime/verifier.c SRC_FILE_CONTENTS)
+  file(APPEND ${FLATCC_C_TEMP} "${SRC_FILE_CONTENTS}")
+  file(READ thirdparty/flatcc/src/runtime/refmap.c SRC_FILE_CONTENTS)
+  file(APPEND ${FLATCC_C_TEMP} "${SRC_FILE_CONTENTS}")
+
   # Add a library that the tests can link against (but don't install it)
   if(NANOARROW_IPC_BUILD_TESTS)
-    add_library(nanoarrow_ipc ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_ipc.c)
+    # Bundle flatcc into the nanoarrow_ipc library instead of
+    # link to the flatccrt static lib we declared above.
+    add_library(nanoarrow_ipc
+      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_ipc.c
+      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/flatcc.c)
+
     target_include_directories(nanoarrow_ipc PUBLIC
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
       $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
       $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
       $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>)
-    target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
+
   endif()
 
-  # Install the amalgamated header and source
-  install(FILES ${NANOARROW_IPC_H_TEMP} ${NANOARROW_IPC_C_TEMP} DESTINATION ".")
+  # Install the amalgamated header and sources
+  install(FILES
+    ${NANOARROW_IPC_H_TEMP}
+    ${NANOARROW_IPC_C_TEMP}
+    ${FLATCC_C_TEMP}
+    DESTINATION ".")
 
+  # Also install the flatcc headers
+  install(DIRECTORY thirdparty/flatcc/include/flatcc DESTINATION ".")
 else()
   # This is a normal CMake build that builds + installs some includes and a static lib
   add_library(nanoarrow_ipc src/nanoarrow/nanoarrow_ipc.c)
