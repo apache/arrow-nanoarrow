@@ -174,8 +174,8 @@ jobs:
       - name: Commit bundle to dist/
         # if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
-          ls extensions/nanoarrow_ipc/nanoarrow-latest
           cp -r extensions/nanoarrow_ipc/nanoarrow-latest/ dist/
+          git add dist/**
 
           # only commit if there are changes
           git config --global user.email "actions@github.com"
@@ -184,4 +184,5 @@ jobs:
           if [ "$UPDATED" ]; then
             # git commit -m "ipc: Update dist/ for commit ${{ github.sha }}"
             # git push
+            echo "$UPDATED"
           fi
