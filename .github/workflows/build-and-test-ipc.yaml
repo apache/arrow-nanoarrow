@@ -1,0 +1,186 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: test-c-ipc
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/build-and-test-ipc.yaml'
+      - 'src/nanoarrow/**'
+      - 'extensions/nanoarrow_ipc/**'
+
+jobs:
+  test-c-ipc:
+
+    runs-on: ubuntu-latest
+
+    name: ${{ matrix.config.label }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {label: default-build}
+          - {label: namespaced-build}
+          - {label: bundled-build}
+
+    env:
+      SUBDIR: 'extensions/nanoarrow_ipc'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt install -y -V ca-certificates lsb-release wget cmake valgrind
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-dev
+          rm apache-arrow-apt-*.deb
+
+      - name: Build (default)
+        if: matrix.config.label == 'default-build'
+        run: |
+          cd $SUBDIR
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON
+          cmake --build .
+
+      - name: Build (namespaced)
+        if: matrix.config.label == 'namespaced-build'
+        run: |
+          cd $SUBDIR
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_NAMESPACE=SomeUserNamespace
+          cmake --build .
+
+      - name: Build (bundled)
+        if: matrix.config.label == 'bundled-build'
+        run: |
+          cd $SUBDIR
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_IPC_BUNDLE=ON
+          cmake --build .
+
+      - name: Check for non-namespaced symbols in namespaced build
+        if: matrix.config.label == 'namespaced-build'
+        run: |
+          cd $SUBDIR
+
+          # Dump all symbols
+          nm --extern-only build/libnanoarrow_ipc.a
+
+          # Check for non-namespaced ones
+          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_ipc.a | grep "T Arrow" || true`
+          if [ -z "$ARROW_SYMBOLS" ]; then
+            exit 0
+          fi
+
+          echo "Found the following non-namespaced extern symbols:"
+          echo $ARROW_SYMBOLS
+          exit 1
+
+      - name: Run tests
+        run: |
+          cd $SUBDIR
+
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          cd build
+          ctest -T test --output-on-failure .
+
+      - name: Run tests with valgrind
+        if: matrix.config.label == 'default-build'
+        run: |
+          cd $SUBDIR
+
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          cd build
+          ctest -T memcheck .
+
+      - name: Upload memcheck results
+        if: failure() && matrix.config.label == 'default-build'
+        uses: actions/upload-artifact@main
+        with:
+          name: nanoarrow-ipc-memcheck
+          path: extensions/nanoarrow_ipc/build/Testing/Temporary/MemoryChecker.*.log
+
+  bundle-dist-ipc:
+    needs: test-c-ipc
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y cmake
+
+      - name: Create bundle
+        run: |
+          cd extensions/nanoarrow_ipc
+          mkdir build && cd build
+          cmake .. -DNANOARROW_IPC_BUNDLE=ON
+          cmake --build .
+          cmake --install . --prefix=../nanoarrow-latest
+          cd ..
+          cp -r thirdparty/flatcc nanoarrow-latest/flatcc
+          zip nanoarrow-latest.zip nanoarrow-latest/nanoarrow_ipc.h nanoarrow-latest/nanoarrow_ipc.c nanoarrow-latest/flatcc.c nanoarrow-latest/flatcc/**
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: nanoarrow-ipc-latest
+          path: extensions/nanoarrow_ipc/nanoarrow-latest.zip
+
+      - name: Commit bundle to dist/
+        if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+        run: |
+          cp -r extensions/nanoarrow_ipc/nanoarrow-latest/ dist/
+
+          # only commit if there are changes
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          UPDATED=`git diff --name-only --cached`
+          if [ "$UPDATED" ]; then
+            git commit -m "Update dist/ for commit ${{ github.sha }}"
+            git push
+          fi

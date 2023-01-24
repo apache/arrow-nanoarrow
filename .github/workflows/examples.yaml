@@ -25,6 +25,7 @@ on:
     branches:
       - main
     paths:
+      - 'examples/**'
       - 'CMakeLists.txt'
       - '.github/workflows/examples.yaml'
       - 'src/nanoarrow/**'
@@ -33,6 +34,8 @@ jobs:
   examples:
 
     runs-on: ubuntu-latest
+    env:
+      VERBOSE: 1
 
     steps:
       - name: Checkout repo
@@ -50,9 +53,9 @@ jobs:
           mkdir build && cd build
           cmake ..
           cmake --build .
-          
+
           ./example_cmake_minimal_app
-    
+
       - name: Minimal Vendored Example
         run: |
           cd examples/vendored-minimal
@@ -66,5 +69,14 @@ jobs:
           gcc -c library.c nanoarrow.c
           ar rcs libexample_vendored_minimal_library.a library.o nanoarrow.o
           gcc -o example_vendored_minimal_app app.c libexample_vendored_minimal_library.a
-          
+
           ./example_vendored_minimal_app
+
+      - name: Ipc CMake Example
+        run: |
+          cd examples/cmake-ipc
+          mkdir build && cd build
+          cmake ..
+          cmake --build .
+
+          cat ../schema-valid.arrows | ./example_cmake_ipc_app

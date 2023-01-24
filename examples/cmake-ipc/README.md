@@ -17,9 +17,27 @@
   under the License.
 -->
 
-# Bundled header and source files
+# IPC Extension CMake Example
 
-These files are automatically generated from the latest commit (that
-passes CI on the main branch). See the examples/ folder in the parent
-repo for examples of how to use these files. Note that flatcc is only
-needed for the nanoarrow_ipc extension.
+This folder contains a CMake project that links to its own copy of
+nanoarrow and nanoarrow_ipc using CMake's `FetchContent` module.
+This pattern is similar to the cmake-minimal example and includes
+both a library and a command-line application that can verify
+a small message read from stdin. To build:
+
+```bash
+git clone https://github.com/apache/arrow-nanoarrow.git
+cd arrow-nanoarrow/examples/cmake-ipc
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+You can test the command-line application using the two files
+provided in the example directory:
+
+```bash
+cat ../schema-valid.arrows | ./example_cmake_ipc_app
+cat ../invalid.arrows | ./example_cmake_ipc_app
+# Expected 0xFFFFFFFF at start of message but found 0xFFFFFF00
+```
