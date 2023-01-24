@@ -168,7 +168,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
   if(NANOARROW_IPC_CODE_COVERAGE)
     target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
     target_link_options(ipc_coverage_config INTERFACE --coverage)
-    target_link_libraries(nanoarrow_ipc ipc_coverage_config)
+    target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
   endif()
 
   target_link_libraries(nanoarrow_ipc_test nanoarrow_ipc nanoarrow arrow_shared gtest_main)
