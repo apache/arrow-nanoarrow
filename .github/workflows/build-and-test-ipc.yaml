@@ -163,7 +163,7 @@ jobs:
           cmake --install . --prefix=../nanoarrow-latest
           cd ..
           cp -r thirdparty/flatcc nanoarrow-latest/flatcc
-          zip nanoarrow-latest.zip nanoarrow-latest/nanoarrow.h nanoarrow-latest/nanoarrow.c nanoarrow-latest/LICENSE.txt
+          zip nanoarrow-latest.zip nanoarrow-latest/nanoarrow_ipc.h nanoarrow-latest/nanoarrow_ipc.c nanoarrow-latest/flatcc.c nanoarrow-latest/flatcc/**
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@main
