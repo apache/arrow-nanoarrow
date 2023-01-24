@@ -172,7 +172,7 @@ jobs:
           path: extensions/nanoarrow_ipc/nanoarrow-latest.zip
 
       - name: Commit bundle to dist/
-        # if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+        if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
           cp -r extensions/nanoarrow_ipc/nanoarrow-latest/* dist/
           git add dist/**
@@ -182,7 +182,7 @@ jobs:
           git config --global user.name "GitHub Actions"
           UPDATED=`git diff --name-only --cached`
           if [ "$UPDATED" ]; then
-            # git commit -m "ipc: Update dist/ for commit ${{ github.sha }}"
-            # git push
+            git commit -m "ipc: Update dist/ for commit ${{ github.sha }}"
+            git push
             echo "$UPDATED"
           fi
