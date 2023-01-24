@@ -20,4 +20,6 @@
 # Bundled header and source files
 
 These files are automatically generated from the latest commit (that
-passes CI on the main branch).
+passes CI on the main branch). See the examples/ folder in the parent
+repo for examples of how to use these files. Note that flatcc is only
+needed for the nanoarrow_ipc extension.
