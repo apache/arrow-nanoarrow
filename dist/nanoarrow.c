@@ -24,8 +24,6 @@
 
 #include "nanoarrow.h"
 
-const char* ArrowNanoarrowBuildId(void) { return NANOARROW_BUILD_ID; }
-
 const char* ArrowNanoarrowVersion() { return NANOARROW_VERSION; }
 
 int ArrowNanoarrowVersionInt() { return NANOARROW_VERSION_INT; }

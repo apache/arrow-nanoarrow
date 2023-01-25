@@ -29,8 +29,6 @@
 
 // #define NANOARROW_NAMESPACE YourNamespaceHere
 
-#define NANOARROW_BUILD_ID "ghabd7cec64c6a99bf0dcd2d2754d4514373cac1458"
-
 #endif
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
@@ -600,7 +598,7 @@ struct ArrowArrayPrivateData {
 
 
 // If using CMake, optionally pass -DNANOARROW_NAMESPACE=MyNamespace which will set this
-// define in build_id.h. If not, you can optionally #define NANOARROW_NAMESPACE
+// define in nanoarrow_config.h. If not, you can optionally #define NANOARROW_NAMESPACE
 // MyNamespace here.
 
 // This section remaps the non-prefixed symbols to the prefixed symbols so that
@@ -610,7 +608,6 @@ struct ArrowArrayPrivateData {
 #define NANOARROW_CAT(A, B) A##B
 #define NANOARROW_SYMBOL(A, B) NANOARROW_CAT(A, B)
 
-#define ArrowNanoarrowBuildId NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowBuildId)
 #define ArrowNanoarrowVersion NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersion)
 #define ArrowNanoarrowVersionInt \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersionInt)
@@ -775,9 +772,6 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 /// \defgroup nanoarrow-utils Utility data structures
 ///
 /// @{
-
-/// \brief Return the build id against which the library was compiled
-const char* ArrowNanoarrowBuildId(void);
 
 /// \brief Return a version string in the form "major.minor.patch"
 const char* ArrowNanoarrowVersion();
