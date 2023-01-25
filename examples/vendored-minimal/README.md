@@ -40,7 +40,7 @@ cp ../../dist/nanoarrow.c src/nanoarrow.c
 ```
 
 If you use these, you will have to manually `#define NANOARROW_NAMESPACE MyProject`
-manually next to `#define NANOARROW_BUILD_ID` in the header.
+manually in nanoarrow.h.
 
 You can also generate the bundled versions with the namespace defined using `cmake`:
 

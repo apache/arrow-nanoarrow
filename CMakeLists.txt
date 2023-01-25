@@ -28,12 +28,7 @@ set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
-option(NANOARROW_BUILD_ID "A string identifying this build" OFF)
 option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
-
-if (NOT NANOARROW_BUILD_ID)
-    string(RANDOM LENGTH 10 NANOARROW_BUILD_ID)
-endif()
 
 if (NANOARROW_NAMESPACE)
     set(NANOARROW_NAMESPACE_DEFINE "#define NANOARROW_NAMESPACE ${NANOARROW_NAMESPACE}")
@@ -44,14 +39,14 @@ endif()
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 
-configure_file(src/nanoarrow/build_id.h.in generated/build_id.h)
+configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
 
 if(NANOARROW_BUNDLE)
     # Combine all headers into amalgamation/nanoarrow.h in the build directory
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow)
     set(NANOARROW_H_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.h)
-    file(READ ${CMAKE_BINARY_DIR}/generated/build_id.h SRC_FILE_CONTENTS)
+    file(READ ${CMAKE_BINARY_DIR}/generated/nanoarrow_config.h SRC_FILE_CONTENTS)
     file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
     file(READ src/nanoarrow/nanoarrow_types.h SRC_FILE_CONTENTS)
     file(APPEND ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
@@ -130,7 +125,7 @@ else()
 
     install(TARGETS nanoarrow DESTINATION lib)
     install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/build_id.h DESTINATION include/nanoarrow)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h DESTINATION include/nanoarrow)
 endif()
 
 if(NANOARROW_BUILD_TESTS)
