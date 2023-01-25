@@ -158,12 +158,12 @@ jobs:
       - name: Create bundle
         run: |
           mkdir build && cd build
-          cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_BUILD_ID=gha${{ github.sha }}
+          cmake .. -DNANOARROW_BUNDLE=ON
           cmake --build .
           cmake --install . --prefix=../nanoarrow-latest
           cd ..
           cp LICENSE.txt nanoarrow-latest/LICENSE.txt
-          zip nanoarrow-latest.zip nanoarrow-latest/nanoarrow.h nanoarrow-latest/nanoarrow.c nanoarrow-latest/LICENSE.txt
+          zip nanoarrow-latest.zip nanoarrow-latest/nanoarrow.h nanoarrow-latest/nanoarrow.c nanoarrow-latest/nanoarrow.hpp nanoarrow-latest/LICENSE.txt
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@main
@@ -174,9 +174,8 @@ jobs:
       - name: Commit bundle to dist/
         if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
-          cp nanoarrow-latest/nanoarrow.h dist/nanoarrow.h
-          cp nanoarrow-latest/nanoarrow.c dist/nanoarrow.c
-          git add dist/nanoarrow.h dist/nanoarrow.c
+          cp nanoarrow-latest/nanoarrow.h nanoarrow-latest/nanoarrow.c nanoarrow-latest/nanoarrow.hpp dist
+          git add dist/**
 
           # only commit if there are changes
           git config --global user.email "actions@github.com"

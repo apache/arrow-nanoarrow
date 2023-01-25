@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "build_id.h"
+#include "nanoarrow_config.h"
 
 #ifdef __cplusplus
 extern "C" {
