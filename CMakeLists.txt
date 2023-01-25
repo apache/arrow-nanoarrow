@@ -63,8 +63,9 @@ if(NANOARROW_BUNDLE)
     file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
 
     # Copy nanoarrow.hpp too
+    set(NANOARROW_HPP_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.hpp)
     file(READ src/nanoarrow/nanoarrow.hpp SRC_FILE_CONTENTS)
-    file(WRITE ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.hpp "${SRC_FILE_CONTENTS}")
+    file(WRITE ${NANOARROW_HPP_TEMP}/amalgamation/nanoarrow/nanoarrow.hpp "${SRC_FILE_CONTENTS}")
 
     # Combine all source files into amalgamation/nanoarrow.c in the build directory
     set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.c)
@@ -84,7 +85,7 @@ if(NANOARROW_BUNDLE)
     endif()
 
     # Install the amalgamated header and source
-    install(FILES ${NANOARROW_H_TEMP} ${NANOARROW_C_TEMP} DESTINATION ".")
+    install(FILES ${NANOARROW_H_TEMP} ${NANOARROW_C_TEMP} ${NANOARROW_HPP_TEMP} DESTINATION ".")
 else()
     add_library(
         nanoarrow
