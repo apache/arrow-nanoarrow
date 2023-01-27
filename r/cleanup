@@ -23,6 +23,9 @@
 # (so that the C library and the R package are always in sync).
 
 echo "cwd:" > ~/Desktop/pak-debug.txt
+pwd >> ~/Desktop/pak-debug.txt
+echo "ls .." >> ~/Desktop/pak-debug.txt
+ls .. >> ~/Desktop/pak-debug.txt
 
 if [ -f "../src/nanoarrow/nanoarrow.h" ] && [ -f "../CMakeLists.txt" ] && [ -f "../r/DESCRIPTION" ]; then
   # Check for cmake
