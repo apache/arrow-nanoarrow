@@ -22,6 +22,8 @@
 # we *do* want it to run on R CMD INSTALL *if* we're in the repo
 # (so that the C library and the R package are always in sync).
 
+echo "cwd:" > ~/Desktop/pak-debug.txt
+
 if [ -f "../src/nanoarrow/nanoarrow.h" ] && [ -f "../CMakeLists.txt" ] && [ -f "../r/DESCRIPTION" ]; then
   # Check for cmake
   cmake --version
@@ -32,7 +34,7 @@ if [ -f "../src/nanoarrow/nanoarrow.h" ] && [ -f "../CMakeLists.txt" ] && [ -f "
     cp ../dist/nanoarrow.c ../dist/nanoarrow.h src
     exit 0
   fi
-  
+
   echo "Bundling nanoarrow using cmake ../CMakeLists.txt"
   rm -f src/nanoarrow.h src/nanoarrow.c
   if [ -d "cmake" ]; then
