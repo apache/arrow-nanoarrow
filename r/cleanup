@@ -22,7 +22,7 @@
 # we *do* want it to run on R CMD INSTALL *if* we're in the repo
 # (so that the C library and the R package are always in sync).
 
-if [ -f "../src/nanoarrow/nanoarrow.h" ]; then
+if [ -f "../src/nanoarrow/nanoarrow.h" ] && [ -f "../CMakeLists.txt" ] && [ -f "../r/DESCRIPTION" ]; then
   echo "Bundling nanoarrow using cmake ../CMakeLists.txt"
   rm -f src/nanoarrow.h src/nanoarrow.c
   if [ -d "cmake" ]; then
