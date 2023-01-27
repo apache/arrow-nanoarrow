@@ -1,0 +1,42 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# This script runs on R CMD build, which means it's the right place
+# to vendor nanoarrow if we're in the nanoarrow repo. If we're not
+# in the nanoarrow repo, this script should do nothing since it
+# may also run in various capacities during R CMD INSTALL; however,
+# we *do* want it to run on R CMD INSTALL *if* we're in the repo
+# (so that the C library and the R package are always in sync).
+
+if [ -f "../src/nanoarrow/nanoarrow.h" ] && [ -f "../CMakeLists.txt" ] && [ -f "../r/DESCRIPTION" ]; then
+  echo "Bundling nanoarrow using cmake ../CMakeLists.txt"
+  rm -f src/nanoarrow.h src/nanoarrow.c
+  if [ -d "cmake" ]; then
+    rm -rf cmake
+  fi
+  mkdir cmake && cd cmake
+  cmake ../.. -DNANOARROW_BUNDLE=ON > output.txt
+  if [ $? -ne 0 ]; then
+    cat output.txt
+    exit 1
+  fi
+
+  cmake --build . && cmake --install . --prefix=../src
+  cd ..
+  rm -rf cmake
+  rm -f src/nanoarrow.hpp
+fi

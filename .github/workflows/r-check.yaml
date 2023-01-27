@@ -61,12 +61,6 @@ jobs:
         if: matrix.config.r == 'devel'
         run: sudo apt-get install -y valgrind
 
-      # Probably a better way to do this, but for now do the vendor step manually
-      - name: Vendor nanoarrow into the R package
-        run: |
-          cd r
-          bash configure
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck

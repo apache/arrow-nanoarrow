@@ -15,14 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Try running the vendor step. This will do nothing if we're
-# not sitting in the nanoarrow repo.
+# See cleanup for details
 ./cleanup
-
-# Check that we have the vendored files we need to build the package
-if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
-  exit 0
-fi
-
-echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
-exit 1
