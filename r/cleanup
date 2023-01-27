@@ -23,6 +23,16 @@
 # (so that the C library and the R package are always in sync).
 
 if [ -f "../src/nanoarrow/nanoarrow.h" ] && [ -f "../CMakeLists.txt" ] && [ -f "../r/DESCRIPTION" ]; then
+  # Check for cmake
+  cmake --version
+
+  # If there's no cmake, we can use ../dist/nanoarrow.c and ../dist/nanoarrow.h
+  if [ $? -ne 0 ]; then
+    echo "Copying bundled nanoarrow at ../dist"
+    cp ../dist/nanoarrow.c ../dist/nanoarrow.h src
+    exit 0
+  fi
+  
   echo "Bundling nanoarrow using cmake ../CMakeLists.txt"
   rm -f src/nanoarrow.h src/nanoarrow.c
   if [ -d "cmake" ]; then
