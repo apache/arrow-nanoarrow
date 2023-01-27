@@ -22,14 +22,6 @@
 # we *do* want it to run on R CMD INSTALL *if* we're in the repo
 # (so that the C library and the R package are always in sync).
 
-# Only do this once
-if [ ! -f ~/Desktop/pak-debug.txt ]; then
-  echo "cwd:" > ~/Desktop/pak-debug.txt
-  pwd >> ~/Desktop/pak-debug.txt
-  echo "ls .." >> ~/Desktop/pak-debug.txt
-  ls .. >> ~/Desktop/pak-debug.txt
-fi
-
 if [ -f "../src/nanoarrow/nanoarrow.h" ] && [ -f "../CMakeLists.txt" ] && [ -f "../r/DESCRIPTION" ]; then
   # Check for cmake
   cmake --version
