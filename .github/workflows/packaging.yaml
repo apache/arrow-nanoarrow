@@ -131,7 +131,7 @@ jobs:
       - name: Compress docs
         shell: bash
         run: |
-          pushd docs
+          pushd nanoarrow/docs
           tar -czf ../docs.tgz docs
           popd
 
@@ -178,22 +178,22 @@ jobs:
         with:
           extra-packages: any::pkgbuild
           needs: build
-          working-directory: r
+          working-directory: nanoarrow/r
 
       - name: Build R Source Package
         shell: bash
         run : |
           # Probably easiest to let bootstrap.R take care of ensuring
           # that the version in DESCRIPTION matches ${VERSION} here
-          pushd r
+          pushd nanoarrow/r
           ./configure
           popd
 
-          Rscript -e 'pkgbuild::build("r")'
+          Rscript -e 'pkgbuild::build("nanoarrow/r")'
 
       - uses: actions/upload-artifact@v3
         with:
           name: source
           retention-days: 7
           path: |
-            nanoarrow_0.1.0.9000.tar.gz
+            nanoarrow/nanoarrow_0.1.0.9000.tar.gz
