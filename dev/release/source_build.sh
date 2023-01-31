@@ -49,6 +49,10 @@ main() {
     # Remove components that are not yet ready for packaging
     rm -rf "${base_name}/extensions"
     rm -rf "${base_name}/python"
+    rm -rf "${base_name}/dist/flatcc"
+    rm -f "${base_name}/dist/flatcc.c"
+    rm -f "${base_name}/dist/nanoarrow_ipc.c"
+    rm -f "${base_name}/dist/nanoarrow_ipc.h"
 
     # Create new tarball
     tar czf "${tar_ball}" "${base_name}/"

@@ -5,3 +5,6 @@ filtered_rat.txt
 rat.txt
 r/DESCRIPTION
 r/NAMESPACE
+r/.Rbuildignore
+r/nanoarrow.Rproj
+*.Rd
