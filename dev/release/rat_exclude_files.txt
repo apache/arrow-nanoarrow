@@ -1,0 +1,6 @@
+*.json
+dev/release/rat_exclude_files.txt
+filtered_rat.txt
+rat.txt
+r/DESCRIPTION
+r/NAMESPACE
