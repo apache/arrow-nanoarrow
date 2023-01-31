@@ -25,7 +25,8 @@ on:
       - "CMakeLists.txt"
       - "src/nanoarrow/**"
       - "r/**"
-      - ".github/workflows/packaging.yml"
+      - "dev/release/**"
+      - ".github/workflows/packaging.yaml"
 
   push:
     # Automatically build on RC tags
