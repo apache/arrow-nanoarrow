@@ -149,7 +149,7 @@ jobs:
         run: |
           sudo apt-get install doxygen
           python -m pip install --upgrade pip
-          pip install -r docs/requirements.txt
+          pip install -r nanoarrow/docs/requirements.txt
 
       - name: Run doxygen
         run: |
