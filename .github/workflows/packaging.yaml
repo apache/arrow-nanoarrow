@@ -193,6 +193,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
+          name: r-source
           retention-days: 7
           path: |
             nanoarrow/nanoarrow_0.0.0.9000.tar.gz
