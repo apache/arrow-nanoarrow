@@ -131,7 +131,7 @@ jobs:
       - name: Compress docs
         shell: bash
         run: |
-          pushd nanoarrow/docs
+          pushd nanoarrow
           tar -czf ../docs.tgz docs
           popd
 
@@ -196,4 +196,4 @@ jobs:
           name: source
           retention-days: 7
           path: |
-            nanoarrow/nanoarrow_0.1.0.9000.tar.gz
+            nanoarrow/nanoarrow_0.0.0.9000.tar.gz
