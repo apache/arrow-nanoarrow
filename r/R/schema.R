@@ -15,6 +15,54 @@
 # specific language governing permissions and limitations
 # under the License.
 
+nanoarrow_schema_modify <- function(schema, new_values, validate = TRUE) {
+  schema <- as_nanoarrow_schema(schema)
+
+  if (length(new_values) == 0) {
+    return(schema)
+  }
+
+  # Make sure new_values has names to iterate over
+  new_names <- names(new_values)
+  if (is.null(new_names) || all(new_names == "", na.rm = TRUE)) {
+    stop("`new_values` must be named")
+  }
+
+  # Make a deep copy and modify it. Possibly not as efficient as it could be
+  # but it's unclear to what degree performance is an issue for R-level
+  # schema modification.
+  schema_deep_copy <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(schema, schema_deep_copy)
+
+  for (i in seq_along(new_values)) {
+    nm <- new_names[i]
+    value <- new_values[[i]]
+
+    switch(
+      nm,
+      format = .Call(nanoarrow_c_set_format, as.character(value)),
+      name = {
+        if (!is.null(value)) {
+          value <- as.character(value)
+        }
+
+        .Call(nanoarrow_c_set_name, value)
+      },
+      flags = .Call(nanoarrow_c_schema_set_flags, as.integer(value)),
+      dictionary = {
+        if (!is.null(value)) {
+          value <- as_nanoarrow_schema(value)
+        }
+
+        .Call(nanoarrow_c_set_dictionary, value)
+      },
+      stop(sprintf("Attempt to modify unsupported schema component: '%s'", nm))
+    )
+  }
+
+  schema_deep_copy
+}
+
 #' Convert an object to a nanoarrow schema
 #'
 #' In nanoarrow a 'schema' refers to a `struct ArrowSchema` as defined in the

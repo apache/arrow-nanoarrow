@@ -160,8 +160,7 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
 
   SEXP result = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(result, 0, Rf_mkString(ArrowTypeString((schema_view.type))));
-  SET_VECTOR_ELT(result, 1,
-                 Rf_mkString(ArrowTypeString((schema_view.storage_type))));
+  SET_VECTOR_ELT(result, 1, Rf_mkString(ArrowTypeString((schema_view.storage_type))));
 
   if (schema_view.extension_name.data != NULL) {
     SET_VECTOR_ELT(result, 2, mkStringView(&schema_view.extension_name));
@@ -242,4 +241,81 @@ SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp) {
                  Rf_mkCharLenCE((char*)RAW(formatted_sexp), size_needed, CE_UTF8));
   UNPROTECT(2);
   return result_sexp;
+}
+
+void nanoarrow_c_schema_set_format(SEXP schema_mut_xptr, SEXP format_sexp) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
+
+  if (TYPEOF(format_sexp) != STRSXP || Rf_length(format_sexp) != 1) {
+    Rf_error("schema$format must be character(1)");
+  }
+
+  const char* format = Rf_translateCharUTF8(STRING_ELT(format_sexp, 0));
+  if (ArrowSchemaSetFormat(schema, format) != NANOARROW_OK) {
+    Rf_error("Error setting schema$format");
+  }
+}
+
+void nanoarrow_c_schema_set_name(SEXP schema_mut_xptr, SEXP name_sexp) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
+  int result;
+
+  if (name_sexp == R_NilValue) {
+    result = ArrowSchemaSetName(schema, NULL);
+  } else {
+    if (TYPEOF(name_sexp) != STRSXP || Rf_length(name_sexp) != 1) {
+      Rf_error("schema$name must be NULL or character(1)");
+    }
+
+    const char* name = Rf_translateCharUTF8(STRING_ELT(name_sexp, 0));
+    result = ArrowSchemaSetName(schema, name);
+  }
+
+  if (result != NANOARROW_OK) {
+    Rf_error("Error setting schema$name");
+  }
+}
+
+void nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
+
+  if (TYPEOF(flags_sexp) != INTSXP || Rf_length(flags_sexp) != 1) {
+    Rf_error("schema$flags must be integer(1)");
+  }
+
+  int flags = INTEGER(flags_sexp)[0];
+  schema->flags = flags;
+}
+
+void nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xptr) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
+
+  // If there's already a dictionary, make sure we release it
+  if (schema->dictionary != NULL) {
+    if (schema->dictionary->release != NULL) {
+      schema->dictionary->release(schema->dictionary);
+    }
+  }
+
+  if (dictionary_xptr == R_NilValue) {
+    if (schema->dictionary != NULL) {
+      ArrowFree(schema->dictionary);
+      schema->dictionary = NULL;
+    }
+  } else {
+    int result;
+
+    if (schema->dictionary != NULL) {
+      result = ArrowSchemaAllocateDictionary(schema);
+      if (result != NANOARROW_OK) {
+        Rf_error("Error allocating schema$dictionary");
+      }
+    }
+
+    struct ArrowSchema* dictionary = schema_from_xptr(dictionary_xptr);
+    result = ArrowSchemaDeepCopy(dictionary, schema->dictionary);
+    if (result != NANOARROW_OK) {
+      Rf_error("Error copying schema$dictionary");
+    }
+  }
 }
