@@ -259,3 +259,54 @@ test_that("schema modify respects the validate flag", {
     "Error parsing schema->format"
   )
 })
+
+test_that("[[<- works for schema", {
+  schema <- infer_nanoarrow_schema(integer())
+  schema[["name"]] <- "a new name"
+  expect_identical(schema$name, "a new name")
+
+  schema <- infer_nanoarrow_schema(integer())
+  schema[[2]] <- "yet a new name"
+  expect_identical(schema$name, "yet a new name")
+
+  expect_error(
+    schema[["not_an_item"]] <- "something",
+    "Can't modify schema"
+  )
+
+  expect_error(
+    schema[[NA_character_]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    schema[[character()]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    schema[[NA_integer_]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    schema[[integer()]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    schema[[12]] <- "something",
+    "must be character"
+  )
+})
+
+test_that("$<- works for schema", {
+  schema <- infer_nanoarrow_schema(integer())
+  schema$name <- "a new name"
+  expect_identical(schema$name, "a new name")
+
+  expect_error(
+    schema$not_an_item <- "something",
+    "Can't modify schema"
+  )
+})

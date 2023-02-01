@@ -187,6 +187,28 @@ names.nanoarrow_schema <- function(x, ...) {
   nanoarrow_schema_proxy(x)[[i]]
 }
 
+#' @export
+`[[<-.nanoarrow_schema` <- function(x, i, value) {
+  if (is.numeric(i) && isTRUE(i %in% 1:6)) {
+    i <- names.nanoarrow_schema()[[i]]
+  }
+
+  if (is.character(i) && (length(i) == 1L) && !is.na(i)) {
+    new_values <- list(value)
+    names(new_values) <- i
+    return(nanoarrow_schema_modify(x, new_values))
+  }
+
+  stop("`i` must be character(1) or integer(1) %in% 1:6")
+}
+
+#' @export
+`$<-.nanoarrow_schema` <- function(x, i, value) {
+  new_values <- list(value)
+  names(new_values) <- i
+  nanoarrow_schema_modify(x, new_values)
+}
+
 nanoarrow_schema_formatted <- function(x, recursive = TRUE) {
   .Call(nanoarrow_c_schema_format, x, as.logical(recursive)[1])
 }
