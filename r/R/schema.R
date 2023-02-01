@@ -15,54 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-nanoarrow_schema_modify <- function(schema, new_values, validate = TRUE) {
-  schema <- as_nanoarrow_schema(schema)
-
-  if (length(new_values) == 0) {
-    return(schema)
-  }
-
-  # Make sure new_values has names to iterate over
-  new_names <- names(new_values)
-  if (is.null(new_names) || all(new_names == "", na.rm = TRUE)) {
-    stop("`new_values` must be named")
-  }
-
-  # Make a deep copy and modify it. Possibly not as efficient as it could be
-  # but it's unclear to what degree performance is an issue for R-level
-  # schema modification.
-  schema_deep_copy <- nanoarrow_allocate_schema()
-  nanoarrow_pointer_export(schema, schema_deep_copy)
-
-  for (i in seq_along(new_values)) {
-    nm <- new_names[i]
-    value <- new_values[[i]]
-
-    switch(
-      nm,
-      format = .Call(nanoarrow_c_set_format, as.character(value)),
-      name = {
-        if (!is.null(value)) {
-          value <- as.character(value)
-        }
-
-        .Call(nanoarrow_c_set_name, value)
-      },
-      flags = .Call(nanoarrow_c_schema_set_flags, as.integer(value)),
-      dictionary = {
-        if (!is.null(value)) {
-          value <- as_nanoarrow_schema(value)
-        }
-
-        .Call(nanoarrow_c_set_dictionary, value)
-      },
-      stop(sprintf("Attempt to modify unsupported schema component: '%s'", nm))
-    )
-  }
-
-  schema_deep_copy
-}
-
 #' Convert an object to a nanoarrow schema
 #'
 #' In nanoarrow a 'schema' refers to a `struct ArrowSchema` as defined in the
@@ -74,6 +26,8 @@ nanoarrow_schema_modify <- function(schema, new_values, validate = TRUE) {
 #' @param x An object to convert to a schema
 #' @param recursive Use `TRUE` to include a `children` member when parsing
 #'   schemas.
+#' @param new_values New schema component to assign
+#' @param validate Use `FALSE` to skip schema validation
 #' @param ... Passed to S3 methods
 #'
 #' @return An object of class 'nanoarrow_schema'
@@ -115,6 +69,68 @@ nanoarrow_schema_parse <- function(x, recursive = FALSE) {
   }
 
   result
+}
+
+#' @rdname as_nanoarrow_schema
+#' @export
+nanoarrow_schema_modify <- function(x, new_values, validate = TRUE) {
+  schema <- as_nanoarrow_schema(x)
+
+  if (length(new_values) == 0) {
+    return(schema)
+  }
+
+  # Make sure new_values has names to iterate over
+  new_names <- names(new_values)
+  if (is.null(new_names) || all(new_names == "", na.rm = TRUE)) {
+    stop("`new_values` must be named")
+  }
+
+  # Make a deep copy and modify it. Possibly not as efficient as it could be
+  # but it's unclear to what degree performance is an issue for R-level
+  # schema modification.
+  schema_deep_copy <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(schema, schema_deep_copy)
+
+  for (i in seq_along(new_values)) {
+    nm <- new_names[i]
+    value <- new_values[[i]]
+
+    switch(
+      nm,
+      format = .Call(
+        nanoarrow_c_schema_set_format,
+        schema_deep_copy,
+        as.character(value)
+      ),
+      name = {
+        if (!is.null(value)) {
+          value <- as.character(value)
+        }
+
+        .Call(nanoarrow_c_schema_set_name, schema_deep_copy, value)
+      },
+      flags = .Call(
+        nanoarrow_c_schema_set_flags,
+        schema_deep_copy,
+        as.integer(value)
+      ),
+      dictionary = {
+        if (!is.null(value)) {
+          value <- as_nanoarrow_schema(value)
+        }
+
+        .Call(nanoarrow_c_schema_set_dictionary, schema_deep_copy, value)
+      },
+      stop(sprintf("Can't modify schema[[%s]]: does not exist", deparse(nm)))
+    )
+  }
+
+  if (validate) {
+    nanoarrow_schema_parse(schema_deep_copy, recursive = FALSE)
+  }
+
+  schema_deep_copy
 }
 
 #' @importFrom utils str

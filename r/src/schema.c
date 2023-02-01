@@ -243,7 +243,7 @@ SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp) {
   return result_sexp;
 }
 
-void nanoarrow_c_schema_set_format(SEXP schema_mut_xptr, SEXP format_sexp) {
+SEXP nanoarrow_c_schema_set_format(SEXP schema_mut_xptr, SEXP format_sexp) {
   struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
 
   if (TYPEOF(format_sexp) != STRSXP || Rf_length(format_sexp) != 1) {
@@ -254,9 +254,11 @@ void nanoarrow_c_schema_set_format(SEXP schema_mut_xptr, SEXP format_sexp) {
   if (ArrowSchemaSetFormat(schema, format) != NANOARROW_OK) {
     Rf_error("Error setting schema$format");
   }
+
+  return R_NilValue;
 }
 
-void nanoarrow_c_schema_set_name(SEXP schema_mut_xptr, SEXP name_sexp) {
+SEXP nanoarrow_c_schema_set_name(SEXP schema_mut_xptr, SEXP name_sexp) {
   struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
   int result;
 
@@ -274,9 +276,11 @@ void nanoarrow_c_schema_set_name(SEXP schema_mut_xptr, SEXP name_sexp) {
   if (result != NANOARROW_OK) {
     Rf_error("Error setting schema$name");
   }
+
+  return R_NilValue;
 }
 
-void nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp) {
+SEXP nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp) {
   struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
 
   if (TYPEOF(flags_sexp) != INTSXP || Rf_length(flags_sexp) != 1) {
@@ -285,9 +289,11 @@ void nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp) {
 
   int flags = INTEGER(flags_sexp)[0];
   schema->flags = flags;
+
+  return R_NilValue;
 }
 
-void nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xptr) {
+SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xptr) {
   struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
 
   // If there's already a dictionary, make sure we release it
@@ -305,7 +311,7 @@ void nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xpt
   } else {
     int result;
 
-    if (schema->dictionary != NULL) {
+    if (schema->dictionary == NULL) {
       result = ArrowSchemaAllocateDictionary(schema);
       if (result != NANOARROW_OK) {
         Rf_error("Error allocating schema$dictionary");
@@ -318,4 +324,6 @@ void nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xpt
       Rf_error("Error copying schema$dictionary");
     }
   }
+
+  return R_NilValue;
 }

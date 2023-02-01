@@ -129,3 +129,133 @@ test_that("schema list interface works with metadata", {
     "POSIXlt"
   )
 })
+
+test_that("schema modify errors for invalid components", {
+  schema <- infer_nanoarrow_schema(integer())
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(1, 2, 3)),
+    "`new_values`"
+  )
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(not_an_item = NULL)),
+    "Can't modify schema"
+  )
+})
+
+test_that("schema modify does not copy if length(new_values) == 0", {
+  schema <- infer_nanoarrow_schema(integer())
+  expect_identical(
+    nanoarrow_pointer_addr_chr(nanoarrow_schema_modify(schema, list())),
+    nanoarrow_pointer_addr_chr(schema)
+  )
+})
+
+test_that("schema modify can modify format", {
+  schema <- infer_nanoarrow_schema(integer())
+
+  schema2 <- nanoarrow_schema_modify(schema, list(format = "I"))
+  expect_identical(schema2$format, "I")
+  expect_identical(schema2$name, schema$name)
+  expect_identical(schema2$flags, schema$flags)
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(format = NULL)),
+    "schema\\$format must be character"
+  )
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(format = character())),
+    "schema\\$format must be character"
+  )
+})
+
+test_that("schema modify can modify name", {
+  schema <- infer_nanoarrow_schema(integer())
+
+  schema2 <- nanoarrow_schema_modify(schema, list(name = "new_name"))
+  expect_identical(schema2$name, "new_name")
+  expect_identical(schema2$format, schema$format)
+  expect_identical(schema2$flags, schema$flags)
+
+  schema2 <- nanoarrow_schema_modify(schema, list(name = NULL))
+  expect_null(schema2$name)
+  expect_identical(schema2$format, schema$format)
+  expect_identical(schema2$flags, schema$flags)
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(name = character())),
+    "schema\\$name must be NULL or character"
+  )
+})
+
+test_that("schema modify can modify dictionary", {
+  schema_without_dictionary <- infer_nanoarrow_schema(integer())
+
+  # NULL -> NULL
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_dictionary,
+    list(dictionary = NULL)
+  )
+
+  expect_null(schema2$dictionary)
+  expect_identical(schema2$flags, schema_without_dictionary$flags)
+  expect_identical(schema2$format, schema_without_dictionary$format)
+  expect_identical(schema2$name, schema_without_dictionary$name)
+
+  # NULL -> non-null
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_dictionary,
+    list(dictionary = infer_nanoarrow_schema(integer()))
+  )
+
+  expect_identical(schema2$dictionary$format, "i")
+  expect_identical(schema2$flags, schema_without_dictionary$flags)
+  expect_identical(schema2$format, schema_without_dictionary$format)
+  expect_identical(schema2$name, schema_without_dictionary$name)
+
+  # non-null -> NULL
+  schema_with_dictionary <- schema2
+  schema2 <- nanoarrow_schema_modify(
+    schema_with_dictionary,
+    list(dictionary = NULL)
+  )
+
+  expect_null(schema2$dictionary)
+  expect_identical(schema2$flags, schema_with_dictionary$flags)
+  expect_identical(schema2$format, schema_with_dictionary$format)
+  expect_identical(schema2$name, schema_with_dictionary$name)
+
+  # non-null -> non-null
+  schema2 <- nanoarrow_schema_modify(
+    schema_with_dictionary,
+    list(dictionary = infer_nanoarrow_schema(character()))
+  )
+
+  expect_identical(schema2$dictionary$format, "u")
+  expect_identical(schema2$flags, schema_with_dictionary$flags)
+  expect_identical(schema2$format, schema_with_dictionary$format)
+  expect_identical(schema2$name, schema_with_dictionary$name)
+})
+
+test_that("schema modify respects the validate flag", {
+  schema <- infer_nanoarrow_schema(integer())
+
+  schema2 <- nanoarrow_schema_modify(
+    schema,
+    list(format = "totally invalid"),
+    validate = FALSE
+  )
+
+  expect_identical(schema2$format, "totally invalid")
+
+  expect_error(
+    nanoarrow_schema_modify(
+      schema,
+      list(format = "totally invalid"),
+      validate = TRUE
+    ),
+    "Error parsing schema->format"
+  )
+})

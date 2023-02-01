@@ -4,6 +4,7 @@
 \alias{as_nanoarrow_schema}
 \alias{infer_nanoarrow_schema}
 \alias{nanoarrow_schema_parse}
+\alias{nanoarrow_schema_modify}
 \title{Convert an object to a nanoarrow schema}
 \usage{
 as_nanoarrow_schema(x, ...)
@@ -11,6 +12,8 @@ as_nanoarrow_schema(x, ...)
 infer_nanoarrow_schema(x, ...)
 
 nanoarrow_schema_parse(x, recursive = FALSE)
+
+nanoarrow_schema_modify(x, new_values, validate = TRUE)
 }
 \arguments{
 \item{x}{An object to convert to a schema}
@@ -19,6 +22,10 @@ nanoarrow_schema_parse(x, recursive = FALSE)
 
 \item{recursive}{Use \code{TRUE} to include a \code{children} member when parsing
 schemas.}
+
+\item{new_values}{New schema component to assign}
+
+\item{validate}{Use \code{FALSE} to skip schema validation}
 }
 \value{
 An object of class 'nanoarrow_schema'
