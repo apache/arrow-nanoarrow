@@ -293,6 +293,79 @@ SEXP nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp) {
   return R_NilValue;
 }
 
+static void release_all_children(struct ArrowSchema* schema) {
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    if (schema->children[i]->release != NULL) {
+      schema->children[i]->release(schema->children[i]);
+    }
+  }
+}
+
+static void free_all_children(struct ArrowSchema* schema) {
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    if (schema->children[i] != NULL) {
+      ArrowFree(schema->children[i]);
+    }
+  }
+
+  if (schema->children != NULL) {
+    ArrowFree(schema->children);
+  }
+
+  schema->n_children = 0;
+}
+
+SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
+
+  release_all_children(schema);
+
+  if (children_sexp == R_NilValue) {
+    free_all_children(schema);
+    return R_NilValue;
+  }
+
+  int result;
+  if (Rf_xlength(children_sexp) != schema->n_children) {
+    free_all_children(schema);
+    result = ArrowSchemaAllocateChildren(schema, Rf_xlength(children_sexp));
+    if (result != NANOARROW_OK) {
+      Rf_error("Error allocating schema$children of size %ld",
+               (long)Rf_xlength(children_sexp));
+    }
+  }
+
+  SEXP children_names = Rf_getAttrib(children_sexp, R_NamesSymbol);
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    struct ArrowSchema* child = schema_from_xptr(VECTOR_ELT(children_sexp, i));
+    result = ArrowSchemaDeepCopy(child, schema->children[i]);
+    if (result != NANOARROW_OK) {
+      Rf_error("Error copying new_values$children[[%ld]]", (long)i);
+    }
+
+    // Names come from names(children) so that we can do
+    // names(children)[3] <- "something else"
+    // Otherwise we have to do a lot of copying to update child names
+    if (children_names != R_NilValue) {
+      SEXP name_sexp = STRING_ELT(children_names, i);
+      if (name_sexp == NA_STRING) {
+        result = ArrowSchemaSetName(schema->children[i], "");
+      } else {
+        const void* vmax = vmaxget();
+        const char* name = Rf_translateCharUTF8(STRING_ELT(children_names, i));
+        result = ArrowSchemaSetName(schema->children[i], name);
+        vmaxset(vmax);
+      }
+
+      if (result != NANOARROW_OK) {
+        Rf_error("Error copying new_values$children[[%ld]]$name", (long)i);
+      }
+    }
+  }
+
+  return R_NilValue;
+}
+
 SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xptr) {
   struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
 
