@@ -190,6 +190,20 @@ test_that("schema modify can modify name", {
   )
 })
 
+test_that("schema modify can modify flags", {
+  schema <- infer_nanoarrow_schema(integer())
+
+  schema2 <- nanoarrow_schema_modify(schema, list(flags = 1))
+  expect_identical(schema2$flags, 1L)
+  expect_identical(schema2$format, schema$format)
+  expect_identical(schema2$name, schema$name)
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(flags = integer())),
+    "schema\\$flags must be integer"
+  )
+})
+
 test_that("schema modify can modify children", {
   schema_without_children <- infer_nanoarrow_schema(
     new_data_frame(setNames(list(), character()), nrow = 0)
