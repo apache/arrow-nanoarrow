@@ -75,6 +75,14 @@ test_that("nanoarrow_schema_parse() works", {
   )
 })
 
+test_that("nanoarrow_schema_parse() works for extension types", {
+  ext_info <- nanoarrow_schema_parse(arrow::vctrs_extension_type(integer()))
+  expect_identical(ext_info$type, "int32")
+  expect_identical(ext_info$storage_type, "int32")
+  expect_identical(ext_info$extension_name, "arrow.r.vctrs")
+  expect_identical(unserialize(ext_info$extension_metadata), integer())
+})
+
 test_that("schema list interface works for non-nested types", {
   schema <- infer_nanoarrow_schema(1:10)
   expect_identical(length(schema), 6L)
