@@ -35,7 +35,7 @@ repository:
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git
 cd arrow-nanoarrow/examples/vendored-ipc
-mkdir src/nanoarrow
+mkdir -p src/nanoarrow
 cp ../../dist/nanoarrow.h src/nanoarrow/nanoarrow.h
 cp ../../dist/nanoarrow.c src/nanoarrow/nanoarrow.c
 cp ../../dist/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.h
@@ -54,16 +54,20 @@ git clone https://github.com/apache/arrow-nanoarrow.git
 cd arrow-nanoarrow/examples/vendored-ipc
 
 # First, build and install nanoarrow
-mkdir build && cd build
+mkdir build
+pushd build
 cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
 cmake --build .
 cmake --install . --prefix=../src/nanoarrow
+popd
 
 # Then, build and install nanoarrow_ipc
-mkdir ../build_ipc && cd ../build_ipc
+mkdir build_ipc
+pushd build_ipc
 cmake ../../../extensions/nanoarrow_ipc -DNANOARROW_IPC_BUNDLE=ON
 cmake --build .
 cmake --install . --prefix=../src/nanoarrow
+popd
 ```
 
 Then you can build/link the application/library using the build tool of your choosing:
