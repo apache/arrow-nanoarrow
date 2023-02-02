@@ -80,3 +80,23 @@ jobs:
           cmake --build .
 
           cat ../schema-valid.arrows | ./example_cmake_ipc_app
+
+      - name: Ipc Vendored Example
+        run: |
+          cd examples/vendored-ipc
+          mkdir build && cd build
+          cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
+          cmake --build .
+          cmake --install . --prefix=../src/nanoarrow
+          mkdir ../build_ipc && cd ../build_ipc
+          cmake ../../../extensions/nanoarrow_ipc -DNANOARROW_IPC_BUNDLE=ON
+          cmake --build .
+          cmake --install . --prefix=../src/nanoarrow
+
+          cd ../src
+
+          gcc -c library.c nanoarrow/nanoarrow.c nanoarrow/flatcc.c nanoarrow/nanoarrow_ipc.c -I./nanoarrow -I./nanoarrow/flatcc
+          ar rcs libexample_vendored_ipc_library.a library.o nanoarrow.o nanoarrow_ipc.o flatcc.o
+          gcc -o example_vendored_ipc_app app.c libexample_vendored_ipc_library.a
+
+          cat ../schema-valid.arrows | ./example_vendored_ipc_app
