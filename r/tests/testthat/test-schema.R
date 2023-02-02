@@ -212,6 +212,59 @@ test_that("schema modify can modify flags", {
   )
 })
 
+test_that("schema modify can modify metadata", {
+  schema <- infer_nanoarrow_schema(integer())
+
+  schema2 <- nanoarrow_schema_modify(schema, list(metadata = list()))
+  expect_identical(schema2$metadata, list())
+  expect_identical(schema2$format, schema$format)
+
+  schema3 <- nanoarrow_schema_modify(schema, list(metadata = NULL))
+  expect_identical(schema3$metadata, list())
+  expect_identical(schema3$format, schema$format)
+
+  schema4 <- nanoarrow_schema_modify(schema, list(metadata = list(key = "value")))
+  expect_identical(schema4$metadata, list(key = "value"))
+  expect_identical(schema4$format, schema$format)
+
+  schema5 <- nanoarrow_schema_modify(
+    schema,
+    list(metadata = list(new_key = charToRaw("new value")))
+  )
+  expect_identical(schema5$metadata, list(new_key = "new value"))
+  expect_identical(schema5$format, schema$format)
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(metadata = list(1))),
+    "schema\\$metadata must be named"
+  )
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(metadata = setNames(list(1, 2), c("", "")))),
+    "must be named"
+  )
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(metadata = setNames(list(1), NA_character_))),
+    "must be named"
+  )
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(metadata = list(name = NULL))),
+    "must be character\\(1\\) or raw"
+  )
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(metadata = list(name = character()))),
+    "must be character\\(1\\) or raw"
+  )
+
+  expect_error(
+    nanoarrow_schema_modify(schema, list(metadata = list(name = NA_character_))),
+    "must not be NA_character_"
+  )
+})
+
 test_that("schema modify can modify children", {
   schema_without_children <- infer_nanoarrow_schema(
     new_data_frame(setNames(list(), character()), nrow = 0)
@@ -447,4 +500,17 @@ test_that("<- assignment works for schema$children", {
   expect_named(schema$children, c("col1_new", "col2"))
   expect_identical(schema$children$col1$format, "b")
   expect_identical(schema$children$col1$name, "col1_new")
+})
+
+test_that("<- assignment works for schema$metadata", {
+  schema <- infer_nanoarrow_schema(integer())
+
+  schema$metadata$key <- "value"
+  expect_identical(schema$metadata$key, "value")
+
+  names(schema$metadata)[1] <- "new_key"
+  expect_identical(schema$metadata$new_key, "value")
+
+  schema$metadata$new_key <- "new value"
+  expect_identical(schema$metadata$new_key, "new value")
 })

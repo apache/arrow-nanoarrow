@@ -115,6 +115,11 @@ nanoarrow_schema_modify <- function(x, new_values, validate = TRUE) {
         schema_deep_copy,
         as.integer(value)
       ),
+      metadata = .Call(
+        nanoarrow_c_schema_set_metadata,
+        schema_deep_copy,
+        as.list(value)
+      ),
       children = {
         if (!is.null(value)) {
           value <- lapply(value, as_nanoarrow_schema)

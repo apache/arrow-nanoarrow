@@ -280,6 +280,103 @@ SEXP nanoarrow_c_schema_set_name(SEXP schema_mut_xptr, SEXP name_sexp) {
   return R_NilValue;
 }
 
+static void finalize_buffer_xptr(SEXP buffer_xptr) {
+  struct ArrowBuffer* buffer = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
+  if (buffer != NULL) {
+    ArrowBufferReset(buffer);
+    ArrowFree(buffer);
+  }
+}
+
+static SEXP buffer_owning_xptr() {
+  struct ArrowBuffer* buffer =
+      (struct ArrowBuffer*)ArrowMalloc(sizeof(struct ArrowBuffer));
+  if (buffer == NULL) {
+    Rf_error("Failed to allocate ArrowBuffer");
+  }
+
+  SEXP buffer_xptr = PROTECT(R_MakeExternalPtr(buffer, R_NilValue, R_NilValue));
+  R_RegisterCFinalizer(buffer_xptr, &finalize_buffer_xptr);
+  UNPROTECT(1);
+  return buffer_xptr;
+}
+
+SEXP nanoarrow_c_schema_set_metadata(SEXP schema_mut_xptr, SEXP metadata_sexp) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
+  int result;
+
+  if (Rf_xlength(metadata_sexp) == 0) {
+    result = ArrowSchemaSetMetadata(schema, NULL);
+    if (result != NANOARROW_OK) {
+      Rf_error("Failed to set schema$metadata");
+    }
+
+    return R_NilValue;
+  }
+
+  // We need this to ensure buffer gets cleaned up amongst the potential longjmp
+  // possibilities below.
+  SEXP buffer_xptr = PROTECT(buffer_owning_xptr());
+  struct ArrowBuffer* buffer = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
+
+  result = ArrowMetadataBuilderInit(buffer, NULL);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowMetadataBuilderInit() failed");
+  }
+
+  SEXP metadata_names = Rf_getAttrib(metadata_sexp, R_NamesSymbol);
+  if (metadata_names == R_NilValue) {
+    Rf_error("schema$metadata must be named");
+  }
+
+  struct ArrowStringView key;
+  struct ArrowStringView value;
+
+  for (R_xlen_t i = 0; i < Rf_xlength(metadata_sexp); i++) {
+    SEXP name_sexp = STRING_ELT(metadata_names, i);
+    if (name_sexp == NA_STRING) {
+      Rf_error("schema$metadata[[%ld]] must be named", (long)i + 1);
+    }
+
+    const void* vmax = vmaxget();
+    key = ArrowCharView(Rf_translateCharUTF8(name_sexp));
+    if (key.size_bytes == 0) {
+      Rf_error("schema$metadata[[%ld]] must be named", (long)i + 1);
+    }
+
+    SEXP value_sexp = VECTOR_ELT(metadata_sexp, i);
+    if (TYPEOF(value_sexp) == STRSXP && Rf_xlength(value_sexp) == 1) {
+      SEXP value_chr = STRING_ELT(value_sexp, 0);
+      if (value_chr == NA_STRING) {
+        Rf_error("schema$metadata[[%ld]] must not be NA_character_", (long)i + 1);
+      }
+
+      value = ArrowCharView(Rf_translateCharUTF8(value_chr));
+    } else if (TYPEOF(value_sexp) == RAWSXP) {
+      value.data = (const char*)RAW(value_sexp);
+      value.size_bytes = Rf_xlength(value_sexp);
+    } else {
+      Rf_error("schema$metadata[[%ld]] must be character(1) or raw()", (long)i + 1);
+    }
+
+    result = ArrowMetadataBuilderAppend(buffer, key, value);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowMetadataBuilderAppend() failed");
+    }
+
+    vmaxset(vmax);
+  }
+
+  result = ArrowSchemaSetMetadata(schema, (const char*)buffer->data);
+  ArrowBufferReset(buffer);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaSetMetadata() failed");
+  }
+
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
 SEXP nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp) {
   struct ArrowSchema* schema = schema_from_xptr(schema_mut_xptr);
 
