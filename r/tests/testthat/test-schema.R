@@ -412,3 +412,17 @@ test_that("$<- works for schema", {
     "Can't modify schema"
   )
 })
+
+test_that("<- assignment works for schema$children", {
+  schema <- infer_nanoarrow_schema(data.frame(col1 = integer(), col2 = character()))
+
+  schema$children$col1 <- infer_nanoarrow_schema(logical())
+  expect_named(schema$children, c("col1", "col2"))
+  expect_identical(schema$children$col1$format, "b")
+  expect_identical(schema$children$col1$name, "col1")
+
+  names(schema$children)[1] <- "col1_new"
+  expect_named(schema$children, c("col1_new", "col2"))
+  expect_identical(schema$children$col1$format, "b")
+  expect_identical(schema$children$col1$name, "col1_new")
+})
