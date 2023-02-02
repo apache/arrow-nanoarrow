@@ -64,7 +64,7 @@ nanoarrow_schema_parse <- function(x, recursive = FALSE) {
   parsed_null <- vapply(parsed, is.null, logical(1))
   result <- parsed[!parsed_null]
 
-  if (recursive && !is.null(x$children)) {
+  if (recursive && length(x$children) > 0) {
     result$children <- lapply(x$children, nanoarrow_schema_parse, TRUE)
   }
 

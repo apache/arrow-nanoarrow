@@ -116,7 +116,7 @@ SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr) {
     SET_VECTOR_ELT(result, 4, children_sexp);
     UNPROTECT(2);
   } else {
-    SET_VECTOR_ELT(result, 4, R_NilValue);
+    SET_VECTOR_ELT(result, 4, Rf_allocVector(VECSXP, schema->n_children));
   }
 
   if (schema->dictionary != NULL) {

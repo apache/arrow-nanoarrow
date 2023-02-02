@@ -94,7 +94,7 @@ test_that("schema list interface works for non-nested types", {
   expect_identical(schema$name, "")
   expect_identical(schema$metadata, list())
   expect_identical(schema$flags, 2L)
-  expect_identical(schema$children, NULL)
+  expect_identical(schema$children, list())
   expect_identical(schema$dictionary, NULL)
 })
 
@@ -277,7 +277,7 @@ test_that("schema modify can modify children", {
     schema_without_children,
     list(children = NULL)
   )
-  expect_null(schema2$children)
+  expect_identical(schema2$children, list())
   expect_identical(schema2$format, schema_without_children$format)
 
   # NULL children to zero-size list() children
@@ -285,7 +285,7 @@ test_that("schema modify can modify children", {
     schema_without_children,
     list(children = list())
   )
-  expect_null(schema2$children)
+  expect_identical(schema2$children, list())
   expect_identical(schema2$format, schema_without_children$format)
 
   # with unnamed child list
@@ -336,7 +336,7 @@ test_that("schema modify can modify children", {
     schema_with_children,
     list(children = NULL)
   )
-  expect_null(schema2$children)
+  expect_identical(schema2$children, list())
   expect_identical(schema2$format, schema_with_children$format)
 
   # replace identical number of children
