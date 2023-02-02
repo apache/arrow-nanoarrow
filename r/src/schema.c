@@ -305,11 +305,13 @@ static void free_all_children(struct ArrowSchema* schema) {
   for (int64_t i = 0; i < schema->n_children; i++) {
     if (schema->children[i] != NULL) {
       ArrowFree(schema->children[i]);
+      schema->children[i] = NULL;
     }
   }
 
   if (schema->children != NULL) {
     ArrowFree(schema->children);
+    schema->children = NULL;
   }
 
   schema->n_children = 0;
@@ -320,7 +322,7 @@ SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp) {
 
   release_all_children(schema);
 
-  if (children_sexp == R_NilValue) {
+  if (Rf_xlength(children_sexp) == 0) {
     free_all_children(schema);
     return R_NilValue;
   }
@@ -335,7 +337,13 @@ SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp) {
     }
   }
 
+  // Names come from names(children) so that we can do
+  // names(schema$children)[3] <- "something else" or
+  // schema$children[[3]] <- some_unrelated_schema. On the flip
+  // side, this makes schema$children[[3]]$name <- "something else"
+  // have no effect, which is possibly confusing.
   SEXP children_names = Rf_getAttrib(children_sexp, R_NamesSymbol);
+
   for (int64_t i = 0; i < schema->n_children; i++) {
     struct ArrowSchema* child = schema_from_xptr(VECTOR_ELT(children_sexp, i));
     result = ArrowSchemaDeepCopy(child, schema->children[i]);
@@ -343,23 +351,23 @@ SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp) {
       Rf_error("Error copying new_values$children[[%ld]]", (long)i);
     }
 
-    // Names come from names(children) so that we can do
-    // names(children)[3] <- "something else"
-    // Otherwise we have to do a lot of copying to update child names
     if (children_names != R_NilValue) {
       SEXP name_sexp = STRING_ELT(children_names, i);
+
       if (name_sexp == NA_STRING) {
         result = ArrowSchemaSetName(schema->children[i], "");
       } else {
         const void* vmax = vmaxget();
-        const char* name = Rf_translateCharUTF8(STRING_ELT(children_names, i));
+        const char* name = Rf_translateCharUTF8(name_sexp);
         result = ArrowSchemaSetName(schema->children[i], name);
         vmaxset(vmax);
       }
+    } else {
+      result = ArrowSchemaSetName(schema->children[i], "");
+    }
 
-      if (result != NANOARROW_OK) {
-        Rf_error("Error copying new_values$children[[%ld]]$name", (long)i);
-      }
+    if (result != NANOARROW_OK) {
+      Rf_error("Error copying new_values$children[[%ld]]$name", (long)i);
     }
   }
 

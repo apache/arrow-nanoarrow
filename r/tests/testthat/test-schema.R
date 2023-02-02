@@ -190,6 +190,108 @@ test_that("schema modify can modify name", {
   )
 })
 
+test_that("schema modify can modify children", {
+  schema_without_children <- infer_nanoarrow_schema(
+    new_data_frame(setNames(list(), character()), nrow = 0)
+  )
+  child_to_be <- schema_without_children
+  child_to_be$name <- "should not appear"
+
+  # NULL children to NULL children
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_children,
+    list(children = NULL)
+  )
+  expect_null(schema2$children)
+  expect_identical(schema2$format, schema_without_children$format)
+
+  # NULL children to zero-size list() children
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_children,
+    list(children = list())
+  )
+  expect_null(schema2$children)
+  expect_identical(schema2$format, schema_without_children$format)
+
+  # with unnamed child list
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_children,
+    list(children = list(child_to_be))
+  )
+  expect_length(schema2$children, 1)
+  expect_named(schema2$children, "")
+  expect_identical(schema2$format, schema_without_children$format)
+  expect_identical(schema2$children[[1]]$format, child_to_be$format)
+
+  # with another type of unnamed child list
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_children,
+    list(children = setNames(list(child_to_be), ""))
+  )
+  expect_length(schema2$children, 1)
+  expect_named(schema2$children, "")
+  expect_identical(schema2$format, schema_without_children$format)
+  expect_identical(schema2$children[[1]]$format, child_to_be$format)
+
+  # with oddly unnamed child list
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_children,
+    list(children = setNames(list(child_to_be), NA_character_))
+  )
+  expect_length(schema2$children, 1)
+  expect_named(schema2$children, "")
+  expect_identical(schema2$format, schema_without_children$format)
+  expect_identical(schema2$children[[1]]$format, child_to_be$format)
+
+  # with a normal named child list
+  schema2 <- nanoarrow_schema_modify(
+    schema_without_children,
+    list(children = list("a new name" = child_to_be))
+  )
+  expect_length(schema2$children, 1)
+  expect_named(schema2$children, "a new name")
+  expect_identical(schema2$format, schema_without_children$format)
+  expect_identical(schema2$children[[1]]$format, child_to_be$format)
+
+
+  schema_with_children <- infer_nanoarrow_schema(data.frame(existing_name = character()))
+
+  # some children to NULL children
+  schema2 <- nanoarrow_schema_modify(
+    schema_with_children,
+    list(children = NULL)
+  )
+  expect_null(schema2$children)
+  expect_identical(schema2$format, schema_with_children$format)
+
+  # replace identical number of children
+  schema2 <- nanoarrow_schema_modify(
+    schema_with_children,
+    list(children = list("a new name" = child_to_be))
+  )
+  expect_length(schema2$children, 1)
+  expect_named(schema2$children, "a new name")
+  expect_identical(schema2$format, schema_with_children$format)
+  expect_identical(schema2$children[[1]]$format, child_to_be$format)
+
+  # replace with more children
+  another_child_to_be <- infer_nanoarrow_schema(logical())
+  schema2 <- nanoarrow_schema_modify(
+    schema_with_children,
+    list(
+      children = list(
+        "a new name" = child_to_be,
+        "another new name" = another_child_to_be
+      )
+    )
+  )
+  expect_length(schema2$children, 2)
+  expect_named(schema2$children, c("a new name", "another new name"))
+  expect_identical(schema2$format, schema_with_children$format)
+  expect_identical(schema2$children[[1]]$format, child_to_be$format)
+  expect_identical(schema2$children[[2]]$format, another_child_to_be$format)
+})
+
 test_that("schema modify can modify dictionary", {
   schema_without_dictionary <- infer_nanoarrow_schema(integer())
 

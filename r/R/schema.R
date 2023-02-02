@@ -115,6 +115,13 @@ nanoarrow_schema_modify <- function(x, new_values, validate = TRUE) {
         schema_deep_copy,
         as.integer(value)
       ),
+      children = {
+        if (!is.null(value)) {
+          value <- lapply(value, as_nanoarrow_schema)
+        }
+
+        .Call(nanoarrow_c_schema_set_children, schema_deep_copy, value)
+      },
       dictionary = {
         if (!is.null(value)) {
           value <- as_nanoarrow_schema(value)
