@@ -82,6 +82,14 @@ test_that("struct constructor passes along children", {
   expect_identical(schema$children[[1]]$format, "i")
 })
 
+test_that("sparse and dense unions can be created", {
+  schema <- na_sparse_union(list(na_int32(), na_string()))
+  expect_identical(nanoarrow_schema_parse(schema)$union_type_ids, c(0L, 1L))
+
+  schema <- na_dense_union(list(na_int32(), na_string()))
+  expect_identical(nanoarrow_schema_parse(schema)$union_type_ids, c(0L, 1L))
+})
+
 test_that("list constructors assign the correct child type", {
   schema <- na_list(na_int32())
   expect_identical(schema$format, "+l")

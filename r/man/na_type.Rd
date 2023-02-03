@@ -32,6 +32,8 @@
 \alias{na_decimal128}
 \alias{na_decimal256}
 \alias{na_struct}
+\alias{na_sparse_union}
+\alias{na_dense_union}
 \alias{na_list}
 \alias{na_large_list}
 \alias{na_fixed_size_list}
@@ -118,6 +120,10 @@ na_decimal128(precision, scale, nullable = TRUE)
 na_decimal256(precision, scale, nullable = TRUE)
 
 na_struct(column_types = list(), nullable = TRUE)
+
+na_sparse_union(column_types = list())
+
+na_dense_union(column_types = list())
 
 na_list(item_type, nullable = TRUE)
 

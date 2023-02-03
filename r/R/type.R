@@ -313,6 +313,22 @@ na_struct <- function(column_types = list(), nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
+na_sparse_union <- function(column_types = list()) {
+  schema <- na_struct(column_types)
+  schema$format <- paste0("+us:", paste(seq_along(schema$children) - 1L, collapse = ","))
+  schema
+}
+
+#' @rdname na_type
+#' @export
+na_dense_union <- function(column_types = list()) {
+  schema <- na_struct(column_types)
+  schema$format <- paste0("+ud:", paste(seq_along(schema$children) - 1L, collapse = ","))
+  schema
+}
+
+#' @rdname na_type
+#' @export
 na_list <- function(item_type, nullable = TRUE) {
   schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LIST, isTRUE(nullable))
   schema$children[[1]] <- item_type
