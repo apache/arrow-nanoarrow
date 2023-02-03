@@ -44,6 +44,10 @@
 #' @return A [nanoarrow_schema][as_nanoarrow_schema]
 #' @export
 #'
+#' @examples
+#' na_int32()
+#' na_struct(list(col1 = na_int32()))
+#'
 na_type <- function(type_name, byte_width = NULL, unit = NULL, timezone = NULL,
                     column_types = NULL, item_type = NULL, key_type = NULL,
                     value_type = NULL, index_type = NULL, ordered = NULL,
@@ -181,7 +185,12 @@ na_large_binary <- function(nullable = TRUE) {
 #' @rdname na_type
 #' @export
 na_fixed_size_binary <- function(byte_width, nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$FIXED_SIZE_BINARY, isTRUE(nullable))
+  .Call(
+    nanoarrow_c_schema_init_fixed_size,
+    NANOARROW_TYPE$FIXED_SIZE_BINARY,
+    as.integer(byte_width)[1],
+    isTRUE(nullable)
+  )
 }
 
 #' @rdname na_type
@@ -273,43 +282,71 @@ na_timestamp <- function(unit = c("ms", "s", "us", "ns"), timezone = "", nullabl
 #' @rdname na_type
 #' @export
 na_decimal128 <- function(precision, scale, nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$DECIMAL128, isTRUE(nullable))
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL128,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
 }
 
 #' @rdname na_type
 #' @export
 na_decimal256 <- function(precision, scale, nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$DECIMAL256, isTRUE(nullable))
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL256,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
 }
 
 #' @rdname na_type
 #' @export
 na_struct <- function(column_types = list(), nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$STRUCT, isTRUE(nullable))
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$STRUCT, isTRUE(nullable))
+  schema$children <- column_types
+  schema
 }
 
 #' @rdname na_type
 #' @export
 na_list <- function(item_type, nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LIST, isTRUE(nullable))
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LIST, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
 }
 
 #' @rdname na_type
 #' @export
 na_large_list <- function(item_type, nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LARGE_LIST, isTRUE(nullable))
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LARGE_LIST, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
 }
 
 #' @rdname na_type
 #' @export
 na_fixed_size_list <- function(item_type, list_size, nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$FIXED_SIZE_LIST, isTRUE(nullable))
+  schema <- .Call(
+    nanoarrow_c_schema_init_fixed_size,
+    NANOARROW_TYPE$FIXED_SIZE_LIST,
+    as.integer(list_size)[1],
+    isTRUE(nullable)
+  )
+  schema$children[[1]] <- item_type
+  schema
 }
 
 #' @rdname na_type
 #' @export
 na_map <- function(key_type, item_type, keys_sorted = FALSE, nullable = TRUE) {
-  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$MAP, isTRUE(nullable))
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$MAP, isTRUE(nullable))
+  schema$children[[1]]$children[[1]] <- key_type
+  schema$children[[1]]$children[[2]] <- item_type
+  schema
 }
 
 #' @rdname na_type

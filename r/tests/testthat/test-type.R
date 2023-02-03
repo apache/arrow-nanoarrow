@@ -25,3 +25,99 @@ test_that("type constructors for parameter-free types work", {
     expect_identical(na_type(!!type_name, nullable = FALSE)$flags, 0L)
   }
 })
+
+test_that("non-logical nullable values do not crash", {
+  expect_identical(na_na(nullable = NULL)$flags, 0L)
+  expect_identical(na_time32(nullable = NULL)$flags, 0L)
+  expect_identical(na_fixed_size_binary(1, nullable = NULL)$flags, 0L)
+  expect_identical(na_decimal128(1, 1, nullable = NULL)$flags, 0L)
+})
+
+test_that("timestamp type passes along timezone parameter", {
+  schema <- na_timestamp(timezone = "UTC")
+  expect_identical(nanoarrow_schema_parse(schema)$timezone, "UTC")
+
+  expect_error(
+    na_timestamp(timezone = NULL),
+    "must be character"
+  )
+
+  expect_error(
+    na_timestamp(timezone = NA_character_),
+    "must be character"
+  )
+
+  expect_error(
+    na_timestamp(timezone = character()),
+    "must be character"
+  )
+})
+
+test_that("decimal types pass along precision and scale", {
+  schema <- na_decimal128(12, 10)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 12L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 10L)
+
+  schema <- na_decimal256(12, 10)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 12L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 10L)
+})
+
+test_that("fixed-size binary passes along fixed-size parameter", {
+  schema <- na_fixed_size_binary(123)
+  expect_identical(nanoarrow_schema_parse(schema)$fixed_size, 123L)
+})
+
+test_that("struct constructor passes along children", {
+  schema <- na_struct(list(col_name = na_int32()))
+  expect_identical(schema$format, "+s")
+  expect_named(schema$children, "col_name")
+  expect_identical(schema$children[[1]]$format, "i")
+})
+
+test_that("struct constructor passes along children", {
+  schema <- na_struct(list(col_name = na_int32()))
+  expect_identical(schema$format, "+s")
+  expect_named(schema$children, "col_name")
+  expect_identical(schema$children[[1]]$format, "i")
+})
+
+test_that("list constructors assign the correct child type", {
+  schema <- na_list(na_int32())
+  expect_identical(schema$format, "+l")
+  expect_named(schema$children, "item")
+  expect_identical(schema$children[[1]]$format, "i")
+
+  schema <- na_large_list(na_int32())
+  expect_identical(schema$format, "+L")
+  expect_named(schema$children, "item")
+  expect_identical(schema$children[[1]]$format, "i")
+
+  schema <- na_fixed_size_list(na_int32(), 123)
+  expect_identical(schema$format, "+w:123")
+  expect_named(schema$children, "item")
+  expect_identical(schema$children[[1]]$format, "i")
+})
+
+test_that("map constructor assigns the correct key and value types", {
+  schema <- na_map(na_int32(), na_int64())
+  expect_named(schema$children, "entries")
+  expect_named(schema$children$entries$children, c("key", "value"))
+  expect_identical(schema$children$entries$children$key$format, "i")
+  expect_identical(schema$children$entries$children$value$format, "l")
+})
+
+test_that("dictionary types can be created", {
+  schema <- na_dictionary(na_string())
+  expect_identical(schema$format, "i")
+  expect_identical(schema$dictionary$format, "u")
+})
+
+test_that("extension types can be created", {
+  schema <- na_extension(na_int32(), "ext_name", "ext_meta")
+  expect_identical(nanoarrow_schema_parse(schema)$extension_name, "ext_name")
+  expect_identical(
+    nanoarrow_schema_parse(schema)$extension_metadata,
+    charToRaw("ext_meta")
+  )
+})

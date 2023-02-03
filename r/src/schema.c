@@ -70,7 +70,51 @@ SEXP nanoarrow_c_schema_init_date_time(SEXP type_id_sexp, SEXP time_unit_sexp,
   ArrowSchemaInit(schema);
   int result = ArrowSchemaSetTypeDateTime(schema, type_id, time_unit, timezone);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowSchemaInitFromType() failed");
+    Rf_error("ArrowSchemaSetTypeDateTime() failed");
+  }
+
+  if (!LOGICAL(nullable_sexp)[0]) {
+    schema->flags &= ~ARROW_FLAG_NULLABLE;
+  }
+
+  UNPROTECT(1);
+  return schema_xptr;
+}
+
+SEXP nanoarrow_c_schema_init_decimal(SEXP type_id_sexp, SEXP precision_sexp,
+                                     SEXP scale_sexp, SEXP nullable_sexp) {
+  int type_id = INTEGER(type_id_sexp)[0];
+  int precision = INTEGER(precision_sexp)[0];
+  int scale = INTEGER(scale_sexp)[0];
+
+  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  ArrowSchemaInit(schema);
+  int result = ArrowSchemaSetTypeDecimal(schema, type_id, precision, scale);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaSetTypeDecimal() failed");
+  }
+
+  if (!LOGICAL(nullable_sexp)[0]) {
+    schema->flags &= ~ARROW_FLAG_NULLABLE;
+  }
+
+  UNPROTECT(1);
+  return schema_xptr;
+}
+
+SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp, SEXP nullable_sexp) {
+  int type_id = INTEGER(type_id_sexp)[0];
+  int fixed_size = INTEGER(fixed_size_sexp)[0];
+
+  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  ArrowSchemaInit(schema);
+  int result = ArrowSchemaSetTypeFixedSize(schema, type_id, fixed_size);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaSetTypeFixedSize() failed");
   }
 
   if (!LOGICAL(nullable_sexp)[0]) {

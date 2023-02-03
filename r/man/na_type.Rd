@@ -193,3 +193,8 @@ constructors to create these objects in a readable way. Use \code{\link[=na_type
 construct types based on the constructor name, which is also the name that
 prints/is returned by \code{\link[=nanoarrow_schema_parse]{nanoarrow_schema_parse()}}.
 }
+\examples{
+na_int32()
+na_struct(list(col1 = na_int32()))
+
+}

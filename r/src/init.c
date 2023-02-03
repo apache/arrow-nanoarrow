@@ -53,6 +53,8 @@ extern SEXP nanoarrow_c_export_schema(SEXP schema_xptr, SEXP ptr_dst);
 extern SEXP nanoarrow_c_export_array(SEXP array_xptr, SEXP ptr_dst);
 extern SEXP nanoarrow_c_schema_init(SEXP type_id_sexp, SEXP nullable_sexp);
 extern SEXP nanoarrow_c_schema_init_date_time(SEXP type_id_sexp, SEXP time_unit_sexp, SEXP timezone_sexp, SEXP nullable_sexp);
+extern SEXP nanoarrow_c_schema_init_decimal(SEXP type_id_sexp, SEXP precision_sexp, SEXP scale_sexp, SEXP nullable_sexp);
+extern SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp, SEXP nullable_sexp);
 extern SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr);
 extern SEXP nanoarrow_c_schema_parse(SEXP schema_xptr);
 extern SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp);
@@ -96,6 +98,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_export_array", (DL_FUNC)&nanoarrow_c_export_array, 2},
     {"nanoarrow_c_schema_init", (DL_FUNC)&nanoarrow_c_schema_init, 2},
     {"nanoarrow_c_schema_init_date_time", (DL_FUNC)&nanoarrow_c_schema_init_date_time, 4},
+    {"nanoarrow_c_schema_init_decimal", (DL_FUNC)&nanoarrow_c_schema_init_decimal, 4},
+    {"nanoarrow_c_schema_init_fixed_size", (DL_FUNC)&nanoarrow_c_schema_init_fixed_size, 3},
     {"nanoarrow_c_schema_to_list", (DL_FUNC)&nanoarrow_c_schema_to_list, 1},
     {"nanoarrow_c_schema_parse", (DL_FUNC)&nanoarrow_c_schema_parse, 1},
     {"nanoarrow_c_schema_format", (DL_FUNC)&nanoarrow_c_schema_format, 2},
