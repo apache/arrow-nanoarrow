@@ -25,6 +25,9 @@
 \alias{na_time32}
 \alias{na_time64}
 \alias{na_duration}
+\alias{na_interval_months}
+\alias{na_interval_day_time}
+\alias{na_interval_month_day_nano}
 \alias{na_timestamp}
 \alias{na_decimal128}
 \alias{na_decimal256}
@@ -100,13 +103,19 @@ na_time32(unit = c("ms", "s"), nullable = TRUE)
 
 na_time64(unit = c("ns", "us"), nullable = TRUE)
 
-na_duration(unit = c("s", "ms", "us", "ns"), nullable = TRUE)
+na_duration(unit = c("ms", "s", "us", "ns"), nullable = TRUE)
 
-na_timestamp(unit = c("s", "ms", "us", "ns"), timezone = "", nullable = TRUE)
+na_interval_months(nullable = TRUE)
 
-na_decimal128(nullable = TRUE)
+na_interval_day_time(nullable = TRUE)
 
-na_decimal256(nullable = TRUE)
+na_interval_month_day_nano(nullable = TRUE)
+
+na_timestamp(unit = c("ms", "s", "us", "ns"), timezone = "", nullable = TRUE)
+
+na_decimal128(precision, scale, nullable = TRUE)
+
+na_decimal256(precision, scale, nullable = TRUE)
 
 na_struct(column_types = list(), nullable = TRUE)
 
@@ -169,6 +178,10 @@ Most Arrow extension types define extension metadata as a JSON object.}
 
 \item{nullable}{Use \code{FALSE} to assert that this field cannot contain
 null values.}
+
+\item{precision}{The total number of digits representable by the decimal type}
+
+\item{scale}{The number of digits after the decimal point in a decimal type}
 }
 \value{
 A \link[=as_nanoarrow_schema]{nanoarrow_schema}

@@ -34,6 +34,53 @@ void finalize_schema_xptr(SEXP schema_xptr) {
   }
 }
 
+SEXP nanoarrow_c_schema_init(SEXP type_id_sexp, SEXP nullable_sexp) {
+  int type_id = INTEGER(type_id_sexp)[0];
+  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  int result = ArrowSchemaInitFromType(schema, type_id);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaInitFromType() failed");
+  }
+
+  if (!LOGICAL(nullable_sexp)[0]) {
+    schema->flags &= ~ARROW_FLAG_NULLABLE;
+  }
+
+  UNPROTECT(1);
+  return schema_xptr;
+}
+
+SEXP nanoarrow_c_schema_init_date_time(SEXP type_id_sexp, SEXP time_unit_sexp,
+                                       SEXP timezone_sexp, SEXP nullable_sexp) {
+  int type_id = INTEGER(type_id_sexp)[0];
+  int time_unit = INTEGER(time_unit_sexp)[0];
+
+  const char* timezone = NULL;
+  if (timezone_sexp != R_NilValue) {
+    timezone = Rf_translateCharUTF8(STRING_ELT(timezone_sexp, 0));
+  } else {
+    timezone = NULL;
+  }
+
+  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  ArrowSchemaInit(schema);
+  int result = ArrowSchemaSetTypeDateTime(schema, type_id, time_unit, timezone);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaInitFromType() failed");
+  }
+
+  if (!LOGICAL(nullable_sexp)[0]) {
+    schema->flags &= ~ARROW_FLAG_NULLABLE;
+  }
+
+  UNPROTECT(1);
+  return schema_xptr;
+}
+
 static SEXP schema_metadata_to_list(const char* metadata) {
   if (metadata == NULL) {
     return R_NilValue;
