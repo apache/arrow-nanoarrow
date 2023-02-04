@@ -139,7 +139,7 @@ test_that("schema list interface works with metadata", {
 })
 
 test_that("schema modify errors for invalid components", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
 
   expect_error(
     nanoarrow_schema_modify(schema, list(1, 2, 3)),
@@ -153,7 +153,7 @@ test_that("schema modify errors for invalid components", {
 })
 
 test_that("schema modify does not copy if length(new_values) == 0", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <-na_int32()
   expect_identical(
     nanoarrow_pointer_addr_chr(nanoarrow_schema_modify(schema, list())),
     nanoarrow_pointer_addr_chr(schema)
@@ -161,7 +161,7 @@ test_that("schema modify does not copy if length(new_values) == 0", {
 })
 
 test_that("schema modify can modify format", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
 
   schema2 <- nanoarrow_schema_modify(schema, list(format = "I"))
   expect_identical(schema2$format, "I")
@@ -180,7 +180,7 @@ test_that("schema modify can modify format", {
 })
 
 test_that("schema modify can modify name", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
 
   schema2 <- nanoarrow_schema_modify(schema, list(name = "new_name"))
   expect_identical(schema2$name, "new_name")
@@ -199,7 +199,7 @@ test_that("schema modify can modify name", {
 })
 
 test_that("schema modify can modify flags", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
 
   schema2 <- nanoarrow_schema_modify(schema, list(flags = 1))
   expect_identical(schema2$flags, 1L)
@@ -213,7 +213,7 @@ test_that("schema modify can modify flags", {
 })
 
 test_that("schema modify can modify metadata", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
 
   schema2 <- nanoarrow_schema_modify(schema, list(metadata = list()))
   expect_identical(schema2$metadata, list())
@@ -368,7 +368,7 @@ test_that("schema modify can modify children", {
 })
 
 test_that("schema modify can modify dictionary", {
-  schema_without_dictionary <- infer_nanoarrow_schema(integer())
+  schema_without_dictionary <- na_int32()
 
   # NULL -> NULL
   schema2 <- nanoarrow_schema_modify(
@@ -384,7 +384,7 @@ test_that("schema modify can modify dictionary", {
   # NULL -> non-null
   schema2 <- nanoarrow_schema_modify(
     schema_without_dictionary,
-    list(dictionary = infer_nanoarrow_schema(integer()))
+    list(dictionary = na_int32())
   )
 
   expect_identical(schema2$dictionary$format, "i")
@@ -417,7 +417,7 @@ test_that("schema modify can modify dictionary", {
 })
 
 test_that("schema modify respects the validate flag", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
 
   schema2 <- nanoarrow_schema_modify(
     schema,
@@ -438,11 +438,11 @@ test_that("schema modify respects the validate flag", {
 })
 
 test_that("[[<- works for schema", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
   schema[["name"]] <- "a new name"
   expect_identical(schema$name, "a new name")
 
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
   schema[[2]] <- "yet a new name"
   expect_identical(schema$name, "yet a new name")
 
@@ -478,7 +478,7 @@ test_that("[[<- works for schema", {
 })
 
 test_that("$<- works for schema", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
   schema$name <- "a new name"
   expect_identical(schema$name, "a new name")
 
@@ -503,7 +503,7 @@ test_that("<- assignment works for schema$children", {
 })
 
 test_that("<- assignment works for schema$metadata", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
 
   schema$metadata$key <- "value"
   expect_identical(schema$metadata$key, "value")
