@@ -266,9 +266,7 @@ test_that("schema modify can modify metadata", {
 })
 
 test_that("schema modify can modify children", {
-  schema_without_children <- infer_nanoarrow_schema(
-    new_data_frame(setNames(list(), character()), nrow = 0)
-  )
+  schema_without_children <- na_struct()
   child_to_be <- schema_without_children
   child_to_be$name <- "should not appear"
 
@@ -329,7 +327,7 @@ test_that("schema modify can modify children", {
   expect_identical(schema2$children[[1]]$format, child_to_be$format)
 
 
-  schema_with_children <- infer_nanoarrow_schema(data.frame(existing_name = character()))
+  schema_with_children <- na_struct(list(existing_name = na_string()))
 
   # some children to NULL children
   schema2 <- nanoarrow_schema_modify(
