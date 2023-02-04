@@ -16,7 +16,7 @@
 # under the License.
 
 test_that("nanoarrow_schema format, print, and str methods work", {
-  schema <- infer_nanoarrow_schema(1:10)
+  schema <- na_int32()
   expect_identical(format(schema), "<nanoarrow_schema int32>")
   expect_output(expect_identical(str(schema), schema), "nanoarrow_schema")
   expect_output(expect_identical(print(schema), schema), "nanoarrow_schema")
@@ -30,61 +30,61 @@ test_that("nanoarrow_schema format, print, and str methods work for invalid poin
 })
 
 test_that("as_nanoarrow_schema() works for nanoarrow_schema", {
-  schema <- infer_nanoarrow_schema(1:10)
+  schema <- na_int32()
   expect_identical(as_nanoarrow_schema(schema), schema)
 })
 
 test_that("infer_nanoarrow_schema() default method works", {
-  schema <- infer_nanoarrow_schema(1:10)
+  schema <- na_int32()
   expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
 })
 
 test_that("nanoarrow_schema_parse() works", {
-  simple_info <- nanoarrow_schema_parse(arrow::int32())
+  simple_info <- nanoarrow_schema_parse(na_int32())
   expect_identical(simple_info$type, "int32")
   expect_identical(simple_info$storage_type, "int32")
 
-  fixed_size_info <- nanoarrow_schema_parse(arrow::fixed_size_binary(1234))
+  fixed_size_info <- nanoarrow_schema_parse(na_fixed_size_binary(1234))
   expect_identical(fixed_size_info$fixed_size, 1234L)
 
-  decimal_info <- nanoarrow_schema_parse(arrow::decimal128(4, 5))
+  decimal_info <- nanoarrow_schema_parse(na_decimal128(4, 5))
   expect_identical(decimal_info$decimal_bitwidth, 128L)
   expect_identical(decimal_info$decimal_precision, 4L)
   expect_identical(decimal_info$decimal_scale, 5L)
 
-  time_unit_info <- nanoarrow_schema_parse(arrow::time32("s"))
+  time_unit_info <- nanoarrow_schema_parse(na_time32("s"))
   expect_identical(time_unit_info$time_unit, "s")
 
-  timezone_info <- nanoarrow_schema_parse(arrow::timestamp("s", "America/Halifax"))
+  timezone_info <- nanoarrow_schema_parse(na_timestamp("s", "America/Halifax"))
   expect_identical(timezone_info$timezone, "America/Halifax")
 
   recursive_info <- nanoarrow_schema_parse(
-    infer_nanoarrow_schema(data.frame(x = 1L)),
+    na_struct(list(x = na_int32())),
     recursive = FALSE
   )
   expect_null(recursive_info$children)
 
   recursive_info <- nanoarrow_schema_parse(
-    infer_nanoarrow_schema(data.frame(x = 1L)),
+    na_struct(list(x = na_int32())),
     recursive = TRUE
   )
   expect_length(recursive_info$children, 1L)
   expect_identical(
     recursive_info$children$x,
-    nanoarrow_schema_parse(infer_nanoarrow_schema(1L))
+    nanoarrow_schema_parse(na_int32())
   )
 })
 
 test_that("nanoarrow_schema_parse() works for extension types", {
-  ext_info <- nanoarrow_schema_parse(arrow::vctrs_extension_type(integer()))
+  ext_info <- nanoarrow_schema_parse(na_extension(na_int32(), "ext_name", "ext_meta"))
   expect_identical(ext_info$type, "int32")
   expect_identical(ext_info$storage_type, "int32")
-  expect_identical(ext_info$extension_name, "arrow.r.vctrs")
-  expect_identical(unserialize(ext_info$extension_metadata), integer())
+  expect_identical(ext_info$extension_name, "ext_name")
+  expect_identical(ext_info$extension_metadata, charToRaw("ext_meta"))
 })
 
 test_that("schema list interface works for non-nested types", {
-  schema <- infer_nanoarrow_schema(1:10)
+  schema <- na_int32()
   expect_identical(length(schema), 6L)
   expect_identical(
     names(schema),
@@ -99,7 +99,7 @@ test_that("schema list interface works for non-nested types", {
 })
 
 test_that("schema list interface works for nested types", {
-  schema <- infer_nanoarrow_schema(data.frame(a = 1L, b = "two"))
+  schema <- na_struct(list(a = na_int32(), b = na_string()))
 
   expect_identical(schema$format, "+s")
   expect_named(schema$children, c("a", "b"))
@@ -115,7 +115,7 @@ test_that("schema list interface works for nested types", {
 })
 
 test_that("schema list interface works for dictionary types", {
-  schema <- infer_nanoarrow_schema(factor(letters[1:5]))
+  schema <- na_dictionary(na_string(), na_int8())
 
   expect_identical(schema$format, "c")
   expect_identical(schema$dictionary$format, "u")
@@ -127,14 +127,14 @@ test_that("schema list interface works for dictionary types", {
 })
 
 test_that("schema list interface works with metadata", {
-  schema <- infer_nanoarrow_schema(as.POSIXlt("2020-01-01", tz = "UTC"))
+  schema <- na_extension(na_int32(), "ext_name", "ext_meta")
   expect_identical(
     schema$metadata[["ARROW:extension:name"]],
-    "arrow.r.vctrs"
+    "ext_name"
   )
-  expect_s3_class(
-    unserialize(schema$metadata[["ARROW:extension:metadata"]]),
-    "POSIXlt"
+  expect_identical(
+    schema$metadata[["ARROW:extension:metadata"]],
+    "ext_meta"
   )
 })
 
@@ -153,7 +153,7 @@ test_that("schema modify errors for invalid components", {
 })
 
 test_that("schema modify does not copy if length(new_values) == 0", {
-  schema <-na_int32()
+  schema <- na_int32()
   expect_identical(
     nanoarrow_pointer_addr_chr(nanoarrow_schema_modify(schema, list())),
     nanoarrow_pointer_addr_chr(schema)
@@ -350,7 +350,7 @@ test_that("schema modify can modify children", {
   expect_identical(schema2$children[[1]]$format, child_to_be$format)
 
   # replace with more children
-  another_child_to_be <- infer_nanoarrow_schema(logical())
+  another_child_to_be <- na_bool()
   schema2 <- nanoarrow_schema_modify(
     schema_with_children,
     list(
@@ -407,7 +407,7 @@ test_that("schema modify can modify dictionary", {
   # non-null -> non-null
   schema2 <- nanoarrow_schema_modify(
     schema_with_dictionary,
-    list(dictionary = infer_nanoarrow_schema(character()))
+    list(dictionary = na_string())
   )
 
   expect_identical(schema2$dictionary$format, "u")
@@ -489,9 +489,9 @@ test_that("$<- works for schema", {
 })
 
 test_that("<- assignment works for schema$children", {
-  schema <- infer_nanoarrow_schema(data.frame(col1 = integer(), col2 = character()))
+  schema <- na_struct(list(col1 = na_int32(), col2 = na_string()))
 
-  schema$children$col1 <- infer_nanoarrow_schema(logical())
+  schema$children$col1 <- na_bool()
   expect_named(schema$children, c("col1", "col2"))
   expect_identical(schema$children$col1$format, "b")
   expect_identical(schema$children$col1$name, "col1")

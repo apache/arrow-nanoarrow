@@ -44,6 +44,11 @@ SEXP nanoarrow_c_schema_init(SEXP type_id_sexp, SEXP nullable_sexp) {
     Rf_error("ArrowSchemaInitFromType() failed");
   }
 
+  result = ArrowSchemaSetName(schema, "");
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaSetName() failed");
+  }
+
   if (!LOGICAL(nullable_sexp)[0]) {
     schema->flags &= ~ARROW_FLAG_NULLABLE;
   }
@@ -73,6 +78,11 @@ SEXP nanoarrow_c_schema_init_date_time(SEXP type_id_sexp, SEXP time_unit_sexp,
     Rf_error("ArrowSchemaSetTypeDateTime() failed");
   }
 
+  result = ArrowSchemaSetName(schema, "");
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaSetName() failed");
+  }
+
   if (!LOGICAL(nullable_sexp)[0]) {
     schema->flags &= ~ARROW_FLAG_NULLABLE;
   }
@@ -96,6 +106,11 @@ SEXP nanoarrow_c_schema_init_decimal(SEXP type_id_sexp, SEXP precision_sexp,
     Rf_error("ArrowSchemaSetTypeDecimal() failed");
   }
 
+  result = ArrowSchemaSetName(schema, "");
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaSetName() failed");
+  }
+
   if (!LOGICAL(nullable_sexp)[0]) {
     schema->flags &= ~ARROW_FLAG_NULLABLE;
   }
@@ -115,6 +130,11 @@ SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp,
   int result = ArrowSchemaSetTypeFixedSize(schema, type_id, fixed_size);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowSchemaSetTypeFixedSize() failed");
+  }
+
+  result = ArrowSchemaSetName(schema, "");
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaSetName() failed");
   }
 
   if (!LOGICAL(nullable_sexp)[0]) {

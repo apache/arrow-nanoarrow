@@ -56,7 +56,7 @@ test_that("infer_nanoarrow_schema() works for nanoarrow_array", {
 
 test_that("nanoarrow_array_set_schema() errors for invalid schema/array", {
   array <- as_nanoarrow_array(integer())
-  schema <- infer_nanoarrow_schema(character())
+  schema <- na_string()
   expect_error(
     nanoarrow_array_set_schema(array, schema),
     "Expected array with 3 buffer\\(s\\) but found 2 buffer\\(s\\)"
