@@ -26,6 +26,8 @@
 #' @param x An object to convert to a schema
 #' @param recursive Use `TRUE` to include a `children` member when parsing
 #'   schemas.
+#' @param new_values New schema component to assign
+#' @param validate Use `FALSE` to skip schema validation
 #' @param ... Passed to S3 methods
 #'
 #' @return An object of class 'nanoarrow_schema'
@@ -62,11 +64,85 @@ nanoarrow_schema_parse <- function(x, recursive = FALSE) {
   parsed_null <- vapply(parsed, is.null, logical(1))
   result <- parsed[!parsed_null]
 
-  if (recursive && !is.null(x$children)) {
+  if (recursive && length(x$children) > 0) {
     result$children <- lapply(x$children, nanoarrow_schema_parse, TRUE)
   }
 
   result
+}
+
+#' @rdname as_nanoarrow_schema
+#' @export
+nanoarrow_schema_modify <- function(x, new_values, validate = TRUE) {
+  schema <- as_nanoarrow_schema(x)
+
+  if (length(new_values) == 0) {
+    return(schema)
+  }
+
+  # Make sure new_values has names to iterate over
+  new_names <- names(new_values)
+  if (is.null(new_names) || all(new_names == "", na.rm = TRUE)) {
+    stop("`new_values` must be named")
+  }
+
+  # Make a deep copy and modify it. Possibly not as efficient as it could be
+  # but it's unclear to what degree performance is an issue for R-level
+  # schema modification.
+  schema_deep_copy <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(schema, schema_deep_copy)
+
+  for (i in seq_along(new_values)) {
+    nm <- new_names[i]
+    value <- new_values[[i]]
+
+    switch(
+      nm,
+      format = .Call(
+        nanoarrow_c_schema_set_format,
+        schema_deep_copy,
+        as.character(value)
+      ),
+      name = {
+        if (!is.null(value)) {
+          value <- as.character(value)
+        }
+
+        .Call(nanoarrow_c_schema_set_name, schema_deep_copy, value)
+      },
+      flags = .Call(
+        nanoarrow_c_schema_set_flags,
+        schema_deep_copy,
+        as.integer(value)
+      ),
+      metadata = .Call(
+        nanoarrow_c_schema_set_metadata,
+        schema_deep_copy,
+        as.list(value)
+      ),
+      children = {
+        if (!is.null(value)) {
+          value <- lapply(value, as_nanoarrow_schema)
+        }
+
+        .Call(nanoarrow_c_schema_set_children, schema_deep_copy, value)
+      },
+      dictionary = {
+        if (!is.null(value)) {
+          value <- as_nanoarrow_schema(value)
+        }
+
+        .Call(nanoarrow_c_schema_set_dictionary, schema_deep_copy, value)
+      },
+      stop(sprintf("Can't modify schema[[%s]]: does not exist", deparse(nm)))
+    )
+  }
+
+  if (validate) {
+    nanoarrow_schema_parse(schema_deep_copy, recursive = FALSE)
+  }
+
+  schema_deep_copy
 }
 
 #' @importFrom utils str
@@ -121,6 +197,28 @@ names.nanoarrow_schema <- function(x, ...) {
 #' @export
 `$.nanoarrow_schema` <- function(x, i, ...) {
   nanoarrow_schema_proxy(x)[[i]]
+}
+
+#' @export
+`[[<-.nanoarrow_schema` <- function(x, i, value) {
+  if (is.numeric(i) && isTRUE(i %in% 1:6)) {
+    i <- names.nanoarrow_schema()[[i]]
+  }
+
+  if (is.character(i) && (length(i) == 1L) && !is.na(i)) {
+    new_values <- list(value)
+    names(new_values) <- i
+    return(nanoarrow_schema_modify(x, new_values))
+  }
+
+  stop("`i` must be character(1) or integer(1) %in% 1:6")
+}
+
+#' @export
+`$<-.nanoarrow_schema` <- function(x, i, value) {
+  new_values <- list(value)
+  names(new_values) <- i
+  nanoarrow_schema_modify(x, new_values)
 }
 
 nanoarrow_schema_formatted <- function(x, recursive = TRUE) {

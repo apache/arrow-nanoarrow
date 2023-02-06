@@ -16,7 +16,7 @@
 # under the License.
 
 test_that("nanoarrow_pointer_is_valid() works", {
-  expect_true(nanoarrow_pointer_is_valid(infer_nanoarrow_schema(integer())))
+  expect_true(nanoarrow_pointer_is_valid(na_int32()))
   expect_true(nanoarrow_pointer_is_valid(as_nanoarrow_array(integer())))
   expect_true(nanoarrow_pointer_is_valid(
     as_nanoarrow_array_stream(data.frame(a = integer())))
@@ -30,7 +30,7 @@ test_that("nanoarrow_pointer_is_valid() works", {
 })
 
 test_that("nanoarrow_pointer_release() works", {
-  ptr <- infer_nanoarrow_schema(integer())
+  ptr <- na_int32()
   expect_true(nanoarrow_pointer_is_valid(ptr))
   nanoarrow_pointer_release(ptr)
   expect_false(nanoarrow_pointer_is_valid(ptr))
@@ -49,7 +49,7 @@ test_that("nanoarrow_pointer_release() works", {
 })
 
 test_that("nanoarrow_pointer_move() works for schema", {
-  ptr <- infer_nanoarrow_schema(integer())
+  ptr <- na_int32()
   dst <- nanoarrow_allocate_schema()
   nanoarrow_pointer_move(ptr, dst)
   expect_false(nanoarrow_pointer_is_valid(ptr))
@@ -103,7 +103,7 @@ test_that("nanoarrow_pointer_move() works for array_stream", {
 })
 
 test_that("nanoarrow_pointer_move() can import from chr address", {
-  ptr <- infer_nanoarrow_schema(integer())
+  ptr <- na_int32()
   ptr_chr <- nanoarrow_pointer_addr_chr(ptr)
   dst <- nanoarrow_allocate_schema()
 
@@ -113,7 +113,7 @@ test_that("nanoarrow_pointer_move() can import from chr address", {
 })
 
 test_that("nanoarrow_pointer_move() can import from dbl address", {
-  ptr <- infer_nanoarrow_schema(integer())
+  ptr <- na_int32()
   ptr_dbl <- nanoarrow_pointer_addr_dbl(ptr)
   dst <- nanoarrow_allocate_schema()
 
@@ -123,7 +123,7 @@ test_that("nanoarrow_pointer_move() can import from dbl address", {
 })
 
 test_that("nanoarrow_pointer_move() errors for bad input", {
-  ptr <- infer_nanoarrow_schema(integer())
+  ptr <- na_int32()
   dst <- nanoarrow_allocate_schema()
   expect_error(nanoarrow_pointer_move(ptr, NULL), "`ptr_dst` must inherit from")
   expect_error(
@@ -133,7 +133,7 @@ test_that("nanoarrow_pointer_move() errors for bad input", {
 })
 
 test_that("nanoarrow_pointer_export() works for schema", {
-  ptr <- infer_nanoarrow_schema(integer())
+  ptr <- na_int32()
   dst <- nanoarrow_allocate_schema()
   nanoarrow_pointer_export(ptr, dst)
   expect_true(nanoarrow_pointer_is_valid(ptr))
@@ -195,7 +195,7 @@ test_that("nanoarrow_pointer_export() errors for unknown object", {
 })
 
 test_that("pointer address getters work", {
-  schema <- infer_nanoarrow_schema(integer())
+  schema <- na_int32()
   expect_match(nanoarrow_pointer_addr_chr(schema), "^[0-9]+$")
   expect_match(nanoarrow_pointer_addr_pretty(schema), "^(0x)?[0-9a-fA-F]+$")
 })

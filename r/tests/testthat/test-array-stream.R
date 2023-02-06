@@ -16,7 +16,7 @@
 # under the License.
 
 test_that("basic_array_stream() can create empty streams", {
-  stream <- basic_array_stream(list(), infer_nanoarrow_schema(integer()))
+  stream <- basic_array_stream(list(), na_int32())
   expect_identical(stream$get_schema()$format, "i")
   expect_null(stream$get_next())
 
@@ -142,14 +142,14 @@ test_that("nanoarrow_array_stream can release()", {
 test_that("nanoarrow_array_stream can validate or not on get_next()", {
   stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
   expect_error(
-    stream$get_next(schema = infer_nanoarrow_schema(integer())),
+    stream$get_next(schema = na_int32()),
     "Expected array with 2 buffer"
   )
 
   stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
   expect_silent(
     stream$get_next(
-      schema = infer_nanoarrow_schema(integer()),
+      schema = na_int32(),
       validate = FALSE
     )
   )

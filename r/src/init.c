@@ -29,18 +29,14 @@ extern SEXP nanoarrow_c_altrep_is_materialized(SEXP x_sexp);
 extern SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sexp);
 extern SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr);
-extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
-                                           SEXP validate_sexp);
+extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr);
-extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr,
-                                         SEXP validate_sexp);
+extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr);
-extern SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr,
-                                    SEXP recursive_sexp);
+extern SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp);
 extern SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr);
 extern SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr);
-extern SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
-                                             SEXP size_sexp, SEXP n_sexp);
+extern SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp, SEXP size_sexp, SEXP n_sexp);
 extern SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
 extern SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 extern SEXP nanoarrow_c_allocate_schema(void);
@@ -55,21 +51,28 @@ extern SEXP nanoarrow_c_pointer_release(SEXP ptr);
 extern SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst);
 extern SEXP nanoarrow_c_export_schema(SEXP schema_xptr, SEXP ptr_dst);
 extern SEXP nanoarrow_c_export_array(SEXP array_xptr, SEXP ptr_dst);
+extern SEXP nanoarrow_c_schema_init(SEXP type_id_sexp, SEXP nullable_sexp);
+extern SEXP nanoarrow_c_schema_init_date_time(SEXP type_id_sexp, SEXP time_unit_sexp, SEXP timezone_sexp, SEXP nullable_sexp);
+extern SEXP nanoarrow_c_schema_init_decimal(SEXP type_id_sexp, SEXP precision_sexp, SEXP scale_sexp, SEXP nullable_sexp);
+extern SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp, SEXP nullable_sexp);
 extern SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr);
 extern SEXP nanoarrow_c_schema_parse(SEXP schema_xptr);
 extern SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp);
+extern SEXP nanoarrow_c_schema_set_format(SEXP schema_mut_xptr, SEXP format_sexp);
+extern SEXP nanoarrow_c_schema_set_name(SEXP schema_mut_xptr, SEXP name_sexp);
+extern SEXP nanoarrow_c_schema_set_metadata(SEXP schema_mut_xptr, SEXP metadata_sexp);
+extern SEXP nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp);
+extern SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp);
+extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xptr);
 extern SEXP nanoarrow_c_version();
 extern SEXP nanoarrow_c_version_runtime();
 
 static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_make_altrep_chr", (DL_FUNC)&nanoarrow_c_make_altrep_chr, 1},
     {"nanoarrow_c_is_altrep", (DL_FUNC)&nanoarrow_c_is_altrep, 1},
-    {"nanoarrow_c_altrep_is_materialized", (DL_FUNC)&nanoarrow_c_altrep_is_materialized,
-     1},
-    {"nanoarrow_c_altrep_force_materialize",
-     (DL_FUNC)&nanoarrow_c_altrep_force_materialize, 2},
-    {"nanoarrow_c_array_stream_get_schema", (DL_FUNC)&nanoarrow_c_array_stream_get_schema,
-     1},
+    {"nanoarrow_c_altrep_is_materialized", (DL_FUNC)&nanoarrow_c_altrep_is_materialized, 1},
+    {"nanoarrow_c_altrep_force_materialize", (DL_FUNC)&nanoarrow_c_altrep_force_materialize, 2},
+    {"nanoarrow_c_array_stream_get_schema", (DL_FUNC)&nanoarrow_c_array_stream_get_schema, 1},
     {"nanoarrow_c_array_stream_get_next", (DL_FUNC)&nanoarrow_c_array_stream_get_next, 1},
     {"nanoarrow_c_basic_array_stream", (DL_FUNC)&nanoarrow_c_basic_array_stream, 3},
     {"nanoarrow_c_array_view", (DL_FUNC)&nanoarrow_c_array_view, 2},
@@ -93,9 +96,19 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_pointer_move", (DL_FUNC)&nanoarrow_c_pointer_move, 2},
     {"nanoarrow_c_export_schema", (DL_FUNC)&nanoarrow_c_export_schema, 2},
     {"nanoarrow_c_export_array", (DL_FUNC)&nanoarrow_c_export_array, 2},
+    {"nanoarrow_c_schema_init", (DL_FUNC)&nanoarrow_c_schema_init, 2},
+    {"nanoarrow_c_schema_init_date_time", (DL_FUNC)&nanoarrow_c_schema_init_date_time, 4},
+    {"nanoarrow_c_schema_init_decimal", (DL_FUNC)&nanoarrow_c_schema_init_decimal, 4},
+    {"nanoarrow_c_schema_init_fixed_size", (DL_FUNC)&nanoarrow_c_schema_init_fixed_size, 3},
     {"nanoarrow_c_schema_to_list", (DL_FUNC)&nanoarrow_c_schema_to_list, 1},
     {"nanoarrow_c_schema_parse", (DL_FUNC)&nanoarrow_c_schema_parse, 1},
     {"nanoarrow_c_schema_format", (DL_FUNC)&nanoarrow_c_schema_format, 2},
+    {"nanoarrow_c_schema_set_format", (DL_FUNC)&nanoarrow_c_schema_set_format, 2},
+    {"nanoarrow_c_schema_set_name", (DL_FUNC)&nanoarrow_c_schema_set_name, 2},
+    {"nanoarrow_c_schema_set_metadata", (DL_FUNC)&nanoarrow_c_schema_set_metadata, 2},
+    {"nanoarrow_c_schema_set_flags", (DL_FUNC)&nanoarrow_c_schema_set_flags, 2},
+    {"nanoarrow_c_schema_set_children", (DL_FUNC)&nanoarrow_c_schema_set_children, 2},
+    {"nanoarrow_c_schema_set_dictionary", (DL_FUNC)&nanoarrow_c_schema_set_dictionary, 2},
     {"nanoarrow_c_version", (DL_FUNC)&nanoarrow_c_version, 0},
     {"nanoarrow_c_version_runtime", (DL_FUNC)&nanoarrow_c_version_runtime, 0},
     {NULL, NULL, 0}};

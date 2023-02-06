@@ -28,6 +28,7 @@ if [ -f "../src/nanoarrow/nanoarrow.h" ]; then
   cmake --build . && cmake --install . --prefix=../src
   cd ..
   rm -rf cmake
+  rm -f src/nanoarrow.hpp
 fi
 
 if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then

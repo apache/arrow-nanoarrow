@@ -19,7 +19,7 @@ test_that("convert_array() errors for invalid arrays", {
   array <- as_nanoarrow_array(1:10)
   nanoarrow_array_set_schema(
     array,
-    infer_nanoarrow_schema("chr"),
+    na_string(),
     validate = FALSE
   )
 
