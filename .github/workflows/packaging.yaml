@@ -48,11 +48,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Update tags
-        shell: bash
-        run: |
-          git fetch --tags --force origin
-
       - name: Prepare version
         shell: bash
         run: |
@@ -218,16 +213,17 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgbuild
+          extra-packages: any::pkgbuild, any::desc
           needs: build
           working-directory: nanoarrow/r
 
       - name: Build R Source Package
         shell: bash
         run : |
-          # Probably easiest to let bootstrap.R take care of ensuring
-          # that the version in DESCRIPTION matches ${VERSION} here
           pushd nanoarrow/r
+          # If we're about to build a non-SNAPSHOT version, update the
+          # Version: field in DESCRIPTION
+          Rscript -e 'if (grepl("-SNAPSHOT$", Sys.getenv("VERSION"))) desc::desc_set(Version = Sys.getenv("VERSION"))'
           ./configure
           popd
 
