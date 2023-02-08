@@ -29,6 +29,32 @@ test_that("infer_nanoarrow_schema() works for arrow objects", {
 
   int_schema <- infer_nanoarrow_schema(arrow::Array$create(1:10))
   expect_true(arrow::as_data_type(int_schema)$Equals(arrow::int32()))
+
+  int_schema <- infer_nanoarrow_schema(arrow::Scalar$create(1L))
+  expect_true(arrow::as_data_type(int_schema)$Equals(arrow::int32()))
+
+  int_schema <- infer_nanoarrow_schema(arrow::ChunkedArray$create(1:10))
+  expect_true(arrow::as_data_type(int_schema)$Equals(arrow::int32()))
+
+  int_schema <- infer_nanoarrow_schema(arrow::Expression$scalar(1L))
+  expect_true(arrow::as_data_type(int_schema)$Equals(arrow::int32()))
+
+  tbl_schema_expected <- arrow::schema(x = arrow::int32())
+  tbl_schema <- infer_nanoarrow_schema(arrow::record_batch(x = 1L))
+  expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
+
+  tbl_schema <- infer_nanoarrow_schema(arrow::arrow_table(x = 1L))
+  expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
+
+  tbl_schema <- infer_nanoarrow_schema(
+    arrow::RecordBatchReader$create(arrow::record_batch(x = 1L))
+  )
+  expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
+
+  tbl_schema <- infer_nanoarrow_schema(
+    arrow::InMemoryDataset$create(arrow::record_batch(x = 1L))
+  )
+  expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
 })
 
 test_that("nanoarrow_array to Array works", {

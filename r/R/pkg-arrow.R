@@ -109,6 +109,46 @@ as_nanoarrow_schema.Schema <- function(x, ...) {
 }
 
 #' @export
+infer_nanoarrow_schema.Array <- function(x, ...) {
+  as_nanoarrow_schema.DataType(x$type)
+}
+
+#' @export
+infer_nanoarrow_schema.Scalar <- function(x, ...) {
+  as_nanoarrow_schema.DataType(x$type)
+}
+
+#' @export
+infer_nanoarrow_schema.Expression <- function(x, ...) {
+  as_nanoarrow_schema.DataType(x$type())
+}
+
+#' @export
+infer_nanoarrow_schema.ChunkedArray <- function(x, ...) {
+  as_nanoarrow_schema.DataType(x$type)
+}
+
+#' @export
+infer_nanoarrow_schema.ArrowTabular <- function(x, ...) {
+  as_nanoarrow_schema.Schema(x$schema)
+}
+
+#' @export
+infer_nanoarrow_schema.RecordBatchReader <- function(x, ...) {
+  as_nanoarrow_schema.Schema(x$schema)
+}
+
+#' @export
+infer_nanoarrow_schema.Dataset <- function(x, ...) {
+  as_nanoarrow_schema.Schema(x$schema)
+}
+
+#' @export
+infer_nanoarrow_schema.arrow_dplyr_query <- function(x, ...) {
+  infer_nanoarrow_schema.RecordBatchReader(arrow::as_record_batch_reader(x))
+}
+
+#' @export
 as_nanoarrow_array.Array <- function(x, ..., schema = NULL) {
   imported_schema <- nanoarrow_allocate_schema()
   array <- nanoarrow_allocate_array()
