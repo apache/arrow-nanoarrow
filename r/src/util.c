@@ -48,6 +48,7 @@ void nanoarrow_init_cached_sexps(void) {
   R_PreserveObject(nanoarrow_cls_data_frame);
   R_PreserveObject(nanoarrow_cls_schema);
   R_PreserveObject(nanoarrow_cls_array_stream);
+  R_PreserveObject(nanoarrow_cls_buffer);
 
   UNPROTECT(9);
 }
