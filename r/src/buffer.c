@@ -21,6 +21,21 @@
 
 #include <string.h>
 
+#include "buffer.h"
+#include "nanoarrow.h"
+
+void finalize_buffer_xptr(SEXP buffer_xptr) {
+  struct ArrowBuffer* buffer = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
+  if (buffer != NULL) {
+    ArrowBufferReset(buffer);
+  }
+}
+
+void nanoarrow_sexp_deallocator(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                int64_t size) {
+  R_ReleaseObject((SEXP)allocator->private_data);
+}
+
 SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) { return R_ExternalPtrTag(buffer_xptr); }
 
 SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr) {

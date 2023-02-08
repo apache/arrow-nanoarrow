@@ -28,6 +28,7 @@ SEXP nanoarrow_cls_array_view = NULL;
 SEXP nanoarrow_cls_data_frame = NULL;
 SEXP nanoarrow_cls_schema = NULL;
 SEXP nanoarrow_cls_array_stream = NULL;
+SEXP nanoarrow_cls_buffer = NULL;
 
 void nanoarrow_init_cached_sexps(void) {
   SEXP nanoarrow_str = PROTECT(Rf_mkString("nanoarrow"));
@@ -38,6 +39,7 @@ void nanoarrow_init_cached_sexps(void) {
   nanoarrow_cls_data_frame = PROTECT(Rf_mkString("data.frame"));
   nanoarrow_cls_schema = PROTECT(Rf_mkString("nanoarrow_schema"));
   nanoarrow_cls_array_stream = PROTECT(Rf_mkString("nanoarrow_array_stream"));
+  nanoarrow_cls_buffer = PROTECT(Rf_mkString("nanoarrow_buffer"));
 
   R_PreserveObject(nanoarrow_ns_pkg);
   R_PreserveObject(nanoarrow_cls_array);
@@ -47,5 +49,5 @@ void nanoarrow_init_cached_sexps(void) {
   R_PreserveObject(nanoarrow_cls_schema);
   R_PreserveObject(nanoarrow_cls_array_stream);
 
-  UNPROTECT(8);
+  UNPROTECT(9);
 }

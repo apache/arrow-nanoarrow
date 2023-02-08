@@ -28,6 +28,7 @@ extern SEXP nanoarrow_cls_array_view;
 extern SEXP nanoarrow_cls_data_frame;
 extern SEXP nanoarrow_cls_schema;
 extern SEXP nanoarrow_cls_array_stream;
+extern SEXP nanoarrow_cls_buffer;
 
 void nanoarrow_init_cached_sexps(void);
 
