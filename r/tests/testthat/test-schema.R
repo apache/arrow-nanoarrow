@@ -47,6 +47,7 @@ test_that("infer_nanoarrow_schema() methods work for built-in types", {
   expect_identical(infer_nanoarrow_schema(integer())$format, "i")
   expect_identical(infer_nanoarrow_schema(double())$format, "g")
   expect_identical(infer_nanoarrow_schema(character())$format, "u")
+  expect_identical(infer_nanoarrow_schema(Sys.Date())$format, "tdD")
 
   expect_identical(infer_nanoarrow_schema(factor())$format, "i")
   expect_identical(infer_nanoarrow_schema(factor())$dictionary$format, "u")

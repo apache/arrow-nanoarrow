@@ -103,6 +103,11 @@ infer_nanoarrow_schema.POSIXct <- function(x, ...) {
 }
 
 #' @export
+infer_nanoarrow_schema.Date <- function(x, ...) {
+  na_date32()
+}
+
+#' @export
 infer_nanoarrow_schema.difftime <- function(x, ...) {
   # A balance between safety for large time ranges (not overflowing)
   # and safety for small time ranges (not truncating)
