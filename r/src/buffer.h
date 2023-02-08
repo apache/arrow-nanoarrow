@@ -42,6 +42,8 @@ static inline SEXP buffer_owning_xptr(void) {
   return buffer_xptr;
 }
 
+// Create an arrow_buffer with a deallocator that will release shelter when
+// the buffer is no longer needed.
 static inline SEXP buffer_borrowed_xptr(const void* addr, int64_t size_bytes,
                                         SEXP shelter) {
   SEXP buffer_xptr = PROTECT(buffer_owning_xptr());
@@ -53,6 +55,19 @@ static inline SEXP buffer_borrowed_xptr(const void* addr, int64_t size_bytes,
   R_PreserveObject(shelter);
   UNPROTECT(1);
   return buffer_xptr;
+}
+
+static inline struct ArrowBuffer* buffer_from_xptr(SEXP buffer_xptr) {
+  if (!Rf_inherits(buffer_xptr, "nanoarrow_buffer")) {
+    Rf_error("`buffer` argument that is not a nanoarrow_buffer()");
+  }
+
+  struct ArrowBuffer* buffer = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
+  if (buffer == NULL) {
+    Rf_error("nanoarrow_buffer is an external pointer to NULL");
+  }
+
+  return buffer;
 }
 
 #endif

@@ -36,26 +36,23 @@ void nanoarrow_sexp_deallocator(struct ArrowBufferAllocator* allocator, uint8_t*
   R_ReleaseObject((SEXP)allocator->private_data);
 }
 
-SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) { return R_ExternalPtrTag(buffer_xptr); }
+SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
+  struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
+
+  const char* names[] = {"data", "size_bytes", "capacity_bytes", ""};
+  SEXP info = PROTECT(Rf_mkNamed(VECSXP, names));
+  SET_VECTOR_ELT(info, 0, R_MakeExternalPtr(buffer->data, NULL, buffer_xptr));
+  SET_VECTOR_ELT(info, 1, Rf_ScalarReal(buffer->size_bytes));
+  SET_VECTOR_ELT(info, 2, Rf_ScalarReal(buffer->capacity_bytes));
+  UNPROTECT(1);
+  return info;
+}
 
 SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr) {
-  SEXP info = R_ExternalPtrTag(buffer_xptr);
-  if (info == R_NilValue) {
-    Rf_error("Can't as.raw() a nanoarrow_buffer with unknown size");
-  }
+  struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
 
-  SEXP size_bytes_sexp = VECTOR_ELT(info, 0);
-  R_xlen_t size_bytes = 0;
-  if (TYPEOF(size_bytes_sexp) == INTSXP) {
-    size_bytes = INTEGER(size_bytes_sexp)[0];
-  } else if (TYPEOF(size_bytes_sexp) == REALSXP) {
-    size_bytes = REAL(size_bytes_sexp)[0];
-  } else {
-    Rf_error("Unknown object type for nanoarrow_buffer size_bytes");
-  }
-
-  SEXP result = PROTECT(Rf_allocVector(RAWSXP, size_bytes));
-  memcpy(RAW(result), R_ExternalPtrAddr(buffer_xptr), size_bytes);
+  SEXP result = PROTECT(Rf_allocVector(RAWSXP, buffer->size_bytes));
+  memcpy(RAW(result), buffer->data, buffer->size_bytes);
   UNPROTECT(1);
   return result;
 }

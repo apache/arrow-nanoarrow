@@ -20,6 +20,7 @@
 #include <Rinternals.h>
 
 #include "array.h"
+#include "buffer.h"
 #include "nanoarrow.h"
 #include "schema.h"
 #include "util.h"
@@ -108,7 +109,7 @@ static SEXP borrow_unknown_buffer(struct ArrowArray* array, int64_t i, SEXP shel
   SET_STRING_ELT(buffer_class, 0, Rf_mkChar("nanoarrow_buffer_unknown"));
   SET_STRING_ELT(buffer_class, 1, Rf_mkChar("nanoarrow_buffer"));
 
-  SEXP buffer = PROTECT(R_MakeExternalPtr((void*)array->buffers[i], R_NilValue, shelter));
+  SEXP buffer = PROTECT(buffer_borrowed_xptr(array->buffers[i], 0, shelter));
   Rf_setAttrib(buffer, R_ClassSymbol, buffer_class);
   UNPROTECT(2);
   return buffer;
@@ -222,17 +223,12 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
 
   SET_STRING_ELT(buffer_class, 0, Rf_mkChar(class0));
 
-  const char* names[] = {"size_bytes", "element_size_bits", ""};
-  SEXP buffer_info = PROTECT(Rf_mkNamed(VECSXP, names));
-  SET_VECTOR_ELT(buffer_info, 0,
-                 length_from_int64(array_view->buffer_views[i].size_bytes));
-  SET_VECTOR_ELT(buffer_info, 1,
-                 length_from_int64(array_view->layout.element_size_bits[i]));
+  SEXP buffer =
+      PROTECT(buffer_borrowed_xptr(array_view->buffer_views[i].data.data,
+                                   array_view->buffer_views[i].size_bytes, shelter));
 
-  SEXP buffer = PROTECT(R_MakeExternalPtr((void*)array_view->buffer_views[i].data.data,
-                                          buffer_info, shelter));
   Rf_setAttrib(buffer, R_ClassSymbol, buffer_class);
-  UNPROTECT(3);
+  UNPROTECT(2);
   return buffer;
 }
 
