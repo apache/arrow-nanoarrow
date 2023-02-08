@@ -67,6 +67,28 @@ test_that("infer_nanoarrow_schema() methods work for built-in types", {
   expect_identical(df_schema$children$x$format, "i")
 })
 
+test_that("infer_nanoarrow_schema() methods work for blob type", {
+  skip_if_not_installed("blob")
+
+  expect_identical(infer_nanoarrow_schema(blob::blob())$format, "z")
+})
+
+test_that("infer_nanoarrow_schema() methods work for hms type", {
+  skip_if_not_installed("blob")
+
+  expect_identical(infer_nanoarrow_schema(hms::hms())$format, "ttm")
+})
+
+test_that("infer_nanoarrow_schema() methods work for vctrs types", {
+  skip_if_not_installed("vctrs")
+
+  expect_identical(infer_nanoarrow_schema(vctrs::unspecified())$format, "n")
+
+  list_schema <- infer_nanoarrow_schema(vctrs::list_of(.ptype = integer()))
+  expect_identical(list_schema$format, "+l")
+  expect_identical(list_schema$children[[1]]$format, "i")
+})
+
 test_that("nanoarrow_schema_parse() works", {
   simple_info <- nanoarrow_schema_parse(na_int32())
   expect_identical(simple_info$type, "int32")

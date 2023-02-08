@@ -117,7 +117,7 @@ infer_nanoarrow_schema.data.frame <- function(x, ...) {
 #' @export
 infer_nanoarrow_schema.hms <- function(x, ...) {
   # As a default, ms is safer than s and less likely to truncate
-  na_time64(unit = "ms")
+  na_time32(unit = "ms")
 }
 
 #' @export
@@ -127,6 +127,11 @@ infer_nanoarrow_schema.blob <- function(x, ...) {
   } else {
     na_binary()
   }
+}
+
+#' @export
+infer_nanoarrow_schema.vctrs_unspecified <- function(x, ...) {
+  na_na()
 }
 
 #' @export
