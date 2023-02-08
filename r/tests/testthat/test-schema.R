@@ -42,6 +42,7 @@ test_that("infer_nanoarrow_schema() errors for unsupported types", {
 })
 
 test_that("infer_nanoarrow_schema() methods work for built-in types", {
+  expect_identical(infer_nanoarrow_schema(raw())$format, "C")
   expect_identical(infer_nanoarrow_schema(logical())$format, "b")
   expect_identical(infer_nanoarrow_schema(integer())$format, "i")
   expect_identical(infer_nanoarrow_schema(double())$format, "g")
@@ -74,7 +75,7 @@ test_that("infer_nanoarrow_schema() methods work for blob type", {
 })
 
 test_that("infer_nanoarrow_schema() methods work for hms type", {
-  skip_if_not_installed("blob")
+  skip_if_not_installed("hms")
 
   expect_identical(infer_nanoarrow_schema(hms::hms())$format, "ttm")
 })
