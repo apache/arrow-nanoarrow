@@ -34,9 +34,37 @@ test_that("as_nanoarrow_schema() works for nanoarrow_schema", {
   expect_identical(as_nanoarrow_schema(schema), schema)
 })
 
-test_that("infer_nanoarrow_schema() default method works", {
-  schema <- na_int32()
-  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
+test_that("infer_nanoarrow_schema() errors for unsupported types", {
+  expect_error(
+    infer_nanoarrow_schema(environment()),
+    "Can't infer Arrow type"
+  )
+})
+
+test_that("infer_nanoarrow_schema() methods work for built-in types", {
+  expect_identical(infer_nanoarrow_schema(logical())$format, "b")
+  expect_identical(infer_nanoarrow_schema(integer())$format, "i")
+  expect_identical(infer_nanoarrow_schema(double())$format, "g")
+  expect_identical(infer_nanoarrow_schema(character())$format, "u")
+
+  expect_identical(infer_nanoarrow_schema(factor())$format, "i")
+  expect_identical(infer_nanoarrow_schema(factor())$dictionary$format, "u")
+
+  time <- as.POSIXct("2000-01-01", tz = "UTC")
+  expect_identical(infer_nanoarrow_schema(time)$format, "tsm:UTC")
+
+  time <- as.POSIXct("2000-01-01", tz = "")
+  expect_identical(
+    infer_nanoarrow_schema(time)$format,
+    paste0("tsm:", Sys.timezone())
+  )
+
+  difftime <- as.difftime(double(), unit = "secs")
+  expect_identical(infer_nanoarrow_schema(difftime)$format, "tDu")
+
+  df_schema <- infer_nanoarrow_schema(data.frame(x = 1L))
+  expect_identical(df_schema$format, "+s")
+  expect_identical(df_schema$children$x$format, "i")
 })
 
 test_that("nanoarrow_schema_parse() works", {

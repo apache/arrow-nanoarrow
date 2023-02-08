@@ -88,6 +88,11 @@ infer_nanoarrow_schema.character <- function(x, ...) {
 }
 
 #' @export
+infer_nanoarrow_schema.factor <- function(x, ...) {
+  na_dictionary(infer_nanoarrow_schema.character(levels(x)), na_int32())
+}
+
+#' @export
 infer_nanoarrow_schema.POSIXct <- function(x, ...) {
   tz <- attr(x, "tzone")
   if (is.null(tz) || identical(tz, "")) {
