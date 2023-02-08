@@ -54,7 +54,99 @@ infer_nanoarrow_schema <- function(x, ...) {
 
 #' @export
 infer_nanoarrow_schema.default <- function(x, ...) {
-  as_nanoarrow_schema(arrow::infer_type(x, ...))
+  cls <- paste(class(x), collapse = "/")
+  stop(sprintf("Can't infer Arrow type for object of class %s", cls))
+}
+
+#' @export
+infer_nanoarrow_schema.raw <- function(x, ...) {
+  na_uint8()
+}
+
+#' @export
+infer_nanoarrow_schema.logical <- function(x, ...) {
+  na_bool()
+}
+
+#' @export
+infer_nanoarrow_schema.integer <- function(x, ...) {
+  na_int32()
+}
+
+#' @export
+infer_nanoarrow_schema.double <- function(x, ...) {
+  na_double()
+}
+
+#' @export
+infer_nanoarrow_schema.character <- function(x, ...) {
+  if (length(x) > 0 && sum(nchar(x, type = "bytes")) > .Machine$integer.max) {
+    na_large_string()
+  } else {
+    na_string()
+  }
+}
+
+#' @export
+infer_nanoarrow_schema.factor <- function(x, ...) {
+  na_dictionary(infer_nanoarrow_schema.character(levels(x)), na_int32())
+}
+
+#' @export
+infer_nanoarrow_schema.POSIXct <- function(x, ...) {
+  tz <- attr(x, "tzone")
+  if (is.null(tz) || identical(tz, "")) {
+    tz <- Sys.timezone()
+  }
+
+  na_timestamp(timezone = tz)
+}
+
+#' @export
+infer_nanoarrow_schema.Date <- function(x, ...) {
+  na_date32()
+}
+
+#' @export
+infer_nanoarrow_schema.difftime <- function(x, ...) {
+  # A balance between safety for large time ranges (not overflowing)
+  # and safety for small time ranges (not truncating)
+  na_duration(unit = "us")
+}
+
+#' @export
+infer_nanoarrow_schema.data.frame <- function(x, ...) {
+  na_struct(lapply(x, infer_nanoarrow_schema), nullable = FALSE)
+}
+
+#' @export
+infer_nanoarrow_schema.hms <- function(x, ...) {
+  # As a default, ms is safer than s and less likely to truncate
+  na_time32(unit = "ms")
+}
+
+#' @export
+infer_nanoarrow_schema.blob <- function(x, ...) {
+  if (length(x) > 0 && sum(lengths(x)) > .Machine$integer.max) {
+    na_large_binary()
+  } else {
+    na_binary()
+  }
+}
+
+#' @export
+infer_nanoarrow_schema.vctrs_unspecified <- function(x, ...) {
+  na_na()
+}
+
+#' @export
+infer_nanoarrow_schema.vctrs_list_of <- function(x, ...) {
+  child_type <- infer_nanoarrow_schema(attr(x, "ptype"))
+  if (length(x) > 0 && sum(lengths(x)) > .Machine$integer.max) {
+    na_large_list(child_type)
+  } else {
+    na_list(child_type)
+  }
 }
 
 #' @rdname as_nanoarrow_schema
