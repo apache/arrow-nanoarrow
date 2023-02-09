@@ -52,7 +52,7 @@ static inline SEXP buffer_borrowed_xptr(const void* addr, int64_t size_bytes,
   buffer->data = (uint8_t*)addr;
   buffer->size_bytes = size_bytes;
   buffer->capacity_bytes = size_bytes;
-  R_PreserveObject(shelter);
+  nanoarrow_preserve_sexp(shelter);
   UNPROTECT(1);
   return buffer_xptr;
 }

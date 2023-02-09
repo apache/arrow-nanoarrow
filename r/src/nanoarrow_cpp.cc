@@ -20,10 +20,12 @@
 #include <Rinternals.h>
 
 #include <cstring>
+#include <mutex>
 #include <string>
 #include <thread>
-#include <mutex>
 #include <vector>
+
+
 
 extern "C" void intptr_as_string(intptr_t ptr_int, char* buf) {
   std::string ptr_str = std::to_string(ptr_int);
@@ -35,9 +37,7 @@ class PreservedSEXPRegistry {
   PreservedSEXPRegistry()
       : preserved_count_(0), main_thread_id_(std::this_thread::get_id()) {}
 
-  int64_t size() {
-    return preserved_count_;
-  }
+  int64_t size() { return preserved_count_; }
 
   void preserve(SEXP obj) {
     if (obj == R_NilValue) {
@@ -79,6 +79,7 @@ class PreservedSEXPRegistry {
       R_ReleaseObject(obj);
       preserved_count_--;
     }
+    trash_can_.clear();
     return trash_size;
   }
 
@@ -94,9 +95,7 @@ class PreservedSEXPRegistry {
   std::mutex trash_can_lock_;
 };
 
-extern "C" void nanoarrow_preserve_init(void) {
-  PreservedSEXPRegistry::GetInstance();
-}
+extern "C" void nanoarrow_preserve_init(void) { PreservedSEXPRegistry::GetInstance(); }
 
 extern "C" void nanoarrow_preserve_sexp(SEXP obj) {
   PreservedSEXPRegistry::GetInstance().preserve(obj);
@@ -105,7 +104,7 @@ extern "C" void nanoarrow_preserve_sexp(SEXP obj) {
 extern "C" void nanoarrow_release_sexp(SEXP obj) {
   try {
     PreservedSEXPRegistry::GetInstance().release(obj);
-  } catch(std::exception& e) {
+  } catch (std::exception& e) {
     // Just for safety...we really don't want to crash here
   }
 }
@@ -124,10 +123,6 @@ extern "C" int64_t nanoarrow_preserved_empty(void) {
 
 extern "C" void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {
   nanoarrow_preserve_sexp(obj);
-
-  std::thread worker([obj] {
-    nanoarrow_release_sexp(obj);
-  });
-
+  std::thread worker([obj] { nanoarrow_release_sexp(obj); });
   worker.join();
 }

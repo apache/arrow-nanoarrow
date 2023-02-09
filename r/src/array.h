@@ -112,12 +112,12 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
   SEXP independent_array_xptr = PROTECT(array_xptr_ensure_independent(array_xptr));
   struct ArrowArray* array = array_from_xptr(independent_array_xptr);
 
-  // Keep all the pointers but use the R_PreserveObject mechanism to keep
-  // the original data valid (R_ReleaseObject is called from the release callback)
+  // Keep all the pointers but use the nanoarrow_preserve_sexp mechanism to keep
+  // the original data valid (nanoarrow_release_sexp is called from the release callback)
   memcpy(array_copy, array, sizeof(struct ArrowArray));
   array_copy->private_data = independent_array_xptr;
   array_copy->release = &finalize_exported_array;
-  R_PreserveObject(independent_array_xptr);
+  nanoarrow_preserve_sexp(independent_array_xptr);
   UNPROTECT(1);
 }
 

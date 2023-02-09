@@ -22,6 +22,7 @@ test_that("preserve/release works when release happens on another thread", {
   expect_identical(preserved_count(), count0 + 1)
   expect_identical(preserved_empty(), 1)
   expect_identical(preserved_count(), count0)
+  expect_identical(preserved_empty(), 0)
 })
 
 test_that("new_data_frame() works", {

@@ -295,6 +295,6 @@ SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursi
 // for ArrowArray* that are exported references to an R array_xptr
 void finalize_exported_array(struct ArrowArray* array) {
   SEXP array_xptr = (SEXP)array->private_data;
-  R_ReleaseObject(array_xptr);
+  nanoarrow_release_sexp(array_xptr);
   array->release = NULL;
 }

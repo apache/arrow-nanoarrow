@@ -33,7 +33,7 @@ void finalize_buffer_xptr(SEXP buffer_xptr) {
 
 void nanoarrow_sexp_deallocator(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                 int64_t size) {
-  R_ReleaseObject((SEXP)allocator->private_data);
+  nanoarrow_release_sexp((SEXP)allocator->private_data);
 }
 
 SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
