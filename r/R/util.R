@@ -15,6 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
+preserved_count <- function() {
+  .Call(nanoarrow_c_preserved_count)
+}
+
+preserved_empty <- function() {
+  .Call(nanoarrow_c_preserved_empty)
+}
+
+preserve_and_release_on_other_thread <- function(obj) {
+  invisible(.Call(nanoarrow_c_preserve_and_release_on_other_thread, obj))
+}
+
 `%||%` <- function(rhs, lhs) {
   if (is.null(rhs)) lhs else rhs
 }

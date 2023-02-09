@@ -65,6 +65,9 @@ extern SEXP nanoarrow_c_schema_set_metadata(SEXP schema_mut_xptr, SEXP metadata_
 extern SEXP nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp);
 extern SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp);
 extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xptr);
+extern SEXP nanoarrow_c_preserved_count(void);
+extern SEXP nanoarrow_c_preserved_empty(void);
+extern SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj);
 extern SEXP nanoarrow_c_version();
 extern SEXP nanoarrow_c_version_runtime();
 
@@ -111,6 +114,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_schema_set_flags", (DL_FUNC)&nanoarrow_c_schema_set_flags, 2},
     {"nanoarrow_c_schema_set_children", (DL_FUNC)&nanoarrow_c_schema_set_children, 2},
     {"nanoarrow_c_schema_set_dictionary", (DL_FUNC)&nanoarrow_c_schema_set_dictionary, 2},
+    {"nanoarrow_c_preserved_count", (DL_FUNC)&nanoarrow_c_preserved_count, 0},
+    {"nanoarrow_c_preserved_empty", (DL_FUNC)&nanoarrow_c_preserved_empty, 0},
+    {"nanoarrow_c_preserve_and_release_on_other_thread", (DL_FUNC)&nanoarrow_c_preserve_and_release_on_other_thread, 1},
     {"nanoarrow_c_version", (DL_FUNC)&nanoarrow_c_version, 0},
     {"nanoarrow_c_version_runtime", (DL_FUNC)&nanoarrow_c_version_runtime, 0},
     {NULL, NULL, 0}};
@@ -121,5 +127,6 @@ void R_init_nanoarrow(DllInfo* dll) {
   R_useDynamicSymbols(dll, FALSE);
 
   nanoarrow_init_cached_sexps();
+  nanoarrow_preserve_init();
   register_nanoarrow_altrep(dll);
 }

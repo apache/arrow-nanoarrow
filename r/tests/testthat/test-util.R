@@ -15,6 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("preserve/release works when release happens on another thread", {
+  some_non_null_sexp <- 1L
+  count0 <- preserved_count()
+  preserve_and_release_on_other_thread(some_non_null_sexp)
+  expect_identical(preserved_count(), count0 + 1)
+  expect_identical(preserved_empty(), 1)
+  expect_identical(preserved_count(), count0)
+})
+
 test_that("new_data_frame() works", {
   expect_identical(
     new_data_frame(list(x = 1, y = 2), nrow = 1),

@@ -52,3 +52,16 @@ void nanoarrow_init_cached_sexps(void) {
 
   UNPROTECT(9);
 }
+
+SEXP nanoarrow_c_preserved_count(void) {
+  return Rf_ScalarReal(nanoarrow_preserved_count());
+}
+
+SEXP nanoarrow_c_preserved_empty(void) {
+  return Rf_ScalarReal(nanoarrow_preserved_empty());
+}
+
+SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj) {
+  nanoarrow_preserve_and_release_on_other_thread(obj);
+  return R_NilValue;
+}
