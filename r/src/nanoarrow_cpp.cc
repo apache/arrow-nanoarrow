@@ -60,6 +60,10 @@ class PreservedSEXPRegistry {
       return;
     }
 
+    #if defined(NANOARROW_DEBUG_PRESERVE)
+      Rprintf("PreservedSEXPRegistry::preserve(%p)\n", obj);
+    #endif
+
     R_PreserveObject(obj);
     preserved_count_++;
 
@@ -72,6 +76,10 @@ class PreservedSEXPRegistry {
     if (obj == R_NilValue) {
       return true;
     }
+
+    #if defined(NANOARROW_DEBUG_PRESERVE)
+      Rprintf("PreservedSEXPRegistry::release(%p)\n", obj);
+    #endif
 
     // If there is an attempt to delete this object from another thread,
     // R_ReleaseObject() will almost certainly crash R or corrupt memory
@@ -93,12 +101,8 @@ class PreservedSEXPRegistry {
 
   int64_t empty_trash() {
     std::lock_guard<std::mutex> lock(trash_can_lock_);
-    if (trash_can_.empty()) {
-      return 0;
-    }
-
     int64_t trash_size = trash_can_.size();
-    for (const auto& obj : trash_can_) {
+    for (SEXP obj : trash_can_) {
       R_ReleaseObject(obj);
       preserved_count_--;
 #if defined(NANOARROW_DEBUG_PRESERVE)
@@ -109,8 +113,9 @@ class PreservedSEXPRegistry {
 
 #if defined(NANOARROW_DEBUG_PRESERVE)
     if (preserved_count_ > 0) {
-      Rprintf("%ld unreleased SEXP(s) after emptying the trash:\n", (long)preserved_count_);
-      for (const auto& item: tracebacks_) {
+      Rprintf("%ld unreleased SEXP(s) after emptying the trash:\n",
+              (long)preserved_count_);
+      for (const auto& item : tracebacks_) {
         Rprintf("----%p----\nPreserved at\n%s\n\n", item.first, item.second.c_str());
       }
     }
