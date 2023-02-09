@@ -36,6 +36,66 @@ void nanoarrow_sexp_deallocator(struct ArrowBufferAllocator* allocator, uint8_t*
   R_ReleaseObject((SEXP)allocator->private_data);
 }
 
+SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
+  R_xlen_t len = Rf_xlength(x_sexp);
+  const void* data = NULL;
+  int64_t size_bytes = 0;
+
+  // For non-NA character(1), we use the first element
+  if (TYPEOF(x_sexp) == STRSXP && len == 1) {
+    return nanoarrow_c_as_buffer_default(STRING_ELT(x_sexp, 0));
+  }
+
+  switch (TYPEOF(x_sexp)) {
+    case NILSXP:
+      data = NULL;
+      break;
+    case RAWSXP:
+    case LGLSXP:
+    case INTSXP:
+    case REALSXP:
+    case CPLXSXP:
+      data = DATAPTR_RO(x_sexp);
+      break;
+    case CHARSXP:
+      if (x_sexp != NA_STRING) {
+        data = CHAR(x_sexp);
+        break;
+      }
+    default:
+      Rf_error("Unsupported type");
+  }
+
+  switch (TYPEOF(x_sexp)) {
+    case NILSXP:
+    case RAWSXP:
+      size_bytes = len;
+      break;
+    case LGLSXP:
+    case INTSXP:
+      size_bytes = len * sizeof(int);
+      break;
+    case REALSXP:
+      size_bytes = len * sizeof(double);
+      break;
+    case CPLXSXP:
+      size_bytes = len * 2 * sizeof(double);
+      break;
+    case CHARSXP:
+      size_bytes = Rf_xlength(x_sexp);
+      break;
+    default:
+      break;
+  }
+
+  // Don't bother borrowing a zero-size buffer
+  if (size_bytes == 0) {
+    return buffer_owning_xptr();
+  } else {
+    return buffer_borrowed_xptr(data, size_bytes, x_sexp);
+  }
+}
+
 SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
   struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
 
