@@ -72,3 +72,8 @@ vec_shuffle <- function(x) {
     x[sample(seq_along(x), replace = FALSE)]
   }
 }
+
+current_stack_trace_chr <- function() {
+  tb <- rlang::trace_back()
+  paste0(utils::capture.output(print(tb)), collapse = "\n")
+}

@@ -25,12 +25,28 @@
 #include <thread>
 #include <vector>
 
-
+#if defined(NANOARROW_DEBUG_PRESERVE)
+#include <unordered_map>
+#endif
 
 extern "C" void intptr_as_string(intptr_t ptr_int, char* buf) {
   std::string ptr_str = std::to_string(ptr_int);
   memcpy(buf, ptr_str.data(), ptr_str.size());
 }
+
+#if defined(NANOARROW_DEBUG_PRESERVE)
+static std::string get_r_traceback(void) {
+  SEXP fun = PROTECT(Rf_install("current_stack_trace_chr"));
+  SEXP call = PROTECT(Rf_lang1(fun));
+  SEXP nanoarrow_str = PROTECT(Rf_mkString("nanoarrow"));
+  SEXP nanoarrow_ns = PROTECT(R_FindNamespace(nanoarrow_str));
+  SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns));
+  const char* traceback_chr = Rf_translateCharUTF8(STRING_ELT(result, 0));
+  std::string traceback_str(traceback_chr);
+  UNPROTECT(5);
+  return traceback_str;
+}
+#endif
 
 class PreservedSEXPRegistry {
  public:
@@ -46,6 +62,10 @@ class PreservedSEXPRegistry {
 
     R_PreserveObject(obj);
     preserved_count_++;
+
+#if defined(NANOARROW_DEBUG_PRESERVE)
+    tracebacks_[obj] = get_r_traceback();
+#endif
   }
 
   bool release(SEXP obj) {
@@ -64,6 +84,9 @@ class PreservedSEXPRegistry {
     } else {
       R_ReleaseObject(obj);
       preserved_count_--;
+#if defined(NANOARROW_DEBUG_PRESERVE)
+      tracebacks_.erase(obj);
+#endif
       return true;
     }
   }
@@ -78,8 +101,21 @@ class PreservedSEXPRegistry {
     for (const auto& obj : trash_can_) {
       R_ReleaseObject(obj);
       preserved_count_--;
+#if defined(NANOARROW_DEBUG_PRESERVE)
+      tracebacks_.erase(obj);
+#endif
     }
     trash_can_.clear();
+
+#if defined(NANOARROW_DEBUG_PRESERVE)
+    if (preserved_count_ > 0) {
+      Rprintf("%ld unreleased SEXP(s) after emptying the trash:\n", (long)preserved_count_);
+      for (const auto& item: tracebacks_) {
+        Rprintf("----%p----\nPreserved at\n%s\n\n", item.first, item.second.c_str());
+      }
+    }
+#endif
+
     return trash_size;
   }
 
@@ -93,6 +129,9 @@ class PreservedSEXPRegistry {
   std::thread::id main_thread_id_;
   std::vector<SEXP> trash_can_;
   std::mutex trash_can_lock_;
+#if defined(NANOARROW_DEBUG_PRESERVE)
+  std::unordered_map<SEXP, std::string> tracebacks_;
+#endif
 };
 
 extern "C" void nanoarrow_preserve_init(void) { PreservedSEXPRegistry::GetInstance(); }
