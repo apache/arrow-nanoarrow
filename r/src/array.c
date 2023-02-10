@@ -47,7 +47,7 @@ SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp) {
     Rf_error("array$length must be finite and greater than zero");
   }
 
-  array->length = length;  
+  array->length = length;
   return R_NilValue;
 }
 
@@ -62,7 +62,7 @@ SEXP nanoarrow_c_array_set_null_count(SEXP array_xptr, SEXP null_count_sexp) {
     Rf_error("array$null_count must be finite and greater than -1");
   }
 
-  array->null_count = null_count;  
+  array->null_count = null_count;
   return R_NilValue;
 }
 
@@ -77,7 +77,7 @@ SEXP nanoarrow_c_array_set_offset(SEXP array_xptr, SEXP offset_sexp) {
     Rf_error("array$offset must be finite and greater than zero");
   }
 
-  array->length = offset;  
+  array->offset = offset;
   return R_NilValue;
 }
 

@@ -111,7 +111,9 @@ static inline SEXP array_xptr_ensure_independent(SEXP array_xptr);
 // (and their children) are allocated using nanoarrow's ArrowArrayInit, meaning
 // we can modify them safely (i.e., using ArrowArraySetBuffer()).
 static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) {
-  // If array_xptr has SEXP dependencies, this will ensure an independent version
+  // If array_xptr has SEXP dependencies (most commonly this would occur if it's
+  // a borrowed child of a struct array), this will ensure a version that can be
+  // released independently of its parent.
   SEXP independent_array_xptr = PROTECT(array_xptr_ensure_independent(array_xptr));
   struct ArrowArray* array = array_from_xptr(independent_array_xptr);
 

@@ -272,3 +272,49 @@ test_that("array modify can modify length", {
     "array\\$length must be finite and greater than zero"
   )
 })
+
+test_that("array modify can modify null_count", {
+  array <- as_nanoarrow_array(1:5)
+
+  array2 <- nanoarrow_array_modify(array, list(null_count = -1))
+  expect_identical(array2$null_count, -1L)
+  expect_identical(array$null_count, 0L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(null_count = NULL)),
+    "array\\$null_count must be double"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(null_count = NA_real_)),
+    "array\\$null_count must be finite"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(length = -2)),
+    "array\\$null_count must be finite and greater than -1"
+  )
+})
+
+test_that("array modify can modify offset", {
+  array <- as_nanoarrow_array(1:5)
+
+  array2 <- nanoarrow_array_modify(array, list(length = 4, offset = 1))
+  expect_identical(convert_array(array2), 2:5)
+  expect_identical(array$length, 5L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(offset = NULL)),
+    "array\\$offset must be double"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(offset = NA_real_)),
+    "array\\$offset must be finite"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(offset = -1)),
+    "array\\$offset must be finite and greater than zero"
+  )
+})
