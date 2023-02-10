@@ -318,3 +318,47 @@ test_that("array modify can modify offset", {
     "array\\$offset must be finite and greater than zero"
   )
 })
+
+test_that("array modify can modify buffers", {
+  array <- as_nanoarrow_array(1:5)
+
+  # Replace with brand new buffer
+  array2 <- nanoarrow_array_modify(array, list(buffers = list(NULL, 6:10)))
+  expect_identical(convert_array(array2), 6:10)
+  expect_identical(convert_array(array), 1:5)
+
+  # Re-use buffers from another array
+  array_with_nulls <- as_nanoarrow_array(c(1L, NA, 2L, NA, 3L))
+  array2 <- nanoarrow_array_modify(
+    array,
+    list(
+      null_count = -1,
+      buffers = list(
+        array_with_nulls$buffers[[1]],
+        array$buffers[[2]]
+      )
+    )
+  )
+
+  expect_identical(convert_array(array2), c(1L, NA, 3L, NA, 5L))
+  expect_identical(convert_array(array), 1:5)
+  expect_identical(convert_array(array_with_nulls), c(1L, NA, 2L, NA, 3L))
+
+  # Should work even after the source arrays go out of scope
+  array <- NULL
+  array_with_nulls <- NULL
+  gc()
+  expect_identical(convert_array(array2), c(1L, NA, 3L, NA, 5L))
+
+  array <- as_nanoarrow_array(1:5)
+  expect_error(
+    nanoarrow_array_modify(array, list(buffers = rep(list(NULL), 4))),
+    "must be <= 3"
+  )
+
+  # Check that specifying too few buffers will result in a validation error
+  expect_error(
+    nanoarrow_array_modify(array, list(buffers = list()), validate = TRUE),
+    "Expected array with 2 buffer"
+  )
+})

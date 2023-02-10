@@ -242,7 +242,7 @@ nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
       offset = .Call(nanoarrow_c_array_set_offset, array_copy, as.double(value)),
       buffers = {
         value <- lapply(value, as_nanoarrow_buffer)
-        .Call(nanoarrow_c_array_set_buffer, array_copy, value)
+        .Call(nanoarrow_c_array_set_buffers, array_copy, value)
       },
       children = {
         if (!is.null(value)) {
