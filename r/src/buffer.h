@@ -47,6 +47,11 @@ static inline SEXP buffer_owning_xptr(void) {
 static inline SEXP buffer_borrowed_xptr(const void* addr, int64_t size_bytes,
                                         SEXP shelter) {
   SEXP buffer_xptr = PROTECT(buffer_owning_xptr());
+  if (addr == NULL) {
+    UNPROTECT(1);
+    return buffer_xptr;
+  }
+
   struct ArrowBuffer* buffer = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
   buffer->allocator = ArrowBufferDeallocator(&nanoarrow_sexp_deallocator, shelter);
   buffer->data = (uint8_t*)addr;
