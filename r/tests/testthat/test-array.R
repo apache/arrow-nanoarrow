@@ -291,7 +291,7 @@ test_that("array modify can modify null_count", {
   )
 
   expect_error(
-    nanoarrow_array_modify(array, list(length = -2)),
+    nanoarrow_array_modify(array, list(null_count = -2)),
     "array\\$null_count must be finite and greater than -1"
   )
 })
