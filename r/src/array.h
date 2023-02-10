@@ -152,6 +152,18 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
     UNPROTECT(1);
   }
 
+  if (array->dictionary != NULL) {
+    result = ArrowArrayAllocateDictionary(array_copy);
+    if (result != NANOARROW_OK) {
+      array_copy->release(array_copy);
+      Rf_error("ArrowArrayAllocateDictionary() failed");
+    }
+
+    SEXP independent_dictionary = PROTECT(array_ensure_independent(array->dictionary));
+    array_export(independent_dictionary, array_copy->dictionary);
+    UNPROTECT(1);
+  }
+
   UNPROTECT(1);
 }
 

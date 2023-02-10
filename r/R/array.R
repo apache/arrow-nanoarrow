@@ -81,6 +81,15 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
 }
 
 #' @export
+as_nanoarrow_array.nanoarrow_array <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    return(x)
+  }
+
+  NextMethod()
+}
+
+#' @export
 infer_nanoarrow_schema.nanoarrow_array <- function(x, ...) {
   .Call(nanoarrow_c_infer_schema_array, x) %||%
     stop("nanoarrow_array() has no associated schema")
@@ -201,4 +210,62 @@ nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
   }
 
   result
+}
+
+nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
+  array <- as_nanoarrow_array(x)
+
+  if (length(new_values) == 0) {
+    return(array)
+  }
+
+  # Make sure new_values has names to iterate over
+  new_names <- names(new_values)
+  if (is.null(new_names) || all(new_names == "", na.rm = TRUE)) {
+    stop("`new_values` must be named")
+  }
+
+  # Make a copy and modify it. This is a deep copy in the sense that all
+  # children are modifiable; however, it's a shallow copy in the sense that
+  # none of the buffers are copied.
+  array_copy <- nanoarrow_allocate_array()
+  nanoarrow_pointer_export(array, array_copy)
+
+  for (i in seq_along(new_values)) {
+    nm <- new_names[i]
+    value <- new_values[[i]]
+
+    switch(
+      nm,
+      length = .Call(nanoarrow_c_array_set_length, array_copy, as.double(value)),
+      null_count = .Call(nanoarrow_c_array_set_null_count, array_copy, as.double(value)),
+      offset = .Call(nanoarrow_c_array_set_offset, array_copy, as.double(value)),
+      buffers = {
+        value <- lapply(value, as_nanoarrow_buffer)
+        .Call(nanoarrow_c_array_set_buffer, array_copy, value)
+      },
+      children = {
+        if (!is.null(value)) {
+          value <- lapply(value, as_nanoarrow_array)
+        }
+
+        .Call(nanoarrow_c_array_set_children, array_copy, value)
+      },
+      dictionary = {
+        if (!is.null(value)) {
+          value <- as_nanoarrow_array(value)
+        }
+
+        .Call(nanoarrow_c_array_set_dictionary, array_copy, value)
+      },
+      stop(sprintf("Can't modify array[[%s]]: does not exist", deparse(nm)))
+    )
+  }
+
+  original_schema <- .Call(nanoarrow_c_infer_schema_array, array)
+  if (!is.null(original_schema)) {
+    nanoarrow_array_set_schema(array_copy, original_schema, validate = validate)
+  }
+
+  array_copy
 }

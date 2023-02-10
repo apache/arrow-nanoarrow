@@ -31,6 +31,12 @@ extern SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr);
+extern SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp);
+extern SEXP nanoarrow_c_array_set_null_count(SEXP array_xptr, SEXP null_count_sexp);
+extern SEXP nanoarrow_c_array_set_offset(SEXP array_xptr, SEXP offset_sexp);
+extern SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp);
+extern SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp);
+extern SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr);
 extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr);
 extern SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp);
@@ -80,6 +86,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_array_stream_get_next", (DL_FUNC)&nanoarrow_c_array_stream_get_next, 1},
     {"nanoarrow_c_basic_array_stream", (DL_FUNC)&nanoarrow_c_basic_array_stream, 3},
     {"nanoarrow_c_array_view", (DL_FUNC)&nanoarrow_c_array_view, 2},
+    {"nanoarrow_c_array_set_length", (DL_FUNC)&nanoarrow_c_array_set_length, 2},
+    {"nanoarrow_c_array_set_null_count", (DL_FUNC)&nanoarrow_c_array_set_null_count, 2},
+    {"nanoarrow_c_array_set_offset", (DL_FUNC)&nanoarrow_c_array_set_offset, 2},
+    {"nanoarrow_c_array_set_buffers", (DL_FUNC)&nanoarrow_c_array_set_buffers, 2},
+    {"nanoarrow_c_array_set_children", (DL_FUNC)&nanoarrow_c_array_set_children, 2},
+    {"nanoarrow_c_array_set_dictionary", (DL_FUNC)&nanoarrow_c_array_set_dictionary, 2},
     {"nanoarrow_c_array_set_schema", (DL_FUNC)&nanoarrow_c_array_set_schema, 3},
     {"nanoarrow_c_infer_schema_array", (DL_FUNC)&nanoarrow_c_infer_schema_array, 1},
     {"nanoarrow_c_array_proxy", (DL_FUNC)&nanoarrow_c_array_proxy, 3},

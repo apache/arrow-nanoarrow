@@ -227,3 +227,48 @@ test_that("array list interface works for dictionary types", {
   expect_type(info_recursive$dictionary, "list")
   expect_s3_class(info_recursive$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
 })
+
+test_that("array modify errors for invalid components", {
+  array <- as_nanoarrow_array(1:5)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(1, 2, 3)),
+    "`new_values`"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(not_an_item = NULL)),
+    "Can't modify array"
+  )
+})
+
+test_that("array modify does not copy if length(new_values) == 0", {
+  array <- as_nanoarrow_array(1:5)
+  expect_identical(
+    nanoarrow_pointer_addr_chr(nanoarrow_array_modify(array, list())),
+    nanoarrow_pointer_addr_chr(array)
+  )
+})
+
+test_that("array modify can modify length", {
+  array <- as_nanoarrow_array(1:5)
+
+  array2 <- nanoarrow_array_modify(array, list(length = 4))
+  expect_identical(convert_array(array2), 1:4)
+  expect_identical(array$length, 5L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(length = NULL)),
+    "array\\$length must be double"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(length = NA_real_)),
+    "array\\$length must be finite"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(length = -1)),
+    "array\\$length must be finite and greater than zero"
+  )
+})

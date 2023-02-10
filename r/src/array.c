@@ -36,6 +36,63 @@ void finalize_array_xptr(SEXP array_xptr) {
   }
 }
 
+SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  if (TYPEOF(length_sexp) != REALSXP || Rf_length(length_sexp) != 1) {
+    Rf_error("array$length must be double(1)");
+  }
+
+  double length = REAL(length_sexp)[0];
+  if (ISNA(length) || ISNAN(length) || length < 0) {
+    Rf_error("array$length must be finite and greater than zero");
+  }
+
+  array->length = length;  
+  return R_NilValue;
+}
+
+SEXP nanoarrow_c_array_set_null_count(SEXP array_xptr, SEXP null_count_sexp) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  if (TYPEOF(null_count_sexp) != REALSXP || Rf_length(null_count_sexp) != 1) {
+    Rf_error("array$null_count must be double(1)");
+  }
+
+  double null_count = REAL(null_count_sexp)[0];
+  if (ISNA(null_count) || ISNAN(null_count) || null_count < -1) {
+    Rf_error("array$null_count must be finite and greater than -1");
+  }
+
+  array->null_count = null_count;  
+  return R_NilValue;
+}
+
+SEXP nanoarrow_c_array_set_offset(SEXP array_xptr, SEXP offset_sexp) {
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  if (TYPEOF(offset_sexp) != REALSXP || Rf_length(offset_sexp) != 1) {
+    Rf_error("array$offset must be double(1)");
+  }
+
+  double offset = REAL(offset_sexp)[0];
+  if (ISNA(offset) || ISNAN(offset) || offset < 0) {
+    Rf_error("array$offset must be finite and greater than zero");
+  }
+
+  array->length = offset;  
+  return R_NilValue;
+}
+
+SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp) {
+  Rf_error("not implemented");
+}
+
+SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp) {
+  Rf_error("not implemented");
+}
+
+SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr) {
+  Rf_error("not implemented");
+}
+
 SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp) {
   // Fair game to remove a schema from a pointer
   if (schema_xptr == R_NilValue) {
