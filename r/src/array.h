@@ -21,11 +21,11 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "buffer.h"
 #include "nanoarrow.h"
 #include "util.h"
 
 void finalize_array_xptr(SEXP array_xptr);
-void finalize_exported_array(struct ArrowArray* array);
 
 // Returns an external pointer to an array child with a schema attached.
 // The returned pointer will keep its parent alive unless passed through
@@ -98,26 +98,60 @@ static inline struct ArrowSchema* schema_from_array_xptr(SEXP array_xptr) {
   }
 }
 
+static inline SEXP array_ensure_independent(struct ArrowArray* array);
 static inline SEXP array_xptr_ensure_independent(SEXP array_xptr);
 
 // Exports a version of the array pointed to by array_xptr to array_copy
 // such that (1) any R references to array_xptr are not invalidated if they exist
 // and (2) array_copy->release() can be called independently without invalidating
-// R references to array_xptr.
+// R references to array_xptr. This is a recursive operation (i.e., it will
+// "explode" the array's children into reference-counted entities where the
+// reference counting is handled by R's preserve/release infrastructure).
+// Exported arrays and their children have the important property that they
+// (and their children) are allocated using nanoarrow's ArrowArrayInit, meaning
+// we can modify them safely (i.e., using ArrowArraySetBuffer()).
 static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) {
   // If array_xptr has SEXP dependencies, this will ensure an independent version
-  // It is possible that this should be done recursively, too, to ensure that unused
-  // child arrays can be released by wherever this is being exported. This is in the
-  // specification although it is unclear whether any implementation actually does this.
   SEXP independent_array_xptr = PROTECT(array_xptr_ensure_independent(array_xptr));
   struct ArrowArray* array = array_from_xptr(independent_array_xptr);
 
-  // Keep all the pointers but use the nanoarrow_preserve_sexp mechanism to keep
-  // the original data valid (nanoarrow_release_sexp is called from the release callback)
-  memcpy(array_copy, array, sizeof(struct ArrowArray));
-  array_copy->private_data = independent_array_xptr;
-  array_copy->release = &finalize_exported_array;
-  nanoarrow_preserve_sexp(independent_array_xptr);
+  int result = ArrowArrayInitFromType(array_copy, NANOARROW_TYPE_UNINITIALIZED);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayInitFromType() failed");
+  }
+
+  array_copy->length = array->length;
+  array_copy->null_count = array->null_count;
+  array_copy->offset = array->offset;
+
+  // Get buffer references, each of which preserve a reference to independent_array_xptr
+  array_copy->n_buffers = array->n_buffers;
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    SEXP borrowed_buffer =
+        PROTECT(buffer_borrowed_xptr(array->buffers[i], 0, independent_array_xptr));
+    result = ArrowArraySetBuffer(array_copy, i,
+                                 (struct ArrowBuffer*)R_ExternalPtrAddr(borrowed_buffer));
+    if (result != NANOARROW_OK) {
+      array_copy->release(array_copy);
+      Rf_error("ArrowArraySetBuffer() failed");
+    }
+    UNPROTECT(1);
+  }
+
+  // Swap out any children for independently releasable chilren and export them
+  // into array_copy->children
+  result = ArrowArrayAllocateChildren(array_copy, array->n_children);
+  if (result != NANOARROW_OK) {
+    array_copy->release(array_copy);
+    Rf_error("ArrowArraySetBuffer() failed");
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    SEXP independent_child = PROTECT(array_ensure_independent(array->children[i]));
+    array_export(independent_child, array_copy->children[i]);
+    UNPROTECT(1);
+  }
+
   UNPROTECT(1);
 }
 
@@ -143,9 +177,9 @@ static inline SEXP array_ensure_independent(struct ArrowArray* array) {
   // Export the independent array (which keeps a reference to original_array_xptr)
   // back to the original home
   array_export(original_array_xptr, array);
-  UNPROTECT(1);
 
   // Return the external pointer of the independent array
+  UNPROTECT(1);
   return original_array_xptr;
 }
 
