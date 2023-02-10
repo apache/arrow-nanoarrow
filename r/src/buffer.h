@@ -47,6 +47,8 @@ static inline SEXP buffer_owning_xptr(void) {
 static inline SEXP buffer_borrowed_xptr(const void* addr, int64_t size_bytes,
                                         SEXP shelter) {
   SEXP buffer_xptr = PROTECT(buffer_owning_xptr());
+
+  // Don't bother with a preserve/release if the buffer is NULL
   if (addr == NULL) {
     UNPROTECT(1);
     return buffer_xptr;
