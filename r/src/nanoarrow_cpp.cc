@@ -20,11 +20,17 @@
 #include <Rinternals.h>
 
 #include <cstring>
+#include <cstdint>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
+// Without this infrastructure, it's possible to check that all objects
+// are released by running devtools::test(); gc() in a fresh session and
+// making sure that nanoarrow:::preserved_count() is zero afterward.
+// When this isn't the case the process of debugging unreleased SEXPs
+// is almost impossible without the bookkeeping below.
 #if defined(NANOARROW_DEBUG_PRESERVE)
 #include <unordered_map>
 #endif
@@ -60,15 +66,20 @@ class PreservedSEXPRegistry {
       return;
     }
 
-    #if defined(NANOARROW_DEBUG_PRESERVE)
-      Rprintf("PreservedSEXPRegistry::preserve(%p)\n", obj);
-    #endif
+#if defined(NANOARROW_DEBUG_PRESERVE)
+    Rprintf("PreservedSEXPRegistry::preserve(%p)\n", obj);
+#endif
 
     R_PreserveObject(obj);
     preserved_count_++;
 
 #if defined(NANOARROW_DEBUG_PRESERVE)
-    tracebacks_[obj] = get_r_traceback();
+    if (tracebacks_.find(obj) != tracebacks_.end()) {
+      tracebacks_[obj].first++;
+    } else {
+      tracebacks_[obj] = {1, get_r_traceback()};
+    }
+
 #endif
   }
 
@@ -77,9 +88,9 @@ class PreservedSEXPRegistry {
       return true;
     }
 
-    #if defined(NANOARROW_DEBUG_PRESERVE)
-      Rprintf("PreservedSEXPRegistry::release(%p)\n", obj);
-    #endif
+#if defined(NANOARROW_DEBUG_PRESERVE)
+    Rprintf("PreservedSEXPRegistry::release(%p)\n", obj);
+#endif
 
     // If there is an attempt to delete this object from another thread,
     // R_ReleaseObject() will almost certainly crash R or corrupt memory
@@ -92,8 +103,14 @@ class PreservedSEXPRegistry {
     } else {
       R_ReleaseObject(obj);
       preserved_count_--;
+
 #if defined(NANOARROW_DEBUG_PRESERVE)
-      tracebacks_.erase(obj);
+      if (tracebacks_.find(obj) != tracebacks_.end()) {
+        tracebacks_[obj].first--;
+        if (tracebacks_[obj].first == 0) {
+          tracebacks_.erase(obj);
+        }
+      }
 #endif
       return true;
     }
@@ -105,8 +122,14 @@ class PreservedSEXPRegistry {
     for (SEXP obj : trash_can_) {
       R_ReleaseObject(obj);
       preserved_count_--;
+
 #if defined(NANOARROW_DEBUG_PRESERVE)
-      tracebacks_.erase(obj);
+      if (tracebacks_.find(obj) != tracebacks_.end()) {
+        tracebacks_[obj].first--;
+        if (tracebacks_[obj].first == 0) {
+          tracebacks_.erase(obj);
+        }
+      }
 #endif
     }
     trash_can_.clear();
@@ -116,7 +139,8 @@ class PreservedSEXPRegistry {
       Rprintf("%ld unreleased SEXP(s) after emptying the trash:\n",
               (long)preserved_count_);
       for (const auto& item : tracebacks_) {
-        Rprintf("----%p----\nPreserved at\n%s\n\n", item.first, item.second.c_str());
+        Rprintf("----%p---- (%ld reference(s) remaining)\nFirst preserved at\n%s\n\n",
+                item.first, item.second.first, item.second.second.c_str());
       }
     }
 #endif
@@ -134,8 +158,9 @@ class PreservedSEXPRegistry {
   std::thread::id main_thread_id_;
   std::vector<SEXP> trash_can_;
   std::mutex trash_can_lock_;
+
 #if defined(NANOARROW_DEBUG_PRESERVE)
-  std::unordered_map<SEXP, std::string> tracebacks_;
+  std::unordered_map<SEXP, std::pair<int64_t, std::string>> tracebacks_;
 #endif
 };
 

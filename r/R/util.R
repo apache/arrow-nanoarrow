@@ -15,17 +15,39 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Internally we use R_PreserveObject() and R_ReleaseObject() to manage R objects
+# that must be kept alive for ArrowArray buffers to stay valid. This count
+# should be zero after tests have run in a fresh session and both gc() and
+# preserved_empty() have been run. If this isn't the case, compile with
+# -DNANOARROW_DEBUG_PRESERVE and run preserved_empty() to get verbose output
+# about which objects didn't get released (including an R traceback to where
+# they were preserved).
 preserved_count <- function() {
   .Call(nanoarrow_c_preserved_count)
 }
 
+# Most objects are both preserved and released on the R main thread; however
+# when sending objects into the wild there is no guarantee that they will be
+# deleted on the R main thread (even though they usually are). The R package
+# handles this by keeping a list of objects that couldn't be released: calling
+# this function will release them and return how many were released.
 preserved_empty <- function() {
   .Call(nanoarrow_c_preserved_empty)
 }
 
+# To test the "release from another thread" mechanism, this preserves obj,
+# releases it from another thread and returns.
 preserve_and_release_on_other_thread <- function(obj) {
   invisible(.Call(nanoarrow_c_preserve_and_release_on_other_thread, obj))
 }
+
+# This is used by bookkeeping infrastructure when debugging an imbalance in
+# preserved/released SEXPs.
+current_stack_trace_chr <- function() {
+  tb <- rlang::trace_back()
+  paste0(utils::capture.output(print(tb)), collapse = "\n")
+}
+
 
 `%||%` <- function(rhs, lhs) {
   if (is.null(rhs)) lhs else rhs
@@ -71,9 +93,4 @@ vec_shuffle <- function(x) {
   } else {
     x[sample(seq_along(x), replace = FALSE)]
   }
-}
-
-current_stack_trace_chr <- function() {
-  tb <- rlang::trace_back()
-  paste0(utils::capture.output(print(tb)), collapse = "\n")
 }
