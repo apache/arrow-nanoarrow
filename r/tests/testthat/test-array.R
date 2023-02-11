@@ -458,3 +458,83 @@ test_that("array modify can skip validation", {
 
   expect_length(array2$children, 1)
 })
+
+test_that("[[<- works for array", {
+  array <- as_nanoarrow_array(1L)
+  array[["length"]] <- 0
+  expect_identical(array$length, 0L)
+
+  array <- as_nanoarrow_array(1L)
+  array[[1]] <- 0
+  expect_identical(array$length, 0L)
+
+  expect_error(
+    array[["not_an_item"]] <- "something",
+    "Can't modify array"
+  )
+
+  expect_error(
+    array[[NA_character_]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[character()]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[NA_integer_]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[integer()]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[12]] <- "something",
+    "must be character"
+  )
+})
+
+test_that("$<- works for array", {
+  array <- as_nanoarrow_array(1L)
+  array$length <- 0
+  expect_identical(array$length, 0L)
+
+  expect_error(
+    array$not_an_item <- "something",
+    "Can't modify array"
+  )
+})
+
+test_that("<- assignment works for array$children", {
+  array <- as_nanoarrow_array(
+    data.frame(col1 = 1L, col2 = "a", stringsAsFactors = FALSE)
+  )
+
+  array$children$col1 <- 100
+  expect_identical(
+    convert_array(array),
+    data.frame(col1 = 100, col2 = "a", stringsAsFactors = FALSE)
+  )
+
+  names(array$children)[1] <- "col1_new"
+  expect_identical(
+    convert_array(array),
+    data.frame(col1_new = 100, col2 = "a", stringsAsFactors = FALSE)
+  )
+})
+
+test_that("<- assignment works for array$buffers", {
+  array <- as_nanoarrow_array(1:8)
+  array$null_count <- -1
+  array$buffers[[1]] <- packBits(c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE))
+
+  expect_identical(
+    convert_array(array),
+    c(1:4, rep(NA, 4))
+  )
+})

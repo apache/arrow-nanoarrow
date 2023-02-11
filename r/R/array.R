@@ -166,6 +166,28 @@ names.nanoarrow_array <- function(x, ...) {
   nanoarrow_array_proxy_safe(x)[[i]]
 }
 
+#' @export
+`[[<-.nanoarrow_array` <- function(x, i, value) {
+  if (is.numeric(i) && isTRUE(i %in% 1:6)) {
+    i <- names.nanoarrow_array()[[i]]
+  }
+
+  if (is.character(i) && (length(i) == 1L) && !is.na(i)) {
+    new_values <- list(value)
+    names(new_values) <- i
+    return(nanoarrow_array_modify(x, new_values))
+  }
+
+  stop("`i` must be character(1) or integer(1) %in% 1:6")
+}
+
+#' @export
+`$<-.nanoarrow_array` <- function(x, i, value) {
+  new_values <- list(value)
+  names(new_values) <- i
+  nanoarrow_array_modify(x, new_values)
+}
+
 # A version of nanoarrow_array_proxy() that is less likely to error for invalid
 # arrays and/or schemas
 nanoarrow_array_proxy_safe <- function(array, recursive = FALSE) {
