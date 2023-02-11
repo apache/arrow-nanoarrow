@@ -21,6 +21,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <stdint.h>
+
 extern SEXP nanoarrow_ns_pkg;
 extern SEXP nanoarrow_cls_array;
 extern SEXP nanoarrow_cls_altrep_chr;
