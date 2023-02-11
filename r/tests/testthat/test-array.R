@@ -430,3 +430,31 @@ test_that("array modify can modify children", {
   # TODO: dictionary not yet supported internally
   expect_identical(as.vector(arrow::as_arrow_array(array2)), factor("b"))
 })
+
+test_that("array modify can modify array with no schema attached", {
+  array <- as_nanoarrow_array(1L)
+  nanoarrow_array_set_schema(array, NULL)
+
+  array2 <- nanoarrow_array_modify(array, list(dictionary = c("a", "b")))
+  expect_true(!is.null(array2$dictionary))
+
+  array2 <- nanoarrow_array_modify(array, list(children = list("x")))
+  expect_length(array2$children, 1)
+})
+
+test_that("array modify can skip validation", {
+  array <- as_nanoarrow_array(1L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(children = list("x")), validate = TRUE),
+    "Expected schema with 0 children"
+  )
+
+  array2 <- nanoarrow_array_modify(
+    array,
+    list(children = list("x")),
+    validate = FALSE
+  )
+
+  expect_length(array2$children, 1)
+})
