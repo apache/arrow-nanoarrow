@@ -231,6 +231,9 @@ nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
   array_copy <- nanoarrow_allocate_array()
   nanoarrow_pointer_export(array, array_copy)
 
+  # If there is a schema, we may need to modify it in parallel
+  schema <- .Call(nanoarrow_c_infer_schema_array, array)
+
   for (i in seq_along(new_values)) {
     nm <- new_names[i]
     value <- new_values[[i]]
@@ -250,6 +253,14 @@ nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
         }
 
         .Call(nanoarrow_c_array_set_children, array_copy, value)
+
+        if (!is.null(schema)) {
+          schema <- nanoarrow_schema_modify(
+            schema,
+            list(children = lapply(value, infer_nanoarrow_schema)),
+            validate = validate
+          )
+        }
       },
       dictionary = {
         if (!is.null(value)) {
@@ -257,14 +268,27 @@ nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
         }
 
         .Call(nanoarrow_c_array_set_dictionary, array_copy, value)
+
+        if (!is.null(schema) && !is.null(value)) {
+          schema <- nanoarrow_schema_modify(
+            schema,
+            list(dictionary = infer_nanoarrow_schema(value)),
+            validate = validate
+          )
+        } else if (!is.null(schema)) {
+          schema <- nanoarrow_schema_modify(
+            schema,
+            list(dictionary = NULL),
+            validate = validate
+          )
+        }
       },
       stop(sprintf("Can't modify array[[%s]]: does not exist", deparse(nm)))
     )
   }
 
-  original_schema <- .Call(nanoarrow_c_infer_schema_array, array)
-  if (!is.null(original_schema)) {
-    nanoarrow_array_set_schema(array_copy, original_schema, validate = validate)
+  if (!is.null(schema)) {
+    nanoarrow_array_set_schema(array_copy, schema, validate = validate)
   }
 
   array_copy

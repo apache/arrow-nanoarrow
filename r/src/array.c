@@ -120,12 +120,84 @@ SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp) {
   return R_NilValue;
 }
 
+static void release_all_children(struct ArrowArray* array) {
+  for (int64_t i = 0; i < array->n_children; i++) {
+    if (array->children[i]->release != NULL) {
+      array->children[i]->release(array->children[i]);
+    }
+  }
+}
+
+static void free_all_children(struct ArrowArray* array) {
+  for (int64_t i = 0; i < array->n_children; i++) {
+    if (array->children[i] != NULL) {
+      ArrowFree(array->children[i]);
+      array->children[i] = NULL;
+    }
+  }
+
+  if (array->children != NULL) {
+    ArrowFree(array->children);
+    array->children = NULL;
+  }
+
+  array->n_children = 0;
+}
+
 SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp) {
-  Rf_error("not implemented");
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+
+  release_all_children(array);
+
+  if (Rf_xlength(children_sexp) == 0) {
+    free_all_children(array);
+    return R_NilValue;
+  }
+
+  if (Rf_xlength(children_sexp) != array->n_children) {
+    free_all_children(array);
+    int result = ArrowArrayAllocateChildren(array, Rf_xlength(children_sexp));
+    if (result != NANOARROW_OK) {
+      Rf_error("Error allocating array$children of size %ld",
+               (long)Rf_xlength(children_sexp));
+    }
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    SEXP child_xptr = VECTOR_ELT(children_sexp, i);
+    array_export(child_xptr, array->children[i]);
+  }
+
+  return R_NilValue;
 }
 
 SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr) {
-  Rf_error("not implemented");
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+
+  // If there's already a dictionary, make sure we release it
+  if (array->dictionary != NULL) {
+    if (array->dictionary->release != NULL) {
+      array->dictionary->release(array->dictionary);
+    }
+  }
+
+  if (dictionary_xptr == R_NilValue) {
+    if (array->dictionary != NULL) {
+      ArrowFree(array->dictionary);
+      array->dictionary = NULL;
+    }
+  } else {
+    if (array->dictionary == NULL) {
+      int result = ArrowArrayAllocateDictionary(array);
+      if (result != NANOARROW_OK) {
+        Rf_error("Error allocating array$dictionary");
+      }
+    }
+
+    array_export(dictionary_xptr, array->dictionary);
+  }
+
+  return R_NilValue;
 }
 
 SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp) {

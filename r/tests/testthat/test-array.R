@@ -362,3 +362,71 @@ test_that("array modify can modify buffers", {
     "Expected array with 2 buffer"
   )
 })
+
+test_that("array modify can modify children", {
+  array_with_children <- as_nanoarrow_array(data.frame(x = 1L))
+
+  # Children -> no children
+  array2 <- nanoarrow_array_modify(array_with_children, list(children = NULL))
+  expect_identical(
+    convert_array(array2),
+    new_data_frame(setNames(list(), character()), nrow = 1L)
+  )
+
+  # No children -> no children
+  array_without_children <- array2
+  array2 <- nanoarrow_array_modify(array_with_children, list(children = NULL))
+  expect_identical(
+    convert_array(array2),
+    new_data_frame(setNames(list(), character()), nrow = 1L)
+  )
+
+  # No children -> children
+  array2 <- nanoarrow_array_modify(
+    array_without_children,
+    list(children = list(y = 2L))
+  )
+  expect_identical(convert_array(array2), data.frame(y = 2L))
+
+  # Replace same number of children
+  array2 <- nanoarrow_array_modify(
+    array_with_children,
+    list(children = list(y = 2L))
+  )
+  expect_identical(convert_array(array2), data.frame(y = 2L))
+})
+
+test_that("array modify can modify children", {
+  array_without_dictionary <- as_nanoarrow_array(0L)
+  array_with_dictionary <- as_nanoarrow_array(factor("a"))
+
+  # No dictionary -> no dictionary
+  array2 <- nanoarrow_array_modify(
+    array_without_dictionary,
+    list(dictionary = NULL)
+  )
+  expect_identical(convert_array(array2), 0L)
+
+  # No dictionary -> dictionary
+  array2 <- nanoarrow_array_modify(
+    array_without_dictionary,
+    list(dictionary = "a")
+  )
+  # TODO: dictionary not yet supported internally
+  expect_identical(as.vector(arrow::as_arrow_array(array2)), factor("a"))
+
+  # Dictionary -> no dictionary
+  array2 <- nanoarrow_array_modify(
+    array_with_dictionary,
+    list(dictionary = NULL)
+  )
+  expect_identical(convert_array(array2), 0L)
+
+  # Dictionary -> new dictionary
+  array2 <- nanoarrow_array_modify(
+    array_with_dictionary,
+    list(dictionary = "b")
+  )
+  # TODO: dictionary not yet supported internally
+  expect_identical(as.vector(arrow::as_arrow_array(array2)), factor("b"))
+})
