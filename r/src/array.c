@@ -164,8 +164,11 @@ SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp) {
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
+    // The arrays here will be moved, invalidating the arrays in the passed
+    // list (the export step is handled in R)
     SEXP child_xptr = VECTOR_ELT(children_sexp, i);
-    array_export(child_xptr, array->children[i]);
+    struct ArrowArray* child = array_from_xptr(child_xptr);
+    ArrowArrayMove(child, array->children[i]);
   }
 
   return R_NilValue;
@@ -198,6 +201,82 @@ SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr) {
   }
 
   return R_NilValue;
+}
+
+static int move_array_buffers(struct ArrowArray* src, struct ArrowArray* dst,
+                              struct ArrowSchema* schema, struct ArrowError* error) {
+  error->message[0] = '\0';
+  dst->length = src->length;
+  dst->null_count = src->null_count;
+  dst->offset = src->offset;
+
+  if (src->n_buffers != dst->n_buffers) {
+    ArrowErrorSet(error, "Expected %ld buffer(s) but got %ld", dst->n_buffers,
+                  src->n_buffers);
+    return EINVAL;
+  }
+
+  for (int64_t i = 0; i < src->n_buffers; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArraySetBuffer(dst, i, ArrowArrayBuffer(src, i)));
+  }
+
+  if (src->n_children != dst->n_children) {
+    ArrowErrorSet(error, "Expected %ld child(ren) but got %ld", dst->n_children,
+                  src->n_children);
+    return EINVAL;
+  }
+
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(move_array_buffers(src->children[i], dst->children[i],
+                                               schema->children[i], error));
+  }
+
+  // ArrowArrayInit() never initializes a dictionary, so do it here
+  if (src->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayInitFromSchema(dst->dictionary, schema->dictionary, error));
+    NANOARROW_RETURN_NOT_OK(
+        move_array_buffers(src->dictionary, dst->dictionary, schema->dictionary, error));
+  }
+
+  return NANOARROW_OK;
+}
+
+SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) {
+  // A very particular type of validation we can do with the ArrowArray we use
+  // in nanoarrow_array_modify() (which was created using ArrowArrayInit).
+  // At this point we know how long each buffer is (via ArrowArrayBuffer())
+  // but after we send the array into the wild, that information is lost.
+  // This operation will invalidate array_xptr (but this is OK since we very
+  // specifically just allocated it).
+  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowError error;
+
+  // Even though array was initialized using ArrowArrayInit(), it doesn't have
+  // all the information about storage types since it didn't necessarily know
+  // what the storage type would be when it was being constructed. Here we create
+  // a version that does and move buffers recursively into it.
+  SEXP array_dst_xptr = PROTECT(array_owning_xptr());
+  struct ArrowArray* array_dst = (struct ArrowArray*)R_ExternalPtrAddr(array_dst_xptr);
+  int result = ArrowArrayInitFromSchema(array_dst, schema, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayInitFromSchema(): %s", error.message);
+  }
+
+  result = move_array_buffers(array, array_dst, schema, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("move_array_buffers: %s", error.message);
+  }
+
+  result = ArrowArrayFinishBuilding(array_dst, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayFinishBuilding(): %s", error.message);
+  }
+
+  UNPROTECT(1);
+  return array_dst_xptr;
 }
 
 SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp) {

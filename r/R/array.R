@@ -250,11 +250,8 @@ nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
   # Make a copy and modify it. This is a deep copy in the sense that all
   # children are modifiable; however, it's a shallow copy in the sense that
   # none of the buffers are copied.
-  array_copy <- nanoarrow_allocate_array()
-  nanoarrow_pointer_export(array, array_copy)
-
-  # If there is a schema, we may need to modify it in parallel
   schema <- .Call(nanoarrow_c_infer_schema_array, array)
+  array_copy <- array_shallow_copy(array, schema, validate = validate)
 
   for (i in seq_along(new_values)) {
     nm <- new_names[i]
@@ -270,11 +267,9 @@ nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
         .Call(nanoarrow_c_array_set_buffers, array_copy, value)
       },
       children = {
-        if (!is.null(value)) {
-          value <- lapply(value, as_nanoarrow_array)
-        }
-
-        .Call(nanoarrow_c_array_set_children, array_copy, value)
+        value <- lapply(value, as_nanoarrow_array)
+        value_copy <- lapply(value, array_shallow_copy, validate = validate)
+        .Call(nanoarrow_c_array_set_children, array_copy, value_copy)
 
         if (!is.null(schema)) {
           schema <- nanoarrow_schema_modify(
@@ -309,9 +304,42 @@ nanoarrow_array_modify <- function(x, new_values, validate = TRUE) {
     )
   }
 
+  if (!is.null(schema) && validate) {
+    array_copy <- .Call(nanoarrow_c_array_validate_after_modify, array_copy, schema)
+  }
+
   if (!is.null(schema)) {
     nanoarrow_array_set_schema(array_copy, schema, validate = validate)
   }
 
   array_copy
+}
+
+array_shallow_copy <- function(array, schema = NULL, validate) {
+  array_copy <- nanoarrow_allocate_array()
+  nanoarrow_pointer_export(array, array_copy)
+  schema <- schema %||% .Call(nanoarrow_c_infer_schema_array, array)
+
+  # For validation, use some of the infrastructure we already have in place
+  # to make sure array_copy knows how long each buffer is
+  if (!is.null(schema) && validate) {
+    copy_buffers_recursive(array, array_copy)
+  }
+
+  array_copy
+}
+
+copy_buffers_recursive <- function(array, array_copy) {
+  proxy <- nanoarrow_array_proxy_safe(array)
+  proxy_copy <- nanoarrow_array_proxy(array_copy)
+
+  .Call(nanoarrow_c_array_set_buffers, array_copy, proxy$buffers)
+
+  for (i in seq_along(proxy$children)) {
+    copy_buffers_recursive(proxy$children[[i]], proxy_copy$children[[i]])
+  }
+
+  if (!is.null(proxy$dictionary)) {
+    copy_buffers_recursive(proxy$dictionary, proxy_copy$dictionary)
+  }
 }

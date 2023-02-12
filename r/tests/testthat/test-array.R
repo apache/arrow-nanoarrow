@@ -274,11 +274,11 @@ test_that("array modify can modify length", {
 })
 
 test_that("array modify can modify null_count", {
-  array <- as_nanoarrow_array(1:5)
+  array <- as_nanoarrow_array(c(1L, NA, 2L, NA, 3L))
 
   array2 <- nanoarrow_array_modify(array, list(null_count = -1))
   expect_identical(array2$null_count, -1L)
-  expect_identical(array$null_count, 0L)
+  expect_identical(array$null_count, 2L)
 
   expect_error(
     nanoarrow_array_modify(array, list(null_count = NULL)),
@@ -359,7 +359,7 @@ test_that("array modify can modify buffers", {
   # Check that specifying too few buffers will result in a validation error
   expect_error(
     nanoarrow_array_modify(array, list(buffers = list()), validate = TRUE),
-    "Expected array with 2 buffer"
+    "Expected 2 buffer"
   )
 })
 
@@ -396,7 +396,7 @@ test_that("array modify can modify children", {
   expect_identical(convert_array(array2), data.frame(y = 2L))
 })
 
-test_that("array modify can modify children", {
+test_that("array modify can modify dictionary", {
   array_without_dictionary <- as_nanoarrow_array(0L)
   array_with_dictionary <- as_nanoarrow_array(factor("a"))
 
@@ -529,7 +529,7 @@ test_that("<- assignment works for array$children", {
 })
 
 test_that("<- assignment works for array$buffers", {
-  array <- as_nanoarrow_array(1:8)
+  array <- as_nanoarrow_array(c(1:7, NA))
   array$null_count <- -1
   array$buffers[[1]] <- packBits(c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE))
 
