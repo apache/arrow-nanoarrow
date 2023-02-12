@@ -546,3 +546,20 @@ test_that("<- assignment works for array$buffers", {
     c(1:4, rep(NA, 4))
   )
 })
+
+test_that("nanoarrow_array_init() creates an array", {
+  array <- nanoarrow_array_init(na_int32())
+  expect_identical(convert_array(array), integer())
+
+  # Check error from init
+  bad_schema <- nanoarrow_schema_modify(
+    na_int32(),
+    list(children = list(na_int32())),
+    validate = FALSE
+  )
+
+  expect_error(
+    nanoarrow_array_init(bad_schema),
+    "Expected schema with 0 children"
+  )
+})
