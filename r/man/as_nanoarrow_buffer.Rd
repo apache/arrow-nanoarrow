@@ -2,7 +2,7 @@
 % Please edit documentation in R/buffer.R
 \name{as_nanoarrow_buffer}
 \alias{as_nanoarrow_buffer}
-\title{Convert an object to a nanoarrow_buffer}
+\title{Convert an object to a nanoarrow buffer}
 \usage{
 as_nanoarrow_buffer(x, ...)
 }
@@ -15,11 +15,16 @@ as_nanoarrow_buffer(x, ...)
 An object of class 'nanoarrow_buffer'
 }
 \description{
-Convert an object to a nanoarrow_buffer
+Convert an object to a nanoarrow buffer
 }
 \examples{
 array <- as_nanoarrow_array(1:4)
 array$buffers[[2]]
 as.raw(array$buffers[[2]])
+
+as_nanoarrow_buffer(1:5)
+
+buffer <- as_nanoarrow_buffer(NULL)
+
 
 }

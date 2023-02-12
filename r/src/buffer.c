@@ -96,6 +96,18 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
   }
 }
 
+SEXP nanoarrow_c_buffer_append(SEXP buffer_xptr, SEXP new_buffer_xptr) {
+  struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
+  struct ArrowBuffer* new_buffer = buffer_from_xptr(new_buffer_xptr);
+
+  int result = ArrowBufferAppend(buffer, new_buffer->data, new_buffer->size_bytes);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowBufferAppend() failed");
+  }
+
+  return R_NilValue;
+}
+
 SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
   struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
 
