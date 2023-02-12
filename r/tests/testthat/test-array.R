@@ -363,6 +363,14 @@ test_that("array modify can modify buffers", {
   )
 })
 
+test_that("array modify checks buffer sizes", {
+  array <- as_nanoarrow_array(1:5)
+  expect_error(
+    nanoarrow_array_modify(array, list(length = 6)),
+    ">= 24 bytes but found buffer with 20 bytes"
+  )
+})
+
 test_that("array modify can modify children", {
   array_with_children <- as_nanoarrow_array(data.frame(x = 1L))
 
