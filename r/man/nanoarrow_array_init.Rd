@@ -46,13 +46,16 @@ including setting children and buffers recursively. These functions power the
 \examples{
 nanoarrow_array_init(na_string())
 
+# Modify an array using $ and <-
 array <- as_nanoarrow_array(1:5)
 array$length <- 4
 as.vector(array)
 
+# Modify potentially more than one component at a time
 array <- as_nanoarrow_array(1:5)
 as.vector(nanoarrow_array_modify(array, list(length = 4)))
 
+# Attach a schema to an array
 array <- as_nanoarrow_array(-1L)
 nanoarrow_array_set_schema(array, na_uint32())
 as.vector(array)

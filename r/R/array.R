@@ -252,7 +252,7 @@ nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
 #'   - `nanoarrow_array_init()` returns a possibly invalid but initialized
 #'     array with a given `schema`.
 #'   - `nanoarrow_array_set_schema()` returns `array`, invisibly. Note that
-#' `array` is modified in place by reference.
+#'      `array` is modified in place by reference.
 #'   - `nanoarrow_array_modify()` returns a shallow copy of `array` with the
 #' modified parameters such that the original array remains valid.
 #' @export
@@ -260,13 +260,16 @@ nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
 #' @examples
 #' nanoarrow_array_init(na_string())
 #'
+#' # Modify an array using $ and <-
 #' array <- as_nanoarrow_array(1:5)
 #' array$length <- 4
 #' as.vector(array)
 #'
+#' # Modify potentially more than one component at a time
 #' array <- as_nanoarrow_array(1:5)
 #' as.vector(nanoarrow_array_modify(array, list(length = 4)))
 #'
+#' # Attach a schema to an array
 #' array <- as_nanoarrow_array(-1L)
 #' nanoarrow_array_set_schema(array, na_uint32())
 #' as.vector(array)
@@ -365,7 +368,7 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
   array_copy
 }
 
-array_shallow_copy <- function(array, schema = NULL, validate) {
+array_shallow_copy <- function(array, schema = NULL, validate = TRUE) {
   array_copy <- nanoarrow_allocate_array()
   nanoarrow_pointer_export(array, array_copy)
   schema <- schema %||% .Call(nanoarrow_c_infer_schema_array, array)

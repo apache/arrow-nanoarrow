@@ -36,6 +36,22 @@ void finalize_array_xptr(SEXP array_xptr) {
   }
 }
 
+SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  SEXP array_xptr = PROTECT(array_owning_xptr());
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+
+  struct ArrowError error;
+  int result = ArrowArrayInitFromSchema(array, schema, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayInitFromSchema(): %s", error.message);
+  }
+
+  array_xptr_set_schema(array_xptr, schema_xptr);
+  UNPROTECT(1);
+  return array_xptr;
+}
+
 SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp) {
   struct ArrowArray* array = array_from_xptr(array_xptr);
   if (TYPEOF(length_sexp) != REALSXP || Rf_length(length_sexp) != 1) {
@@ -142,22 +158,6 @@ static void free_all_children(struct ArrowArray* array) {
   }
 
   array->n_children = 0;
-}
-
-SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  SEXP array_xptr = PROTECT(array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
-
-  struct ArrowError error;
-  int result = ArrowArrayInitFromSchema(array, schema, &error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayInitFromSchema(): %s", error.message);
-  }
-
-  array_xptr_set_schema(array_xptr, schema_xptr);
-  UNPROTECT(1);
-  return array_xptr;
 }
 
 SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp) {
