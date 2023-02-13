@@ -1207,6 +1207,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected key of map type to be non-nullable but was nullable");
+  schema.release(&schema);
 }
 
 TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
