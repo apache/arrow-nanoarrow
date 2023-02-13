@@ -420,8 +420,7 @@ test_that("array modify can modify dictionary", {
     array_without_dictionary,
     list(dictionary = "a")
   )
-  # TODO: dictionary not yet supported internally
-  expect_identical(as.vector(arrow::as_arrow_array(array2)), factor("a"))
+  expect_identical(convert_array(array2$dictionary), "a")
 
   # Dictionary -> no dictionary
   array2 <- nanoarrow_array_modify(
@@ -435,8 +434,7 @@ test_that("array modify can modify dictionary", {
     array_with_dictionary,
     list(dictionary = "b")
   )
-  # TODO: dictionary not yet supported internally
-  expect_identical(as.vector(arrow::as_arrow_array(array2)), factor("b"))
+  expect_identical(convert_array(array2$dictionary), "b")
 })
 
 test_that("array modify can modify array with no schema attached", {
