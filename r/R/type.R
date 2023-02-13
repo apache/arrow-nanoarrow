@@ -377,7 +377,6 @@ na_fixed_size_list <- function(item_type, list_size, nullable = TRUE) {
 na_map <- function(key_type, item_type, keys_sorted = FALSE, nullable = TRUE) {
   schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$MAP, isTRUE(nullable))
   schema$children[[1]]$children[[1]] <- key_type
-  schema$children[[1]]$children[[1]]$flags <- bitwAnd(key_type$flags, bitwNot(2))
   schema$children[[1]]$children[[2]] <- item_type
   schema
 }
