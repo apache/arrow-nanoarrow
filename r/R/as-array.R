@@ -1,0 +1,79 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+#' @export
+as_nanoarrow_array.default <- function(x, ..., schema = NULL, .from_c = FALSE) {
+  # If we're coming from C it's because we've tried all the internal conversions
+  # and no suitable S3 method was found or the x--schema combination is not
+  # implemented in nanoarrow. Try arrow::as_arrow_array().
+  if (.from_c) {
+    result <- as_nanoarrow_array(
+      arrow::as_arrow_array(
+        x,
+        type = arrow::as_data_type(schema)
+      )
+    )
+
+    # Skip nanoarrow_pointer_export() for these arrays since we know there
+    # are no external references to them
+    class(result) <- c("nanoarrow_array_dont_export", class(result))
+
+    return(result)
+  }
+
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  } else {
+    schema <- as_nanoarrow_schema(schema)
+  }
+
+  .Call(nanoarrow_c_as_array_default, x, schema)
+}
+
+#' @export
+as_nanoarrow_array.nanoarrow_array <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    x
+  } else {
+    NextMethod()
+  }
+}
+
+#' @export
+as_nanoarrow_array.POSIXlt <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  }
+
+  as_nanoarrow_array(new_data_frame(x, length(x)), schema = schema)
+}
+
+# This is defined because it's verbose to pass named arguments from C.
+# When converting data frame columns, we try the internal C conversions
+# first to save R evaluation overhead. When the internal conversions fail,
+# we call as_nanoarrow_array() to dispatch to conversions defined via S3
+# dispatch, making sure to let the default method know that we've already
+# tried the internal C conversions.
+as_nanoarrow_array_from_c <- function(x, schema) {
+  result <- as_nanoarrow_array(x, schema = schema, .from_c = TRUE)
+
+  # Anything we get from an S3 method we need to validate (even from the
+  # arrow package, which occasionally does not honour the schema argument)
+  nanoarrow_array_set_schema(result, schema, validate = TRUE)
+
+  result
+}

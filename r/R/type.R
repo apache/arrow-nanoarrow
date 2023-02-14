@@ -280,7 +280,7 @@ na_interval_month_day_nano <- function(nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
-na_timestamp <- function(unit = c("ms", "s", "us", "ns"), timezone = "", nullable = TRUE) {
+na_timestamp <- function(unit = c("s", "ms", "us", "ns"), timezone = "", nullable = TRUE) {
   unit <- match.arg(unit)
   if (!is.character(timezone) || length(timezone) != 1 || is.na(timezone)) {
     stop("`timezone` must be character(1)")

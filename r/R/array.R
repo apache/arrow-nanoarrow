@@ -43,6 +43,8 @@ as_nanoarrow_array <- function(x, ..., schema = NULL) {
   UseMethod("as_nanoarrow_array")
 }
 
+# See as-array.R for S3 method implementations
+
 #' @export
 as.vector.nanoarrow_array <- function(x, mode = "any") {
   stopifnot(identical(mode, "any"))
@@ -67,26 +69,6 @@ as.data.frame.nanoarrow_array <- function(x, ...) {
 # exported in zzz.R
 as_tibble.nanoarrow_array <- function(x, ...) {
   tibble::as_tibble(as.data.frame.nanoarrow_array(x), ...)
-}
-
-#' @export
-as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
-  # For now, use arrow's conversion for everything
-  if (is.null(schema)) {
-    as_nanoarrow_array(arrow::as_arrow_array(x))
-  } else {
-    schema <- as_nanoarrow_schema(schema)
-    as_nanoarrow_array(arrow::as_arrow_array(x, type = arrow::as_data_type(schema)))
-  }
-}
-
-#' @export
-as_nanoarrow_array.nanoarrow_array <- function(x, ..., schema = NULL) {
-  if (is.null(schema)) {
-    return(x)
-  }
-
-  NextMethod()
 }
 
 #' @export

@@ -113,7 +113,7 @@ na_interval_day_time(nullable = TRUE)
 
 na_interval_month_day_nano(nullable = TRUE)
 
-na_timestamp(unit = c("ms", "s", "us", "ns"), timezone = "", nullable = TRUE)
+na_timestamp(unit = c("s", "ms", "us", "ns"), timezone = "", nullable = TRUE)
 
 na_decimal128(precision, scale, nullable = TRUE)
 

@@ -28,18 +28,7 @@
 
 static R_xlen_t nanoarrow_vec_size(SEXP vec_sexp, struct PTypeView* ptype_view) {
   if (ptype_view->vector_type == VECTOR_TYPE_DATA_FRAME) {
-    if (Rf_length(vec_sexp) > 0) {
-      // This both avoids materializing the row.names attribute and
-      // makes this work with struct-style vctrs that don't have a
-      // row.names attribute but that always have one or more element
-      return Rf_xlength(VECTOR_ELT(vec_sexp, 0));
-    } else {
-      // Since ALTREP was introduced, materializing the row.names attribute is
-      // usually deferred such that values in the form c(NA, -nrow), 1:nrow, or
-      // as.character(1:nrow) are never actually computed when the length is
-      // taken.
-      return Rf_xlength(Rf_getAttrib(vec_sexp, R_RowNamesSymbol));
-    }
+    return nanoarrow_data_frame_size(vec_sexp);
   } else {
     return Rf_xlength(vec_sexp);
   }

@@ -89,7 +89,7 @@ infer_nanoarrow_schema.character <- function(x, ...) {
 
 #' @export
 infer_nanoarrow_schema.factor <- function(x, ...) {
-  na_dictionary(infer_nanoarrow_schema.character(levels(x)), na_int32())
+  as_nanoarrow_schema(arrow::infer_type(x))
 }
 
 #' @export
@@ -100,6 +100,11 @@ infer_nanoarrow_schema.POSIXct <- function(x, ...) {
   }
 
   na_timestamp(timezone = tz)
+}
+
+#' @export
+infer_nanoarrow_schema.POSIXlt <- function(x, ...) {
+  infer_nanoarrow_schema(new_data_frame(x, length(x)))
 }
 
 #' @export

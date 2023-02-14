@@ -28,6 +28,10 @@
 // true if ptype is a data.frame or is an S3 list with names.
 int nanoarrow_ptype_is_data_frame(SEXP ptype);
 
+// Returns the number of rows in a data.frame in a way that is least likely to
+// expand the attr(x, "row.names")
+R_xlen_t nanoarrow_data_frame_size(SEXP x);
+
 // Set rownames of a data.frame (with special handling if len > INT_MAX)
 void nanoarrow_set_rownames(SEXP x, R_xlen_t len);
 
