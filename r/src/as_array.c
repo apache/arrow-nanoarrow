@@ -112,6 +112,72 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 }
 
+static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
+                         struct ArrowError* error) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchemaView schema_view;
+  int result = ArrowSchemaViewInit(&schema_view, schema, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaViewInit(): %s", error->message);
+  }
+
+  // Only consider the default create for now
+  if (schema_view.type != NANOARROW_TYPE_DOUBLE) {
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+    return;
+  }
+
+  double* x_data = REAL(x_sexp);
+  int64_t len = Rf_xlength(x_sexp);
+
+  result = ArrowArrayInitFromType(array, NANOARROW_TYPE_DOUBLE);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayInitFromType() failed");
+  }
+
+  // Borrow the data buffer
+  buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(double), x_sexp);
+
+  // Set the array fields
+  array->length = len;
+  array->offset = 0;
+  int64_t null_count = 0;
+
+  // Look for the first null (will be the last index if there are none)
+  int64_t first_null = -1;
+  for (int64_t i = 0; i < len; i++) {
+    if (R_IsNA(x_data[i]) || R_IsNaN(x_data[i])) {
+      first_null = i;
+      break;
+    }
+  }
+
+  // If there are nulls, pack the validity buffer
+  if (first_null != -1) {
+    struct ArrowBitmap bitmap;
+    ArrowBitmapInit(&bitmap);
+    result = ArrowBitmapReserve(&bitmap, len);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowBitmapReserve() failed");
+    }
+
+    ArrowBitmapAppendUnsafe(&bitmap, 1, first_null);
+    for (int64_t i = first_null; i < len; i++) {
+      uint8_t is_valid = !R_IsNA(x_data[i]) && !R_IsNaN(x_data[i]);
+      null_count+= !is_valid;
+      ArrowBitmapAppend(&bitmap, is_valid, 1);
+    }
+
+    ArrowArraySetValidityBitmap(array, &bitmap);
+  }
+
+  array->null_count = null_count;
+  result = ArrowArrayFinishBuilding(array, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+  }
+}
+
 static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                              struct ArrowError* error);
 
@@ -169,6 +235,9 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
   switch (TYPEOF(x_sexp)) {
     case INTSXP:
       as_array_int(x_sexp, array, schema_xptr, error);
+      return;
+    case REALSXP:
+      as_array_dbl(x_sexp, array, schema_xptr, error);
       return;
     default:
       call_as_nanoarrow_array(x_sexp, array, schema_xptr);

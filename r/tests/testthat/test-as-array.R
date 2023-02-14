@@ -42,6 +42,36 @@ test_that("as_nanoarrow_array() works for integer() -> na_int32()", {
     as.raw(array$buffers[[1]]),
     packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
   )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(1:10, NA)))
+  )
+})
+
+test_that("as_nanoarrow_array() works for double() -> na_double()", {
+  # Without nulls
+  array <- as_nanoarrow_array(as.double(1:10))
+  expect_identical(infer_nanoarrow_schema(array)$format, "g")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(as.double(1:10)))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(c(1:10, NA_real_))
+  expect_identical(infer_nanoarrow_schema(array)$format, "g")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(1:10, NA_real_)))
+  )
 })
 
 test_that("as_nanoarrow_array() works when !is.null(schema)", {
