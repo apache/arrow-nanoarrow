@@ -25,6 +25,58 @@ test_that("as_nanoarrow_array() works for nanoarrow_array", {
   expect_identical(convert_array(casted), as.double(1:10))
 })
 
+test_that("as_nanoarrow_array() works for logical() -> bool()", {
+  # Without nulls
+  array <- as_nanoarrow_array(c(TRUE, FALSE, TRUE, FALSE), schema = na_bool())
+  expect_identical(infer_nanoarrow_schema(array)$format, "b")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(packBits(c(TRUE, FALSE, TRUE, FALSE, rep(FALSE, 4))))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(c(TRUE, FALSE, NA), schema = na_bool())
+  expect_identical(infer_nanoarrow_schema(array)$format, "b")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 2), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(packBits(c(TRUE, FALSE, FALSE, rep(FALSE, 5))))
+  )
+})
+
+test_that("as_nanoarrow_array() works for logical() -> na_int32()", {
+  # Without nulls
+  array <- as_nanoarrow_array(c(TRUE, FALSE, TRUE, FALSE), schema = na_int32())
+  expect_identical(infer_nanoarrow_schema(array)$format, "i")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(TRUE, FALSE, TRUE, FALSE)))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(c(TRUE, FALSE, NA), schema = na_int32())
+  expect_identical(infer_nanoarrow_schema(array)$format, "i")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 2), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(TRUE, FALSE, NA)))
+  )
+})
+
 test_that("as_nanoarrow_array() works for integer() -> na_int32()", {
   # Without nulls
   array <- as_nanoarrow_array(1:10)

@@ -112,6 +112,86 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 }
 
+static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
+                         struct ArrowError* error) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchemaView schema_view;
+  int result = ArrowSchemaViewInit(&schema_view, schema, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaViewInit(): %s", error->message);
+  }
+
+  // We can zero-copy convert to int32
+  if (schema_view.type == NANOARROW_TYPE_INT32) {
+    as_array_int(x_sexp, array, schema_xptr, error);
+    return;
+  }
+
+  // Only consider bool for now
+  if (schema_view.type != NANOARROW_TYPE_BOOL) {
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+    return;
+  }
+
+  int* x_data = INTEGER(x_sexp);
+  int64_t len = Rf_xlength(x_sexp);
+
+  result = ArrowArrayInitFromType(array, NANOARROW_TYPE_BOOL);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayInitFromType() failed");
+  }
+
+  struct ArrowBitmap value_bitmap;
+  ArrowBitmapInit(&value_bitmap);
+  result = ArrowBitmapReserve(&value_bitmap, len);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowBitmapReserve() failed");
+  }
+
+  int has_nulls = 0;
+  for (int64_t i = 0; i < len; i++) {
+    if (x_data[i] == NA_INTEGER) {
+      has_nulls = 1;
+      ArrowBitmapAppend(&value_bitmap, 0, 1);
+    } else if (x_data[i]) {
+      ArrowBitmapAppend(&value_bitmap, 0, 1);
+    } else {
+      ArrowBitmapAppend(&value_bitmap, 0, 0);
+    }
+  }
+
+  ArrowArraySetBuffer(array, 1, &value_bitmap.buffer);
+
+  // Set the array fields
+  array->length = len;
+  array->offset = 0;
+  int64_t null_count = 0;
+
+  // If there are nulls, pack the validity buffer
+  if (has_nulls) {
+    struct ArrowBitmap bitmap;
+    ArrowBitmapInit(&bitmap);
+    result = ArrowBitmapReserve(&bitmap, len);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowBitmapReserve() failed");
+    }
+
+    for (int64_t i = 0; i < len; i++) {
+      uint8_t is_valid = x_data[i] != NA_INTEGER;
+      null_count+= !is_valid;
+      ArrowBitmapAppend(&bitmap, is_valid, 1);
+    }
+
+    ArrowArraySetValidityBitmap(array, &bitmap);
+  }
+
+  array->null_count = null_count;
+  result = ArrowArrayFinishBuilding(array, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+  }
+}
+
 static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                          struct ArrowError* error) {
   struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
@@ -233,6 +313,9 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
   }
 
   switch (TYPEOF(x_sexp)) {
+    case LGLSXP:
+      as_array_int(x_sexp, array, schema_xptr, error);
+      return;
     case INTSXP:
       as_array_int(x_sexp, array, schema_xptr, error);
       return;
