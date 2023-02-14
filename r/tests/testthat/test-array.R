@@ -227,3 +227,337 @@ test_that("array list interface works for dictionary types", {
   expect_type(info_recursive$dictionary, "list")
   expect_s3_class(info_recursive$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
 })
+
+test_that("array modify errors for invalid components", {
+  array <- as_nanoarrow_array(1:5)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(1, 2, 3)),
+    "`new_values`"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(not_an_item = NULL)),
+    "Can't modify array"
+  )
+})
+
+test_that("array modify does not copy if length(new_values) == 0", {
+  array <- as_nanoarrow_array(1:5)
+  expect_identical(
+    nanoarrow_pointer_addr_chr(nanoarrow_array_modify(array, list())),
+    nanoarrow_pointer_addr_chr(array)
+  )
+})
+
+test_that("array modify can modify length", {
+  array <- as_nanoarrow_array(1:5)
+
+  array2 <- nanoarrow_array_modify(array, list(length = 4))
+  expect_identical(convert_array(array2), 1:4)
+  expect_identical(array$length, 5L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(length = NULL)),
+    "array\\$length must be double"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(length = NA_real_)),
+    "array\\$length must be finite"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(length = -1)),
+    "array\\$length must be finite and greater than zero"
+  )
+})
+
+test_that("array modify can modify null_count", {
+  array <- as_nanoarrow_array(c(1L, NA, 2L, NA, 3L))
+
+  array2 <- nanoarrow_array_modify(array, list(null_count = -1))
+  expect_identical(array2$null_count, -1L)
+  expect_identical(array$null_count, 2L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(null_count = NULL)),
+    "array\\$null_count must be double"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(null_count = NA_real_)),
+    "array\\$null_count must be finite"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(null_count = -2)),
+    "array\\$null_count must be finite and greater than -1"
+  )
+})
+
+test_that("array modify can modify offset", {
+  array <- as_nanoarrow_array(1:5)
+
+  array2 <- nanoarrow_array_modify(array, list(length = 4, offset = 1))
+  expect_identical(convert_array(array2), 2:5)
+  expect_identical(array$length, 5L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(offset = NULL)),
+    "array\\$offset must be double"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(offset = NA_real_)),
+    "array\\$offset must be finite"
+  )
+
+  expect_error(
+    nanoarrow_array_modify(array, list(offset = -1)),
+    "array\\$offset must be finite and greater than zero"
+  )
+})
+
+test_that("array modify can modify buffers", {
+  array <- as_nanoarrow_array(1:5)
+
+  # Replace with brand new buffer
+  array2 <- nanoarrow_array_modify(array, list(buffers = list(NULL, 6:10)))
+  expect_identical(convert_array(array2), 6:10)
+  expect_identical(convert_array(array), 1:5)
+
+  # Re-use buffers from another array
+  array_with_nulls <- as_nanoarrow_array(c(1L, NA, 2L, NA, 3L))
+  array2 <- nanoarrow_array_modify(
+    array,
+    list(
+      null_count = -1,
+      buffers = list(
+        array_with_nulls$buffers[[1]],
+        array$buffers[[2]]
+      )
+    )
+  )
+
+  expect_identical(convert_array(array2), c(1L, NA, 3L, NA, 5L))
+  expect_identical(convert_array(array), 1:5)
+  expect_identical(convert_array(array_with_nulls), c(1L, NA, 2L, NA, 3L))
+
+  # Should work even after the source arrays go out of scope
+  array <- NULL
+  array_with_nulls <- NULL
+  gc()
+  expect_identical(convert_array(array2), c(1L, NA, 3L, NA, 5L))
+
+  array <- as_nanoarrow_array(1:5)
+  expect_error(
+    nanoarrow_array_modify(array, list(buffers = rep(list(NULL), 4))),
+    "must be <= 3"
+  )
+
+  # Check that specifying too few buffers will result in a validation error
+  expect_error(
+    nanoarrow_array_modify(array, list(buffers = list()), validate = TRUE),
+    "Expected 2 buffer"
+  )
+})
+
+test_that("array modify checks buffer sizes", {
+  array <- as_nanoarrow_array(1:5)
+  expect_error(
+    nanoarrow_array_modify(array, list(length = 6)),
+    ">= 24 bytes but found buffer with 20 bytes"
+  )
+})
+
+test_that("array modify can modify children", {
+  array_with_children <- as_nanoarrow_array(data.frame(x = 1L))
+
+  # Children -> no children
+  array2 <- nanoarrow_array_modify(array_with_children, list(children = NULL))
+  expect_identical(
+    convert_array(array2),
+    new_data_frame(setNames(list(), character()), nrow = 1L)
+  )
+
+  # No children -> no children
+  array_without_children <- array2
+  array2 <- nanoarrow_array_modify(array_with_children, list(children = NULL))
+  expect_identical(
+    convert_array(array2),
+    new_data_frame(setNames(list(), character()), nrow = 1L)
+  )
+
+  # No children -> children
+  array2 <- nanoarrow_array_modify(
+    array_without_children,
+    list(children = list(y = 2L))
+  )
+  expect_identical(convert_array(array2), data.frame(y = 2L))
+
+  # Replace same number of children
+  array2 <- nanoarrow_array_modify(
+    array_with_children,
+    list(children = list(y = 2L))
+  )
+  expect_identical(convert_array(array2), data.frame(y = 2L))
+})
+
+test_that("array modify can modify dictionary", {
+  array_without_dictionary <- as_nanoarrow_array(0L)
+  array_with_dictionary <- as_nanoarrow_array(factor("a"))
+
+  # No dictionary -> no dictionary
+  array2 <- nanoarrow_array_modify(
+    array_without_dictionary,
+    list(dictionary = NULL)
+  )
+  expect_identical(convert_array(array2), 0L)
+
+  # No dictionary -> dictionary
+  array2 <- nanoarrow_array_modify(
+    array_without_dictionary,
+    list(dictionary = "a")
+  )
+  expect_identical(convert_array(array2$dictionary), "a")
+
+  # Dictionary -> no dictionary
+  array2 <- nanoarrow_array_modify(
+    array_with_dictionary,
+    list(dictionary = NULL)
+  )
+  expect_identical(convert_array(array2), 0L)
+
+  # Dictionary -> new dictionary
+  array2 <- nanoarrow_array_modify(
+    array_with_dictionary,
+    list(dictionary = "b")
+  )
+  expect_identical(convert_array(array2$dictionary), "b")
+})
+
+test_that("array modify can modify array with no schema attached", {
+  array <- as_nanoarrow_array(1L)
+  nanoarrow_array_set_schema(array, NULL)
+
+  array2 <- nanoarrow_array_modify(array, list(dictionary = c("a", "b")))
+  expect_true(!is.null(array2$dictionary))
+
+  array2 <- nanoarrow_array_modify(array, list(children = list("x")))
+  expect_length(array2$children, 1)
+})
+
+test_that("array modify can skip validation", {
+  array <- as_nanoarrow_array(1L)
+
+  expect_error(
+    nanoarrow_array_modify(array, list(children = list("x")), validate = TRUE),
+    "Expected schema with 0 children"
+  )
+
+  array2 <- nanoarrow_array_modify(
+    array,
+    list(children = list("x")),
+    validate = FALSE
+  )
+
+  expect_length(array2$children, 1)
+})
+
+test_that("[[<- works for array", {
+  array <- as_nanoarrow_array(1L)
+  array[["length"]] <- 0
+  expect_identical(array$length, 0L)
+
+  array <- as_nanoarrow_array(1L)
+  array[[1]] <- 0
+  expect_identical(array$length, 0L)
+
+  expect_error(
+    array[["not_an_item"]] <- "something",
+    "Can't modify array"
+  )
+
+  expect_error(
+    array[[NA_character_]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[character()]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[NA_integer_]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[integer()]] <- "something",
+    "must be character"
+  )
+
+  expect_error(
+    array[[12]] <- "something",
+    "must be character"
+  )
+})
+
+test_that("$<- works for array", {
+  array <- as_nanoarrow_array(1L)
+  array$length <- 0
+  expect_identical(array$length, 0L)
+
+  expect_error(
+    array$not_an_item <- "something",
+    "Can't modify array"
+  )
+})
+
+test_that("<- assignment works for array$children", {
+  array <- as_nanoarrow_array(
+    data.frame(col1 = 1L, col2 = "a", stringsAsFactors = FALSE)
+  )
+
+  array$children$col1 <- 100
+  expect_identical(
+    convert_array(array),
+    data.frame(col1 = 100, col2 = "a", stringsAsFactors = FALSE)
+  )
+
+  names(array$children)[1] <- "col1_new"
+  expect_identical(
+    convert_array(array),
+    data.frame(col1_new = 100, col2 = "a", stringsAsFactors = FALSE)
+  )
+})
+
+test_that("<- assignment works for array$buffers", {
+  array <- as_nanoarrow_array(c(1:7, NA))
+  array$null_count <- -1
+  array$buffers[[1]] <- packBits(c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE))
+
+  expect_identical(
+    convert_array(array),
+    c(1:4, rep(NA, 4))
+  )
+})
+
+test_that("nanoarrow_array_init() creates an array", {
+  array <- nanoarrow_array_init(na_int32())
+  expect_identical(convert_array(array), integer())
+
+  # Check error from init
+  bad_schema <- nanoarrow_schema_modify(
+    na_int32(),
+    list(children = list(na_int32())),
+    validate = FALSE
+  )
+
+  expect_error(
+    nanoarrow_array_init(bad_schema),
+    "Expected schema with 0 children"
+  )
+})

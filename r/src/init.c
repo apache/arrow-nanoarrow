@@ -31,9 +31,19 @@ extern SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr);
+extern SEXP nanoarrow_c_array_init(SEXP schema_xptr);
+extern SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp);
+extern SEXP nanoarrow_c_array_set_null_count(SEXP array_xptr, SEXP null_count_sexp);
+extern SEXP nanoarrow_c_array_set_offset(SEXP array_xptr, SEXP offset_sexp);
+extern SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp);
+extern SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp);
+extern SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr);
+extern SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr);
 extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr);
 extern SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp);
+extern SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp);
+extern SEXP nanoarrow_c_buffer_append(SEXP buffer_xptr, SEXP new_buffer_xptr);
 extern SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr);
 extern SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr);
 extern SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp, SEXP size_sexp, SEXP n_sexp);
@@ -64,6 +74,9 @@ extern SEXP nanoarrow_c_schema_set_metadata(SEXP schema_mut_xptr, SEXP metadata_
 extern SEXP nanoarrow_c_schema_set_flags(SEXP schema_mut_xptr, SEXP flags_sexp);
 extern SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp);
 extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP dictionary_xptr);
+extern SEXP nanoarrow_c_preserved_count(void);
+extern SEXP nanoarrow_c_preserved_empty(void);
+extern SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj);
 extern SEXP nanoarrow_c_version();
 extern SEXP nanoarrow_c_version_runtime();
 
@@ -76,9 +89,19 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_array_stream_get_next", (DL_FUNC)&nanoarrow_c_array_stream_get_next, 1},
     {"nanoarrow_c_basic_array_stream", (DL_FUNC)&nanoarrow_c_basic_array_stream, 3},
     {"nanoarrow_c_array_view", (DL_FUNC)&nanoarrow_c_array_view, 2},
+    {"nanoarrow_c_array_init", (DL_FUNC)&nanoarrow_c_array_init, 1},
+    {"nanoarrow_c_array_set_length", (DL_FUNC)&nanoarrow_c_array_set_length, 2},
+    {"nanoarrow_c_array_set_null_count", (DL_FUNC)&nanoarrow_c_array_set_null_count, 2},
+    {"nanoarrow_c_array_set_offset", (DL_FUNC)&nanoarrow_c_array_set_offset, 2},
+    {"nanoarrow_c_array_set_buffers", (DL_FUNC)&nanoarrow_c_array_set_buffers, 2},
+    {"nanoarrow_c_array_set_children", (DL_FUNC)&nanoarrow_c_array_set_children, 2},
+    {"nanoarrow_c_array_set_dictionary", (DL_FUNC)&nanoarrow_c_array_set_dictionary, 2},
+    {"nanoarrow_c_array_validate_after_modify", (DL_FUNC)&nanoarrow_c_array_validate_after_modify, 2},
     {"nanoarrow_c_array_set_schema", (DL_FUNC)&nanoarrow_c_array_set_schema, 3},
     {"nanoarrow_c_infer_schema_array", (DL_FUNC)&nanoarrow_c_infer_schema_array, 1},
     {"nanoarrow_c_array_proxy", (DL_FUNC)&nanoarrow_c_array_proxy, 3},
+    {"nanoarrow_c_as_buffer_default", (DL_FUNC)&nanoarrow_c_as_buffer_default, 1},
+    {"nanoarrow_c_buffer_append", (DL_FUNC)&nanoarrow_c_buffer_append, 2},
     {"nanoarrow_c_buffer_info", (DL_FUNC)&nanoarrow_c_buffer_info, 1},
     {"nanoarrow_c_buffer_as_raw", (DL_FUNC)&nanoarrow_c_buffer_as_raw, 1},
     {"nanoarrow_c_convert_array_stream", (DL_FUNC)&nanoarrow_c_convert_array_stream, 4},
@@ -109,6 +132,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_schema_set_flags", (DL_FUNC)&nanoarrow_c_schema_set_flags, 2},
     {"nanoarrow_c_schema_set_children", (DL_FUNC)&nanoarrow_c_schema_set_children, 2},
     {"nanoarrow_c_schema_set_dictionary", (DL_FUNC)&nanoarrow_c_schema_set_dictionary, 2},
+    {"nanoarrow_c_preserved_count", (DL_FUNC)&nanoarrow_c_preserved_count, 0},
+    {"nanoarrow_c_preserved_empty", (DL_FUNC)&nanoarrow_c_preserved_empty, 0},
+    {"nanoarrow_c_preserve_and_release_on_other_thread", (DL_FUNC)&nanoarrow_c_preserve_and_release_on_other_thread, 1},
     {"nanoarrow_c_version", (DL_FUNC)&nanoarrow_c_version, 0},
     {"nanoarrow_c_version_runtime", (DL_FUNC)&nanoarrow_c_version_runtime, 0},
     {NULL, NULL, 0}};
@@ -119,5 +145,6 @@ void R_init_nanoarrow(DllInfo* dll) {
   R_useDynamicSymbols(dll, FALSE);
 
   nanoarrow_init_cached_sexps();
+  nanoarrow_preserve_init();
   register_nanoarrow_altrep(dll);
 }

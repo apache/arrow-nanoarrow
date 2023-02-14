@@ -82,7 +82,7 @@ test_that("nanoarrow_array to Array works for child arrays", {
   # This type of export is special because batch$children[[2]] has an SEXP
   # dependency on the original array. When we export it, we reverse that
   # dependency such that the exported array and the batch->children[1] array
-  # are shells that call R_ReleaseObject on a common object (i.e., sort of like
+  # are shells that call nanoarrow_release_sexp on a common object (i.e., sort of like
   # a shared pointer).
   array_from_column <- arrow::as_arrow_array(batch$children[[2]])
 

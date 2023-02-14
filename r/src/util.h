@@ -21,6 +21,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <stdint.h>
+
 extern SEXP nanoarrow_ns_pkg;
 extern SEXP nanoarrow_cls_array;
 extern SEXP nanoarrow_cls_altrep_chr;
@@ -28,7 +30,21 @@ extern SEXP nanoarrow_cls_array_view;
 extern SEXP nanoarrow_cls_data_frame;
 extern SEXP nanoarrow_cls_schema;
 extern SEXP nanoarrow_cls_array_stream;
+extern SEXP nanoarrow_cls_buffer;
 
 void nanoarrow_init_cached_sexps(void);
+
+// Internal abstractions for R_PreserveObject and R_ReleaseObject
+// that provide an opportunity for debugging information about
+// preserved object lifecycle and possible future optimizations.
+// These implementations use C++ and live in nanoarrow_cpp.cc
+void nanoarrow_preserve_init(void);
+void nanoarrow_preserve_sexp(SEXP obj);
+void nanoarrow_release_sexp(SEXP obj);
+int64_t nanoarrow_preserved_count(void);
+int64_t nanoarrow_preserved_empty(void);
+
+// For testing
+void nanoarrow_preserve_and_release_on_other_thread(SEXP obj);
 
 #endif

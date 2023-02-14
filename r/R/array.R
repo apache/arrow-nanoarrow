@@ -81,14 +81,18 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL) {
 }
 
 #' @export
+as_nanoarrow_array.nanoarrow_array <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    return(x)
+  }
+
+  NextMethod()
+}
+
+#' @export
 infer_nanoarrow_schema.nanoarrow_array <- function(x, ...) {
   .Call(nanoarrow_c_infer_schema_array, x) %||%
     stop("nanoarrow_array() has no associated schema")
-}
-
-nanoarrow_array_set_schema <- function(array, schema, validate = TRUE) {
-  .Call(nanoarrow_c_array_set_schema, array, schema, as.logical(validate)[1])
-  invisible(array)
 }
 
 #' @importFrom utils str
@@ -157,6 +161,28 @@ names.nanoarrow_array <- function(x, ...) {
   nanoarrow_array_proxy_safe(x)[[i]]
 }
 
+#' @export
+`[[<-.nanoarrow_array` <- function(x, i, value) {
+  if (is.numeric(i) && isTRUE(i %in% 1:6)) {
+    i <- names.nanoarrow_array()[[i]]
+  }
+
+  if (is.character(i) && (length(i) == 1L) && !is.na(i)) {
+    new_values <- list(value)
+    names(new_values) <- i
+    return(nanoarrow_array_modify(x, new_values))
+  }
+
+  stop("`i` must be character(1) or integer(1) %in% 1:6")
+}
+
+#' @export
+`$<-.nanoarrow_array` <- function(x, i, value) {
+  new_values <- list(value)
+  names(new_values) <- i
+  nanoarrow_array_modify(x, new_values)
+}
+
 # A version of nanoarrow_array_proxy() that is less likely to error for invalid
 # arrays and/or schemas
 nanoarrow_array_proxy_safe <- function(array, recursive = FALSE) {
@@ -201,4 +227,172 @@ nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
   }
 
   result
+}
+
+
+#' Modify nanoarrow arrays
+#'
+#' Create a new array or from an existing array, modify one or more parameters.
+#' When importing an array from elsewhere, `nanoarrow_array_set_schema()` is
+#' useful to attach the data type information to the array (without this
+#' information there is little that nanoarrow can do with the array since its
+#' content cannot be otherwise interpreted). `nanoarrow_array_modify()` can
+#' create a shallow copy and modify various parameters to create a new array,
+#' including setting children and buffers recursively. These functions power the
+#' `$<-` operator, which can modify one parameter at a time.
+#'
+#' @param array A [nanoarrow_array][as_nanoarrow_array].
+#' @param schema A [nanoarrow_schema][as_nanoarrow_schema] to attach to this
+#'   `array`.
+#' @param new_values A named `list()` of values to replace.
+#' @param validate Use `FALSE` to skip validation. Skipping validation may
+#'   result in creating an array that will crash R.
+#'
+#' @return
+#'   - `nanoarrow_array_init()` returns a possibly invalid but initialized
+#'     array with a given `schema`.
+#'   - `nanoarrow_array_set_schema()` returns `array`, invisibly. Note that
+#'      `array` is modified in place by reference.
+#'   - `nanoarrow_array_modify()` returns a shallow copy of `array` with the
+#' modified parameters such that the original array remains valid.
+#' @export
+#'
+#' @examples
+#' nanoarrow_array_init(na_string())
+#'
+#' # Modify an array using $ and <-
+#' array <- as_nanoarrow_array(1:5)
+#' array$length <- 4
+#' as.vector(array)
+#'
+#' # Modify potentially more than one component at a time
+#' array <- as_nanoarrow_array(1:5)
+#' as.vector(nanoarrow_array_modify(array, list(length = 4)))
+#'
+#' # Attach a schema to an array
+#' array <- as_nanoarrow_array(-1L)
+#' nanoarrow_array_set_schema(array, na_uint32())
+#' as.vector(array)
+#'
+nanoarrow_array_init <- function(schema) {
+  .Call(nanoarrow_c_array_init, schema)
+}
+
+#' @rdname nanoarrow_array_init
+#' @export
+nanoarrow_array_set_schema <- function(array, schema, validate = TRUE) {
+  .Call(nanoarrow_c_array_set_schema, array, schema, as.logical(validate)[1])
+  invisible(array)
+}
+
+#' @rdname nanoarrow_array_init
+#' @export
+nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
+  array <- as_nanoarrow_array(array)
+
+  if (length(new_values) == 0) {
+    return(array)
+  }
+
+  # Make sure new_values has names to iterate over
+  new_names <- names(new_values)
+  if (is.null(new_names) || all(new_names == "", na.rm = TRUE)) {
+    stop("`new_values` must be named")
+  }
+
+  # Make a copy and modify it. This is a deep copy in the sense that all
+  # children are modifiable; however, it's a shallow copy in the sense that
+  # none of the buffers are copied.
+  schema <- .Call(nanoarrow_c_infer_schema_array, array)
+  array_copy <- array_shallow_copy(array, schema, validate = validate)
+
+  for (i in seq_along(new_values)) {
+    nm <- new_names[i]
+    value <- new_values[[i]]
+
+    switch(
+      nm,
+      length = .Call(nanoarrow_c_array_set_length, array_copy, as.double(value)),
+      null_count = .Call(nanoarrow_c_array_set_null_count, array_copy, as.double(value)),
+      offset = .Call(nanoarrow_c_array_set_offset, array_copy, as.double(value)),
+      buffers = {
+        value <- lapply(value, as_nanoarrow_buffer)
+        .Call(nanoarrow_c_array_set_buffers, array_copy, value)
+      },
+      children = {
+        value <- lapply(value, as_nanoarrow_array)
+        value_copy <- lapply(value, array_shallow_copy, validate = validate)
+        .Call(nanoarrow_c_array_set_children, array_copy, value_copy)
+
+        if (!is.null(schema)) {
+          schema <- nanoarrow_schema_modify(
+            schema,
+            list(children = lapply(value, infer_nanoarrow_schema)),
+            validate = validate
+          )
+        }
+      },
+      dictionary = {
+        if (!is.null(value)) {
+          value <- as_nanoarrow_array(value)
+        }
+
+        .Call(nanoarrow_c_array_set_dictionary, array_copy, value)
+
+        if (!is.null(schema) && !is.null(value)) {
+          schema <- nanoarrow_schema_modify(
+            schema,
+            list(dictionary = infer_nanoarrow_schema(value)),
+            validate = validate
+          )
+        } else if (!is.null(schema)) {
+          schema <- nanoarrow_schema_modify(
+            schema,
+            list(dictionary = NULL),
+            validate = validate
+          )
+        }
+      },
+      stop(sprintf("Can't modify array[[%s]]: does not exist", deparse(nm)))
+    )
+  }
+
+  if (!is.null(schema) && validate) {
+    array_copy <- .Call(nanoarrow_c_array_validate_after_modify, array_copy, schema)
+  }
+
+  if (!is.null(schema)) {
+    nanoarrow_array_set_schema(array_copy, schema, validate = validate)
+  }
+
+  array_copy
+}
+
+array_shallow_copy <- function(array, schema = NULL, validate = TRUE) {
+  array_copy <- nanoarrow_allocate_array()
+  nanoarrow_pointer_export(array, array_copy)
+  schema <- schema %||% .Call(nanoarrow_c_infer_schema_array, array)
+
+  # For validation, use some of the infrastructure we already have in place
+  # to make sure array_copy knows how long each buffer is
+  if (!is.null(schema) && validate) {
+    copy_buffers_recursive(array, array_copy)
+  }
+
+  array_copy
+}
+
+copy_buffers_recursive <- function(array, array_copy) {
+  proxy <- nanoarrow_array_proxy_safe(array)
+  proxy_copy <- nanoarrow_array_proxy(array_copy)
+
+  .Call(nanoarrow_c_array_set_buffers, array_copy, proxy$buffers)
+
+  for (i in seq_along(proxy$children)) {
+    copy_buffers_recursive(proxy$children[[i]], proxy_copy$children[[i]])
+  }
+
+  if (!is.null(proxy$dictionary)) {
+    copy_buffers_recursive(proxy$dictionary, proxy_copy$dictionary)
+  }
 }
