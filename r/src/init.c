@@ -42,6 +42,7 @@ extern SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema
 extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP validate_sexp);
 extern SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr);
 extern SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp);
+extern SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_sexp);
 extern SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp);
 extern SEXP nanoarrow_c_buffer_append(SEXP buffer_xptr, SEXP new_buffer_xptr);
 extern SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr);
@@ -100,6 +101,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_array_set_schema", (DL_FUNC)&nanoarrow_c_array_set_schema, 3},
     {"nanoarrow_c_infer_schema_array", (DL_FUNC)&nanoarrow_c_infer_schema_array, 1},
     {"nanoarrow_c_array_proxy", (DL_FUNC)&nanoarrow_c_array_proxy, 3},
+    {"nanoarrow_c_as_array_default", (DL_FUNC)&nanoarrow_c_as_array_default, 2},
     {"nanoarrow_c_as_buffer_default", (DL_FUNC)&nanoarrow_c_as_buffer_default, 1},
     {"nanoarrow_c_buffer_append", (DL_FUNC)&nanoarrow_c_buffer_append, 2},
     {"nanoarrow_c_buffer_info", (DL_FUNC)&nanoarrow_c_buffer_info, 1},
