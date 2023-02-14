@@ -100,6 +100,13 @@ test_that("as_nanoarrow_array() works for integer() -> na_int32()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for integer -> na_int64()", {
+  skip_if_not_installed("arrow")
+  casted <- as_nanoarrow_array(1:10, schema = na_int64())
+  expect_identical(infer_nanoarrow_schema(casted)$format, "l")
+  expect_identical(convert_array(casted), as.double(1:10))
+})
+
 test_that("as_nanoarrow_array() works for double() -> na_double()", {
   # Without nulls
   array <- as_nanoarrow_array(as.double(1:10))
@@ -126,11 +133,73 @@ test_that("as_nanoarrow_array() works for double() -> na_double()", {
   )
 })
 
-test_that("as_nanoarrow_array() works when !is.null(schema)", {
+test_that("as_nanoarrow_array() works for double -> na_int64()", {
   skip_if_not_installed("arrow")
-  casted <- as_nanoarrow_array(1:10, schema = na_int64())
+  casted <- as_nanoarrow_array(as.double(1:10), schema = na_int64())
   expect_identical(infer_nanoarrow_schema(casted)$format, "l")
   expect_identical(convert_array(casted), as.double(1:10))
+})
+
+test_that("as_nanoarrow_array() works for character() -> na_string()", {
+  # Without nulls
+  array <- as_nanoarrow_array(letters)
+  expect_identical(infer_nanoarrow_schema(array)$format, "u")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(0:26))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(c(letters, NA))
+  expect_identical(infer_nanoarrow_schema(array)$format, "u")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(0:26, 26L)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+})
+
+test_that("as_nanoarrow_array() works for character() -> na_large_string()", {
+  skip_if_not_installed("arrow")
+
+  # Without nulls
+  array <- as_nanoarrow_array(letters, schema = na_large_string())
+  expect_identical(infer_nanoarrow_schema(array)$format, "U")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(c(letters, NA), schema = na_large_string())
+  expect_identical(infer_nanoarrow_schema(array)$format, "U")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
 })
 
 test_that("as_nanoarrow_array() works for data.frame() -> na_struct()", {

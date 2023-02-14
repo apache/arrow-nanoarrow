@@ -80,7 +80,7 @@ infer_nanoarrow_schema.double <- function(x, ...) {
 
 #' @export
 infer_nanoarrow_schema.character <- function(x, ...) {
-  if (length(x) > 0 && sum(nchar(x, type = "bytes")) > .Machine$integer.max) {
+  if (length(x) > 0 && sum(nchar(x, type = "bytes"), na.rm = TRUE) > .Machine$integer.max) {
     na_large_string()
   } else {
     na_string()
