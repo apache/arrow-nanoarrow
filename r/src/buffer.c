@@ -28,6 +28,7 @@ void finalize_buffer_xptr(SEXP buffer_xptr) {
   struct ArrowBuffer* buffer = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
   if (buffer != NULL) {
     ArrowBufferReset(buffer);
+    ArrowFree(buffer);
   }
 }
 
