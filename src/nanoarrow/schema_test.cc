@@ -135,10 +135,16 @@ TEST(SchemaTest, SchemaTestInitNestedMap) {
 
   EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+m");
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
             NANOARROW_OK);
+  EXPECT_STREQ(schema.children[0]->name, "entries");
+  EXPECT_STREQ(schema.children[0]->children[0]->name, "key");
+  EXPECT_STREQ(schema.children[0]->children[1]->name, "value");
+
+  EXPECT_FALSE(schema.children[0]->flags & ARROW_FLAG_NULLABLE);
+  EXPECT_FALSE(schema.children[0]->children[0]->flags & ARROW_FLAG_NULLABLE);
 
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
@@ -1183,6 +1189,24 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected format of child of map type to be '+s' but found '+us:0,1'");
+  schema.release(&schema);
+
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  schema.children[0]->flags |= ARROW_FLAG_NULLABLE;
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected child of map type to be non-nullable but was nullable");
+  schema.children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+
+  schema.children[0]->children[0]->flags |= ARROW_FLAG_NULLABLE;
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected key of map type to be non-nullable but was nullable");
   schema.release(&schema);
 }
 

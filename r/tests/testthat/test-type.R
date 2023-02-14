@@ -124,7 +124,7 @@ test_that("list constructors assign the correct child type", {
 })
 
 test_that("map constructor assigns the correct key and value types", {
-  schema <- na_map(na_int32(), na_int64())
+  schema <- na_map(na_int32(nullable = FALSE), na_int64())
   expect_named(schema$children, "entries")
   expect_named(schema$children$entries$children, c("key", "value"))
   expect_identical(schema$children$entries$children$key$format, "i")
