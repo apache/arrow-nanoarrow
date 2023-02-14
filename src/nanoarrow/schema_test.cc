@@ -135,16 +135,16 @@ TEST(SchemaTest, SchemaTestInitNestedMap) {
 
   EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_MAP), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+m");
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0]->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+  EXPECT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
             NANOARROW_OK);
-  ASSERT_STREQ("entries", schema.children[0]->name);
-  ASSERT_STREQ("key", schema.children[0]->children[0]->name);
-  ASSERT_STREQ("value", schema.children[0]->children[1]->name);
+  EXPECT_STREQ(schema.children[0]->name, "entries");
+  EXPECT_STREQ(schema.children[0]->children[0]->name, "key");
+  EXPECT_STREQ(schema.children[0]->children[1]->name, "value");
 
-  ASSERT_FALSE(schema.children[0]->flags & ARROW_FLAG_NULLABLE);
-  ASSERT_FALSE(schema.children[0]->children[0]->flags & ARROW_FLAG_NULLABLE);
+  EXPECT_FALSE(schema.children[0]->flags & ARROW_FLAG_NULLABLE);
+  EXPECT_FALSE(schema.children[0]->children[0]->flags & ARROW_FLAG_NULLABLE);
 
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
