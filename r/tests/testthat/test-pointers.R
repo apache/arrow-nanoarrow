@@ -172,6 +172,23 @@ test_that("nanoarrow_pointer_export() works for array", {
   )
 })
 
+test_that("exported Arrays can have their children released", {
+  ptr <- as_nanoarrow_array(data.frame(a = 1L, b = 2))
+  dst <- nanoarrow_allocate_array()
+
+  nanoarrow_pointer_export(ptr, dst)
+  expect_identical(convert_array(ptr), data.frame(a = 1L, b = 2))
+
+  nanoarrow_pointer_release(dst$children[[1]])
+  expect_identical(convert_array(ptr), data.frame(a = 1L, b = 2))
+
+  nanoarrow_pointer_release(dst$children[[2]])
+  expect_identical(convert_array(ptr), data.frame(a = 1L, b = 2))
+
+  nanoarrow_pointer_release(dst)
+  expect_identical(convert_array(ptr), data.frame(a = 1L, b = 2))
+})
+
 test_that("nanoarrow_pointer_export() works for array_stream", {
   ptr <- as_nanoarrow_array_stream(data.frame(a = integer()))
   dst <- nanoarrow_allocate_array_stream()
