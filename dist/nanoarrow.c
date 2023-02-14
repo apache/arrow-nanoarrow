@@ -347,11 +347,13 @@ static int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_STRUCT));
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
+      schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema->children[0], 2));
       ArrowSchemaInit(schema->children[0]->children[0]);
       ArrowSchemaInit(schema->children[0]->children[1]);
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaSetName(schema->children[0]->children[0], "key"));
+      schema->children[0]->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaSetName(schema->children[0]->children[1], "value"));
       break;
@@ -1190,6 +1192,17 @@ static ArrowErrorCode ArrowSchemaViewValidateMap(struct ArrowSchemaView* schema_
   if (strcmp(schema_view->schema->children[0]->format, "+s") != 0) {
     ArrowErrorSet(error, "Expected format of child of map type to be '+s' but found '%s'",
                   schema_view->schema->children[0]->format);
+    return EINVAL;
+  }
+
+  if (schema_view->schema->children[0]->flags & ARROW_FLAG_NULLABLE) {
+    ArrowErrorSet(error,
+                  "Expected child of map type to be non-nullable but was nullable");
+    return EINVAL;
+  }
+
+  if (schema_view->schema->children[0]->children[0]->flags & ARROW_FLAG_NULLABLE) {
+    ArrowErrorSet(error, "Expected key of map type to be non-nullable but was nullable");
     return EINVAL;
   }
 
