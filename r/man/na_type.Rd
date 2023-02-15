@@ -119,7 +119,7 @@ na_decimal128(precision, scale, nullable = TRUE)
 
 na_decimal256(precision, scale, nullable = TRUE)
 
-na_struct(column_types = list(), nullable = TRUE)
+na_struct(column_types = list(), nullable = FALSE)
 
 na_sparse_union(column_types = list())
 

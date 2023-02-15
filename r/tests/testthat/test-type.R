@@ -35,7 +35,11 @@ test_that("type constructors for parameter-free types work", {
     )
 
     # Check that the default schema is nullable
-    expect_identical(na_type(!!type_name)$flags, 2L)
+    if (type_name == "struct") {
+      expect_identical(na_type(!!type_name)$flags, 0L)
+    } else {
+      expect_identical(na_type(!!type_name)$flags, 2L)
+    }
 
     # Check that non-nullable schemas are non-nullable
     expect_identical(na_type(!!type_name, nullable = FALSE)$flags, 0L)

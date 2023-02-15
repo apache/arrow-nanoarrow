@@ -274,3 +274,20 @@ test_that("as_nanoarrow_array() errors for bad data.frame() -> na_struct()", {
     as_nanoarrow_array(data.frame(x = 1:10), schema = na_int32())
   )
 })
+
+test_that("as_nanoarrow_array() works for unspecified() -> na_na()", {
+  skip_if_not_installed("vctrs")
+
+  array <- as_nanoarrow_array(vctrs::unspecified(5))
+  expect_identical(infer_nanoarrow_schema(array)$format, "n")
+  expect_identical(array$length, 5L)
+  expect_identical(array$null_count, 5L)
+})
+
+test_that("as_nanoarrow_array() works for bad unspecified() create", {
+  skip_if_not_installed("vctrs")
+  skip_if_not_installed("arrow")
+  expect_snapshot_error(
+    as_nanoarrow_array(vctrs::unspecified(5), schema = na_interval_day_time())
+  )
+})

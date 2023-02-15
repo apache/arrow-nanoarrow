@@ -85,6 +85,26 @@ as_nanoarrow_array.factor <- function(x, ..., schema = NULL) {
   array
 }
 
+#' @export
+as_nanoarrow_array.vctrs_unspecified <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  } else {
+    schema <- as_nanoarrow_schema(schema)
+  }
+
+  switch(
+    nanoarrow_schema_parse(schema)$storage_type,
+    na = {
+      array <- nanoarrow_array_init(schema)
+      array$length <- length(x)
+      array$null_count <- length(x)
+      array
+    },
+    NextMethod()
+  )
+}
+
 # This is defined because it's verbose to pass named arguments from C.
 # When converting data frame columns, we try the internal C conversions
 # first to save R evaluation overhead. When the internal conversions fail,

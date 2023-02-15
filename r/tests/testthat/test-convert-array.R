@@ -53,10 +53,10 @@ test_that("convert_array() errors for unsupported ptype", {
 })
 
 test_that("convert_array() errors for unsupported array", {
-  unsupported_array <- arrow::concat_arrays(type = arrow::decimal256(3, 4))
+  unsupported_array <- nanoarrow_array_init(na_interval_day_time())
   expect_error(
     convert_array(as_nanoarrow_array(unsupported_array)),
-    "Can't infer R vector type for array <decimal256\\(3, 4\\)>"
+    "Can't infer R vector type for array <interval_day_time>"
   )
 })
 
@@ -146,7 +146,9 @@ test_that("convert to vector works for struct-style vectors", {
 })
 
 test_that("convert to vector works for unspecified()", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
 
   # implicit for null type
   expect_identical(
@@ -179,6 +181,8 @@ test_that("convert to vector works for unspecified()", {
 })
 
 test_that("convert to vector works for valid logical()", {
+  skip_if_not_installed("arrow")
+
   arrow_numeric_types <- list(
     int8 = arrow::int8(),
     uint8 = arrow::uint8(),
@@ -233,7 +237,10 @@ test_that("convert to vector works for valid logical()", {
 })
 
 test_that("convert to vector works for null -> logical()", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, logical()),
     rep(NA, 10)
@@ -248,6 +255,8 @@ test_that("convert to vector errors for bad array to logical()", {
 })
 
 test_that("convert to vector works for valid integer()", {
+  skip_if_not_installed("arrow")
+
   arrow_int_types <- list(
     int8 = arrow::int8(),
     uint8 = arrow::uint8(),
@@ -302,7 +311,10 @@ test_that("convert to vector works for valid integer()", {
 })
 
 test_that("convert to vector works for null -> logical()", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, integer()),
     rep(NA_integer_, 10)
@@ -310,13 +322,13 @@ test_that("convert to vector works for null -> logical()", {
 })
 
 test_that("convert to vector warns for invalid integer()", {
-  array <- as_nanoarrow_array(arrow::as_arrow_array(.Machine$double.xmax))
+  array <- as_nanoarrow_array(.Machine$double.xmax)
   expect_warning(
     expect_identical(convert_array(array, integer()), NA_integer_),
     "1 value\\(s\\) outside integer range set to NA"
   )
 
-  array <- as_nanoarrow_array(arrow::as_arrow_array(c(NA, .Machine$double.xmax)))
+  array <- as_nanoarrow_array(c(NA, .Machine$double.xmax))
   expect_warning(
     expect_identical(convert_array(array, integer()), c(NA_integer_, NA_integer_)),
     "1 value\\(s\\) outside integer range set to NA"
@@ -331,6 +343,8 @@ test_that("convert to vector errors for bad array to integer()", {
 })
 
 test_that("convert to vector works for valid double()", {
+  skip_if_not_installed("arrow")
+
   arrow_numeric_types <- list(
     int8 = arrow::int8(),
     uint8 = arrow::uint8(),
@@ -385,6 +399,8 @@ test_that("convert to vector works for valid double()", {
 })
 
 test_that("convert to vector works for decimal128 -> double()", {
+  skip_if_not_installed("arrow")
+
   array <- as_nanoarrow_array(arrow::Array$create(1:10)$cast(arrow::decimal128(20, 10)))
   expect_equal(
     convert_array(array, double()),
@@ -393,7 +409,10 @@ test_that("convert to vector works for decimal128 -> double()", {
 })
 
 test_that("convert to vector works for null -> double()", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, double()),
     rep(NA_real_, 10)
@@ -425,7 +444,10 @@ test_that("convert to vector works for character()", {
 })
 
 test_that("convert to vector works for null -> character()", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   all_nulls <- convert_array(array, character())
   nanoarrow_altrep_force_materialize(all_nulls)
   expect_identical(
@@ -436,6 +458,7 @@ test_that("convert to vector works for null -> character()", {
 
 test_that("convert to vector works for blob::blob()", {
   array <- as_nanoarrow_array(list(as.raw(1:5)), schema = arrow::binary())
+
   expect_identical(
     convert_array(array),
     blob::blob(as.raw(1:5))
@@ -448,7 +471,10 @@ test_that("convert to vector works for blob::blob()", {
 })
 
 test_that("convert to vector works for null -> blob::blob()", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, blob::blob()),
     blob::new_blob(rep(list(NULL), 10))
@@ -545,7 +571,10 @@ test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
 })
 
 test_that("convert to vector works for null -> vctrs::list_of()", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, vctrs::list_of(.ptype = integer())),
     vctrs::new_list_of(rep(list(NULL), 10), ptype = integer())
@@ -569,7 +598,10 @@ test_that("convert to vector works for Date", {
 })
 
 test_that("convert to vector works for null -> Date", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, as.Date(character())),
     as.Date(rep(NA_character_, 10))
@@ -585,7 +617,10 @@ test_that("convert to vector works for hms", {
 })
 
 test_that("convert to vector works for null -> hms", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, hms::hms()),
     hms::parse_hms(rep(NA_character_, 10))
@@ -604,7 +639,10 @@ test_that("convert to vector works for POSIXct", {
 })
 
 test_that("convert to vector works for null -> POSIXct", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, as.POSIXct(character(), tz = "America/Halifax")),
     as.POSIXct(rep(NA_character_, 10), tz = "America/Halifax")
@@ -689,7 +727,10 @@ test_that("convert to vector works for difftime", {
 })
 
 test_that("convert to vector works for null -> difftime", {
-  array <- as_nanoarrow_array(arrow::Array$create(rep(NA, 10), arrow::null()))
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
   expect_identical(
     convert_array(array, as.difftime(numeric(), units = "secs")),
     as.difftime(rep(NA_real_, 10), units = "secs")
@@ -727,22 +768,22 @@ test_that("convert to vector works for lists nested in data frames", {
 })
 
 test_that("convert to vector warns for stripped extension type", {
-  ext_arr <- as_nanoarrow_array(
-    arrow::Array$create(vctrs::new_vctr(1:5, class = "my_vctr"))
-  )
+  ext_arr <- as_nanoarrow_array(1:5)
+  nanoarrow_array_set_schema(ext_arr, na_extension(na_int32(), "some_ext"))
   expect_warning(
     expect_identical(convert_array(ext_arr), 1:5),
-    "Converting unknown extension arrow.r.vctrs"
+    "Converting unknown extension some_ext"
   )
 
-  nested_ext_array <- as_nanoarrow_array(
-    arrow::record_batch(
-      x = vctrs::new_vctr(1:5, class = "my_vctr")
-    )
+  nested_ext_array <- as_nanoarrow_array(data.frame(x = 1:5))
+  nanoarrow_array_set_schema(
+    nested_ext_array,
+    na_struct(list(x = na_extension(na_int32(), "some_ext")))
   )
+
   expect_warning(
     expect_identical(convert_array(nested_ext_array), data.frame(x = 1:5)),
-    "x: Converting unknown extension arrow.r.vctrs"
+    "x: Converting unknown extension some_ext"
   )
 })
 

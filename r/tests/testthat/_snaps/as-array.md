@@ -6,3 +6,7 @@
 
     Can't create Array<int32()> from object of type data.frame
 
+# as_nanoarrow_array() works for bad unspecified() create
+
+    NotImplemented: day_time_interval
+
