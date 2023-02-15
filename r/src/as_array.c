@@ -256,6 +256,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     for (int64_t i = 0; i < len; i++) {
       if (x_data[i] > INT_MAX || x_data[i] < INT_MIN) {
         n_overflow++;
+        buffer_data[i] = 0;
       } else {
         buffer_data[i] = x_data[i];
       }

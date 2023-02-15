@@ -143,6 +143,39 @@ test_that("as_nanoarrow_array() works for double() -> na_double()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for double() -> na_int32()", {
+  # Without nulls
+  array <- as_nanoarrow_array(as.double(1:10), schema = na_int32())
+  expect_identical(infer_nanoarrow_schema(array)$format, "i")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(1:10))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(c(1:10, NA_real_), schema = na_int32())
+  expect_identical(infer_nanoarrow_schema(array)$format, "i")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
+  )
+  # The last element here is (int)NaN not NA_integer_
+  expect_identical(
+    head(as.raw(array$buffers[[2]]), 10 * 4L),
+    as.raw(as_nanoarrow_buffer(1:10))
+  )
+
+  # With overflow
+  expect_warning(
+    as_nanoarrow_array(.Machine$integer.max + as.double(1:5), schema = na_int32()),
+    "5 value\\(s\\) overflowed"
+  )
+})
+
 test_that("as_nanoarrow_array() works for double() -> na_int64()", {
   # Without nulls
   array <- as_nanoarrow_array(as.double(1:10), schema = na_int64())
