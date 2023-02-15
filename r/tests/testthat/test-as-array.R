@@ -252,3 +252,15 @@ test_that("as_nanoarrow_array() works for data.frame() -> na_struct()", {
   expect_identical(infer_nanoarrow_schema(array$children$x)$format, "i")
   expect_identical(as.raw(array$children$x$buffers[[2]]), as.raw(as_nanoarrow_buffer(1:10)))
 })
+
+test_that("as_nanoarrow_array() errors for bad data.frame() -> na_struct()", {
+  expect_error(
+    as_nanoarrow_array(data.frame(x = 1:10), schema = na_struct()),
+    "Expected 1 schema children"
+  )
+
+  skip_if_not_installed("arrow")
+  expect_snapshot_error(
+    as_nanoarrow_array(data.frame(x = 1:10), schema = na_int32())
+  )
+})

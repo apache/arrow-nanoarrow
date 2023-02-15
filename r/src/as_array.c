@@ -300,7 +300,7 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       const void* vmax = vmaxget();
       const char* item_utf8 = Rf_translateCharUTF8(item);
       int64_t item_size = strlen(item_utf8);
-      if (item_size + cumulative_len > INT_MAX) {
+      if ((item_size + cumulative_len) > 2147483647) {
         Rf_error("Use na_large_string() to convert character() with total size > 2GB");
       }
 
@@ -359,8 +359,8 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
   }
 
   if (Rf_xlength(x_sexp) != schema->n_children) {
-    Rf_error("Expected %ld schema children for data.frame with %ld columns",
-             (long)schema->n_children, (long)Rf_xlength(x_sexp));
+    Rf_error("Expected %ld schema children but found %ld", (long)Rf_xlength(x_sexp),
+             (long)schema->n_children);
   }
 
   result = ArrowArrayInitFromType(array, NANOARROW_TYPE_STRUCT);
