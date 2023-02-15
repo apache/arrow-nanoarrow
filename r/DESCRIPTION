@@ -28,5 +28,6 @@ Suggests:
     rlang,
     testthat (>= 3.0.0),
     tibble,
-    vctrs
+    vctrs,
+    withr
 Config/testthat/edition: 3

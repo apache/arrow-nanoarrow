@@ -97,13 +97,23 @@ as_nanoarrow_array.difftime <- function(x, ..., schema = NULL) {
   }
 
   parsed <- nanoarrow_schema_parse(schema)
+  src_unit <- attr(x, "units")
   switch(
     parsed$type,
     time32 = ,
     time64 = ,
     duration = {
       multipliers <- c(s = 1.0, ms = 1e3, us = 1e6, ns = 1e9)
-      multiplier <- unname(multipliers[parsed$time_unit])
+      src_multipliers <- c(
+        secs = 1.0,
+        mins = 60.0,
+        hours = 3600.0,
+        days = 86400.0,
+        weeks = 604800.0
+      )
+
+      multiplier <- unname(multipliers[parsed$time_unit]) *
+        unname(src_multipliers[src_unit])
       array <- as_nanoarrow_array(
         as.numeric(x) * multiplier,
         schema = na_type(parsed$storage_type)
