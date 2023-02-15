@@ -15,6 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 
+
+arrow_installed <- function() {
+  opt <- Sys.getenv(
+    "R_NANOARROW_WITHOUT_ARROW",
+    getOption("nanoarrow.without_arrow", FALSE)
+  )
+
+  if (identical(tolower(opt), "true")) {
+    FALSE
+  } else {
+    requireNamespace("arrow", quietly = TRUE)
+  }
+}
+
+assert_arrow_installed <- function(reason) {
+  if (!arrow_installed()) {
+    stop(
+      sprintf("Package 'arrow' required for %s", reason),
+      call. = FALSE
+    )
+  }
+}
+
+
 # Internally we use R_PreserveObject() and R_ReleaseObject() to manage R objects
 # that must be kept alive for ArrowArray buffers to stay valid. This count
 # should be zero after tests have run in a fresh session and both gc() and

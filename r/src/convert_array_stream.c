@@ -77,6 +77,7 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
         break;
       }
 
+      array->release(array);
       result = array_stream->get_next(array_stream, array);
       n_batches++;
       if (result != NANOARROW_OK) {

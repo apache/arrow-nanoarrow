@@ -53,12 +53,12 @@ test_that("infer_nanoarrow_schema() methods work for built-in types", {
   expect_identical(infer_nanoarrow_schema(factor())$dictionary$format, "u")
 
   time <- as.POSIXct("2000-01-01", tz = "UTC")
-  expect_identical(infer_nanoarrow_schema(time)$format, "tsm:UTC")
+  expect_identical(infer_nanoarrow_schema(time)$format, "tsu:UTC")
 
   time <- as.POSIXct("2000-01-01", tz = "")
   expect_identical(
     infer_nanoarrow_schema(time)$format,
-    paste0("tsm:", Sys.timezone())
+    paste0("tsu:", Sys.timezone())
   )
 
   difftime <- as.difftime(double(), unit = "secs")

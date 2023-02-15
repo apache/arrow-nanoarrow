@@ -16,50 +16,40 @@
 # under the License.
 
 test_that("convert array stream works", {
-  stream0 <- arrow::RecordBatchReader$create(
-    schema = arrow::schema(x = arrow::int32())
-  )
-  stream0 <- as_nanoarrow_array_stream(stream0)
+  stream0 <- basic_array_stream(list(), schema = na_struct(list(x = na_int32())))
   expect_identical(convert_array_stream(stream0), data.frame(x = integer()))
 
-  stream1 <- arrow::RecordBatchReader$create(
-    arrow::record_batch(x = 1:5)
-  )
-  stream1 <- as_nanoarrow_array_stream(stream1)
+  stream1 <- basic_array_stream(list(data.frame(x = 1:5)))
   expect_identical(convert_array_stream(stream1), data.frame(x = 1:5))
 
-  stream2 <- arrow::RecordBatchReader$create(
-    arrow::record_batch(x = 1:5),
-    arrow::record_batch(x = 6:10)
+  stream2 <- basic_array_stream(
+    list(
+      data.frame(x = 1:5),
+      data.frame(x = 6:10)
+    )
   )
-  stream2 <- as_nanoarrow_array_stream(stream2)
   expect_identical(convert_array_stream(stream2), data.frame(x = 1:10))
 })
 
 test_that("convert array stream with explicit size works", {
-  stream0 <- arrow::RecordBatchReader$create(
-    schema = arrow::schema(x = arrow::int32())
-  )
-  stream0 <- as_nanoarrow_array_stream(stream0)
+  stream0 <- basic_array_stream(list(), schema = na_struct(list(x = na_int32())))
   expect_identical(
     convert_array_stream(stream0, size = 0),
     data.frame(x = integer())
   )
 
-  stream1 <- arrow::RecordBatchReader$create(
-    arrow::record_batch(x = 1:5)
-  )
-  stream1 <- as_nanoarrow_array_stream(stream1)
+  stream1 <- basic_array_stream(list(data.frame(x = 1:5)))
   expect_identical(
     convert_array_stream(stream1, size = 5),
     data.frame(x = 1:5)
   )
 
-  stream2 <- arrow::RecordBatchReader$create(
-    arrow::record_batch(x = 1:5),
-    arrow::record_batch(x = 6:10)
+  stream2 <- basic_array_stream(
+    list(
+      data.frame(x = 1:5),
+      data.frame(x = 6:10)
+    )
   )
-  stream2 <- as_nanoarrow_array_stream(stream2)
   expect_identical(
     convert_array_stream(stream2, size = 10),
     data.frame(x = 1:10)
@@ -143,27 +133,24 @@ test_that("convert array stream works for struct-style vectors", {
 
 test_that("convert array stream respects the value of n", {
   batches <- list(
-    arrow::record_batch(x = 1:5),
-    arrow::record_batch(x = 6:10),
-    arrow::record_batch(x = 11:15)
+    data.frame(x = 1:5),
+    data.frame(x = 6:10),
+    data.frame(x = 11:15)
   )
 
-  reader3 <- arrow::RecordBatchReader$create(batches = batches)
-  stream3 <- as_nanoarrow_array_stream(reader3)
+  stream3 <- basic_array_stream(batches)
   expect_identical(
     convert_array_stream(stream3, n = 0),
     data.frame(x = integer())
   )
 
-  reader3 <- arrow::RecordBatchReader$create(batches = batches)
-  stream3 <- as_nanoarrow_array_stream(reader3)
+  stream3 <- basic_array_stream(batches)
   expect_identical(
     convert_array_stream(stream3, n = 1),
     data.frame(x = 1:5)
   )
 
-  reader3 <- arrow::RecordBatchReader$create(batches = batches)
-  stream3 <- as_nanoarrow_array_stream(reader3)
+  stream3 <- basic_array_stream(batches)
   expect_identical(
     convert_array_stream(stream3, n = 2),
     data.frame(x = 1:10)
@@ -172,27 +159,24 @@ test_that("convert array stream respects the value of n", {
 
 test_that("fixed-size convert array stream respects the value of n", {
   batches <- list(
-    arrow::record_batch(x = 1:5),
-    arrow::record_batch(x = 6:10),
-    arrow::record_batch(x = 11:15)
+    data.frame(x = 1:5),
+    data.frame(x = 6:10),
+    data.frame(x = 11:15)
   )
 
-  reader3 <- arrow::RecordBatchReader$create(batches = batches)
-  stream3 <- as_nanoarrow_array_stream(reader3)
+  stream3 <- basic_array_stream(batches)
   expect_identical(
     convert_array_stream(stream3, n = 0, size = 0),
     data.frame(x = integer())
   )
 
-  reader3 <- arrow::RecordBatchReader$create(batches = batches)
-  stream3 <- as_nanoarrow_array_stream(reader3)
+  stream3 <- basic_array_stream(batches)
   expect_identical(
     convert_array_stream(stream3, n = 1, size = 5),
     data.frame(x = 1:5)
   )
 
-  reader3 <- arrow::RecordBatchReader$create(batches = batches)
-  stream3 <- as_nanoarrow_array_stream(reader3)
+  stream3 <- basic_array_stream(batches)
   expect_identical(
     convert_array_stream(stream3, n = 2, size = 10),
     data.frame(x = 1:10)

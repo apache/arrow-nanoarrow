@@ -41,14 +41,14 @@ test_that("as_nanoarrow_array() / convert_array() default method works", {
   array <- as_nanoarrow_array(1:10)
   expect_identical(convert_array(array), 1:10)
 
-  array <- as_nanoarrow_array(as.double(1:10), schema = arrow::float64())
+  array <- as_nanoarrow_array(as.double(1:10), schema = na_double())
   expect_identical(convert_array(array), as.double(1:10))
 })
 
 test_that("infer_nanoarrow_schema() works for nanoarrow_array", {
   array <- as_nanoarrow_array(1:10)
   schema <- infer_nanoarrow_schema(array)
-  expect_true(arrow::as_data_type(schema)$Equals(arrow::int32()))
+  expect_true(nanoarrow_schema_identical(schema, na_int32()))
 
   nanoarrow_array_set_schema(array, NULL)
   expect_error(infer_nanoarrow_schema(array), "has no associated schema")
@@ -129,22 +129,22 @@ test_that("schemaless array list interface works for dictionary types", {
 
 test_that("array list interface classes data buffers for relevant types", {
   types <- list(
-    int8 = arrow::int8(),
-    uint8 = arrow::uint8(),
-    int16 = arrow::int16(),
-    uint16 = arrow::uint16(),
-    int32 = arrow::int32(),
-    uint32 = arrow::uint32(),
-    int64 = arrow::int64(),
-    uint64 = arrow::uint64(),
-    half_float = arrow::float16(),
-    float = arrow::float32(),
-    double = arrow::float64(),
-    decimal128 = arrow::decimal128(2, 3),
-    decimal256 = arrow::decimal256(2, 3)
+    int8 = na_int8(),
+    uint8 = na_uint8(),
+    int16 = na_int16(),
+    uint16 = na_uint16(),
+    int32 = na_int32(),
+    uint32 = na_uint32(),
+    int64 = na_int64(),
+    uint64 = na_uint64(),
+    half_float = na_half_float(),
+    float = na_float(),
+    double = na_double(),
+    decimal128 = na_decimal128(2, 3),
+    decimal256 = na_decimal256(2, 3)
   )
 
-  arrays <- lapply(types, function(x) arrow::concat_arrays(type = x))
+  arrays <- lapply(types, function(x) nanoarrow_array_init(x))
 
   for (nm in names(arrays)) {
     expect_s3_class(
@@ -159,7 +159,7 @@ test_that("array list interface classes data buffers for relevant types", {
 })
 
 test_that("array list interface classes offset buffers for relevant types", {
-  arr_string <- arrow::concat_arrays(type = arrow::utf8())
+  arr_string <- nanoarrow_array_init(na_string())
   expect_s3_class(
     as_nanoarrow_array(arr_string)$buffers[[2]],
     "nanoarrow_buffer_data_offset32"
@@ -168,6 +168,8 @@ test_that("array list interface classes offset buffers for relevant types", {
     as_nanoarrow_array(arr_string)$buffers[[3]],
     "nanoarrow_buffer_data_utf8"
   )
+
+  skip_if_not_installed("arrow")
 
   arr_large_string <- arrow::concat_arrays(type = arrow::large_utf8())
   expect_s3_class(
@@ -220,7 +222,7 @@ test_that("array list interface works for nested types", {
 test_that("array list interface works for dictionary types", {
   array <- as_nanoarrow_array(factor(letters[1:5]))
 
-  expect_s3_class(array$buffers[[2]], "nanoarrow_buffer_data_int8")
+  expect_s3_class(array$buffers[[2]], "nanoarrow_buffer_data_int32")
   expect_s3_class(array$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
 
   info_recursive <- nanoarrow_array_proxy_safe(array, recursive = TRUE)

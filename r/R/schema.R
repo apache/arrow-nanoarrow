@@ -80,7 +80,7 @@ infer_nanoarrow_schema.double <- function(x, ...) {
 
 #' @export
 infer_nanoarrow_schema.character <- function(x, ...) {
-  if (length(x) > 0 && sum(nchar(x, type = "bytes")) > .Machine$integer.max) {
+  if (length(x) > 0 && sum(nchar(x, type = "bytes"), na.rm = TRUE) > .Machine$integer.max) {
     na_large_string()
   } else {
     na_string()
@@ -89,7 +89,11 @@ infer_nanoarrow_schema.character <- function(x, ...) {
 
 #' @export
 infer_nanoarrow_schema.factor <- function(x, ...) {
-  na_dictionary(infer_nanoarrow_schema.character(levels(x)), na_int32())
+  na_dictionary(
+    infer_nanoarrow_schema(levels(x)),
+    na_int32(),
+    ordered = is.ordered(x)
+  )
 }
 
 #' @export
@@ -100,6 +104,11 @@ infer_nanoarrow_schema.POSIXct <- function(x, ...) {
   }
 
   na_timestamp(timezone = tz)
+}
+
+#' @export
+infer_nanoarrow_schema.POSIXlt <- function(x, ...) {
+  infer_nanoarrow_schema(new_data_frame(x, length(x)))
 }
 
 #' @export
@@ -235,6 +244,14 @@ nanoarrow_schema_modify <- function(x, new_values, validate = TRUE) {
   }
 
   schema_deep_copy
+}
+
+nanoarrow_schema_identical <- function(x, y) {
+  identical(x, y) ||
+    identical(
+      nanoarrow_schema_proxy(x, recursive = TRUE),
+      nanoarrow_schema_proxy(y, recursive = TRUE)
+    )
 }
 
 #' @importFrom utils str

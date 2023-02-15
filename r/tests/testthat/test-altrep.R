@@ -21,7 +21,7 @@ test_that("nanoarrow_altrep_chr() returns NULL for unsupported types", {
 })
 
 test_that("nanoarrow_altrep_chr() works for string", {
-  x <- as_nanoarrow_array(c(NA, letters), schema = arrow::utf8())
+  x <- as_nanoarrow_array(c(NA, letters), schema = na_string())
   x_altrep <- nanoarrow_altrep_chr(x)
 
   expect_output(.Internal(inspect(x_altrep)), "<nanoarrow::altrep_chr\\[27\\]>")
@@ -52,7 +52,8 @@ test_that("nanoarrow_altrep_chr() works for string", {
 })
 
 test_that("nanoarrow_altrep_chr() works for large string", {
-  x <- as_nanoarrow_array(letters, schema = arrow::large_utf8())
+  skip_if_not_installed("arrow")
+  x <- as_nanoarrow_array(letters, schema = na_large_string())
   x_altrep <- nanoarrow_altrep_chr(x)
   expect_identical(x_altrep, letters)
 })
@@ -64,13 +65,13 @@ test_that("is_nanoarrow_altrep() returns true for nanoarrow altrep objects", {
 })
 
 test_that("nanoarrow_altrep_chr_force_materialize() forces materialization", {
-  x <- as_nanoarrow_array(letters, schema = arrow::utf8())
+  x <- as_nanoarrow_array(letters, schema = na_string())
   x_altrep <- nanoarrow_altrep_chr(x)
 
   expect_identical(nanoarrow_altrep_force_materialize("not altrep"), 0L)
   expect_identical(nanoarrow_altrep_force_materialize(x_altrep), 1L)
 
-  x <- as_nanoarrow_array(letters, schema = arrow::utf8())
+  x <- as_nanoarrow_array(letters, schema = na_string())
   x_altrep_df <- data.frame(x = nanoarrow_altrep_chr(x))
   expect_identical(
     nanoarrow_altrep_force_materialize(x_altrep_df, recursive = FALSE),
@@ -90,7 +91,7 @@ test_that("is_nanoarrow_altrep_materialized() checks for materialization", {
   expect_identical(is_nanoarrow_altrep_materialized("not altrep"), NA)
   expect_identical(is_nanoarrow_altrep_materialized(1:10), NA)
 
-  x <- as_nanoarrow_array(letters, schema = arrow::utf8())
+  x <- as_nanoarrow_array(letters, schema = na_string())
   x_altrep <- nanoarrow_altrep_chr(x)
   expect_false(is_nanoarrow_altrep_materialized(x_altrep))
   expect_identical(nanoarrow_altrep_force_materialize(x_altrep), 1L)

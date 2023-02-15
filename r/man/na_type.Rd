@@ -103,7 +103,7 @@ na_date64(nullable = TRUE)
 
 na_time32(unit = c("ms", "s"), nullable = TRUE)
 
-na_time64(unit = c("ns", "us"), nullable = TRUE)
+na_time64(unit = c("us", "ns"), nullable = TRUE)
 
 na_duration(unit = c("ms", "s", "us", "ns"), nullable = TRUE)
 
@@ -113,13 +113,13 @@ na_interval_day_time(nullable = TRUE)
 
 na_interval_month_day_nano(nullable = TRUE)
 
-na_timestamp(unit = c("ms", "s", "us", "ns"), timezone = "", nullable = TRUE)
+na_timestamp(unit = c("us", "ns", "s", "ms"), timezone = "", nullable = TRUE)
 
 na_decimal128(precision, scale, nullable = TRUE)
 
 na_decimal256(precision, scale, nullable = TRUE)
 
-na_struct(column_types = list(), nullable = TRUE)
+na_struct(column_types = list(), nullable = FALSE)
 
 na_sparse_union(column_types = list())
 

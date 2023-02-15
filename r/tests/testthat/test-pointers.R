@@ -53,7 +53,7 @@ test_that("nanoarrow_pointer_move() works for schema", {
   dst <- nanoarrow_allocate_schema()
   nanoarrow_pointer_move(ptr, dst)
   expect_false(nanoarrow_pointer_is_valid(ptr))
-  expect_true(arrow::as_data_type(dst)$Equals(arrow::int32()))
+  expect_true(nanoarrow_schema_identical(dst, na_int32()))
 
   expect_error(
     nanoarrow_pointer_move(ptr, dst),
@@ -71,7 +71,7 @@ test_that("nanoarrow_pointer_move() works for array", {
   dst <- nanoarrow_allocate_array()
   nanoarrow_pointer_move(ptr, dst)
   expect_false(nanoarrow_pointer_is_valid(ptr))
-  expect_true(arrow::as_arrow_array(dst)$Equals(arrow::Array$create(integer())))
+  expect_identical(convert_array(dst), integer())
 
   expect_error(
     nanoarrow_pointer_move(ptr, dst),
@@ -137,9 +137,7 @@ test_that("nanoarrow_pointer_export() works for schema", {
   dst <- nanoarrow_allocate_schema()
   nanoarrow_pointer_export(ptr, dst)
   expect_true(nanoarrow_pointer_is_valid(ptr))
-  expect_true(
-    arrow::as_data_type(dst)$Equals(arrow::int32())
-  )
+  expect_true(nanoarrow_schema_identical(dst, na_int32()))
 
   expect_error(
     nanoarrow_pointer_export(ptr, dst),
@@ -159,7 +157,7 @@ test_that("nanoarrow_pointer_export() works for array", {
   expect_true(nanoarrow_pointer_is_valid(ptr))
   # (when exporting the schema is not included)
   nanoarrow_array_set_schema(dst, infer_nanoarrow_schema(ptr))
-  expect_true(arrow::as_arrow_array(dst)$Equals(arrow::Array$create(integer())))
+  expect_identical(convert_array(dst), integer())
 
   expect_error(
     nanoarrow_pointer_export(ptr, dst),

@@ -236,7 +236,7 @@ na_time32 <- function(unit = c("ms", "s"), nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
-na_time64 <- function(unit = c("ns", "us"), nullable = TRUE) {
+na_time64 <- function(unit = c("us", "ns"), nullable = TRUE) {
   unit <- match.arg(unit)
   .Call(
     nanoarrow_c_schema_init_date_time,
@@ -280,7 +280,7 @@ na_interval_month_day_nano <- function(nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
-na_timestamp <- function(unit = c("ms", "s", "us", "ns"), timezone = "", nullable = TRUE) {
+na_timestamp <- function(unit = c("us", "ns", "s", "ms"), timezone = "", nullable = TRUE) {
   unit <- match.arg(unit)
   if (!is.character(timezone) || length(timezone) != 1 || is.na(timezone)) {
     stop("`timezone` must be character(1)")
@@ -321,7 +321,7 @@ na_decimal256 <- function(precision, scale, nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
-na_struct <- function(column_types = list(), nullable = TRUE) {
+na_struct <- function(column_types = list(), nullable = FALSE) {
   schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$STRUCT, isTRUE(nullable))
   schema$children <- column_types
   schema
