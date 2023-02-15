@@ -329,6 +329,73 @@ test_that("as_nanoarrow_array() errors for bad data.frame() -> na_struct()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for blob::blob() -> na_binary()", {
+  skip_if_not_installed("blob")
+
+  # Without nulls
+  array <- as_nanoarrow_array(blob::as_blob(letters))
+  expect_identical(infer_nanoarrow_schema(array)$format, "z")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(0:26))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(blob::as_blob(c(letters, NA)))
+  expect_identical(infer_nanoarrow_schema(array)$format, "z")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(0:26, 26L)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+})
+
+test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
+  skip_if_not_installed("arrow")
+
+  # Without nulls
+  array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_large_binary())
+  expect_identical(infer_nanoarrow_schema(array)$format, "Z")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(
+    blob::as_blob(c(letters, NA)),
+    schema = na_large_binary()
+  )
+  expect_identical(infer_nanoarrow_schema(array)$format, "Z")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+})
+
 test_that("as_nanoarrow_array() works for unspecified() -> na_na()", {
   skip_if_not_installed("vctrs")
 

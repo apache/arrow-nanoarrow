@@ -512,7 +512,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
     }
 
     for (int64_t i = 0; i < len; i++) {
-      uint8_t is_valid = STRING_ELT(x_sexp, i) != NA_STRING;
+      uint8_t is_valid = VECTOR_ELT(x_sexp, i) != R_NilValue;
       ArrowBitmapAppend(&bitmap, is_valid, 1);
     }
 
