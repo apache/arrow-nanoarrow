@@ -154,10 +154,8 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     if (x_data[i] == NA_INTEGER) {
       has_nulls = 1;
       ArrowBitmapAppend(&value_bitmap, 0, 1);
-    } else if (x_data[i]) {
-      ArrowBitmapAppend(&value_bitmap, 0, 1);
     } else {
-      ArrowBitmapAppend(&value_bitmap, 0, 0);
+      ArrowBitmapAppend(&value_bitmap, x_data[i] != 0, 1);
     }
   }
 
@@ -397,7 +395,7 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
 
   switch (TYPEOF(x_sexp)) {
     case LGLSXP:
-      as_array_int(x_sexp, array, schema_xptr, error);
+      as_array_lgl(x_sexp, array, schema_xptr, error);
       return;
     case INTSXP:
       as_array_int(x_sexp, array, schema_xptr, error);
