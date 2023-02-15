@@ -15,6 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
+test_that("can set option/env var to pretend the arrow package is not installed", {
+  skip_if_not_installed("arrow")
+
+  expect_true(arrow_installed())
+  expect_silent(assert_arrow_installed("life"))
+
+  withr::with_options(list(nanoarrow.without_arrow = TRUE), {
+    expect_false(arrow_installed())
+
+    expect_error(
+      assert_arrow_installed("life"),
+      "Package 'arrow' required for life"
+    )
+  })
+
+  withr::with_envvar(list(R_NANOARROW_WITHOUT_ARROW = "true"), {
+    expect_false(arrow_installed())
+  })
+})
+
 test_that("preserve/release works when release happens on another thread", {
   some_non_null_sexp <- 1L
   count0 <- preserved_count()

@@ -100,8 +100,10 @@ as_nanoarrow_array_stream.nanoarrow_array_stream <- function(x, ..., schema = NU
 
 #' @export
 as_nanoarrow_array_stream.default <- function(x, ..., schema = NULL) {
+  assert_arrow_installed("default coerce to nanoarrow_array_stream")
+
   as_nanoarrow_array_stream(
-    arrow::as_record_batch_reader(x, ...),
+    arrow::as_record_batch_reader(x, ..., schema = arrow::as_schema(schema)),
     schema = schema
   )
 }

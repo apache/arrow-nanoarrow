@@ -200,7 +200,8 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     Rf_error("ArrowSchemaViewInit(): %s", error->message);
   }
 
-  // Only consider the default create for now
+  // Consider double -> na_double() and double -> na_int64()
+  // (mostly so that we can support date/time types with various units)
   if (schema_view.type != NANOARROW_TYPE_DOUBLE) {
     call_as_nanoarrow_array(x_sexp, array, schema_xptr);
     return;

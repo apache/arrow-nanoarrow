@@ -21,6 +21,14 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL, .from_c = FALSE) {
   # and no suitable S3 method was found or the x--schema combination is not
   # implemented in nanoarrow. Try arrow::as_arrow_array().
   if (.from_c) {
+    assert_arrow_installed(
+      sprintf(
+        "create %s array from object of type %s",
+        nanoarrow_schema_formatted(schema),
+        paste0(class(x), collapse = "/")
+      )
+    )
+
     result <- as_nanoarrow_array(
       arrow::as_arrow_array(
         x,
