@@ -103,7 +103,7 @@ na_date64(nullable = TRUE)
 
 na_time32(unit = c("ms", "s"), nullable = TRUE)
 
-na_time64(unit = c("ns", "us"), nullable = TRUE)
+na_time64(unit = c("us", "ns"), nullable = TRUE)
 
 na_duration(unit = c("ms", "s", "us", "ns"), nullable = TRUE)
 

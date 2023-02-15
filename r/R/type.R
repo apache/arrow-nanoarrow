@@ -236,7 +236,7 @@ na_time32 <- function(unit = c("ms", "s"), nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
-na_time64 <- function(unit = c("ns", "us"), nullable = TRUE) {
+na_time64 <- function(unit = c("us", "ns"), nullable = TRUE) {
   unit <- match.arg(unit)
   .Call(
     nanoarrow_c_schema_init_date_time,
