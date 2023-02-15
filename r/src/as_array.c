@@ -19,6 +19,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <limits.h>
+
 #include "array.h"
 #include "buffer.h"
 #include "materialize.h"
@@ -223,6 +225,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   if (schema_view.type == NANOARROW_TYPE_DOUBLE) {
     // Just borrow the data buffer (zero-copy)
     buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(double), x_sexp);
+
   } else if (schema_view.type == NANOARROW_TYPE_INT64) {
     // double -> int64_t
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, 1);
@@ -237,6 +240,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     }
 
     buffer->size_bytes = len * sizeof(int64_t);
+
   } else {
     // double -> int32_t
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, 1);
@@ -246,8 +250,20 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     }
 
     int32_t* buffer_data = (int32_t*)buffer->data;
+
+    // It's easy to accidentally overflow here, so make sure to warn
+    int64_t n_overflow = 0;
     for (int64_t i = 0; i < len; i++) {
-      buffer_data[i] = x_data[i];
+      if (x_data[i] > INT_MAX || x_data[i] < INT_MIN) {
+        n_overflow++;
+      } else {
+        buffer_data[i] = x_data[i];
+      }
+    }
+
+    if (n_overflow > 0) {
+      Rf_warning("%ld value(s) overflowed in double -> na_int32() creation",
+                 (long)n_overflow);
     }
 
     buffer->size_bytes = len * sizeof(int32_t);
@@ -334,7 +350,7 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       const void* vmax = vmaxget();
       const char* item_utf8 = Rf_translateCharUTF8(item);
       int64_t item_size = strlen(item_utf8);
-      if ((item_size + cumulative_len) > 2147483647) {
+      if ((item_size + cumulative_len) > INT_MAX) {
         Rf_error("Use na_large_string() to convert character() with total size > 2GB");
       }
 

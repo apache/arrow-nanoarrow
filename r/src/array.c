@@ -19,6 +19,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <limits.h>
+
 #include "array.h"
 #include "buffer.h"
 #include "nanoarrow.h"
@@ -375,7 +377,7 @@ static SEXP borrow_unknown_buffer(struct ArrowArray* array, int64_t i, SEXP shel
 }
 
 static SEXP length_from_int64(int64_t value) {
-  if (value < 2147483647) {
+  if (value < INT_MAX) {
     return Rf_ScalarInteger(value);
   } else {
     return Rf_ScalarReal(value);
