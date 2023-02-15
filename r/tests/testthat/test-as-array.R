@@ -25,7 +25,7 @@ test_that("as_nanoarrow_array() works for nanoarrow_array", {
   expect_identical(convert_array(casted), as.double(1:10))
 })
 
-test_that("as_nanoarrow_array() works for logical() -> bool()", {
+test_that("as_nanoarrow_array() works for logical() -> na_bool()", {
   # Without nulls
   array <- as_nanoarrow_array(c(TRUE, FALSE, TRUE, FALSE), schema = na_bool())
   expect_identical(infer_nanoarrow_schema(array)$format, "b")
@@ -48,6 +48,13 @@ test_that("as_nanoarrow_array() works for logical() -> bool()", {
   expect_identical(
     as.raw(array$buffers[[2]]),
     as.raw(packBits(c(TRUE, FALSE, FALSE, rep(FALSE, 5))))
+  )
+})
+
+test_that("as_nanoarrow_array() errors for bad logical() creation", {
+  skip_if_not_installed("arrow")
+  expect_snapshot_error(
+    as_nanoarrow_array(TRUE, schema = na_string())
   )
 })
 
