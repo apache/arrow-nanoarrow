@@ -202,6 +202,47 @@ test_that("as_nanoarrow_array() works for character() -> na_large_string()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for factor() -> na_dictionary()", {
+  array <- as_nanoarrow_array(
+    factor(letters),
+    schema = na_dictionary(na_string(), na_int32())
+  )
+
+  expect_identical(infer_nanoarrow_schema(array)$format, "i")
+  expect_identical(infer_nanoarrow_schema(array$dictionary)$format, "u")
+
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(0:25))
+  )
+
+  expect_identical(
+    as.raw(array$dictionary$buffers[[3]]),
+    charToRaw(paste0(letters, collapse = ""))
+  )
+})
+
+test_that("as_nanoarrow_array() works for factor() -> na_string()", {
+  array <- as_nanoarrow_array(
+    factor(letters),
+    schema = na_string()
+  )
+
+  expect_identical(infer_nanoarrow_schema(array)$format, "u")
+  expect_null(array$dictionary)
+
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(0:26))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    charToRaw(paste0(letters, collapse = ""))
+  )
+})
+
 test_that("as_nanoarrow_array() works for data.frame() -> na_struct()", {
   array <- as_nanoarrow_array(data.frame(x = 1:10))
   expect_identical(array$length, 10L)

@@ -49,7 +49,7 @@ test_that("infer_nanoarrow_schema() methods work for built-in types", {
   expect_identical(infer_nanoarrow_schema(character())$format, "u")
   expect_identical(infer_nanoarrow_schema(Sys.Date())$format, "tdD")
 
-  expect_identical(infer_nanoarrow_schema(factor())$format, "c")
+  expect_identical(infer_nanoarrow_schema(factor())$format, "i")
   expect_identical(infer_nanoarrow_schema(factor())$dictionary$format, "u")
 
   time <- as.POSIXct("2000-01-01", tz = "UTC")

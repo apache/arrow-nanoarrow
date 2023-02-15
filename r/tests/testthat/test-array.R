@@ -220,7 +220,7 @@ test_that("array list interface works for nested types", {
 test_that("array list interface works for dictionary types", {
   array <- as_nanoarrow_array(factor(letters[1:5]))
 
-  expect_s3_class(array$buffers[[2]], "nanoarrow_buffer_data_int8")
+  expect_s3_class(array$buffers[[2]], "nanoarrow_buffer_data_int32")
   expect_s3_class(array$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
 
   info_recursive <- nanoarrow_array_proxy_safe(array, recursive = TRUE)

@@ -62,6 +62,24 @@ as_nanoarrow_array.POSIXlt <- function(x, ..., schema = NULL) {
   as_nanoarrow_array(new_data_frame(x, length(x)), schema = schema)
 }
 
+#' @export
+as_nanoarrow_array.factor <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  }
+
+  if (is.null(schema$dictionary)) {
+    return(as_nanoarrow_array(as.character(x), schema = schema))
+  }
+
+  storage <- schema
+  storage$dictionary <- NULL
+
+  array <- as_nanoarrow_array(unclass(x) - 1L, schema = storage)
+  array$dictionary <- as_nanoarrow_array(levels(x), schema = schema$dictionary)
+  array
+}
+
 # This is defined because it's verbose to pass named arguments from C.
 # When converting data frame columns, we try the internal C conversions
 # first to save R evaluation overhead. When the internal conversions fail,

@@ -89,7 +89,11 @@ infer_nanoarrow_schema.character <- function(x, ...) {
 
 #' @export
 infer_nanoarrow_schema.factor <- function(x, ...) {
-  as_nanoarrow_schema(arrow::infer_type(x))
+  na_dictionary(
+    infer_nanoarrow_schema(levels(x)),
+    na_int32(),
+    ordered = is.ordered(x)
+  )
 }
 
 #' @export
