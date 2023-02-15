@@ -355,7 +355,10 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
         Rf_error("Use na_large_string() to convert character() with total size > 2GB");
       }
 
-      ArrowBufferAppend(data_buffer, item_utf8, item_size);
+      int result = ArrowBufferAppend(data_buffer, item_utf8, item_size);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowBufferAppend() failed");
+      }
       cumulative_len += item_size;
 
       vmaxset(vmax);
@@ -434,6 +437,95 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
   array->offset = 0;
 }
 
+static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
+                          struct ArrowError* error) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchemaView schema_view;
+  int result = ArrowSchemaViewInit(&schema_view, schema, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaViewInit(): %s", error->message);
+  }
+
+  // We handle list(raw()) for now but fall back to arrow for vctrs::list_of()
+  // Arbitrary nested list support is complicated without some concept of a
+  // "builder", which we don't use.
+  if (schema_view.type != NANOARROW_TYPE_BINARY) {
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+    return;
+  }
+
+  result = ArrowArrayInitFromType(array, schema_view.type);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayInitFromType() failed");
+  }
+
+  int64_t len = Rf_xlength(x_sexp);
+  struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
+  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 2);
+
+  result = ArrowBufferReserve(offset_buffer, (len + 1) * sizeof(int32_t));
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowBufferReserve() failed");
+  }
+
+  int64_t null_count = 0;
+  int32_t cumulative_len = 0;
+  ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
+
+  for (int64_t i = 0; i < len; i++) {
+    SEXP item = VECTOR_ELT(x_sexp, i);
+    if (item == R_NilValue) {
+      ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
+      null_count++;
+      continue;
+    }
+
+    if (Rf_isObject(item) || TYPEOF(item) != RAWSXP) {
+      Rf_error("All list items must be raw() or NULL in conversion to na_binary()");
+    }
+
+    int64_t item_size = Rf_xlength(item);
+    if ((item_size + cumulative_len) > INT_MAX) {
+      Rf_error("Use na_large_binary() to convert list(raw()) with total size > 2GB");
+    }
+
+    result = ArrowBufferAppend(data_buffer, RAW(item), item_size);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowBufferAppend() failed");
+    }
+
+    cumulative_len += item_size;
+    ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
+  }
+
+  // Set the array fields
+  array->length = len;
+  array->offset = 0;
+
+  // If there are nulls, pack the validity buffer
+  if (null_count > 0) {
+    struct ArrowBitmap bitmap;
+    ArrowBitmapInit(&bitmap);
+    result = ArrowBitmapReserve(&bitmap, len);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowBitmapReserve() failed");
+    }
+
+    for (int64_t i = 0; i < len; i++) {
+      uint8_t is_valid = STRING_ELT(x_sexp, i) != NA_STRING;
+      ArrowBitmapAppend(&bitmap, is_valid, 1);
+    }
+
+    ArrowArraySetValidityBitmap(array, &bitmap);
+  }
+
+  array->null_count = null_count;
+  result = ArrowArrayFinishBuilding(array, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+  }
+}
+
 static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                              struct ArrowError* error) {
   if (Rf_isObject(x_sexp)) {
@@ -458,6 +550,9 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
       return;
     case STRSXP:
       as_array_chr(x_sexp, array, schema_xptr, error);
+      return;
+    case VECSXP:
+      as_array_list(x_sexp, array, schema_xptr, error);
       return;
     default:
       call_as_nanoarrow_array(x_sexp, array, schema_xptr);

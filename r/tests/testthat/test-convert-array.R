@@ -457,7 +457,9 @@ test_that("convert to vector works for null -> character()", {
 })
 
 test_that("convert to vector works for blob::blob()", {
-  array <- as_nanoarrow_array(list(as.raw(1:5)), schema = arrow::binary())
+  skip_if_not_installed("blob")
+
+  array <- as_nanoarrow_array(list(as.raw(1:5)), schema = na_binary())
 
   expect_identical(
     convert_array(array),
@@ -482,6 +484,8 @@ test_that("convert to vector works for null -> blob::blob()", {
 })
 
 test_that("convert to vector works for list -> vctrs::list_of", {
+  skip_if_not_installed("arrow")
+
   array_list <- as_nanoarrow_array(
     arrow::Array$create(
       list(1:5, 6:10, NULL),
@@ -517,6 +521,8 @@ test_that("convert to vector works for list -> vctrs::list_of", {
 })
 
 test_that("convert to vector works for large_list -> vctrs::list_of", {
+  skip_if_not_installed("arrow")
+
   array_list <- as_nanoarrow_array(
     arrow::Array$create(
       list(1:5, 6:10, NULL),
@@ -544,6 +550,8 @@ test_that("convert to vector works for large_list -> vctrs::list_of", {
 })
 
 test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
+  skip_if_not_installed("arrow")
+
   array_list <- as_nanoarrow_array(
     arrow::Array$create(
       list(1:5, 6:10, NULL),
@@ -589,7 +597,8 @@ test_that("convert to vector works for Date", {
   )
 
   array_date <- as_nanoarrow_array(
-    arrow::Array$create(as.Date(c(NA, "2000-01-01")), arrow::date64())
+    as.Date(c(NA, "2000-01-01")),
+    schema = na_date64()
   )
   expect_identical(
     convert_array(array_date),
@@ -674,24 +683,16 @@ test_that("convert to vector works for difftime", {
 
   # with all Arrow units
   x <- as.difftime(123, units = "secs")
-  array_duration <- as_nanoarrow_array(
-    arrow::Array$create(x, arrow::duration("s"))
-  )
+  array_duration <- as_nanoarrow_array(x, na_duration("s"))
   expect_identical(convert_array(array_duration), x)
 
-  array_duration <- as_nanoarrow_array(
-    arrow::Array$create(x, arrow::duration("ms"))
-  )
+  array_duration <- as_nanoarrow_array(x, na_duration("ms"))
   expect_identical(convert_array(array_duration), x)
 
-  array_duration <- as_nanoarrow_array(
-    arrow::Array$create(x, arrow::duration("us"))
-  )
+  array_duration <- as_nanoarrow_array(x, na_duration("us"))
   expect_identical(convert_array(array_duration), x)
 
-  array_duration <- as_nanoarrow_array(
-    arrow::Array$create(x, arrow::duration("ns"))
-  )
+  array_duration <- as_nanoarrow_array(x, na_duration("ns"))
   expect_equal(convert_array(array_duration), x)
 
   # bad ptype values
@@ -738,6 +739,8 @@ test_that("convert to vector works for null -> difftime", {
 })
 
 test_that("convert to vector works for data frames nested inside lists", {
+  skip_if_not_installed("arrow")
+
   df_in_list <- vctrs::list_of(
     data.frame(x = 1:5),
     data.frame(x = 6:10),
@@ -752,6 +755,8 @@ test_that("convert to vector works for data frames nested inside lists", {
 })
 
 test_that("convert to vector works for lists nested in data frames", {
+  skip_if_not_installed("arrow")
+
   df_in_list_in_df <- data.frame(
     x = vctrs::list_of(
       data.frame(x = 1:5),

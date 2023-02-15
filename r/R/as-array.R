@@ -126,6 +126,15 @@ as_nanoarrow_array.difftime <- function(x, ..., schema = NULL) {
 }
 
 #' @export
+as_nanoarrow_array.blob <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  }
+
+  as_nanoarrow_array(unclass(x), schema = schema)
+}
+
+#' @export
 as_nanoarrow_array.Date <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
     schema <- infer_nanoarrow_schema(x)
