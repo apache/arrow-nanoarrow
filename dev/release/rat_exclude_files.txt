@@ -8,3 +8,4 @@ r/NAMESPACE
 r/.Rbuildignore
 r/nanoarrow.Rproj
 *.Rd
+r/tests/testthat/_snaps/*.md
