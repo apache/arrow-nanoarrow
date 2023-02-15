@@ -21,12 +21,13 @@
 
 #include "array.h"
 #include "buffer.h"
+#include "materialize.h"
 #include "nanoarrow.h"
 #include "schema.h"
 #include "util.h"
-#include "materialize.h"
 
-static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr) {
+static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array,
+                                    SEXP schema_xptr) {
   SEXP fun = PROTECT(Rf_install("as_nanoarrow_array_from_c"));
   SEXP call = PROTECT(Rf_lang3(fun, x_sexp, schema_xptr));
   SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
@@ -98,7 +99,7 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     ArrowBitmapAppendUnsafe(&bitmap, 1, first_null);
     for (int64_t i = first_null; i < len; i++) {
       uint8_t is_valid = x_data[i] != NA_INTEGER;
-      null_count+= !is_valid;
+      null_count += !is_valid;
       ArrowBitmapAppend(&bitmap, is_valid, 1);
     }
 
@@ -178,7 +179,7 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
     for (int64_t i = 0; i < len; i++) {
       uint8_t is_valid = x_data[i] != NA_INTEGER;
-      null_count+= !is_valid;
+      null_count += !is_valid;
       ArrowBitmapAppend(&bitmap, is_valid, 1);
     }
 
@@ -244,7 +245,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     ArrowBitmapAppendUnsafe(&bitmap, 1, first_null);
     for (int64_t i = first_null; i < len; i++) {
       uint8_t is_valid = !R_IsNA(x_data[i]) && !R_IsNaN(x_data[i]);
-      null_count+= !is_valid;
+      null_count += !is_valid;
       ArrowBitmapAppend(&bitmap, is_valid, 1);
     }
 
