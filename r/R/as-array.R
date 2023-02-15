@@ -47,10 +47,15 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL, .from_c = FALSE) {
 #' @export
 as_nanoarrow_array.nanoarrow_array <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
-    x
-  } else {
-    NextMethod()
+    return(x)
   }
+
+  inferred_schema <- infer_nanoarrow_schema(x)
+  if (nanoarrow_schema_identical(schema, inferred_schema)) {
+    return(x)
+  }
+
+  NextMethod()
 }
 
 #' @export

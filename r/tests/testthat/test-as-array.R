@@ -19,6 +19,9 @@ test_that("as_nanoarrow_array() works for nanoarrow_array", {
   array <- as_nanoarrow_array(1:10)
   expect_identical(as_nanoarrow_array(array), array)
 
+  array <- as_nanoarrow_array(1:10, schema = na_int32())
+  expect_identical(as_nanoarrow_array(array), array)
+
   skip_if_not_installed("arrow")
   casted <- as_nanoarrow_array(array, schema = na_int64())
   expect_identical(infer_nanoarrow_schema(casted)$format, "l")

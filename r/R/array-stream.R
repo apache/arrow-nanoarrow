@@ -87,10 +87,15 @@ as_nanoarrow_array_stream <- function(x, ..., schema = NULL) {
 #' @export
 as_nanoarrow_array_stream.nanoarrow_array_stream <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
-    x
-  } else {
-    NextMethod()
+    return(x)
   }
+
+  inferred_schema <- infer_nanoarrow_schema(x)
+  if (nanoarrow_schema_identical(schema, inferred_schema)) {
+    return(x)
+  }
+
+  NextMethod()
 }
 
 #' @export
@@ -99,6 +104,18 @@ as_nanoarrow_array_stream.default <- function(x, ..., schema = NULL) {
     arrow::as_record_batch_reader(x, ...),
     schema = schema
   )
+}
+
+#' @export
+as_nanoarrow_array_stream.data.frame <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  } else {
+    schema <- as_nanoarrow_schema(schema)
+  }
+
+  x <- as_nanoarrow_array(x, schema = schema)
+  basic_array_stream(list(x), schema = schema)
 }
 
 #' @export

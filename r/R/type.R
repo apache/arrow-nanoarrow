@@ -321,7 +321,7 @@ na_decimal256 <- function(precision, scale, nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
-na_struct <- function(column_types = list(), nullable = TRUE) {
+na_struct <- function(column_types = list(), nullable = FALSE) {
   schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$STRUCT, isTRUE(nullable))
   schema$children <- column_types
   schema
