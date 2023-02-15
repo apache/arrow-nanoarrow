@@ -67,6 +67,30 @@ as_nanoarrow_array.nanoarrow_array <- function(x, ..., schema = NULL) {
 }
 
 #' @export
+as_nanoarrow_array.POSIXct <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  }
+
+  parsed <- nanoarrow_schema_parse(schema)
+  switch(
+    parsed$type,
+    timestamp = ,
+    duration = {
+      multipliers <- c(s = 1.0, ms = 1e3, us = 1e6, ns = 1e9)
+      multiplier <- unname(multipliers[parsed$time_unit])
+      array <- as_nanoarrow_array(
+        as.numeric(x) * multiplier,
+        schema = na_type(parsed$storage_type)
+      )
+      nanoarrow_array_set_schema(array, schema)
+      array
+    },
+    NextMethod()
+  )
+}
+
+#' @export
 as_nanoarrow_array.POSIXlt <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
     schema <- infer_nanoarrow_schema(x)
