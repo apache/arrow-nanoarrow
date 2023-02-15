@@ -202,21 +202,41 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
   // Consider double -> na_double() and double -> na_int64()
   // (mostly so that we can support date/time types with various units)
-  if (schema_view.type != NANOARROW_TYPE_DOUBLE) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
-    return;
+  switch (schema_view.type) {
+    case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_INT64:
+      break;
+    default:
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+      return;
   }
 
   double* x_data = REAL(x_sexp);
   int64_t len = Rf_xlength(x_sexp);
 
-  result = ArrowArrayInitFromType(array, NANOARROW_TYPE_DOUBLE);
+  result = ArrowArrayInitFromType(array, schema_view.type);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
 
-  // Borrow the data buffer
-  buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(double), x_sexp);
+  if (schema_view.type == NANOARROW_TYPE_DOUBLE) {
+    // Just borrow the data buffer (zero-copy)
+    buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(double), x_sexp);
+  } else {
+    // double -> int64_t
+    struct ArrowBuffer* buffer = ArrowArrayBuffer(array, 1);
+    result = ArrowBufferReserve(buffer, len * sizeof(int64_t));
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowBufferReserve() failed");
+    }
+
+    int64_t* buffer_data = (int64_t*)buffer->data;
+    for (int64_t i = 0; i < len; i++) {
+      buffer_data[i] = x_data[i];
+    }
+
+    buffer->size_bytes = len * sizeof(double);
+  }
 
   // Set the array fields
   array->length = len;

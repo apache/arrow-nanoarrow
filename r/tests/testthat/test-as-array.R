@@ -143,11 +143,32 @@ test_that("as_nanoarrow_array() works for double() -> na_double()", {
   )
 })
 
-test_that("as_nanoarrow_array() works for double -> na_int64()", {
+test_that("as_nanoarrow_array() works for double() -> na_int64()", {
+  # Without nulls
+  array <- as_nanoarrow_array(as.double(1:10), schema = na_int64())
+  expect_identical(infer_nanoarrow_schema(array)$format, "l")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  # This *is* how we create int64 buffers, so just check the roundtrip
+  expect_identical(convert_array(array), as.double(1:10))
+
+  # With nulls
+  array <- as_nanoarrow_array(c(1:10, NA_real_), schema = na_int64())
+  expect_identical(infer_nanoarrow_schema(array)$format, "l")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(convert_array(array), as.double(c(1:10, NA_real_)))
+})
+
+test_that("as_nanoarrow_array() works for double -> na_int8()", {
   skip_if_not_installed("arrow")
-  casted <- as_nanoarrow_array(as.double(1:10), schema = na_int64())
-  expect_identical(infer_nanoarrow_schema(casted)$format, "l")
-  expect_identical(convert_array(casted), as.double(1:10))
+  casted <- as_nanoarrow_array(as.double(1:10), schema = na_int8())
+  expect_identical(infer_nanoarrow_schema(casted)$format, "c")
+  expect_identical(convert_array(casted), 1:10)
 })
 
 test_that("as_nanoarrow_array() works for character() -> na_string()", {
