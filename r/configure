@@ -15,20 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building from within the nanoarrow repo, we want to use cmake
-# to regenerate the bundled header/source
-if [ -f "../src/nanoarrow/nanoarrow.h" ]; then
-  echo "Bundling nanoarrow using ../CMakeLists.txt"
-  rm -f src/nanoarrow.h src/nanoarrow.c
-  if [ -d "cmake" ]; then
-    rm -rf cmake
-  fi
-  mkdir cmake && cd cmake
-  cmake ../.. -DNANOARROW_BUNDLE=ON
-  cmake --build . && cmake --install . --prefix=../src
-  cd ..
-  rm -rf cmake
-  rm -f src/nanoarrow.hpp
+# If we are building from within the nanoarrow repo, bootstrap.R will (1)
+# exist and (2) perform the necessary vendoring steps
+if [ -f bootstrap.R ]; then
+  $R_HOME/bin/Rscript bootstrap.R
 fi
 
 if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
@@ -36,22 +26,6 @@ if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
   exit 0
 fi
 
-# We have a situation where the package has been built via R CMD build
-# but there is no vendored nanoarrow. This occurs with
-# remotes::install_github() with the default arguments. In this case, pull
-# the latest bundled version from GitHub. To ensure commit-level consistency,
-# use remotes::install_github(build = FALSE) (which will run cmake to get
-# a fresh bundle with a specific commit).
-curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.h \
-  --output src/nanoarrow.h --silent
-curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.c \
-  --output src/nanoarrow.c --silent
-
-if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
-  echo "Fetched bundled nanoarrow from https://github.com/apache/arrow-nanoarrow/tree/main/dist"
-  exit 0
-fi
-
 echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
-echo "The .tar.gz was probably built incorrectly and it's probably not your fault"
+echo "This source tarball was built incorrectly."
 exit 1

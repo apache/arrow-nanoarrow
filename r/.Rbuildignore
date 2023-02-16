@@ -9,3 +9,4 @@
 ^\.vscode$
 ^\.covrignore$
 ^cran-comments\.md$
+^bootstrap\.R$
