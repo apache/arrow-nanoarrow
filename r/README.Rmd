@@ -41,6 +41,12 @@ The goal of nanoarrow is to provide minimal useful bindings to the [Arrow C Data
 
 ## Installation
 
+You can install the released version of nanoarrow from [CRAN](https://cran.r-project.org/) with:
+
+```r
+install.packages("nanoarrow")
+```
+
 You can install the development version of nanoarrow from [GitHub](https://github.com/) with:
 
 ``` r

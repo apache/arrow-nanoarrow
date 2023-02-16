@@ -3,16 +3,16 @@ Title: An R Interface to the 'nanoarrow' C Library
 Version: 0.0.0.9000
 Authors@R: c(
     person(given = "Dewey",
-             family = "Dunnington",
-             role = c("aut", "cre"),
-             email = "dewey@dunnington.ca",
-             comment = c(ORCID = "0000-0002-9415-4582")),
+           family = "Dunnington",
+           role = c("aut", "cre"),
+           email = "dewey@dunnington.ca",
+           comment = c(ORCID = "0000-0002-9415-4582")),
     person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph"))
   )
-Description: Provides an R interface to the 'nanoarrow' C library and the
+Description: Provides an 'R' interface to the 'nanoarrow' C library and the
   'Apache Arrow' application binary interface. Functions to import and
   export 'ArrowArray', 'ArrowSchema', and 'ArrowArrayStream' C structures
-  to and from R objects are provided alongside helpers to facilitate zero-copy
+  to and from 'R' objects are provided alongside helpers to facilitate zero-copy
   data transfer among R bindings to libraries implementing the 'Arrow' C
   data interface.
 License: Apache License (>= 2)
@@ -22,7 +22,7 @@ RoxygenNote: 7.2.3
 URL: https://github.com/apache/arrow-nanoarrow
 BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests: 
-    arrow (>= 8.0.0),
+    arrow (>= 10.0.0),
     blob,
     hms,
     rlang,
