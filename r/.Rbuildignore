@@ -8,3 +8,5 @@
 ^README\.Rmd$
 ^\.vscode$
 ^\.covrignore$
+^cran-comments\.md$
+^bootstrap\.R$

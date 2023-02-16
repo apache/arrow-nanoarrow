@@ -428,8 +428,9 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
   }
 
   for (int64_t i = 0; i < schema->n_children; i++) {
-    as_array_default(VECTOR_ELT(x_sexp, i), array->children[i],
-                     borrow_schema_child_xptr(schema_xptr, i), error);
+    SEXP child_xptr = PROTECT(borrow_schema_child_xptr(schema_xptr, i));
+    as_array_default(VECTOR_ELT(x_sexp, i), array->children[i], child_xptr, error);
+    UNPROTECT(1);
   }
 
   array->length = nanoarrow_data_frame_size(x_sexp);

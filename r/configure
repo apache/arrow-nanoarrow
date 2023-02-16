@@ -15,20 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# If we are building from within the nanoarrow repo, we want to use cmake
-# to regenerate the bundled header/source
-if [ -f "../src/nanoarrow/nanoarrow.h" ]; then
-  echo "Bundling nanoarrow using ../CMakeLists.txt"
-  rm -f src/nanoarrow.h src/nanoarrow.c
-  if [ -d "cmake" ]; then
-    rm -rf cmake
-  fi
-  mkdir cmake && cd cmake
-  cmake ../.. -DNANOARROW_BUNDLE=ON
-  cmake --build . && cmake --install . --prefix=../src
-  cd ..
-  rm -rf cmake
-  rm -f src/nanoarrow.hpp
+# If we are building from within the nanoarrow repo, bootstrap.R will (1)
+# exist and (2) perform the necessary vendoring steps
+if [ -f bootstrap.R ]; then
+  $R_HOME/bin/Rscript bootstrap.R
 fi
 
 if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
@@ -53,5 +43,5 @@ if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
 fi
 
 echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
-echo "The .tar.gz was probably built incorrectly and it's probably not your fault"
+echo "This source tarball was built incorrectly."
 exit 1

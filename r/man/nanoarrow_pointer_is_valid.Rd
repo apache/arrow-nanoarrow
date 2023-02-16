@@ -37,6 +37,24 @@ nanoarrow_allocate_array_stream()
 \item{ptr, ptr_src, ptr_dst}{An external pointer to a \verb{struct ArrowSchema},
 \verb{struct ArrowArray}, or \verb{struct ArrowArrayStream}.}
 }
+\value{
+\itemize{
+\item \code{nanoarrow_pointer_is_valid()} returns TRUE if the pointer is non-null
+and has a non-null release callback.
+\item \code{nanoarrow_pointer_addr_dbl()} and \code{nanoarrow_pointer_addr_chr()} return
+pointer representations that may be helpful to facilitate moving or
+exporting nanoarrow objects to other libraries.
+\item \code{nanoarrow_pointer_addr_pretty()} gives a pointer representation suitable
+for printing or error messages.
+\item \code{nanoarrow_pointer_release()} returns \code{ptr}, invisibly.
+\item \code{nanoarrow_pointer_move()} and \code{nanoarrow_pointer_export()} reeturn
+\code{ptr_dst}, invisibly.
+\item \code{nanoarrow_allocate_array()}, \code{nanoarrow_allocate_schema()}, and
+\code{nanoarrow_allocate_array_stream()} return an
+\link[=as_nanoarrow_array]{array}, a \link[=as_nanoarrow_schema]{schema}, and an
+\link[=as_nanoarrow_array_stream]{array stream}, respectively.
+}
+}
 \description{
 The \link[=as_nanoarrow_schema]{nanoarrow_schema},
 \link[=as_nanoarrow_array]{nanoarrow_array},

@@ -61,6 +61,21 @@
 #'
 #' @param ptr,ptr_src,ptr_dst An external pointer to a `struct ArrowSchema`,
 #'   `struct ArrowArray`, or `struct ArrowArrayStream`.
+#' @return
+#'   - `nanoarrow_pointer_is_valid()` returns TRUE if the pointer is non-null
+#'     and has a non-null release callback.
+#'   - `nanoarrow_pointer_addr_dbl()` and `nanoarrow_pointer_addr_chr()` return
+#'     pointer representations that may be helpful to facilitate moving or
+#'     exporting nanoarrow objects to other libraries.
+#'   - `nanoarrow_pointer_addr_pretty()` gives a pointer representation suitable
+#'     for printing or error messages.
+#'   - `nanoarrow_pointer_release()` returns `ptr`, invisibly.
+#'   - `nanoarrow_pointer_move()` and `nanoarrow_pointer_export()` reeturn
+#'     `ptr_dst`, invisibly.
+#'   - `nanoarrow_allocate_array()`, `nanoarrow_allocate_schema()`, and
+#'     `nanoarrow_allocate_array_stream()` return an
+#'     [array][as_nanoarrow_array], a [schema][as_nanoarrow_schema], and an
+#'     [array stream][as_nanoarrow_array_stream], respectively.
 #' @export
 #'
 nanoarrow_pointer_is_valid <- function(ptr) {
