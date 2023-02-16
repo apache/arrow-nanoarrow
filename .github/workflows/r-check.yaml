@@ -61,11 +61,12 @@ jobs:
         if: matrix.config.r == 'devel'
         run: sudo apt-get install -y valgrind
 
-      # Probably a better way to do this, but for now do the vendor step manually
+      # Until new pkgbuild is on CRAN, we do the install step to ensure
+      # the C library is vendored from this commit
       - name: Vendor nanoarrow into the R package
         run: |
-          cd r
-          bash configure
+          R CMD INSTALL r
+        shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
