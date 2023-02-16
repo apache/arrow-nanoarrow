@@ -435,7 +435,7 @@ SEXP nanoarrow_c_schema_set_metadata(SEXP schema_mut_xptr, SEXP metadata_sexp) {
     Rf_error("ArrowMetadataBuilderInit() failed");
   }
 
-  SEXP metadata_names = Rf_getAttrib(metadata_sexp, R_NamesSymbol);
+  SEXP metadata_names = PROTECT(Rf_getAttrib(metadata_sexp, R_NamesSymbol));
   if (metadata_names == R_NilValue) {
     Rf_error("schema$metadata must be named");
   }
@@ -477,6 +477,8 @@ SEXP nanoarrow_c_schema_set_metadata(SEXP schema_mut_xptr, SEXP metadata_sexp) {
 
     vmaxset(vmax);
   }
+
+  UNPROTECT(1);
 
   result = ArrowSchemaSetMetadata(schema, (const char*)buffer->data);
   ArrowBufferReset(buffer);
@@ -550,7 +552,7 @@ SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp) {
   // schema$children[[3]] <- some_unrelated_schema. On the flip
   // side, this makes schema$children[[3]]$name <- "something else"
   // have no effect, which is possibly confusing.
-  SEXP children_names = Rf_getAttrib(children_sexp, R_NamesSymbol);
+  SEXP children_names = PROTECT(Rf_getAttrib(children_sexp, R_NamesSymbol));
 
   for (int64_t i = 0; i < schema->n_children; i++) {
     struct ArrowSchema* child = schema_from_xptr(VECTOR_ELT(children_sexp, i));
@@ -578,6 +580,8 @@ SEXP nanoarrow_c_schema_set_children(SEXP schema_mut_xptr, SEXP children_sexp) {
       Rf_error("Error copying new_values$children[[%ld]]$name", (long)i);
     }
   }
+
+  UNPROTECT(1);
 
   return R_NilValue;
 }
