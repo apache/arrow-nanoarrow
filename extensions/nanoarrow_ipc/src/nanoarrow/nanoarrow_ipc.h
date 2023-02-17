@@ -61,7 +61,7 @@ struct ArrowIpcReader {
   int32_t endianness;
   int32_t features;
   int32_t header_size_bytes;
-  int32_t body_size_bytes;
+  int64_t body_size_bytes;
   struct ArrowSchema schema;
 };
 
