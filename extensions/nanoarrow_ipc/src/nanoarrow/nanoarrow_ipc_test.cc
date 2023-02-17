@@ -96,7 +96,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = 0;
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), ENODATA);
   EXPECT_STREQ(error.message, "End of Arrow stream");
 
   ArrowIpcReaderReset(&reader);
