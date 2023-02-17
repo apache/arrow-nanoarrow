@@ -19,8 +19,8 @@
 #include <string.h>
 
 #include "nanoarrow.h"
-#include "nanoarrow_ipc_flatcc_generated.h"
 #include "nanoarrow_ipc.h"
+#include "nanoarrow_ipc_flatcc_generated.h"
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
@@ -261,62 +261,61 @@ static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
   return NANOARROW_OK;
 }
 
-static void ArrowIpcReaderAdvanceData(struct ArrowBufferView* data,
-                                      int32_t message_size_bytes) {
-  message_size_bytes += (message_size_bytes + 8) % 8;
-  data->data.as_uint8 += message_size_bytes;
-  data->size_bytes -= message_size_bytes;
-}
-
 ArrowErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
-                                  struct ArrowBufferView* data,
-                                  struct ArrowError* error) {
-  struct ArrowBufferView data_mut = *data;
-  int32_t message_size_bytes;
+                                  struct ArrowBufferView data, struct ArrowError* error) {
+  reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
+  reader->body_size_bytes = 0;
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
-
-  ArrowIpcReaderAdvanceData(&data_mut, message_size_bytes);
-  *data = data_mut;
+      ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
+  reader->header_size_bytes += 2 * sizeof(int32_t);
   return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
-                                    struct ArrowBufferView* data,
+                                    struct ArrowBufferView data,
                                     struct ArrowError* error) {
-  struct ArrowBufferView data_mut = *data;
-  int32_t message_size_bytes;
+  reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
+  reader->body_size_bytes = 0;
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
+      ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
 
-  if (ns(Message_verify_as_root(data_mut.data.as_uint8, data_mut.size_bytes)) ==
+  // Run flatbuffers verification
+  if (ns(Message_verify_as_root(data.data.as_uint8, reader->header_size_bytes)) !=
       flatcc_verify_ok) {
-    ArrowIpcReaderAdvanceData(&data_mut, message_size_bytes);
-    *data = data_mut;
-    return NANOARROW_OK;
-  } else {
     ArrowErrorSet(error, "Message flatbuffer verification failed");
     return EINVAL;
   }
+
+  // Read some basic information from the message
+  reader->header_size_bytes += 2 * sizeof(int32_t);
+  ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
+  reader->metadata_version = ns(Message_version(message));
+  reader->message_type = ns(Message_header_type(message));
+  reader->body_size_bytes = ns(Message_bodyLength(message));
+
+  return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
-                                    struct ArrowBufferView* data,
+                                    struct ArrowBufferView data,
                                     struct ArrowError* error) {
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  struct ArrowBufferView data_mut = *data;
-
-  int32_t message_size_bytes;
+  reader->body_size_bytes = 0;
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcReaderCheckHeader(reader, &data_mut, &message_size_bytes, error));
+      ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
+  reader->header_size_bytes += 2 * sizeof(int32_t);
 
-  ns(Message_table_t) message = ns(Message_as_root(data_mut.data.as_uint8));
+  ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
   if (!message) {
     return EINVAL;
   }
 
-  int version = ns(Message_version(message));
-  switch (version) {
+  // Read some basic information from the message
+  reader->metadata_version = ns(Message_version(message));
+  reader->message_type = ns(Message_header_type(message));
+  reader->body_size_bytes = ns(Message_bodyLength(message));
+
+  switch (reader->metadata_version) {
     case ns(MetadataVersion_V4):
     case ns(MetadataVersion_V5):
       break;
@@ -324,16 +323,15 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
     case ns(MetadataVersion_V2):
     case ns(MetadataVersion_V3):
       ArrowErrorSet(error, "Expected metadata version V4 or V5 but found %s",
-                    ns(MetadataVersion_name(version)));
+                    ns(MetadataVersion_name(reader->metadata_version)));
       break;
     default:
-      ArrowErrorSet(error, "Unexpected value for Message metadata version (%d)", version);
+      ArrowErrorSet(error, "Unexpected value for Message metadata version (%d)",
+                    reader->metadata_version);
       return EINVAL;
   }
 
-  reader->message_type = ns(Message_header_type(message));
   flatbuffers_generic_t message_header = ns(Message_header_get(message));
-
   switch (reader->message_type) {
     case ns(MessageHeader_Schema):
       NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeSchema(reader, message_header, error));
@@ -350,7 +348,5 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
       return EINVAL;
   }
 
-  ArrowIpcReaderAdvanceData(&data_mut, message_size_bytes);
-  *data = data_mut;
   return NANOARROW_OK;
 }
