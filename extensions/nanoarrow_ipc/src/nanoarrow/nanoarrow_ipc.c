@@ -258,6 +258,11 @@ static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
     return EINVAL;
   }
 
+  if (*message_size_bytes == 0) {
+    ArrowErrorSet(error, "End of Arrow stream");
+    return ENODATA;
+  }
+
   return NANOARROW_OK;
 }
 

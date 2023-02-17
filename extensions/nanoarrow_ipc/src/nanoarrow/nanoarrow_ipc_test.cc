@@ -94,6 +94,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of 1 bytes");
 
+  eight_bad_bytes[0] = 0xFFFFFFFF;
+  eight_bad_bytes[1] = 0;
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "End of Arrow stream");
+
   ArrowIpcReaderReset(&reader);
 }
 
