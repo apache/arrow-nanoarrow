@@ -35,7 +35,7 @@ int verify_ipc_message(const void* data, int64_t size_bytes) {
 
   struct ArrowIpcReader reader;
   ArrowIpcReaderInit(&reader);
-  int result = ArrowIpcReaderVerify(&reader, &buffer_view, &global_error);
+  int result = ArrowIpcReaderVerify(&reader, buffer_view, &global_error);
   ArrowIpcReaderReset(&reader);
 
   return result;

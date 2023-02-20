@@ -60,6 +60,8 @@ struct ArrowIpcReader {
   int32_t message_type;
   int32_t endianness;
   int32_t features;
+  int32_t header_size_bytes;
+  int64_t body_size_bytes;
   struct ArrowSchema schema;
 };
 
@@ -68,14 +70,14 @@ void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
 void ArrowIpcReaderReset(struct ArrowIpcReader* reader);
 
 ArrowErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
-                                  struct ArrowBufferView* data, struct ArrowError* error);
+                                  struct ArrowBufferView data, struct ArrowError* error);
 
 ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
-                                    struct ArrowBufferView* data,
+                                    struct ArrowBufferView data,
                                     struct ArrowError* error);
 
 ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
-                                    struct ArrowBufferView* data,
+                                    struct ArrowBufferView data,
                                     struct ArrowError* error);
 
 #endif
