@@ -206,5 +206,6 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(arrow::null(), arrow::boolean(), arrow::int8(), arrow::uint8(),
                       arrow::int16(), arrow::uint16(), arrow::int32(), arrow::uint32(),
                       arrow::int64(), arrow::uint64(), arrow::utf8(), arrow::float16(),
-                      arrow::float32(), arrow::float64(), arrow::large_utf8(),
-                      arrow::binary(), arrow::large_binary()));
+                      arrow::float32(), arrow::float64(), arrow::decimal128(10, 3),
+                      arrow::decimal256(10, 3), arrow::large_utf8(), arrow::binary(),
+                      arrow::large_binary()));

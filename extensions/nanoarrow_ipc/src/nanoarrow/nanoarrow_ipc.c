@@ -145,6 +145,7 @@ static int ArrowIpcReaderSetTypeFloatingPoint(struct ArrowSchema* schema,
       return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_FLOAT, error);
     case ns(Precision_DOUBLE):
       return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_DOUBLE, error);
+    default:
     ArrowErrorSet(error,
                       "Unexpected FloatingPoint Precision value: %d",
                       (int)precision);
@@ -156,7 +157,31 @@ static int ArrowIpcReaderSetTypeDecimal(struct ArrowSchema* schema,
                                         flatbuffers_generic_t type_generic,
                                         struct ArrowError* error) {
   ns(Decimal_table_t) type = (ns(Decimal_table_t))type_generic;
-  return ENOTSUP;
+  int scale = ns(Decimal_scale(type));
+  int precision = ns(Decimal_precision(type));
+  int bitwidth = ns(Decimal_bitWidth(type));
+
+  int result;
+  switch (bitwidth) {
+  case 128:
+    result = ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL128, precision, scale);
+    break;
+  case 256:
+    result = ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL256, precision, scale);
+    break;
+  default:
+    ArrowErrorSet(error,
+                      "Unexpected Decimal bitwidth value: %d",
+                      (int)bitwidth);
+    return EINVAL;
+  }
+
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "ArrowSchemaSetTypeDecimal() failed");
+    return result;
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcReaderSetTypeFixedSizeBinary(struct ArrowSchema* schema,
