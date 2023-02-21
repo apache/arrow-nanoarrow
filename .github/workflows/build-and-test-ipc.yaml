@@ -41,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build, cmake_args: "-DNANOARROW_IPC_CODE_COVERAGE=ON"}
+          - {label: default-build, cmake_args: ""}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
 
