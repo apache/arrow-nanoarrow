@@ -65,7 +65,6 @@ jobs:
           rm apache-arrow-apt-*.deb
 
       - name: Build
-        if: matrix.config.label == 'default-build'
         run: |
           cd $SUBDIR
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
