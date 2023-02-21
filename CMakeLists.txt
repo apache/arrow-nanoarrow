@@ -28,6 +28,7 @@ set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
+option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OFF)
 option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
 
 if (NANOARROW_NAMESPACE)
@@ -68,7 +69,11 @@ if(NANOARROW_BUNDLE)
     file(WRITE ${NANOARROW_HPP_TEMP} "${SRC_FILE_CONTENTS}")
 
     # Combine all source files into amalgamation/nanoarrow.c in the build directory
-    set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.c)
+    if(NANOARROW_BUNDLE_AS_CPP)
+        set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.cc)
+    else()
+        set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.c)
+    endif()
     file(READ src/nanoarrow/utils.c SRC_FILE_CONTENTS)
     file(WRITE ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
     file(READ src/nanoarrow/schema.c SRC_FILE_CONTENTS)
@@ -81,7 +86,7 @@ if(NANOARROW_BUNDLE)
     # Add a library that the tests can link against (but don't install it)
     if(NANOARROW_BUILD_TESTS)
         include_directories(${CMAKE_BINARY_DIR}/amalgamation)
-        add_library(nanoarrow ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.c)
+        add_library(nanoarrow ${NANOARROW_C_TEMP})
     endif()
 
     # Install the amalgamated header and source
