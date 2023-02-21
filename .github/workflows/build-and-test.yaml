@@ -40,9 +40,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build}
-          - {label: namespaced-build}
-          - {label: bundled-build}
+          - {label: default-build, cmake_args: "-DNANOARROW_CODE_COVERAGE=ON"}
+          - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
+          - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
+          - {label: bundled-cpp-build, cmake_args: "-DNANOARROW_BUNDLE=ON -DNANOARROW_BUNDLE_AS_CPP=ON"}
 
     steps:
       - name: Checkout repo
@@ -60,34 +61,13 @@ jobs:
           sudo apt-get install -y -V libarrow-dev
           rm apache-arrow-apt-*.deb
 
-      - name: Build nanoarrow (default)
-        if: matrix.config.label == 'default-build'
+      - name: Build nanoarrow
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON
-          cmake --build .
-
-      - name: Build nanoarrow (namespaced)
-        if: matrix.config.label == 'namespaced-build'
-        run: |
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
-          sudo ldconfig
-          mkdir build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_NAMESPACE=SomeUserNamespace
-          cmake --build .
-
-      - name: Build nanoarrow (bundled)
-        if: matrix.config.label == 'bundled-build'
-        run: |
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
-          sudo ldconfig
-          mkdir build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_CODE_COVERAGE=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_BUILD_TESTS=ON ${{ matrix.config.cmake_args }}
           cmake --build .
 
       - name: Check for non-namespaced symbols in namespaced build
