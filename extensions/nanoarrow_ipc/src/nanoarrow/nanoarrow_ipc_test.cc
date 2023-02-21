@@ -19,6 +19,7 @@
 
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
+#include <arrow/ipc/api.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow_ipc.h"
@@ -168,3 +169,41 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
 
   ArrowIpcReaderReset(&reader);
 }
+
+class ArrowTypeParameterizedTestFixture
+    : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
+ protected:
+  std::shared_ptr<arrow::DataType> data_type;
+};
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
+  const std::shared_ptr<arrow::DataType>& data_type = GetParam();
+  std::shared_ptr<arrow::Schema> dummy_schema =
+      arrow::schema({arrow::field("dummy_name", data_type)});
+  auto maybe_serialized = arrow::ipc::SerializeSchema(*dummy_schema);
+  ASSERT_TRUE(maybe_serialized.ok());
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  struct ArrowIpcReader reader;
+  ArrowIpcReaderInit(&reader);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
+  EXPECT_EQ(reader.header_size_bytes, buffer_view.size_bytes);
+  EXPECT_EQ(reader.body_size_bytes, 0);
+
+  EXPECT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  ASSERT_TRUE(maybe_schema.ok());
+  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema));
+
+  ArrowIpcReaderReset(&reader);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowIpcTest, ArrowTypeParameterizedTestFixture,
+    ::testing::Values(arrow::null(), arrow::boolean(), arrow::int8(), arrow::uint8(),
+                      arrow::int16(), arrow::uint16(), arrow::int32(), arrow::uint32(),
+                      arrow::int64(), arrow::uint64(), arrow::utf8(), arrow::large_utf8(),
+                      arrow::binary(), arrow::large_binary()));
