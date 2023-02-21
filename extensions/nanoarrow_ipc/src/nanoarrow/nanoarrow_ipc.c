@@ -153,10 +153,46 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
 
   int type_type = ns(Field_type_type(field));
   switch (type_type) {
+    case ns(Type_Null):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_NA, error);
+    case ns(Type_Bool):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_BOOL, error);
     case ns(Type_Int):
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcReaderSetTypeInt(schema, ns(Field_type_get(field)), error));
-      break;
+      return ArrowIpcReaderSetTypeInt(schema, ns(Field_type_get(field)), error);
+    case ns(Type_FloatingPoint):
+      return ENOTSUP;
+    case ns(Type_Decimal):
+      return ENOTSUP;
+    case ns(Type_Binary):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_BINARY, error);
+    case ns(Type_LargeBinary):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_BINARY, error);
+    case ns(Type_FixedSizeBinary):
+      return ENOTSUP;
+    case ns(Type_Utf8):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_STRING, error);
+    case ns(Type_LargeUtf8):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_STRING, error);
+    case ns(Type_Date):
+      return ENOTSUP;
+    case ns(Type_Time):
+      return ENOTSUP;
+    case ns(Type_Timestamp):
+      return ENOTSUP;
+    case ns(Type_Duration):
+      return ENOTSUP;
+    case ns(Type_Interval):
+      return ENOTSUP;
+    case ns(Type_Struct_):
+      return ENOTSUP;
+    case ns(Type_List):
+      return ENOTSUP;
+    case ns(Type_LargeList):
+      return ENOTSUP;
+    case ns(Type_FixedSizeList):
+      return ENOTSUP;
+    case ns(Type_Union):
+      return ENOTSUP;
     default:
       ArrowErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
       return EINVAL;
