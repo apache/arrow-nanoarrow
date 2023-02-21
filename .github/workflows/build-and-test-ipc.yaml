@@ -41,9 +41,9 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build, cmake_args: "-DNANOARROW_CODE_COVERAGE=ON"}
+          - {label: default-build, cmake_args: "-DNANOARROW_IPC_CODE_COVERAGE=ON"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
-          - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
+          - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
 
     env:
       SUBDIR: 'extensions/nanoarrow_ipc'
