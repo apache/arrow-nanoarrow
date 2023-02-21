@@ -146,10 +146,9 @@ static int ArrowIpcReaderSetTypeFloatingPoint(struct ArrowSchema* schema,
     case ns(Precision_DOUBLE):
       return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_DOUBLE, error);
     default:
-    ArrowErrorSet(error,
-                      "Unexpected FloatingPoint Precision value: %d",
-                      (int)precision);
-        return EINVAL;
+      ArrowErrorSet(error, "Unexpected FloatingPoint Precision value: %d",
+                    (int)precision);
+      return EINVAL;
   }
 }
 
@@ -163,17 +162,17 @@ static int ArrowIpcReaderSetTypeDecimal(struct ArrowSchema* schema,
 
   int result;
   switch (bitwidth) {
-  case 128:
-    result = ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL128, precision, scale);
-    break;
-  case 256:
-    result = ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL256, precision, scale);
-    break;
-  default:
-    ArrowErrorSet(error,
-                      "Unexpected Decimal bitwidth value: %d",
-                      (int)bitwidth);
-    return EINVAL;
+    case 128:
+      result =
+          ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL128, precision, scale);
+      break;
+    case 256:
+      result =
+          ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL256, precision, scale);
+      break;
+    default:
+      ArrowErrorSet(error, "Unexpected Decimal bitwidth value: %d", (int)bitwidth);
+      return EINVAL;
   }
 
   if (result != NANOARROW_OK) {
@@ -189,21 +188,67 @@ static int ArrowIpcReaderSetTypeFixedSizeBinary(struct ArrowSchema* schema,
                                                 struct ArrowError* error) {
   ns(FixedSizeBinary_table_t) type = (ns(FixedSizeBinary_table_t))type_generic;
   int fixed_size = ns(FixedSizeBinary_byteWidth(type));
-  return ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, fixed_size);
+  return ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY,
+                                     fixed_size);
 }
 
 static int ArrowIpcReaderSetTypeDate(struct ArrowSchema* schema,
                                      flatbuffers_generic_t type_generic,
                                      struct ArrowError* error) {
   ns(Date_table_t) type = (ns(Date_table_t))type_generic;
-  return ENOTSUP;
+  int date_unit = ns(Date_unit(type));
+  switch (date_unit) {
+    case ns(DateUnit_DAY):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_DATE32, error);
+    case ns(DateUnit_MILLISECOND):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_DATE64, error);
+    default:
+      ArrowErrorSet(error, "Unexpected Date DateUnit value: %d", (int)date_unit);
+      return EINVAL;
+  }
 }
 
 static int ArrowIpcReaderSetTypeTime(struct ArrowSchema* schema,
                                      flatbuffers_generic_t type_generic,
                                      struct ArrowError* error) {
   ns(Time_table_t) type = (ns(Time_table_t))type_generic;
-  return ENOTSUP;
+  int time_unit = ns(Time_unit(type));
+  int bitwidth = ns(Time_bitWidth(type));
+  int nanoarrow_type;
+
+  // Check bitwidth
+  switch (time_unit) {
+    case ns(TimeUnit_SECOND):
+    case ns(TimeUnit_MILLISECOND):
+      if (bitwidth != 32) {
+        ArrowErrorSet(error, "Expected bitwidth of 32 for Time TimeUnit %s but found %d",
+                      ns(TimeUnit_name(time_unit)), bitwidth);
+      }
+
+      nanoarrow_type = NANOARROW_TYPE_TIME32;
+      break;
+
+    case ns(TimeUnit_MICROSECOND):
+    case ns(TimeUnit_NANOSECOND):
+      if (bitwidth != 64) {
+        ArrowErrorSet(error, "Expected bitwidth of 32 for Time TimeUnit %s but found %d",
+                      ns(TimeUnit_name(time_unit)), bitwidth);
+      }
+      nanoarrow_type = NANOARROW_TYPE_TIME32;
+      break;
+
+    default:
+      ArrowErrorSet(error, "Unexpected Time TimeUnit value: %d", (int)time_unit);
+      return EINVAL;
+  }
+
+  int result = ArrowSchemaSetTypeDateTime(schema, nanoarrow_type, time_unit, NULL);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "ArrowSchemaSetTypeDateTime() failed");
+    return result;
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcReaderSetTypeTimestamp(struct ArrowSchema* schema,

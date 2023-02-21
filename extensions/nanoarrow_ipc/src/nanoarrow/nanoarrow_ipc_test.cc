@@ -189,11 +189,11 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 
   struct ArrowIpcReader reader;
   ArrowIpcReaderInit(&reader);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
   EXPECT_EQ(reader.header_size_bytes, buffer_view.size_bytes);
   EXPECT_EQ(reader.body_size_bytes, 0);
 
-  EXPECT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
   auto maybe_schema = arrow::ImportSchema(&reader.schema);
   ASSERT_TRUE(maybe_schema.ok());
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema));
@@ -203,9 +203,12 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowTypeParameterizedTestFixture,
-    ::testing::Values(arrow::null(), arrow::boolean(), arrow::int8(), arrow::uint8(),
-                      arrow::int16(), arrow::uint16(), arrow::int32(), arrow::uint32(),
-                      arrow::int64(), arrow::uint64(), arrow::utf8(), arrow::float16(),
-                      arrow::float32(), arrow::float64(), arrow::decimal128(10, 3),
-                      arrow::decimal256(10, 3), arrow::large_utf8(), arrow::binary(),
-                      arrow::large_binary(), arrow::fixed_size_binary(123)));
+    ::testing::Values(
+        arrow::null(), arrow::boolean(), arrow::int8(), arrow::uint8(), arrow::int16(),
+        arrow::uint16(), arrow::int32(), arrow::uint32(), arrow::int64(), arrow::uint64(),
+        arrow::utf8(), arrow::float16(), arrow::float32(), arrow::float64(),
+        arrow::decimal128(10, 3), arrow::decimal256(10, 3), arrow::large_utf8(),
+        arrow::binary(), arrow::large_binary(), arrow::fixed_size_binary(123),
+        arrow::date32(), arrow::date64(), arrow::time32(arrow::TimeUnit::SECOND),
+        arrow::time32(arrow::TimeUnit::MILLI), arrow::time64(arrow::TimeUnit::MICRO),
+        arrow::time64(arrow::TimeUnit::NANO)));
