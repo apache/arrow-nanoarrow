@@ -134,57 +134,57 @@ static int ArrowIpcReaderSetTypeInt(struct ArrowSchema* schema,
 }
 
 static int ArrowIpcReaderSetTypeFloatingPoint(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                              flatbuffers_generic_t type_generic,
+                                              struct ArrowError* error) {
   ns(FloatingPoint_table_t) type = (ns(FloatingPoint_table_t))type_generic;
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderSetTypeDecimal(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                        flatbuffers_generic_t type_generic,
+                                        struct ArrowError* error) {
   ns(Decimal_table_t) type = (ns(Decimal_table_t))type_generic;
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderSetTypeFixedSizeBinary(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                                flatbuffers_generic_t type_generic,
+                                                struct ArrowError* error) {
   ns(FixedSizeBinary_table_t) type = (ns(FixedSizeBinary_table_t))type_generic;
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderSetTypeDate(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                     flatbuffers_generic_t type_generic,
+                                     struct ArrowError* error) {
   ns(Date_table_t) type = (ns(Date_table_t))type_generic;
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderSetTypeTime(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                     flatbuffers_generic_t type_generic,
+                                     struct ArrowError* error) {
   ns(Time_table_t) type = (ns(Time_table_t))type_generic;
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderSetTypeTimestamp(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                          flatbuffers_generic_t type_generic,
+                                          struct ArrowError* error) {
   ns(Timestamp_table_t) type = (ns(Timestamp_table_t))type_generic;
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderSetTypeDuration(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                         flatbuffers_generic_t type_generic,
+                                         struct ArrowError* error) {
   ns(Duration_table_t) type = (ns(Duration_table_t))type_generic;
   return ENOTSUP;
 }
 
 static int ArrowIpcReaderSetTypeInterval(struct ArrowSchema* schema,
-                                    flatbuffers_generic_t type_generic,
-                                    struct ArrowError* error) {
+                                         flatbuffers_generic_t type_generic,
+                                         struct ArrowError* error) {
   ns(Interval_table_t) type = (ns(Interval_table_t))type_generic;
   return ENOTSUP;
 }
@@ -224,7 +224,8 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_LargeBinary):
       return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_BINARY, error);
     case ns(Type_FixedSizeBinary):
-      return ArrowIpcReaderSetTypeFixedSizeBinary(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcReaderSetTypeFixedSizeBinary(schema, ns(Field_type_get(field)),
+                                                  error);
     case ns(Type_Utf8):
       return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_STRING, error);
     case ns(Type_LargeUtf8):
