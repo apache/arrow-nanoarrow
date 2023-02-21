@@ -137,7 +137,19 @@ static int ArrowIpcReaderSetTypeFloatingPoint(struct ArrowSchema* schema,
                                               flatbuffers_generic_t type_generic,
                                               struct ArrowError* error) {
   ns(FloatingPoint_table_t) type = (ns(FloatingPoint_table_t))type_generic;
-  return ENOTSUP;
+  int precision = ns(FloatingPoint_precision(type));
+  switch (precision) {
+    case ns(Precision_HALF):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_HALF_FLOAT, error);
+    case ns(Precision_SINGLE):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_FLOAT, error);
+    case ns(Precision_DOUBLE):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_DOUBLE, error);
+    ArrowErrorSet(error,
+                      "Unexpected FloatingPoint Precision value: %d",
+                      (int)precision);
+        return EINVAL;
+  }
 }
 
 static int ArrowIpcReaderSetTypeDecimal(struct ArrowSchema* schema,
