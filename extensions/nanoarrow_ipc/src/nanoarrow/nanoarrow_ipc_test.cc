@@ -208,4 +208,4 @@ INSTANTIATE_TEST_SUITE_P(
                       arrow::int64(), arrow::uint64(), arrow::utf8(), arrow::float16(),
                       arrow::float32(), arrow::float64(), arrow::decimal128(10, 3),
                       arrow::decimal256(10, 3), arrow::large_utf8(), arrow::binary(),
-                      arrow::large_binary()));
+                      arrow::large_binary(), arrow::fixed_size_binary(123)));

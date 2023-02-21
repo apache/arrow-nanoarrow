@@ -188,7 +188,8 @@ static int ArrowIpcReaderSetTypeFixedSizeBinary(struct ArrowSchema* schema,
                                                 flatbuffers_generic_t type_generic,
                                                 struct ArrowError* error) {
   ns(FixedSizeBinary_table_t) type = (ns(FixedSizeBinary_table_t))type_generic;
-  return ENOTSUP;
+  int fixed_size = ns(FixedSizeBinary_byteWidth(type));
+  return ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, fixed_size);
 }
 
 static int ArrowIpcReaderSetTypeDate(struct ArrowSchema* schema,
