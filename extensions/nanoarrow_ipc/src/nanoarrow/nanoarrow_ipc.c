@@ -339,6 +339,48 @@ static int ArrowIpcReaderSetTypeFixedSizeList(struct ArrowSchema* schema,
   return ArrowIpcReaderSetTypeSimpleNested(schema, fixed_size_str, error);
 }
 
+static int ArrowIpcReaderSetTypeUnion(struct ArrowSchema* schema,
+                                      flatbuffers_generic_t type_generic,
+                                      int64_t n_children, struct ArrowError* error) {
+  ns(Union_table_t) type = (ns(Union_table_t))type_generic;
+  int union_mode = ns(Union_mode(type));
+
+  // Max valid typeIds size is 127; the longest single ID that could be present here
+  // is -INT_MIN (11 chars). With commas and the prefix the max size would be
+  // 1527 characters.
+  char union_types_str[2048];
+  memset(union_types_str, 0, sizeof(union_types_str));
+  char* format_cursor = union_types_str;
+  int format_out_size = sizeof(union_types_str);
+  int n_chars = 0;
+
+  const char* format_prefix;
+  switch (union_mode) {
+    case ns(UnionMode_Sparse):
+      n_chars = snprintf(format_cursor, format_out_size, "+us:");
+      format_cursor += n_chars;
+      format_out_size -= n_chars;
+      break;
+    case ns(UnionMode_Dense):
+      n_chars = snprintf(format_cursor, format_out_size, "+ud:");
+      format_cursor += n_chars;
+      format_out_size -= n_chars;
+      break;
+    default:
+      ArrowErrorSet(error, "Unexpected Union UnionMode value: %d", (int)union_mode);
+      return EINVAL;
+  }
+
+  if (ns(Union_typeIds_is_present(type))) {
+
+  } else {
+    ArrowErrorSet(error, "Custom union type IDs are not supported", (int)union_mode);
+    return ENOTSUP;
+  }
+
+  return ArrowIpcReaderSetTypeSimpleNested(schema, union_types_str, error);
+}
+
 static int ArrowIpcReaderSetType(struct ArrowSchema* schema, ns(Field_table_t) field,
                                  struct ArrowError* error) {
   int type_type = ns(Field_type_type(field));
