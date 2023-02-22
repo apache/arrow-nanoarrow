@@ -294,7 +294,20 @@ static int ArrowIpcReaderSetTypeInterval(struct ArrowSchema* schema,
                                          flatbuffers_generic_t type_generic,
                                          struct ArrowError* error) {
   ns(Interval_table_t) type = (ns(Interval_table_t))type_generic;
-  return ENOTSUP;
+  int interval_unit = ns(Interval_unit(type));
+
+  switch (interval_unit) {
+    case ns(IntervalUnit_YEAR_MONTH):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_INTERVAL_MONTHS, error);
+    case ns(IntervalUnit_DAY_TIME):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_INTERVAL_DAY_TIME, error);
+    case ns(IntervalUnit_MONTH_DAY_NANO):
+      return ArrowIpcReaderSetTypeSimple(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+                                         error);
+    default:
+      ArrowErrorSet(error, "Unexpected Interval unit value: %d", (int)interval_unit);
+      return EINVAL;
+  }
 }
 
 static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
