@@ -383,6 +383,14 @@ static int ArrowIpcReaderSetTypeUnion(struct ArrowSchema* schema,
     flatbuffers_int32_vec_t type_ids = ns(Union_typeIds(type));
     int64_t n_type_ids = flatbuffers_int32_vec_len(type_ids);
 
+    if (n_type_ids != n_children) {
+      ArrowErrorSet(
+          error,
+          "Expected between %ld children for Union type with %ld typeIds but found %ld",
+          (long)n_type_ids, (long)n_type_ids, (long)n_children);
+      return EINVAL;
+    }
+
     if (n_type_ids > 0) {
       n_chars = snprintf(format_cursor, format_out_size, "%d",
                          flatbuffers_int32_vec_at(type_ids, 0));
