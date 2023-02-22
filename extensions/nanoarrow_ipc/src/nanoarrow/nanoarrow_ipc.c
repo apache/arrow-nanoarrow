@@ -529,6 +529,12 @@ static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t)
 
 static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
                                   struct ArrowError* error) {
+  // No dictionary support yet
+  if (ns(Field_dictionary_is_present(field))) {
+    ArrowErrorSet(error, "Field DictionaryEncoding not supported");
+    return ENOTSUP;
+  }
+
   int result;
   if (ns(Field_name_is_present(field))) {
     result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
