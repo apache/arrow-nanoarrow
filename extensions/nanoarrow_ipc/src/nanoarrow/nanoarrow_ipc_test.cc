@@ -219,4 +219,8 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::duration(arrow::TimeUnit::MICRO), arrow::duration(arrow::TimeUnit::NANO),
         arrow::month_interval(), arrow::day_time_interval(),
         arrow::month_day_nano_interval(),
-        arrow::list(arrow::field("some_custom_name", arrow::int32()))));
+        arrow::list(arrow::field("some_custom_name", arrow::int32())),
+        arrow::large_list(arrow::field("some_custom_name", arrow::int32())),
+        arrow::fixed_size_list(arrow::field("some_custom_name", arrow::int32()), 123),
+        arrow::struct_({arrow::field("col1", arrow::int32()),
+                        arrow::field("col2", arrow::utf8())})));
