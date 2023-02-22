@@ -218,4 +218,5 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::duration(arrow::TimeUnit::SECOND), arrow::duration(arrow::TimeUnit::MILLI),
         arrow::duration(arrow::TimeUnit::MICRO), arrow::duration(arrow::TimeUnit::NANO),
         arrow::month_interval(), arrow::day_time_interval(),
-        arrow::month_day_nano_interval()));
+        arrow::month_day_nano_interval(),
+        arrow::list(arrow::field("some_custom_name", arrow::int32()))));

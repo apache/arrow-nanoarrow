@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "nanoarrow.h"
@@ -310,24 +311,36 @@ static int ArrowIpcReaderSetTypeInterval(struct ArrowSchema* schema,
   }
 }
 
-static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
-                                  struct ArrowError* error) {
-  int result;
-  if (ns(Field_name_is_present(field))) {
-    result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
-  } else {
-    result = ArrowSchemaSetName(schema, "");
-  }
-
+// We can't quite use nanoarrow's built-in SchemaSet functions for nested types
+// because the IPC format allows modifying some of the defaults those functions assume.
+// In particular, the allocate + initialize children step is handled outside these
+// setters.
+static int ArrowIpcReaderSetTypeSimpleNested(struct ArrowSchema* schema,
+                                             const char* format,
+                                             struct ArrowError* error) {
+  int result = ArrowSchemaSetFormat(schema, format);
   if (result != NANOARROW_OK) {
-    ArrowErrorSet(error, "ArrowSchemaSetName() failed");
+    ArrowErrorSet(error, "ArrowSchemaSetFormat('%s') failed", format);
     return result;
   }
 
-  if (ns(Field_nullable_get(field))) {
-    schema->flags |= ARROW_FLAG_NULLABLE;
-  }
+  return NANOARROW_OK;
+}
 
+static int ArrowIpcReaderSetTypeFixedSizeList(struct ArrowSchema* schema,
+                                              flatbuffers_generic_t type_generic,
+                                              struct ArrowError* error) {
+  ns(FixedSizeList_table_t) type = (ns(FixedSizeList_table_t))type_generic;
+  int32_t fixed_size = ns(FixedSizeList_listSize(type));
+
+  char fixed_size_str[128];
+  int n_chars = snprintf(fixed_size_str, 128, "+w:%d", fixed_size);
+  fixed_size_str[n_chars] = '\0';
+  return ArrowIpcReaderSetTypeSimpleNested(schema, fixed_size_str, error);
+}
+
+static int ArrowIpcReaderSetType(struct ArrowSchema* schema, ns(Field_table_t) field,
+                                 struct ArrowError* error) {
   int type_type = ns(Field_type_type(field));
   switch (type_type) {
     case ns(Type_Null):
@@ -362,19 +375,62 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_Interval):
       return ArrowIpcReaderSetTypeInterval(schema, ns(Field_type_get(field)), error);
     case ns(Type_Struct_):
-      return ENOTSUP;
+      return ArrowIpcReaderSetTypeSimpleNested(schema, "+s", error);
     case ns(Type_List):
-      return ENOTSUP;
+      return ArrowIpcReaderSetTypeSimpleNested(schema, "+l", error);
     case ns(Type_LargeList):
-      return ENOTSUP;
+      return ArrowIpcReaderSetTypeSimpleNested(schema, "+L", error);
     case ns(Type_FixedSizeList):
-      return ENOTSUP;
+      return ArrowIpcReaderSetTypeFixedSizeList(schema, ns(Field_type_get(field)), error);
     case ns(Type_Union):
       return ENOTSUP;
     default:
       ArrowErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
       return EINVAL;
   }
+}
+
+static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
+                                     struct ArrowError* error);
+
+static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
+                                  struct ArrowError* error) {
+  int result;
+  if (ns(Field_name_is_present(field))) {
+    result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
+  } else {
+    result = ArrowSchemaSetName(schema, "");
+  }
+
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "ArrowSchemaSetName() failed");
+    return result;
+  }
+
+  if (ns(Field_nullable_get(field))) {
+    schema->flags |= ARROW_FLAG_NULLABLE;
+  }
+
+  // Sets the schema->format and validates type-related inconsistencies
+  // that might exist in the flatbuffer
+  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetType(schema, field, error));
+
+  // Children are defined separately in the flatbuffer, so we allocate, initialize
+  // and set them separately as well.
+  ns(Field_vec_t) children = ns(Field_children(field));
+  int64_t n_children = ns(Field_vec_len(children));
+
+  result = ArrowSchemaAllocateChildren(schema, n_children);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "ArrowSchemaAllocateChildren() failed");
+    return result;
+  }
+
+  for (int64_t i = 0; i < n_children; i++) {
+    ArrowSchemaInit(schema->children[i]);
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetChildren(schema, children, error));
 
   return NANOARROW_OK;
 }
