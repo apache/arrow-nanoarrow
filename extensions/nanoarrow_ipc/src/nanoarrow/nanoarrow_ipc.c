@@ -16,7 +16,6 @@
 // under the License.
 
 #include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -77,9 +76,10 @@ static int ArrowIpcReaderSetMetadata(struct ArrowSchema* schema,
     return NANOARROW_OK;
   }
 
-  if (n_pairs > INT_MAX) {
-    ArrowErrorSet(error, "Expected between 0 and %d key/value pairs but found %ld",
-                  INT_MAX, (long)n_pairs);
+  if (n_pairs > 2147483647) {
+    ArrowErrorSet(error,
+                  "Expected between 0 and 2147483647 key/value pairs but found %ld",
+                  (long)n_pairs);
     return EINVAL;
   }
 

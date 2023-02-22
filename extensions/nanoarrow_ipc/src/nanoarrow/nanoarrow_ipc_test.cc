@@ -20,6 +20,7 @@
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
 #include <arrow/ipc/api.h>
+#include <arrow/util/key_value_metadata.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow_ipc.h"
@@ -199,7 +200,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 
   // Better failure message if we first check for string equality
   EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), dummy_schema->ToString());
-  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema));
+  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema, true));
 
   ArrowIpcReaderReset(&reader);
 }
@@ -241,4 +242,10 @@ INSTANTIATE_TEST_SUITE_P(
                             {126, 127}),
         arrow::dense_union({arrow::field("col1", arrow::int32()),
                             arrow::field("col2", arrow::utf8())},
-                           {126, 127})));
+                           {126, 127}),
+
+        // Type with nested metadata
+        arrow::list(arrow::field("some_custom_name", arrow::int32(),
+                                 arrow::KeyValueMetadata::Make({"key1"}, {"value1"})))
+
+        ));
