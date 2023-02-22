@@ -196,6 +196,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
   auto maybe_schema = arrow::ImportSchema(&reader.schema);
   ASSERT_TRUE(maybe_schema.ok());
+
+  // Better failure message if we first check for string equality
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), dummy_schema->ToString());
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema));
 
   ArrowIpcReaderReset(&reader);
@@ -223,4 +226,19 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::large_list(arrow::field("some_custom_name", arrow::int32())),
         arrow::fixed_size_list(arrow::field("some_custom_name", arrow::int32()), 123),
         arrow::struct_({arrow::field("col1", arrow::int32()),
-                        arrow::field("col2", arrow::utf8())})));
+                        arrow::field("col2", arrow::utf8())}),
+        // Zero-size union doesn't roundtrip through the C Data interface until
+        // Arrow 11 (which is not yet available on all platforms)
+        // arrow::sparse_union(FieldVector()), arrow::dense_union(FieldVector()),
+        // No custom type IDs
+        arrow::sparse_union({arrow::field("col1", arrow::int32()),
+                             arrow::field("col2", arrow::utf8())}),
+        arrow::dense_union({arrow::field("col1", arrow::int32()),
+                            arrow::field("col2", arrow::utf8())}),
+        // With custom type IDs
+        arrow::sparse_union({arrow::field("col1", arrow::int32()),
+                             arrow::field("col2", arrow::utf8())},
+                            {126, 127}),
+        arrow::dense_union({arrow::field("col1", arrow::int32()),
+                            arrow::field("col2", arrow::utf8())},
+                           {126, 127})));

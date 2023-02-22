@@ -345,9 +345,17 @@ static int ArrowIpcReaderSetTypeUnion(struct ArrowSchema* schema,
   ns(Union_table_t) type = (ns(Union_table_t))type_generic;
   int union_mode = ns(Union_mode(type));
 
+  if (n_children < 0 || n_children > 127) {
+    ArrowErrorSet(error,
+                  "Expected between 0 and 127 children for Union type but found %ld",
+                  (long)n_children);
+    return EINVAL;
+  }
+
   // Max valid typeIds size is 127; the longest single ID that could be present here
   // is -INT_MIN (11 chars). With commas and the prefix the max size would be
-  // 1527 characters.
+  // 1527 characters. (Any ids outside the range 0...127 are unlikely to be valid
+  // elsewhere but they could in theory be present here).
   char union_types_str[2048];
   memset(union_types_str, 0, sizeof(union_types_str));
   char* format_cursor = union_types_str;
@@ -372,17 +380,39 @@ static int ArrowIpcReaderSetTypeUnion(struct ArrowSchema* schema,
   }
 
   if (ns(Union_typeIds_is_present(type))) {
+    flatbuffers_int32_vec_t type_ids = ns(Union_typeIds(type));
+    int64_t n_type_ids = flatbuffers_int32_vec_len(type_ids);
 
-  } else {
-    ArrowErrorSet(error, "Custom union type IDs are not supported", (int)union_mode);
-    return ENOTSUP;
+    if (n_type_ids > 0) {
+      n_chars = snprintf(format_cursor, format_out_size, "%d",
+                         flatbuffers_int32_vec_at(type_ids, 0));
+      format_cursor += n_chars;
+      format_out_size -= n_chars;
+
+      for (int64_t i = 1; i < n_type_ids; i++) {
+        n_chars = snprintf(format_cursor, format_out_size, ",%d",
+                           (int)flatbuffers_int32_vec_at(type_ids, i));
+        format_cursor += n_chars;
+        format_out_size -= n_chars;
+      }
+    }
+  } else if (n_children > 0) {
+    n_chars = snprintf(format_cursor, format_out_size, "0");
+    format_cursor += n_chars;
+    format_out_size -= n_chars;
+
+    for (int64_t i = 1; i < n_children; i++) {
+      n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
+      format_cursor += n_chars;
+      format_out_size -= n_chars;
+    }
   }
 
   return ArrowIpcReaderSetTypeSimpleNested(schema, union_types_str, error);
 }
 
 static int ArrowIpcReaderSetType(struct ArrowSchema* schema, ns(Field_table_t) field,
-                                 struct ArrowError* error) {
+                                 int64_t n_children, struct ArrowError* error) {
   int type_type = ns(Field_type_type(field));
   switch (type_type) {
     case ns(Type_Null):
@@ -425,7 +455,8 @@ static int ArrowIpcReaderSetType(struct ArrowSchema* schema, ns(Field_table_t) f
     case ns(Type_FixedSizeList):
       return ArrowIpcReaderSetTypeFixedSizeList(schema, ns(Field_type_get(field)), error);
     case ns(Type_Union):
-      return ENOTSUP;
+      return ArrowIpcReaderSetTypeUnion(schema, ns(Field_type_get(field)), n_children,
+                                        error);
     default:
       ArrowErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
       return EINVAL;
@@ -455,13 +486,13 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
 
   // Sets the schema->format and validates type-related inconsistencies
   // that might exist in the flatbuffer
-  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetType(schema, field, error));
-
-  // Children are defined separately in the flatbuffer, so we allocate, initialize
-  // and set them separately as well.
   ns(Field_vec_t) children = ns(Field_children(field));
   int64_t n_children = ns(Field_vec_len(children));
 
+  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetType(schema, field, n_children, error));
+
+  // Children are defined separately in the flatbuffer, so we allocate, initialize
+  // and set them separately as well.
   result = ArrowSchemaAllocateChildren(schema, n_children);
   if (result != NANOARROW_OK) {
     ArrowErrorSet(error, "ArrowSchemaAllocateChildren() failed");
@@ -472,9 +503,7 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
     ArrowSchemaInit(schema->children[i]);
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetChildren(schema, children, error));
-
-  return NANOARROW_OK;
+  return ArrowIpcReaderSetChildren(schema, children, error);
 }
 
 static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
