@@ -211,4 +211,9 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::binary(), arrow::large_binary(), arrow::fixed_size_binary(123),
         arrow::date32(), arrow::date64(), arrow::time32(arrow::TimeUnit::SECOND),
         arrow::time32(arrow::TimeUnit::MILLI), arrow::time64(arrow::TimeUnit::MICRO),
-        arrow::time64(arrow::TimeUnit::NANO)));
+        arrow::time64(arrow::TimeUnit::NANO), arrow::timestamp(arrow::TimeUnit::SECOND),
+        arrow::timestamp(arrow::TimeUnit::MILLI),
+        arrow::timestamp(arrow::TimeUnit::MICRO), arrow::timestamp(arrow::TimeUnit::NANO),
+        arrow::timestamp(arrow::TimeUnit::SECOND, "UTC"),
+        arrow::duration(arrow::TimeUnit::SECOND), arrow::duration(arrow::TimeUnit::MILLI),
+        arrow::duration(arrow::TimeUnit::MICRO), arrow::duration(arrow::TimeUnit::NANO)));

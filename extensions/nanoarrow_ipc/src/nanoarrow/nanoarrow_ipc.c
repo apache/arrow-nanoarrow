@@ -216,13 +216,13 @@ static int ArrowIpcReaderSetTypeTime(struct ArrowSchema* schema,
   int bitwidth = ns(Time_bitWidth(type));
   int nanoarrow_type;
 
-  // Check bitwidth
   switch (time_unit) {
     case ns(TimeUnit_SECOND):
     case ns(TimeUnit_MILLISECOND):
       if (bitwidth != 32) {
         ArrowErrorSet(error, "Expected bitwidth of 32 for Time TimeUnit %s but found %d",
                       ns(TimeUnit_name(time_unit)), bitwidth);
+        return EINVAL;
       }
 
       nanoarrow_type = NANOARROW_TYPE_TIME32;
@@ -231,10 +231,12 @@ static int ArrowIpcReaderSetTypeTime(struct ArrowSchema* schema,
     case ns(TimeUnit_MICROSECOND):
     case ns(TimeUnit_NANOSECOND):
       if (bitwidth != 64) {
-        ArrowErrorSet(error, "Expected bitwidth of 32 for Time TimeUnit %s but found %d",
+        ArrowErrorSet(error, "Expected bitwidth of 64 for Time TimeUnit %s but found %d",
                       ns(TimeUnit_name(time_unit)), bitwidth);
+        return EINVAL;
       }
-      nanoarrow_type = NANOARROW_TYPE_TIME32;
+
+      nanoarrow_type = NANOARROW_TYPE_TIME64;
       break;
 
     default:
@@ -255,14 +257,37 @@ static int ArrowIpcReaderSetTypeTimestamp(struct ArrowSchema* schema,
                                           flatbuffers_generic_t type_generic,
                                           struct ArrowError* error) {
   ns(Timestamp_table_t) type = (ns(Timestamp_table_t))type_generic;
-  return ENOTSUP;
+  int time_unit = ns(Timestamp_unit(type));
+
+  const char* timezone = "";
+  if (ns(Timestamp_timezone_is_present(type))) {
+    timezone = ns(Timestamp_timezone_get(type));
+  }
+
+  int result =
+      ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP, time_unit, timezone);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "ArrowSchemaSetTypeDateTime() failed");
+    return result;
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcReaderSetTypeDuration(struct ArrowSchema* schema,
                                          flatbuffers_generic_t type_generic,
                                          struct ArrowError* error) {
   ns(Duration_table_t) type = (ns(Duration_table_t))type_generic;
-  return ENOTSUP;
+  int time_unit = ns(Duration_unit(type));
+
+  int result =
+      ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_DURATION, time_unit, NULL);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "ArrowSchemaSetTypeDateTime() failed");
+    return result;
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcReaderSetTypeInterval(struct ArrowSchema* schema,
