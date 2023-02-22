@@ -248,4 +248,52 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::list(arrow::field("some_custom_name", arrow::int32(),
                                  arrow::KeyValueMetadata::Make({"key1"}, {"value1"})))
 
-        ));
+            ));
+
+class ArrowSchemaParameterizedTestFixture
+    : public ::testing::TestWithParam<std::shared_ptr<arrow::Schema>> {
+ protected:
+  std::shared_ptr<arrow::Schema> arrow_schema;
+};
+
+TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
+  const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
+  auto maybe_serialized = arrow::ipc::SerializeSchema(*arrow_schema);
+  ASSERT_TRUE(maybe_serialized.ok());
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  struct ArrowIpcReader reader;
+  ArrowIpcReaderInit(&reader);
+  ASSERT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
+  EXPECT_EQ(reader.header_size_bytes, buffer_view.size_bytes);
+  EXPECT_EQ(reader.body_size_bytes, 0);
+
+  ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  ASSERT_TRUE(maybe_schema.ok());
+
+  // Better failure message if we first check for string equality
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), arrow_schema->ToString());
+  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(arrow_schema, true));
+
+  ArrowIpcReaderReset(&reader);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowIpcTest, ArrowSchemaParameterizedTestFixture,
+    ::testing::Values(
+        // Empty
+        arrow::schema({}),
+        // One
+        arrow::schema({arrow::field("some_name", arrow::int32())}),
+        // Field metadata
+        arrow::schema({arrow::field(
+            "some_name", arrow::int32(),
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))}),
+        // Schema metadata
+        arrow::schema({}, arrow::KeyValueMetadata::Make({"key1"}, {"value1"})),
+        // Non-nullable field
+        arrow::schema({arrow::field("some_name", arrow::int32(), false)})));

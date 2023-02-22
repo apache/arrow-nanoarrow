@@ -541,16 +541,20 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
     return result;
   }
 
-  if (ns(Field_nullable_get(field))) {
-    schema->flags |= ARROW_FLAG_NULLABLE;
-  }
-
   // Sets the schema->format and validates type-related inconsistencies
   // that might exist in the flatbuffer
   ns(Field_vec_t) children = ns(Field_children(field));
   int64_t n_children = ns(Field_vec_len(children));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetType(schema, field, n_children, error));
+
+  // nanoarrow's type setters set the nullable flag by default, so we might
+  // have to unset it here.
+  if (ns(Field_nullable_get(field))) {
+    schema->flags |= ARROW_FLAG_NULLABLE;
+  } else {
+    schema->flags &= ~ARROW_FLAG_NULLABLE;
+  }
 
   // Children are defined separately in the flatbuffer, so we allocate, initialize
   // and set them separately as well.
