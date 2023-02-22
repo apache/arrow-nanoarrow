@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -67,6 +68,58 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data) {
 }
 
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
+
+static int ArrowIpcReaderSetMetadata(struct ArrowSchema* schema,
+                                     ns(KeyValue_vec_t) kv_vec,
+                                     struct ArrowError* error) {
+  int64_t n_pairs = ns(KeyValue_vec_len(kv_vec));
+  if (n_pairs == 0) {
+    return NANOARROW_OK;
+  }
+
+  if (n_pairs > INT_MAX) {
+    ArrowErrorSet(error, "Expected between 0 and %d key/value pairs but found %ld",
+                  INT_MAX, (long)n_pairs);
+    return EINVAL;
+  }
+
+  struct ArrowBuffer buf;
+  struct ArrowStringView key;
+  struct ArrowStringView value;
+  ns(KeyValue_table_t) kv;
+
+  int result = ArrowMetadataBuilderInit(&buf, NULL);
+  if (result != NANOARROW_OK) {
+    ArrowBufferReset(&buf);
+    ArrowErrorSet(error, "ArrowMetadataBuilderInit() failed");
+    return result;
+  }
+
+  for (int64_t i = 0; i < n_pairs; i++) {
+    kv = ns(KeyValue_vec_at(kv_vec, i));
+
+    key.data = ns(KeyValue_key(kv));
+    key.size_bytes = strlen(key.data);
+    value.data = ns(KeyValue_value(kv));
+    value.size_bytes = strlen(value.data);
+
+    result = ArrowMetadataBuilderAppend(&buf, key, value);
+    if (result != NANOARROW_OK) {
+      ArrowBufferReset(&buf);
+      ArrowErrorSet(error, "ArrowMetadataBuilderAppend() failed");
+      return result;
+    }
+  }
+
+  result = ArrowSchemaSetMetadata(schema, (const char*)buf.data);
+  ArrowBufferReset(&buf);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "ArrowSchemaSetMetadata() failed");
+    return result;
+  }
+
+  return NANOARROW_OK;
+}
 
 static int ArrowIpcReaderSetTypeSimple(struct ArrowSchema* schema, int nanoarrow_type,
                                        struct ArrowError* error) {
@@ -511,7 +564,8 @@ static int ArrowIpcReaderSetField(struct ArrowSchema* schema, ns(Field_table_t) 
     ArrowSchemaInit(schema->children[i]);
   }
 
-  return ArrowIpcReaderSetChildren(schema, children, error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetChildren(schema, children, error));
+  return ArrowIpcReaderSetMetadata(schema, ns(Field_custom_metadata(field)), error);
 }
 
 static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
@@ -578,7 +632,9 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
     return result;
   }
 
-  return ArrowIpcReaderSetChildren(&reader->schema, fields, error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetChildren(&reader->schema, fields, error));
+  return ArrowIpcReaderSetMetadata(&reader->schema, ns(Schema_custom_metadata(schema)),
+                                   error);
 }
 
 static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
