@@ -392,6 +392,21 @@ static int ArrowIpcReaderSetTypeFixedSizeList(struct ArrowSchema* schema,
   return ArrowIpcReaderSetTypeSimpleNested(schema, fixed_size_str, error);
 }
 
+static int ArrowIpcReaderSetTypeMap(struct ArrowSchema* schema,
+                                    flatbuffers_generic_t type_generic,
+                                    struct ArrowError* error) {
+  ns(Map_table_t) type = (ns(Map_table_t))type_generic;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetTypeSimpleNested(schema, "+m", error));
+
+  if (ns(Map_keysSorted(type))) {
+    schema->flags |= ARROW_FLAG_MAP_KEYS_SORTED;
+  } else {
+    schema->flags &= ~ARROW_FLAG_MAP_KEYS_SORTED;
+  }
+
+  return NANOARROW_OK;
+}
+
 static int ArrowIpcReaderSetTypeUnion(struct ArrowSchema* schema,
                                       flatbuffers_generic_t type_generic,
                                       int64_t n_children, struct ArrowError* error) {
@@ -515,6 +530,8 @@ static int ArrowIpcReaderSetType(struct ArrowSchema* schema, ns(Field_table_t) f
       return ArrowIpcReaderSetTypeSimpleNested(schema, "+L", error);
     case ns(Type_FixedSizeList):
       return ArrowIpcReaderSetTypeFixedSizeList(schema, ns(Field_type_get(field)), error);
+    case ns(Type_Map):
+      return ArrowIpcReaderSetTypeMap(schema, ns(Field_type_get(field)), error);
     case ns(Type_Union):
       return ArrowIpcReaderSetTypeUnion(schema, ns(Field_type_get(field)), n_children,
                                         error);

@@ -226,6 +226,8 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::list(arrow::field("some_custom_name", arrow::int32())),
         arrow::large_list(arrow::field("some_custom_name", arrow::int32())),
         arrow::fixed_size_list(arrow::field("some_custom_name", arrow::int32()), 123),
+        arrow::map(arrow::utf8(), arrow::int64(), false),
+        arrow::map(arrow::utf8(), arrow::int64(), true),
         arrow::struct_({arrow::field("col1", arrow::int32()),
                         arrow::field("col2", arrow::utf8())}),
         // Zero-size union doesn't roundtrip through the C Data interface until
