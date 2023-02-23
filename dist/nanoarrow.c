@@ -1040,12 +1040,12 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
         case 's':
           switch (format[2]) {
             case 's':
-              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
+              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
               schema_view->type = NANOARROW_TYPE_TIMESTAMP;
               schema_view->time_unit = NANOARROW_TIME_UNIT_SECOND;
               break;
             case 'm':
-              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
+              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
               schema_view->type = NANOARROW_TYPE_TIMESTAMP;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MILLI;
               break;
@@ -1080,13 +1080,13 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
         case 'D':
           switch (format[2]) {
             case 's':
-              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
+              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
               schema_view->type = NANOARROW_TYPE_DURATION;
               schema_view->time_unit = NANOARROW_TIME_UNIT_SECOND;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'm':
-              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT32);
+              ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INT64);
               schema_view->type = NANOARROW_TYPE_DURATION;
               schema_view->time_unit = NANOARROW_TIME_UNIT_MILLI;
               *format_end_out = format + 3;
