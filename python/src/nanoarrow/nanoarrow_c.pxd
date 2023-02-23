@@ -17,30 +17,20 @@
 
 # cython: language_level = 3
 
-from libc.stdint cimport int64_t, int8_t, uint8_t
+from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
 
+from arrow_c cimport ArrowSchema, ArrowArray, ArrowArrayStream
 
 cdef extern from "nanoarrow.h":
-    struct ArrowSchema:
-        const char* format
-        int64_t n_children
-        void (*release)(ArrowSchema*)
-
-    struct ArrowArray:
-        int64_t length
-        int64_t null_count
-        int64_t offset
-        const void** buffers
-        void (*release)(ArrowArray*)
-
-    struct ArrowArrayStream:
-        int (*get_schema)(ArrowArrayStream* stream, ArrowSchema* out)
-
     ctypedef int ArrowErrorCode
+    cdef int NANOARROW_OK
+
+    cdef struct ArrowError:
+        pass
 
     enum ArrowType:
-        NANOARROW_TYPE_UNINITIALIZED = 0
-        NANOARROW_TYPE_NA = 1
+        NANOARROW_TYPE_UNINITIALIZED
+        NANOARROW_TYPE_NA
         NANOARROW_TYPE_BOOL
         NANOARROW_TYPE_UINT8
         NANOARROW_TYPE_INT8
@@ -87,34 +77,53 @@ cdef extern from "nanoarrow.h":
         NANOARROW_BUFFER_TYPE_DATA_OFFSET
         NANOARROW_BUFFER_TYPE_DATA
 
-    struct ArrowError:
-        pass
+    enum ArrowTimeUnit:
+        NANOARROW_TIME_UNIT_SECOND
+        NANOARROW_TIME_UNIT_MILLI
+        NANOARROW_TIME_UNIT_MICRO
+        NANOARROW_TIME_UNIT_NANO
 
-    const char* ArrowErrorMessage(ArrowError* error)
-
-    struct ArrowLayout:
-        ArrowBufferType buffer_type[3]
-        int64_t element_size_bits[3]
-        int64_t child_size_elements
+    cdef struct ArrowStringView:
+        const char* data
+        int64_t size_bytes
 
     cdef union buffer_data:
         const void* data
         const int8_t* as_int8
         const uint8_t* as_uint8
+        const int16_t* as_int16
+        const uint16_t* as_uint16
+        const int32_t* as_int32
+        const uint32_t* as_uint32
+        const int64_t* as_int64
+        const uint64_t* as_uint64
+        const double* as_double
+        const float* as_float
+        const char* as_char
 
-    struct ArrowBufferView:
+    cdef struct ArrowBufferView:
         buffer_data data
         int64_t size_bytes
 
-    struct ArrowBuffer:
+    cdef struct ArrowBufferAllocator:
+        pass
+
+    cdef struct ArrowBuffer:
         uint8_t* data
         int64_t size_bytes
+        int64_t capacity_bytes
+        ArrowBufferAllocator allocator
 
-    struct ArrowBitmap:
+    cdef struct ArrowBitmap:
         ArrowBuffer buffer
         int64_t size_bits
 
-    struct ArrowArrayView:
+    cdef struct ArrowLayout:
+        ArrowBufferType buffer_type[3]
+        int64_t element_size_bits[3]
+        int64_t child_size_elements
+
+    cdef struct ArrowArrayView:
         ArrowArray* array
         ArrowType storage_type
         ArrowLayout layout
@@ -122,6 +131,30 @@ cdef extern from "nanoarrow.h":
         int64_t n_children
         ArrowArrayView** children
 
-    ArrowErrorCode ArrowArrayViewInitFromSchema(ArrowArrayView* array_view, ArrowSchema* schema, ArrowError* error)
-    ArrowErrorCode ArrowArrayViewSetArray(ArrowArrayView* array_view, ArrowArray* array, ArrowError* error)
-    int64_t ArrowBitCountSet(const uint8_t* bits, int64_t i_from, int64_t i_to)
+    cdef const char* ArrowNanoarrowVersion()
+    cdef const char* ArrowErrorMessage(ArrowError* error)
+
+    cdef void ArrowSchemaMove(ArrowSchema* src, ArrowSchema* dst)
+    cdef void ArrowArrayMove(ArrowArray* src, ArrowArray* dst)
+    cdef void ArrowArrayStreamMove(ArrowArrayStream* src, ArrowArrayStream* dst)
+
+    cdef int64_t ArrowSchemaToString(ArrowSchema* schema, char* out, int64_t n,
+                                     char recursive)
+    cdef ArrowErrorCode ArrowSchemaDeepCopy(ArrowSchema* schema,
+                                            ArrowSchema* schema_out)
+    cdef ArrowErrorCode ArrowSchemaSetType(ArrowSchema* schema,ArrowType type_)
+    ArrowErrorCode ArrowSchemaSetTypeStruct(ArrowSchema* schema, int64_t n_children)
+
+    cdef struct ArrowMetadataReader:
+        pass
+
+    cdef ArrowErrorCode ArrowMetadataReaderInit(ArrowMetadataReader* reader,
+                                                const char* metadata)
+
+    cdef ArrowErrorCode ArrowMetadataReaderRead(ArrowMetadataReader* reader,
+                                                ArrowStringView* key_out,
+                                                ArrowStringView* value_out)
+
+    cdef ArrowErrorCode ArrowArrayViewInitFromSchema(ArrowArrayView* array_view, ArrowSchema* schema, ArrowError* error)
+    cdef ArrowErrorCode ArrowArrayViewSetArray(ArrowArrayView* array_view, ArrowArray* array, ArrowError* error)
+    cdef int64_t ArrowBitCountSet(const uint8_t* bits, int64_t i_from, int64_t i_to)

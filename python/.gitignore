@@ -18,7 +18,7 @@
 
 src/nanoarrow/nanoarrow.c
 src/nanoarrow/nanoarrow.h
-src/nanoarrow/*.cpp
+src/nanoarrow/*.c
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

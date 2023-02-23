@@ -24,7 +24,6 @@ from setuptools import Extension, setup
 
 import numpy as np
 
-
 # setuptools gets confused by relative paths that extend above the project root
 target = Path(__file__).parent / "src" / "nanoarrow"
 shutil.copy(
@@ -39,7 +38,7 @@ setup(
         Extension(
             name="nanoarrow._lib",
             include_dirs=[np.get_include(), "src/nanoarrow"],
-            language="c++",
+            language="c",
             sources=[
                 "src/nanoarrow/_lib.pyx",
                 "src/nanoarrow/nanoarrow.c",

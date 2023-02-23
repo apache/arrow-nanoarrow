@@ -19,8 +19,8 @@
 
 """Low-level nanoarrow Python bindings."""
 
-from libc.stdint cimport uint8_t, uintptr_t
-
+from libc.stdint cimport uint8_t, uintptr_t, int64_t
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from nanoarrow_c cimport *
 
 import numpy as np
@@ -84,3 +84,84 @@ def as_numpy_array(arr):
     # TODO set base
 
     return result
+
+
+def version():
+    return ArrowNanoarrowVersion().decode("UTF-8")
+
+cdef class CSchemaHolder:
+    cdef ArrowSchema c_schema
+
+    def __init__(self):
+        self.c_schema.release = NULL
+
+    def __del__(self):
+        if self.c_schema.release != NULL:
+          self.c_schema.release(&self.c_schema)
+
+    def _addr(self):
+        return <uintptr_t>&self.c_schema
+
+cdef class CSchemaChildren:
+    cdef CSchema _parent
+    cdef int64_t _length
+
+    def __init__(self, CSchema parent):
+        self._parent = parent
+        self._length = parent._ptr.n_children
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, k):
+        k = int(k)
+        if k < 0 or k >= self._length:
+            raise IndexError(f"{k} out of range [0, {self._length})")
+
+        return type(self._parent)(self._parent, self._child_addr(k))
+
+    cdef _child_addr(self, int64_t i):
+        cdef ArrowSchema** children = self._parent._ptr.children
+        cdef ArrowSchema* child = children[i]
+        return <uintptr_t>child
+
+cdef class CSchema:
+    cdef object _base
+    cdef ArrowSchema* _ptr
+
+    def __init__(self, object base, uintptr_t addr) -> None:
+        self._base = base,
+        self._ptr = <ArrowSchema*>addr
+
+    def _addr(self):
+        return <uintptr_t>self._ptr
+
+    def __repr__(self) -> str:
+        cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, True)
+        cdef char* out = <char*>PyMem_Malloc(n_chars + 1)
+        if not out:
+            raise MemoryError()
+
+        ArrowSchemaToString(self._ptr, out, n_chars + 1, True)
+        out_str = out.decode("UTF-8")
+        PyMem_Free(out)
+
+        return out_str
+
+    @property
+    def format(self):
+        if self._ptr.format != NULL:
+            return self._ptr.format.decode("UTF-8")
+
+    @property
+    def name(self):
+        if self._ptr.name != NULL:
+            return self._ptr.name.decode("UTF-8")
+
+    @property
+    def flags(self):
+        return self._ptr.flags
+
+    @property
+    def children(self):
+        return CSchemaChildren(self)
