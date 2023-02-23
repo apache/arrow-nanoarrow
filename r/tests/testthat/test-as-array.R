@@ -329,6 +329,42 @@ test_that("as_nanoarrow_array() errors for bad data.frame() -> na_struct()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for Date -> na_date32()", {
+  array <- as_nanoarrow_array(as.Date(c("2000-01-01", "2023-02-03", NA)))
+
+  expect_identical(infer_nanoarrow_schema(array)$format, "tdD")
+  expect_identical(array$length, 3L)
+  expect_identical(array$null_count, 1L)
+
+  expect_identical(as.raw(array$buffers[[1]]), as.raw(0x03))
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(10957L, 19391L, NA)))
+  )
+})
+
+test_that("as_nanoarrow_array() works for Date -> na_date64()", {
+  array <- as_nanoarrow_array(
+    as.Date(c("2000-01-01", "2023-02-03", NA)),
+    schema = na_date64()
+  )
+
+  expect_identical(infer_nanoarrow_schema(array)$format, "tdm")
+  expect_identical(array$length, 3L)
+  expect_identical(array$null_count, 1L)
+
+  expect_identical(as.raw(array$buffers[[1]]), as.raw(0x03))
+  storage <- as_nanoarrow_array(
+    c(10957L, 19391L, NA) * 86400000,
+    schema = na_int64()
+  )
+
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(storage$buffers[[2]])
+  )
+})
+
 test_that("as_nanoarrow_array() works for blob::blob() -> na_binary()", {
   skip_if_not_installed("blob")
 
