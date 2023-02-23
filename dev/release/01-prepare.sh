@@ -60,7 +60,7 @@ echo "Updating changelog for $version"
 (
     echo ;
     # Strip trailing blank line
-    printf '%s\n' "$(cz ch --dry-run --unreleased-version "nanoarrow ${version}" --start-rev apache-arrow-nanoarrow-${prev_version})"
+    printf '%s\n' "$(cz ch --dry-run --unreleased-version "nanoarrow ${version}")"
 ) >> ${SOURCE_DIR}/../../CHANGELOG.md
 git add ${SOURCE_DIR}/../../CHANGELOG.md
 git commit -m "chore: update CHANGELOG.md for $version"

@@ -25,25 +25,26 @@ update_versions() {
   case ${type} in
     release)
       local version=${base_version}
-      local conda_version=${base_version}
       local docs_version=${base_version}
+      local r_version=${base_version}
       ;;
     snapshot)
       local version=${next_version}-SNAPSHOT
-      local conda_version=${next_version}
       local docs_version="${next_version} (dev)"
+      local r_version="${base_version}.9000"
       ;;
   esac
   local major_version=${version%%.*}
 
   pushd "${NANOARROW_DIR}"
   sed -i.bak -E "s/set\(NANOARROW_VERSION \".+\"\)/set(NANOARROW_VERSION \"${version}\")/g" CMakeLists.txt
-  rm CMakeLists.txt
+  rm CMakeLists.txt.bak
   git add CMakeLists.txt
   popd
 
   pushd "${NANOARROW_DIR}/r"
-  Rscript -e "desc::desc_set(Version = '${base_version}.9000')"
+  Rscript -e "desc::desc_set(Version = '${r_version}')"
+  git add DESCRIPTION
   popd
 }
 
