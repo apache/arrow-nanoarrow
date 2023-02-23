@@ -860,7 +860,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::SECOND, "America/Halifax"), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_TIMESTAMP);
-  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
   EXPECT_STREQ(schema_view.timezone, "America/Halifax");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('s', 'America/Halifax')");
@@ -869,7 +869,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeTimestamp) {
   ARROW_EXPECT_OK(ExportType(*timestamp(TimeUnit::MILLI, "America/Halifax"), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_TIMESTAMP);
-  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
   EXPECT_STREQ(schema_view.timezone, "America/Halifax");
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "timestamp('ms', 'America/Halifax')");
@@ -902,7 +902,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::SECOND), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_DURATION);
-  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_SECOND);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "duration('s')");
   schema.release(&schema);
@@ -910,7 +910,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeDuration) {
   ARROW_EXPECT_OK(ExportType(*duration(TimeUnit::MILLI), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_DURATION);
-  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT64);
   EXPECT_EQ(schema_view.time_unit, NANOARROW_TIME_UNIT_MILLI);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "duration('ms')");
   schema.release(&schema);
