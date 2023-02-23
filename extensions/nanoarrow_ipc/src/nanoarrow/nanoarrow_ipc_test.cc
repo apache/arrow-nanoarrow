@@ -19,6 +19,8 @@
 
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
+#include <arrow/ipc/api.h>
+#include <arrow/util/key_value_metadata.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow_ipc.h"
@@ -168,3 +170,132 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
 
   ArrowIpcReaderReset(&reader);
 }
+
+class ArrowTypeParameterizedTestFixture
+    : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
+ protected:
+  std::shared_ptr<arrow::DataType> data_type;
+};
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
+  const std::shared_ptr<arrow::DataType>& data_type = GetParam();
+  std::shared_ptr<arrow::Schema> dummy_schema =
+      arrow::schema({arrow::field("dummy_name", data_type)});
+  auto maybe_serialized = arrow::ipc::SerializeSchema(*dummy_schema);
+  ASSERT_TRUE(maybe_serialized.ok());
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  struct ArrowIpcReader reader;
+  ArrowIpcReaderInit(&reader);
+  ASSERT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
+  EXPECT_EQ(reader.header_size_bytes, buffer_view.size_bytes);
+  EXPECT_EQ(reader.body_size_bytes, 0);
+
+  ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  ASSERT_TRUE(maybe_schema.ok());
+
+  // Better failure message if we first check for string equality
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), dummy_schema->ToString());
+  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema, true));
+
+  ArrowIpcReaderReset(&reader);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowIpcTest, ArrowTypeParameterizedTestFixture,
+    ::testing::Values(
+        arrow::null(), arrow::boolean(), arrow::int8(), arrow::uint8(), arrow::int16(),
+        arrow::uint16(), arrow::int32(), arrow::uint32(), arrow::int64(), arrow::uint64(),
+        arrow::utf8(), arrow::float16(), arrow::float32(), arrow::float64(),
+        arrow::decimal128(10, 3), arrow::decimal256(10, 3), arrow::large_utf8(),
+        arrow::binary(), arrow::large_binary(), arrow::fixed_size_binary(123),
+        arrow::date32(), arrow::date64(), arrow::time32(arrow::TimeUnit::SECOND),
+        arrow::time32(arrow::TimeUnit::MILLI), arrow::time64(arrow::TimeUnit::MICRO),
+        arrow::time64(arrow::TimeUnit::NANO), arrow::timestamp(arrow::TimeUnit::SECOND),
+        arrow::timestamp(arrow::TimeUnit::MILLI),
+        arrow::timestamp(arrow::TimeUnit::MICRO), arrow::timestamp(arrow::TimeUnit::NANO),
+        arrow::timestamp(arrow::TimeUnit::SECOND, "UTC"),
+        arrow::duration(arrow::TimeUnit::SECOND), arrow::duration(arrow::TimeUnit::MILLI),
+        arrow::duration(arrow::TimeUnit::MICRO), arrow::duration(arrow::TimeUnit::NANO),
+        arrow::month_interval(), arrow::day_time_interval(),
+        arrow::month_day_nano_interval(),
+        arrow::list(arrow::field("some_custom_name", arrow::int32())),
+        arrow::large_list(arrow::field("some_custom_name", arrow::int32())),
+        arrow::fixed_size_list(arrow::field("some_custom_name", arrow::int32()), 123),
+        arrow::map(arrow::utf8(), arrow::int64(), false),
+        arrow::map(arrow::utf8(), arrow::int64(), true),
+        arrow::struct_({arrow::field("col1", arrow::int32()),
+                        arrow::field("col2", arrow::utf8())}),
+        // Zero-size union doesn't roundtrip through the C Data interface until
+        // Arrow 11 (which is not yet available on all platforms)
+        // arrow::sparse_union(FieldVector()), arrow::dense_union(FieldVector()),
+        // No custom type IDs
+        arrow::sparse_union({arrow::field("col1", arrow::int32()),
+                             arrow::field("col2", arrow::utf8())}),
+        arrow::dense_union({arrow::field("col1", arrow::int32()),
+                            arrow::field("col2", arrow::utf8())}),
+        // With custom type IDs
+        arrow::sparse_union({arrow::field("col1", arrow::int32()),
+                             arrow::field("col2", arrow::utf8())},
+                            {126, 127}),
+        arrow::dense_union({arrow::field("col1", arrow::int32()),
+                            arrow::field("col2", arrow::utf8())},
+                           {126, 127}),
+
+        // Type with nested metadata
+        arrow::list(arrow::field("some_custom_name", arrow::int32(),
+                                 arrow::KeyValueMetadata::Make({"key1"}, {"value1"})))
+
+            ));
+
+class ArrowSchemaParameterizedTestFixture
+    : public ::testing::TestWithParam<std::shared_ptr<arrow::Schema>> {
+ protected:
+  std::shared_ptr<arrow::Schema> arrow_schema;
+};
+
+TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
+  const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
+  auto maybe_serialized = arrow::ipc::SerializeSchema(*arrow_schema);
+  ASSERT_TRUE(maybe_serialized.ok());
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  struct ArrowIpcReader reader;
+  ArrowIpcReaderInit(&reader);
+  ASSERT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
+  EXPECT_EQ(reader.header_size_bytes, buffer_view.size_bytes);
+  EXPECT_EQ(reader.body_size_bytes, 0);
+
+  ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  ASSERT_TRUE(maybe_schema.ok());
+
+  // Better failure message if we first check for string equality
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), arrow_schema->ToString());
+  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(arrow_schema, true));
+
+  ArrowIpcReaderReset(&reader);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowIpcTest, ArrowSchemaParameterizedTestFixture,
+    ::testing::Values(
+        // Empty
+        arrow::schema({}),
+        // One
+        arrow::schema({arrow::field("some_name", arrow::int32())}),
+        // Field metadata
+        arrow::schema({arrow::field(
+            "some_name", arrow::int32(),
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))}),
+        // Schema metadata
+        arrow::schema({}, arrow::KeyValueMetadata::Make({"key1"}, {"value1"})),
+        // Non-nullable field
+        arrow::schema({arrow::field("some_name", arrow::int32(), false)})));
