@@ -63,14 +63,19 @@ main() {
 
     # commit to svn
     svn add "tmp/${tag}"
-    svn ci -m "Apache Arrow nanoarrow ${version} RC${rc_number}" "tmp/${tag}"
+    svn ci --username=$APACHE_USERNAME -m "Apache Arrow nanoarrow ${version} RC${rc_number}" "tmp/${tag}"
 
     # clean up
     rm -rf tmp
+    rm -rf "${download_dir}"
 
     echo "Uploaded at https://dist.apache.org/repos/dist/dev/arrow/${tag}"
+}
 
-    popd
+header() {
+    echo "============================================================"
+    echo "${1}"
+    echo "============================================================"
 }
 
 main "$@"
