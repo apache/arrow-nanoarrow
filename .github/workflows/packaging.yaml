@@ -220,19 +220,18 @@ jobs:
       - name: Build R Source Package
         shell: bash
         run : |
-          pushd nanoarrow/r
-          # If we're about to build a non-SNAPSHOT version, update the
-          # Version: field in DESCRIPTION
-          Rscript -e 'if (grepl("-SNAPSHOT$", Sys.getenv("VERSION"))) desc::desc_set(Version = Sys.getenv("VERSION"))'
-          ./configure
-          popd
+          # Install the package from source. This will generate and copy the
+          # latest nanoarrow C bundle as well.
+          R CMD INSTALL nanoarrow/r --preclean
 
-          R_PKG_TARBALL=`Rscript -e 'cat(pkgbuild::build("nanoarrow/r"))'`
-          echo "R_PKG_TARBALL=${R_PKG_TARBALL}" >> $GITHUB_ENV
+          # Make a directory just for the output tarball to simplify the
+          # upload-artifact step.
+          mkdir nanoarrow-r-pkg && cd nanoarrow-r-pkg
+          R CMD build ../nanoarrow/r
 
       - uses: actions/upload-artifact@v3
         with:
           name: r-source
           retention-days: 7
           path: |
-            ${{ env.R_PKG_TARBALL }}
+            nanoarrow-r-pkg/*.tar.gz
