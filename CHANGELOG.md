@@ -58,3 +58,26 @@
 - **extensions/nanoarrow_ipc**: Tweak draft interface (#111)
 - set map entries/key to non-nullable (#107)
 - **ci**: Actually commit bundled IPC extension to dist/ (#96)
+
+## nanoarrow 0.1.0 (2023-02-24)
+
+## apache-arrow-nanoarrow-0.1.0-rc1 (2023-02-24)
+
+## apache-arrow-nanoarrow-0.1.0-rc0 (2023-02-23)
+
+### Feat
+
+- **extensions/nanoarrow_ipc**: Improve type coverage of schema field decode (#115)
+- **r**: Add `as_nanoarrow_array()` implementation that does not fall back on `arrow::as_arrow_array()` everywhere (#108)
+- **r**: Create nanoarrow_array objects from buffers (#105)
+- **r**: Implement infer schema methods (#104)
+- **r**: Create and modify nanoarrow_schema objects (#101)
+
+### Fix
+
+- Correct storage type for timestamp and duration types (#116)
+- **extensions/nanoarrow_ipc**: Remove extra copy of flatcc from dist/ (#113)
+- make sure bundled nanoarrow is also valid C++ (#112)
+- **extensions/nanoarrow_ipc**: Tweak draft interface (#111)
+- set map entries/key to non-nullable (#107)
+- **ci**: Actually commit bundled IPC extension to dist/ (#96)
