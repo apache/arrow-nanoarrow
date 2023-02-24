@@ -26,7 +26,7 @@
 # - NANOARROW_CMAKE_OPTIONS (e.g., to help cmake find Arrow C++)
 # - R_HOME: Path to the desired R installation. Defaults to `R` on PATH.
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
-# - TEST_C: Builds the C library and tests using the default CMake 
+# - TEST_C: Builds the C library and tests using the default CMake
 #   configuration. Defaults to the value of TEST_SOURCE.
 # - TEST_C_BUNDLED: Bundles and builds the nanoarrow.h/nanorrow.c distribution
 #   and runs tests. Defaults to the value of TEST_SOURCE.
@@ -113,10 +113,8 @@ import_gpg_keys() {
 }
 
 if type shasum >/dev/null 2>&1; then
-  sha256_verify="shasum -a 256 -c"
   sha512_verify="shasum -a 512 -c"
 else
-  sha256_verify="sha256sum -c"
   sha512_verify="sha512sum -c"
 fi
 
@@ -126,10 +124,8 @@ fetch_archive() {
   local dist_name=$1
   download_rc_file ${dist_name}.tar.gz
   download_rc_file ${dist_name}.tar.gz.asc
-  download_rc_file ${dist_name}.tar.gz.sha256
   download_rc_file ${dist_name}.tar.gz.sha512
   gpg --verify ${dist_name}.tar.gz.asc ${dist_name}.tar.gz
-  ${sha256_verify} ${dist_name}.tar.gz.sha256
   ${sha512_verify} ${dist_name}.tar.gz.sha512
 }
 
@@ -188,7 +184,7 @@ test_and_install_c() {
   cmake ${NANOARROW_SOURCE_DIR} \
     -DNANOARROW_BUILD_TESTS=ON \
     ${NANOARROW_CMAKE_OPTIONS:-}
-  
+
   show_info "Build CMake Project"
   cmake --build .
 
@@ -212,7 +208,7 @@ test_c_bundled() {
     -DNANOARROW_BUILD_TESTS=ON \
     -DNANOARROW_BUNDLE=ON \
     ${NANOARROW_CMAKE_OPTIONS:-}
-  
+
   show_info "Build CMake Project"
   cmake --build .
 
