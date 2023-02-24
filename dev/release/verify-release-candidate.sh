@@ -231,18 +231,16 @@ test_r() {
   $R_BIN -e 'install.packages("pak", repos = "https://cloud.r-project.org"); pak::local_install_dev_deps("r")'
 
   show_info "Build the R package source tarball"
-  pushd r
-  ./configure
-  popd
+  R CMD INSTALL r --preclean
 
   # Builds the R source tarball
   pushd $NANOARROW_TMPDIR
-  $R_BIN CMD build $NANOARROW_SOURCE_DIR/r
+  $R_BIN CMD build "$NANOARROW_SOURCE_DIR/r"
   R_PACKAGE_TARBALL_NAME=`ls nanoarrow_*.tar.gz`
 
   show_info "Run R CMD check"
   # Runs R CMD check on the tarball
-  $R_BIN CMD check $R_PACKAGE_TARBALL_NAME
+  $R_BIN CMD check "$R_PACKAGE_TARBALL_NAME" --no-manual
 
   popd
 }
