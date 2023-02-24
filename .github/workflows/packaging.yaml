@@ -227,11 +227,12 @@ jobs:
           ./configure
           popd
 
-          Rscript -e 'pkgbuild::build("nanoarrow/r")'
+          R_PKG_TARBALL=`Rscript -e 'cat(pkgbuild::build("nanoarrow/r"))'`
+          echo "R_PKG_TARBALL=${R_PKG_TARBALL}" >> $GITHUB_ENV
 
       - uses: actions/upload-artifact@v3
         with:
           name: r-source
           retention-days: 7
           path: |
-            nanoarrow/nanoarrow_${{ env.VERSION }}.tar.gz
+            ${{ env.R_PKG_TARBALL }}
