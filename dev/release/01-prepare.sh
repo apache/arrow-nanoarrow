@@ -76,4 +76,4 @@ git commit -m "chore: update versions for ${version}" --allow-empty
 git tag -a "${release_candidate_tag}" -m "nanoarrow ${version} RC ${rc_number}"
 
 echo "Created release candidate tag: ${release_candidate_tag}"
-echo "Push this tag before continuing!"
+echo "git push upstream ${release_candidate_tag} before continuing!"
