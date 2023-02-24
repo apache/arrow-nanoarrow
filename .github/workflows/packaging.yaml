@@ -235,3 +235,41 @@ jobs:
           retention-days: 7
           path: |
             nanoarrow-r-pkg/*.tar.gz
+
+  release:
+    name: "Create release"
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - docs
+      - source
+      - r
+
+    steps:
+      - name: Get All Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: release-artifacts
+      - name: Release
+        shell: bash
+        run: |
+          RELEASE_TAG=${GITHUB_REF#refs/*/}
+          # Deduplicate artifacts built in different jobs with same tag
+          mkdir -p upload-staging
+          find ./release-artifacts/ \
+            '(' \
+              -name docs.tgz -or \
+              -name 'nanoarrow_*.tar.gz' -or \
+              -name 'apache-arrow-nanoarrow-*.tar.gz' \
+            ')' \
+            -exec mv '{}' upload-staging \;
+          UPLOAD=$(find upload-staging -type f | sort | uniq)
+          echo "Uploading files:"
+          echo ${UPLOAD}
+          gh release create "${RELEASE_TAG}" \
+            --repo ${{ github.repository }} \
+            --prerelease \
+            --title "nanoarrow ${RELEASE_TAG}" \
+            ${UPLOAD}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
