@@ -33,18 +33,24 @@ cd arrow-nanoarrow/dev/release
 ./verify-release-candidate.sh 0.1.0 0
 ```
 
-Full verification requires:
+Full verification requires [CMake](https://cmake.org/download/) to build and run the test
+suite. The test suite currently depends on an Arrow C++ installation that is discoverable
+by CMake (e.g., using one of the methods described in the
+[Arrow installation instructions](https://arrow.apache.org/install/)). For environments
+where binary packages are not provided, building and installing Arrow C++ from source
+may be required. You can provide the `NANOARROW_CMAKE_OPTIONS` environment variable to
+pass extra arguments to `cmake` (e.g., `-DArrow_DIR=path/to/arrow/lib/cmake/Arrow` or
+`-DCMAKE_TOOLCHAIN_FILE=[path to vcpkg]/scripts/buildsystems/vcpkg.cmake`).
 
-- bash
-- curl
-- gnupg
-- cmake
-- Arrow C++
-- R
+Verification of the R package requires an
+[R installation](https://cloud.r-project.org/) and a C/C++ compiler (e.g.,
+[RTools](https://cloud.r-project.org/bin/windows/Rtools/) on Windows or XCode Command
+Line Tools). You can set the `R_HOME` environment variable or
+`export PATH="$PATH:/path/to/R/bin"` to point to a specific R installation.
 
-Of these, `cmake` and `R` must be available on `$PATH` and Arrow C++ must be findable by `cmake`.
-You can set the `NANOARROW_CMAKE_OPTIONS` environment variable to help CMake find the Arrow
-install directory.
+The verification script itself is written in `bash` and requires the `curl`, `gpg`, and
+`shasum`/`sha512sum` commands. These are typically available from a packaage
+manager except on Windows (see below).
 
 ### MacOS
 
@@ -54,24 +60,19 @@ On MacOS you can install all requirements except R using [Homebrew](https://brew
 brew install cmake gnupg apache-arrow
 ```
 
-On MacOS versions where Homebrew is not available or no longer supported, you must
-install [CMake directly from Kitware](https://cmake.org/download/). Building Arrow
-C++ on older MacOS may require building OpenSSL from source. Due to CMake version
-support, this is may only be possible for MacOS 10.13 or later.
-
 You can install R using the instructions provided on the
-[CRAN Download page](https://cloud.r-project.org/bin/macosx/).
+[R Project Download page](https://cloud.r-project.org/bin/macosx/).
 
 ### Debian/Ubuntu
 
 On Debian/Ubuntu (e.g., `docker run ubuntu:latest`) you can install prerequisites using `apt`:
 
 ```
-sudo apt update
-sudo apt install -y cmake r-base gnupg curl
+apt update
+sudo apt install -y git cmake r-base gnupg curl
 
 # For Arrow C++
-sudo apt install -y -V ca-certificates lsb-release wget
+apt install -y -V ca-certificates lsb-release wget
 wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt update
@@ -80,7 +81,18 @@ sudo apt install -y -V libarrow-dev
 
 ### Fedora
 
+On recent Fedora (e.g., `docker run fedora:latest`), you can install all prerequisites
+using `dnf`:
+
+```
+dnf install -y git cmake R gnupg libcurl-devel curl libarrow-devel
+```
+
 ### Windows
+
+To verify the C library currently you will need to either use Conda or
+[build Arrow from source](https://arrow.apache.org/docs/dev/developers/cpp/windows.html).
+You can verify the R package only using the MSys2 bash shell (?).
 
 - Install MSys2/bash
 - Install CMake

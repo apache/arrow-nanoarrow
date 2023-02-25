@@ -228,10 +228,11 @@ test_r() {
   fi
 
   show_info "Install nanoarrow test dependencies"
-  $R_BIN -e 'install.packages("pak", repos = "https://cloud.r-project.org"); pak::local_install_dev_deps("r")'
+  $R_BIN -e 'if (!requireNamespace("pak")) install.packages("pak", repos = "https://cloud.r-project.org");'
+  $R_BIN -e 'Sys.setenv("ARROW_USE_PKG_CONFIG" = "false"); pak::local_install_dev_deps("r")'
 
   show_info "Build the R package source tarball"
-  R CMD INSTALL r --preclean
+  $R_BIN CMD INSTALL r --preclean
 
   # Builds the R source tarball
   pushd $NANOARROW_TMPDIR
