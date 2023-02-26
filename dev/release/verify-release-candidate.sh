@@ -228,8 +228,11 @@ test_r() {
   fi
 
   show_info "Install nanoarrow test dependencies"
-  $R_BIN -e 'if (!requireNamespace("pak")) install.packages("pak", repos = "https://cloud.r-project.org");'
-  $R_BIN -e 'Sys.setenv("ARROW_USE_PKG_CONFIG" = "false"); pak::local_install_dev_deps("r")'
+  # For the purposes of this script, we don't install arrow because it takes too long
+  # (but the arrow integration tests will run if the arrow package is installed anyway).
+  # Using a manual approach because installing pak takes a while on some systems and
+  # beacuse the package versions don't matter much.
+  $R_BIN -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")) if (!requireNamespace(pkg)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
 
   show_info "Build the R package source tarball"
   $R_BIN CMD INSTALL r --preclean
