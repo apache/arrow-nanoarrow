@@ -244,7 +244,7 @@ test_r() {
 
   show_info "Run R CMD check"
   # Runs R CMD check on the tarball
-  $R_BIN CMD check "$R_PACKAGE_TARBALL_NAME" --no-manual
+  _R_CHECK_FORCE_SUGGESTS_=false $R_BIN CMD check "$R_PACKAGE_TARBALL_NAME" --no-manual
 
   popd
 }
