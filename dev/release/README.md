@@ -67,7 +67,7 @@ You can install R using the instructions provided on the
 
 On Debian/Ubuntu (e.g., `docker run ubuntu:latest`) you can install prerequisites using `apt`:
 
-```
+```bash
 apt update
 sudo apt install -y git cmake r-base gnupg curl
 
@@ -81,11 +81,30 @@ sudo apt install -y -V libarrow-dev
 
 ### Fedora
 
-On recent Fedora (e.g., `docker run fedora:latest`), you can install all prerequisites
+On recent Fedora (e.g., `docker run --rm -it fedora:latest`), you can install all prerequisites
 using `dnf`:
 
+```bash
+dnf install -y git cmake R gnupg curl libarrow-devel
 ```
-dnf install -y git cmake R gnupg libcurl-devel curl libarrow-devel
+
+### Alpine Linux
+
+On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available
+using `apk add` except Arrow C++ which must be built and installed from source.
+
+```bash
+apk add bash linux-headers git cmake R-dev g++ gnupg curl
+
+# Build Arrow C++ from source
+curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
+  tar -zxf -
+mkdir arrow-build && cd arrow-build
+cmake ../apache-arrow-11.0.0/cpp \
+    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE -DCMAKE_INSTALL_PREFIX=../arrow
+cmake --build .
+cmake --install . --prefix=../arrow
+cd ..
 ```
 
 ### Windows
