@@ -130,20 +130,19 @@ TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
 
 ### Debian/Ubuntu
 
-On Debian/Ubuntu (e.g., `docker run ubuntu:latest`) you can install prerequisites using `apt`.
+On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install prerequisites using `apt`.
 
 <details>
 
 ```bash
-apt update
-sudo apt install -y git cmake r-base gnupg curl
+apt-get update && apt-get install -y git cmake r-base gnupg curl
 
 # For Arrow C++
-apt install -y -V ca-certificates lsb-release wget
+apt-get install -y -V ca-certificates lsb-release wget
 wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-sudo apt update
-sudo apt install -y -V libarrow-dev
+apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+apt-get update
+apt-get install -y -V libarrow-dev
 ```
 
 </details>
@@ -174,7 +173,7 @@ using `apk add` except Arrow C++ which must be built and installed from source.
 <details>
 
 ```bash
-apk add bash linux-headers git cmake R-dev g++ gnupg curl
+apk add bash linux-headers git cmake R R-dev g++ gnupg curl
 
 # Build Arrow C++ from source
 curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
@@ -191,6 +190,12 @@ export NANOARROW_CMAKE_OPTIONS="-DArrow_Dir=$(pwd)/arrow/lib/cmake/Arrow"
 ```
 
 </details>
+
+### Big endian
+
+One can verify a nanoarrow release candidate on big endian by setting
+`DOCKER_DEFAULT_PLATFORM=linux/s390x` and following the instructions for
+[Alpine Linux](#alpine-linux).
 
 ## Creating a release candidate
 
