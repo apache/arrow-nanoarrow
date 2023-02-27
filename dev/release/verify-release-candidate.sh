@@ -164,7 +164,7 @@ setup_tempdir() {
 
   if [ -z "${NANOARROW_TMPDIR}" ]; then
     # clean up automatically if NANOARROW_TMPDIR is not defined
-    NANOARROW_TMPDIR=$(mktemp -d -t "nanoarrow-${VERSION}.XXXXX")
+    NANOARROW_TMPDIR=$(mktemp -d -t "nanoarrow-${VERSION}.XXXXXX")
     trap cleanup EXIT
   else
     # don't clean up automatically
