@@ -232,7 +232,7 @@ test_r() {
   # (but the arrow integration tests will run if the arrow package is installed anyway).
   # Using a manual approach because installing pak takes a while on some systems and
   # beacuse the package versions don't matter much.
-  $R_BIN -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")) if (!requireNamespace(pkg)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
+  $R_BIN -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")) if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
 
   show_info "Build the R package source tarball"
 
