@@ -235,7 +235,12 @@ test_r() {
   $R_BIN -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")) if (!requireNamespace(pkg)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
 
   show_info "Build the R package source tarball"
-  $R_BIN CMD INSTALL r --preclean
+
+  # Running R CMD INSTALL on the R source directory is the most reliable cross-platform
+  # method to ensure the proper version of nanoarrow is vendored into the R package.
+  # Do this in a temporary library so not to overwrite the a user's existing package.
+  mkdir "$NANOARROW_TMPDIR/tmplib"
+  $R_BIN CMD INSTALL r --preclean --library="$NANOARROW_TMPDIR/tmplib"
 
   # Builds the R source tarball
   pushd $NANOARROW_TMPDIR
