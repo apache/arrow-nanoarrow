@@ -87,8 +87,8 @@ brew install cmake gnupg apache-arrow
 
 For older MacOS or MacOS without Homebrew, you will have to install the XCode
 Command Line Tools (i.e., `xcode-select --install`),
-[install gnupg](https://gnupg.org/download/),
-[install CMake](https://cmake.org/download/), and build Arrow from source.
+[install GnuPG](https://gnupg.org/download/),
+[install CMake](https://cmake.org/download/), and build Arrow C++ from source.
 
 <details>
 
@@ -114,6 +114,19 @@ export NANOARROW_CMAKE_OPTIONS="-DArrow_Dir=$(pwd)/arrow/lib/cmake/Arrow -DCMAKE
 
 You can install R using the instructions provided on the
 [R Project Download page](https://cloud.r-project.org/bin/macosx/).
+
+### Windows
+
+To verify the C library on Windows, use [Conda](#conda) to supply all the prerequisites
+for the verification script; however, you can use R and Rtools
+[installed using the official installer](https://cloud.r-project.org/bin/windows/).
+You can verify the R package on Windows without Conda
+using Git Bash or the MSys2 Bash that ships with Rtools.
+
+```bash
+export R_HOME="/c/Program Files/R/bin"
+TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
+```
 
 ### Debian/Ubuntu
 
@@ -144,6 +157,15 @@ using `dnf`:
 dnf install -y git cmake R gnupg curl libarrow-devel
 ```
 
+### Arch Linux
+
+On Arch Linux (e.g., `docker run --rm -it archlinux:latest`, you can install all prerequisites
+using `pacman`):
+
+```bash
+pacman -S git g++ make cmake r-base gnupg curl arrow
+```
+
 ### Alpine Linux
 
 On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available
@@ -166,33 +188,6 @@ cd ..
 
 # Pass location of Arrow to the build script
 export NANOARROW_CMAKE_OPTIONS="-DArrow_Dir=$(pwd)/arrow/lib/cmake/Arrow"
-```
-
-</details>
-
-### Windows
-
-To verify the C library on Windows without [Conda](#conda) you will need to
-[build Arrow from source](https://arrow.apache.org/docs/dev/developers/cpp/windows.html).
-Because the source verification script is written in bash, you will need bash for
-Windows (e.g., bash installed with Git for Windows or Rtools).
-
-<details>
-
-```bash
-# Build + install Arrow C++
-curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
-  tar -zxf -
-mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-11.0.0/cpp \
-    -DARROW_SIMD_LEVEL=NONE -DCMAKE_INSTALL_PREFIX=../arrow
-cmake --build .
-mv release/Debug release/Release
-cmake --install . --prefix=../arrow
-cd ..
-
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=C:/Users/dewey/Desktop/arrow/lib/cmake/Arrow"
-export R_HOME="C:/Program Files/R/R-4.2.2"
 ```
 
 </details>
