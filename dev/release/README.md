@@ -66,12 +66,15 @@ TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
 
 ### Conda
 
+Using `conda`, one can install all requirements needed for verification on Linux,
+MacOS, or Windows.
+
 ```bash
 conda create --name nanoarrow-verify-rc
 conda activate nanoarrow-verify-rc
 conda config --set channel_priority strict
 
-conda install -c conda-forge git cmake bash gnupg apache-arrow
+conda install -c conda-forge git cmake bash gnupg arrow-cpp
 ```
 
 ### MacOS
