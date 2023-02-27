@@ -51,7 +51,8 @@ main() {
                     --repo "${REPOSITORY}" \
                     --workflow=packaging.yaml \
                     --json 'databaseId,event,headBranch,status' \
-                    --jq ".[] | select(.event == \"push\" and .headBranch == \"${tag}\") | .databaseId")
+                    --jq ".[] | select(.event == \"push\" and .headBranch == \"${tag}\") | .databaseId" | \
+                    head -n 1)
         sleep 1
     done
 
@@ -147,6 +148,11 @@ upload_asset_signatures() {
        "${tag}" \
        "${assets[@]/%/.asc}" \
        "${assets[@]/%/.sha512}"
+
+    # Clean up
+    for asset in "${assets[@]}"; do
+        rm -f "${asset}" "${asset}.asc" "${asset}.sha512"
+    done
 }
 
 main "$@"

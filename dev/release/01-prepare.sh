@@ -60,7 +60,7 @@ echo "Updating changelog for $version"
 (
     echo ;
     # Strip trailing blank line
-    printf '%s\n' "$(cz ch --dry-run --unreleased-version "nanoarrow ${version}" --start-rev apache-arrow-nanoarrow-${prev_version})"
+    printf '%s\n' "$(cz ch --dry-run --unreleased-version "nanoarrow ${version}")"
 ) >> ${SOURCE_DIR}/../../CHANGELOG.md
 git add ${SOURCE_DIR}/../../CHANGELOG.md
 git commit -m "chore: update CHANGELOG.md for $version"
@@ -76,4 +76,4 @@ git commit -m "chore: update versions for ${version}" --allow-empty
 git tag -a "${release_candidate_tag}" -m "nanoarrow ${version} RC ${rc_number}"
 
 echo "Created release candidate tag: ${release_candidate_tag}"
-echo "Push this tag before continuing!"
+echo "git push upstream ${release_candidate_tag} before continuing!"
