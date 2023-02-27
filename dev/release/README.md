@@ -109,13 +109,25 @@ cd ..
 
 ### Windows
 
-To verify the C library currently you will need to either use Conda or
+To verify the C library on Windows you will need to
 [build Arrow from source](https://arrow.apache.org/docs/dev/developers/cpp/windows.html).
-You can verify the R package only using the MSys2 bash shell (?).
+Because the source verification script is written in bash, you will need bash for
+Windows (e.g., bash installed with Git for Windows or Rtools).
 
-- Install MSys2/bash
-- Install CMake
-- Build Arrow from source
-- `export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=.../dist/lib/cmake/Arrow"`
+```bash
+# Build + install Arrow C++
+curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
+  tar -zxf -
+mkdir arrow-build && cd arrow-build
+cmake ../apache-arrow-11.0.0/cpp \
+    -DARROW_SIMD_LEVEL=NONE -DCMAKE_INSTALL_PREFIX=../arrow
+cmake --build .
+mv release/Debug release/Release
+cmake --install . --prefix=../arrow
+cd ..
+
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=C:/Users/dewey/Desktop/arrow/lib/cmake/Arrow"
+export R_HOME="C:/Program Files/R/R-4.2.2"
+```
 
 ### Conda
