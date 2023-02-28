@@ -159,8 +159,11 @@ if(NANOARROW_BUILD_TESTS)
     endif()
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-    # Avoids a warning about timestamps on downloaded files
-    cmake_policy(SET CMP0135 NEW)
+    # Avoids a warning about timestamps on downloaded files (prefer new policy
+    # if available))
+    if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
+        cmake_policy(SET CMP0135 NEW)
+    endif()
 
     # Use an old version of googletest if we have to to support gcc 4.8
     if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
