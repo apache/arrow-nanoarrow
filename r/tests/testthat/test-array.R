@@ -203,7 +203,7 @@ test_that("array list interface classes offset buffers for relevant types", {
 })
 
 test_that("array list interface works for nested types", {
-  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
+  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two", stringsAsFactors = FALSE))
 
   expect_named(array$children, c("a", "b"))
   expect_s3_class(array$children[[1]], "nanoarrow_array")
