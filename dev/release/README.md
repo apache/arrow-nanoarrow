@@ -143,8 +143,6 @@ export R_HOME="/c/Program Files/R/R-4.2.2"
 
 On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install prerequisites using `apt`.
 
-<details>
-
 ```bash
 apt-get update && apt-get install -y git cmake r-base gnupg curl
 
@@ -155,8 +153,6 @@ apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename 
 apt-get update
 apt-get install -y -V libarrow-dev
 ```
-
-</details>
 
 ### Fedora
 
@@ -178,7 +174,7 @@ pacman -S git g++ make cmake r-base gnupg curl arrow
 
 ### Alpine Linux
 
-On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available
+On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), most prerequisites are available
 using `apk add` except Arrow C++ which must be built and installed from source.
 
 ```bash
@@ -196,6 +192,33 @@ cd ..
 
 # Pass location of Arrow to the build script
 export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
+```
+
+# Centos7
+
+On Centos7 (e.g., `docker run --rm -it centos:7`), most prerequisites are
+available via `yum install` except Arrow C++, which must be built from
+source. Arrow C++ 9.0.0 was the last version to support the default system
+compiler (gcc 4.8).
+
+```bash
+yum install epel-release # needed to install R
+yum install git gnupg curl R gcc-c++ cmake3
+
+# Needed for R CMD check if the en_US.UTF-8 locale is not defined
+# (e.g., in the centos:7 docker image)
+# localedef -c -f UTF-8 -i en_US en_US.UTF-8
+# export LC_ALL=en_US.UTF-8
+
+# Build Arrow C++ 9.0.0 from source
+curl https://dlcdn.apache.org/arrow/arrow-9.0.0/apache-arrow-9.0.0.tar.gz | \
+  tar -zxf -
+mkdir arrow-build && cd arrow-build
+cmake3 ../apache-arrow-9.0.0/cpp \
+    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE -DCMAKE_INSTALL_PREFIX=../arrow
+cmake3 --build .
+make install
+cd ..
 ```
 
 ### Big endian
