@@ -46,10 +46,11 @@ Verification of the R package requires an
 [R installation](https://cloud.r-project.org/) and a C/C++ compiler (e.g.,
 [RTools](https://cloud.r-project.org/bin/windows/Rtools/) on Windows or XCode Command
 Line Tools). You can set the `R_HOME` environment variable or
-`export PATH="$PATH:/path/to/R/bin"` to point to a specific R installation.
+`export PATH="$PATH:/path/to/R"` (where `$R_HOME/bin/R` is the R executable)
+to point to a specific R installation.
 
 The verification script itself is written in `bash` and requires the `curl`, `gpg`, and
-`shasum`/`sha512sum` commands. These are typically available from a packaage
+`shasum`/`sha512sum` commands. These are typically available from a package
 manager except on Windows (see below).
 
 To run only C library verification (requires CMake and Arrow C++ but not R):
@@ -134,7 +135,7 @@ cmake --build .
 cmake --install . --prefix=../arrow --config=Debug
 cd ..
 
-# Pass location of Arrow and R to the build script
+# Pass location of Arrow and R to the verification script
 export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow"
 export R_HOME="/c/Program Files/R/R-4.2.2"
 ```
@@ -190,11 +191,11 @@ cmake --build .
 cmake --install . --prefix=../arrow
 cd ..
 
-# Pass location of Arrow to the build script
+# Pass location of Arrow to the verification script
 export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
 ```
 
-# Centos7
+### Centos7
 
 On Centos7 (e.g., `docker run --rm -it centos:7`), most prerequisites are
 available via `yum install` except Arrow C++, which must be built from
@@ -219,6 +220,11 @@ cmake3 ../apache-arrow-9.0.0/cpp \
 cmake3 --build .
 make install
 cd ..
+
+# Pass location of Arrow, cmake, and ctest to the verification script
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
+export CMAKE_BIN=cmake3
+export CTEST_BIN=ctest3
 ```
 
 ### Big endian
