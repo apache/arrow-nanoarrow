@@ -64,19 +64,6 @@ To run only R package verification (requires R but not CMake or Arrow C++):
 TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
 ```
 
-### Conda
-
-Using `conda`, one can install all requirements needed for verification on Linux,
-MacOS, or Windows.
-
-```bash
-conda create --name nanoarrow-verify-rc
-conda activate nanoarrow-verify-rc
-conda config --set channel_priority strict
-
-conda install -c conda-forge git cmake bash gnupg arrow-cpp
-```
-
 ### MacOS
 
 On MacOS you can install all requirements except R using [Homebrew](https://brew.sh):
@@ -115,17 +102,35 @@ export NANOARROW_CMAKE_OPTIONS="-DArrow_Dir=$(pwd)/arrow/lib/cmake/Arrow -DCMAKE
 You can install R using the instructions provided on the
 [R Project Download page](https://cloud.r-project.org/bin/macosx/).
 
-### Windows
+### Conda (Linux and MacOS)
 
-To verify the C library on Windows, use [Conda](#conda) to supply all the prerequisites
-for the verification script; however, you can use R and Rtools
-[installed using the official installer](https://cloud.r-project.org/bin/windows/).
-You can verify the R package on Windows without Conda
-using Git Bash or the MSys2 Bash that ships with Rtools.
+Using `conda`, one can install all requirements needed for verification on Linux
+or MacOS:
 
 ```bash
-export R_HOME="/c/Program Files/R/bin"
-TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
+conda create --name nanoarrow-verify-rc
+conda activate nanoarrow-verify-rc
+conda config --set channel_priority strict
+
+conda install -c conda-forge git cmake gnupg arrow-cpp
+```
+
+### Windows
+
+On Windows, it is reccomended to install everything except `arrow-cpp`
+separately. Installing
+[Visual Studio](https://visualstudio.microsoft.com/vs/),
+[CMake](https://cmake.org/download/), and
+[Git](https://git-scm.com/downloads) should provide the prerequisties
+to verify the C library; R and Rtools can be installed using the
+[official installer](https://cloud.r-project.org/bin/windows/).
+
+```powershell
+conda create --name nanoarrow-verify-rc
+conda activate nanoarrow-verify-rc
+conda config --set channel_priority strict
+
+conda install -c conda-forge gnupg arrow-cpp
 ```
 
 ### Debian/Ubuntu
