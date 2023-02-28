@@ -16,7 +16,7 @@
 // under the License.
 
 #include <gtest/gtest.h>
-#include <math.h>
+#include <cmath>
 
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
@@ -589,7 +589,7 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   EXPECT_DOUBLE_EQ(data_buffer[4], 3.14);
   EXPECT_FLOAT_EQ(data_buffer[4], 3.14);
   EXPECT_FLOAT_EQ(data_buffer[5], std::numeric_limits<double>::max());
-  EXPECT_TRUE(std::isnan(data_buffer[6])) << data_buffer[6];
+  EXPECT_TRUE(isnan(data_buffer[6])) << data_buffer[6];
   EXPECT_FLOAT_EQ(data_buffer[7], INFINITY);
   EXPECT_FLOAT_EQ(data_buffer[8], -INFINITY);
   EXPECT_FLOAT_EQ(data_buffer[9], -1);
@@ -645,7 +645,7 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_EQ(data_buffer[3], 3);
   EXPECT_FLOAT_EQ(data_buffer[4], 3.14);
   EXPECT_FLOAT_EQ(data_buffer[5], std::numeric_limits<float>::max());
-  EXPECT_TRUE(std::isnan(data_buffer[6])) << data_buffer[6];
+  EXPECT_TRUE(isnan(data_buffer[6])) << data_buffer[6];
   EXPECT_FLOAT_EQ(data_buffer[7], INFINITY);
   EXPECT_FLOAT_EQ(data_buffer[8], -INFINITY);
   EXPECT_FLOAT_EQ(data_buffer[9], -1);
