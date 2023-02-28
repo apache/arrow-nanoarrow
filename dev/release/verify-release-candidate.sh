@@ -222,7 +222,7 @@ test_r() {
   show_header "Build and test R package"
 
   if [ ! -z "${R_HOME}" ]; then
-    R_BIN=${R_HOME}/bin/R
+    R_BIN="${R_HOME}/bin/R"
   else
     R_BIN=R
   fi
@@ -232,7 +232,7 @@ test_r() {
   # (but the arrow integration tests will run if the arrow package is installed anyway).
   # Using a manual approach because installing pak takes a while on some systems and
   # beacuse the package versions don't matter much.
-  $R_BIN -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")) if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
+  "$R_BIN" -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")) if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
 
   show_info "Build the R package source tarball"
 
@@ -240,16 +240,16 @@ test_r() {
   # method to ensure the proper version of nanoarrow is vendored into the R package.
   # Do this in a temporary library so not to overwrite the a user's existing package.
   mkdir "$NANOARROW_TMPDIR/tmplib"
-  $R_BIN CMD INSTALL r --preclean --library="$NANOARROW_TMPDIR/tmplib"
+  "$R_BIN" CMD INSTALL r --preclean --library="$NANOARROW_TMPDIR/tmplib"
 
   # Builds the R source tarball
   pushd $NANOARROW_TMPDIR
-  $R_BIN CMD build "$NANOARROW_SOURCE_DIR/r"
+  "$R_BIN" CMD build "$NANOARROW_SOURCE_DIR/r"
   R_PACKAGE_TARBALL_NAME=`ls nanoarrow_*.tar.gz`
 
   show_info "Run R CMD check"
   # Runs R CMD check on the tarball
-  _R_CHECK_FORCE_SUGGESTS_=false $R_BIN CMD check "$R_PACKAGE_TARBALL_NAME" --no-manual
+  _R_CHECK_FORCE_SUGGESTS_=false "$R_BIN" CMD check "$R_PACKAGE_TARBALL_NAME" --no-manual
 
   popd
 }
