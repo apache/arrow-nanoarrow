@@ -1235,6 +1235,13 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
   int64_t n_chars = 0;
   int64_t n_chars_last = 0;
 
+  // Because pointer math on a null pointer is undefined. Because n_chars
+  // will be zero, this address won't get written to.
+  char dummy;
+  if (out == NULL) {
+    out = &dummy;
+  }
+
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
     n_chars_last = snprintf(out + n_chars, n, "%.*s{dictionary(%s)<",
