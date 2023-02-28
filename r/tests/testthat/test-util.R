@@ -37,11 +37,14 @@ test_that("can set option/env var to pretend the arrow package is not installed"
 
 test_that("preserve/release works when release happens on another thread", {
   some_non_null_sexp <- 1L
-  count0 <- preserved_count()
+
+  preserved_empty()
+  expect_identical(preserved_empty(), 0)
   preserve_and_release_on_other_thread(some_non_null_sexp)
-  expect_identical(preserved_count(), count0 + 1)
+  # We can't test the exact value of preserved_count() because what the
+  # garbage collector releases and when is not stable.
+  expect_true(preserved_count() > 0)
   expect_identical(preserved_empty(), 1)
-  expect_identical(preserved_count(), count0)
   expect_identical(preserved_empty(), 0)
 })
 
