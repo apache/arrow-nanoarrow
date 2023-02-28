@@ -85,7 +85,7 @@ test_that("convert to vector works for partial_frame", {
   )
   expect_identical(
     convert_array(array, vctrs::partial_frame()),
-    data.frame(a = 1L, b = "two")
+    data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
   )
 })
 
