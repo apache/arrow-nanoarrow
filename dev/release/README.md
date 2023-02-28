@@ -134,7 +134,7 @@ cmake --build .
 cmake --install . --prefix=../arrow --config=Debug
 cd ..
 
-# Pass location of Arrow and R to the build script
+# Pass location of Arrow and R to the verification script
 export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow"
 export R_HOME="/c/Program Files/R/R-4.2.2"
 ```
@@ -190,11 +190,11 @@ cmake --build .
 cmake --install . --prefix=../arrow
 cd ..
 
-# Pass location of Arrow to the build script
+# Pass location of Arrow to the verification script
 export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
 ```
 
-# Centos7
+### Centos7
 
 On Centos7 (e.g., `docker run --rm -it centos:7`), most prerequisites are
 available via `yum install` except Arrow C++, which must be built from
@@ -219,6 +219,11 @@ cmake3 ../apache-arrow-9.0.0/cpp \
 cmake3 --build .
 make install
 cd ..
+
+# Pass location of Arrow, cmake, and ctest to the verification script
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
+export CMAKE_BIN=cmake3
+export CTEST_BIN=ctest3
 ```
 
 ### Big endian
