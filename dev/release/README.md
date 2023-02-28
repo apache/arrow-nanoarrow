@@ -49,7 +49,7 @@ Line Tools). You can set the `R_HOME` environment variable or
 `export PATH="$PATH:/path/to/R/bin"` to point to a specific R installation.
 
 The verification script itself is written in `bash` and requires the `curl`, `gpg`, and
-`shasum`/`sha512sum` commands. These are typically available from a packaage
+`shasum`/`sha512sum` commands. These are typically available from a package
 manager except on Windows (see below).
 
 To run only C library verification (requires CMake and Arrow C++ but not R):
