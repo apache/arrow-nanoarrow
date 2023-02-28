@@ -1235,25 +1235,18 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
   int64_t n_chars = 0;
   int64_t n_chars_last = 0;
 
-  // Because pointer math on a null pointer is undefined. Because n_chars
-  // will be zero, this address won't get written to.
-  char dummy;
-  if (out == NULL) {
-    out = &dummy;
-  }
-
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
-    n_chars_last = snprintf(out + n_chars, n, "%.*s{dictionary(%s)<",
+    n_chars_last = snprintf(out, n, "%.*s{dictionary(%s)<",
                             (int)schema_view.extension_name.size_bytes,
                             schema_view.extension_name.data,
                             ArrowTypeString(schema_view.storage_type));
   } else if (is_extension) {
     n_chars_last =
-        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.size_bytes,
+        snprintf(out, n, "%.*s{", (int)schema_view.extension_name.size_bytes,
                  schema_view.extension_name.data);
   } else if (is_dictionary) {
-    n_chars_last = snprintf(out + n_chars, n, "dictionary(%s)<",
+    n_chars_last = snprintf(out, n, "dictionary(%s)<",
                             ArrowTypeString(schema_view.storage_type));
   }
 
@@ -1262,11 +1255,14 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
   if (n < 0) {
     n = 0;
   }
+  if (out != NULL) {
+    out += n_chars_last;
+  }
 
   if (!is_dictionary) {
-    n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out + n_chars, n);
+    n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out, n);
   } else {
-    n_chars_last = ArrowSchemaToString(schema->dictionary, out + n_chars, n, recursive);
+    n_chars_last = ArrowSchemaToString(schema->dictionary, out, n, recursive);
   }
 
   n_chars += n_chars_last;
@@ -1274,22 +1270,31 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
   if (n < 0) {
     n = 0;
   }
+  if (out != NULL) {
+    out += n_chars_last;
+  }
 
   if (recursive && schema->format[0] == '+') {
-    n_chars_last = snprintf(out + n_chars, n, "<");
+    n_chars_last = snprintf(out, n, "<");
     n_chars += n_chars_last;
     n -= n_chars_last;
     if (n < 0) {
       n = 0;
     }
+    if (out != NULL) {
+    out += n_chars_last;
+  }
 
     for (int64_t i = 0; i < schema->n_children; i++) {
       if (i > 0) {
-        n_chars_last = snprintf(out + n_chars, n, ", ");
+        n_chars_last = snprintf(out, n, ", ");
         n_chars += n_chars_last;
         n -= n_chars_last;
         if (n < 0) {
           n = 0;
+        }
+        if (out != NULL) {
+          out += n_chars_last;
         }
       }
 
@@ -1297,37 +1302,46 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
       // but we need the name first
       if (schema->children[i] != NULL && schema->children[i]->release != NULL &&
           schema->children[i]->name != NULL) {
-        n_chars_last = snprintf(out + n_chars, n, "%s: ", schema->children[i]->name);
+        n_chars_last = snprintf(out, n, "%s: ", schema->children[i]->name);
         n_chars += n_chars_last;
         n -= n_chars_last;
         if (n < 0) {
           n = 0;
         }
+        if (out != NULL) {
+          out += n_chars_last;
+        }
       }
 
       n_chars_last =
-          ArrowSchemaToString(schema->children[i], out + n_chars, n, recursive);
+          ArrowSchemaToString(schema->children[i], out, n, recursive);
       n_chars += n_chars_last;
       n -= n_chars_last;
       if (n < 0) {
         n = 0;
       }
+      if (out != NULL) {
+        out += n_chars_last;
+      }
     }
 
-    n_chars_last = snprintf(out + n_chars, n, ">");
+    n_chars_last = snprintf(out, n, ">");
     n_chars += n_chars_last;
     n -= n_chars_last;
     if (n < 0) {
       n = 0;
     }
+    if (out != NULL) {
+      out += n_chars_last;
+    }
   }
 
   if (is_extension && is_dictionary) {
-    n_chars += snprintf(out + n_chars, n, ">}");
+    n_chars += snprintf(out, n, ">}");
   } else if (is_extension) {
-    n_chars += snprintf(out + n_chars, n, "}");
+    n_chars += snprintf(out, n, "}");
   } else if (is_dictionary) {
-    n_chars += snprintf(out + n_chars, n, ">");
+    n_chars += snprintf(out, n, ">");
   }
 
   return n_chars;
