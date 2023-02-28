@@ -51,6 +51,8 @@ test_that("infer_nanoarrow_schema() works for arrow objects", {
   )
   expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
 
+  skip_if_not(isTRUE(arrow::arrow_info()$capabilities["dataset"]))
+
   tbl_schema <- infer_nanoarrow_schema(
     arrow::InMemoryDataset$create(arrow::record_batch(x = 1L))
   )
