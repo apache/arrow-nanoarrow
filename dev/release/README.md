@@ -64,19 +64,6 @@ To run only R package verification (requires R but not CMake or Arrow C++):
 TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
 ```
 
-### Conda
-
-Using `conda`, one can install all requirements needed for verification on Linux,
-MacOS, or Windows.
-
-```bash
-conda create --name nanoarrow-verify-rc
-conda activate nanoarrow-verify-rc
-conda config --set channel_priority strict
-
-conda install -c conda-forge git cmake bash gnupg arrow-cpp
-```
-
 ### MacOS
 
 On MacOS you can install all requirements except R using [Homebrew](https://brew.sh):
@@ -90,8 +77,6 @@ Command Line Tools (i.e., `xcode-select --install`),
 [install GnuPG](https://gnupg.org/download/),
 [install CMake](https://cmake.org/download/), and build Arrow C++ from source.
 
-<details>
-
 ```bash
 # Download + build Arrow C++
 curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
@@ -99,7 +84,7 @@ curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
 mkdir arrow-build && cd arrow-build
 cmake ../apache-arrow-11.0.0/cpp \
     -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE \
-    # Required for Arrow on old clang
+    # Required for Arrow on old MacOS
     -DCMAKE_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY" \
     -DCMAKE_INSTALL_PREFIX=../arrow
 cmake --build .
@@ -107,32 +92,56 @@ cmake --install . --prefix=../arrow
 cd ..
 
 # Pass location of install to the release verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_Dir=$(pwd)/arrow/lib/cmake/Arrow -DCMAKE_CXX_FLAGS=-D_LIBCPP_DISABLE_AVAILABILITY"
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow -DCMAKE_CXX_FLAGS=-D_LIBCPP_DISABLE_AVAILABILITY"
 ```
-
-</details>
 
 You can install R using the instructions provided on the
 [R Project Download page](https://cloud.r-project.org/bin/macosx/).
 
-### Windows
+### Conda (Linux and MacOS)
 
-To verify the C library on Windows, use [Conda](#conda) to supply all the prerequisites
-for the verification script; however, you can use R and Rtools
-[installed using the official installer](https://cloud.r-project.org/bin/windows/).
-You can verify the R package on Windows without Conda
-using Git Bash or the MSys2 Bash that ships with Rtools.
+Using `conda`, one can install all requirements needed for verification on Linux
+or MacOS:
 
 ```bash
-export R_HOME="/c/Program Files/R/bin"
-TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
+conda create --name nanoarrow-verify-rc
+conda activate nanoarrow-verify-rc
+conda config --set channel_priority strict
+
+conda install -c conda-forge git cmake gnupg arrow-cpp
+```
+
+### Windows
+
+On Windows, prerequisites can be installed using officially provided
+installers:
+[Visual Studio](https://visualstudio.microsoft.com/vs/),
+[CMake](https://cmake.org/download/), and
+[Git](https://git-scm.com/downloads) should provide the prerequisties
+to verify the C library; R and Rtools can be installed using the
+[official R-project installer](https://cloud.r-project.org/bin/windows/).
+Arrow C++ can be built from source. The version of bash provided with
+Git for Windows can be used to execute the Arrow C++ build commands and
+the verification script.
+
+```bash
+# Build Arrow C++ from source
+curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
+  tar -zxf -
+mkdir arrow-build && cd arrow-build
+cmake ../apache-arrow-11.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+cmake --build .
+cmake --install . --prefix=../arrow --config=Debug
+cd ..
+
+# Pass location of Arrow and R to the build script
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow"
+export R_HOME="/c/Program Files/R/R-4.2.2"
 ```
 
 ### Debian/Ubuntu
 
 On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install prerequisites using `apt`.
-
-<details>
 
 ```bash
 apt-get update && apt-get install -y git cmake r-base gnupg curl
@@ -144,8 +153,6 @@ apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename 
 apt-get update
 apt-get install -y -V libarrow-dev
 ```
-
-</details>
 
 ### Fedora
 
@@ -167,10 +174,8 @@ pacman -S git g++ make cmake r-base gnupg curl arrow
 
 ### Alpine Linux
 
-On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available
+On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), most prerequisites are available
 using `apk add` except Arrow C++ which must be built and installed from source.
-
-<details>
 
 ```bash
 apk add bash linux-headers git cmake R R-dev g++ gnupg curl
@@ -186,10 +191,35 @@ cmake --install . --prefix=../arrow
 cd ..
 
 # Pass location of Arrow to the build script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_Dir=$(pwd)/arrow/lib/cmake/Arrow"
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
 ```
 
-</details>
+# Centos7
+
+On Centos7 (e.g., `docker run --rm -it centos:7`), most prerequisites are
+available via `yum install` except Arrow C++, which must be built from
+source. Arrow C++ 9.0.0 was the last version to support the default system
+compiler (gcc 4.8).
+
+```bash
+yum install epel-release # needed to install R
+yum install git gnupg curl R gcc-c++ cmake3
+
+# Needed for R CMD check if the en_US.UTF-8 locale is not defined
+# (e.g., in the centos:7 docker image)
+# localedef -c -f UTF-8 -i en_US en_US.UTF-8
+# export LC_ALL=en_US.UTF-8
+
+# Build Arrow C++ 9.0.0 from source
+curl https://dlcdn.apache.org/arrow/arrow-9.0.0/apache-arrow-9.0.0.tar.gz | \
+  tar -zxf -
+mkdir arrow-build && cd arrow-build
+cmake3 ../apache-arrow-9.0.0/cpp \
+    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE -DCMAKE_INSTALL_PREFIX=../arrow
+cmake3 --build .
+make install
+cd ..
+```
 
 ### Big endian
 
