@@ -16,7 +16,7 @@
 // under the License.
 
 #include <gtest/gtest.h>
-#include <math.h>
+#include <cmath>
 
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
