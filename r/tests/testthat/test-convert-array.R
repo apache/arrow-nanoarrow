@@ -139,7 +139,10 @@ test_that("convert to vector works for struct-style vectors", {
   array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))
   expect_identical(
     convert_array(array),
-    as.data.frame(unclass(as.POSIXlt("2021-01-01", tz = "America/Halifax")))
+    as.data.frame(
+      unclass(as.POSIXlt("2021-01-01", tz = "America/Halifax")),
+      stringsAsFactors = FALSE
+    )
   )
 
   array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))

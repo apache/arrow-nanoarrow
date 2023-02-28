@@ -100,7 +100,7 @@ test_that("schemaless array list interface works for non-nested types", {
 })
 
 test_that("schemaless array list interface works for nested types", {
-  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
+  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two", stringsAsFactors = FALSE))
   nanoarrow_array_set_schema(array, NULL)
 
   expect_length(array$children, 2L)
