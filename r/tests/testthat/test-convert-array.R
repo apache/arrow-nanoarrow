@@ -61,7 +61,7 @@ test_that("convert_array() errors for unsupported array", {
 })
 
 test_that("convert to vector works for data.frame", {
-  df <- data.frame(a = 1L, b = "two", c = 3, d = TRUE)
+  df <- data.frame(a = 1L, b = "two", c = 3, d = TRUE, stringsAsFactors = FALSE)
   array <- as_nanoarrow_array(df)
 
   expect_identical(convert_array(array, NULL), df)
@@ -80,7 +80,9 @@ test_that("convert to vector works for data.frame", {
 })
 
 test_that("convert to vector works for partial_frame", {
-  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
+  array <- as_nanoarrow_array(
+    data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
+  )
   expect_identical(
     convert_array(array, vctrs::partial_frame()),
     data.frame(a = 1L, b = "two")
@@ -108,7 +110,9 @@ test_that("convert to vector works for function()", {
 })
 
 test_that("convert to vector works for tibble", {
-  array <- as_nanoarrow_array(data.frame(a = 1L, b = "two"))
+  array <- as_nanoarrow_array(
+    data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
+  )
   expect_identical(
     convert_array(array, tibble::tibble(a = integer(), b = character())),
     tibble::tibble(a = 1L, b = "two")
