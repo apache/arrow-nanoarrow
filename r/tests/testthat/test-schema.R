@@ -55,11 +55,15 @@ test_that("infer_nanoarrow_schema() methods work for built-in types", {
   time <- as.POSIXct("2000-01-01", tz = "UTC")
   expect_identical(infer_nanoarrow_schema(time)$format, "tsu:UTC")
 
-  time <- as.POSIXct("2000-01-01", tz = "")
-  expect_identical(
-    infer_nanoarrow_schema(time)$format,
-    paste0("tsu:", Sys.timezone())
-  )
+  # Some systems (mostly Docker images) don't return a value for Sys.timezone()
+  # so set one explicitly to test the Sys.timezone() fallback.
+  withr::with_timezone("America/Halifax", {
+    time <- as.POSIXct("2000-01-01", tz = "")
+    expect_identical(
+      infer_nanoarrow_schema(time)$format,
+      paste0("tsu:", Sys.timezone())
+    )
+  })
 
   difftime <- as.difftime(double(), unit = "secs")
   expect_identical(infer_nanoarrow_schema(difftime)$format, "tDu")
