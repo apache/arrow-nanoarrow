@@ -24,6 +24,7 @@
 #
 # Environment Variables
 # - CMAKE_BIN: Command to use for cmake (e.g., cmake3 on Centos7)
+# - CTEST_BIN: Command to use for ctest (e.g., ctest3 on Centos7)
 # - NANOARROW_CMAKE_OPTIONS (e.g., to help cmake find Arrow C++)
 # - R_HOME: Path to the desired R installation. Defaults to `R` on PATH.
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
@@ -182,6 +183,10 @@ test_c() {
     CMAKE_BIN=cmake
   fi
 
+  if [ -z "${CTEST_BIN}" ]; then
+    CTEST_BIN=ctest
+  fi
+
   mkdir -p $NANOARROW_TMPDIR/build
   pushd $NANOARROW_TMPDIR/build
 
@@ -194,7 +199,7 @@ test_c() {
   "$CMAKE_BIN" --build .
 
   show_info "Run Tests"
-  ctest --output-on-failure
+  "$CTEST_BIN" --output-on-failure
 
   popd
 }
@@ -204,6 +209,10 @@ test_c_bundled() {
 
   if [ -z "${CMAKE_BIN}" ]; then
     CMAKE_BIN=cmake
+  fi
+
+  if [ -z "${CTEST_BIN}" ]; then
+    CTEST_BIN=ctest
   fi
 
   mkdir -p $NANOARROW_TMPDIR/build_bundled
@@ -219,7 +228,7 @@ test_c_bundled() {
   "$CMAKE_BIN" --build .
 
   show_info "Run Tests"
-  ctest --output-on-failure
+  "$CTEST_BIN" --output-on-failure
 
   popd
 }
