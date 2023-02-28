@@ -135,18 +135,25 @@ else()
 endif()
 
 if(NANOARROW_BUILD_TESTS)
-    # For testing we use GTest + Arrow C++ (both need C++11)
+    # For testing we use GTest + Arrow C++
     include(FetchContent)
 
     set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/valgrind.supp --error-exitcode=1")
     include(CTest)
 
-    set(CMAKE_CXX_STANDARD 11)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
     find_package(Arrow REQUIRED)
     message(STATUS "Arrow version: ${ARROW_VERSION}")
     message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
+
+    # Arrow >= 10.0.0 requires C++17; GTest requires C++11.
+    # Leave the option open to use an older version of Arrow
+    # to make it easier to test on old Linux (e.g., Centos7)
+    if (${ARROW_VERSION} VERSION_GREATER_EQUAL "10.0.0")
+        set(CMAKE_CXX_STANDARD 17)
+    else()
+        set(CMAKE_CXX_STANDARD 11)
+    endif()
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
     FetchContent_Declare(
         googletest
@@ -169,10 +176,18 @@ if(NANOARROW_BUILD_TESTS)
         target_link_libraries(nanoarrow_hpp_test coverage_config)
     endif()
 
-    target_link_libraries(utils_test nanoarrow GTest::gtest_main arrow_shared)
+    # On Windows, dynamically linking Arrow is difficult to get right,
+    # so use static linking by default.
+    if (MSVC)
+        set(NANOARROW_ARROW_TARGET arrow_static)
+    else()
+        set(NANOARROW_ARROW_TARGET arrow_shared)
+    endif()
+
+    target_link_libraries(utils_test nanoarrow GTest::gtest_main ${NANOARROW_ARROW_TARGET})
     target_link_libraries(buffer_test nanoarrow GTest::gtest_main)
-    target_link_libraries(array_test nanoarrow GTest::gtest_main arrow_shared)
-    target_link_libraries(schema_test nanoarrow GTest::gtest_main arrow_shared)
+    target_link_libraries(array_test nanoarrow GTest::gtest_main ${NANOARROW_ARROW_TARGET})
+    target_link_libraries(schema_test nanoarrow GTest::gtest_main ${NANOARROW_ARROW_TARGET})
     target_link_libraries(array_stream_test nanoarrow GTest::gtest_main)
     target_link_libraries(nanoarrow_hpp_test nanoarrow GTest::gtest_main)
 
