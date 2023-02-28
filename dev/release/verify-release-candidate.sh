@@ -174,8 +174,8 @@ setup_tempdir() {
   echo "Working in sandbox ${NANOARROW_TMPDIR}"
 }
 
-test_and_install_c() {
-  show_header "Build, install, and test C library"
+test_c() {
+  show_header "Build and test C library"
 
   mkdir -p $NANOARROW_TMPDIR/build
   pushd $NANOARROW_TMPDIR/build
@@ -187,9 +187,6 @@ test_and_install_c() {
 
   show_info "Build CMake Project"
   cmake --build .
-
-  show_info "Install CMake Project"
-  cmake --install . --prefix=$NANOARROW_HOME
 
   show_info "Run Tests"
   ctest --output-on-failure
@@ -289,11 +286,10 @@ ensure_source_directory() {
 
 
 test_source_distribution() {
-  export NANOARROW_HOME=$NANOARROW_TMPDIR/install
   pushd $NANOARROW_SOURCE_DIR
 
   if [ ${TEST_C} -gt 0 ]; then
-    test_and_install_c
+    test_c
   fi
 
   if [ ${TEST_C_BUNDLED} -gt 0 ]; then
