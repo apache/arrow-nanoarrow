@@ -16,7 +16,11 @@
 # under the License.
 
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.14)
+
+if(NOT DEFINED CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
 
 set(NANOARROW_VERSION "0.1.0-SNAPSHOT")
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" NANOARROW_BASE_VERSION "${NANOARROW_VERSION}")
@@ -155,10 +159,26 @@ if(NANOARROW_BUILD_TESTS)
     endif()
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-    FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/release-1.11.0.zip
-    )
+    # Avoids a warning about timestamps on downloaded files (prefer new policy
+    # if available))
+    if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
+        cmake_policy(SET CMP0135 NEW)
+    endif()
+
+    # Use an old version of googletest if we have to to support gcc 4.8
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
+       CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "5.0.0")
+        FetchContent_Declare(
+            googletest
+            URL https://github.com/google/googletest/archive/release-1.11.0.zip
+        )
+    else()
+        FetchContent_Declare(
+            googletest
+            URL https://github.com/google/googletest/archive/release-1.10.0.zip
+        )
+    endif()
+
     FetchContent_MakeAvailable(googletest)
 
     add_executable(utils_test src/nanoarrow/utils_test.cc)
@@ -184,12 +204,12 @@ if(NANOARROW_BUILD_TESTS)
         set(NANOARROW_ARROW_TARGET arrow_shared)
     endif()
 
-    target_link_libraries(utils_test nanoarrow GTest::gtest_main ${NANOARROW_ARROW_TARGET})
-    target_link_libraries(buffer_test nanoarrow GTest::gtest_main)
-    target_link_libraries(array_test nanoarrow GTest::gtest_main ${NANOARROW_ARROW_TARGET})
-    target_link_libraries(schema_test nanoarrow GTest::gtest_main ${NANOARROW_ARROW_TARGET})
-    target_link_libraries(array_stream_test nanoarrow GTest::gtest_main)
-    target_link_libraries(nanoarrow_hpp_test nanoarrow GTest::gtest_main)
+    target_link_libraries(utils_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
+    target_link_libraries(buffer_test nanoarrow gtest_main)
+    target_link_libraries(array_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
+    target_link_libraries(schema_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
+    target_link_libraries(array_stream_test nanoarrow gtest_main)
+    target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main)
 
     include(GoogleTest)
     gtest_discover_tests(utils_test)

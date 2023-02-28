@@ -18,11 +18,13 @@
 # under the License.
 #
 # Requirements
-# - cmake >= 3.16
+# - cmake >= 3.14
 # - R >= 3.5.0
-# - Arrow C++ >= 10.0.0
+# - Arrow C++ >= 9.0.0
 #
 # Environment Variables
+# - CMAKE_BIN: Command to use for cmake (e.g., cmake3 on Centos7)
+# - CTEST_BIN: Command to use for ctest (e.g., ctest3 on Centos7)
 # - NANOARROW_CMAKE_OPTIONS (e.g., to help cmake find Arrow C++)
 # - R_HOME: Path to the desired R installation. Defaults to `R` on PATH.
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
@@ -177,19 +179,27 @@ setup_tempdir() {
 test_c() {
   show_header "Build and test C library"
 
+  if [ -z "${CMAKE_BIN}" ]; then
+    CMAKE_BIN=cmake
+  fi
+
+  if [ -z "${CTEST_BIN}" ]; then
+    CTEST_BIN=ctest
+  fi
+
   mkdir -p $NANOARROW_TMPDIR/build
   pushd $NANOARROW_TMPDIR/build
 
   show_info "Configure CMake Project"
-  cmake ${NANOARROW_SOURCE_DIR} \
+  "$CMAKE_BIN" ${NANOARROW_SOURCE_DIR} \
     -DNANOARROW_BUILD_TESTS=ON \
     ${NANOARROW_CMAKE_OPTIONS:-}
 
   show_info "Build CMake Project"
-  cmake --build .
+  "$CMAKE_BIN" --build .
 
   show_info "Run Tests"
-  ctest --output-on-failure
+  "$CTEST_BIN" --output-on-failure
 
   popd
 }
@@ -197,20 +207,28 @@ test_c() {
 test_c_bundled() {
   show_header "Build test C library"
 
+  if [ -z "${CMAKE_BIN}" ]; then
+    CMAKE_BIN=cmake
+  fi
+
+  if [ -z "${CTEST_BIN}" ]; then
+    CTEST_BIN=ctest
+  fi
+
   mkdir -p $NANOARROW_TMPDIR/build_bundled
   pushd $NANOARROW_TMPDIR/build_bundled
 
   show_info "Configure CMake Project"
-  cmake ${NANOARROW_SOURCE_DIR} \
+  "$CMAKE_BIN" ${NANOARROW_SOURCE_DIR} \
     -DNANOARROW_BUILD_TESTS=ON \
     -DNANOARROW_BUNDLE=ON \
     ${NANOARROW_CMAKE_OPTIONS:-}
 
   show_info "Build CMake Project"
-  cmake --build .
+  "$CMAKE_BIN" --build .
 
   show_info "Run Tests"
-  ctest --output-on-failure
+  "$CTEST_BIN" --output-on-failure
 
   popd
 }
