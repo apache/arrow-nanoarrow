@@ -80,6 +80,7 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         env:
           ARROW_R_VERBOSE_TEST: "true"
+          _R_CHECK_FORCE_SUGGESTS_: false
         with:
           upload-snapshots: true
           working-directory: r
