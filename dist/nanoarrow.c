@@ -24,9 +24,9 @@
 
 #include "nanoarrow.h"
 
-const char* ArrowNanoarrowVersion() { return NANOARROW_VERSION; }
+const char* ArrowNanoarrowVersion(void) { return NANOARROW_VERSION; }
 
-int ArrowNanoarrowVersionInt() { return NANOARROW_VERSION_INT; }
+int ArrowNanoarrowVersionInt(void) { return NANOARROW_VERSION_INT; }
 
 int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   if (error == NULL) {
@@ -1413,6 +1413,24 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
   }
 }
 
+// Helper for bookeeping to emulate sprintf()-like behaviour spread
+// among multiple sprintf calls.
+static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
+                                         int64_t* n_remaining, int64_t* n_chars) {
+  *n_chars += n_chars_last;
+  *n_remaining -= n_chars_last;
+
+  // n_remaining is never less than 0
+  if (*n_remaining < 0) {
+    *n_remaining = 0;
+  }
+
+  // Can't do math on a NULL pointer
+  if (*out != NULL) {
+    *out += n_chars_last;
+  }
+}
+
 int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
                             char recursive) {
   if (schema == NULL) {
@@ -1439,90 +1457,59 @@ int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
 
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
-    n_chars_last = snprintf(out + n_chars, n, "%.*s{dictionary(%s)<",
-                            (int)schema_view.extension_name.size_bytes,
-                            schema_view.extension_name.data,
-                            ArrowTypeString(schema_view.storage_type));
+    n_chars_last = snprintf(
+        out, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.size_bytes,
+        schema_view.extension_name.data, ArrowTypeString(schema_view.storage_type));
   } else if (is_extension) {
-    n_chars_last =
-        snprintf(out + n_chars, n, "%.*s{", (int)schema_view.extension_name.size_bytes,
-                 schema_view.extension_name.data);
+    n_chars_last = snprintf(out, n, "%.*s{", (int)schema_view.extension_name.size_bytes,
+                            schema_view.extension_name.data);
   } else if (is_dictionary) {
-    n_chars_last = snprintf(out + n_chars, n, "dictionary(%s)<",
-                            ArrowTypeString(schema_view.storage_type));
+    n_chars_last =
+        snprintf(out, n, "dictionary(%s)<", ArrowTypeString(schema_view.storage_type));
   }
 
-  n_chars += n_chars_last;
-  n -= n_chars_last;
-  if (n < 0) {
-    n = 0;
-  }
+  ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
 
   if (!is_dictionary) {
-    n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out + n_chars, n);
+    n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out, n);
   } else {
-    n_chars_last = ArrowSchemaToString(schema->dictionary, out + n_chars, n, recursive);
+    n_chars_last = ArrowSchemaToString(schema->dictionary, out, n, recursive);
   }
 
-  n_chars += n_chars_last;
-  n -= n_chars_last;
-  if (n < 0) {
-    n = 0;
-  }
+  ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
 
   if (recursive && schema->format[0] == '+') {
-    n_chars_last = snprintf(out + n_chars, n, "<");
-    n_chars += n_chars_last;
-    n -= n_chars_last;
-    if (n < 0) {
-      n = 0;
-    }
+    n_chars_last = snprintf(out, n, "<");
+    ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
 
     for (int64_t i = 0; i < schema->n_children; i++) {
       if (i > 0) {
-        n_chars_last = snprintf(out + n_chars, n, ", ");
-        n_chars += n_chars_last;
-        n -= n_chars_last;
-        if (n < 0) {
-          n = 0;
-        }
+        n_chars_last = snprintf(out, n, ", ");
+        ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
       }
 
       // ArrowSchemaToStringInternal() will validate the child and print the error,
       // but we need the name first
       if (schema->children[i] != NULL && schema->children[i]->release != NULL &&
           schema->children[i]->name != NULL) {
-        n_chars_last = snprintf(out + n_chars, n, "%s: ", schema->children[i]->name);
-        n_chars += n_chars_last;
-        n -= n_chars_last;
-        if (n < 0) {
-          n = 0;
-        }
+        n_chars_last = snprintf(out, n, "%s: ", schema->children[i]->name);
+        ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
       }
 
-      n_chars_last =
-          ArrowSchemaToString(schema->children[i], out + n_chars, n, recursive);
-      n_chars += n_chars_last;
-      n -= n_chars_last;
-      if (n < 0) {
-        n = 0;
-      }
+      n_chars_last = ArrowSchemaToString(schema->children[i], out, n, recursive);
+      ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
     }
 
-    n_chars_last = snprintf(out + n_chars, n, ">");
-    n_chars += n_chars_last;
-    n -= n_chars_last;
-    if (n < 0) {
-      n = 0;
-    }
+    n_chars_last = snprintf(out, n, ">");
+    ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
   }
 
   if (is_extension && is_dictionary) {
-    n_chars += snprintf(out + n_chars, n, ">}");
+    n_chars += snprintf(out, n, ">}");
   } else if (is_extension) {
-    n_chars += snprintf(out + n_chars, n, "}");
+    n_chars += snprintf(out, n, "}");
   } else if (is_dictionary) {
-    n_chars += snprintf(out + n_chars, n, ">");
+    n_chars += snprintf(out, n, ">");
   }
 
   return n_chars;
@@ -2160,8 +2147,8 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
     if (actual_size < expected_size) {
       ArrowErrorSet(
           error,
-          "Expected buffer %d to size >= %ld bytes but found buffer with %ld bytes", i,
-          (long)expected_size, (long)actual_size);
+          "Expected buffer %d to size >= %ld bytes but found buffer with %ld bytes",
+          (int)i, (long)expected_size, (long)actual_size);
       return EINVAL;
     }
   }
