@@ -25,12 +25,12 @@ Release candidates for nanoarrow are uploaded to https://dist.apache.org/repos/d
 prior to a release vote being called on the
 [Apache Arrow developer mailing list](https://lists.apache.org/list.html?dev@arrow.apache.org).
 A script (`verify-release-candidate.sh`) is provided to verify such a release candidate.
-For example, to verify nanoarrow 0.1.0-rc0, one could run:
+For example, to verify nanoarrow 0.1.0-rc1, one could run:
 
 ```
 git clone https://github.com/apache/arrow-nanoarrow.git arrow-nanoarrow
 cd arrow-nanoarrow/dev/release
-./verify-release-candidate.sh 0.1.0 0
+./verify-release-candidate.sh 0.1.0 1
 ```
 
 Full verification requires [CMake](https://cmake.org/download/) to build and run the test
@@ -39,7 +39,7 @@ by CMake (e.g., using one of the methods described in the
 [Arrow installation instructions](https://arrow.apache.org/install/)). For environments
 where binary packages are not provided, building and installing Arrow C++ from source
 may be required. You can provide the `NANOARROW_CMAKE_OPTIONS` environment variable to
-pass extra arguments to `cmake` (e.g., `-DArrow_DIR=path/to/arrow/lib/cmake/Arrow` or
+pass extra arguments to `cmake` (e.g., `-DArrow_DIR=<path/to/arrow>/lib/cmake/Arrow` or
 `-DCMAKE_TOOLCHAIN_FILE=[path to vcpkg]/scripts/buildsystems/vcpkg.cmake`).
 
 Verification of the R package requires an
@@ -56,13 +56,13 @@ manager except on Windows (see below).
 To run only C library verification (requires CMake and Arrow C++ but not R):
 
 ```bash
-TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.1.0 0
+TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.1.0 1
 ```
 
 To run only R package verification (requires R but not CMake or Arrow C++):
 
 ```bash
-TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 0
+TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 1
 ```
 
 ### MacOS
@@ -242,7 +242,7 @@ and run
 ```bash
 # from the repository root
 # 01-prepare.sh <nanoarrow-dir> <prev_veresion> <version> <next_version> <rc-num>
-dev/release/01-prepare.sh . 0.0.0 0.1.0 0.2.0 0
+dev/release/01-prepare.sh . 0.0.0 0.1.0 0.2.0 1
 ```
 
 This will update version numbers, the changelong, and create the git tag
@@ -268,7 +268,7 @@ file to exist setting the appropriate `GPG_KEY_ID` environment variable.
 
 ```
 # 02-sign.sh <version> <rc-num>
-dev/release/02-sign.sh . 0.1.0 0
+dev/release/02-sign.sh 0.1.0 1
 ```
 
 Finally, run
@@ -276,4 +276,4 @@ Finally, run
 This step can be done by any Arrow comitter. The caller of this script does not need to
 be on any particular branch but *does* need the
 [dev/release/.env](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/.env.example)
-file to exist setting the appropriate `APACHE_USERNAME` variable set.
+file to exist setting the appropriate `APACHE_USERNAME` environment variable.
