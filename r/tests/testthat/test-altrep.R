@@ -72,7 +72,7 @@ test_that("nanoarrow_altrep_chr_force_materialize() forces materialization", {
   expect_identical(nanoarrow_altrep_force_materialize(x_altrep), 1L)
 
   x <- as_nanoarrow_array(letters, schema = na_string())
-  x_altrep_df <- data.frame(x = nanoarrow_altrep_chr(x))
+  x_altrep_df <- data.frame(x = nanoarrow_altrep_chr(x), stringsAsFactors = FALSE)
   expect_identical(
     nanoarrow_altrep_force_materialize(x_altrep_df, recursive = FALSE),
     0L

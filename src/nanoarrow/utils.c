@@ -24,9 +24,9 @@
 
 #include "nanoarrow.h"
 
-const char* ArrowNanoarrowVersion() { return NANOARROW_VERSION; }
+const char* ArrowNanoarrowVersion(void) { return NANOARROW_VERSION; }
 
-int ArrowNanoarrowVersionInt() { return NANOARROW_VERSION_INT; }
+int ArrowNanoarrowVersionInt(void) { return NANOARROW_VERSION_INT; }
 
 int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   if (error == NULL) {

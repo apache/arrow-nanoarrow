@@ -19,9 +19,11 @@ name: test-r
 
 on:
   push:
-    branches: main
+    branches:
+      - main
   pull_request:
-    branches: main
+    branches:
+      - main
     paths:
       - '.github/workflows/r-check.yaml'
       - 'src/nanoarrow/**'
@@ -38,6 +40,7 @@ jobs:
       matrix:
         config:
           - {os: macOS-latest,   r: 'release'}
+          - {os: windows-latest, r: '3.6'}
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
@@ -70,13 +73,14 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, arrow=?ignore-before-r=4.0.0
           needs: check
           working-directory: r
 
       - uses: r-lib/actions/check-r-package@v2
         env:
           ARROW_R_VERBOSE_TEST: "true"
+          _R_CHECK_FORCE_SUGGESTS_: false
         with:
           upload-snapshots: true
           working-directory: r
