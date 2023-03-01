@@ -420,8 +420,8 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
     if (actual_size < expected_size) {
       ArrowErrorSet(
           error,
-          "Expected buffer %d to size >= %ld bytes but found buffer with %ld bytes", i,
-          (long)expected_size, (long)actual_size);
+          "Expected buffer %d to size >= %ld bytes but found buffer with %ld bytes",
+          (int)i, (long)expected_size, (long)actual_size);
       return EINVAL;
     }
   }

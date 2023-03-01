@@ -22,7 +22,7 @@ RoxygenNote: 7.2.3
 URL: https://github.com/apache/arrow-nanoarrow
 BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests: 
-    arrow (>= 10.0.0),
+    arrow (>= 9.0.0),
     blob,
     hms,
     rlang,

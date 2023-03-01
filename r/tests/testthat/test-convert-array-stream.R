@@ -99,7 +99,10 @@ test_that("convert array stream works for nested data.frames", {
 })
 
 test_that("convert array stream works for struct-style vectors", {
-  raw_posixlt <- as.data.frame(unclass(as.POSIXlt("2021-01-01", tz = "America/Halifax")))
+  raw_posixlt <- as.data.frame(
+    unclass(as.POSIXlt("2021-01-01", tz = "America/Halifax")),
+    stringsAsFactors = FALSE
+  )
 
   stream <- as_nanoarrow_array_stream(raw_posixlt)
   expect_identical(

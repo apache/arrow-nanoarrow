@@ -63,8 +63,10 @@ test_that("infer_nanoarrow_ptype() works for basic types", {
   )
 
   expect_identical(
-    infer_nanoarrow_ptype(as_nanoarrow_array(data.frame(x = character()))),
-    data.frame(x = character())
+    infer_nanoarrow_ptype(
+      as_nanoarrow_array(data.frame(x = character(), stringsAsFactors = FALSE))
+    ),
+    data.frame(x = character(), stringsAsFactors = FALSE)
   )
 })
 

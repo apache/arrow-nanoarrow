@@ -56,7 +56,13 @@ test_that("new_data_frame() works", {
 })
 
 test_that("vector fuzzers work", {
-  ptype <- data.frame(a = logical(), b = integer(), c = double(), d = character())
+  ptype <- data.frame(
+    a = logical(),
+    b = integer(),
+    c = double(),
+    d = character(),
+    stringsAsFactors = FALSE
+  )
   df_gen <- vec_gen(ptype, n = 123)
 
   expect_identical(nrow(df_gen), 123L)
@@ -66,7 +72,7 @@ test_that("vector fuzzers work", {
 })
 
 test_that("vector shuffler works", {
-  df <- data.frame(letters = letters)
+  df <- data.frame(letters = letters, stringsAsFactors = FALSE)
   df_shuffled <- vec_shuffle(df)
   expect_setequal(df_shuffled$letters, df$letters)
 
