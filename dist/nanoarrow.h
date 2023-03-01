@@ -774,10 +774,10 @@ const char* ArrowErrorMessage(struct ArrowError* error);
 /// @{
 
 /// \brief Return a version string in the form "major.minor.patch"
-const char* ArrowNanoarrowVersion();
+const char* ArrowNanoarrowVersion(void);
 
 /// \brief Return an integer that can be used to compare versions sequentially
-int ArrowNanoarrowVersionInt();
+int ArrowNanoarrowVersionInt(void);
 
 /// \brief Initialize a description of buffer arrangements from a storage type
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
