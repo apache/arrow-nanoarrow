@@ -804,10 +804,17 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
   return NANOARROW_OK;
 }
 
-static void ArrowIpcReaderCountFields(struct ArrowArrayView* view, int64_t* n_fields) {
-  *n_fields += 1 + view->n_children;
-  for (int64_t i = 0; i < view->n_children; i++) {
-    ArrowIpcReaderCountFields(view->children[i], n_fields);
+static void ArrowIpcReaderCountFields(struct ArrowSchema* schema, int64_t* n_fields) {
+  *n_fields += 1;
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    ArrowIpcReaderCountFields(schema->children[i], n_fields);
+  }
+}
+
+static void ArrowIpcReaderCountBuffers(struct ArrowArray* array, int64_t* n_buffers) {
+  *n_buffers += array->n_buffers;
+  for (int64_t i = 0; i < array->n_children; i++) {
+    ArrowIpcReaderCountBuffers(array->children[i], n_buffers);
   }
 }
 
@@ -820,11 +827,7 @@ static void ArrowIpcReaderInitFields(struct ArrowIpcField** cursor,
   field->array = array;
   field->array_view = view;
   field->buffer_offset = *n_buffers;
-  for (int32_t i = 0; i < 3; i++) {
-    *n_buffers += view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
-  }
-
-  field->n_buffers = *n_buffers - field->buffer_offset;
+  *n_buffers += array->n_buffers;
   *cursor += 1;
 
   for (int64_t i = 0; i < view->n_children; i++) {
@@ -870,26 +873,32 @@ ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
   }
 
   // Walk tree and calculate how many fields we need to allocate
-  ArrowIpcReaderCountFields(&reader->array_view, &reader->n_fields);
-  reader->fields = (struct ArrowIpcField**)ArrowMalloc(reader->n_fields *
-                                                       sizeof(struct ArrowIpcField*));
+  ArrowIpcReaderCountFields(schema, &reader->n_fields);
+  reader->fields =
+      (struct ArrowIpcField*)ArrowMalloc(reader->n_fields * sizeof(struct ArrowIpcField));
   if (reader->fields == NULL) {
     ArrowErrorSet(error, "Failed to allocate reader->fields");
     return ENOMEM;
   }
+  memset(reader->fields, 0, reader->n_fields * sizeof(struct ArrowIpcField));
 
-  // Init field information and calculate number of buffers
-  ArrowIpcReaderInitFields(reader->fields, &reader->array_view, schema, &reader->array,
-                           &reader->n_buffers);
-  reader->buffers = (struct ArrowBufferView**)ArrowMalloc(
-      reader->n_buffers * sizeof(struct ArrowBufferView*));
+  // Walk tree and calculate how many buffer views we need to allocate
+  ArrowIpcReaderCountBuffers(&reader->array, &reader->n_buffers);
+  reader->buffers = (struct ArrowBufferView*)ArrowMalloc(reader->n_buffers *
+                                                         sizeof(struct ArrowBufferView));
   if (reader->buffers == NULL) {
     ArrowErrorSet(error, "Failed to allocate reader->buffers");
     return ENOMEM;
   }
+  memset(reader->buffers, 0, reader->n_buffers * sizeof(struct ArrowBuffer));
 
   // If all is well, take ownership of the schema
   ArrowSchemaMove(schema, &reader->schema);
+
+  // Init field information and calculate starting buffer offset for each
+  struct ArrowIpcField** cursor = &reader->fields;
+  int64_t n_buffers = 0;
+  ArrowIpcReaderInitFields(cursor, &reader->array_view, schema, &reader->array, &n_buffers);
 
   return NANOARROW_OK;
 }

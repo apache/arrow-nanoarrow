@@ -173,9 +173,28 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
 
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   struct ArrowIpcReader reader;
-  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "col1"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   ArrowIpcReaderInit(&reader);
+  EXPECT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(schema.release, nullptr);
+  EXPECT_EQ(reader.n_fields, 2);
+  EXPECT_EQ(reader.n_buffers, 3);
+
+  EXPECT_STREQ(reader.fields[0].schema->format, "+s");
+  EXPECT_EQ(reader.fields[0].array->n_buffers, 1);
+  EXPECT_EQ(reader.fields[0].array_view->storage_type, NANOARROW_TYPE_STRUCT);
+  EXPECT_EQ(reader.fields[0].buffer_offset, 0);
+
+  EXPECT_STREQ(reader.fields[1].schema->format, "i");
+  EXPECT_EQ(reader.fields[1].array->n_buffers, 2);
+  EXPECT_EQ(reader.fields[1].array_view->storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(reader.fields[1].buffer_offset, 1);
 
   ArrowIpcReaderReset(&reader);
 }
@@ -197,6 +216,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
   ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, &error), EINVAL);
   EXPECT_STREQ(error.message, "schema must be a struct type");
+  EXPECT_EQ(reader.schema.release, nullptr);
 
   schema.release(&schema);
   ArrowIpcReaderReset(&reader);

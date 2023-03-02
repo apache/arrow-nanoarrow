@@ -60,7 +60,6 @@ struct ArrowIpcField {
   struct ArrowArray* array;
   struct ArrowArrayView* array_view;
   int64_t buffer_offset;
-  int64_t n_buffers;
 };
 
 struct ArrowIpcReader {
@@ -74,9 +73,9 @@ struct ArrowIpcReader {
   struct ArrowArray array;
   struct ArrowArrayView array_view;
   int64_t n_fields;
-  struct ArrowIpcField** fields;
+  struct ArrowIpcField* fields;
   int64_t n_buffers;
-  struct ArrowBufferView** buffers;
+  struct ArrowBufferView* buffers;
 };
 
 void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
