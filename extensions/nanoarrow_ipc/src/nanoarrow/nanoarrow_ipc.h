@@ -55,6 +55,14 @@ enum ArrowIpcEndianness {
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
+struct ArrowIpcField {
+  struct ArrowSchema* schema;
+  struct ArrowArray* array;
+  struct ArrowArrayView* array_view;
+  int64_t buffer_offset;
+  int64_t n_buffers;
+};
+
 struct ArrowIpcReader {
   int32_t metadata_version;
   int32_t message_type;
@@ -63,6 +71,12 @@ struct ArrowIpcReader {
   int32_t header_size_bytes;
   int64_t body_size_bytes;
   struct ArrowSchema schema;
+  struct ArrowArray array;
+  struct ArrowArrayView array_view;
+  int64_t n_fields;
+  struct ArrowIpcField** fields;
+  int64_t n_buffers;
+  struct ArrowBufferView** buffers;
 };
 
 void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
@@ -79,6 +93,10 @@ ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
 ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
                                     struct ArrowBufferView data,
                                     struct ArrowError* error);
+
+ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
+  struct ArrowSchema* schema,
+  struct ArrowError* error);
 
 #endif
 

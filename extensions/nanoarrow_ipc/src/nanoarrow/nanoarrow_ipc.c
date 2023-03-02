@@ -45,6 +45,22 @@ void ArrowIpcReaderReset(struct ArrowIpcReader* reader) {
     reader->schema.release(&reader->schema);
   }
 
+  if (reader->array.release != NULL) {
+    reader->array.release(&reader->array);
+  }
+
+  ArrowArrayViewReset(&reader->array_view);
+
+  if (reader->fields != NULL) {
+    ArrowFree(reader->fields);
+    reader->n_fields = 0;
+  }
+
+  if (reader->buffers != NULL) {
+    ArrowFree(reader->buffers);
+    reader->n_buffers = 0;
+  }
+
   ArrowIpcReaderInit(reader);
 }
 
@@ -784,6 +800,95 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
       ArrowErrorSet(error, "Unnown message type: %d", (int)(reader->message_type));
       return EINVAL;
   }
+
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcReaderCountFields(struct ArrowArrayView* view, int64_t* n_fields) {
+  *n_fields += 1 + view->n_children;
+  for (int64_t i = 0; i < view->n_children; i++) {
+    ArrowIpcReaderCountFields(view->children[i], n_fields);
+  }
+}
+
+static void ArrowIpcReaderInitFields(struct ArrowIpcField** cursor,
+                                     struct ArrowArrayView* view,
+                                     struct ArrowSchema* schema, struct ArrowArray* array,
+                                     int64_t* n_buffers) {
+  struct ArrowIpcField* field = *cursor;
+  field->schema = schema;
+  field->array = array;
+  field->array_view = view;
+  field->buffer_offset = *n_buffers;
+  for (int32_t i = 0; i < 3; i++) {
+    *n_buffers += view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
+  }
+
+  field->n_buffers = *n_buffers - field->buffer_offset;
+  *cursor += 1;
+
+  for (int64_t i = 0; i < view->n_children; i++) {
+    ArrowIpcReaderInitFields(cursor, view->children[i], schema->children[i], array->children[i],
+                             n_buffers);
+  }
+}
+
+ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
+                                       struct ArrowSchema* schema,
+                                       struct ArrowError* error) {
+  // Clear previous schema, array, array_view, buffers, and fields
+  if (reader->schema.release != NULL) {
+    reader->schema.release(&reader->schema);
+  }
+
+  if (reader->array.release != NULL) {
+    reader->array.release(&reader->array);
+  }
+
+  ArrowArrayViewReset(&reader->array_view);
+
+  if (reader->fields != NULL) {
+    ArrowFree(reader->fields);
+    reader->n_fields = 0;
+  }
+
+  if (reader->buffers != NULL) {
+    ArrowFree(reader->buffers);
+    reader->n_buffers = 0;
+  }
+
+  // Allocate Array and ArrayView based on schema without moving the schema
+  // this will fail if the schema is not valid.
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(&reader->array, schema, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayViewInitFromSchema(&reader->array_view, schema, error));
+
+  // Root must be a struct
+  if (reader->array_view.storage_type != NANOARROW_TYPE_STRUCT) {
+    ArrowErrorSet(error, "schema must be a struct type");
+  }
+
+  // Walk tree and calculate how many fields we need to allocate
+  ArrowIpcReaderCountFields(&reader->array_view, &reader->n_fields);
+  reader->fields = (struct ArrowIpcField**)ArrowMalloc(reader->n_fields *
+                                                       sizeof(struct ArrowIpcField*));
+  if (reader->fields == NULL) {
+    ArrowErrorSet(error, "Failed to allocate reader->fields");
+    return ENOMEM;
+  }
+
+  // Init field information and calculate number of buffers
+  ArrowIpcReaderInitFields(reader->fields, &reader->array_view, schema, &reader->array,
+                           &reader->n_buffers);
+  reader->buffers = (struct ArrowBufferView**)ArrowMalloc(
+      reader->n_buffers * sizeof(struct ArrowBufferView*));
+  if (reader->buffers == NULL) {
+    ArrowErrorSet(error, "Failed to allocate reader->buffers");
+    return ENOMEM;
+  }
+
+  // If all is well, take ownership of the schema
+  ArrowSchemaMove(schema, &reader->schema);
 
   return NANOARROW_OK;
 }
