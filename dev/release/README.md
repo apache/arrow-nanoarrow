@@ -109,7 +109,7 @@ conda create --name nanoarrow-verify-rc
 conda activate nanoarrow-verify-rc
 conda config --set channel_priority strict
 
-conda install -c conda-forge git cmake gnupg arrow-cpp gtest
+conda install -c conda-forge compilers git cmake gnupg arrow-cpp gtest
 ```
 
 ### Windows
