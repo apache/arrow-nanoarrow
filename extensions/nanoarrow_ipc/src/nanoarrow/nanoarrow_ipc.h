@@ -56,7 +56,6 @@ enum ArrowIpcEndianness {
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
 struct ArrowIpcField {
-  struct ArrowSchema* schema;
   struct ArrowArray* array;
   struct ArrowArrayView* array_view;
   int64_t buffer_offset;

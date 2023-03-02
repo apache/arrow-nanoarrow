@@ -182,20 +182,18 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
 
   ArrowIpcReaderInit(&reader);
   EXPECT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, nullptr), NANOARROW_OK);
-  EXPECT_EQ(schema.release, nullptr);
   EXPECT_EQ(reader.n_fields, 2);
   EXPECT_EQ(reader.n_buffers, 3);
 
-  EXPECT_STREQ(reader.fields[0].schema->format, "+s");
   EXPECT_EQ(reader.fields[0].array->n_buffers, 1);
   EXPECT_EQ(reader.fields[0].array_view->storage_type, NANOARROW_TYPE_STRUCT);
   EXPECT_EQ(reader.fields[0].buffer_offset, 0);
 
-  EXPECT_STREQ(reader.fields[1].schema->format, "i");
   EXPECT_EQ(reader.fields[1].array->n_buffers, 2);
   EXPECT_EQ(reader.fields[1].array_view->storage_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(reader.fields[1].buffer_offset, 1);
 
+  schema.release(&schema);
   ArrowIpcReaderReset(&reader);
 }
 
@@ -211,12 +209,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
   EXPECT_STREQ(
       error.message,
       "Error parsing schema->format: Expected a null-terminated string but found NULL");
-  EXPECT_EQ(reader.schema.release, nullptr);
 
   ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, &error), EINVAL);
   EXPECT_STREQ(error.message, "schema must be a struct type");
-  EXPECT_EQ(reader.schema.release, nullptr);
 
   schema.release(&schema);
   ArrowIpcReaderReset(&reader);
