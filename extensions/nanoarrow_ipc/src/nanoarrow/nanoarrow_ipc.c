@@ -956,3 +956,113 @@ ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
 
   return NANOARROW_OK;
 }
+
+// TODO: Wrap these options up in a struct to avoid all these arguments!
+static int ArrowIpcReaderWalkGetArray(struct ArrowArray* array,
+                                      ns(FieldNode_vec_t) fields,
+                                      ns(Buffer_vec_t) buffers, int64_t* field_i,
+                                      int64_t* buffer_i, const uint8_t* data0,
+                                      struct ArrowError* error) {
+  ns(FieldNode_struct_t) field = ns(FieldNode_vec_at(fields, (size_t)field_i));
+  array->length = ns(FieldNode_length(field));
+  array->null_count = ns(FieldNode_null_count(field));
+  *field_i += 1;
+
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    ns(Buffer_struct_t) buffer = ns(Buffer_vec_at(buffers, (size_t)buffer_i));
+    struct ArrowBufferView view;
+    view.size_bytes = ns(Buffer_length(buffer));
+    view.data.as_uint8 = data0 + ns(Buffer_offset(buffer));
+    // TODO: Check buffer offset + size for buffer overrun
+
+    // TODO: This is where compression, endian swapping, and/or custom deallocator
+    // would be applied.
+    int result = ArrowBufferAppendBufferView(ArrowArrayBuffer(array, i), view);
+    if (result != NANOARROW_OK) {
+      ArrowErrorSet(error, "Failed to copy buffer");
+      return result;
+    }
+
+    *buffer_i += 1;
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcReaderWalkGetArray(
+        array->children[i], fields, buffers, field_i, buffer_i, data0, error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
+                                          struct ArrowArrayView* array_view) {
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array, array_view->storage_type));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateChildren(array, array_view->n_children));
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcArrayInitFromArrayView(array->children[i], array_view->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
+                                      struct ArrowBufferView header,
+                                      struct ArrowBufferView body, int64_t i,
+                                      struct ArrowArray* out, struct ArrowError* error) {
+  ns(Message_table_t) message =
+      ns(Message_as_root(header.data.as_uint8 + (2 * sizeof(int32_t))));
+  ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))message;
+  ns(FieldNode_vec_t) fields = ns(RecordBatch_nodes(batch));
+  ns(Buffer_vec_t) buffers = ns(RecordBatch_buffers(batch));
+
+  // RecordBatch messages don't count the root node but we do
+  int64_t field_i = i + 1;
+  struct ArrowIpcField* root = reader->fields + field_i;
+  int64_t buffer_i = root->buffer_offset;
+
+  struct ArrowArray temp;
+  temp.release = NULL;
+  int result = ArrowIpcArrayInitFromArrayView(&temp, root->array_view);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "Failed to initialize output array");
+    return result;
+  }
+
+  // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
+  // children ourselves
+  if (i == -1) {
+    temp.length = ns(RecordBatch_length(batch));
+    temp.null_count = 0;
+    field_i++;
+    buffer_i++;
+
+    for (int64_t i = 0; i < temp.n_children; i++) {
+      result = ArrowIpcReaderWalkGetArray(temp.children[i], fields, buffers, &field_i,
+                                          &buffer_i, body.data.as_uint8, error);
+      if (result != NANOARROW_OK) {
+        temp.release(&temp);
+        return result;
+      }
+    }
+  } else {
+    result = ArrowIpcReaderWalkGetArray(&temp, fields, buffers, &field_i, &buffer_i,
+                                        body.data.as_uint8, error);
+    if (result != NANOARROW_OK) {
+      temp.release(&temp);
+      return result;
+    }
+  }
+
+  // TODO: this performs some validation but doesn't do everything we need it to do
+  // notably it doesn't loop over offset buffers to look for values that will cause
+  // out-of-bounds buffer access on the data buffer.
+  result = ArrowArrayViewSetArray(root->array_view, &temp, error);
+  if (result != NANOARROW_OK) {
+    temp.release(&temp);
+    return result;
+  }
+
+  ArrowArrayMove(&temp, out);
+  return NANOARROW_OK;
+}

@@ -104,6 +104,13 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
 ArrowErrorCode ArrowIpcReaderGetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* out, struct ArrowError* error);
 
+ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
+                                      struct ArrowBufferView header,
+                                      struct ArrowBufferView body,
+                                      int64_t i,
+                                      struct ArrowArray* out,
+                                      struct ArrowError* error);
+
 ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* schema,
                                        struct ArrowError* error);
