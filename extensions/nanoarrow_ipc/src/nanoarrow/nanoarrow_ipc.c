@@ -854,6 +854,18 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcReaderGetSchema(struct ArrowIpcReader* reader,
+                                       struct ArrowSchema* out,
+                                       struct ArrowError* error) {
+  if (reader->schema.release == NULL) {
+    ArrowErrorSet(error, "reader does not contain a valid schema");
+    return EINVAL;
+  }
+
+  ArrowSchemaMove(&reader->schema, out);
+  return NANOARROW_OK;
+}
+
 static void ArrowIpcReaderCountFields(struct ArrowSchema* schema, int64_t* n_fields) {
   *n_fields += 1;
   for (int64_t i = 0; i < schema->n_children; i++) {

@@ -179,12 +179,15 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   struct ArrowIpcReader reader;
   struct ArrowError error;
+  struct ArrowSchema schema;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = sizeof(kSimpleSchema);
 
   ArrowIpcReaderInit(&reader);
+  EXPECT_EQ(ArrowIpcReaderGetSchema(&reader, &schema, &error), EINVAL);
+  EXPECT_STREQ(error.message, "reader does not contain a valid schema");
 
   EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), NANOARROW_OK);
   EXPECT_EQ(reader.header_size_bytes, sizeof(kSimpleSchema));
@@ -199,6 +202,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   EXPECT_EQ(reader.schema.children[0]->flags, ARROW_FLAG_NULLABLE);
   EXPECT_STREQ(reader.schema.children[0]->format, "i");
 
+  EXPECT_EQ(ArrowIpcReaderGetSchema(&reader, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(reader.schema.release, nullptr);
+  EXPECT_NE(schema.release, nullptr);
+
+  schema.release(&schema);
   ArrowIpcReaderReset(&reader);
 }
 
@@ -226,6 +234,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   EXPECT_EQ(reader.codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
 
   // Should error if the number of buffers or field nodes doesn't match
+  // (different numbers because we count the root struct and the message does not)
   reader.n_buffers = 1;
   EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected 0 buffers in message but found 2");
