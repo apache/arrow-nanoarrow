@@ -828,8 +828,8 @@ static void ArrowIpcReaderInitFields(struct ArrowIpcField** cursor,
   *cursor += 1;
 
   for (int64_t i = 0; i < view->n_children; i++) {
-    ArrowIpcReaderInitFields(cursor, view->children[i], schema->children[i], array->children[i],
-                             n_buffers);
+    ArrowIpcReaderInitFields(cursor, view->children[i], schema->children[i],
+                             array->children[i], n_buffers);
   }
 }
 
@@ -866,6 +866,7 @@ ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
   // Root must be a struct
   if (reader->array_view.storage_type != NANOARROW_TYPE_STRUCT) {
     ArrowErrorSet(error, "schema must be a struct type");
+    return EINVAL;
   }
 
   // Walk tree and calculate how many fields we need to allocate

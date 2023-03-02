@@ -171,6 +171,37 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   ArrowIpcReaderReset(&reader);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
+  struct ArrowIpcReader reader;
+  struct ArrowError error;
+
+  ArrowIpcReaderInit(&reader);
+
+  ArrowIpcReaderReset(&reader);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
+  struct ArrowIpcReader reader;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  ArrowIpcReaderInit(&reader);
+  ArrowSchemaInit(&schema);
+
+  EXPECT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, &error), EINVAL);
+  EXPECT_STREQ(
+      error.message,
+      "Error parsing schema->format: Expected a null-terminated string but found NULL");
+  EXPECT_EQ(reader.schema.release, nullptr);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, &error), EINVAL);
+  EXPECT_STREQ(error.message, "schema must be a struct type");
+
+  schema.release(&schema);
+  ArrowIpcReaderReset(&reader);
+}
+
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
  protected:
