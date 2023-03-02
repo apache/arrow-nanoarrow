@@ -28,6 +28,8 @@
 #define ArrowIpcReaderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderPeek)
 #define ArrowIpcReaderVerify NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderVerify)
 #define ArrowIpcReaderDecode NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderDecode)
+#define ArrowIpcReaderSetSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderSetSchema)
 
 #endif
 
@@ -50,6 +52,12 @@ enum ArrowIpcEndianness {
   NANOARROW_IPC_ENDIANNESS_BIG
 };
 
+enum ArrowIpcCompressionType {
+  NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+  NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+  NANOARROW_IPC_COMPRESSION_TYPE_ZSTD
+};
+
 #define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
@@ -66,6 +74,7 @@ struct ArrowIpcReader {
   int32_t message_type;
   int32_t endianness;
   int32_t features;
+  int32_t codec;
   int32_t header_size_bytes;
   int64_t body_size_bytes;
   struct ArrowSchema schema;

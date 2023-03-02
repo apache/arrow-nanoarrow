@@ -62,6 +62,19 @@ static uint8_t kSimpleSchema[] = {
     0x6c, 0x64, 0x00, 0x00, 0x08, 0x00, 0x0c, 0x00, 0x08, 0x00, 0x07, 0x00, 0x08, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
+static uint8_t kSimpleRecordBatch[] = {
+    0xff, 0xff, 0xff, 0xff, 0x88, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x16, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0c, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x18, 0x00, 0x00, 0x00, 0x08, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x18, 0x00, 0x0c, 0x00,
+    0x04, 0x00, 0x08, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x00, 0x00, 0x10, 0x00,
+    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   struct ArrowIpcReader reader;
   struct ArrowError error;
@@ -130,6 +143,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
 
   ArrowIpcReaderInit(&reader);
   EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), NANOARROW_OK);
+  EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
   EXPECT_EQ(reader.header_size_bytes, sizeof(kSimpleSchema));
   EXPECT_EQ(reader.body_size_bytes, 0);
 
@@ -141,6 +155,23 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
   data.size_bytes = sizeof(kSimpleSchema);
   EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Message flatbuffer verification failed");
+
+  ArrowIpcReaderReset(&reader);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
+  struct ArrowIpcReader reader;
+  struct ArrowError error;
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatch;
+  data.size_bytes = sizeof(kSimpleRecordBatch);
+
+  ArrowIpcReaderInit(&reader);
+  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), NANOARROW_OK);
+  EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
+  EXPECT_EQ(reader.header_size_bytes, sizeof(kSimpleRecordBatch) - 8);
+  EXPECT_EQ(reader.body_size_bytes, 8);
 
   ArrowIpcReaderReset(&reader);
 }
@@ -168,6 +199,42 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   EXPECT_EQ(reader.schema.children[0]->flags, ARROW_FLAG_NULLABLE);
   EXPECT_STREQ(reader.schema.children[0]->format, "i");
 
+  ArrowIpcReaderReset(&reader);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
+  struct ArrowIpcReader reader;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatch;
+  data.size_bytes = sizeof(kSimpleRecordBatch);
+
+  ArrowIpcReaderInit(&reader);
+  ASSERT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), NANOARROW_OK);
+  EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
+  EXPECT_EQ(reader.header_size_bytes, sizeof(kSimpleRecordBatch) - 8);
+  EXPECT_EQ(reader.body_size_bytes, 8);
+
+  EXPECT_EQ(reader.codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+
+  // Should error if the number of buffers or field nodes doesn't match
+  reader.n_buffers = 1;
+  EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected 0 buffers in message but found 2");
+
+  reader.n_fields = 1;
+  EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected 0 field nodes in message but found 1");
+
+  schema.release(&schema);
   ArrowIpcReaderReset(&reader);
 }
 

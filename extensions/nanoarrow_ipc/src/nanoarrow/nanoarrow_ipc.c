@@ -680,6 +680,53 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
                                    error);
 }
 
+static int ArrowIpcReaderDecodeRecordBatch(struct ArrowIpcReader* reader,
+                                           flatbuffers_generic_t message_header,
+                                           struct ArrowError* error) {
+  ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))message_header;
+
+  ns(FieldNode_vec_t) fields = ns(RecordBatch_nodes(batch));
+  ns(Buffer_vec_t) buffers = ns(RecordBatch_buffers(batch));
+  int64_t n_fields = ns(FieldNode_vec_len(fields));
+  int64_t n_buffers = ns(Buffer_vec_len(buffers));
+
+  // Check field node and buffer count
+  if ((n_fields + 1) != reader->n_fields) {
+    ArrowErrorSet(error, "Expected %ld field nodes in message but found %ld",
+                  (long)reader->n_fields - 1, (long)n_fields);
+    return EINVAL;
+  }
+
+  if ((n_buffers + 1) != reader->n_buffers) {
+    ArrowErrorSet(error, "Expected %ld buffers in message but found %ld",
+                  (long)reader->n_buffers - 1, (long)n_buffers);
+    return EINVAL;
+  }
+
+  if (ns(RecordBatch_compression_is_present(batch))) {
+    ns(BodyCompression_table_t) compression = ns(RecordBatch_compression(batch));
+    ns(CompressionType_enum_t) codec = ns(BodyCompression_codec(compression));
+    switch (codec) {
+      case ns(CompressionType_LZ4_FRAME):
+        reader->codec = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
+        break;
+      case ns(CompressionType_ZSTD):
+        reader->codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
+        break;
+      default:
+        ArrowErrorSet(error, "Unrecognized RecordBatch BodyCompression codec value: %d",
+                      (int)codec);
+        return EINVAL;
+    }
+  } else {
+    reader->codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+  }
+
+  // Copying field node and buffer information is separate so as only to pay for the
+  // nodes that are actually accessed.
+  return NANOARROW_OK;
+}
+
 static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
                                             struct ArrowBufferView* data_mut,
                                             int32_t* message_size_bytes,
@@ -789,8 +836,11 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
     case ns(MessageHeader_Schema):
       NANOARROW_RETURN_NOT_OK(ArrowIpcReaderDecodeSchema(reader, message_header, error));
       break;
-    case ns(MessageHeader_DictionaryBatch):
     case ns(MessageHeader_RecordBatch):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcReaderDecodeRecordBatch(reader, message_header, error));
+      break;
+    case ns(MessageHeader_DictionaryBatch):
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowErrorSet(error, "Unsupported message type: '%s'",
