@@ -170,7 +170,7 @@ On Arch Linux (e.g., `docker run --rm -it archlinux:latest`, you can install all
 using `pacman`):
 
 ```bash
-pacman -S git g++ make cmake r-base gnupg curl arrow
+pacman -S git gcc make cmake r-base gnupg curl arrow
 ```
 
 ### Alpine Linux
