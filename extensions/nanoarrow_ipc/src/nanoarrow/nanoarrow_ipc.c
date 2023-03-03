@@ -45,20 +45,11 @@ void ArrowIpcReaderReset(struct ArrowIpcReader* reader) {
     reader->schema.release(&reader->schema);
   }
 
-  if (reader->array.release != NULL) {
-    reader->array.release(&reader->array);
-  }
-
   ArrowArrayViewReset(&reader->array_view);
 
   if (reader->fields != NULL) {
     ArrowFree(reader->fields);
     reader->n_fields = 0;
-  }
-
-  if (reader->buffers != NULL) {
-    ArrowFree(reader->buffers);
-    reader->n_buffers = 0;
   }
 
   ArrowIpcReaderInit(reader);
@@ -873,52 +864,35 @@ static void ArrowIpcReaderCountFields(struct ArrowSchema* schema, int64_t* n_fie
   }
 }
 
-static void ArrowIpcReaderCountBuffers(struct ArrowArray* array, int64_t* n_buffers) {
-  *n_buffers += array->n_buffers;
-  for (int64_t i = 0; i < array->n_children; i++) {
-    ArrowIpcReaderCountBuffers(array->children[i], n_buffers);
-  }
-}
-
 static void ArrowIpcReaderInitFields(struct ArrowIpcField* fields,
-                                     struct ArrowArrayView* view,
-                                     struct ArrowArray* array, int64_t* n_fields,
+                                     struct ArrowArrayView* view, int64_t* n_fields,
                                      int64_t* n_buffers) {
   struct ArrowIpcField* field = fields + (*n_fields);
-  field->array = array;
   field->array_view = view;
   field->buffer_offset = *n_buffers;
-  *n_buffers += array->n_buffers;
+
+  for (int i = 0; i < 3; i++) {
+    *n_buffers += view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
+  }
+
   *n_fields += 1;
 
   for (int64_t i = 0; i < view->n_children; i++) {
-    ArrowIpcReaderInitFields(fields, view->children[i], array->children[i], n_fields,
-                             n_buffers);
+    ArrowIpcReaderInitFields(fields, view->children[i], n_fields, n_buffers);
   }
 }
 
 ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* schema,
                                        struct ArrowError* error) {
-  if (reader->array.release != NULL) {
-    reader->array.release(&reader->array);
-  }
-
   ArrowArrayViewReset(&reader->array_view);
 
   if (reader->fields != NULL) {
     ArrowFree(reader->fields);
-    reader->n_fields = 0;
-  }
-
-  if (reader->buffers != NULL) {
-    ArrowFree(reader->buffers);
-    reader->n_buffers = 0;
   }
 
   // Allocate Array and ArrayView based on schema without moving the schema
   // this will fail if the schema is not valid.
-  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(&reader->array, schema, error));
   NANOARROW_RETURN_NOT_OK(
       ArrowArrayViewInitFromSchema(&reader->array_view, schema, error));
 
@@ -929,6 +903,7 @@ ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
   }
 
   // Walk tree and calculate how many fields we need to allocate
+  reader->n_fields = 0;
   ArrowIpcReaderCountFields(schema, &reader->n_fields);
   reader->fields =
       (struct ArrowIpcField*)ArrowMalloc(reader->n_fields * sizeof(struct ArrowIpcField));
@@ -938,21 +913,10 @@ ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
   }
   memset(reader->fields, 0, reader->n_fields * sizeof(struct ArrowIpcField));
 
-  // Walk tree and calculate how many buffer views we need to allocate
-  ArrowIpcReaderCountBuffers(&reader->array, &reader->n_buffers);
-  reader->buffers = (struct ArrowBufferView*)ArrowMalloc(reader->n_buffers *
-                                                         sizeof(struct ArrowBufferView));
-  if (reader->buffers == NULL) {
-    ArrowErrorSet(error, "Failed to allocate reader->buffers");
-    return ENOMEM;
-  }
-  memset(reader->buffers, 0, reader->n_buffers * sizeof(struct ArrowBufferView));
-
   // Init field information and calculate starting buffer offset for each
-  int64_t n_fields = 0;
-  int64_t n_buffers = 0;
-  ArrowIpcReaderInitFields(reader->fields, &reader->array_view, &reader->array, &n_fields,
-                           &n_buffers);
+  int64_t field_i = 0;
+  ArrowIpcReaderInitFields(reader->fields, &reader->array_view, &field_i,
+                           &reader->n_buffers);
 
   return NANOARROW_OK;
 }
@@ -1057,7 +1021,7 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
   // TODO: this performs some validation but doesn't do everything we need it to do
   // notably it doesn't loop over offset buffers to look for values that will cause
   // out-of-bounds buffer access on the data buffer.
-  result = ArrowArrayViewSetArray(root->array_view, &temp, error);
+  result = ArrowArrayFinishBuilding(&temp, error);
   if (result != NANOARROW_OK) {
     temp.release(&temp);
     return result;

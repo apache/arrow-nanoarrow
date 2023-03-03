@@ -64,7 +64,6 @@ enum ArrowIpcCompressionType {
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
 struct ArrowIpcField {
-  struct ArrowArray* array;
   struct ArrowArrayView* array_view;
   int64_t buffer_offset;
 };
@@ -78,12 +77,10 @@ struct ArrowIpcReader {
   int32_t header_size_bytes;
   int64_t body_size_bytes;
   struct ArrowSchema schema;
-  struct ArrowArray array;
   struct ArrowArrayView array_view;
   int64_t n_fields;
   struct ArrowIpcField* fields;
   int64_t n_buffers;
-  struct ArrowBufferView* buffers;
 };
 
 void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
@@ -106,10 +103,8 @@ ArrowErrorCode ArrowIpcReaderGetSchema(struct ArrowIpcReader* reader,
 
 ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
                                       struct ArrowBufferView header,
-                                      struct ArrowBufferView body,
-                                      int64_t i,
-                                      struct ArrowArray* out,
-                                      struct ArrowError* error);
+                                      struct ArrowBufferView body, int64_t i,
+                                      struct ArrowArray* out, struct ArrowError* error);
 
 ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* schema,
