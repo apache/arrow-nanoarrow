@@ -921,22 +921,30 @@ ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
   return NANOARROW_OK;
 }
 
+struct ArrowIpcArraySetter {
+  ns(FieldNode_vec_t) fields;
+  int64_t field_i;
+  ns(Buffer_vec_t) buffers;
+  int64_t buffer_i;
+  struct ArrowBufferView body;
+};
+
 // TODO: Wrap these options up in a struct to avoid all these arguments!
-static int ArrowIpcReaderWalkGetArray(struct ArrowArray* array,
-                                      ns(FieldNode_vec_t) fields,
-                                      ns(Buffer_vec_t) buffers, int64_t* field_i,
-                                      int64_t* buffer_i, const uint8_t* data0,
+static int ArrowIpcReaderWalkGetArray(struct ArrowIpcArraySetter* setter,
+                                      struct ArrowArray* array,
                                       struct ArrowError* error) {
-  ns(FieldNode_struct_t) field = ns(FieldNode_vec_at(fields, (size_t)field_i));
+  ns(FieldNode_struct_t) field =
+      ns(FieldNode_vec_at(setter->fields, (size_t)setter->field_i));
   array->length = ns(FieldNode_length(field));
   array->null_count = ns(FieldNode_null_count(field));
-  *field_i += 1;
+  setter->field_i += 1;
 
   for (int64_t i = 0; i < array->n_buffers; i++) {
-    ns(Buffer_struct_t) buffer = ns(Buffer_vec_at(buffers, (size_t)buffer_i));
+    ns(Buffer_struct_t) buffer =
+        ns(Buffer_vec_at(setter->buffers, (size_t)setter->buffer_i));
     struct ArrowBufferView view;
     view.size_bytes = ns(Buffer_length(buffer));
-    view.data.as_uint8 = data0 + ns(Buffer_offset(buffer));
+    view.data.as_uint8 = setter->body.data.as_uint8 + ns(Buffer_offset(buffer));
     // TODO: Check buffer offset + size for buffer overrun
 
     // TODO: This is where compression, endian swapping, and/or custom deallocator
@@ -947,12 +955,12 @@ static int ArrowIpcReaderWalkGetArray(struct ArrowArray* array,
       return result;
     }
 
-    *buffer_i += 1;
+    setter->buffer_i += 1;
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowIpcReaderWalkGetArray(
-        array->children[i], fields, buffers, field_i, buffer_i, data0, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcReaderWalkGetArray(setter, array->children[i], error));
   }
 
   return NANOARROW_OK;
@@ -983,7 +991,6 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
   // RecordBatch messages don't count the root node but we do
   int64_t field_i = i + 1;
   struct ArrowIpcField* root = reader->fields + field_i;
-  int64_t buffer_i = root->buffer_offset;
 
   struct ArrowArray temp;
   temp.release = NULL;
@@ -993,25 +1000,29 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
     return result;
   }
 
+  struct ArrowIpcArraySetter setter;
+  setter.fields = ns(RecordBatch_nodes(batch));
+  setter.field_i = field_i;
+  setter.buffers = ns(RecordBatch_buffers(batch));
+  setter.buffer_i = root->buffer_offset;
+
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
   if (i == -1) {
     temp.length = ns(RecordBatch_length(batch));
     temp.null_count = 0;
-    field_i++;
-    buffer_i++;
+    setter.field_i++;
+    setter.buffer_i++;
 
     for (int64_t i = 0; i < temp.n_children; i++) {
-      result = ArrowIpcReaderWalkGetArray(temp.children[i], fields, buffers, &field_i,
-                                          &buffer_i, body.data.as_uint8, error);
+      result = ArrowIpcReaderWalkGetArray(&setter, temp.children[i], error);
       if (result != NANOARROW_OK) {
         temp.release(&temp);
         return result;
       }
     }
   } else {
-    result = ArrowIpcReaderWalkGetArray(&temp, fields, buffers, &field_i, &buffer_i,
-                                        body.data.as_uint8, error);
+    result = ArrowIpcReaderWalkGetArray(&setter, &temp, error);
     if (result != NANOARROW_OK) {
       temp.release(&temp);
       return result;
