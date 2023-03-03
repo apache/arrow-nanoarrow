@@ -28,6 +28,10 @@
 #define ArrowIpcReaderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderPeek)
 #define ArrowIpcReaderVerify NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderVerify)
 #define ArrowIpcReaderDecode NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderDecode)
+#define ArrowIpcReaderGetSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderGetSchema)
+#define ArrowIpcReaderGetArray \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderGetArray)
 #define ArrowIpcReaderSetSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderSetSchema)
 
