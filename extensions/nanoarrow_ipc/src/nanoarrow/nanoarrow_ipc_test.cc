@@ -227,6 +227,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   data.size_bytes = sizeof(kSimpleRecordBatch);
 
   ArrowIpcReaderInit(&reader);
+
+  // Attempt to get array should fail nicely here
+  EXPECT_EQ(ArrowIpcReaderGetArray(&reader, data, 0, nullptr, &error), EINVAL);
+  EXPECT_STREQ(error.message, "reader did not just decode a RecordBatch message");
+
   ASSERT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), NANOARROW_OK);
@@ -267,6 +272,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   EXPECT_EQ(out[2], 3);
 
   array.release(&array);
+
+  // Field extract should fail if body is too small
+  body.size_bytes = 0;
+  EXPECT_EQ(ArrowIpcReaderGetArray(&reader, body, 0, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Buffer 1 requires body offsets [0..12) but body has size 0");
 
   // Should error if the number of buffers or field nodes doesn't match
   // (different numbers because we count the root struct and the message does not)

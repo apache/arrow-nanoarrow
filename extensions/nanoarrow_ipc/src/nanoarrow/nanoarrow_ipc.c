@@ -1002,7 +1002,7 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
                                       struct ArrowArray* out, struct ArrowError* error) {
   if (reader->private_data == NULL ||
       reader->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
-    ArrowErrorSet(error, "reader did not just decode a record batch");
+    ArrowErrorSet(error, "reader did not just decode a RecordBatch message");
     return EINVAL;
   }
 
