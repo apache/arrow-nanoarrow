@@ -273,6 +273,20 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
 
   array.release(&array);
 
+  // Field extract should fail if compression was set
+  reader.codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
+  EXPECT_EQ(ArrowIpcReaderGetArray(&reader, body, 0, &array, &error), ENOTSUP);
+  EXPECT_STREQ(error.message, "The nanoarrow_ipc extension does not support compression");
+  reader.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+
+  // Field extract should fail on non-system endian
+  // This test will have to get updated when we start testing on big endian
+  reader.endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+  EXPECT_EQ(ArrowIpcReaderGetArray(&reader, body, 0, &array, &error), ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "The nanoarrow_ipc extension does not support non-system endianness");
+  reader.endianness = NANOARROW_IPC_ENDIANNESS_UNINITIALIZED;
+
   // Field extract should fail if body is too small
   body.size_bytes = 0;
   EXPECT_EQ(ArrowIpcReaderGetArray(&reader, body, 0, &array, &error), EINVAL);

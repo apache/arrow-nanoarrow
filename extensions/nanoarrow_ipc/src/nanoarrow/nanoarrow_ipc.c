@@ -935,6 +935,7 @@ struct ArrowIpcArraySetter {
   struct ArrowBufferView body;
   enum ArrowIpcCompressionType codec;
   enum ArrowIpcEndianness endianness;
+  enum ArrowIpcEndianness system_endianness;
 };
 
 static int ArrowIpcReaderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
@@ -956,6 +957,18 @@ static int ArrowIpcReaderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t 
   struct ArrowBufferView view;
   view.data.as_uint8 = setter->body.data.as_uint8 + offset;
   view.size_bytes = length;
+
+  if (setter->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
+    return ENOTSUP;
+  }
+
+  if (setter->endianness != NANOARROW_IPC_ENDIANNESS_UNINITIALIZED &&
+      setter->endianness != setter->system_endianness) {
+    ArrowErrorSet(error,
+                  "The nanoarrow_ipc extension does not support non-system endianness");
+    return ENOTSUP;
+  }
 
   int result = ArrowBufferAppendBufferView(out, view);
   if (result != NANOARROW_OK) {
@@ -983,8 +996,8 @@ static int ArrowIpcReaderWalkGetArray(struct ArrowIpcArraySetter* setter,
     setter->buffer_i += 1;
 
     struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(array, i);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcReaderMakeBuffer(setter, buffer_offset, buffer_length, buffer_dst, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcReaderMakeBuffer(setter, buffer_offset, buffer_length,
+                                                     buffer_dst, error));
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
@@ -1035,8 +1048,18 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
   setter.body = body;
-  setter.endianness = reader->endianness;
   setter.codec = reader->codec;
+  setter.endianness = reader->endianness;
+
+  // This should probably be done at compile time
+  uint32_t check = 1;
+  char first_byte;
+  memcpy(&first_byte, &check, sizeof(char));
+  if (first_byte) {
+    setter.system_endianness = NANOARROW_IPC_ENDIANNESS_LITTLE;
+  } else {
+    setter.system_endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+  }
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
