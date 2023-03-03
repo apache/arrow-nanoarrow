@@ -933,7 +933,38 @@ struct ArrowIpcArraySetter {
   ns(Buffer_vec_t) buffers;
   int64_t buffer_i;
   struct ArrowBufferView body;
+  enum ArrowIpcCompressionType codec;
+  enum ArrowIpcEndianness endianness;
 };
+
+static int ArrowIpcReaderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
+                                    int64_t length, struct ArrowBuffer* out,
+                                    struct ArrowError* error) {
+  if (length == 0) {
+    return NANOARROW_OK;
+  }
+
+  // Check that this buffer fits within the body
+  if (offset < 0 || (offset + length) > setter->body.size_bytes) {
+    ArrowErrorSet(error,
+                  "Buffer %ld requires body offsets [%ld..%ld) but body has size %ld",
+                  (long)setter->buffer_i - 1, (long)offset, (long)offset + (long)length,
+                  setter->body.size_bytes);
+    return EINVAL;
+  }
+
+  struct ArrowBufferView view;
+  view.data.as_uint8 = setter->body.data.as_uint8 + offset;
+  view.size_bytes = length;
+
+  int result = ArrowBufferAppendBufferView(out, view);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "Failed to copy buffer");
+    return result;
+  }
+
+  return NANOARROW_OK;
+}
 
 static int ArrowIpcReaderWalkGetArray(struct ArrowIpcArraySetter* setter,
                                       struct ArrowArray* array,
@@ -951,30 +982,9 @@ static int ArrowIpcReaderWalkGetArray(struct ArrowIpcArraySetter* setter,
     int64_t buffer_length = ns(Buffer_length(buffer));
     setter->buffer_i += 1;
 
-    if (buffer_length == 0) {
-      continue;
-    }
-
-    // Check that this buffer fits within the body
-    if (buffer_offset < 0 || (buffer_length + buffer_offset) > setter->body.size_bytes) {
-      ArrowErrorSet(error,
-                    "Buffer %ld requires body offsets [%ld..%ld) but body has size %ld",
-                    (long)setter->buffer_i - 1, (long)buffer_offset,
-                    (long)buffer_offset + (long)buffer_length, setter->body.size_bytes);
-      return EINVAL;
-    }
-
-    struct ArrowBufferView view;
-    view.data.as_uint8 = setter->body.data.as_uint8 + buffer_offset;
-    view.size_bytes = buffer_length;
-
-    // TODO: This is where compression, endian swapping, and/or custom deallocator
-    // would be applied.
-    int result = ArrowBufferAppendBufferView(ArrowArrayBuffer(array, i), view);
-    if (result != NANOARROW_OK) {
-      ArrowErrorSet(error, "Failed to copy buffer");
-      return result;
-    }
+    struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(array, i);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcReaderMakeBuffer(setter, buffer_offset, buffer_length, buffer_dst, error));
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
@@ -1025,6 +1035,8 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
   setter.body = body;
+  setter.endianness = reader->endianness;
+  setter.codec = reader->codec;
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
@@ -1051,7 +1063,7 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
 
   // TODO: this performs some validation but doesn't do everything we need it to do
   // notably it doesn't loop over offset buffers to look for values that will cause
-  // out-of-bounds buffer access on the data buffer.
+  // out-of-bounds buffer access on the data buffer or child arrays.
   result = ArrowArrayFinishBuilding(&temp, error);
   if (result != NANOARROW_OK) {
     temp.release(&temp);
