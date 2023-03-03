@@ -386,41 +386,69 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   ArrowIpcReaderReset(&reader);
 }
 
-TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowEmptyArrayRoundtrip) {
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
   std::shared_ptr<arrow::Schema> dummy_schema =
       arrow::schema({arrow::field("dummy_name", data_type)});
 
-  auto maybe_empty = RecordBatch::MakeEmpty(dummy_schema);
+  auto maybe_empty = arrow::RecordBatch::MakeEmpty(dummy_schema);
   ASSERT_TRUE(maybe_empty.ok());
   auto empty = maybe_empty.ValueUnsafe();
 
-  arrow::ipc::IpcWriteOptions options;
-  auto maybe_serialized = arrow::ipc::SerializeRecordBatch(*empty, options);
-  ASSERT_TRUE(maybe_serialized.ok());
+  auto maybe_nulls_array = arrow::MakeArrayOfNull(data_type, 3);
+  ASSERT_TRUE(maybe_nulls_array.ok());
+  auto nulls =
+      arrow::RecordBatch::Make(dummy_schema, 3, {maybe_nulls_array.ValueUnsafe()});
+
+  auto options = arrow::ipc::IpcWriteOptions::Defaults();
 
   struct ArrowSchema schema;
-  ASSERT_TRUE(arrow::ExportSchema(*dummy_schema, &schema).ok());
-
   struct ArrowIpcReader reader;
+  struct ArrowBufferView buffer_view;
+  struct ArrowArray array;
+
+  // Initialize the reader
+  ASSERT_TRUE(arrow::ExportSchema(*dummy_schema, &schema).ok());
   ArrowIpcReaderInit(&reader);
   ASSERT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, nullptr), NANOARROW_OK);
 
-  struct ArrowBufferView buffer_view;
+  // Check the empty array
+  auto maybe_serialized = arrow::ipc::SerializeRecordBatch(*empty, options);
+  ASSERT_TRUE(maybe_serialized.ok());
   buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
   buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
 
   ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
-
-  struct ArrowArray array;
+  buffer_view.data.as_uint8 += reader.header_size_bytes;
+  buffer_view.size_bytes -= reader.header_size_bytes;
   ASSERT_EQ(ArrowIpcReaderGetArray(&reader, buffer_view, -1, &array, nullptr),
             NANOARROW_OK);
 
   auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());
-
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), empty->ToString());
   EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty));
+
+  // Check the array with 3 null values
+  maybe_serialized = arrow::ipc::SerializeRecordBatch(*nulls, options);
+  ASSERT_TRUE(maybe_serialized.ok());
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
+  buffer_view.data.as_uint8 += reader.header_size_bytes;
+  buffer_view.size_bytes -= reader.header_size_bytes;
+  ASSERT_EQ(ArrowIpcReaderGetArray(&reader, buffer_view, -1, &array, nullptr),
+            NANOARROW_OK);
+
+  maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
+  ASSERT_TRUE(maybe_batch.ok());
+  EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), nulls->ToString());
+  EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*nulls));
+
+  if (!maybe_batch.ValueUnsafe()->Equals(*nulls)) {
+    std::cout << "something";
+  }
 
   schema.release(&schema);
   ArrowIpcReaderReset(&reader);
