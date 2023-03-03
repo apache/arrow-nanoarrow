@@ -784,6 +784,7 @@ ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
   reader->message_type = ns(Message_header_type(message));
   reader->body_size_bytes = ns(Message_bodyLength(message));
 
+  reader->private_data = ns(Message_header_get(message));
   return NANOARROW_OK;
 }
 
@@ -842,6 +843,7 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
       return EINVAL;
   }
 
+  reader->private_data = message_header;
   return NANOARROW_OK;
 }
 
@@ -979,18 +981,12 @@ static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
 }
 
 ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
-                                      struct ArrowBufferView header,
-                                      struct ArrowBufferView body, int64_t i,
+                                      struct ArrowBufferView body, int64_t field_i,
                                       struct ArrowArray* out, struct ArrowError* error) {
-  ns(Message_table_t) message =
-      ns(Message_as_root(header.data.as_uint8 + (2 * sizeof(int32_t))));
-  ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))message;
-  ns(FieldNode_vec_t) fields = ns(RecordBatch_nodes(batch));
-  ns(Buffer_vec_t) buffers = ns(RecordBatch_buffers(batch));
+  ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))reader->private_data;
 
-  // RecordBatch messages don't count the root node but we do
-  int64_t field_i = i + 1;
-  struct ArrowIpcField* root = reader->fields + field_i;
+  // RecordBatch messages don't count the root node but reader->fields does
+  struct ArrowIpcField* root = reader->fields + field_i + 1;
 
   struct ArrowArray temp;
   temp.release = NULL;
@@ -1004,11 +1000,11 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
   setter.fields = ns(RecordBatch_nodes(batch));
   setter.field_i = field_i;
   setter.buffers = ns(RecordBatch_buffers(batch));
-  setter.buffer_i = root->buffer_offset;
+  setter.buffer_i = root->buffer_offset - 1;
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
-  if (i == -1) {
+  if (field_i == -1) {
     temp.length = ns(RecordBatch_length(batch));
     temp.null_count = 0;
     setter.field_i++;

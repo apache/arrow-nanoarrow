@@ -214,6 +214,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   struct ArrowIpcReader reader;
   struct ArrowError error;
   struct ArrowSchema schema;
+  struct ArrowArray array;
 
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
@@ -232,6 +233,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   EXPECT_EQ(reader.body_size_bytes, 8);
 
   EXPECT_EQ(reader.codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+
+  struct ArrowBufferView body;
+  body.data.as_uint8 = kSimpleRecordBatch + reader.header_size_bytes;
+  body.size_bytes = reader.body_size_bytes;
+  EXPECT_EQ(ArrowIpcReaderGetArray(&reader, body, -1, &array, nullptr), NANOARROW_OK);
 
   // Should error if the number of buffers or field nodes doesn't match
   // (different numbers because we count the root struct and the message does not)

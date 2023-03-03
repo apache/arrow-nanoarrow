@@ -85,6 +85,7 @@ struct ArrowIpcReader {
   int64_t n_fields;
   struct ArrowIpcField* fields;
   int64_t n_buffers;
+  const void* private_data;
 };
 
 void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
@@ -106,7 +107,6 @@ ArrowErrorCode ArrowIpcReaderGetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* out, struct ArrowError* error);
 
 ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
-                                      struct ArrowBufferView header,
                                       struct ArrowBufferView body, int64_t i,
                                       struct ArrowArray* out, struct ArrowError* error);
 
