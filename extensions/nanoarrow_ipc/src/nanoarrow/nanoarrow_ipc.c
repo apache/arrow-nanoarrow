@@ -1001,6 +1001,7 @@ ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
   setter.field_i = field_i;
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
+  setter.body = body;
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
