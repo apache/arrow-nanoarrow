@@ -681,7 +681,8 @@ static int ArrowIpcReaderDecodeRecordBatch(struct ArrowIpcReader* reader,
   int64_t n_fields = ns(FieldNode_vec_len(fields));
   int64_t n_buffers = ns(Buffer_vec_len(buffers));
 
-  // Check field node and buffer count
+  // Check field node and buffer count. We have one more field and buffer
+  // because we count the root struct and the flatbuffer message does not.
   if ((n_fields + 1) != reader->n_fields) {
     ArrowErrorSet(error, "Expected %ld field nodes in message but found %ld",
                   (long)reader->n_fields - 1, (long)n_fields);
@@ -756,6 +757,7 @@ ArrowErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
                                   struct ArrowBufferView data, struct ArrowError* error) {
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   reader->body_size_bytes = 0;
+  reader->private_data = NULL;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
   reader->header_size_bytes += 2 * sizeof(int32_t);
@@ -767,6 +769,7 @@ ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
                                     struct ArrowError* error) {
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   reader->body_size_bytes = 0;
+  reader->private_data = NULL;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
 
@@ -793,6 +796,7 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
                                     struct ArrowError* error) {
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   reader->body_size_bytes = 0;
+  reader->private_data = NULL;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
   reader->header_size_bytes += 2 * sizeof(int32_t);
@@ -931,7 +935,6 @@ struct ArrowIpcArraySetter {
   struct ArrowBufferView body;
 };
 
-// TODO: Wrap these options up in a struct to avoid all these arguments!
 static int ArrowIpcReaderWalkGetArray(struct ArrowIpcArraySetter* setter,
                                       struct ArrowArray* array,
                                       struct ArrowError* error) {
@@ -944,10 +947,26 @@ static int ArrowIpcReaderWalkGetArray(struct ArrowIpcArraySetter* setter,
   for (int64_t i = 0; i < array->n_buffers; i++) {
     ns(Buffer_struct_t) buffer =
         ns(Buffer_vec_at(setter->buffers, (size_t)setter->buffer_i));
+    int64_t buffer_offset = ns(Buffer_offset(buffer));
+    int64_t buffer_length = ns(Buffer_length(buffer));
+    setter->buffer_i += 1;
+
+    if (buffer_length == 0) {
+      continue;
+    }
+
+    // Check that this buffer fits within the body
+    if (buffer_offset < 0 || (buffer_length + buffer_offset) > setter->body.size_bytes) {
+      ArrowErrorSet(error,
+                    "Buffer %ld requires body offsets [%ld..%ld) but body has size %ld",
+                    (long)setter->buffer_i - 1, (long)buffer_offset,
+                    (long)buffer_offset + (long)buffer_length, setter->body.size_bytes);
+      return EINVAL;
+    }
+
     struct ArrowBufferView view;
-    view.size_bytes = ns(Buffer_length(buffer));
-    view.data.as_uint8 = setter->body.data.as_uint8 + ns(Buffer_offset(buffer));
-    // TODO: Check buffer offset + size for buffer overrun
+    view.data.as_uint8 = setter->body.data.as_uint8 + buffer_offset;
+    view.size_bytes = buffer_length;
 
     // TODO: This is where compression, endian swapping, and/or custom deallocator
     // would be applied.
@@ -956,8 +975,6 @@ static int ArrowIpcReaderWalkGetArray(struct ArrowIpcArraySetter* setter,
       ArrowErrorSet(error, "Failed to copy buffer");
       return result;
     }
-
-    setter->buffer_i += 1;
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
@@ -983,6 +1000,12 @@ static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
 ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
                                       struct ArrowBufferView body, int64_t field_i,
                                       struct ArrowArray* out, struct ArrowError* error) {
+  if (reader->private_data == NULL ||
+      reader->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
+    ArrowErrorSet(error, "reader did not just decode a record batch");
+    return EINVAL;
+  }
+
   ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))reader->private_data;
 
   // RecordBatch messages don't count the root node but reader->fields does
