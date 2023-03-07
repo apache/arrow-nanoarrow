@@ -38,10 +38,6 @@ export ARROW_SOURCE="$(cd "${arrow_dir}" && pwd)"
 
 ########################## Update Snapshot Version ##########################
 
-git fetch --all --prune --tags --force -j$(nproc)
-git switch main
-git rebase apache/main
-
 echo "Updating versions for ${next_version_snapshot}"
 update_versions "${version}" "${next_version}" "snapshot"
 git commit -m "chore: update versions for ${next_version_snapshot}"
@@ -52,6 +48,3 @@ echo "Bumped versions on branch."
 git checkout apache-arrow-nanoarrow-${version} -- CHANGELOG.md
 git commit -m "chore: update changelog for ${version}"
 echo "Updated changelog on branch."
-
-echo "Pushing changes to apache/arrow-nanoarrow:main"
-git push apache main
