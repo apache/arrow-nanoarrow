@@ -42,7 +42,9 @@ extern "C" {
 #endif
 
 enum ArrowIpcMetadataVersion {
-  NANOARROW_IPC_METADATA_VERSION_UNINITIALIAZED,
+  NANOARROW_IPC_METADATA_VERSION_V1,
+  NANOARROW_IPC_METADATA_VERSION_V2,
+  NANOARROW_IPC_METADATA_VERSION_V3,
   NANOARROW_IPC_METADATA_VERSION_V4,
   NANOARROW_IPC_METADATA_VERSION_V5
 };
@@ -73,14 +75,42 @@ enum ArrowIpcCompressionType {
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
+/// \brief Decoder for Arrow IPC messages
+///
+/// This structure is intended to be allocated by the caller,
+/// initialized using ArrowIpcReaderInit(), and released with
+/// ArrowIpcReaderReset(). These fields should not be modified
+/// by the caller but can be read following a call to
+/// ArrowIpcReaderPeek(), ArrowIpcReaderVerify(), or
+/// ArrowIpcReaderDecode().
 struct ArrowIpcReader {
-  enum ArrowIpcMetadataVersion metadata_version;
+  /// \brief The last verified or decoded message type
   enum ArrowIpcMessageType message_type;
+
+  /// \brief The metadata version used by this and forthcoming messages
+  enum ArrowIpcMetadataVersion metadata_version;
+
+  /// \brief Endianness of forthcoming RecordBatch messages
   enum ArrowIpcEndianness endianness;
+
+  /// \brief Features used by this and forthcoming messages as indicated by the current
+  /// Schema message
   int32_t feature_flags;
+
+  /// \brief Compression used by the current RecordBatch message
   enum ArrowIpcCompressionType codec;
+
+  /// \brief The number of bytes in the current header message
+  ///
+  /// This value includes the 8 bytes before the start of the header message
+  /// content and any padding bytes required to make the header message size
+  /// be a multiple of 8 bytes.
   int32_t header_size_bytes;
+
+  /// \brief The number of bytes in the forthcoming body message.
   int64_t body_size_bytes;
+
+  /// \brief Private resources managed by this library
   void* private_data;
 };
 

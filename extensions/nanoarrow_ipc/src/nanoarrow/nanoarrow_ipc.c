@@ -836,7 +836,7 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
   }
 
   // Read some basic information from the message
-  reader->metadata_version = ns(Message_version(message));
+  int32_t metadata_version = ns(Message_version(message));
   reader->message_type = ns(Message_header_type(message));
   reader->body_size_bytes = ns(Message_bodyLength(message));
 
