@@ -277,3 +277,47 @@ This step can be done by any Arrow comitter. The caller of this script does not 
 be on any particular branch but *does* need the
 [dev/release/.env](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/.env.example)
 file to exist setting the appropriate `APACHE_USERNAME` environment variable.
+
+At this point the release candidate is suitable for a vote on the Apache Arrow developer mailing list.
+
+```
+Hello,
+
+I would like to propose the following release candidate (RC{rc_num}) of Apache Arrow nanoarrow [0] version {version}. This is an initial release consisting of {num_resolved_issues} resolved GitHub issues [1].
+
+This release candidate is based on commit: {rc_commit} [2]
+
+The source release rc{rc_num} is hosted at [3].
+The changelog is located at [4].
+
+Please download, verify checksums and signatures, run the unit tests, and vote on the release. See [5] for how to validate a release candidate.
+
+The vote will be open for at least 72 hours.
+
+[ ] +1 Release this as Apache Arrow nanoarrow {version}
+[ ] +0
+[ ] -1 Do not release this as Apache Arrow nanoarrow {version} because...
+
+[0] https://github.com/apache/arrow-nanoarrow
+[1] https://github.com/apache/arrow-nanoarrow/milestone/{milestone}?closed=1
+[2] https://github.com/apache/arrow-nanoarrow/tree/apache-arrow-nanoarrow-{version}-rc{rc_num}
+[3] https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-{version}-rc{rc_num}/
+[4] https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-{version}-rc{rc_num}/CHANGELOG.md
+[5] https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/README.md
+```
+
+## Post-release
+
+After a passing release vote, the following tasks must be completed:
+
+```
+[ ] Closed GitHub milestone
+[ ] Added release to Apache Reporter System
+[ ] Uploaded artifacts to Subversion
+[ ] Created GitHub release
+[ ] Submit R package to CRAN
+[ ] Sent announcement to announce@apache.org
+[ ] Release blog post at https://github.com/apache/arrow-site/pull/288
+[ ] Removed old artifacts from SVN
+[ ] Bumped versions on main
+```
