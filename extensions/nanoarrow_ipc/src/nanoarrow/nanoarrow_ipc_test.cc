@@ -188,6 +188,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   data.size_bytes = sizeof(kSimpleSchema);
 
   ArrowIpcReaderInit(&reader);
+  auto reader_private =
+      reinterpret_cast<struct ArrowIpcReaderPrivate*>(reader.private_data);
+
   EXPECT_EQ(ArrowIpcReaderGetSchema(&reader, &schema, &error), EINVAL);
   EXPECT_STREQ(error.message, "reader does not contain a valid schema");
 
@@ -197,15 +200,15 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
 
   EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
   EXPECT_EQ(reader.endianness, NANOARROW_IPC_ENDIANNESS_LITTLE);
-  EXPECT_EQ(reader.features, 0);
+  EXPECT_EQ(reader.feature_flags, 0);
 
-  ASSERT_EQ(reader.schema.n_children, 1);
-  EXPECT_STREQ(reader.schema.children[0]->name, "some_col");
-  EXPECT_EQ(reader.schema.children[0]->flags, ARROW_FLAG_NULLABLE);
-  EXPECT_STREQ(reader.schema.children[0]->format, "i");
+  ASSERT_EQ(reader_private->schema.n_children, 1);
+  EXPECT_STREQ(reader_private->schema.children[0]->name, "some_col");
+  EXPECT_EQ(reader_private->schema.children[0]->flags, ARROW_FLAG_NULLABLE);
+  EXPECT_STREQ(reader_private->schema.children[0]->format, "i");
 
   EXPECT_EQ(ArrowIpcReaderGetSchema(&reader, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(reader.schema.release, nullptr);
+  EXPECT_EQ(reader_private->schema.release, nullptr);
   EXPECT_NE(schema.release, nullptr);
 
   schema.release(&schema);
@@ -227,6 +230,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   data.size_bytes = sizeof(kSimpleRecordBatch);
 
   ArrowIpcReaderInit(&reader);
+  auto reader_private =
+      reinterpret_cast<struct ArrowIpcReaderPrivate*>(reader.private_data);
 
   // Attempt to get array should fail nicely here
   EXPECT_EQ(ArrowIpcReaderGetArray(&reader, data, 0, nullptr, &error), EINVAL);
@@ -295,11 +300,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
 
   // Should error if the number of buffers or field nodes doesn't match
   // (different numbers because we count the root struct and the message does not)
-  reader.n_buffers = 1;
+  reader_private->n_buffers = 1;
   EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected 0 buffers in message but found 2");
 
-  reader.n_fields = 1;
+  reader_private->n_fields = 1;
   EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected 0 field nodes in message but found 1");
 
@@ -317,15 +322,18 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   ArrowIpcReaderInit(&reader);
+  auto reader_private =
+      reinterpret_cast<struct ArrowIpcReaderPrivate*>(reader.private_data);
+
   EXPECT_EQ(ArrowIpcReaderSetSchema(&reader, &schema, nullptr), NANOARROW_OK);
-  EXPECT_EQ(reader.n_fields, 2);
-  EXPECT_EQ(reader.n_buffers, 3);
+  EXPECT_EQ(reader_private->n_fields, 2);
+  EXPECT_EQ(reader_private->n_buffers, 3);
 
-  EXPECT_EQ(reader.fields[0].array_view->storage_type, NANOARROW_TYPE_STRUCT);
-  EXPECT_EQ(reader.fields[0].buffer_offset, 0);
+  EXPECT_EQ(reader_private->fields[0].array_view->storage_type, NANOARROW_TYPE_STRUCT);
+  EXPECT_EQ(reader_private->fields[0].buffer_offset, 0);
 
-  EXPECT_EQ(reader.fields[1].array_view->storage_type, NANOARROW_TYPE_INT32);
-  EXPECT_EQ(reader.fields[1].buffer_offset, 1);
+  EXPECT_EQ(reader_private->fields[1].array_view->storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(reader_private->fields[1].buffer_offset, 1);
 
   schema.release(&schema);
   ArrowIpcReaderReset(&reader);
@@ -376,7 +384,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   EXPECT_EQ(reader.body_size_bytes, 0);
 
   ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
-  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  struct ArrowSchema schema;
+  ASSERT_EQ(ArrowIpcReaderGetSchema(&reader, &schema, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&schema);
   ASSERT_TRUE(maybe_schema.ok());
 
   // Better failure message if we first check for string equality
@@ -523,7 +533,9 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
   EXPECT_EQ(reader.body_size_bytes, 0);
 
   ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
-  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  struct ArrowSchema schema;
+  ASSERT_EQ(ArrowIpcReaderGetSchema(&reader, &schema, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&schema);
   ASSERT_TRUE(maybe_schema.ok());
 
   // Better failure message if we first check for string equality

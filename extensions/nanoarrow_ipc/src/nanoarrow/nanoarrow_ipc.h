@@ -41,6 +41,12 @@
 extern "C" {
 #endif
 
+enum ArrowIpcMetadataVersion {
+  NANOARROW_IPC_METADATA_VERSION_UNINITIALIAZED,
+  NANOARROW_IPC_METADATA_VERSION_V4,
+  NANOARROW_IPC_METADATA_VERSION_V5
+};
+
 enum ArrowIpcMessageType {
   NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED,
   NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
@@ -67,28 +73,18 @@ enum ArrowIpcCompressionType {
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
-struct ArrowIpcField {
-  struct ArrowArrayView* array_view;
-  int64_t buffer_offset;
-};
-
 struct ArrowIpcReader {
-  int32_t metadata_version;
-  int32_t message_type;
-  int32_t endianness;
-  int32_t features;
-  int32_t codec;
+  enum ArrowIpcMetadataVersion metadata_version;
+  enum ArrowIpcMessageType message_type;
+  enum ArrowIpcEndianness endianness;
+  int32_t feature_flags;
+  enum ArrowIpcCompressionType codec;
   int32_t header_size_bytes;
   int64_t body_size_bytes;
-  struct ArrowSchema schema;
-  struct ArrowArrayView array_view;
-  int64_t n_fields;
-  struct ArrowIpcField* fields;
-  int64_t n_buffers;
-  const void* private_data;
+  void* private_data;
 };
 
-void ArrowIpcReaderInit(struct ArrowIpcReader* reader);
+ArrowErrorCode ArrowIpcReaderInit(struct ArrowIpcReader* reader);
 
 void ArrowIpcReaderReset(struct ArrowIpcReader* reader);
 
@@ -114,8 +110,22 @@ ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* schema,
                                        struct ArrowError* error);
 
-#endif
+struct ArrowIpcField {
+  struct ArrowArrayView* array_view;
+  int64_t buffer_offset;
+};
+
+struct ArrowIpcReaderPrivate {
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  int64_t n_fields;
+  struct ArrowIpcField* fields;
+  int64_t n_buffers;
+  const void* last_message;
+};
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

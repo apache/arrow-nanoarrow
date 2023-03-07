@@ -36,23 +36,35 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-void ArrowIpcReaderInit(struct ArrowIpcReader* reader) {
+ArrowErrorCode ArrowIpcReaderInit(struct ArrowIpcReader* reader) {
   memset(reader, 0, sizeof(struct ArrowIpcReader));
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)ArrowMalloc(sizeof(struct ArrowIpcReaderPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  memset(private_data, 0, sizeof(struct ArrowIpcReaderPrivate));
+  reader->private_data = private_data;
+  return NANOARROW_OK;
 }
 
 void ArrowIpcReaderReset(struct ArrowIpcReader* reader) {
-  if (reader->schema.release != NULL) {
-    reader->schema.release(&reader->schema);
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+  if (private_data->schema.release != NULL) {
+    private_data->schema.release(&private_data->schema);
   }
 
-  ArrowArrayViewReset(&reader->array_view);
+  ArrowArrayViewReset(&private_data->array_view);
 
-  if (reader->fields != NULL) {
-    ArrowFree(reader->fields);
-    reader->n_fields = 0;
+  if (private_data->fields != NULL) {
+    ArrowFree(private_data->fields);
+    private_data->n_fields = 0;
   }
 
-  ArrowIpcReaderInit(reader);
+  ArrowFree(private_data);
+  memset(reader, 0, sizeof(struct ArrowIpcReader));
 }
 
 static inline uint32_t ArrowIpcReadUint32LE(struct ArrowBufferView* data) {
@@ -617,6 +629,9 @@ static int ArrowIpcReaderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t)
 static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
                                       flatbuffers_generic_t message_header,
                                       struct ArrowError* error) {
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+
   ns(Schema_table_t) schema = (ns(Schema_table_t))message_header;
   int endianness = ns(Schema_endianness(schema));
   switch (endianness) {
@@ -635,16 +650,16 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
 
   ns(Feature_vec_t) features = ns(Schema_features(schema));
   int64_t n_features = ns(Feature_vec_len(features));
-  reader->features = 0;
+  reader->feature_flags = 0;
 
   for (int64_t i = 0; i < n_features; i++) {
     ns(Feature_enum_t) feature = ns(Feature_vec_at(features, i));
     switch (feature) {
       case ns(Feature_COMPRESSED_BODY):
-        reader->features |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
+        reader->feature_flags |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
         break;
       case ns(Feature_DICTIONARY_REPLACEMENT):
-        reader->features |= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
+        reader->feature_flags |= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
         break;
       default:
         ArrowErrorSet(error, "Unrecognized Schema feature with value %d", (int)feature);
@@ -654,26 +669,30 @@ static int ArrowIpcReaderDecodeSchema(struct ArrowIpcReader* reader,
 
   ns(Field_vec_t) fields = ns(Schema_fields(schema));
   int64_t n_fields = ns(Schema_vec_len(fields));
-  if (reader->schema.release != NULL) {
-    reader->schema.release(&reader->schema);
+  if (private_data->schema.release != NULL) {
+    private_data->schema.release(&private_data->schema);
   }
 
-  ArrowSchemaInit(&reader->schema);
-  int result = ArrowSchemaSetTypeStruct(&reader->schema, n_fields);
+  ArrowSchemaInit(&private_data->schema);
+  int result = ArrowSchemaSetTypeStruct(&private_data->schema, n_fields);
   if (result != NANOARROW_OK) {
     ArrowErrorSet(error, "Failed to allocate struct schema with %ld children",
                   (long)n_fields);
     return result;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcReaderSetChildren(&reader->schema, fields, error));
-  return ArrowIpcReaderSetMetadata(&reader->schema, ns(Schema_custom_metadata(schema)),
-                                   error);
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcReaderSetChildren(&private_data->schema, fields, error));
+  return ArrowIpcReaderSetMetadata(&private_data->schema,
+                                   ns(Schema_custom_metadata(schema)), error);
 }
 
 static int ArrowIpcReaderDecodeRecordBatch(struct ArrowIpcReader* reader,
                                            flatbuffers_generic_t message_header,
                                            struct ArrowError* error) {
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+
   ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))message_header;
 
   ns(FieldNode_vec_t) fields = ns(RecordBatch_nodes(batch));
@@ -683,15 +702,15 @@ static int ArrowIpcReaderDecodeRecordBatch(struct ArrowIpcReader* reader,
 
   // Check field node and buffer count. We have one more field and buffer
   // because we count the root struct and the flatbuffer message does not.
-  if ((n_fields + 1) != reader->n_fields) {
+  if ((n_fields + 1) != private_data->n_fields) {
     ArrowErrorSet(error, "Expected %ld field nodes in message but found %ld",
-                  (long)reader->n_fields - 1, (long)n_fields);
+                  (long)private_data->n_fields - 1, (long)n_fields);
     return EINVAL;
   }
 
-  if ((n_buffers + 1) != reader->n_buffers) {
+  if ((n_buffers + 1) != private_data->n_buffers) {
     ArrowErrorSet(error, "Expected %ld buffers in message but found %ld",
-                  (long)reader->n_buffers - 1, (long)n_buffers);
+                  (long)private_data->n_buffers - 1, (long)n_buffers);
     return EINVAL;
   }
 
@@ -755,9 +774,12 @@ static inline int ArrowIpcReaderCheckHeader(struct ArrowIpcReader* reader,
 
 ArrowErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
                                   struct ArrowBufferView data, struct ArrowError* error) {
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   reader->body_size_bytes = 0;
-  reader->private_data = NULL;
+  private_data->last_message = NULL;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
   reader->header_size_bytes += 2 * sizeof(int32_t);
@@ -767,9 +789,12 @@ ArrowErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
 ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
                                     struct ArrowBufferView data,
                                     struct ArrowError* error) {
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   reader->body_size_bytes = 0;
-  reader->private_data = NULL;
+  private_data->last_message = NULL;
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
 
@@ -787,16 +812,20 @@ ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
   reader->message_type = ns(Message_header_type(message));
   reader->body_size_bytes = ns(Message_bodyLength(message));
 
-  reader->private_data = ns(Message_header_get(message));
+  private_data->last_message = ns(Message_header_get(message));
   return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
                                     struct ArrowBufferView data,
                                     struct ArrowError* error) {
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+
   reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
   reader->body_size_bytes = 0;
-  reader->private_data = NULL;
+  private_data->last_message = NULL;
+
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcReaderCheckHeader(reader, &data, &reader->header_size_bytes, error));
   reader->header_size_bytes += 2 * sizeof(int32_t);
@@ -847,19 +876,22 @@ ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
       return EINVAL;
   }
 
-  reader->private_data = message_header;
+  private_data->last_message = message_header;
   return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowIpcReaderGetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* out,
                                        struct ArrowError* error) {
-  if (reader->schema.release == NULL) {
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+
+  if (private_data->schema.release == NULL) {
     ArrowErrorSet(error, "reader does not contain a valid schema");
     return EINVAL;
   }
 
-  ArrowSchemaMove(&reader->schema, out);
+  ArrowSchemaMove(&private_data->schema, out);
   return NANOARROW_OK;
 }
 
@@ -891,38 +923,41 @@ static void ArrowIpcReaderInitFields(struct ArrowIpcField* fields,
 ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
                                        struct ArrowSchema* schema,
                                        struct ArrowError* error) {
-  ArrowArrayViewReset(&reader->array_view);
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
 
-  if (reader->fields != NULL) {
-    ArrowFree(reader->fields);
+  ArrowArrayViewReset(&private_data->array_view);
+
+  if (private_data->fields != NULL) {
+    ArrowFree(private_data->fields);
   }
 
   // Allocate Array and ArrayView based on schema without moving the schema
   // this will fail if the schema is not valid.
   NANOARROW_RETURN_NOT_OK(
-      ArrowArrayViewInitFromSchema(&reader->array_view, schema, error));
+      ArrowArrayViewInitFromSchema(&private_data->array_view, schema, error));
 
   // Root must be a struct
-  if (reader->array_view.storage_type != NANOARROW_TYPE_STRUCT) {
+  if (private_data->array_view.storage_type != NANOARROW_TYPE_STRUCT) {
     ArrowErrorSet(error, "schema must be a struct type");
     return EINVAL;
   }
 
   // Walk tree and calculate how many fields we need to allocate
-  reader->n_fields = 0;
-  ArrowIpcReaderCountFields(schema, &reader->n_fields);
-  reader->fields =
-      (struct ArrowIpcField*)ArrowMalloc(reader->n_fields * sizeof(struct ArrowIpcField));
-  if (reader->fields == NULL) {
+  private_data->n_fields = 0;
+  ArrowIpcReaderCountFields(schema, &private_data->n_fields);
+  private_data->fields = (struct ArrowIpcField*)ArrowMalloc(private_data->n_fields *
+                                                            sizeof(struct ArrowIpcField));
+  if (private_data->fields == NULL) {
     ArrowErrorSet(error, "Failed to allocate reader->fields");
     return ENOMEM;
   }
-  memset(reader->fields, 0, reader->n_fields * sizeof(struct ArrowIpcField));
+  memset(private_data->fields, 0, private_data->n_fields * sizeof(struct ArrowIpcField));
 
   // Init field information and calculate starting buffer offset for each
   int64_t field_i = 0;
-  ArrowIpcReaderInitFields(reader->fields, &reader->array_view, &field_i,
-                           &reader->n_buffers);
+  ArrowIpcReaderInitFields(private_data->fields, &private_data->array_view, &field_i,
+                           &private_data->n_buffers);
 
   return NANOARROW_OK;
 }
@@ -1023,16 +1058,19 @@ static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
 ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
                                       struct ArrowBufferView body, int64_t field_i,
                                       struct ArrowArray* out, struct ArrowError* error) {
-  if (reader->private_data == NULL ||
+  struct ArrowIpcReaderPrivate* private_data =
+      (struct ArrowIpcReaderPrivate*)reader->private_data;
+
+  if (private_data->last_message == NULL ||
       reader->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
     ArrowErrorSet(error, "reader did not just decode a RecordBatch message");
     return EINVAL;
   }
 
-  ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))reader->private_data;
+  ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))private_data->last_message;
 
   // RecordBatch messages don't count the root node but reader->fields does
-  struct ArrowIpcField* root = reader->fields + field_i + 1;
+  struct ArrowIpcField* root = private_data->fields + field_i + 1;
 
   struct ArrowArray temp;
   temp.release = NULL;
