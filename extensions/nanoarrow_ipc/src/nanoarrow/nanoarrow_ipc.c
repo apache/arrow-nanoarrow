@@ -863,7 +863,8 @@ ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* decoder,
   flatbuffers_generic_t message_header = ns(Message_header_get(message));
   switch (decoder->message_type) {
     case ns(MessageHeader_Schema):
-      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchema(decoder, message_header, error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderDecodeSchema(decoder, message_header, error));
       break;
     case ns(MessageHeader_RecordBatch):
       NANOARROW_RETURN_NOT_OK(
