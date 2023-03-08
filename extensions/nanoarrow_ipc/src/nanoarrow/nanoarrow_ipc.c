@@ -906,9 +906,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* decoder,
-                                        struct ArrowSchema* out,
-                                        struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowSchema* out,
+                                           struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1081,9 +1081,10 @@ static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* decoder,
-                                       struct ArrowBufferView body, int64_t field_i,
-                                       struct ArrowArray* out, struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
+                                          struct ArrowBufferView body, int64_t field_i,
+                                          struct ArrowArray* out,
+                                          struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 

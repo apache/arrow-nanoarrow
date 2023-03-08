@@ -31,10 +31,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVerifyHeader)
 #define ArrowIpcDecoderDecodeHeader \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeHeader)
-#define ArrowIpcDecoderGetSchema \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetSchema)
-#define ArrowIpcDecoderGetArray \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetArray)
+#define ArrowIpcDecoderDecodeSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeSchema)
+#define ArrowIpcDecoderDecodeArray \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArray)
 #define ArrowIpcDecoderSetSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
 
@@ -152,10 +152,10 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
 ///
 /// Runs ArrowIpcDecoderPeekHeader() to ensure data is sufficiently large and decodes
 /// the content of the message header. If data contains a schema message,
-/// decoder.endianness and decoder.feature_flags is set and ArrowIpcDecoderGetSchema() can
-/// be used to obtain the decoded schema. If data contains a record batch message,
+/// decoder.endianness and decoder.feature_flags is set and ArrowIpcDecoderDecodeSchema()
+/// can be used to obtain the decoded schema. If data contains a record batch message,
 /// decoder.codec is set and a successful call can be followed by a call to
-/// ArrowIpcDecoderGetArray().
+/// ArrowIpcDecoderDecodeArray().
 ///
 /// In almost all cases this should be preceeded by a call to
 /// ArrowIpcDecoderVerifyHeader() to ensure decoding does not access data outside of the
@@ -174,9 +174,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 ///
 /// Returns EINVAL if the decoder did not just decode a schema message or
 /// NANOARROW_OK otherwise.
-ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* decoder,
-                                        struct ArrowSchema* out,
-                                        struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowSchema* out,
+                                           struct ArrowError* error);
 
 /// \brief Set the ArrowSchema used to decode future record batch messages
 ///
@@ -199,9 +199,10 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
 /// Returns EINVAL if the decoder did not just decode a record batch message, ENOTSUP
 /// if the message uses features not supported by this library, or or NANOARROW_OK
 /// otherwise.
-ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* decoder,
-                                       struct ArrowBufferView body, int64_t i,
-                                       struct ArrowArray* out, struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
+                                          struct ArrowBufferView body, int64_t i,
+                                          struct ArrowArray* out,
+                                          struct ArrowError* error);
 
 #ifdef __cplusplus
 }
