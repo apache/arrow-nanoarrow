@@ -27,6 +27,23 @@
 
 using namespace arrow;
 
+// Copied from nanoarrow_ipc.c so we can test the internal state
+// of the decoder
+extern "C" {
+struct ArrowIpcField {
+  struct ArrowArrayView* array_view;
+  int64_t buffer_offset;
+};
+
+struct ArrowIpcDecoderPrivate {
+  struct ArrowArrayView array_view;
+  int64_t n_fields;
+  struct ArrowIpcField* fields;
+  int64_t n_buffers;
+  const void* last_message;
+};
+}
+
 TEST(NanoarrowIpcCheckRuntime, CheckRuntime) {
   EXPECT_EQ(ArrowIpcCheckRuntime(nullptr), NANOARROW_OK);
 }
@@ -62,76 +79,90 @@ static uint8_t kSimpleSchema[] = {
     0x6c, 0x64, 0x00, 0x00, 0x08, 0x00, 0x0c, 0x00, 0x08, 0x00, 0x07, 0x00, 0x08, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
+static uint8_t kSimpleRecordBatch[] = {
+    0xff, 0xff, 0xff, 0xff, 0x88, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x16, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0c, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x18, 0x00, 0x00, 0x00, 0x10, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x18, 0x00, 0x0c, 0x00,
+    0x04, 0x00, 0x08, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x00, 0x00, 0x10, 0x00,
+    0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
-  struct ArrowIpcReader reader;
+  struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = 1;
 
-  ArrowIpcReaderInit(&reader);
+  ArrowIpcDecoderInit(&decoder);
 
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected data of at least 8 bytes but only 1 bytes remain");
 
   uint32_t eight_bad_bytes[] = {0, 0};
   data.data.as_uint8 = reinterpret_cast<uint8_t*>(eight_bad_bytes);
   data.size_bytes = 8;
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0xFFFFFFFF at start of message but found 0x00000000");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = static_cast<uint32_t>(-1);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected 0 <= message body size <= 0 bytes but found message body size "
-               "of -1 bytes");
+               "Expected message body size > 0 but found message body size of -1 bytes");
 
   eight_bad_bytes[1] = static_cast<uint32_t>(1);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of 1 bytes");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = 0;
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), ENODATA);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ENODATA);
   EXPECT_STREQ(error.message, "End of Arrow stream");
 
-  ArrowIpcReaderReset(&reader);
+  ArrowIpcDecoderReset(&decoder);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcPeekSimpleSchema) {
-  struct ArrowIpcReader reader;
+  struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = sizeof(kSimpleSchema);
 
-  ArrowIpcReaderInit(&reader);
-  EXPECT_EQ(ArrowIpcReaderPeek(&reader, data, &error), NANOARROW_OK);
-  EXPECT_EQ(reader.header_size_bytes, sizeof(kSimpleSchema));
-  EXPECT_EQ(reader.body_size_bytes, 0);
+  ArrowIpcDecoderInit(&decoder);
+  EXPECT_EQ(ArrowIpcDecoderPeekHeader(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
+  EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  ArrowIpcReaderReset(&reader);
+  ArrowIpcDecoderReset(&decoder);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
-  struct ArrowIpcReader reader;
+  struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = sizeof(kSimpleSchema);
 
-  ArrowIpcReaderInit(&reader);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), NANOARROW_OK);
-  EXPECT_EQ(reader.header_size_bytes, sizeof(kSimpleSchema));
-  EXPECT_EQ(reader.body_size_bytes, 0);
+  ArrowIpcDecoderInit(&decoder);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+  EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
+  EXPECT_EQ(decoder.body_size_bytes, 0);
 
   uint8_t simple_schema_invalid[280];
   memcpy(simple_schema_invalid, kSimpleSchema, sizeof(simple_schema_invalid));
@@ -139,36 +170,206 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
 
   data.data.as_uint8 = simple_schema_invalid;
   data.size_bytes = sizeof(kSimpleSchema);
-  EXPECT_EQ(ArrowIpcReaderVerify(&reader, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Message flatbuffer verification failed");
 
-  ArrowIpcReaderReset(&reader);
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatch;
+  data.size_bytes = sizeof(kSimpleRecordBatch);
+
+  ArrowIpcDecoderInit(&decoder);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
+  EXPECT_EQ(decoder.header_size_bytes,
+            sizeof(kSimpleRecordBatch) - decoder.body_size_bytes);
+  EXPECT_EQ(decoder.body_size_bytes, 16);
+
+  ArrowIpcDecoderReset(&decoder);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
-  struct ArrowIpcReader reader;
+  struct ArrowIpcDecoder decoder;
   struct ArrowError error;
+  struct ArrowSchema schema;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = sizeof(kSimpleSchema);
 
-  ArrowIpcReaderInit(&reader);
+  ArrowIpcDecoderInit(&decoder);
 
-  EXPECT_EQ(ArrowIpcReaderDecode(&reader, data, &error), NANOARROW_OK);
-  EXPECT_EQ(reader.header_size_bytes, sizeof(kSimpleSchema));
-  EXPECT_EQ(reader.body_size_bytes, 0);
+  EXPECT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), EINVAL);
+  EXPECT_STREQ(error.message, "decoder did not just decode a Schema message");
 
-  EXPECT_EQ(reader.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
-  EXPECT_EQ(reader.endianness, NANOARROW_IPC_ENDIANNESS_LITTLE);
-  EXPECT_EQ(reader.features, 0);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
+  EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  ASSERT_EQ(reader.schema.n_children, 1);
-  EXPECT_STREQ(reader.schema.children[0]->name, "some_col");
-  EXPECT_EQ(reader.schema.children[0]->flags, ARROW_FLAG_NULLABLE);
-  EXPECT_STREQ(reader.schema.children[0]->format, "i");
+  EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+  EXPECT_EQ(decoder.endianness, NANOARROW_IPC_ENDIANNESS_LITTLE);
+  EXPECT_EQ(decoder.feature_flags, 0);
 
-  ArrowIpcReaderReset(&reader);
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(schema.n_children, 1);
+  EXPECT_STREQ(schema.children[0]->name, "some_col");
+  EXPECT_EQ(schema.children[0]->flags, ARROW_FLAG_NULLABLE);
+  EXPECT_STREQ(schema.children[0]->format, "i");
+
+  schema.release(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatch;
+  data.size_bytes = sizeof(kSimpleRecordBatch);
+
+  ArrowIpcDecoderInit(&decoder);
+  auto decoder_private =
+      reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
+
+  // Attempt to get array should fail nicely here
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, data, 0, nullptr, &error), EINVAL);
+  EXPECT_STREQ(error.message, "decoder did not just decode a RecordBatch message");
+
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
+  EXPECT_EQ(decoder.header_size_bytes,
+            sizeof(kSimpleRecordBatch) - decoder.body_size_bytes);
+  EXPECT_EQ(decoder.body_size_bytes, 16);
+
+  EXPECT_EQ(decoder.codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+
+  struct ArrowBufferView body;
+  body.data.as_uint8 = kSimpleRecordBatch + decoder.header_size_bytes;
+  body.size_bytes = decoder.body_size_bytes;
+
+  // Check full struct extract
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, -1, &array, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(array.length, 3);
+  EXPECT_EQ(array.null_count, 0);
+  ASSERT_EQ(array.n_children, 1);
+  ASSERT_EQ(array.children[0]->n_buffers, 2);
+  ASSERT_EQ(array.children[0]->length, 3);
+  EXPECT_EQ(array.children[0]->null_count, 0);
+  const int32_t* out = reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]);
+  EXPECT_EQ(out[0], 1);
+  EXPECT_EQ(out[1], 2);
+  EXPECT_EQ(out[2], 3);
+
+  array.release(&array);
+
+  // Check field extract
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(array.n_buffers, 2);
+  ASSERT_EQ(array.length, 3);
+  EXPECT_EQ(array.null_count, 0);
+  out = reinterpret_cast<const int32_t*>(array.buffers[1]);
+  EXPECT_EQ(out[0], 1);
+  EXPECT_EQ(out[1], 2);
+  EXPECT_EQ(out[2], 3);
+
+  array.release(&array);
+
+  // Field extract should fail if compression was set
+  decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), ENOTSUP);
+  EXPECT_STREQ(error.message, "The nanoarrow_ipc extension does not support compression");
+  decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+
+  // Field extract should fail on non-system endian
+  // This test will have to get updated when we start testing on big endian
+  decoder.endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "The nanoarrow_ipc extension does not support non-system endianness");
+  decoder.endianness = NANOARROW_IPC_ENDIANNESS_UNINITIALIZED;
+
+  // Field extract should fail if body is too small
+  body.size_bytes = 0;
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Buffer 1 requires body offsets [0..12) but body has size 0");
+
+  // Should error if the number of buffers or field nodes doesn't match
+  // (different numbers because we count the root struct and the message does not)
+  decoder_private->n_buffers = 1;
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected 0 buffers in message but found 2");
+
+  decoder_private->n_fields = 1;
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected 0 field nodes in message but found 1");
+
+  schema.release(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowSchema schema;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "col1"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  ArrowIpcDecoderInit(&decoder);
+  auto decoder_private =
+      reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
+
+  EXPECT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(decoder_private->n_fields, 2);
+  EXPECT_EQ(decoder_private->n_buffers, 3);
+
+  EXPECT_EQ(decoder_private->fields[0].array_view->storage_type, NANOARROW_TYPE_STRUCT);
+  EXPECT_EQ(decoder_private->fields[0].buffer_offset, 0);
+
+  EXPECT_EQ(decoder_private->fields[1].array_view->storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(decoder_private->fields[1].buffer_offset, 1);
+
+  schema.release(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  ArrowIpcDecoderInit(&decoder);
+  ArrowSchemaInit(&schema);
+
+  EXPECT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), EINVAL);
+  EXPECT_STREQ(
+      error.message,
+      "Error parsing schema->format: Expected a null-terminated string but found NULL");
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), EINVAL);
+  EXPECT_STREQ(error.message, "schema must be a struct type");
+
+  schema.release(&schema);
+  ArrowIpcDecoderReset(&decoder);
 }
 
 class ArrowTypeParameterizedTestFixture
@@ -188,21 +389,87 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
   buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
 
-  struct ArrowIpcReader reader;
-  ArrowIpcReaderInit(&reader);
-  ASSERT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
-  EXPECT_EQ(reader.header_size_bytes, buffer_view.size_bytes);
-  EXPECT_EQ(reader.body_size_bytes, 0);
+  struct ArrowIpcDecoder decoder;
+  ArrowIpcDecoderInit(&decoder);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
+  EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
-  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  struct ArrowSchema schema;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&schema);
   ASSERT_TRUE(maybe_schema.ok());
 
   // Better failure message if we first check for string equality
   EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), dummy_schema->ToString());
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema, true));
 
-  ArrowIpcReaderReset(&reader);
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
+  const std::shared_ptr<arrow::DataType>& data_type = GetParam();
+  std::shared_ptr<arrow::Schema> dummy_schema =
+      arrow::schema({arrow::field("dummy_name", data_type)});
+
+  auto maybe_empty = arrow::RecordBatch::MakeEmpty(dummy_schema);
+  ASSERT_TRUE(maybe_empty.ok());
+  auto empty = maybe_empty.ValueUnsafe();
+
+  auto maybe_nulls_array = arrow::MakeArrayOfNull(data_type, 3);
+  ASSERT_TRUE(maybe_nulls_array.ok());
+  auto nulls =
+      arrow::RecordBatch::Make(dummy_schema, 3, {maybe_nulls_array.ValueUnsafe()});
+
+  auto options = arrow::ipc::IpcWriteOptions::Defaults();
+
+  struct ArrowSchema schema;
+  struct ArrowIpcDecoder decoder;
+  struct ArrowBufferView buffer_view;
+  struct ArrowArray array;
+
+  // Initialize the decoder
+  ASSERT_TRUE(arrow::ExportSchema(*dummy_schema, &schema).ok());
+  ArrowIpcDecoderInit(&decoder);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+
+  // Check the empty array
+  auto maybe_serialized = arrow::ipc::SerializeRecordBatch(*empty, options);
+  ASSERT_TRUE(maybe_serialized.ok());
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  buffer_view.data.as_uint8 += decoder.header_size_bytes;
+  buffer_view.size_bytes -= decoder.header_size_bytes;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array, nullptr),
+            NANOARROW_OK);
+
+  auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
+  ASSERT_TRUE(maybe_batch.ok());
+  EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), empty->ToString());
+  EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty));
+
+  // Check the array with 3 null values
+  maybe_serialized = arrow::ipc::SerializeRecordBatch(*nulls, options);
+  ASSERT_TRUE(maybe_serialized.ok());
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  buffer_view.data.as_uint8 += decoder.header_size_bytes;
+  buffer_view.size_bytes -= decoder.header_size_bytes;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array, nullptr),
+            NANOARROW_OK);
+
+  maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
+  ASSERT_TRUE(maybe_batch.ok());
+  EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), nulls->ToString());
+  EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*nulls));
+
+  schema.release(&schema);
+  ArrowIpcDecoderReset(&decoder);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -267,21 +534,23 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
   buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
   buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
 
-  struct ArrowIpcReader reader;
-  ArrowIpcReaderInit(&reader);
-  ASSERT_EQ(ArrowIpcReaderVerify(&reader, buffer_view, nullptr), NANOARROW_OK);
-  EXPECT_EQ(reader.header_size_bytes, buffer_view.size_bytes);
-  EXPECT_EQ(reader.body_size_bytes, 0);
+  struct ArrowIpcDecoder decoder;
+  ArrowIpcDecoderInit(&decoder);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
+  EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  ASSERT_EQ(ArrowIpcReaderDecode(&reader, buffer_view, nullptr), NANOARROW_OK);
-  auto maybe_schema = arrow::ImportSchema(&reader.schema);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  struct ArrowSchema schema;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&schema);
   ASSERT_TRUE(maybe_schema.ok());
 
   // Better failure message if we first check for string equality
   EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), arrow_schema->ToString());
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(arrow_schema, true));
 
-  ArrowIpcReaderReset(&reader);
+  ArrowIpcDecoderReset(&decoder);
 }
 
 INSTANTIATE_TEST_SUITE_P(
