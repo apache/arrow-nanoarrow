@@ -474,10 +474,6 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), nulls->ToString());
   EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*nulls));
 
-  if (!maybe_batch.ValueUnsafe()->Equals(*nulls)) {
-    std::cout << "something";
-  }
-
   schema.release(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
