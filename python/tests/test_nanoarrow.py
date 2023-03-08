@@ -6,7 +6,7 @@ import nanoarrow as na
 import pytest
 
 def test_version():
-    assert(na.version() == "0.1.0-SNAPSHOT")
+    assert(na.version() == "0.2.0-SNAPSHOT")
 
 def test_as_numpy_array():
 
