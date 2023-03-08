@@ -78,8 +78,8 @@ extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP diction
 extern SEXP nanoarrow_c_preserved_count(void);
 extern SEXP nanoarrow_c_preserved_empty(void);
 extern SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj);
-extern SEXP nanoarrow_c_version();
-extern SEXP nanoarrow_c_version_runtime();
+extern SEXP nanoarrow_c_version(void);
+extern SEXP nanoarrow_c_version_runtime(void);
 
 static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_make_altrep_chr", (DL_FUNC)&nanoarrow_c_make_altrep_chr, 1},

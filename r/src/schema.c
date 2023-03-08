@@ -399,7 +399,7 @@ static void finalize_buffer_xptr(SEXP buffer_xptr) {
   }
 }
 
-static SEXP buffer_owning_xptr() {
+static SEXP buffer_owning_xptr(void) {
   struct ArrowBuffer* buffer =
       (struct ArrowBuffer*)ArrowMalloc(sizeof(struct ArrowBuffer));
   if (buffer == NULL) {
