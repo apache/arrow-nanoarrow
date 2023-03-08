@@ -110,37 +110,51 @@ class NanoarrowPxdGenerator:
 
     def _pxd_header(self):
         return """
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
+        # Licensed to the Apache Software Foundation (ASF) under one
+        # or more contributor license agreements.  See the NOTICE file
+        # distributed with this work for additional information
+        # regarding copyright ownership.  The ASF licenses this file
+        # to you under the Apache License, Version 2.0 (the
+        # "License"); you may not use this file except in compliance
+        # with the License.  You may obtain a copy of the License at
+        #
+        #   http://www.apache.org/licenses/LICENSE-2.0
+        #
+        # Unless required by applicable law or agreed to in writing,
+        # software distributed under the License is distributed on an
+        # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+        # KIND, either express or implied.  See the License for the
+        # specific language governing permissions and limitations
+        # under the License.
 
-# cython: language_level = 3
+        # cython: language_level = 3
 
-from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
+        from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t,\
+            uint32_t, int64_t, uint64_t
         """
 
+def copy_or_generate_nanoarrow_c():
+    this_dir = os.path.abspath(os.path.dirname(__file__))
 
-# setuptools gets confused by relative paths that extend above the project root
-target = Path(__file__).parent / "src" / "nanoarrow"
-shutil.copy(
-    Path(__file__).parent / "../dist/nanoarrow.c", target / "nanoarrow.c"
-)
-shutil.copy(
-    Path(__file__).parent / "../dist/nanoarrow.h", target / "nanoarrow.h"
-)
+    is_cmake_dir = 'CMakeLists.txt' in os.listdir('..')
+    is_in_nanoarrow_repo = 'nanoarrow.h' in os.listdir('../src/nanoarrow')
+    has_cmake = os.system('cmake --version') == 0
+    build_dir = os.path.join('.', '_cmake')
+    source_dir = os.path.abspath(os.path.join('..'))
+
+    if has_cmake and is_cmake_dir and is_in_nanoarrow_repo:
+        try:
+            os.system(f'cmake -B "{build_dir}" -S "{source_dir}" -DNANOARROW_BUNDLE=ON')
+            os.system(f'cmake --install -B "{build_dir}" -DNANOARROW_BUNDLE=ON')
+        finally:
+            os.unlink(build_dir)
+
+    elif is_in_nanoarrow_repo:
+        shutil.copyfile()
+    else:
+        raise ValueError('Attempt to build source distribution outside the nanoarrow repo')
+
+copy_or_generate_nanoarrow_c()
 
 NanoarrowPxdGenerator().generate_nanoarrow_pxd(
     'src/nanoarrow/nanoarrow.h',
