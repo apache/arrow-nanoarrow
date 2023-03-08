@@ -19,9 +19,7 @@
 
 import re
 import os
-
 import shutil
-from pathlib import Path
 
 from setuptools import Extension, setup
 
@@ -134,20 +132,23 @@ class NanoarrowPxdGenerator:
         """
 
 def copy_or_generate_nanoarrow_c():
+    this_wd = os.getcwd()
     this_dir = os.path.abspath(os.path.dirname(__file__))
+    source_dir = os.path.dirname(this_dir)
 
-    is_cmake_dir = 'CMakeLists.txt' in os.listdir('..')
-    is_in_nanoarrow_repo = 'nanoarrow.h' in os.listdir('../src/nanoarrow')
+    is_cmake_dir = 'CMakeLists.txt' in os.listdir(source_dir)
+    is_in_nanoarrow_repo = 'nanoarrow.h' in os.listdir(os.path.join(source_dir, 'src', 'nanoarrow'))
     has_cmake = os.system('cmake --version') == 0
-    build_dir = os.path.join('.', '_cmake')
-    source_dir = os.path.abspath(os.path.join('..'))
+    build_dir = os.path.join(this_dir, '_cmake')
 
     if has_cmake and is_cmake_dir and is_in_nanoarrow_repo:
         try:
-            os.system(f'cmake -B "{build_dir}" -S "{source_dir}" -DNANOARROW_BUNDLE=ON')
-            os.system(f'cmake --install -B "{build_dir}" -DNANOARROW_BUNDLE=ON')
+            os.mkdir(build_dir)
+            os.chdir(build_dir)
+            os.system(f'cmake .. -DNANOARROW_BUNDLE=ON')
+            os.system(f'cmake --install . --prefix=../src/nanoarrow')
         finally:
-            os.unlink(build_dir)
+            os.chdir(this_wd)
 
     elif is_in_nanoarrow_repo:
         shutil.copyfile()
