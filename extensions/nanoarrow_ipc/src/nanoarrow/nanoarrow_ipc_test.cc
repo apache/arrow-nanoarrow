@@ -36,7 +36,6 @@ struct ArrowIpcField {
 };
 
 struct ArrowIpcDecoderPrivate {
-  struct ArrowSchema schema;
   struct ArrowArrayView array_view;
   int64_t n_fields;
   struct ArrowIpcField* fields;
@@ -205,11 +204,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   data.size_bytes = sizeof(kSimpleSchema);
 
   ArrowIpcDecoderInit(&decoder);
-  auto decoder_private =
-      reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
 
   EXPECT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), EINVAL);
-  EXPECT_STREQ(error.message, "decoder does not contain a valid schema");
+  EXPECT_STREQ(error.message, "decoder did not just decode a Schema message");
 
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
   EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
@@ -219,14 +216,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   EXPECT_EQ(decoder.endianness, NANOARROW_IPC_ENDIANNESS_LITTLE);
   EXPECT_EQ(decoder.feature_flags, 0);
 
-  ASSERT_EQ(decoder_private->schema.n_children, 1);
-  EXPECT_STREQ(decoder_private->schema.children[0]->name, "some_col");
-  EXPECT_EQ(decoder_private->schema.children[0]->flags, ARROW_FLAG_NULLABLE);
-  EXPECT_STREQ(decoder_private->schema.children[0]->format, "i");
-
-  EXPECT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(decoder_private->schema.release, nullptr);
-  EXPECT_NE(schema.release, nullptr);
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(schema.n_children, 1);
+  EXPECT_STREQ(schema.children[0]->name, "some_col");
+  EXPECT_EQ(schema.children[0]->flags, ARROW_FLAG_NULLABLE);
+  EXPECT_STREQ(schema.children[0]->format, "i");
 
   schema.release(&schema);
   ArrowIpcDecoderReset(&decoder);

@@ -29,7 +29,6 @@ struct ArrowIpcField {
 };
 
 struct ArrowIpcDecoderPrivate {
-  struct ArrowSchema schema;
   struct ArrowArrayView array_view;
   int64_t n_fields;
   struct ArrowIpcField* fields;
@@ -66,9 +65,6 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
 void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
-  if (private_data->schema.release != NULL) {
-    private_data->schema.release(&private_data->schema);
-  }
 
   ArrowArrayViewReset(&private_data->array_view);
 
@@ -684,24 +680,7 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
     }
   }
 
-  ns(Field_vec_t) fields = ns(Schema_fields(schema));
-  int64_t n_fields = ns(Schema_vec_len(fields));
-  if (private_data->schema.release != NULL) {
-    private_data->schema.release(&private_data->schema);
-  }
-
-  ArrowSchemaInit(&private_data->schema);
-  int result = ArrowSchemaSetTypeStruct(&private_data->schema, n_fields);
-  if (result != NANOARROW_OK) {
-    ArrowErrorSet(error, "Failed to allocate struct schema with %ld children",
-                  (long)n_fields);
-    return result;
-  }
-
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderSetChildren(&private_data->schema, fields, error));
-  return ArrowIpcDecoderSetMetadata(&private_data->schema,
-                                    ns(Schema_custom_metadata(schema)), error);
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderDecodeRecordBatchHeader(struct ArrowIpcDecoder* decoder,
@@ -912,12 +891,40 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  if (private_data->schema.release == NULL) {
-    ArrowErrorSet(error, "decoder does not contain a valid schema");
+  if (private_data->last_message == NULL ||
+      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_SCHEMA) {
+    ArrowErrorSet(error, "decoder did not just decode a Schema message");
     return EINVAL;
   }
 
-  ArrowSchemaMove(&private_data->schema, out);
+  ns(Schema_table_t) schema = (ns(Schema_table_t))private_data->last_message;
+
+  ns(Field_vec_t) fields = ns(Schema_fields(schema));
+  int64_t n_fields = ns(Schema_vec_len(fields));
+
+  struct ArrowSchema tmp;
+  ArrowSchemaInit(&tmp);
+  int result = ArrowSchemaSetTypeStruct(&tmp, n_fields);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    ArrowErrorSet(error, "Failed to allocate struct schema with %ld children",
+                  (long)n_fields);
+    return result;
+  }
+
+  result = ArrowIpcDecoderSetChildren(&tmp, fields, error);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
+  result = ArrowIpcDecoderSetMetadata(&tmp, ns(Schema_custom_metadata(schema)), error);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
+  ArrowSchemaMove(&tmp, out);
   return NANOARROW_OK;
 }
 
