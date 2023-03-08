@@ -23,6 +23,20 @@
 #include "nanoarrow_ipc.h"
 #include "nanoarrow_ipc_flatcc_generated.h"
 
+struct ArrowIpcField {
+  struct ArrowArrayView* array_view;
+  int64_t buffer_offset;
+};
+
+struct ArrowIpcDecoderPrivate {
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  int64_t n_fields;
+  struct ArrowIpcField* fields;
+  int64_t n_buffers;
+  const void* last_message;
+};
+
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
   const char* nanoarrow_ipc_build_time_version = NANOARROW_VERSION;

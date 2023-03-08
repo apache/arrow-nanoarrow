@@ -141,20 +141,6 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* schema,
                                         struct ArrowError* error);
 
-struct ArrowIpcField {
-  struct ArrowArrayView* array_view;
-  int64_t buffer_offset;
-};
-
-struct ArrowIpcDecoderPrivate {
-  struct ArrowSchema schema;
-  struct ArrowArrayView array_view;
-  int64_t n_fields;
-  struct ArrowIpcField* fields;
-  int64_t n_buffers;
-  const void* last_message;
-};
-
 #ifdef __cplusplus
 }
 #endif

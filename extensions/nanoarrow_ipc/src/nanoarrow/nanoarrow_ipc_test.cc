@@ -27,6 +27,24 @@
 
 using namespace arrow;
 
+// Copied from nanoarrow_ipc.c so we can test the internal state
+// of the decoder
+extern "C" {
+struct ArrowIpcField {
+  struct ArrowArrayView* array_view;
+  int64_t buffer_offset;
+};
+
+struct ArrowIpcDecoderPrivate {
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  int64_t n_fields;
+  struct ArrowIpcField* fields;
+  int64_t n_buffers;
+  const void* last_message;
+};
+}
+
 TEST(NanoarrowIpcCheckRuntime, CheckRuntime) {
   EXPECT_EQ(ArrowIpcCheckRuntime(nullptr), NANOARROW_OK);
 }
