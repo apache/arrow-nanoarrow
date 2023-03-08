@@ -755,6 +755,8 @@ static int ArrowIpcDecoderDecodeRecordBatch(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+// Returns NANOARROW_OK if data is large enough to read the message header,
+// ESPIPE if reading more data might help, or EINVAL if the content is not valid
 static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
                                              struct ArrowBufferView* data_mut,
                                              int32_t* message_size_bytes,
@@ -762,7 +764,7 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
   if (data_mut->size_bytes < 8) {
     ArrowErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
                   (long)data_mut->size_bytes);
-    return EINVAL;
+    return ESPIPE;
   }
 
   uint32_t continuation = ArrowIpcReadUint32LE(data_mut);
@@ -773,12 +775,17 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
   }
 
   *message_size_bytes = ArrowIpcReadInt32LE(data_mut);
-  if ((*message_size_bytes) > data_mut->size_bytes || (*message_size_bytes) < 0) {
+  if ((*message_size_bytes) < 0) {
+    ArrowErrorSet(
+        error, "Expected message body size > 0 but found message body size of %ld bytes",
+        (long)(*message_size_bytes));
+    return EINVAL;
+  } else if ((*message_size_bytes) > data_mut->size_bytes) {
     ArrowErrorSet(error,
                   "Expected 0 <= message body size <= %ld bytes but found message "
                   "body size of %ld bytes",
                   (long)data_mut->size_bytes, (long)(*message_size_bytes));
-    return EINVAL;
+    return ESPIPE;
   }
 
   if (*message_size_bytes == 0) {

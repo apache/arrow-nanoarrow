@@ -104,7 +104,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
 
   ArrowIpcDecoderInit(&decoder);
 
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected data of at least 8 bytes but only 1 bytes remain");
 
@@ -119,11 +119,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   eight_bad_bytes[1] = static_cast<uint32_t>(-1);
   EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected 0 <= message body size <= 0 bytes but found message body size "
-               "of -1 bytes");
+               "Expected message body size > 0 but found message body size of -1 bytes");
 
   eight_bad_bytes[1] = static_cast<uint32_t>(1);
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of 1 bytes");

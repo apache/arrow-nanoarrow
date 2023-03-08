@@ -114,32 +114,89 @@ struct ArrowIpcDecoder {
   void* private_data;
 };
 
+/// \brief Initialize a decoder
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
 
+/// \brief Release all resources attached to a decoder
 void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
+/// \brief Peek at a message header
+///
+/// The first 8 bytes of an Arrow IPC message are 0xFFFFFF followed by the size
+/// of the header as a little-endian 32-bit integer. ArrowIpcDecoderPeek() reads
+/// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
+/// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
+/// Arrow end-of-stream indicator has been reached, or NANOARROW_OK otherwise.
 ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* decoder,
                                    struct ArrowBufferView data, struct ArrowError* error);
 
+/// \brief Verify a message header
+///
+/// Runs ArrowIpcDecoderPeek() to ensure data is sufficiently large but additionally
+/// runs flatbuffer verification to ensure that decoding the data will not access
+/// memory outside of the buffer specified by data. ArrowIpcDecoderVerify() will also
+/// set decoder.header_size_bytes, decoder.body_size_bytes, decoder.metadata_version,
+/// and decoder.message_type.
+///
+/// Returns as ArrowIpcDecoderPeek() and additionally will
+/// return EINVAL if flatbuffer verification fails.
 ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* decoder,
                                      struct ArrowBufferView data,
                                      struct ArrowError* error);
 
+/// \brief Decode a message header
+///
+/// Runs ArrowIpcDecoderPeek() to ensure data is sufficiently large and decodes
+/// the content of the message header. If data contains a schema message,
+/// decoder.endianness and decoder.feature_flags is set and ArrowIpcDecoderGetSchema() can
+/// be used to obtain the decoded schema. If data contains a record batch message,
+/// decoder.codec is set and a successful call can be followed by a call to
+/// ArrowIpcDecoderGetArray().
+///
+/// In almost all cases this should be preceeded by a call to ArrowIpcDecoderVerify() to
+/// ensure decoding does not access data outside of the specified buffer.
+///
+/// Returns EINVAL if the content of the message cannot be decoded or ENOTSUP if the
+/// content of the message uses features not supported by this library.
 ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* decoder,
                                      struct ArrowBufferView data,
                                      struct ArrowError* error);
 
+/// \brief Decode an ArrowArray
+///
+/// After a successful call to ArrowIpcDecoderDecode(), retrieve an ArrowSchema.
+/// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
+///
+/// Returns EINVAL if the decoder did not just decode a schema message or
+/// NANOARROW_OK otherwise.
 ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* out,
                                         struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* decoder,
-                                       struct ArrowBufferView body, int64_t i,
-                                       struct ArrowArray* out, struct ArrowError* error);
-
+/// \brief Set the ArrowSchema used to decode future record batch messages
+///
+/// Prepares the decoder for future record batch messages
+/// of this type. The decoder takes ownership of schema if NANOARROW_OK is returned.
+///
+/// Returns EINVAL if schema validation fails or NANOARROW_OK otherwise.
 ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* schema,
                                         struct ArrowError* error);
+
+/// \brief Decode an ArrowArray
+///
+/// After a successful call to ArrowIpcDecoderDecode(), assemble an ArrowArray given
+/// a message body and a field index. Note that field index does not equate to column
+/// index if any columns contain nested types. Use a value of -1 to decode the entire
+/// array into a struct. The caller is responsible for releasing the array if
+/// NANOARROW_OK is returned.
+///
+/// Returns EINVAL if the decoder did not just decode a record batch message, ENOTSUP
+/// if the message uses features not supported by this library, or or NANOARROW_OK
+/// otherwise.
+ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* decoder,
+                                       struct ArrowBufferView body, int64_t i,
+                                       struct ArrowArray* out, struct ArrowError* error);
 
 #ifdef __cplusplus
 }
