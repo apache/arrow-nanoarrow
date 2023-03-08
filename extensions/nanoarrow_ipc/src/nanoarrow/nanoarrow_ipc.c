@@ -643,9 +643,9 @@ static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t
   return NANOARROW_OK;
 }
 
-static int ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
-                                       flatbuffers_generic_t message_header,
-                                       struct ArrowError* error) {
+static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
+                                             flatbuffers_generic_t message_header,
+                                             struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -704,9 +704,9 @@ static int ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
                                     ns(Schema_custom_metadata(schema)), error);
 }
 
-static int ArrowIpcDecoderDecodeRecordBatch(struct ArrowIpcDecoder* decoder,
-                                            flatbuffers_generic_t message_header,
-                                            struct ArrowError* error) {
+static int ArrowIpcDecoderDecodeRecordBatchHeader(struct ArrowIpcDecoder* decoder,
+                                                  flatbuffers_generic_t message_header,
+                                                  struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -885,11 +885,11 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   switch (decoder->message_type) {
     case ns(MessageHeader_Schema):
       NANOARROW_RETURN_NOT_OK(
-          ArrowIpcDecoderDecodeSchema(decoder, message_header, error));
+          ArrowIpcDecoderDecodeSchemaHeader(decoder, message_header, error));
       break;
     case ns(MessageHeader_RecordBatch):
       NANOARROW_RETURN_NOT_OK(
-          ArrowIpcDecoderDecodeRecordBatch(decoder, message_header, error));
+          ArrowIpcDecoderDecodeRecordBatchHeader(decoder, message_header, error));
       break;
     case ns(MessageHeader_DictionaryBatch):
     case ns(MessageHeader_Tensor):
