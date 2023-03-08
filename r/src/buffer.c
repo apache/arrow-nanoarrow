@@ -125,7 +125,9 @@ SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr) {
   struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
 
   SEXP result = PROTECT(Rf_allocVector(RAWSXP, buffer->size_bytes));
-  memcpy(RAW(result), buffer->data, buffer->size_bytes);
+  if (buffer->size_bytes > 0) {
+    memcpy(RAW(result), buffer->data, buffer->size_bytes);
+  }
   UNPROTECT(1);
   return result;
 }
