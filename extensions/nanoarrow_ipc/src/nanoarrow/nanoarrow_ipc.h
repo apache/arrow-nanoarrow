@@ -27,7 +27,8 @@
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
 #define ArrowIpcDecoderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeek)
 #define ArrowIpcDecoderVerify NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVerify)
-#define ArrowIpcDecoderDecode NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecode)
+#define ArrowIpcDecoderDecodeHeader \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeHeader)
 #define ArrowIpcDecoderGetSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetSchema)
 #define ArrowIpcDecoderGetArray \
@@ -82,7 +83,7 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 /// ArrowIpcDecoderReset(). These fields should not be modified
 /// by the caller but can be read following a call to
 /// ArrowIpcDecoderPeek(), ArrowIpcDecoderVerify(), or
-/// ArrowIpcDecoderDecode().
+/// ArrowIpcDecoderDecodeHeader().
 struct ArrowIpcDecoder {
   /// \brief The last verified or decoded message type
   enum ArrowIpcMessageType message_type;
@@ -158,13 +159,13 @@ ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* decoder,
 ///
 /// Returns EINVAL if the content of the message cannot be decoded or ENOTSUP if the
 /// content of the message uses features not supported by this library.
-ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* decoder,
-                                     struct ArrowBufferView data,
-                                     struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowBufferView data,
+                                           struct ArrowError* error);
 
 /// \brief Decode an ArrowArray
 ///
-/// After a successful call to ArrowIpcDecoderDecode(), retrieve an ArrowSchema.
+/// After a successful call to ArrowIpcDecoderDecodeHeader(), retrieve an ArrowSchema.
 /// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
 ///
 /// Returns EINVAL if the decoder did not just decode a schema message or
@@ -185,7 +186,7 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
 
 /// \brief Decode an ArrowArray
 ///
-/// After a successful call to ArrowIpcDecoderDecode(), assemble an ArrowArray given
+/// After a successful call to ArrowIpcDecoderDecodeHeader(), assemble an ArrowArray given
 /// a message body and a field index. Note that field index does not equate to column
 /// index if any columns contain nested types. Use a value of -1 to decode the entire
 /// array into a struct. The caller is responsible for releasing the array if

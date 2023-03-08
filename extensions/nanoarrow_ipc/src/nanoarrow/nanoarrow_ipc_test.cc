@@ -211,7 +211,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   EXPECT_EQ(ArrowIpcDecoderGetSchema(&decoder, &schema, &error), EINVAL);
   EXPECT_STREQ(error.message, "decoder does not contain a valid schema");
 
-  EXPECT_EQ(ArrowIpcDecoderDecode(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
   EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
   EXPECT_EQ(decoder.body_size_bytes, 0);
 
@@ -256,7 +256,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
 
   ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowIpcDecoderDecode(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
   EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
   EXPECT_EQ(decoder.header_size_bytes,
             sizeof(kSimpleRecordBatch) - decoder.body_size_bytes);
@@ -318,11 +318,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   // Should error if the number of buffers or field nodes doesn't match
   // (different numbers because we count the root struct and the message does not)
   decoder_private->n_buffers = 1;
-  EXPECT_EQ(ArrowIpcDecoderDecode(&decoder, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected 0 buffers in message but found 2");
 
   decoder_private->n_fields = 1;
-  EXPECT_EQ(ArrowIpcDecoderDecode(&decoder, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected 0 field nodes in message but found 1");
 
   schema.release(&schema);
@@ -400,7 +400,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
   EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  ASSERT_EQ(ArrowIpcDecoderDecode(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   struct ArrowSchema schema;
   ASSERT_EQ(ArrowIpcDecoderGetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
   auto maybe_schema = arrow::ImportSchema(&schema);
@@ -445,7 +445,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
   buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
 
-  ASSERT_EQ(ArrowIpcDecoderDecode(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
   ASSERT_EQ(ArrowIpcDecoderGetArray(&decoder, buffer_view, -1, &array, nullptr),
@@ -462,7 +462,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
   buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
 
-  ASSERT_EQ(ArrowIpcDecoderDecode(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
   ASSERT_EQ(ArrowIpcDecoderGetArray(&decoder, buffer_view, -1, &array, nullptr),
@@ -545,7 +545,7 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
   EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
   EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  ASSERT_EQ(ArrowIpcDecoderDecode(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   struct ArrowSchema schema;
   ASSERT_EQ(ArrowIpcDecoderGetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
   auto maybe_schema = arrow::ImportSchema(&schema);
