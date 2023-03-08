@@ -114,30 +114,30 @@ struct ArrowIpcDecoder {
   void* private_data;
 };
 
-ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* reader);
+ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
 
-void ArrowIpcDecoderReset(struct ArrowIpcDecoder* reader);
+void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
-ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* decoder,
                                    struct ArrowBufferView data, struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* decoder,
                                      struct ArrowBufferView data,
                                      struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* decoder,
                                      struct ArrowBufferView data,
                                      struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* out,
                                         struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* decoder,
                                        struct ArrowBufferView body, int64_t i,
                                        struct ArrowArray* out, struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* schema,
                                         struct ArrowError* error);
 

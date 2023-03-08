@@ -36,8 +36,8 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* reader) {
-  memset(reader, 0, sizeof(struct ArrowIpcDecoder));
+ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
+  memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)ArrowMalloc(sizeof(struct ArrowIpcDecoderPrivate));
   if (private_data == NULL) {
@@ -45,13 +45,13 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* reader) {
   }
 
   memset(private_data, 0, sizeof(struct ArrowIpcDecoderPrivate));
-  reader->private_data = private_data;
+  decoder->private_data = private_data;
   return NANOARROW_OK;
 }
 
-void ArrowIpcDecoderReset(struct ArrowIpcDecoder* reader) {
+void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
   if (private_data->schema.release != NULL) {
     private_data->schema.release(&private_data->schema);
   }
@@ -64,7 +64,7 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* reader) {
   }
 
   ArrowFree(private_data);
-  memset(reader, 0, sizeof(struct ArrowIpcDecoder));
+  memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
 }
 
 static inline uint32_t ArrowIpcReadUint32LE(struct ArrowBufferView* data) {
@@ -629,20 +629,20 @@ static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t
   return NANOARROW_OK;
 }
 
-static int ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* reader,
+static int ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
                                        flatbuffers_generic_t message_header,
                                        struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ns(Schema_table_t) schema = (ns(Schema_table_t))message_header;
   int endianness = ns(Schema_endianness(schema));
   switch (endianness) {
     case ns(Endianness_Little):
-      reader->endianness = NANOARROW_IPC_ENDIANNESS_LITTLE;
+      decoder->endianness = NANOARROW_IPC_ENDIANNESS_LITTLE;
       break;
     case ns(Endianness_Big):
-      reader->endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+      decoder->endianness = NANOARROW_IPC_ENDIANNESS_BIG;
       break;
     default:
       ArrowErrorSet(error,
@@ -653,16 +653,16 @@ static int ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* reader,
 
   ns(Feature_vec_t) features = ns(Schema_features(schema));
   int64_t n_features = ns(Feature_vec_len(features));
-  reader->feature_flags = 0;
+  decoder->feature_flags = 0;
 
   for (int64_t i = 0; i < n_features; i++) {
     ns(Feature_enum_t) feature = ns(Feature_vec_at(features, i));
     switch (feature) {
       case ns(Feature_COMPRESSED_BODY):
-        reader->feature_flags |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
+        decoder->feature_flags |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
         break;
       case ns(Feature_DICTIONARY_REPLACEMENT):
-        reader->feature_flags |= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
+        decoder->feature_flags |= NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT;
         break;
       default:
         ArrowErrorSet(error, "Unrecognized Schema feature with value %d", (int)feature);
@@ -690,11 +690,11 @@ static int ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* reader,
                                     ns(Schema_custom_metadata(schema)), error);
 }
 
-static int ArrowIpcDecoderDecodeRecordBatch(struct ArrowIpcDecoder* reader,
+static int ArrowIpcDecoderDecodeRecordBatch(struct ArrowIpcDecoder* decoder,
                                             flatbuffers_generic_t message_header,
                                             struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))message_header;
 
@@ -722,10 +722,10 @@ static int ArrowIpcDecoderDecodeRecordBatch(struct ArrowIpcDecoder* reader,
     ns(CompressionType_enum_t) codec = ns(BodyCompression_codec(compression));
     switch (codec) {
       case ns(CompressionType_LZ4_FRAME):
-        reader->codec = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
+        decoder->codec = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
         break;
       case ns(CompressionType_ZSTD):
-        reader->codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
+        decoder->codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
         break;
       default:
         ArrowErrorSet(error, "Unrecognized RecordBatch BodyCompression codec value: %d",
@@ -733,7 +733,7 @@ static int ArrowIpcDecoderDecodeRecordBatch(struct ArrowIpcDecoder* reader,
         return EINVAL;
     }
   } else {
-    reader->codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+    decoder->codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
   }
 
   // Copying field node and buffer information is separate so as only to pay for the
@@ -741,7 +741,7 @@ static int ArrowIpcDecoderDecodeRecordBatch(struct ArrowIpcDecoder* reader,
   return NANOARROW_OK;
 }
 
-static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* reader,
+static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
                                              struct ArrowBufferView* data_mut,
                                              int32_t* message_size_bytes,
                                              struct ArrowError* error) {
@@ -775,64 +775,64 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* reader,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* decoder,
                                    struct ArrowBufferView data,
                                    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  reader->body_size_bytes = 0;
+  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
+  decoder->body_size_bytes = 0;
   private_data->last_message = NULL;
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(reader, &data, &reader->header_size_bytes, error));
-  reader->header_size_bytes += 2 * sizeof(int32_t);
+      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  decoder->header_size_bytes += 2 * sizeof(int32_t);
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* decoder,
                                      struct ArrowBufferView data,
                                      struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  reader->body_size_bytes = 0;
+  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
+  decoder->body_size_bytes = 0;
   private_data->last_message = NULL;
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(reader, &data, &reader->header_size_bytes, error));
+      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
 
   // Run flatbuffers verification
-  if (ns(Message_verify_as_root(data.data.as_uint8, reader->header_size_bytes)) !=
+  if (ns(Message_verify_as_root(data.data.as_uint8, decoder->header_size_bytes)) !=
       flatcc_verify_ok) {
     ArrowErrorSet(error, "Message flatbuffer verification failed");
     return EINVAL;
   }
 
   // Read some basic information from the message
-  reader->header_size_bytes += 2 * sizeof(int32_t);
+  decoder->header_size_bytes += 2 * sizeof(int32_t);
   ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
-  reader->metadata_version = ns(Message_version(message));
-  reader->message_type = ns(Message_header_type(message));
-  reader->body_size_bytes = ns(Message_bodyLength(message));
+  decoder->metadata_version = ns(Message_version(message));
+  decoder->message_type = ns(Message_header_type(message));
+  decoder->body_size_bytes = ns(Message_bodyLength(message));
 
   private_data->last_message = ns(Message_header_get(message));
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* decoder,
                                      struct ArrowBufferView data,
                                      struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  reader->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  reader->body_size_bytes = 0;
+  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
+  decoder->body_size_bytes = 0;
   private_data->last_message = NULL;
 
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(reader, &data, &reader->header_size_bytes, error));
-  reader->header_size_bytes += 2 * sizeof(int32_t);
+      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  decoder->header_size_bytes += 2 * sizeof(int32_t);
 
   ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
   if (!message) {
@@ -841,10 +841,10 @@ ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* reader,
 
   // Read some basic information from the message
   int32_t metadata_version = ns(Message_version(message));
-  reader->message_type = ns(Message_header_type(message));
-  reader->body_size_bytes = ns(Message_bodyLength(message));
+  decoder->message_type = ns(Message_header_type(message));
+  decoder->body_size_bytes = ns(Message_bodyLength(message));
 
-  switch (reader->metadata_version) {
+  switch (decoder->metadata_version) {
     case ns(MetadataVersion_V4):
     case ns(MetadataVersion_V5):
       break;
@@ -852,31 +852,31 @@ ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* reader,
     case ns(MetadataVersion_V2):
     case ns(MetadataVersion_V3):
       ArrowErrorSet(error, "Expected metadata version V4 or V5 but found %s",
-                    ns(MetadataVersion_name(reader->metadata_version)));
+                    ns(MetadataVersion_name(decoder->metadata_version)));
       break;
     default:
       ArrowErrorSet(error, "Unexpected value for Message metadata version (%d)",
-                    reader->metadata_version);
+                    decoder->metadata_version);
       return EINVAL;
   }
 
   flatbuffers_generic_t message_header = ns(Message_header_get(message));
-  switch (reader->message_type) {
+  switch (decoder->message_type) {
     case ns(MessageHeader_Schema):
-      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchema(reader, message_header, error));
+      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchema(decoder, message_header, error));
       break;
     case ns(MessageHeader_RecordBatch):
       NANOARROW_RETURN_NOT_OK(
-          ArrowIpcDecoderDecodeRecordBatch(reader, message_header, error));
+          ArrowIpcDecoderDecodeRecordBatch(decoder, message_header, error));
       break;
     case ns(MessageHeader_DictionaryBatch):
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowErrorSet(error, "Unsupported message type: '%s'",
-                    ns(MessageHeader_type_name(reader->message_type)));
+                    ns(MessageHeader_type_name(decoder->message_type)));
       return ENOTSUP;
     default:
-      ArrowErrorSet(error, "Unnown message type: %d", (int)(reader->message_type));
+      ArrowErrorSet(error, "Unnown message type: %d", (int)(decoder->message_type));
       return EINVAL;
   }
 
@@ -884,14 +884,14 @@ ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* reader,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* out,
                                         struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   if (private_data->schema.release == NULL) {
-    ArrowErrorSet(error, "reader does not contain a valid schema");
+    ArrowErrorSet(error, "decoder does not contain a valid schema");
     return EINVAL;
   }
 
@@ -924,11 +924,11 @@ static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
   }
 }
 
-ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* schema,
                                         struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ArrowArrayViewReset(&private_data->array_view);
 
@@ -953,7 +953,7 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* reader,
   private_data->fields = (struct ArrowIpcField*)ArrowMalloc(private_data->n_fields *
                                                             sizeof(struct ArrowIpcField));
   if (private_data->fields == NULL) {
-    ArrowErrorSet(error, "Failed to allocate reader->fields");
+    ArrowErrorSet(error, "Failed to allocate decoder->fields");
     return ENOMEM;
   }
   memset(private_data->fields, 0, private_data->n_fields * sizeof(struct ArrowIpcField));
@@ -1059,21 +1059,21 @@ static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* reader,
+ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* decoder,
                                        struct ArrowBufferView body, int64_t field_i,
                                        struct ArrowArray* out, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)reader->private_data;
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   if (private_data->last_message == NULL ||
-      reader->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
-    ArrowErrorSet(error, "reader did not just decode a RecordBatch message");
+      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
+    ArrowErrorSet(error, "decoder did not just decode a RecordBatch message");
     return EINVAL;
   }
 
   ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))private_data->last_message;
 
-  // RecordBatch messages don't count the root node but reader->fields does
+  // RecordBatch messages don't count the root node but decoder->fields does
   struct ArrowIpcField* root = private_data->fields + field_i + 1;
 
   struct ArrowArray temp;
@@ -1090,8 +1090,8 @@ ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* reader,
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
   setter.body = body;
-  setter.codec = reader->codec;
-  setter.endianness = reader->endianness;
+  setter.codec = decoder->codec;
+  setter.endianness = decoder->endianness;
 
   // This should probably be done at compile time
   uint32_t check = 1;
