@@ -144,7 +144,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcPeekSimpleSchema) {
   data.size_bytes = sizeof(kSimpleSchema);
 
   ArrowIpcDecoderInit(&decoder);
-  EXPECT_EQ(ArrowIpcDecoderPeek(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderPeekHeader(&decoder, data, &error), NANOARROW_OK);
   EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
   EXPECT_EQ(decoder.body_size_bytes, 0);
 

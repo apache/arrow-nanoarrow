@@ -25,7 +25,8 @@
 #define ArrowIpcCheckRuntime NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCheckRuntime)
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
-#define ArrowIpcDecoderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeek)
+#define ArrowIpcDecoderPeekHeader \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeekHeader)
 #define ArrowIpcDecoderVerifyHeader \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVerifyHeader)
 #define ArrowIpcDecoderDecodeHeader \
@@ -83,7 +84,7 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 /// initialized using ArrowIpcDecoderInit(), and released with
 /// ArrowIpcDecoderReset(). These fields should not be modified
 /// by the caller but can be read following a call to
-/// ArrowIpcDecoderPeek(), ArrowIpcDecoderVerifyHeader(), or
+/// ArrowIpcDecoderPeekHeader(), ArrowIpcDecoderVerifyHeader(), or
 /// ArrowIpcDecoderDecodeHeader().
 struct ArrowIpcDecoder {
   /// \brief The last verified or decoded message type
@@ -125,22 +126,23 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 /// \brief Peek at a message header
 ///
 /// The first 8 bytes of an Arrow IPC message are 0xFFFFFF followed by the size
-/// of the header as a little-endian 32-bit integer. ArrowIpcDecoderPeek() reads
+/// of the header as a little-endian 32-bit integer. ArrowIpcDecoderPeekHeader() reads
 /// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
 /// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
 /// Arrow end-of-stream indicator has been reached, or NANOARROW_OK otherwise.
-ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* decoder,
-                                   struct ArrowBufferView data, struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
+                                         struct ArrowBufferView data,
+                                         struct ArrowError* error);
 
 /// \brief Verify a message header
 ///
-/// Runs ArrowIpcDecoderPeek() to ensure data is sufficiently large but additionally
+/// Runs ArrowIpcDecoderPeekHeader() to ensure data is sufficiently large but additionally
 /// runs flatbuffer verification to ensure that decoding the data will not access
 /// memory outside of the buffer specified by data. ArrowIpcDecoderVerifyHeader() will
 /// also set decoder.header_size_bytes, decoder.body_size_bytes, decoder.metadata_version,
 /// and decoder.message_type.
 ///
-/// Returns as ArrowIpcDecoderPeek() and additionally will
+/// Returns as ArrowIpcDecoderPeekHeader() and additionally will
 /// return EINVAL if flatbuffer verification fails.
 ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
                                            struct ArrowBufferView data,
@@ -148,7 +150,7 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
 
 /// \brief Decode a message header
 ///
-/// Runs ArrowIpcDecoderPeek() to ensure data is sufficiently large and decodes
+/// Runs ArrowIpcDecoderPeekHeader() to ensure data is sufficiently large and decodes
 /// the content of the message header. If data contains a schema message,
 /// decoder.endianness and decoder.feature_flags is set and ArrowIpcDecoderGetSchema() can
 /// be used to obtain the decoded schema. If data contains a record batch message,

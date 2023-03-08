@@ -796,9 +796,9 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* decoder,
-                                   struct ArrowBufferView data,
-                                   struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
+                                         struct ArrowBufferView data,
+                                         struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
