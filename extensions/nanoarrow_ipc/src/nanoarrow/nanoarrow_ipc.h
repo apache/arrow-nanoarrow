@@ -26,7 +26,8 @@
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
 #define ArrowIpcDecoderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeek)
-#define ArrowIpcDecoderVerify NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVerify)
+#define ArrowIpcDecoderVerifyHeader \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVerifyHeader)
 #define ArrowIpcDecoderDecodeHeader \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeHeader)
 #define ArrowIpcDecoderGetSchema \
@@ -82,7 +83,7 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 /// initialized using ArrowIpcDecoderInit(), and released with
 /// ArrowIpcDecoderReset(). These fields should not be modified
 /// by the caller but can be read following a call to
-/// ArrowIpcDecoderPeek(), ArrowIpcDecoderVerify(), or
+/// ArrowIpcDecoderPeek(), ArrowIpcDecoderVerifyHeader(), or
 /// ArrowIpcDecoderDecodeHeader().
 struct ArrowIpcDecoder {
   /// \brief The last verified or decoded message type
@@ -135,15 +136,15 @@ ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* decoder,
 ///
 /// Runs ArrowIpcDecoderPeek() to ensure data is sufficiently large but additionally
 /// runs flatbuffer verification to ensure that decoding the data will not access
-/// memory outside of the buffer specified by data. ArrowIpcDecoderVerify() will also
-/// set decoder.header_size_bytes, decoder.body_size_bytes, decoder.metadata_version,
+/// memory outside of the buffer specified by data. ArrowIpcDecoderVerifyHeader() will
+/// also set decoder.header_size_bytes, decoder.body_size_bytes, decoder.metadata_version,
 /// and decoder.message_type.
 ///
 /// Returns as ArrowIpcDecoderPeek() and additionally will
 /// return EINVAL if flatbuffer verification fails.
-ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* decoder,
-                                     struct ArrowBufferView data,
-                                     struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowBufferView data,
+                                           struct ArrowError* error);
 
 /// \brief Decode a message header
 ///
@@ -154,8 +155,9 @@ ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* decoder,
 /// decoder.codec is set and a successful call can be followed by a call to
 /// ArrowIpcDecoderGetArray().
 ///
-/// In almost all cases this should be preceeded by a call to ArrowIpcDecoderVerify() to
-/// ensure decoding does not access data outside of the specified buffer.
+/// In almost all cases this should be preceeded by a call to
+/// ArrowIpcDecoderVerifyHeader() to ensure decoding does not access data outside of the
+/// specified buffer.
 ///
 /// Returns EINVAL if the content of the message cannot be decoded or ENOTSUP if the
 /// content of the message uses features not supported by this library.

@@ -104,32 +104,32 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
 
   ArrowIpcDecoderInit(&decoder);
 
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), ESPIPE);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected data of at least 8 bytes but only 1 bytes remain");
 
   uint32_t eight_bad_bytes[] = {0, 0};
   data.data.as_uint8 = reinterpret_cast<uint8_t*>(eight_bad_bytes);
   data.size_bytes = 8;
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0xFFFFFFFF at start of message but found 0x00000000");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = static_cast<uint32_t>(-1);
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected message body size > 0 but found message body size of -1 bytes");
 
   eight_bad_bytes[1] = static_cast<uint32_t>(1);
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), ESPIPE);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of 1 bytes");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = 0;
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), ENODATA);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ENODATA);
   EXPECT_STREQ(error.message, "End of Arrow stream");
 
   ArrowIpcDecoderReset(&decoder);
@@ -160,7 +160,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
   data.size_bytes = sizeof(kSimpleSchema);
 
   ArrowIpcDecoderInit(&decoder);
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
   EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
   EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
   EXPECT_EQ(decoder.body_size_bytes, 0);
@@ -171,7 +171,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
 
   data.data.as_uint8 = simple_schema_invalid;
   data.size_bytes = sizeof(kSimpleSchema);
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Message flatbuffer verification failed");
 
   ArrowIpcDecoderReset(&decoder);
@@ -186,7 +186,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
   data.size_bytes = sizeof(kSimpleRecordBatch);
 
   ArrowIpcDecoderInit(&decoder);
-  EXPECT_EQ(ArrowIpcDecoderVerify(&decoder, data, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
   EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
   EXPECT_EQ(decoder.header_size_bytes,
             sizeof(kSimpleRecordBatch) - decoder.body_size_bytes);
@@ -396,7 +396,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 
   struct ArrowIpcDecoder decoder;
   ArrowIpcDecoderInit(&decoder);
-  ASSERT_EQ(ArrowIpcDecoderVerify(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
   EXPECT_EQ(decoder.body_size_bytes, 0);
 
@@ -541,7 +541,7 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
 
   struct ArrowIpcDecoder decoder;
   ArrowIpcDecoderInit(&decoder);
-  ASSERT_EQ(ArrowIpcDecoderVerify(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
   EXPECT_EQ(decoder.body_size_bytes, 0);
 
