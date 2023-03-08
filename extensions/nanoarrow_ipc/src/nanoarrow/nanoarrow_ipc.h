@@ -23,17 +23,17 @@
 #ifdef NANOARROW_NAMESPACE
 
 #define ArrowIpcCheckRuntime NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCheckRuntime)
-#define ArrowIpcReaderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderInit)
-#define ArrowIpcReaderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderReset)
-#define ArrowIpcReaderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderPeek)
-#define ArrowIpcReaderVerify NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderVerify)
-#define ArrowIpcReaderDecode NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderDecode)
-#define ArrowIpcReaderGetSchema \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderGetSchema)
-#define ArrowIpcReaderGetArray \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderGetArray)
-#define ArrowIpcReaderSetSchema \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcReaderSetSchema)
+#define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
+#define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
+#define ArrowIpcDecoderPeek NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeek)
+#define ArrowIpcDecoderVerify NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVerify)
+#define ArrowIpcDecoderDecode NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecode)
+#define ArrowIpcDecoderGetSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetSchema)
+#define ArrowIpcDecoderGetArray \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetArray)
+#define ArrowIpcDecoderSetSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
 
 #endif
 
@@ -78,12 +78,12 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 /// \brief Decoder for Arrow IPC messages
 ///
 /// This structure is intended to be allocated by the caller,
-/// initialized using ArrowIpcReaderInit(), and released with
-/// ArrowIpcReaderReset(). These fields should not be modified
+/// initialized using ArrowIpcDecoderInit(), and released with
+/// ArrowIpcDecoderReset(). These fields should not be modified
 /// by the caller but can be read following a call to
-/// ArrowIpcReaderPeek(), ArrowIpcReaderVerify(), or
-/// ArrowIpcReaderDecode().
-struct ArrowIpcReader {
+/// ArrowIpcDecoderPeek(), ArrowIpcDecoderVerify(), or
+/// ArrowIpcDecoderDecode().
+struct ArrowIpcDecoder {
   /// \brief The last verified or decoded message type
   enum ArrowIpcMessageType message_type;
 
@@ -114,38 +114,39 @@ struct ArrowIpcReader {
   void* private_data;
 };
 
-ArrowErrorCode ArrowIpcReaderInit(struct ArrowIpcReader* reader);
+ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* reader);
 
-void ArrowIpcReaderReset(struct ArrowIpcReader* reader);
+void ArrowIpcDecoderReset(struct ArrowIpcDecoder* reader);
 
-ArrowErrorCode ArrowIpcReaderPeek(struct ArrowIpcReader* reader,
-                                  struct ArrowBufferView data, struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderPeek(struct ArrowIpcDecoder* reader,
+                                   struct ArrowBufferView data, struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcReaderVerify(struct ArrowIpcReader* reader,
-                                    struct ArrowBufferView data,
-                                    struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderVerify(struct ArrowIpcDecoder* reader,
+                                     struct ArrowBufferView data,
+                                     struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcReaderDecode(struct ArrowIpcReader* reader,
-                                    struct ArrowBufferView data,
-                                    struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderDecode(struct ArrowIpcDecoder* reader,
+                                     struct ArrowBufferView data,
+                                     struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcReaderGetSchema(struct ArrowIpcReader* reader,
-                                       struct ArrowSchema* out, struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderGetSchema(struct ArrowIpcDecoder* reader,
+                                        struct ArrowSchema* out,
+                                        struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcReaderGetArray(struct ArrowIpcReader* reader,
-                                      struct ArrowBufferView body, int64_t i,
-                                      struct ArrowArray* out, struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderGetArray(struct ArrowIpcDecoder* reader,
+                                       struct ArrowBufferView body, int64_t i,
+                                       struct ArrowArray* out, struct ArrowError* error);
 
-ArrowErrorCode ArrowIpcReaderSetSchema(struct ArrowIpcReader* reader,
-                                       struct ArrowSchema* schema,
-                                       struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* reader,
+                                        struct ArrowSchema* schema,
+                                        struct ArrowError* error);
 
 struct ArrowIpcField {
   struct ArrowArrayView* array_view;
   int64_t buffer_offset;
 };
 
-struct ArrowIpcReaderPrivate {
+struct ArrowIpcDecoderPrivate {
   struct ArrowSchema schema;
   struct ArrowArrayView array_view;
   int64_t n_fields;
