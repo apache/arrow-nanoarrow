@@ -102,6 +102,32 @@ cdef class CSchemaHolder:
     def _addr(self):
         return <uintptr_t>&self.c_schema
 
+cdef class CArrayHolder:
+    cdef ArrowArray c_array
+
+    def __init__(self):
+        self.c_array.release = NULL
+
+    def __del__(self):
+        if self.c_array.release != NULL:
+          self.c_array.release(&self.c_array)
+
+    def _addr(self):
+        return <uintptr_t>&self.c_array
+
+cdef class CArrayViewHolder:
+    cdef ArrowArrayView c_array_view
+
+    def __init__(self):
+        ArrowArrayViewInitFromType(&self.c_array_view, NANOARROW_TYPE_UNINITIALIZED)
+
+    def __del__(self):
+        ArrowArrayViewReset(&self.c_array_view)
+
+    def _addr(self):
+        return <uintptr_t>&self.c_array_view
+
+
 cdef class CSchemaChildren:
     cdef CSchema _parent
     cdef int64_t _length
@@ -118,7 +144,7 @@ cdef class CSchemaChildren:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
 
-        return type(self._parent)(self._parent, self._child_addr(k))
+        return CSchema(self._parent, self._child_addr(k))
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowSchema** children = self._parent._ptr.children
@@ -129,14 +155,26 @@ cdef class CSchema:
     cdef object _base
     cdef ArrowSchema* _ptr
 
-    def __init__(self, object base, uintptr_t addr) -> None:
+    @staticmethod
+    def Empty():
+        base = CSchemaHolder()
+        return CSchema(base, base._addr())
+
+    def __init__(self, object base, uintptr_t addr):
         self._base = base,
         self._ptr = <ArrowSchema*>addr
 
     def _addr(self):
         return <uintptr_t>self._ptr
 
-    def __repr__(self) -> str:
+    def is_valid(self):
+        return self._ptr.release != NULL
+
+    cdef void _assert_valid(self):
+        if self._ptr.release == NULL:
+            raise RuntimeError("schema is released")
+
+    def __repr__(self):
         cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, True)
         cdef char* out = <char*>PyMem_Malloc(n_chars + 1)
         if not out:
@@ -150,13 +188,17 @@ cdef class CSchema:
 
     @property
     def format(self):
+        self._assert_valid()
         if self._ptr.format != NULL:
             return self._ptr.format.decode("UTF-8")
 
     @property
     def name(self):
+        self._assert_valid()
         if self._ptr.name != NULL:
             return self._ptr.name.decode("UTF-8")
+        else:
+            return None
 
     @property
     def flags(self):
@@ -164,4 +206,33 @@ cdef class CSchema:
 
     @property
     def children(self):
+        self._assert_valid()
         return CSchemaChildren(self)
+
+    def parse(self):
+        self._assert_valid()
+
+        cdef ArrowError error
+        cdef ArrowSchemaView schema_view
+
+        cdef int result = ArrowSchemaViewInit(&schema_view, self._ptr, &error)
+        if result != NANOARROW_OK:
+            raise ValueError(ArrowErrorMessage(&error))
+
+        out = {
+            'name': self._ptr.name.decode('UTF-8') if self._ptr.name else None,
+            'type': ArrowTypeString(schema_view.type).decode('UTF-8'),
+            'storage_type': ArrowTypeString(schema_view.storage_type).decode('UTF-8')
+        }
+
+        if schema_view.storage_type in (NANOARROW_TYPE_FIXED_SIZE_LIST,
+                                        NANOARROW_TYPE_FIXED_SIZE_BINARY):
+            out['fixed_size'] = schema_view.fixed_size
+
+        if schema_view.storage_type in (NANOARROW_TYPE_DECIMAL128,
+                                        NANOARROW_TYPE_DECIMAL256):
+            out['decimal_bitwidth'] = schema_view.decimal_bitwidth
+            out['decimal_precision'] = schema_view.decimal_precision
+            out['decimal_scale'] = schema_view.decimal_scale
+
+        return out

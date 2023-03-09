@@ -298,6 +298,8 @@ enum ArrowType {
 /// \ingroup nanoarrow-utils
 ///
 /// Returns NULL for invalid values for type
+static inline const char* ArrowTypeString(enum ArrowType type);
+
 static inline const char* ArrowTypeString(enum ArrowType type) {
   switch (type) {
     case NANOARROW_TYPE_NA:
@@ -416,6 +418,8 @@ enum ArrowValidationLevel {
 /// \ingroup nanoarrow-utils
 ///
 /// Returns NULL for invalid values for time_unit
+static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit);
+
 static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
   switch (time_unit) {
     case NANOARROW_TIME_UNIT_SECOND:
@@ -458,6 +462,8 @@ struct ArrowStringView {
 
 /// \brief Return a view of a const C string
 /// \ingroup nanoarrow-utils
+static inline struct ArrowStringView ArrowCharView(const char* value);
+
 static inline struct ArrowStringView ArrowCharView(const char* value) {
   struct ArrowStringView out;
 

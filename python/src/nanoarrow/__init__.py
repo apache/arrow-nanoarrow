@@ -21,18 +21,3 @@ from ._lib import (  # noqa: F401
     CSchemaHolder,
     CSchema,
 )
-
-class Schema(CSchema):
-
-    def __init__(self, parent=None, addr=None) -> None:
-        if parent is None:
-            parent = CSchemaHolder()
-        if addr is None:
-            addr = parent._addr()
-        super().__init__(parent, addr)
-
-    @staticmethod
-    def from_pyarrow(obj):
-        schema = Schema()
-        obj._export_to_c(schema._addr())
-        return schema
