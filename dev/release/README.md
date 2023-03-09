@@ -321,3 +321,34 @@ After a passing release vote, the following tasks must be completed:
 [ ] Removed old artifacts from SVN
 [ ] Bumped versions on main
 ```
+
+Template for the email to announce@apache.org:
+
+```
+The Apache Arrow community is pleased to announce the 0.1.0 release of Apache Arrow nanoarrow. This initial release covers 31 resolved issues from 6 contributors[1].
+
+The release is available now from [2].
+
+Release notes are available at:
+https://github.com/apache/arrow-adbc/blob/apache-arrow-adbc-0.2.0/CHANGELOG.md
+
+What is Apache Arrow?
+---------------------
+Apache Arrow is a columnar in-memory analytics layer designed to accelerate big data. It houses a set of canonical in-memory representations of flat and hierarchical data along with multiple language-bindings for structure manipulation. It also provides low-overhead streaming and batch messaging, zero-copy interprocess communication (IPC), and vectorized in-memory analytics libraries. Languages currently supported include C, C++, C#, Go, Java, JavaScript, Julia, MATLAB, Python, R, Ruby, and Rust.
+
+What is Apache Arrow nanoarrow?
+--------------------------
+Apache Arrow nanoarrow is a small C library for building and interpreting Arrow C Data interface structures with bindings for users of the R programming language. The vision of nanoarrow is that it should be trivial for a library or application to implement an Arrow-based interface. The library provides helpers to create types, schemas, and metadata, an API for building arrays element-wise,
+and an API to extract elements element-wise from an array. For a more detail description of the features nanoarrow provides and motivation for its development, see [3].
+
+Please report any feedback to the mailing lists ([4], [5]).
+
+Regards,
+The Apache Arrow Community
+
+[1]: https://github.com/apache/arrow-nanoarrow/issues?q=is%3Aissue+milestone%3A%22nanoarrow+0.1.0%22+is%3Aclosed
+[2]: https://www.apache.org/dyn/closer.cgi/arrow/apache-arrow-nanoarrow-0.1.0
+[3]: https://arrow.apache.org/blog/2023/03/01/nanoarrow-0.1.0-release/
+[4]: https://lists.apache.org/list.html?user@arrow.apache.org
+[5]: https://lists.apache.org/list.html?dev@arrow.apache.org
+```
