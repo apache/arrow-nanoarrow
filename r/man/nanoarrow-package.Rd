@@ -4,9 +4,9 @@
 \name{nanoarrow-package}
 \alias{nanoarrow}
 \alias{nanoarrow-package}
-\title{nanoarrow: An R Interface to the 'nanoarrow' C Library}
+\title{nanoarrow: Interface to the 'nanoarrow' 'C' Library}
 \description{
-Provides an 'R' interface to the 'nanoarrow' C library and the 'Apache Arrow' application binary interface. Functions to import and export 'ArrowArray', 'ArrowSchema', and 'ArrowArrayStream' C structures to and from 'R' objects are provided alongside helpers to facilitate zero-copy data transfer among R bindings to libraries implementing the 'Arrow' C data interface.
+Provides an 'R' interface to the 'nanoarrow' 'C' library and the 'Apache Arrow' application binary interface. Functions to import and export 'ArrowArray', 'ArrowSchema', and 'ArrowArrayStream' 'C' structures to and from 'R' objects are provided alongside helpers to facilitate zero-copy data transfer among 'R' bindings to libraries implementing the 'Arrow' 'C' data interface.
 }
 \seealso{
 Useful links:
@@ -22,6 +22,11 @@ Useful links:
 Authors:
 \itemize{
   \item Apache Arrow \email{dev@arrow.apache.org} [copyright holder]
+}
+
+Other contributors:
+\itemize{
+  \item Apache Software Foundation \email{dev@arrow.apache.org} [copyright holder]
 }
 
 }
