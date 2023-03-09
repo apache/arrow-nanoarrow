@@ -35,7 +35,7 @@ int verify_ipc_message(const void* data, int64_t size_bytes) {
 
   struct ArrowIpcDecoder decoder;
   ArrowIpcDecoderInit(&decoder);
-  int result = ArrowIpcDecoderVerify(&decoder, buffer_view, &global_error);
+  int result = ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, &global_error);
   ArrowIpcDecoderReset(&decoder);
 
   return result;
