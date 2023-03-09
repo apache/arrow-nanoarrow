@@ -53,6 +53,12 @@ class NanoarrowPxdGenerator:
 
             output.write(f'\ncdef extern from "{file_in_name}":\n'.encode("UTF-8"))
 
+            # A few things we add in manually
+            output.write(b'\n')
+            output.write(b'    ctypedef int ArrowErrorCode\n')
+            output.write(b'    cdef int NANOARROW_OK\n')
+            output.write(b'\n')
+
             for type in types_cython:
                 output.write(type.encode('UTF-8'))
                 output.write(b'\n\n')
@@ -122,8 +128,7 @@ class NanoarrowPxdGenerator:
 
         # cython: language_level = 3
 
-        from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t,\
-            uint32_t, int64_t, uint64_t
+        from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
         """
 
 # Runs cmake -DNANOARROW_BUNDLE=ON if cmake exists or copies nanoarrow.c/h
