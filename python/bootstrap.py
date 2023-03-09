@@ -42,7 +42,7 @@ class NanoarrowPxdGenerator:
 
         # Make corresponding cython definitions
         types_cython = [self._type_to_cython(t, '    ') for t in types]
-        func_defs_cython = [self._func_def_to_cython(d, '     ') for d in func_defs]
+        func_defs_cython = [self._func_def_to_cython(d, '    ') for d in func_defs]
 
         # Unindent the header
         header = self.re_newline_plus_indent.sub('\n', self._pxd_header())
@@ -95,7 +95,7 @@ class NanoarrowPxdGenerator:
         return f'{indent}cdef {type} {name}:{cython_body}'
 
     def _func_def_to_cython(self, d, indent=''):
-        return_type = d['return_type']
+        return_type = d['return_type'].strip()
         name = d['name']
         args = re.sub(r'\s+', ' ', d['args'].strip())
         args = self.re_tagged_type.sub(r'\2', args)
