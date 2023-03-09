@@ -117,6 +117,12 @@ def test_array():
     assert(view.value_int(1) == 2)
     assert(view.value_int(2) == 3)
 
+    data_buffer = memoryview(view.buffers[1])
+    assert(len(data_buffer) == 12)
+    data_buffer_copy = bytes(data_buffer)
+    # (needs updating if testing on big endian)
+    assert(data_buffer_copy == b'\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00')
+
 def test_array_recursive():
     pa_array = pa.array([1, 2, 3], pa.int32())
     pa_batch = pa.record_batch([pa_array], names=["some_column"])

@@ -21,6 +21,7 @@
 
 from libc.stdint cimport uint8_t, uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 
 import numpy as np
@@ -262,6 +263,52 @@ cdef class CArray:
         return CArrayView(holder, holder._addr(), self)
 
 
+cdef class CBufferView:
+    cdef object _base
+    cdef ArrowBufferView* _ptr
+    cdef Py_ssize_t _shape
+    cdef Py_ssize_t _strides
+
+    def __init__(self, object base, uintptr_t addr):
+        self._base = base
+        self._ptr = <ArrowBufferView*>addr
+        self._shape = self._ptr.size_bytes
+        self._strides = 1
+
+    def __getbuffer__(self, Py_buffer *buffer, int flags):
+        buffer.buf = self._ptr.data.data
+        buffer.format = NULL
+        buffer.internal = NULL
+        buffer.itemsize = 1
+        buffer.len = self._ptr.size_bytes
+        buffer.ndim = 1
+        buffer.obj = self
+        buffer.readonly = 1
+        buffer.shape = &self._shape
+        buffer.strides = &self._strides
+        buffer.suboffsets = NULL
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        pass
+
+cdef class CArrayViewBuffers:
+    cdef CArrayView _array_view
+    cdef int64_t _length
+
+    def __init__(self, CArrayView array_view):
+        self._array_view = array_view
+        self._length = array_view._array._ptr.n_buffers
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, k):
+        k = int(k)
+        if k < 0 or k >= self._length:
+            raise IndexError(f"{k} out of range [0, {self._length})")
+        cdef ArrowBufferView* buffer_view = &(self._array_view._ptr.buffer_views[k])
+        return CBufferView(self._array_view, <uintptr_t>buffer_view)
+
 cdef class CArrayView:
     cdef object _base
     cdef ArrowArrayView* _ptr
@@ -275,6 +322,10 @@ cdef class CArrayView:
     @property
     def children(self):
         return CArrayViewChildren(self)
+
+    @property
+    def buffers(self):
+        return CArrayViewBuffers(self)
 
     @property
     def array(self):
