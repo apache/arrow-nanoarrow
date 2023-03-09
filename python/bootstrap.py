@@ -160,7 +160,7 @@ def copy_or_generate_nanoarrow_c():
         try:
             os.mkdir(build_dir)
             os.chdir(build_dir)
-            os.system(f'cmake ../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=PythonPkg')
+            os.system(f'cmake ../.. -DNANOARROW_BUNDLE=ON')
             os.system(f'cmake --install . --prefix=../src/nanoarrow')
         finally:
             if os.path.exists(build_dir):
