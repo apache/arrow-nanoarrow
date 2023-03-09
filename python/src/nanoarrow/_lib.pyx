@@ -147,7 +147,7 @@ cdef class CSchema:
     def is_valid(self):
         return self._ptr.release != NULL
 
-    cdef void _assert_valid(self):
+    def _assert_valid(self):
         if self._ptr.release == NULL:
             raise RuntimeError("schema is released")
 
@@ -235,7 +235,7 @@ cdef class CArray:
     def is_valid(self):
         return self._ptr.release != NULL
 
-    cdef void _assert_valid(self):
+    def _assert_valid(self):
         if self._ptr.release == NULL:
             raise RuntimeError("Array is released")
 

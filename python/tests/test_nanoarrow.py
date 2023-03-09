@@ -45,7 +45,8 @@ def test_as_numpy_array():
     with pytest.raises(TypeError, match="Cannot convert a non-primitive array"):
         na.as_numpy_array(arr)
 
-def test_schema_basic():# Blank invalid schema
+def test_schema_basic():
+    # Blank invalid schema
     schema = na.CSchema.Empty()
     assert(schema.is_valid() is False)
     assert(repr(schema) == "[invalid: schema is released]")
@@ -55,7 +56,7 @@ def test_schema_basic():# Blank invalid schema
 
     assert(schema.format == "+s")
     assert(schema.flags == 0)
-    assert(len(schema.children), 1)
+    assert(len(schema.children) == 1)
     assert(schema.children[0].format == "i")
     assert(schema.children[0].name == "some_name")
     assert(repr(schema.children[0]) == "int32")
@@ -65,7 +66,7 @@ def test_schema_basic():# Blank invalid schema
 
 def test_schema_parse():
     schema = na.CSchema.Empty()
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         schema.parse()
 
     pa.schema([pa.field("col1", pa.int32())])._export_to_c(schema._addr())
