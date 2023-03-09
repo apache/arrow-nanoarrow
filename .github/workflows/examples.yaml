@@ -29,6 +29,7 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/examples.yaml'
       - 'src/nanoarrow/**'
+      - 'src/extensions/**'
 
 jobs:
   examples:

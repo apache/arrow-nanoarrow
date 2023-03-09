@@ -33,10 +33,10 @@ int verify_ipc_message(const void* data, int64_t size_bytes) {
   buffer_view.data.data = data;
   buffer_view.size_bytes = size_bytes;
 
-  struct ArrowIpcReader reader;
-  ArrowIpcReaderInit(&reader);
-  int result = ArrowIpcReaderVerify(&reader, buffer_view, &global_error);
-  ArrowIpcReaderReset(&reader);
+  struct ArrowIpcDecoder decoder;
+  ArrowIpcDecoderInit(&decoder);
+  int result = ArrowIpcDecoderVerify(&decoder, buffer_view, &global_error);
+  ArrowIpcDecoderReset(&decoder);
 
   return result;
 }
