@@ -105,6 +105,11 @@ class NanoarrowPxdGenerator:
         name = d['name']
         args = re.sub(r'\s+', ' ', d['args'].strip())
         args = self.re_tagged_type.sub(r'\2', args)
+
+        # Cython doesn't do (void)
+        if args == 'void':
+            args = ''
+
         return f'{indent}cdef {return_type} {name}({args})'
 
     def _pxd_header(self):
