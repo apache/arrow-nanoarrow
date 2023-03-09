@@ -72,7 +72,7 @@ class NanoarrowPxdGenerator:
     def _define_regexes(self):
         self.re_comment = re.compile(r'\s*//[^\n]*')
         self.re_type = re.compile(r'(?P<type>struct|union|enum) (?P<name>Arrow[^ ]+) {(?P<body>[^}]*)}')
-        self.re_func_def = re.compile(r'\n(static inline )?(struct|enum )?(?P<return_type>[A-Za-z]+) (?P<name>Arrow[A-Za-z]+)\((?P<args>[^\)]*)\);')
+        self.re_func_def = re.compile(r'\n(static inline )?(?P<const>const )?(struct|enum )?(?P<return_type>[A-Za-z0-9_*]+) (?P<name>Arrow[A-Za-z]+)\((?P<args>[^\)]*)\);')
         self.re_tagged_type = re.compile(r'(?P<type>struct|union|enum) (?P<name>Arrow[A-Za-z]+)')
         self.re_struct_delim = re.compile(r';\s*')
         self.re_enum_delim = re.compile(r',\s*')
@@ -102,6 +102,8 @@ class NanoarrowPxdGenerator:
 
     def _func_def_to_cython(self, d, indent=''):
         return_type = d['return_type'].strip()
+        if d['const']:
+            return_type = 'const ' + return_type
         name = d['name']
         args = re.sub(r'\s+', ' ', d['args'].strip())
         args = self.re_tagged_type.sub(r'\2', args)
