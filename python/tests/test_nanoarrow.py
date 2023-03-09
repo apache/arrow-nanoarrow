@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import numpy as np
 import pyarrow as pa
 
@@ -79,3 +96,53 @@ def test_schema_info_params():
     assert(schema.parse()['decimal_bitwidth'] == 128)
     assert(schema.parse()['decimal_precision'] == 10)
     assert(schema.parse()['decimal_scale'] == 3)
+
+def test_array():
+    schema = na.CSchema.Empty()
+    pa.int32()._export_to_c(schema._addr())
+
+    array = na.CArray.Empty(schema)
+    assert(array.is_valid() is False)
+
+    pa.array([1, 2, 3], pa.int32())._export_to_c(array._addr())
+    assert(array.is_valid() is True)
+
+    view = array.validate()
+
+    assert(view.array is array)
+    assert(view.schema is schema)
+    assert(len(view) == 3)
+
+    assert(view.value_int(0) == 1)
+    assert(view.value_int(1) == 2)
+    assert(view.value_int(2) == 3)
+
+def test_array_recursive():
+    pa_array = pa.array([1, 2, 3], pa.int32())
+    pa_batch = pa.record_batch([pa_array], names=["some_column"])
+
+    schema = na.CSchema.Empty()
+    pa_batch.schema._export_to_c(schema._addr())
+    assert(len(schema.children) == 1)
+    with pytest.raises(IndexError):
+        schema.children[1]
+
+    array = na.CArray.Empty(schema)
+    assert(array.is_valid() is False)
+
+    pa_batch._export_to_c(array._addr())
+    assert(array.is_valid() is True)
+    assert(len(array.children) == 1)
+    with pytest.raises(IndexError):
+        array.children[1]
+
+    view = array.validate()
+    assert(len(view.children) == 1)
+    with pytest.raises(IndexError):
+       view.children[1]
+
+    child = view.children[0]
+    assert(len(child) == 3)
+    assert(child.value_int(0) == 1)
+    assert(child.value_int(1) == 2)
+    assert(child.value_int(2) == 3)

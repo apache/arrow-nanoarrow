@@ -127,30 +127,6 @@ cdef class CArrayViewHolder:
     def _addr(self):
         return <uintptr_t>&self.c_array_view
 
-
-cdef class CSchemaChildren:
-    cdef CSchema _parent
-    cdef int64_t _length
-
-    def __init__(self, CSchema parent):
-        self._parent = parent
-        self._length = parent._ptr.n_children
-
-    def __len__(self):
-        return self._length
-
-    def __getitem__(self, k):
-        k = int(k)
-        if k < 0 or k >= self._length:
-            raise IndexError(f"{k} out of range [0, {self._length})")
-
-        return CSchema(self._parent, self._child_addr(k))
-
-    cdef _child_addr(self, int64_t i):
-        cdef ArrowSchema** children = self._parent._ptr.children
-        cdef ArrowSchema* child = children[i]
-        return <uintptr_t>child
-
 cdef class CSchema:
     cdef object _base
     cdef ArrowSchema* _ptr
@@ -236,3 +212,151 @@ cdef class CSchema:
             out['decimal_scale'] = schema_view.decimal_scale
 
         return out
+
+cdef class CArray:
+    cdef object _base
+    cdef ArrowArray* _ptr
+    cdef CSchema _schema
+
+    @staticmethod
+    def Empty(CSchema schema):
+        base = CArrayHolder()
+        return CArray(base, base._addr(), schema)
+
+    def __init__(self, object base, uintptr_t addr, CSchema schema):
+        self._base = base,
+        self._ptr = <ArrowArray*>addr
+        self._schema = schema
+
+    def _addr(self):
+        return <uintptr_t>self._ptr
+
+    def is_valid(self):
+        return self._ptr.release != NULL
+
+    cdef void _assert_valid(self):
+        if self._ptr.release == NULL:
+            raise RuntimeError("Array is released")
+
+    @property
+    def schema(self):
+        return self._schema
+
+    @property
+    def children(self):
+        return CArrayChildren(self)
+
+    def validate(self):
+        cdef CArrayViewHolder holder = CArrayViewHolder()
+
+        cdef ArrowError error
+        cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
+                                                       self._schema._ptr, &error)
+        if result != NANOARROW_OK:
+            raise ValueError(ArrowErrorMessage(&error))
+
+        result = ArrowArrayViewSetArray(&holder.c_array_view, self._ptr, &error)
+        if result != NANOARROW_OK:
+            raise ValueError(ArrowErrorMessage(&error))
+
+        return CArrayView(holder, holder._addr(), self)
+
+
+cdef class CArrayView:
+    cdef object _base
+    cdef ArrowArrayView* _ptr
+    cdef CArray _array
+
+    def __init__(self, object base, uintptr_t addr, CArray array):
+        self._base = base,
+        self._ptr = <ArrowArrayView*>addr
+        self._array = array
+
+    @property
+    def children(self):
+        return CArrayViewChildren(self)
+
+    @property
+    def array(self):
+        return self._array
+
+    @property
+    def schema(self):
+        return self._array._schema
+
+    def __len__(self):
+        return self._ptr.array.length
+
+    def value_int(self, int64_t i):
+        if i < 0 or i >= self._ptr.array.length:
+            raise IndexError()
+        return ArrowArrayViewGetIntUnsafe(self._ptr, i)
+
+cdef class CSchemaChildren:
+    cdef CSchema _parent
+    cdef int64_t _length
+
+    def __init__(self, CSchema parent):
+        self._parent = parent
+        self._length = parent._ptr.n_children
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, k):
+        k = int(k)
+        if k < 0 or k >= self._length:
+            raise IndexError(f"{k} out of range [0, {self._length})")
+
+        return CSchema(self._parent, self._child_addr(k))
+
+    cdef _child_addr(self, int64_t i):
+        cdef ArrowSchema** children = self._parent._ptr.children
+        cdef ArrowSchema* child = children[i]
+        return <uintptr_t>child
+
+cdef class CArrayChildren:
+    cdef CArray _parent
+    cdef int64_t _length
+
+    def __init__(self, CArray parent):
+        self._parent = parent
+        self._length = parent._ptr.n_children
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, k):
+        k = int(k)
+        if k < 0 or k >= self._length:
+            raise IndexError(f"{k} out of range [0, {self._length})")
+
+        return CArray(self._parent, self._child_addr(k))
+
+    cdef _child_addr(self, int64_t i):
+        cdef ArrowArray** children = self._parent._ptr.children
+        cdef ArrowArray* child = children[i]
+        return <uintptr_t>child
+
+cdef class CArrayViewChildren:
+    cdef CArrayView _parent
+    cdef int64_t _length
+
+    def __init__(self, CArrayView parent):
+        self._parent = parent
+        self._length = parent._ptr.n_children
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, k):
+        k = int(k)
+        if k < 0 or k >= self._length:
+            raise IndexError(f"{k} out of range [0, {self._length})")
+
+        return CArrayView(self._parent, self._child_addr(k), self._parent._array)
+
+    cdef _child_addr(self, int64_t i):
+        cdef ArrowArrayView** children = self._parent._ptr.children
+        cdef ArrowArrayView* child = children[i]
+        return <uintptr_t>child

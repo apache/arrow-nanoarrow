@@ -20,4 +20,6 @@ from ._lib import (  # noqa: F401
     version,
     CSchemaHolder,
     CSchema,
+    CArray,
+    CArrayView
 )
