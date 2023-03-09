@@ -1,5 +1,5 @@
 Package: nanoarrow
-Title: An R Interface to the 'nanoarrow' C Library
+Title: Interface to the 'nanoarrow' 'C' Library
 Version: 0.1.0.9000
 Authors@R: c(
     person(given = "Dewey",
@@ -7,13 +7,14 @@ Authors@R: c(
            role = c("aut", "cre"),
            email = "dewey@dunnington.ca",
            comment = c(ORCID = "0000-0002-9415-4582")),
-    person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph"))
+    person("Apache Arrow", email = "dev@arrow.apache.org", role = c("aut", "cph")),
+    person("Apache Software Foundation", email = "dev@arrow.apache.org", role = c("cph"))
   )
-Description: Provides an 'R' interface to the 'nanoarrow' C library and the
+Description: Provides an 'R' interface to the 'nanoarrow' 'C' library and the
   'Apache Arrow' application binary interface. Functions to import and
-  export 'ArrowArray', 'ArrowSchema', and 'ArrowArrayStream' C structures
+  export 'ArrowArray', 'ArrowSchema', and 'ArrowArrayStream' 'C' structures
   to and from 'R' objects are provided alongside helpers to facilitate zero-copy
-  data transfer among R bindings to libraries implementing the 'Arrow' C
+  data transfer among 'R' bindings to libraries implementing the 'Arrow' 'C'
   data interface.
 License: Apache License (>= 2)
 Encoding: UTF-8
