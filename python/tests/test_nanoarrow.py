@@ -16,6 +16,7 @@
 # under the License.
 
 import sys
+import re
 import numpy as np
 import pyarrow as pa
 import pytest
@@ -23,7 +24,8 @@ import pytest
 import nanoarrow as na
 
 def test_version():
-    assert na.version() == "0.2.0-SNAPSHOT"
+    re_version = re.compile(r'^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$')
+    assert re_version.match(na.version()) is not None
 
 def test_as_numpy_array():
 
