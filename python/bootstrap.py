@@ -67,8 +67,6 @@ class NanoarrowPxdGenerator:
                 output.write(func_def.encode('UTF-8'))
                 output.write(b'\n')
 
-            output.write(b'\n')
-
     def _define_regexes(self):
         self.re_comment = re.compile(r'\s*//[^\n]*')
         self.re_type = re.compile(r'(?P<type>struct|union|enum) (?P<name>Arrow[^ ]+) {(?P<body>[^}]*)}')
@@ -98,7 +96,7 @@ class NanoarrowPxdGenerator:
             items = [item for item in self.re_struct_delim.split(body) if item]
 
         cython_body = f'\n{indent}    '.join([''] + items)
-        return f'{indent}cdef {type} {name}:{cython_body}'
+        return f'{indent}{type} {name}:{cython_body}'
 
     def _func_def_to_cython(self, d, indent=''):
         return_type = d['return_type'].strip()
@@ -112,7 +110,7 @@ class NanoarrowPxdGenerator:
         if args == 'void':
             args = ''
 
-        return f'{indent}cdef {return_type} {name}({args})'
+        return f'{indent}{return_type} {name}({args})'
 
     def _pxd_header(self):
         return """
