@@ -27,7 +27,6 @@ def test_version():
     assert re_version.match(na.version()) is not None
 
 def test_schema_basic():
-    # Blank invalid schema
     schema = na.Schema.Empty()
     assert schema.is_valid() is False
     assert repr(schema) == "[invalid: schema is released]"
@@ -42,9 +41,16 @@ def test_schema_basic():
     assert schema.children[0].format == "i"
     assert schema.children[0].name == "some_name"
     assert repr(schema.children[0]) == "int32"
+    assert schema.dictionary is None
 
     with pytest.raises(IndexError):
         schema.children[1]
+
+def test_schema_dictionary():
+    schema = na.Schema.Empty()
+    pa.dictionary(pa.int32(), pa.utf8())._export_to_c(schema._addr())
+    assert schema.format == 'i'
+    assert schema.dictionary.format == 'u'
 
 def test_schema_metadata():
     schema = na.Schema.Empty()
@@ -132,53 +138,59 @@ def test_array():
 
     pa.array([1, 2, 3], pa.int32())._export_to_c(array._addr())
     assert array.is_valid() is True
+    assert array.length == 3
+    assert array.offset == 0
+    assert array.null_count == 0
+    assert len(array.buffers) == 2
+    assert array.buffers[0] == 0
+    assert len(array.children) == 0
+    assert array.dictionary is None
 
-    view = array.validate()
+    with pytest.raises(IndexError):
+        array.children[1]
+
+def test_array_view():
+    array = na.Array.Empty(na.Schema.Empty())
+    pa.array([1, 2, 3], pa.int32())._export_to_c(array._addr(), array.schema._addr())
+    view = array.view()
 
     assert view.array is array
-    assert view.schema is schema
-    assert len(view) == 3
-
-    assert view.value_int(0) == 1
-    assert view.value_int(1) == 2
-    assert view.value_int(2) == 3
+    assert view.schema is array.schema
 
     data_buffer = memoryview(view.buffers[1])
     assert len(data_buffer) == 12
     data_buffer_copy = bytes(data_buffer)
-    # (needs updating if testing on big endian)
 
     if sys.byteorder == 'little':
         assert data_buffer_copy == b'\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00'
     else:
         assert data_buffer_copy == b'\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03'
 
-def test_array_recursive():
-    pa_array = pa.array([1, 2, 3], pa.int32())
-    pa_batch = pa.record_batch([pa_array], names=["some_column"])
-
-    schema = na.Schema.Empty()
-    pa_batch.schema._export_to_c(schema._addr())
-    assert len(schema.children) == 1
     with pytest.raises(IndexError):
-        schema.children[1]
+        view.children[1]
 
-    array = na.Array.Empty(schema)
-    assert array.is_valid() is False
+def test_array_view_recursive():
+    pa_array_child = pa.array([1, 2, 3], pa.int32())
+    pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 
-    pa_batch._export_to_c(array._addr())
-    assert array.is_valid() is True
+    array = na.Array.Empty(na.Schema.Empty())
+    pa_array._export_to_c(array._addr(), array.schema._addr())
+
+    assert array.schema.format == '+s'
+    assert array.length == 3
     assert len(array.children) == 1
-    with pytest.raises(IndexError):
-        array.children[1]
 
-    view = array.validate()
+    assert array.children[0].schema.format == 'i'
+    assert array.children[0].length == 3
+    assert array.children[0].schema._addr() == array.schema.children[0]._addr()
+
+    view = array.view()
+    assert len(view.buffers) == 1
     assert len(view.children) == 1
-    with pytest.raises(IndexError):
-       view.children[1]
+    assert view.array._addr() == array._addr()
+    assert view.schema._addr() == array.schema._addr()
 
-    child = view.children[0]
-    assert len(child) == 3
-    assert child.value_int(0) == 1
-    assert child.value_int(1) == 2
-    assert child.value_int(2) == 3
+    assert len(view.children[0].buffers) == 2
+    assert view.children[0].array._addr() == array.children[0]._addr()
+    assert view.children[0].schema._addr() == array.schema.children[0]._addr()
+    assert view.children[0].schema._addr() == array.children[0].schema._addr()

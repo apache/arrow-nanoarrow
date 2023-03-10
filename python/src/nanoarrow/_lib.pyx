@@ -132,6 +132,14 @@ cdef class Schema:
         self._assert_valid()
         return SchemaChildren(self)
 
+    @property
+    def dictionary(self):
+        self._assert_valid()
+        if self._ptr.dictionary != NULL:
+            return Schema(self, <uintptr_t>self._ptr.dictionary)
+        else:
+            return None
+
     def view(self):
         self._assert_valid()
         schema_view = SchemaView()
@@ -265,10 +273,36 @@ cdef class Array:
         return self._schema
 
     @property
+    def length(self):
+        self._assert_valid()
+        return self._ptr.length
+
+    @property
+    def offset(self):
+        self._assert_valid()
+        return self._ptr.offset
+
+    @property
+    def null_count(self):
+        return self._ptr.null_count
+
+    @property
+    def buffers(self):
+        return tuple(<uintptr_t>self._ptr.buffers[i] for i in range(self._ptr.n_buffers))
+
+    @property
     def children(self):
         return ArrayChildren(self)
 
-    def validate(self):
+    @property
+    def dictionary(self):
+        self._assert_valid()
+        if self._ptr.dictionary != NULL:
+            return Array(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
+        else:
+            return None
+
+    def view(self):
         cdef ArrayViewHolder holder = ArrayViewHolder()
 
         cdef ArrowError error
@@ -308,14 +342,6 @@ cdef class ArrayView:
     @property
     def schema(self):
         return self._array._schema
-
-    def __len__(self):
-        return self._ptr.array.length
-
-    def value_int(self, int64_t i):
-        if i < 0 or i >= self._ptr.array.length:
-            raise IndexError()
-        return ArrowArrayViewGetIntUnsafe(self._ptr, i)
 
 cdef class SchemaChildren:
     cdef Schema _parent
@@ -383,8 +409,7 @@ cdef class ArrayChildren:
         k = int(k)
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
-
-        return Array(self._parent, self._child_addr(k))
+        return Array(self._parent, self._child_addr(k), self._parent.schema.children[k])
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArray** children = self._parent._ptr.children
@@ -406,8 +431,7 @@ cdef class ArrayViewChildren:
         k = int(k)
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
-
-        return ArrayView(self._parent, self._child_addr(k), self._parent._array)
+        return ArrayView(self._parent, self._child_addr(k), self._parent._array.children[k])
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArrayView** children = self._parent._ptr.children
