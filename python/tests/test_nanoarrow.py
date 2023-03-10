@@ -37,6 +37,7 @@ def test_schema_basic():
 
     assert schema.format == "+s"
     assert schema.flags == 0
+    assert schema.metadata is None
     assert len(schema.children) == 1
     assert schema.children[0].format == "i"
     assert schema.children[0].name == "some_name"
@@ -45,39 +46,82 @@ def test_schema_basic():
     with pytest.raises(IndexError):
         schema.children[1]
 
-def test_schema_parse():
+def test_schema_metadata():
+    schema = na.Schema.Empty()
+    meta = {'key1': 'value1', 'key2': 'value2'}
+    pa.field('', pa.int32(), metadata=meta)._export_to_c(schema._addr())
+
+    assert len(schema.metadata) == 2
+
+    meta2 = {k: v for k, v in schema.metadata}
+    assert list(meta2.keys()) == ['key1', 'key2']
+    assert list(meta2.values()) == [b'value1', b'value2']
+
+def test_schema_view():
     schema = na.Schema.Empty()
     with pytest.raises(RuntimeError):
-        schema.parse()
+        schema.view()
 
-    pa.schema([pa.field("col1", pa.int32())])._export_to_c(schema._addr())
+    pa.int32()._export_to_c(schema._addr())
+    view = schema.view()
+    assert view.type == 'int32'
+    assert view.storage_type == 'int32'
 
-    info = schema.parse()
-    assert info['type'] == 'struct'
-    assert info['storage_type'] == 'struct'
-    assert info['name'] == ''
+    assert view.fixed_size is None
+    assert view.decimal_bitwidth is None
+    assert view.decimal_scale is None
+    assert view.time_unit is None
+    assert view.timezone is None
+    assert view.union_type_ids is None
+    assert view.extension_name is None
+    assert view.extension_metadata is None
 
-    # Check on the child
-    child = schema.children[0]
-    child_info = child.parse()
-    assert child_info['type'] == 'int32'
-    assert child_info['storage_type'] == 'int32'
-    assert child_info['name'] == 'col1'
-
-def test_schema_info_params():
+def test_schema_view_extra_params():
     schema = na.Schema.Empty()
     pa.binary(12)._export_to_c(schema._addr())
-    assert schema.parse()['fixed_size'] == 12
+    view = schema.view()
+    assert view.fixed_size == 12
 
     schema = na.Schema.Empty()
     pa.list_(pa.int32(), 12)._export_to_c(schema._addr())
-    assert schema.parse()['fixed_size'] == 12
+    assert view.fixed_size == 12
 
     schema = na.Schema.Empty()
     pa.decimal128(10, 3)._export_to_c(schema._addr())
-    assert schema.parse()['decimal_bitwidth'] == 128
-    assert schema.parse()['decimal_precision'] == 10
-    assert schema.parse()['decimal_scale'] == 3
+    view = schema.view()
+    assert view.decimal_bitwidth == 128
+    assert view.decimal_precision == 10
+    assert view.decimal_scale == 3
+
+    schema = na.Schema.Empty()
+    pa.decimal256(10, 3)._export_to_c(schema._addr())
+    view = schema.view()
+    assert view.decimal_bitwidth == 256
+    assert view.decimal_precision == 10
+    assert view.decimal_scale == 3
+
+    schema = na.Schema.Empty()
+    pa.duration('us')._export_to_c(schema._addr())
+    view = schema.view()
+    assert view.time_unit == 'us'
+
+    schema = na.Schema.Empty()
+    pa.timestamp('us', tz='America/Halifax')._export_to_c(schema._addr())
+    view = schema.view()
+    assert view.type == 'timestamp'
+    assert view.storage_type == 'int64'
+    assert view.time_unit == 'us'
+    assert view.timezone == 'America/Halifax'
+
+    schema = na.Schema.Empty()
+    meta = {
+        'ARROW:extension:name': 'some_name',
+        'ARROW:extension:metadata': 'some_metadata'
+    }
+    pa.field('', pa.int32(), metadata=meta)._export_to_c(schema._addr())
+    view = schema.view()
+    assert view.extension_name == 'some_name'
+    assert view.extension_metadata == b'some_metadata'
 
 def test_array():
     schema = na.Schema.Empty()

@@ -21,6 +21,7 @@
 
 from libc.stdint cimport uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 
@@ -119,37 +120,120 @@ cdef class Schema:
         return self._ptr.flags
 
     @property
+    def metadata(self):
+        self._assert_valid()
+        if self._ptr.metadata != NULL:
+            return SchemaMetadata(self, <uintptr_t>self._ptr.metadata)
+        else:
+            return None
+
+    @property
     def children(self):
         self._assert_valid()
         return SchemaChildren(self)
 
-    def parse(self):
+    def view(self):
         self._assert_valid()
-
+        schema_view = SchemaView()
         cdef ArrowError error
-        cdef ArrowSchemaView schema_view
-
-        cdef int result = ArrowSchemaViewInit(&schema_view, self._ptr, &error)
+        cdef int result = ArrowSchemaViewInit(&schema_view._schema_view, self._ptr, &error)
         if result != NANOARROW_OK:
             raise ValueError(ArrowErrorMessage(&error))
+        return schema_view
 
-        out = {
-            'name': self._ptr.name.decode('UTF-8') if self._ptr.name else None,
-            'type': ArrowTypeString(schema_view.type).decode('UTF-8'),
-            'storage_type': ArrowTypeString(schema_view.storage_type).decode('UTF-8')
-        }
+cdef class SchemaView:
+    cdef ArrowSchemaView _schema_view
 
-        if schema_view.storage_type in (NANOARROW_TYPE_FIXED_SIZE_LIST,
-                                        NANOARROW_TYPE_FIXED_SIZE_BINARY):
-            out['fixed_size'] = schema_view.fixed_size
+    _fixed_size_types = (
+        NANOARROW_TYPE_FIXED_SIZE_LIST,
+        NANOARROW_TYPE_FIXED_SIZE_BINARY
+    )
 
-        if schema_view.storage_type in (NANOARROW_TYPE_DECIMAL128,
-                                        NANOARROW_TYPE_DECIMAL256):
-            out['decimal_bitwidth'] = schema_view.decimal_bitwidth
-            out['decimal_precision'] = schema_view.decimal_precision
-            out['decimal_scale'] = schema_view.decimal_scale
+    _decimal_types = (
+        NANOARROW_TYPE_DECIMAL128,
+        NANOARROW_TYPE_DECIMAL256
+    )
 
-        return out
+    _time_unit_types = (
+        NANOARROW_TYPE_TIME32,
+        NANOARROW_TYPE_TIME64,
+        NANOARROW_TYPE_DURATION,
+        NANOARROW_TYPE_TIMESTAMP
+    )
+
+    _union_types = (
+        NANOARROW_TYPE_DENSE_UNION,
+        NANOARROW_TYPE_SPARSE_UNION
+    )
+
+    def __init__(self):
+        self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
+        self._schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED
+
+    @property
+    def type(self):
+        cdef const char* type_str = ArrowTypeString(self._schema_view.type)
+        if type_str != NULL:
+            return type_str.decode('UTF-8')
+
+    @property
+    def storage_type(self):
+        cdef const char* type_str = ArrowTypeString(self._schema_view.storage_type)
+        if type_str != NULL:
+            return type_str.decode('UTF-8')
+
+    @property
+    def fixed_size(self):
+        if self._schema_view.type in SchemaView._fixed_size_types:
+            return self._schema_view.fixed_size
+
+    @property
+    def decimal_bitwidth(self):
+        if self._schema_view.type in SchemaView._decimal_types:
+            return self._schema_view.decimal_bitwidth
+
+    @property
+    def decimal_precision(self):
+        if self._schema_view.type in SchemaView._decimal_types:
+            return self._schema_view.decimal_precision
+
+    @property
+    def decimal_scale(self):
+        if self._schema_view.type in SchemaView._decimal_types:
+            return self._schema_view.decimal_scale
+
+    @property
+    def time_unit(self):
+        if self._schema_view.type in SchemaView._time_unit_types:
+            return ArrowTimeUnitString(self._schema_view.time_unit).decode('UTF-8')
+
+    @property
+    def timezone(self):
+        if self._schema_view.type == NANOARROW_TYPE_TIMESTAMP:
+            return self._schema_view.timezone.decode('UTF_8')
+
+    @property
+    def union_type_ids(self):
+        if self._schema_view.type in SchemaView._union_types:
+            type_ids_str = self._schema_view.union_type_ids.decode('UTF-8').split(',')
+            return (int(type_id) for type_id in type_ids_str)
+
+    @property
+    def extension_name(self):
+        if self._schema_view.extension_name.data != NULL:
+            name_bytes = PyBytes_FromStringAndSize(
+                self._schema_view.extension_name.data,
+                self._schema_view.extension_name.size_bytes
+            )
+            return name_bytes.decode('UTF-8')
+
+    @property
+    def extension_metadata(self):
+        if self._schema_view.extension_name.data != NULL:
+            return PyBytes_FromStringAndSize(
+                self._schema_view.extension_metadata.data,
+                self._schema_view.extension_metadata.size_bytes
+            )
 
 cdef class Array:
     cdef object _base
@@ -198,53 +282,6 @@ cdef class Array:
             raise ValueError(ArrowErrorMessage(&error))
 
         return ArrayView(holder, holder._addr(), self)
-
-
-cdef class BufferView:
-    cdef object _base
-    cdef ArrowBufferView* _ptr
-    cdef Py_ssize_t _shape
-    cdef Py_ssize_t _strides
-
-    def __init__(self, object base, uintptr_t addr):
-        self._base = base
-        self._ptr = <ArrowBufferView*>addr
-        self._shape = self._ptr.size_bytes
-        self._strides = 1
-
-    def __getbuffer__(self, Py_buffer *buffer, int flags):
-        buffer.buf = self._ptr.data.data
-        buffer.format = NULL
-        buffer.internal = NULL
-        buffer.itemsize = 1
-        buffer.len = self._ptr.size_bytes
-        buffer.ndim = 1
-        buffer.obj = self
-        buffer.readonly = 1
-        buffer.shape = &self._shape
-        buffer.strides = &self._strides
-        buffer.suboffsets = NULL
-
-    def __releasebuffer__(self, Py_buffer *buffer):
-        pass
-
-cdef class ArrayViewBuffers:
-    cdef ArrayView _array_view
-    cdef int64_t _length
-
-    def __init__(self, ArrayView array_view):
-        self._array_view = array_view
-        self._length = array_view._array._ptr.n_buffers
-
-    def __len__(self):
-        return self._length
-
-    def __getitem__(self, k):
-        k = int(k)
-        if k < 0 or k >= self._length:
-            raise IndexError(f"{k} out of range [0, {self._length})")
-        cdef ArrowBufferView* buffer_view = &(self._array_view._ptr.buffer_views[k])
-        return BufferView(self._array_view, <uintptr_t>buffer_view)
 
 cdef class ArrayView:
     cdef object _base
@@ -303,6 +340,34 @@ cdef class SchemaChildren:
         cdef ArrowSchema* child = children[i]
         return <uintptr_t>child
 
+cdef class SchemaMetadata:
+    cdef object _parent
+    cdef const char* _metadata
+    cdef ArrowMetadataReader _reader
+
+    def __init__(self, object parent, uintptr_t ptr):
+        self._parent = parent
+        self._metadata = <const char*>ptr
+
+    def _init_reader(self):
+        cdef int result = ArrowMetadataReaderInit(&self._reader, self._metadata)
+        if result != NANOARROW_OK:
+            raise ValueError('ArrowMetadataReaderInit() failed')
+
+    def __len__(self):
+        self._init_reader()
+        return self._reader.remaining_keys
+
+    def __iter__(self):
+        cdef ArrowStringView key
+        cdef ArrowStringView value
+        self._init_reader()
+        while self._reader.remaining_keys > 0:
+            ArrowMetadataReaderRead(&self._reader, &key, &value)
+            key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes).decode('UTF-8')
+            value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
+            yield key_obj, value_obj
+
 cdef class ArrayChildren:
     cdef Array _parent
     cdef int64_t _length
@@ -348,3 +413,49 @@ cdef class ArrayViewChildren:
         cdef ArrowArrayView** children = self._parent._ptr.children
         cdef ArrowArrayView* child = children[i]
         return <uintptr_t>child
+
+cdef class BufferView:
+    cdef object _base
+    cdef ArrowBufferView* _ptr
+    cdef Py_ssize_t _shape
+    cdef Py_ssize_t _strides
+
+    def __init__(self, object base, uintptr_t addr):
+        self._base = base
+        self._ptr = <ArrowBufferView*>addr
+        self._shape = self._ptr.size_bytes
+        self._strides = 1
+
+    def __getbuffer__(self, Py_buffer *buffer, int flags):
+        buffer.buf = self._ptr.data.data
+        buffer.format = NULL
+        buffer.internal = NULL
+        buffer.itemsize = 1
+        buffer.len = self._ptr.size_bytes
+        buffer.ndim = 1
+        buffer.obj = self
+        buffer.readonly = 1
+        buffer.shape = &self._shape
+        buffer.strides = &self._strides
+        buffer.suboffsets = NULL
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        pass
+
+cdef class ArrayViewBuffers:
+    cdef ArrayView _array_view
+    cdef int64_t _length
+
+    def __init__(self, ArrayView array_view):
+        self._array_view = array_view
+        self._length = array_view._array._ptr.n_buffers
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, k):
+        k = int(k)
+        if k < 0 or k >= self._length:
+            raise IndexError(f"{k} out of range [0, {self._length})")
+        cdef ArrowBufferView* buffer_view = &(self._array_view._ptr.buffer_views[k])
+        return BufferView(self._array_view, <uintptr_t>buffer_view)
