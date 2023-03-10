@@ -19,78 +19,15 @@
 
 """Low-level nanoarrow Python bindings."""
 
-from libc.stdint cimport uint8_t, uintptr_t, int64_t
+from libc.stdint cimport uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 
-import numpy as np
-cimport numpy as cnp
-
-cnp.import_array()
-
-
-cdef dict _numpy_type_map = {
-    NANOARROW_TYPE_UINT8: cnp.NPY_UINT8,
-    NANOARROW_TYPE_INT8: cnp.NPY_INT8,
-    NANOARROW_TYPE_UINT16: cnp.NPY_UINT16,
-    NANOARROW_TYPE_INT16: cnp.NPY_INT16,
-    NANOARROW_TYPE_UINT32: cnp.NPY_UINT32,
-    NANOARROW_TYPE_INT32: cnp.NPY_INT32,
-    NANOARROW_TYPE_UINT64: cnp.NPY_UINT64,
-    NANOARROW_TYPE_INT64: cnp.NPY_INT64,
-    NANOARROW_TYPE_HALF_FLOAT: cnp.NPY_FLOAT16,
-    NANOARROW_TYPE_FLOAT: cnp.NPY_FLOAT32,
-    NANOARROW_TYPE_DOUBLE: cnp.NPY_FLOAT64,
-}
-
-
-def as_numpy_array(arr):
-    cdef ArrowSchema schema
-    cdef ArrowArray array
-    cdef ArrowArrayView array_view
-    cdef ArrowError error
-
-    arr._export_to_c(<uintptr_t> &array, <uintptr_t> &schema)
-    ArrowArrayViewInitFromSchema(&array_view, &schema, &error)
-
-    # primitive arrays have DATA as the second buffer
-    if array_view.layout.buffer_type[1] != NANOARROW_BUFFER_TYPE_DATA:
-        raise TypeError("Cannot convert a non-primitive array")
-
-    # disallow nulls for this method
-    if array.null_count > 0:
-        raise ValueError("Cannot convert array with nulls")
-    elif array.null_count < 0:
-        # not yet computed
-        if array_view.layout.buffer_type[0] == NANOARROW_BUFFER_TYPE_VALIDITY:
-            if array.buffers[0] != NULL:
-                null_count = ArrowBitCountSet(
-                    <const uint8_t *>array.buffers[0], array.offset, array.length
-                )
-                if null_count > 0:
-                    raise ValueError("Cannot convert array with nulls")
-
-    cdef int type_num
-    if array_view.storage_type in _numpy_type_map:
-        type_num = _numpy_type_map[array_view.storage_type]
-    else:
-        raise NotImplementedError(array_view.storage_type)
-
-    cdef cnp.npy_intp dims[1]
-    dims[0] = array.length
-    cdef cnp.ndarray result = cnp.PyArray_New(
-        np.ndarray, 1, dims, type_num, NULL, <void *> array.buffers[1], -1, 0, <object>NULL
-    )
-    # TODO set base
-
-    return result
-
-
 def version():
     return ArrowNanoarrowVersion().decode("UTF-8")
 
-cdef class CSchemaHolder:
+cdef class SchemaHolder:
     cdef ArrowSchema c_schema
 
     def __init__(self):
@@ -103,7 +40,7 @@ cdef class CSchemaHolder:
     def _addr(self):
         return <uintptr_t>&self.c_schema
 
-cdef class CArrayHolder:
+cdef class ArrayHolder:
     cdef ArrowArray c_array
 
     def __init__(self):
@@ -116,7 +53,7 @@ cdef class CArrayHolder:
     def _addr(self):
         return <uintptr_t>&self.c_array
 
-cdef class CArrayViewHolder:
+cdef class ArrayViewHolder:
     cdef ArrowArrayView c_array_view
 
     def __init__(self):
@@ -128,14 +65,14 @@ cdef class CArrayViewHolder:
     def _addr(self):
         return <uintptr_t>&self.c_array_view
 
-cdef class CSchema:
+cdef class Schema:
     cdef object _base
     cdef ArrowSchema* _ptr
 
     @staticmethod
     def Empty():
-        base = CSchemaHolder()
-        return CSchema(base, base._addr())
+        base = SchemaHolder()
+        return Schema(base, base._addr())
 
     def __init__(self, object base, uintptr_t addr):
         self._base = base,
@@ -184,7 +121,7 @@ cdef class CSchema:
     @property
     def children(self):
         self._assert_valid()
-        return CSchemaChildren(self)
+        return SchemaChildren(self)
 
     def parse(self):
         self._assert_valid()
@@ -214,17 +151,17 @@ cdef class CSchema:
 
         return out
 
-cdef class CArray:
+cdef class Array:
     cdef object _base
     cdef ArrowArray* _ptr
-    cdef CSchema _schema
+    cdef Schema _schema
 
     @staticmethod
-    def Empty(CSchema schema):
-        base = CArrayHolder()
-        return CArray(base, base._addr(), schema)
+    def Empty(Schema schema):
+        base = ArrayHolder()
+        return Array(base, base._addr(), schema)
 
-    def __init__(self, object base, uintptr_t addr, CSchema schema):
+    def __init__(self, object base, uintptr_t addr, Schema schema):
         self._base = base,
         self._ptr = <ArrowArray*>addr
         self._schema = schema
@@ -245,10 +182,10 @@ cdef class CArray:
 
     @property
     def children(self):
-        return CArrayChildren(self)
+        return ArrayChildren(self)
 
     def validate(self):
-        cdef CArrayViewHolder holder = CArrayViewHolder()
+        cdef ArrayViewHolder holder = ArrayViewHolder()
 
         cdef ArrowError error
         cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
@@ -260,10 +197,10 @@ cdef class CArray:
         if result != NANOARROW_OK:
             raise ValueError(ArrowErrorMessage(&error))
 
-        return CArrayView(holder, holder._addr(), self)
+        return ArrayView(holder, holder._addr(), self)
 
 
-cdef class CBufferView:
+cdef class BufferView:
     cdef object _base
     cdef ArrowBufferView* _ptr
     cdef Py_ssize_t _shape
@@ -291,11 +228,11 @@ cdef class CBufferView:
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
 
-cdef class CArrayViewBuffers:
-    cdef CArrayView _array_view
+cdef class ArrayViewBuffers:
+    cdef ArrayView _array_view
     cdef int64_t _length
 
-    def __init__(self, CArrayView array_view):
+    def __init__(self, ArrayView array_view):
         self._array_view = array_view
         self._length = array_view._array._ptr.n_buffers
 
@@ -307,25 +244,25 @@ cdef class CArrayViewBuffers:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
         cdef ArrowBufferView* buffer_view = &(self._array_view._ptr.buffer_views[k])
-        return CBufferView(self._array_view, <uintptr_t>buffer_view)
+        return BufferView(self._array_view, <uintptr_t>buffer_view)
 
-cdef class CArrayView:
+cdef class ArrayView:
     cdef object _base
     cdef ArrowArrayView* _ptr
-    cdef CArray _array
+    cdef Array _array
 
-    def __init__(self, object base, uintptr_t addr, CArray array):
+    def __init__(self, object base, uintptr_t addr, Array array):
         self._base = base,
         self._ptr = <ArrowArrayView*>addr
         self._array = array
 
     @property
     def children(self):
-        return CArrayViewChildren(self)
+        return ArrayViewChildren(self)
 
     @property
     def buffers(self):
-        return CArrayViewBuffers(self)
+        return ArrayViewBuffers(self)
 
     @property
     def array(self):
@@ -343,11 +280,11 @@ cdef class CArrayView:
             raise IndexError()
         return ArrowArrayViewGetIntUnsafe(self._ptr, i)
 
-cdef class CSchemaChildren:
-    cdef CSchema _parent
+cdef class SchemaChildren:
+    cdef Schema _parent
     cdef int64_t _length
 
-    def __init__(self, CSchema parent):
+    def __init__(self, Schema parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -359,18 +296,18 @@ cdef class CSchemaChildren:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
 
-        return CSchema(self._parent, self._child_addr(k))
+        return Schema(self._parent, self._child_addr(k))
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowSchema** children = self._parent._ptr.children
         cdef ArrowSchema* child = children[i]
         return <uintptr_t>child
 
-cdef class CArrayChildren:
-    cdef CArray _parent
+cdef class ArrayChildren:
+    cdef Array _parent
     cdef int64_t _length
 
-    def __init__(self, CArray parent):
+    def __init__(self, Array parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -382,18 +319,18 @@ cdef class CArrayChildren:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
 
-        return CArray(self._parent, self._child_addr(k))
+        return Array(self._parent, self._child_addr(k))
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArray** children = self._parent._ptr.children
         cdef ArrowArray* child = children[i]
         return <uintptr_t>child
 
-cdef class CArrayViewChildren:
-    cdef CArrayView _parent
+cdef class ArrayViewChildren:
+    cdef ArrayView _parent
     cdef int64_t _length
 
-    def __init__(self, CArrayView parent):
+    def __init__(self, ArrayView parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -405,7 +342,7 @@ cdef class CArrayViewChildren:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
 
-        return CArrayView(self._parent, self._child_addr(k), self._parent._array)
+        return ArrayView(self._parent, self._child_addr(k), self._parent._array)
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArrayView** children = self._parent._ptr.children

@@ -16,10 +16,8 @@
 # under the License.
 
 from ._lib import (  # noqa: F401
-    as_numpy_array,
     version,
-    CSchemaHolder,
-    CSchema,
-    CArray,
-    CArrayView
+    Schema,
+    Array,
+    ArrayView
 )

@@ -23,7 +23,6 @@ description = ""
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.8"
-dependencies = ["numpy"]
 
 [project.optional-dependencies]
 test = ["pyarrow", "pytest"]
@@ -36,7 +35,6 @@ repository = "https://github.com/apache/arrow-nanoarrow"
 requires = [
     "setuptools >= 61.0.0",
     "setuptools-scm",
-    "Cython",
-    "oldest-supported-numpy",
+    "Cython"
 ]
 build-backend = "setuptools.build_meta"
