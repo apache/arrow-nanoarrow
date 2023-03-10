@@ -71,7 +71,7 @@ cdef class Schema:
     cdef ArrowSchema* _ptr
 
     @staticmethod
-    def Empty():
+    def empty():
         base = SchemaHolder()
         return Schema(base, base._addr())
 

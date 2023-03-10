@@ -27,7 +27,7 @@ def test_version():
     assert re_version.match(na.version()) is not None
 
 def test_schema_basic():
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     assert schema.is_valid() is False
     assert repr(schema) == "[invalid: schema is released]"
 
@@ -47,13 +47,13 @@ def test_schema_basic():
         schema.children[1]
 
 def test_schema_dictionary():
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.dictionary(pa.int32(), pa.utf8())._export_to_c(schema._addr())
     assert schema.format == 'i'
     assert schema.dictionary.format == 'u'
 
 def test_schema_metadata():
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     meta = {'key1': 'value1', 'key2': 'value2'}
     pa.field('', pa.int32(), metadata=meta)._export_to_c(schema._addr())
 
@@ -64,7 +64,7 @@ def test_schema_metadata():
     assert list(meta2.values()) == [b'value1', b'value2']
 
 def test_schema_view():
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     with pytest.raises(RuntimeError):
         schema.view()
 
@@ -83,35 +83,35 @@ def test_schema_view():
     assert view.extension_metadata is None
 
 def test_schema_view_extra_params():
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.binary(12)._export_to_c(schema._addr())
     view = schema.view()
     assert view.fixed_size == 12
 
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.list_(pa.int32(), 12)._export_to_c(schema._addr())
     assert view.fixed_size == 12
 
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.decimal128(10, 3)._export_to_c(schema._addr())
     view = schema.view()
     assert view.decimal_bitwidth == 128
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.decimal256(10, 3)._export_to_c(schema._addr())
     view = schema.view()
     assert view.decimal_bitwidth == 256
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.duration('us')._export_to_c(schema._addr())
     view = schema.view()
     assert view.time_unit == 'us'
 
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.timestamp('us', tz='America/Halifax')._export_to_c(schema._addr())
     view = schema.view()
     assert view.type == 'timestamp'
@@ -119,7 +119,7 @@ def test_schema_view_extra_params():
     assert view.time_unit == 'us'
     assert view.timezone == 'America/Halifax'
 
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     meta = {
         'ARROW:extension:name': 'some_name',
         'ARROW:extension:metadata': 'some_metadata'
@@ -130,7 +130,7 @@ def test_schema_view_extra_params():
     assert view.extension_metadata == b'some_metadata'
 
 def test_array():
-    schema = na.Schema.Empty()
+    schema = na.Schema.empty()
     pa.int32()._export_to_c(schema._addr())
 
     array = na.Array.Empty(schema)
@@ -150,7 +150,7 @@ def test_array():
         array.children[1]
 
 def test_array_view():
-    array = na.Array.Empty(na.Schema.Empty())
+    array = na.Array.Empty(na.Schema.empty())
     pa.array([1, 2, 3], pa.int32())._export_to_c(array._addr(), array.schema._addr())
     view = array.view()
 
@@ -173,7 +173,7 @@ def test_array_view_recursive():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 
-    array = na.Array.Empty(na.Schema.Empty())
+    array = na.Array.Empty(na.Schema.empty())
     pa_array._export_to_c(array._addr(), array.schema._addr())
 
     assert array.schema.format == '+s'
