@@ -24,9 +24,12 @@ from setuptools import Extension, setup
 import numpy as np
 
 # Run bootstrap.py to run cmake generating a fresh bundle based on this
-# checkout or copy from ../dist if the caller doesn't have cmake available
+# checkout or copy from ../dist if the caller doesn't have cmake available.
+# Note that bootstrap.py won't exist if building from sdist.
 this_dir = os.path.dirname(__file__)
-subprocess.run([sys.executable, os.path.join(this_dir, 'bootstrap.py')])
+bootstrap_py = os.path.join(this_dir, 'bootstrap.py')
+if os.path.exists(bootstrap_py):
+    subprocess.run([sys.executable, bootstrap_py])
 
 setup(
     ext_modules=[
