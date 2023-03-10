@@ -164,7 +164,11 @@ def copy_or_generate_nanoarrow_c():
             os.system(f'cmake --install . --prefix=../src/nanoarrow')
         finally:
             if os.path.exists(build_dir):
-                shutil.rmtree(build_dir)
+                # Can fail on Windows with permission issues
+                try:
+                    shutil.rmtree(build_dir)
+                except Exception as e:
+                    print(f'Failed to remove _cmake temp directory: {str(e)}')
             os.chdir(this_wd)
 
     elif is_in_nanoarrow_repo:

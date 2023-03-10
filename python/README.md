@@ -19,25 +19,37 @@
 
 # nanoarrow for Python
 
-Python bindings for nanoarrow.
+Python bindings for nanoarrow. These are in a preliminary state: see open issues
+and tests/test_nanoarrow.py for usage.
+
+## Installation
+
+Python bindings for nanoarrow are not yet available on PyPI. You can install via
+URL (requires a C compiler):
+
+```bash
+python -m pip install "https://github.com/apache/arrow-nanoarrow/archive/refs/heads/main.zip#egg=nanoarrow&subdirectory=python"
+```
+
 ## Building
 
-Python libraries are managed with [setuptools][setuptools]. In general, that
-means all projects can be built as follows:
+Python bindings for nanoarrow are managed with setuptools[setuptools]. This means you
+can build the project using:
 
 ```shell
-$ cd python
-$ pip install -e .
+git clone https://github.com/apache/arrow-nanoarrow.git
+cd python
+pip install -e .
 ```
 
 Tests use [pytest][pytest]:
 
 ```shell
 # Install dependencies
-$ pip install -e .[test]
+pip install -e .[test]
 
 # Run tests
-$ pytest -vvx
+pytest -vvx
 ```
 
 [pytest]: https://docs.pytest.org/
