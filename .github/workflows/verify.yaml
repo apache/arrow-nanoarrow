@@ -76,8 +76,8 @@ jobs:
         if: matrix.config.label == 'macos'
         run: brew install apache-arrow
 
-      - name: Install Arrow C++ (Windows)
-        if: matrix.config.label == 'windows'
+      - name: Install Arrow C++ (Debian)
+        if: matrix.config.label == 'ubuntu'
         shell: bash
         run: |
           sudo apt-get update
@@ -88,8 +88,8 @@ jobs:
           sudo apt-get install -y -V libarrow-dev
           rm apache-arrow-apt-*.deb
 
-      - name: Install Arrow C++ (Debian)
-        if: matrix.config.label == 'ubuntu'
+      - name: Install Arrow C++ (Windows)
+        if: matrix.config.label == 'windows'
         run: |
           cd src/dev/release
           curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
