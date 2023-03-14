@@ -43,8 +43,6 @@ permissions:
 jobs:
   verify:
     name: "Verify/${{ matrix.label }}"
-    if: inputs.version != '' && inputs.rc != ''
-
     runs-on: ${{ matrix.os }}
 
     strategy:
