@@ -42,8 +42,8 @@ permissions:
 
 jobs:
   verify:
-    name: "Verify/${{ matrix.label }}"
-    runs-on: ${{ matrix.os }}
+    name: "Verify/${{ matrix.config.label }}"
+    runs-on: ${{ matrix.config.os }}
 
     strategy:
       fail-fast: false
@@ -73,11 +73,11 @@ jobs:
 
       # For Arrow C++
       - name: Install Arrow C++ (MacOS)
-        if: matrix.label == 'macos'
+        if: matrix.config.label == 'macos'
         run: brew install apache-arrow
 
       - name: Install Arrow C++ (Windows)
-        if: matrix.label == 'windows'
+        if: matrix.config.label == 'windows'
         shell: bash
         run: |
           sudo apt-get update
@@ -89,7 +89,7 @@ jobs:
           rm apache-arrow-apt-*.deb
 
       - name: Install Arrow C++ (Debian)
-        if: matrix.label == 'ubuntu'
+        if: matrix.config.label == 'ubuntu'
         run: |
           cd src/dev/release
           curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
