@@ -15,6 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM fedora:latest
+FROM archlinux:latest
 
-RUN dnf install -y git cmake R gnupg curl libarrow-devel
+RUN pacman -Syu git gcc make cmake r-base gnupg curl arrow
+
+# For R
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")), repos = "https://cloud.r-project.org")'
+RUN R -e 'Sys.setenv(NOT_CRAN = "true", ARROW_USE_PKG_CONFIG = "false"); install.packages("arrow", repos = "https://cloud.r-project.org")'
