@@ -28,10 +28,9 @@ RUN curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz 
         -DARROW_SIMD_LEVEL=NONE \
         -DCMAKE_INSTALL_PREFIX=../arrow && \
     cmake --build . && \
-    make --install . --prefix=../arrow
+    cmake --install . --prefix=../arrow
 
-# For R
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")), repos = "https://cloud.r-project.org")'
-RUN R -e 'Sys.setenv(NOT_CRAN = "true", ARROW_USE_PKG_CONFIG = "false"); install.packages("arrow", repos = "https://cloud.r-project.org")'
+# For R. Note that arrow is not installed (takes too long).
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow
