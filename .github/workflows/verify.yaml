@@ -142,7 +142,7 @@ jobs:
           - {platform: "fedora", docker_platform: "linux/amd64"}
           - {platform: "archlinux", docker_platform: "linux/amd64"}
           - {platform: "alpine", docker_platform: "linux/amd64"}
-          - {platform: "archlinux", docker_platform: "linux/s390x"}
+          - {platform: "alpine", docker_platform: "linux/s390x"}
 
     steps:
       - uses: actions/checkout@v3
