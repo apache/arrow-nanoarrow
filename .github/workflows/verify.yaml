@@ -72,7 +72,7 @@ jobs:
           working-directory: src/r
 
       - name: Cache Windows Arrow C++ Build
-        if: runner.config.label == 'windows'
+        if: matrix.config.label == 'windows'
         id: cache-arrow-build
         uses: actions/cache@v3
         with:
@@ -133,13 +133,14 @@ jobs:
           name: nanoarrow-verify-tmp
 
   verify-docker:
-    name: "${{ matrix.config.label }}"
+    name: "docker-${{ matrix.config.label }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {platform: "ubuntu", docker_platform: "linux/amd64", label: "docker/ubuntu"}
+          - {platform: "ubuntu", docker_platform: "linux/amd64"}
+          - {platform: "fedora", docker_platform: "linux/amd64"}
 
     steps:
       - uses: actions/checkout@v3

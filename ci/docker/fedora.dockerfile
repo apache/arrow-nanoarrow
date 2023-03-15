@@ -17,4 +17,7 @@
 
 FROM fedora:latest
 
-RUN dnf install -y git cmake R gnupg curl libarrow-devel
+RUN dnf install -y git cmake R gnupg curl libarrow-devel glibc-langpack-en
+
+# For R. Note that arrow is not installed (takes too long).
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
