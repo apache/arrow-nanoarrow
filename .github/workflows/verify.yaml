@@ -139,7 +139,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {platform: "ubuntu", docker_platform: "linux/amd64" label: "docker/ubuntu"}
+          - {platform: "ubuntu", docker_platform: "linux/amd64", label: "docker/ubuntu"}
 
     steps:
       - uses: actions/checkout@v3
