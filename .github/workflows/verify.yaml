@@ -131,3 +131,25 @@ jobs:
         with:
           path: nanoarrow-verify-tmp
           name: nanoarrow-verify-tmp
+
+  verify-docker:
+    name: "${{ matrix.config.label }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {platform: "ubuntu", docker_platform: "linux/amd64" label: "docker/ubuntu"}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: src
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run docker-compose verify
+        env:
+          PLATFORM: ${{ matrix.config.platform }}
+        run: |
+          DOCKER_DEFAULT_PLATFORM=${{ matrix.config.docker_platform }} docker-compose run
