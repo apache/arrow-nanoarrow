@@ -76,8 +76,8 @@ jobs:
         id: cache-arrow-build
         uses: actions/cache@v3
         with:
-          path: arrow-build
-          key: arrow-${{ runner.os }}-1
+          path: arrow
+          key: arrow-${{ runner.os }}-2
 
       # For Arrow C++
       - name: Install Arrow C++ (MacOS)
@@ -105,14 +105,13 @@ jobs:
           mkdir arrow-build && cd arrow-build
           cmake ../apache-arrow-11.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
           cmake --build .
+          cmake --install . --prefix=../arrow --config=Debug
+          cd ..
 
-      - name: Install Arrow C++ (Windows)
+      - name: Set CMake options (Windows)
         if: matrix.config.label == 'windows'
         shell: bash
         run: |
-          cd arrow-build
-          cmake --install . --prefix=../arrow --config=Debug
-          cd ..
           echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
 
       - name: Run dev/release/verify-release-candidate.sh
