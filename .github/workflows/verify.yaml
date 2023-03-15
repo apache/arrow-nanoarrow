@@ -141,6 +141,7 @@ jobs:
         config:
           - {platform: "ubuntu", docker_platform: "linux/amd64"}
           - {platform: "fedora", docker_platform: "linux/amd64"}
+          - {platform: "archlinux", docker_platform: "linux/amd64"}
 
     steps:
       - uses: actions/checkout@v3
