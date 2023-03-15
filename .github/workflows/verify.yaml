@@ -133,7 +133,7 @@ jobs:
           name: nanoarrow-verify-tmp
 
   verify-docker:
-    name: "docker-${{ matrix.config.label }}"
+    name: "docker-${{ matrix.config.platform }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
