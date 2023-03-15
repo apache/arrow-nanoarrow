@@ -152,4 +152,5 @@ jobs:
         env:
           PLATFORM: ${{ matrix.config.platform }}
         run: |
-          DOCKER_DEFAULT_PLATFORM=${{ matrix.config.docker_platform }} docker-compose run
+          cd src
+          DOCKER_DEFAULT_PLATFORM=${{ matrix.config.docker_platform }} docker-compose run verify
