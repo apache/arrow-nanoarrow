@@ -44,16 +44,6 @@ endif()
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 
-# On Windows, dynamically linking Arrow is difficult to get right,
-# so use static linking by default. We also have to force gtest to use
-# the shared runtime.
-if (MSVC)
-    set(gtest_force_shared_crt ON)
-    set(NANOARROW_ARROW_TARGET arrow_static)
-else()
-    set(NANOARROW_ARROW_TARGET arrow_shared)
-endif()
-
 configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
 
 if(NANOARROW_BUNDLE)
@@ -204,6 +194,14 @@ if(NANOARROW_BUILD_TESTS)
         target_link_libraries(nanoarrow coverage_config)
         # Because nanoarrow.hpp is header-only we have to link the test here to get coverage
         target_link_libraries(nanoarrow_hpp_test coverage_config)
+    endif()
+
+    # On Windows, dynamically linking Arrow is difficult to get right,
+    # so use static linking by default.
+    if (MSVC)
+        set(NANOARROW_ARROW_TARGET arrow_static)
+    else()
+        set(NANOARROW_ARROW_TARGET arrow_shared)
     endif()
 
     target_link_libraries(utils_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
