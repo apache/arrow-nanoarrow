@@ -1,0 +1,164 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to verify"
+        required: false
+        type: string
+        default: ""
+      rc:
+        description: "RC to verify"
+        required: false
+        type: string
+        default: ""
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/verify.yaml'
+      - 'dev/release/verify-release-candidate.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: "${{ matrix.config.label }}"
+    runs-on: ${{ matrix.config.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macOS-latest, label: macos}
+          - {os: windows-latest, label: windows}
+          - {os: ubuntu-latest, label: ubuntu}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: src
+          fetch-depth: 0
+          persist-credentials: false
+
+      # For R verification
+      - uses: r-lib/actions/setup-tinytex@v2
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          needs: check
+          working-directory: src/r
+
+      - name: Cache Windows Arrow C++ Build
+        if: matrix.config.label == 'windows'
+        id: cache-arrow-build
+        uses: actions/cache@v3
+        with:
+          path: arrow
+          key: arrow-${{ runner.os }}-2
+
+      # For Arrow C++
+      - name: Install Arrow C++ (MacOS)
+        if: matrix.config.label == 'macos'
+        run: brew install apache-arrow
+
+      - name: Install Arrow C++ (Debian)
+        if: matrix.config.label == 'ubuntu'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt install -y -V ca-certificates lsb-release wget cmake
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-dev
+          rm apache-arrow-apt-*.deb
+
+      - name: Build Arrow C++ (Windows)
+        if: matrix.config.label == 'windows' && steps.cache-arrow-build.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
+            tar -zxf -
+          mkdir arrow-build && cd arrow-build
+          cmake ../apache-arrow-11.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+          cmake --build .
+          cmake --install . --prefix=../arrow --config=Debug
+          cd ..
+
+      - name: Set CMake options (Windows)
+        if: matrix.config.label == 'windows'
+        shell: bash
+        run: |
+          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
+
+      - name: Run dev/release/verify-release-candidate.sh
+        shell: bash
+        env:
+          VERBOSE: "1"
+        run: |
+          mkdir nanoarrow-verify-tmp
+          export NANOARROW_TMPDIR=`pwd`/nanoarrow-verify-tmp
+          cd src/dev/release
+          ./verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+
+      - name: Upload temp directory
+        if: failure()
+        uses: actions/upload-artifact@main
+        with:
+          path: nanoarrow-verify-tmp
+          name: nanoarrow-verify-tmp
+
+  verify-docker:
+    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.docker_platform }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {platform: "ubuntu", docker_platform: "amd64"}
+          - {platform: "fedora", docker_platform: "amd64"}
+          - {platform: "archlinux", docker_platform: "amd64"}
+          - {platform: "alpine", docker_platform: "amd64"}
+          # Skipping until we have pre-built images we can pull
+          # - {platform: "alpine", docker_platform: "s390x"}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: src
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up QEMU
+        if: matrix.config.docker_platform != 'amd64'
+        uses: docker/setup-qemu-action@v2
+
+      - name: Run docker-compose verify
+        env:
+          PLATFORM: ${{ matrix.config.platform }}
+        run: |
+          cd src
+          DOCKER_DEFAULT_PLATFORM=linux/${{ matrix.config.docker_platform }} docker-compose run verify
