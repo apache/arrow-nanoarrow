@@ -20,13 +20,11 @@ version: '3.5'
 services:
 
   verify:
-    image: ${REPO}:nanoarrow-${PLATFORM}
+    image: ${REPO}:${PLATFORM}
     build:
       context: .
       cache_from:
-        - ${REPO}:nanoarrow-${PLATFORM}
-      cache_to:
-        - ${REPO}:nanoarrow-${PLATFORM}
+        - ${REPO}:${PLATFORM}
       dockerfile: ci/docker/${PLATFORM}.dockerfile
     volumes:
       - .:/nanoarrow
