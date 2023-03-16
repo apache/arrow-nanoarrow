@@ -162,5 +162,4 @@ jobs:
           PLATFORM: ${{ matrix.config.platform }}
         run: |
           cd src
-          DOCKER_DEFAULT_PLATFORM=linux/${{ matrix.config.docker_platform }} docker-compose pull verify
-          DOCKER_DEFAULT_PLATFORM=linux/${{ matrix.config.docker_platform }} docker-compose run verify
+          DOCKER_DEFAULT_PLATFORM=linux/${{ matrix.config.docker_platform }} docker-compose run --rm --pull verify
