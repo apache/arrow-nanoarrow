@@ -19,9 +19,12 @@ name: Build Docker Images
 on:
   workflow_dispatch:
   schedule:
-    - cron: '5 0 * * 1'
+    - cron: '5 0 * * 0'
   pull_request:
-    paths: = 'ci/docker/*' - '.github/workflow/docker-build.yaml' = 'docker-compose.yaml'
+    paths:
+      - 'ci/docker/*'
+      - '.github/workflow/docker-build.yaml'
+      - 'docker-compose.yaml'
 
 permissions:
   contents: read
