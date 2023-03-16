@@ -18,8 +18,10 @@ name: Build Docker Images
 
 on:
   workflow_dispatch:
-  push:
-
+  schedule:
+    - cron: '5 0 * * 1'
+  pull_request:
+    paths: = 'ci/docker/*' - '.github/workflow/docker-build.yaml' = 'docker-compose.yaml'
 
 permissions:
   contents: read
@@ -61,10 +63,17 @@ jobs:
         if: matrix.config.docker_platform != 'amd64'
         uses: docker/setup-qemu-action@v2
 
-      - name: Build and Push
+      - name: Build
         env:
           PLATFORM: ${{ matrix.config.platform }}
           DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.docker_platform }}"
         run: |
           docker compose build
+
+      - name: Push
+        if: ${{ github.event_name != 'pull_request' && github.repository == 'apache/arrow-nanoarrow'}}
+        env:
+          PLATFORM: ${{ matrix.config.platform }}
+          DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.docker_platform }}"
+        run: |
           docker compose push
