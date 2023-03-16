@@ -30,7 +30,7 @@ jobs:
     name: "docker-${{ matrix.config.platform }}-${{ matrix.config.docker_platform }}"
     runs-on: ubuntu-latest
     env:
-      REPO: "ghcr.io/${{github.repository}}"
+      REPO: "ghcr.io/assignuser/arrow-nanoarrow"
     strategy:
       fail-fast: false
       matrix:
