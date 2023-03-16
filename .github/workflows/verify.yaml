@@ -142,7 +142,8 @@ jobs:
           - {platform: "fedora", docker_platform: "amd64"}
           - {platform: "archlinux", docker_platform: "amd64"}
           - {platform: "alpine", docker_platform: "amd64"}
-          - {platform: "alpine", docker_platform: "s390x"}
+          # Skipping until we have pre-built images we can pull
+          # - {platform: "alpine", docker_platform: "s390x"}
 
     steps:
       - uses: actions/checkout@v3
