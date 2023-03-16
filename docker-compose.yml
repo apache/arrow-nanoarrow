@@ -25,9 +25,9 @@ services:
       context: .
       cache_from:
         - ${REPO}:nanoarrow-${PLATFORM}
+      cache_to:
+        - ${REPO}:nanoarrow-${PLATFORM}
       dockerfile: ci/docker/${PLATFORM}.dockerfile
-      args:
-        PLATFORM: ${PLATFORM}
     volumes:
       - .:/nanoarrow
     command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh"
