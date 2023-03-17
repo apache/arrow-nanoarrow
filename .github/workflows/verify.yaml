@@ -145,7 +145,7 @@ jobs:
           - {platform: "fedora", arch: "amd64"}
           - {platform: "archlinux", arch: "amd64"}
           - {platform: "alpine", arch: "amd64"}
-          # - {platform: "alpine", arch: "s390x"}
+          - {platform: "alpine", arch: "s390x"}
 
     steps:
       - uses: actions/checkout@v3
