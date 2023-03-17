@@ -20300,6 +20300,8 @@ struct ArrowIpcField {
 };
 
 struct ArrowIpcDecoderPrivate {
+  enum ArrowIpcEndianness endianness;
+  enum ArrowIpcEndianness system_endianness;
   struct ArrowArrayView array_view;
   int64_t n_fields;
   struct ArrowIpcField* fields;
@@ -20320,6 +20322,30 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
+static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
+  uint32_t check = 1;
+  char first_byte;
+  memcpy(&first_byte, &check, sizeof(char));
+  if (first_byte) {
+    return NANOARROW_IPC_ENDIANNESS_LITTLE;
+  } else {
+    return NANOARROW_IPC_ENDIANNESS_BIG;
+  }
+}
+
+static int ArrowIpcDecoderNeedsSwapEndian(struct ArrowIpcDecoder* decoder) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  switch (private_data->endianness) {
+    case NANOARROW_IPC_ENDIANNESS_LITTLE:
+    case NANOARROW_IPC_ENDIANNESS_BIG:
+      return private_data->endianness != NANOARROW_IPC_ENDIANNESS_UNINITIALIZED &&
+             private_data->endianness != private_data->system_endianness;
+    default:
+      return 0;
+  }
+}
+
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   struct ArrowIpcDecoderPrivate* private_data =
@@ -20329,6 +20355,7 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   }
 
   memset(private_data, 0, sizeof(struct ArrowIpcDecoderPrivate));
+  private_data->system_endianness = ArrowIpcSystemEndianness();
   decoder->private_data = private_data;
   return NANOARROW_OK;
 }
@@ -20348,19 +20375,21 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
 }
 
-static inline uint32_t ArrowIpcReadUint32LE(struct ArrowBufferView* data) {
+static inline uint32_t ArrowIpcReadContinuationBytes(struct ArrowBufferView* data) {
   uint32_t value;
   memcpy(&value, data->data.as_uint8, sizeof(uint32_t));
-  // TODO: bswap32() if big endian
   data->data.as_uint8 += sizeof(uint32_t);
   data->size_bytes -= sizeof(uint32_t);
   return value;
 }
 
-static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data) {
+static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data, int swap_endian) {
   int32_t value;
   memcpy(&value, data->data.as_uint8, sizeof(int32_t));
-  // TODO: bswap32() if big endian
+  if (swap_endian) {
+    value = bswap32(value);
+  }
+
   data->data.as_uint8 += sizeof(int32_t);
   data->size_bytes -= sizeof(int32_t);
   return value;
@@ -21005,26 +21034,45 @@ static int ArrowIpcDecoderDecodeRecordBatchHeader(struct ArrowIpcDecoder* decode
   return NANOARROW_OK;
 }
 
+// Wipes any "current message" fields before moving on to a new message
+static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decoder) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  decoder->message_type = 0;
+  decoder->metadata_version = 0;
+  decoder->endianness = 0;
+  decoder->feature_flags = 0;
+  decoder->codec = 0;
+  decoder->header_size_bytes = 0;
+  decoder->body_size_bytes = 0;
+  private_data->last_message = NULL;
+}
+
 // Returns NANOARROW_OK if data is large enough to read the message header,
 // ESPIPE if reading more data might help, or EINVAL if the content is not valid
 static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
                                              struct ArrowBufferView* data_mut,
                                              int32_t* message_size_bytes,
                                              struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
   if (data_mut->size_bytes < 8) {
     ArrowErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
                   (long)data_mut->size_bytes);
     return ESPIPE;
   }
 
-  uint32_t continuation = ArrowIpcReadUint32LE(data_mut);
+  uint32_t continuation = ArrowIpcReadContinuationBytes(data_mut);
   if (continuation != 0xFFFFFFFF) {
     ArrowErrorSet(error, "Expected 0xFFFFFFFF at start of message but found 0x%08X",
                   (unsigned int)continuation);
     return EINVAL;
   }
 
-  *message_size_bytes = ArrowIpcReadInt32LE(data_mut);
+  int swap_endian = private_data->system_endianness == NANOARROW_IPC_ENDIANNESS_BIG;
+  *message_size_bytes = ArrowIpcReadInt32LE(data_mut, swap_endian);
   if ((*message_size_bytes) < 0) {
     ArrowErrorSet(
         error, "Expected message body size > 0 but found message body size of %ld bytes",
@@ -21052,9 +21100,7 @@ ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  decoder->body_size_bytes = 0;
-  private_data->last_message = NULL;
+  ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
   decoder->header_size_bytes += 2 * sizeof(int32_t);
@@ -21067,9 +21113,7 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  decoder->body_size_bytes = 0;
-  private_data->last_message = NULL;
+  ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
 
@@ -21097,10 +21141,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  decoder->body_size_bytes = 0;
-  private_data->last_message = NULL;
-
+  ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
   decoder->header_size_bytes += 2 * sizeof(int32_t);
@@ -21116,13 +21157,13 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   decoder->body_size_bytes = ns(Message_bodyLength(message));
 
   switch (decoder->metadata_version) {
-    case ns(MetadataVersion_V4):
     case ns(MetadataVersion_V5):
       break;
     case ns(MetadataVersion_V1):
     case ns(MetadataVersion_V2):
     case ns(MetadataVersion_V3):
-      ArrowErrorSet(error, "Expected metadata version V4 or V5 but found %s",
+    case ns(MetadataVersion_V4):
+      ArrowErrorSet(error, "Expected metadata version V5 but found %s",
                     ns(MetadataVersion_name(decoder->metadata_version)));
       break;
     default:
@@ -21266,6 +21307,21 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
+                                            enum ArrowIpcEndianness endianness) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  switch (endianness) {
+    case NANOARROW_IPC_ENDIANNESS_UNINITIALIZED:
+    case NANOARROW_IPC_ENDIANNESS_LITTLE:
+    case NANOARROW_IPC_ENDIANNESS_BIG:
+      private_data->endianness = endianness;
+    default:
+      return EINVAL;
+  }
+}
+
 struct ArrowIpcArraySetter {
   ns(FieldNode_vec_t) fields;
   int64_t field_i;
@@ -21273,8 +21329,7 @@ struct ArrowIpcArraySetter {
   int64_t buffer_i;
   struct ArrowBufferView body;
   enum ArrowIpcCompressionType codec;
-  enum ArrowIpcEndianness endianness;
-  enum ArrowIpcEndianness system_endianness;
+  int swap_endian;
 };
 
 static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
@@ -21302,8 +21357,7 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
     return ENOTSUP;
   }
 
-  if (setter->endianness != NANOARROW_IPC_ENDIANNESS_UNINITIALIZED &&
-      setter->endianness != setter->system_endianness) {
+  if (setter->swap_endian) {
     ArrowErrorSet(error,
                   "The nanoarrow_ipc extension does not support non-system endianness");
     return ENOTSUP;
@@ -21392,17 +21446,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   setter.buffer_i = root->buffer_offset - 1;
   setter.body = body;
   setter.codec = decoder->codec;
-  setter.endianness = decoder->endianness;
-
-  // This should probably be done at compile time
-  uint32_t check = 1;
-  char first_byte;
-  memcpy(&first_byte, &check, sizeof(char));
-  if (first_byte) {
-    setter.system_endianness = NANOARROW_IPC_ENDIANNESS_LITTLE;
-  } else {
-    setter.system_endianness = NANOARROW_IPC_ENDIANNESS_BIG;
-  }
+  setter.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
