@@ -92,10 +92,9 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
 }
 
-static inline uint32_t ArrowIpcReadUint32LE(struct ArrowBufferView* data) {
+static inline uint32_t ArrowIpcReadContinuationBytes(struct ArrowBufferView* data) {
   uint32_t value;
   memcpy(&value, data->data.as_uint8, sizeof(uint32_t));
-  // TODO: bswap32() if big endian
   data->data.as_uint8 += sizeof(uint32_t);
   data->size_bytes -= sizeof(uint32_t);
   return value;
@@ -761,7 +760,7 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
     return ESPIPE;
   }
 
-  uint32_t continuation = ArrowIpcReadUint32LE(data_mut);
+  uint32_t continuation = ArrowIpcReadContinuationBytes(data_mut);
   if (continuation != 0xFFFFFFFF) {
     ArrowErrorSet(error, "Expected 0xFFFFFFFF at start of message but found 0x%08X",
                   (unsigned int)continuation);
