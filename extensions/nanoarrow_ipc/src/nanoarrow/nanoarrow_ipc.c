@@ -764,6 +764,21 @@ static int ArrowIpcDecoderDecodeRecordBatchHeader(struct ArrowIpcDecoder* decode
   return NANOARROW_OK;
 }
 
+// Wipes any "current message" fields before moving on to a new message
+static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decoder) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  decoder->message_type = 0;
+  decoder->metadata_version = 0;
+  decoder->endianness = 0;
+  decoder->feature_flags = 0;
+  decoder->codec = 0;
+  decoder->header_size_bytes = 0;
+  decoder->body_size_bytes = 0;
+  private_data->last_message = NULL;
+}
+
 // Returns NANOARROW_OK if data is large enough to read the message header,
 // ESPIPE if reading more data might help, or EINVAL if the content is not valid
 static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
@@ -815,9 +830,7 @@ ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  decoder->body_size_bytes = 0;
-  private_data->last_message = NULL;
+  ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
   decoder->header_size_bytes += 2 * sizeof(int32_t);
@@ -830,9 +843,7 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  decoder->body_size_bytes = 0;
-  private_data->last_message = NULL;
+  ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
 
@@ -860,10 +871,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  decoder->message_type = NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED;
-  decoder->body_size_bytes = 0;
-  private_data->last_message = NULL;
-
+  ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
   decoder->header_size_bytes += 2 * sizeof(int32_t);
