@@ -90,14 +90,13 @@ struct ArrowIpcDecoder {
   /// \brief The last verified or decoded message type
   enum ArrowIpcMessageType message_type;
 
-  /// \brief The metadata version used by this and forthcoming messages
+  /// \brief The metadata version as indicated by the current schema message
   enum ArrowIpcMetadataVersion metadata_version;
 
-  /// \brief Endianness of forthcoming RecordBatch messages
+  /// \brief Buffer endianness as indicated by the current schema message
   enum ArrowIpcEndianness endianness;
 
-  /// \brief Features used by this and forthcoming messages as indicated by the current
-  /// Schema message
+  /// \brief Arrow IPC Features used as indicated by the current Schema message
   int32_t feature_flags;
 
   /// \brief Compression used by the current RecordBatch message
@@ -167,7 +166,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
                                            struct ArrowBufferView data,
                                            struct ArrowError* error);
 
-/// \brief Decode an ArrowArray
+/// \brief Decode an ArrowSchema
 ///
 /// After a successful call to ArrowIpcDecoderDecodeHeader(), retrieve an ArrowSchema.
 /// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
@@ -182,11 +181,25 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
 ///
 /// Prepares the decoder for future record batch messages
 /// of this type. The decoder takes ownership of schema if NANOARROW_OK is returned.
+/// Note that you must call this explicitly after decoding a
+/// Schema message (i.e., the decoder does not assume that the last-decoded
+/// schema message applies to future record batch messages).
 ///
 /// Returns EINVAL if schema validation fails or NANOARROW_OK otherwise.
 ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
                                         struct ArrowSchema* schema,
                                         struct ArrowError* error);
+
+/// \brief Set the endianness used to decode future record batch messages
+///
+/// Prepares the decoder for future record batch messages with the specified
+/// endianness. Note that you must call this explicitly after decoding a
+/// Schema message (i.e., the decoder does not assume that the last-decoded
+/// schema message applies to future record batch messages).
+///
+/// Returns NANOARROW_OK on success.
+ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
+                                            enum ArrowIpcEndianness endianness);
 
 /// \brief Decode an ArrowArray
 ///

@@ -29,6 +29,8 @@ struct ArrowIpcField {
 };
 
 struct ArrowIpcDecoderPrivate {
+  enum ArrowIpcEndianness endianness;
+  enum ArrowIpcEndianness system_endianness;
   struct ArrowArrayView array_view;
   int64_t n_fields;
   struct ArrowIpcField* fields;
@@ -49,6 +51,18 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
+static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
+  uint32_t check = 1;
+  char first_byte;
+  enum ArrowIpcEndianness system_endianness;
+  memcpy(&first_byte, &check, sizeof(char));
+  if (first_byte) {
+    return NANOARROW_IPC_ENDIANNESS_LITTLE;
+  } else {
+    return NANOARROW_IPC_ENDIANNESS_BIG;
+  }
+}
+
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   struct ArrowIpcDecoderPrivate* private_data =
@@ -58,6 +72,7 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   }
 
   memset(private_data, 0, sizeof(struct ArrowIpcDecoderPrivate));
+  private_data->system_endianness = ArrowIpcSystemEndianness();
   decoder->private_data = private_data;
   return NANOARROW_OK;
 }
@@ -995,6 +1010,21 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
+                                            enum ArrowIpcEndianness endianness) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  switch (endianness) {
+    case NANOARROW_IPC_ENDIANNESS_UNINITIALIZED:
+    case NANOARROW_IPC_ENDIANNESS_LITTLE:
+    case NANOARROW_IPC_ENDIANNESS_BIG:
+      private_data->endianness = endianness;
+    default:
+      return EINVAL;
+  }
+}
+
 struct ArrowIpcArraySetter {
   ns(FieldNode_vec_t) fields;
   int64_t field_i;
@@ -1002,8 +1032,7 @@ struct ArrowIpcArraySetter {
   int64_t buffer_i;
   struct ArrowBufferView body;
   enum ArrowIpcCompressionType codec;
-  enum ArrowIpcEndianness endianness;
-  enum ArrowIpcEndianness system_endianness;
+  int swap_endian;
 };
 
 static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
@@ -1031,8 +1060,7 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
     return ENOTSUP;
   }
 
-  if (setter->endianness != NANOARROW_IPC_ENDIANNESS_UNINITIALIZED &&
-      setter->endianness != setter->system_endianness) {
+  if (setter->swap_endian) {
     ArrowErrorSet(error,
                   "The nanoarrow_ipc extension does not support non-system endianness");
     return ENOTSUP;
@@ -1121,16 +1149,17 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   setter.buffer_i = root->buffer_offset - 1;
   setter.body = body;
   setter.codec = decoder->codec;
-  setter.endianness = decoder->endianness;
 
-  // This should probably be done at compile time
-  uint32_t check = 1;
-  char first_byte;
-  memcpy(&first_byte, &check, sizeof(char));
-  if (first_byte) {
-    setter.system_endianness = NANOARROW_IPC_ENDIANNESS_LITTLE;
-  } else {
-    setter.system_endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+  switch (private_data->endianness) {
+    case NANOARROW_IPC_ENDIANNESS_LITTLE:
+    case NANOARROW_IPC_ENDIANNESS_BIG:
+      setter.swap_endian =
+          private_data->endianness != NANOARROW_IPC_ENDIANNESS_UNINITIALIZED &&
+          private_data->endianness != private_data->system_endianness;
+      break;
+    default:
+      setter.swap_endian = 0;
+      break;
   }
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the

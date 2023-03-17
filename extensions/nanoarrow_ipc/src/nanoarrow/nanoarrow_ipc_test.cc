@@ -36,6 +36,8 @@ struct ArrowIpcField {
 };
 
 struct ArrowIpcDecoderPrivate {
+  enum ArrowIpcEndianness endianness;
+  enum ArrowIpcEndianness system_endianness;
   struct ArrowArrayView array_view;
   int64_t n_fields;
   struct ArrowIpcField* fields;
@@ -298,11 +300,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
 
   // Field extract should fail on non-system endian
   // This test will have to get updated when we start testing on big endian
-  decoder.endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+  ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_BIG);
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), ENOTSUP);
   EXPECT_STREQ(error.message,
                "The nanoarrow_ipc extension does not support non-system endianness");
-  decoder.endianness = NANOARROW_IPC_ENDIANNESS_UNINITIALIZED;
+  ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_UNINITIALIZED);
 
   // Field extract should fail if body is too small
   body.size_bytes = 0;
