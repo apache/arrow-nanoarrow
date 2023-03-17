@@ -23,6 +23,9 @@
 #include <arrow/util/key_value_metadata.h>
 #include <gtest/gtest.h>
 
+// For bswap32()
+#include "flatcc/portable/pendian.h"
+
 #include "nanoarrow_ipc.h"
 
 using namespace arrow;
@@ -36,12 +39,26 @@ struct ArrowIpcField {
 };
 
 struct ArrowIpcDecoderPrivate {
+  enum ArrowIpcEndianness endianness;
+  enum ArrowIpcEndianness system_endianness;
   struct ArrowArrayView array_view;
   int64_t n_fields;
   struct ArrowIpcField* fields;
   int64_t n_buffers;
   const void* last_message;
 };
+}
+
+static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
+  uint32_t check = 1;
+  char first_byte;
+  enum ArrowIpcEndianness system_endianness;
+  memcpy(&first_byte, &check, sizeof(char));
+  if (first_byte) {
+    return NANOARROW_IPC_ENDIANNESS_LITTLE;
+  } else {
+    return NANOARROW_IPC_ENDIANNESS_BIG;
+  }
 }
 
 TEST(NanoarrowIpcCheckRuntime, CheckRuntime) {
@@ -97,6 +114,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
+  uint32_t negative_one_le = static_cast<uint32_t>(-1);
+  uint32_t one_le = 1;
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    negative_one_le = bswap32(negative_one_le);
+    one_le = bswap32(one_le);
+  }
+
   struct ArrowBufferView data;
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = 1;
@@ -115,13 +139,14 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
                "Expected 0xFFFFFFFF at start of message but found 0x00000000");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
-  eight_bad_bytes[1] = static_cast<uint32_t>(-1);
+  eight_bad_bytes[1] = negative_one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected message body size > 0 but found message body size of -1 bytes");
 
-  eight_bad_bytes[1] = static_cast<uint32_t>(1);
+  eight_bad_bytes[1] = one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
+
   EXPECT_STREQ(error.message,
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of 1 bytes");
@@ -232,6 +257,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   struct ArrowSchema schema;
   struct ArrowArray array;
 
+  // Data buffer content of the hard-coded record batch message
+  uint8_t one_two_three_le[] = {0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+                                0x00, 0x00, 0x03, 0x00, 0x00, 0x00};
+
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
@@ -271,10 +300,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ASSERT_EQ(array.children[0]->n_buffers, 2);
   ASSERT_EQ(array.children[0]->length, 3);
   EXPECT_EQ(array.children[0]->null_count, 0);
-  const int32_t* out = reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]);
-  EXPECT_EQ(out[0], 1);
-  EXPECT_EQ(out[1], 2);
-  EXPECT_EQ(out[2], 3);
+  EXPECT_EQ(
+      memcmp(array.children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le)),
+      0);
 
   array.release(&array);
 
@@ -283,10 +311,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ASSERT_EQ(array.n_buffers, 2);
   ASSERT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
-  out = reinterpret_cast<const int32_t*>(array.buffers[1]);
-  EXPECT_EQ(out[0], 1);
-  EXPECT_EQ(out[1], 2);
-  EXPECT_EQ(out[2], 3);
+  EXPECT_EQ(memcmp(array.buffers[1], one_two_three_le, sizeof(one_two_three_le)), 0);
 
   array.release(&array);
 
@@ -297,12 +322,15 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
 
   // Field extract should fail on non-system endian
-  // This test will have to get updated when we start testing on big endian
-  decoder.endianness = NANOARROW_IPC_ENDIANNESS_BIG;
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
+    ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_BIG);
+  } else {
+    ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_LITTLE);
+  }
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), ENOTSUP);
   EXPECT_STREQ(error.message,
                "The nanoarrow_ipc extension does not support non-system endianness");
-  decoder.endianness = NANOARROW_IPC_ENDIANNESS_UNINITIALIZED;
+  ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_UNINITIALIZED);
 
   // Field extract should fail if body is too small
   body.size_bytes = 0;
