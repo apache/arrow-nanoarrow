@@ -30,6 +30,8 @@ on:
         required: false
         type: string
         default: ""
+  schedule:
+    - cron: '5 0 * * 0'
   pull_request:
     branches:
       - main
