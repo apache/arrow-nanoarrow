@@ -63,6 +63,19 @@ static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
   }
 }
 
+static int ArrowIpcDecoderNeedsSwapEndian(struct ArrowIpcDecoder* decoder) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  switch (private_data->endianness) {
+    case NANOARROW_IPC_ENDIANNESS_LITTLE:
+    case NANOARROW_IPC_ENDIANNESS_BIG:
+      return private_data->endianness != NANOARROW_IPC_ENDIANNESS_UNINITIALIZED &&
+             private_data->endianness != private_data->system_endianness;
+    default:
+      return 0;
+  }
+}
+
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   struct ArrowIpcDecoderPrivate* private_data =
@@ -100,10 +113,13 @@ static inline uint32_t ArrowIpcReadContinuationBytes(struct ArrowBufferView* dat
   return value;
 }
 
-static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data) {
+static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data, int swap_endian) {
   int32_t value;
   memcpy(&value, data->data.as_uint8, sizeof(int32_t));
-  // TODO: bswap32() if big endian
+  if (swap_endian) {
+    value = bswap32(value);
+  }
+
   data->data.as_uint8 += sizeof(int32_t);
   data->size_bytes -= sizeof(int32_t);
   return value;
@@ -767,7 +783,8 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
     return EINVAL;
   }
 
-  *message_size_bytes = ArrowIpcReadInt32LE(data_mut);
+  *message_size_bytes =
+      ArrowIpcReadInt32LE(data_mut, ArrowIpcDecoderNeedsSwapEndian(decoder));
   if ((*message_size_bytes) < 0) {
     ArrowErrorSet(
         error, "Expected message body size > 0 but found message body size of %ld bytes",
@@ -859,13 +876,13 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   decoder->body_size_bytes = ns(Message_bodyLength(message));
 
   switch (decoder->metadata_version) {
-    case ns(MetadataVersion_V4):
     case ns(MetadataVersion_V5):
       break;
     case ns(MetadataVersion_V1):
     case ns(MetadataVersion_V2):
     case ns(MetadataVersion_V3):
-      ArrowErrorSet(error, "Expected metadata version V4 or V5 but found %s",
+    case ns(MetadataVersion_V4):
+      ArrowErrorSet(error, "Expected metadata version V5 but found %s",
                     ns(MetadataVersion_name(decoder->metadata_version)));
       break;
     default:
@@ -1148,18 +1165,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   setter.buffer_i = root->buffer_offset - 1;
   setter.body = body;
   setter.codec = decoder->codec;
-
-  switch (private_data->endianness) {
-    case NANOARROW_IPC_ENDIANNESS_LITTLE:
-    case NANOARROW_IPC_ENDIANNESS_BIG:
-      setter.swap_endian =
-          private_data->endianness != NANOARROW_IPC_ENDIANNESS_UNINITIALIZED &&
-          private_data->endianness != private_data->system_endianness;
-      break;
-    default:
-      setter.swap_endian = 0;
-      break;
-  }
+  setter.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
