@@ -23,6 +23,9 @@
 #include <arrow/util/key_value_metadata.h>
 #include <gtest/gtest.h>
 
+// For bswap32()
+#include "flatcc/portable/pendian.h"
+
 #include "nanoarrow_ipc.h"
 
 using namespace arrow;
@@ -44,6 +47,18 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_buffers;
   const void* last_message;
 };
+}
+
+static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
+  uint32_t check = 1;
+  char first_byte;
+  enum ArrowIpcEndianness system_endianness;
+  memcpy(&first_byte, &check, sizeof(char));
+  if (first_byte) {
+    return NANOARROW_IPC_ENDIANNESS_LITTLE;
+  } else {
+    return NANOARROW_IPC_ENDIANNESS_BIG;
+  }
 }
 
 TEST(NanoarrowIpcCheckRuntime, CheckRuntime) {
@@ -274,9 +289,16 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ASSERT_EQ(array.children[0]->length, 3);
   EXPECT_EQ(array.children[0]->null_count, 0);
   const int32_t* out = reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]);
-  EXPECT_EQ(out[0], 1);
-  EXPECT_EQ(out[1], 2);
-  EXPECT_EQ(out[2], 3);
+
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
+    EXPECT_EQ(out[0], 1);
+    EXPECT_EQ(out[1], 2);
+    EXPECT_EQ(out[2], 3);
+  } else {
+    EXPECT_EQ(out[0], bswap32(1));
+    EXPECT_EQ(out[1], bswap32(2));
+    EXPECT_EQ(out[2], bswap32(3));
+  }
 
   array.release(&array);
 
@@ -286,9 +308,16 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ASSERT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
   out = reinterpret_cast<const int32_t*>(array.buffers[1]);
-  EXPECT_EQ(out[0], 1);
-  EXPECT_EQ(out[1], 2);
-  EXPECT_EQ(out[2], 3);
+
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
+    EXPECT_EQ(out[0], 1);
+    EXPECT_EQ(out[1], 2);
+    EXPECT_EQ(out[2], 3);
+  } else {
+    EXPECT_EQ(out[0], bswap32(1));
+    EXPECT_EQ(out[1], bswap32(2));
+    EXPECT_EQ(out[2], bswap32(3));
+  }
 
   array.release(&array);
 
@@ -299,8 +328,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
 
   // Field extract should fail on non-system endian
-  // This test will have to get updated when we start testing on big endian
-  ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_BIG);
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
+    ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_BIG);
+  } else {
+    ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_LITTLE);
+  }
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), ENOTSUP);
   EXPECT_STREQ(error.message,
                "The nanoarrow_ipc extension does not support non-system endianness");
