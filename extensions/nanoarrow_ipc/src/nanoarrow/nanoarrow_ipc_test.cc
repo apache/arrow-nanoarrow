@@ -257,6 +257,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   struct ArrowSchema schema;
   struct ArrowArray array;
 
+  // Data buffer content of the hard-coded record batch message
+  uint8_t one_two_three_le[] = {0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+                                0x00, 0x00, 0x03, 0x00, 0x00, 0x00};
+
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
@@ -296,17 +300,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ASSERT_EQ(array.children[0]->n_buffers, 2);
   ASSERT_EQ(array.children[0]->length, 3);
   EXPECT_EQ(array.children[0]->null_count, 0);
-  const int32_t* out = reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]);
-
-  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
-    EXPECT_EQ(out[0], 1);
-    EXPECT_EQ(out[1], 2);
-    EXPECT_EQ(out[2], 3);
-  } else {
-    EXPECT_EQ(out[0], bswap32(1));
-    EXPECT_EQ(out[1], bswap32(2));
-    EXPECT_EQ(out[2], bswap32(3));
-  }
+  EXPECT_EQ(
+      memcmp(array.children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le)),
+      0);
 
   array.release(&array);
 
@@ -315,17 +311,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ASSERT_EQ(array.n_buffers, 2);
   ASSERT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
-  out = reinterpret_cast<const int32_t*>(array.buffers[1]);
-
-  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
-    EXPECT_EQ(out[0], 1);
-    EXPECT_EQ(out[1], 2);
-    EXPECT_EQ(out[2], 3);
-  } else {
-    EXPECT_EQ(out[0], bswap32(1));
-    EXPECT_EQ(out[1], bswap32(2));
-    EXPECT_EQ(out[2], bswap32(3));
-  }
+  EXPECT_EQ(memcmp(array.buffers[1], one_two_three_le, sizeof(one_two_three_le)), 0);
 
   array.release(&array);
 
