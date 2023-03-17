@@ -164,5 +164,5 @@ jobs:
 
         run: |
           cd src
-          docker compose pull verify
+          # docker compose pull verify
           docker compose run verify
