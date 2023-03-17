@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM fedora:latest
+ARG NANOARROW_ARCH
+
+FROM --platform=linux/${NANOARROW_ARCH} fedora:latest
 
 RUN dnf install -y git cmake R gnupg curl libarrow-devel glibc-langpack-en
 

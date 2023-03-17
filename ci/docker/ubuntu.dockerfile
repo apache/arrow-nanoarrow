@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM ubuntu:latest
+ARG NANOARROW_ARCH
+
+FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales git cmake r-base gnupg curl
 RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
