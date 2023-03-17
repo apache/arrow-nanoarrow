@@ -114,6 +114,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
+  uint32_t negative_one_le = static_cast<uint32_t>(-1);
+  uint32_t one_le = 1;
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    negative_one_le = bswap32(negative_one_le);
+    one_le = bswap32(one_le);
+  }
+
   struct ArrowBufferView data;
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = 1;
@@ -132,13 +139,14 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
                "Expected 0xFFFFFFFF at start of message but found 0x00000000");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
-  eight_bad_bytes[1] = static_cast<uint32_t>(-1);
+  eight_bad_bytes[1] = negative_one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected message body size > 0 but found message body size of -1 bytes");
 
-  eight_bad_bytes[1] = static_cast<uint32_t>(1);
+  eight_bad_bytes[1] = one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
+
   EXPECT_STREQ(error.message,
                "Expected 0 <= message body size <= 0 bytes but found message body size "
                "of 1 bytes");

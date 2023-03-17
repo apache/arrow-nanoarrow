@@ -770,6 +770,9 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
                                              struct ArrowBufferView* data_mut,
                                              int32_t* message_size_bytes,
                                              struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
   if (data_mut->size_bytes < 8) {
     ArrowErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
                   (long)data_mut->size_bytes);
@@ -783,8 +786,8 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
     return EINVAL;
   }
 
-  *message_size_bytes =
-      ArrowIpcReadInt32LE(data_mut, ArrowIpcDecoderNeedsSwapEndian(decoder));
+  int swap_endian = private_data->system_endianness == NANOARROW_IPC_ENDIANNESS_BIG;
+  *message_size_bytes = ArrowIpcReadInt32LE(data_mut, swap_endian);
   if ((*message_size_bytes) < 0) {
     ArrowErrorSet(
         error, "Expected message body size > 0 but found message body size of %ld bytes",
