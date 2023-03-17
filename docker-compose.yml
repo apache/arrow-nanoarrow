@@ -19,12 +19,14 @@ version: '3.5'
 
 services:
   verify:
-    image: ${REPO}:${PLATFORM}
+    image: ${REPO}:${NANOARROW_PLATFORM}-${NANOARROW_ARCH}
     build:
       context: .
       cache_from:
-        - ${REPO}:${PLATFORM}
-      dockerfile: ci/docker/${PLATFORM}.dockerfile
+        - ${REPO}:${NANOARROW_PLATFORM}-${NANOARROW_ARCH}
+      dockerfile: ci/docker/${NANOARROW_PLATFORM}.dockerfile
+      args:
+        NANOARROW_ARCH: ${NANOARROW_ARCH}
     volumes:
       - .:/nanoarrow
     command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh"
