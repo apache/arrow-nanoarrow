@@ -54,7 +54,6 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
 static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
   uint32_t check = 1;
   char first_byte;
-  enum ArrowIpcEndianness system_endianness;
   memcpy(&first_byte, &check, sizeof(char));
   if (first_byte) {
     return NANOARROW_IPC_ENDIANNESS_LITTLE;
