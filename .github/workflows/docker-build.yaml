@@ -45,7 +45,6 @@ jobs:
 
           - { platform: "ubuntu", arch: "arm64" }
           - { platform: "fedora", arch: "arm64" }
-          - { platform: "archlinux", arch: "arm64" }
           - { platform: "alpine", arch: "arm64" }
 
           - { platform: "alpine", arch: "s390x" }
