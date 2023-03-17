@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM alpine:latest
+ARG NANOARROW_ARCH
+
+FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 
 RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl
 

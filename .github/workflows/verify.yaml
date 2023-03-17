@@ -30,10 +30,13 @@ on:
         required: false
         type: string
         default: ""
+  schedule:
+    - cron: '5 0 * * 0'
   pull_request:
     branches:
       - main
     paths:
+      - 'docker-compose.yaml'
       - '.github/workflows/verify.yaml'
       - 'dev/release/verify-release-candidate.sh'
 
@@ -132,18 +135,17 @@ jobs:
           name: nanoarrow-verify-tmp
 
   verify-docker:
-    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.docker_platform }}"
+    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {platform: "ubuntu", docker_platform: "amd64"}
-          - {platform: "fedora", docker_platform: "amd64"}
-          - {platform: "archlinux", docker_platform: "amd64"}
-          - {platform: "alpine", docker_platform: "amd64"}
-          # Skipping until we have pre-built images we can pull
-          # - {platform: "alpine", docker_platform: "s390x"}
+          - {platform: "ubuntu", arch: "amd64"}
+          - {platform: "fedora", arch: "amd64"}
+          - {platform: "archlinux", arch: "amd64"}
+          - {platform: "alpine", arch: "amd64"}
+          # - {platform: "alpine", arch: "s390x"}
 
     steps:
       - uses: actions/checkout@v3
@@ -153,12 +155,16 @@ jobs:
           persist-credentials: false
 
       - name: Set up QEMU
-        if: matrix.config.docker_platform != 'amd64'
+        if: matrix.config.arch != 'amd64'
         uses: docker/setup-qemu-action@v2
 
-      - name: Run docker-compose verify
+      - name: Run docker compose verify
         env:
-          PLATFORM: ${{ matrix.config.platform }}
+          NANOARROW_ARCH: ${{ matrix.config.arch }}
+          NANOARROW_PLATFORM: ${{ matrix.config.platform }}
+          DOCKER_DEFAULT_PLATFORM: linux/${{ matrix.config.arch }}
+
         run: |
           cd src
-          DOCKER_DEFAULT_PLATFORM=linux/${{ matrix.config.docker_platform }} docker-compose run verify
+          # docker compose pull verify
+          docker compose run verify

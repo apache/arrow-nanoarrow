@@ -19,7 +19,7 @@ name: Build Docker Images
 on:
   workflow_dispatch:
   schedule:
-    - cron: '5 0 * * 0'
+    - cron: '5 0 * * 6'
   pull_request:
     paths:
       - 'ci/docker/*'
@@ -32,17 +32,22 @@ permissions:
 
 jobs:
   build-docker:
-    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.docker_platform }}"
+    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         config:
-          - { platform: "ubuntu", docker_platform: "amd64" }
-          - { platform: "fedora", docker_platform: "amd64" }
-          - { platform: "archlinux", docker_platform: "amd64" }
-          - { platform: "alpine", docker_platform: "amd64" }
-          - { platform: "alpine", docker_platform: "s390x" }
+          - { platform: "ubuntu", arch: "amd64" }
+          - { platform: "fedora", arch: "amd64" }
+          - { platform: "archlinux", arch: "amd64" }
+          - { platform: "alpine", arch: "amd64" }
+
+          - { platform: "ubuntu", arch: "arm64" }
+          - { platform: "fedora", arch: "arm64" }
+          - { platform: "alpine", arch: "arm64" }
+
+          - { platform: "alpine", arch: "s390x" }
 
     steps:
       - uses: actions/checkout@v3
@@ -61,20 +66,22 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
-        if: matrix.config.docker_platform != 'amd64'
+        if: matrix.config.arch != 'amd64'
         uses: docker/setup-qemu-action@v2
 
       - name: Build
         env:
-          PLATFORM: ${{ matrix.config.platform }}
-          DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.docker_platform }}"
+          NANOARROW_ARCH: ${{ matrix.config.arch }}
+          NANOARROW_PLATFORM: ${{ matrix.config.platform }}
+          DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.arch }}"
         run: |
           docker compose build
 
       - name: Push
         if: ${{ github.event_name != 'pull_request' && github.repository == 'apache/arrow-nanoarrow'}}
         env:
-          PLATFORM: ${{ matrix.config.platform }}
-          DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.docker_platform }}"
+          NANOARROW_ARCH: ${{ matrix.config.arch }}
+          NANOARROW_PLATFORM: ${{ matrix.config.platform }}
+          DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.arch }}"
         run: |
           docker compose push
