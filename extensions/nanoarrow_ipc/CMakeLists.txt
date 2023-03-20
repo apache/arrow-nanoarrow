@@ -91,11 +91,11 @@ if (NANOARROW_IPC_BUNDLE)
   file(READ src/nanoarrow/nanoarrow_ipc.h SRC_FILE_CONTENTS)
   file(WRITE ${NANOARROW_IPC_H_TEMP} "${SRC_FILE_CONTENTS}")
 
-  # combine flatcc-generated headers and nanoarrow_ipc.c
+  # combine flatcc-generated headers and nanoarrow_ipc sources
   set(NANOARROW_IPC_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_ipc.c)
   file(READ src/nanoarrow/nanoarrow_ipc_flatcc_generated.h SRC_FILE_CONTENTS)
   file(WRITE ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/nanoarrow_ipc.c SRC_FILE_CONTENTS)
+  file(READ src/nanoarrow/nanoarrow_ipc_decoder.c SRC_FILE_CONTENTS)
   file(APPEND ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
 
   # remove the include for the generated files in the bundled version
@@ -143,7 +143,7 @@ if (NANOARROW_IPC_BUNDLE)
   install(DIRECTORY thirdparty/flatcc/include/flatcc DESTINATION ".")
 else()
   # This is a normal CMake build that builds + installs some includes and a static lib
-  add_library(nanoarrow_ipc src/nanoarrow/nanoarrow_ipc.c)
+  add_library(nanoarrow_ipc src/nanoarrow/nanoarrow_ipc_decoder.c)
   target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
 
   target_include_directories(nanoarrow_ipc PUBLIC
@@ -185,7 +185,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
 
   enable_testing()
 
-  add_executable(nanoarrow_ipc_test src/nanoarrow/nanoarrow_ipc_test.cc)
+  add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
 
   if(NANOARROW_IPC_CODE_COVERAGE)
     target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
@@ -193,8 +193,8 @@ if (NANOARROW_IPC_BUILD_TESTS)
     target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
   endif()
 
-  target_link_libraries(nanoarrow_ipc_test nanoarrow_ipc nanoarrow arrow_shared gtest_main)
+  target_link_libraries(nanoarrow_ipc_decoder_test nanoarrow_ipc nanoarrow arrow_shared gtest_main)
 
   include(GoogleTest)
-  gtest_discover_tests(nanoarrow_ipc_test)
+  gtest_discover_tests(nanoarrow_ipc_decoder_test)
 endif()
