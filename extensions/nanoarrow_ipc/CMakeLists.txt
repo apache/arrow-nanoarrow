@@ -97,6 +97,8 @@ if (NANOARROW_IPC_BUNDLE)
   file(WRITE ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
   file(READ src/nanoarrow/nanoarrow_ipc_decoder.c SRC_FILE_CONTENTS)
   file(APPEND ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
+  file(READ src/nanoarrow/nanoarrow_ipc_reader.c SRC_FILE_CONTENTS)
+  file(APPEND ${NANOARROW_IPC_C_TEMP} "${SRC_FILE_CONTENTS}")
 
   # remove the include for the generated files in the bundled version
   file(READ ${NANOARROW_IPC_C_TEMP} SRC_FILE_CONTENTS)
@@ -143,7 +145,9 @@ if (NANOARROW_IPC_BUNDLE)
   install(DIRECTORY thirdparty/flatcc/include/flatcc DESTINATION ".")
 else()
   # This is a normal CMake build that builds + installs some includes and a static lib
-  add_library(nanoarrow_ipc src/nanoarrow/nanoarrow_ipc_decoder.c)
+  add_library(nanoarrow_ipc
+    src/nanoarrow/nanoarrow_ipc_decoder.c
+    src/nanoarrow/nanoarrow_ipc_reader.c)
   target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
 
   target_include_directories(nanoarrow_ipc PUBLIC
@@ -186,6 +190,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
   enable_testing()
 
   add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
+  add_executable(nanoarrow_ipc_reader_test src/nanoarrow/nanoarrow_ipc_reader_test.cc)
 
   if(NANOARROW_IPC_CODE_COVERAGE)
     target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
@@ -194,6 +199,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
   endif()
 
   target_link_libraries(nanoarrow_ipc_decoder_test nanoarrow_ipc nanoarrow arrow_shared gtest_main)
+  target_link_libraries(nanoarrow_ipc_reader_test nanoarrow_ipc nanoarrow gtest_main)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_ipc_decoder_test)

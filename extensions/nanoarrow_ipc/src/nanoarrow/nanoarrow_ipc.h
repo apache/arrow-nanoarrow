@@ -219,6 +219,15 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowArray* out,
                                           struct ArrowError* error);
 
+struct ArrowIpcInputStream {
+  ArrowErrorCode (*read)(struct ArrowIpcInputStream* stream, void* buf, int64_t n_bytes);
+  void (*release)(struct ArrowIpcInputStream* stream);
+  void* private_data;
+};
+
+ArrowErrorCode ArrowIpcInputStreamInitLiteral(struct ArrowIpcInputStream* stream,
+                                              struct ArrowBuffer* input);
+
 #ifdef __cplusplus
 }
 #endif
