@@ -220,7 +220,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowError* error);
 
 struct ArrowIpcInputStream {
-  ArrowErrorCode (*read)(struct ArrowIpcInputStream* stream, void* buf, int64_t n_bytes);
+  ArrowErrorCode (*read)(struct ArrowIpcInputStream* stream, void* buf,
+                         int64_t buf_size_bytes, int64_t* size_read_out,
+                         struct ArrowError* error);
   void (*release)(struct ArrowIpcInputStream* stream);
   void* private_data;
 };
