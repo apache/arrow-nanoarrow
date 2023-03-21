@@ -221,11 +221,24 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowArray* out,
                                           struct ArrowError* error);
 
+/// \brief An user-extensible input data source
 struct ArrowIpcInputStream {
+  /// \brief Read up to buf_size_bytes from stream into buf
+  ///
+  /// The actual number of bytes read is placed in the value pointed to by
+  /// size_read_out. Returns NANOARROW_OK on success.
   ArrowErrorCode (*read)(struct ArrowIpcInputStream* stream, void* buf,
                          int64_t buf_size_bytes, int64_t* size_read_out,
                          struct ArrowError* error);
+
+  /// \brief Release the stream and any resources it may be holding
+  ///
+  /// Release callback implementations must set the release member to NULL.
+  /// Callers must check that the release callback is not NULL before calling
+  /// read() or release().
   void (*release)(struct ArrowIpcInputStream* stream);
+
+  /// \brief Private implementation-defined data
   void* private_data;
 };
 
