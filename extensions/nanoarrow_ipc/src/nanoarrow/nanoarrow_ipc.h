@@ -39,6 +39,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
 #define ArrowIpcDecoderSetEndianness \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
+#define ArrowIpcInputStreamInitLiteral \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamInitLiteral)
 
 #endif
 
