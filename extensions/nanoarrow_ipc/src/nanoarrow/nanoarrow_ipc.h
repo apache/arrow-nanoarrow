@@ -41,6 +41,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
 #define ArrowIpcInputStreamInitBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamInitBuffer)
+#define ArrowIpcInputStreamMove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamMove)
+#define ArrowIpcArrayStreamReaderInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamReaderInit)
 
 #endif
 
@@ -242,7 +246,8 @@ struct ArrowIpcInputStream {
   void* private_data;
 };
 
-void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src, struct ArrowIpcInputStream* dst);
+void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
+                             struct ArrowIpcInputStream* dst);
 
 /// \brief Create an input stream from an ArrowBuffer
 ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
@@ -252,9 +257,9 @@ struct ArrowIpcArrayStreamReaderOptions {
   int64_t field_index;
 };
 
-ArrowErrorCode ArrowIpcArrayStreamReaderInit(struct ArrowArrayStream* out,
-                                             struct ArrowIpcInputStream* input_stream,
-                                             struct ArrowIpcArrayStreamReaderOptions options);
+ArrowErrorCode ArrowIpcArrayStreamReaderInit(
+    struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
+    struct ArrowIpcArrayStreamReaderOptions options);
 
 #ifdef __cplusplus
 }
