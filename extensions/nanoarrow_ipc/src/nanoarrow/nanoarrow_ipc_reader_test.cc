@@ -112,10 +112,12 @@ TEST(NanoarrowIpcReader, StreamReaderBasic) {
 
   struct ArrowSchema schema;
   ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+s");
   schema.release(&schema);
 
   struct ArrowArray array;
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
+  EXPECT_EQ(array.length, 3);
   array.release(&array);
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
