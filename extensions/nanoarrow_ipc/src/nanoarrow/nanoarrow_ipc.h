@@ -246,6 +246,14 @@ struct ArrowIpcInputStream {
 ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
                                              struct ArrowBuffer* input);
 
+struct ArrowIpcArrayStreamReaderOptions {
+  int64_t field_index;
+};
+
+ArrowErrorCode ArrowIpcArrayStreamReaderInit(struct ArrowArrayStream* out,
+                                             struct ArrowIpcInputStream* input_stream,
+                                             struct ArrowIpcArrayStreamReaderOptions options);
+
 #ifdef __cplusplus
 }
 #endif
