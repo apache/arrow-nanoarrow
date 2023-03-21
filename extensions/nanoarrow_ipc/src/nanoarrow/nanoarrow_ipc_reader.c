@@ -22,6 +22,12 @@
 #include "nanoarrow.h"
 #include "nanoarrow_ipc.h"
 
+void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
+                             struct ArrowIpcInputStream* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcInputStream));
+  src->release = NULL;
+}
+
 struct ArrowIpcInputStreamBufferPrivate {
   struct ArrowBuffer input;
   int64_t cursor_bytes;
@@ -314,6 +320,7 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   ArrowBufferInit(&private_data->header);
   ArrowBufferInit(&private_data->body);
   private_data->out_schema.release = NULL;
+  ArrowIpcInputStreamMove(input_stream, &private_data->input);
 
   out->private_data = private_data;
   out->get_schema = &ArrowIpcArrayStreamReaderGetSchema;

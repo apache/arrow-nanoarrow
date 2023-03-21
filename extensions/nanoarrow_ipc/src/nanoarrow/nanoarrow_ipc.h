@@ -242,6 +242,8 @@ struct ArrowIpcInputStream {
   void* private_data;
 };
 
+void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src, struct ArrowIpcInputStream* dst);
+
 /// \brief Create an input stream from an ArrowBuffer
 ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
                                              struct ArrowBuffer* input);
