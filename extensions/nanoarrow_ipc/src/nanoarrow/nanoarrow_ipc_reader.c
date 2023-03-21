@@ -22,21 +22,21 @@
 #include "nanoarrow.h"
 #include "nanoarrow_ipc.h"
 
-struct ArrowIpcInputStreamLiteralPrivate {
+struct ArrowIpcInputStreamBufferPrivate {
   struct ArrowBuffer input;
   int64_t cursor_bytes;
 };
 
-static ArrowErrorCode ArrowIpcInputStreamLiteralRead(struct ArrowIpcInputStream* stream,
-                                                     void* buf, int64_t buf_size_bytes,
-                                                     int64_t* size_read_out,
-                                                     struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcInputStreamBufferRead(struct ArrowIpcInputStream* stream,
+                                                    void* buf, int64_t buf_size_bytes,
+                                                    int64_t* size_read_out,
+                                                    struct ArrowError* error) {
   if (buf_size_bytes == 0) {
     return NANOARROW_OK;
   }
 
-  struct ArrowIpcInputStreamLiteralPrivate* private_data =
-      (struct ArrowIpcInputStreamLiteralPrivate*)stream->private_data;
+  struct ArrowIpcInputStreamBufferPrivate* private_data =
+      (struct ArrowIpcInputStreamBufferPrivate*)stream->private_data;
   int64_t bytes_remaining = private_data->input.size_bytes - private_data->cursor_bytes;
   int64_t bytes_to_read;
   if (bytes_remaining > buf_size_bytes) {
@@ -54,27 +54,27 @@ static ArrowErrorCode ArrowIpcInputStreamLiteralRead(struct ArrowIpcInputStream*
   return NANOARROW_OK;
 }
 
-static void ArrowIpcInputStreamLiteralRelease(struct ArrowIpcInputStream* stream) {
-  struct ArrowIpcInputStreamLiteralPrivate* private_data =
-      (struct ArrowIpcInputStreamLiteralPrivate*)stream->private_data;
+static void ArrowIpcInputStreamBufferRelease(struct ArrowIpcInputStream* stream) {
+  struct ArrowIpcInputStreamBufferPrivate* private_data =
+      (struct ArrowIpcInputStreamBufferPrivate*)stream->private_data;
   ArrowBufferReset(&private_data->input);
   ArrowFree(private_data);
   stream->release = NULL;
 }
 
-ArrowErrorCode ArrowIpcInputStreamInitLiteral(struct ArrowIpcInputStream* stream,
-                                              struct ArrowBuffer* input) {
-  struct ArrowIpcInputStreamLiteralPrivate* private_data =
-      (struct ArrowIpcInputStreamLiteralPrivate*)ArrowMalloc(
-          sizeof(struct ArrowIpcInputStreamLiteralPrivate));
+ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
+                                             struct ArrowBuffer* input) {
+  struct ArrowIpcInputStreamBufferPrivate* private_data =
+      (struct ArrowIpcInputStreamBufferPrivate*)ArrowMalloc(
+          sizeof(struct ArrowIpcInputStreamBufferPrivate));
   if (private_data == NULL) {
     return ENOMEM;
   }
 
   ArrowBufferMove(input, &private_data->input);
   private_data->cursor_bytes = 0;
-  stream->read = &ArrowIpcInputStreamLiteralRead;
-  stream->release = &ArrowIpcInputStreamLiteralRelease;
+  stream->read = &ArrowIpcInputStreamBufferRead;
+  stream->release = &ArrowIpcInputStreamBufferRelease;
   stream->private_data = private_data;
 
   return NANOARROW_OK;

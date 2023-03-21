@@ -39,8 +39,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
 #define ArrowIpcDecoderSetEndianness \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
-#define ArrowIpcInputStreamInitLiteral \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamInitLiteral)
+#define ArrowIpcInputStreamInitBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamInitBuffer)
 
 #endif
 
@@ -229,8 +229,9 @@ struct ArrowIpcInputStream {
   void* private_data;
 };
 
-ArrowErrorCode ArrowIpcInputStreamInitLiteral(struct ArrowIpcInputStream* stream,
-                                              struct ArrowBuffer* input);
+/// \brief Create an input stream from an ArrowBuffer
+ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
+                                             struct ArrowBuffer* input);
 
 #ifdef __cplusplus
 }
