@@ -117,43 +117,51 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
   stream->release = NULL;
 }
 
-#define NANOARROW_IPC_ARRAY_STREAM_READER_CHUNK_SIZE 65536
-
-static int ArrowIpcArrayStreamReaderRead(
-    struct ArrowIpcArrayStreamReaderPrivate* private_data, struct ArrowBuffer* buffer,
-    int64_t* bytes_read) {
-  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(
-      &private_data->header, NANOARROW_IPC_ARRAY_STREAM_READER_CHUNK_SIZE));
-
-  NANOARROW_RETURN_NOT_OK(private_data->input.read(
-      &private_data->input, buffer->data + buffer->size_bytes,
-      NANOARROW_IPC_ARRAY_STREAM_READER_CHUNK_SIZE, bytes_read, &private_data->error));
-
-  buffer->size_bytes += *bytes_read;
-  return NANOARROW_OK;
-}
-
 static int ArrowIpcArrayStreamReaderNextHeader(
     struct ArrowIpcArrayStreamReaderPrivate* private_data) {
   private_data->header.size_bytes = 0;
-  struct ArrowBufferView input_view;
-
   int64_t bytes_read = 0;
-  int result;
-  do {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcArrayStreamReaderRead(private_data, &private_data->header, &bytes_read));
-    input_view.data.data = private_data->header.data;
-    input_view.size_bytes = private_data->header.size_bytes;
-    result = ArrowIpcDecoderVerifyHeader(&private_data->decoder, input_view,
-                                         &private_data->error);
-  } while (result == ESPIPE || bytes_read == 0);
 
-  if (result != NANOARROW_OK && bytes_read == 0) {
+  // Read 8 bytes (continuation + header size in bytes)
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&private_data->header, 8));
+  NANOARROW_RETURN_NOT_OK(private_data->input.read(&private_data->input,
+                                                   private_data->header.data, 8,
+                                                   &bytes_read, &private_data->error));
+  private_data->header.size_bytes += bytes_read;
+
+  if (bytes_read == 0) {
     return ENODATA;
+  } else if (bytes_read != 8) {
+    ArrowErrorSet(&private_data->error,
+                  "Expected at least 8 bytes in remainder of stream");
+    return EINVAL;
   }
 
-  NANOARROW_RETURN_NOT_OK(result);
+  struct ArrowBufferView input_view;
+  input_view.data.data = private_data->header.data;
+  input_view.size_bytes = private_data->header.size_bytes;
+
+  // Use PeekHeader to fill in decoder.header_size_bytes
+  int result =
+      ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view, &private_data->error);
+  if (result == ENODATA) {
+    return result;
+  }
+
+  // Read the header bytes
+  int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowBufferReserve(&private_data->header, expected_header_bytes));
+  NANOARROW_RETURN_NOT_OK(
+      private_data->input.read(&private_data->input, private_data->header.data + 8,
+                               expected_header_bytes, &bytes_read, &private_data->error));
+  private_data->header.size_bytes += bytes_read;
+
+  // Verify + decode the header
+  input_view.data.data = private_data->header.data;
+  input_view.size_bytes = private_data->header.size_bytes;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderVerifyHeader(&private_data->decoder, input_view,
+                                                      &private_data->error));
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeHeader(&private_data->decoder, input_view,
                                                       &private_data->error));
   return NANOARROW_OK;
@@ -164,25 +172,13 @@ static int ArrowIpcArrayStreamReaderNextBody(
   int64_t bytes_read;
   int64_t bytes_to_read = private_data->decoder.body_size_bytes;
 
-  // Reserve space in the body buffer
+  // Read the body bytes
   private_data->body.size_bytes = 0;
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&private_data->body, bytes_to_read));
-
-  // Copy any body bytes from the header buffer
-  int64_t extra_bytes_in_header =
-      private_data->header.size_bytes - private_data->decoder.header_size_bytes;
-  memcpy(
-      private_data->body.data,
-      private_data->header.data + private_data->header.size_bytes - extra_bytes_in_header,
-      extra_bytes_in_header);
-
-  // Read the rest of the body buffer
-  NANOARROW_RETURN_NOT_OK(private_data->input.read(
-      &private_data->input, private_data->body.data + extra_bytes_in_header,
-      bytes_to_read - extra_bytes_in_header, &bytes_read, &private_data->error));
-
-  // Set the size of the buffer
-  private_data->body.size_bytes = bytes_to_read;
+  NANOARROW_RETURN_NOT_OK(private_data->input.read(&private_data->input,
+                                                   private_data->body.data, bytes_to_read,
+                                                   &bytes_read, &private_data->error));
+  private_data->body.size_bytes += bytes_read;
 
   return NANOARROW_OK;
 }
@@ -284,8 +280,8 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
 
   struct ArrowBufferView body_view;
-  body_view.data.data = private_data->body.data + private_data->body.size_bytes;
-  body_view.size_bytes = 0;
+  body_view.data.data = private_data->body.data;
+  body_view.size_bytes = private_data->body.size_bytes;
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArray(&private_data->decoder, body_view,
                                                      private_data->field_index, out,
@@ -321,6 +317,7 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   ArrowBufferInit(&private_data->body);
   private_data->out_schema.release = NULL;
   ArrowIpcInputStreamMove(input_stream, &private_data->input);
+  private_data->field_index = options.field_index;
 
   out->private_data = private_data;
   out->get_schema = &ArrowIpcArrayStreamReaderGetSchema;

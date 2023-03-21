@@ -801,21 +801,22 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
   }
 
   int swap_endian = private_data->system_endianness == NANOARROW_IPC_ENDIANNESS_BIG;
-  *message_size_bytes = ArrowIpcReadInt32LE(data_mut, swap_endian);
-  if ((*message_size_bytes) < 0) {
+  int32_t header_body_size_bytes = ArrowIpcReadInt32LE(data_mut, swap_endian);
+  *message_size_bytes = header_body_size_bytes + (2 * sizeof(int32_t));
+  if (header_body_size_bytes < 0) {
     ArrowErrorSet(
         error, "Expected message body size > 0 but found message body size of %ld bytes",
-        (long)(*message_size_bytes));
+        (long)header_body_size_bytes);
     return EINVAL;
-  } else if ((*message_size_bytes) > data_mut->size_bytes) {
+  } else if (header_body_size_bytes > data_mut->size_bytes) {
     ArrowErrorSet(error,
                   "Expected 0 <= message body size <= %ld bytes but found message "
                   "body size of %ld bytes",
-                  (long)data_mut->size_bytes, (long)(*message_size_bytes));
+                  (long)data_mut->size_bytes, (long)header_body_size_bytes);
     return ESPIPE;
   }
 
-  if (*message_size_bytes == 0) {
+  if (header_body_size_bytes == 0) {
     ArrowErrorSet(error, "End of Arrow stream");
     return ENODATA;
   }
@@ -832,7 +833,6 @@ ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
   ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
-  decoder->header_size_bytes += 2 * sizeof(int32_t);
   return NANOARROW_OK;
 }
 
@@ -847,14 +847,14 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
 
   // Run flatbuffers verification
-  if (ns(Message_verify_as_root(data.data.as_uint8, decoder->header_size_bytes)) !=
+  if (ns(Message_verify_as_root(data.data.as_uint8,
+                                decoder->header_size_bytes - (2 * sizeof(int32_t)))) !=
       flatcc_verify_ok) {
     ArrowErrorSet(error, "Message flatbuffer verification failed");
     return EINVAL;
   }
 
   // Read some basic information from the message
-  decoder->header_size_bytes += 2 * sizeof(int32_t);
   ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
   decoder->metadata_version = ns(Message_version(message));
   decoder->message_type = ns(Message_header_type(message));
@@ -873,7 +873,6 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
-  decoder->header_size_bytes += 2 * sizeof(int32_t);
 
   ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
   if (!message) {
@@ -1046,6 +1045,7 @@ ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
     case NANOARROW_IPC_ENDIANNESS_LITTLE:
     case NANOARROW_IPC_ENDIANNESS_BIG:
       private_data->endianness = endianness;
+      return NANOARROW_OK;
     default:
       return EINVAL;
   }
