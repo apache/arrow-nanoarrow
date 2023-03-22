@@ -24,17 +24,16 @@ void dump_schema_to_stdout(struct ArrowSchema* schema, int level, char* buf,
                            int buf_size) {
   int n_chars = ArrowSchemaToString(schema, buf, buf_size, 0);
 
-  const char* name;
-  if (schema->name == NULL) {
-    name = "<NULL>";
-  } else {
-    name = schema->name;
-  }
-
   for (int i = 0; i < level; i++) {
     fprintf(stdout, "  ");
   }
-  fprintf(stdout, "%s: %s\n", name, buf);
+
+  if (schema->name == NULL) {
+    fprintf(stdout, "%s\n", buf);
+  } else {
+    fprintf(stdout, "%s: %s\n", schema->name, buf);
+  }
+
 
   for (int64_t i = 0; i < schema->n_children; i++) {
     dump_schema_to_stdout(schema->children[i], level + 1, buf, buf_size);
