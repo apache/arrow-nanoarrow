@@ -233,7 +233,7 @@ struct ArrowIpcInputStream {
   ///
   /// The actual number of bytes read is placed in the value pointed to by
   /// size_read_out. Returns NANOARROW_OK on success.
-  ArrowErrorCode (*read)(struct ArrowIpcInputStream* stream, void* buf,
+  ArrowErrorCode (*read)(struct ArrowIpcInputStream* stream, uint8_t* buf,
                          int64_t buf_size_bytes, int64_t* size_read_out,
                          struct ArrowError* error);
 

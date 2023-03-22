@@ -34,10 +34,11 @@ struct ArrowIpcInputStreamBufferPrivate {
 };
 
 static ArrowErrorCode ArrowIpcInputStreamBufferRead(struct ArrowIpcInputStream* stream,
-                                                    void* buf, int64_t buf_size_bytes,
+                                                    uint8_t* buf, int64_t buf_size_bytes,
                                                     int64_t* size_read_out,
                                                     struct ArrowError* error) {
   if (buf_size_bytes == 0) {
+    *size_read_out = 0;
     return NANOARROW_OK;
   }
 
@@ -105,7 +106,7 @@ static void ArrowIpcInputStreamFileRelease(struct ArrowIpcInputStream* stream) {
 }
 
 static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* stream,
-                                                  void* buf, int64_t buf_size_bytes,
+                                                  uint8_t* buf, int64_t buf_size_bytes,
                                                   int64_t* size_read_out,
                                                   struct ArrowError* error) {
   struct ArrowIpcInputStreamFilePrivate* private_data =
