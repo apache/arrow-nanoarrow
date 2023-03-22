@@ -39,6 +39,14 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
 #define ArrowIpcDecoderSetEndianness \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
+#define ArrowIpcInputStreamInitBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamInitBuffer)
+#define ArrowIpcInputStreamInitFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamInitFile)
+#define ArrowIpcInputStreamMove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamMove)
+#define ArrowIpcArrayStreamReaderInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamReaderInit)
 
 #endif
 
@@ -218,6 +226,60 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowBufferView body, int64_t i,
                                           struct ArrowArray* out,
                                           struct ArrowError* error);
+
+/// \brief An user-extensible input data source
+struct ArrowIpcInputStream {
+  /// \brief Read up to buf_size_bytes from stream into buf
+  ///
+  /// The actual number of bytes read is placed in the value pointed to by
+  /// size_read_out. Returns NANOARROW_OK on success.
+  ArrowErrorCode (*read)(struct ArrowIpcInputStream* stream, uint8_t* buf,
+                         int64_t buf_size_bytes, int64_t* size_read_out,
+                         struct ArrowError* error);
+
+  /// \brief Release the stream and any resources it may be holding
+  ///
+  /// Release callback implementations must set the release member to NULL.
+  /// Callers must check that the release callback is not NULL before calling
+  /// read() or release().
+  void (*release)(struct ArrowIpcInputStream* stream);
+
+  /// \brief Private implementation-defined data
+  void* private_data;
+};
+
+/// \brief Transfer ownership of an ArrowIpcInputStream
+void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
+                             struct ArrowIpcInputStream* dst);
+
+/// \brief Create an input stream from an ArrowBuffer
+ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
+                                             struct ArrowBuffer* input);
+
+/// \brief Create an input stream from a C FILE* pointer
+///
+/// Note that the ArrowIpcInputStream has no mechanism to communicate an error
+/// if file_ptr fails to close. If this behaviour is needed, pass false to
+/// close_on_release and handle closing the file independently from stream.
+ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
+                                           void* file_ptr, int close_on_release);
+
+/// \brief Options for ArrowIpcArrayStreamReaderInit()
+struct ArrowIpcArrayStreamReaderOptions {
+  /// \brief The field index to extract. Defaults to -1 (i.e., read all fields).
+  int64_t field_index;
+};
+
+/// \brief Initialize an ArrowArrayStream from an input stream of bytes
+///
+/// The stream of bytes must begin with a Schema message and be followed by
+/// zero or more RecordBatch messages as described in the Arrow IPC stream
+/// format specification. Returns NANOARROW_OK on success. If NANOARROW_OK
+/// is returned, the ArrowArrayStream takes ownership of input_stream and
+/// the caller is responsible for releasing out.
+ArrowErrorCode ArrowIpcArrayStreamReaderInit(
+    struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
+    struct ArrowIpcArrayStreamReaderOptions* options);
 
 #ifdef __cplusplus
 }

@@ -41,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build, cmake_args: ""}
+          - {label: default-build, cmake_args: "-DNANOARROW_IPC_BUILD_APPS=ON"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
 
@@ -100,6 +100,15 @@ jobs:
           sudo ldconfig
           cd build
           ctest -T test --output-on-failure .
+
+      - name: Test dump_stream
+        if: matrix.config.label == 'default-build'
+        run: |
+          $SUBDIR/build/dump_stream || true
+          $SUBDIR/build/dump_stream this_is_not_a_file || true
+          $SUBDIR/build/dump_stream examples/cmake-ipc/invalid.arrows || true
+          $SUBDIR/build/dump_stream examples/cmake-ipc/schema-valid.arrows
+          cat examples/cmake-ipc/schema-valid.arrows | $SUBDIR/build/dump_stream -
 
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build'
