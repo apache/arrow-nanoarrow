@@ -47,10 +47,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // Allocate a buffer for file IO. The default size (4096 bytes) results in
-  // very slow IO operations.
-  char io_buffer[1048576];
-
   // Sort the input stream
   FILE* file_ptr;
   if (strcmp(argv[1], "-") == 0) {
