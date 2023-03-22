@@ -246,6 +246,7 @@ struct ArrowIpcInputStream {
   void* private_data;
 };
 
+/// \brief Transfer ownership of an ArrowIpcInputStream
 void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
                              struct ArrowIpcInputStream* dst);
 
@@ -254,16 +255,29 @@ ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
                                              struct ArrowBuffer* input);
 
 /// \brief Create an input stream from a C FILE* pointer
+///
+/// Note that the ArrowIpcInputStream has no mechanism to communicate an error
+/// if file_ptr fails to close. If this behaviour is needed, pass false to
+/// close_on_release and handle closing the file independently from stream.
 ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
                                            void* file_ptr, int close_on_release);
 
+/// \brief Options for ArrowIpcArrayStreamReaderInit()
 struct ArrowIpcArrayStreamReaderOptions {
+  /// \brief The field index to extract. Defaults to -1 (i.e., read all fields).
   int64_t field_index;
 };
 
+/// \brief Initialize an ArrowArrayStream from an input stream of bytes
+///
+/// The stream of bytes must begin with a Schema message and be followed by
+/// zero or more RecordBatch messages as described in the Arrow IPC stream
+/// format specification. Returns NANOARROW_OK on success. If NANOARROW_OK
+/// is returned, the ArrowArrayStream takes ownership of input_stream and
+/// the caller is responsible for releasing out.
 ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
-    struct ArrowIpcArrayStreamReaderOptions options);
+    struct ArrowIpcArrayStreamReaderOptions* options);
 
 #ifdef __cplusplus
 }

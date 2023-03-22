@@ -104,9 +104,10 @@ static void ArrowIpcInputStreamFileRelease(struct ArrowIpcInputStream* stream) {
   stream->release = NULL;
 }
 
-static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* stream, void* buf,
-                                   int64_t buf_size_bytes, int64_t* size_read_out,
-                                   struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* stream,
+                                                  void* buf, int64_t buf_size_bytes,
+                                                  int64_t* size_read_out,
+                                                  struct ArrowError* error) {
   struct ArrowIpcInputStreamFilePrivate* private_data =
       (struct ArrowIpcInputStreamFilePrivate*)stream->private_data;
 
@@ -374,7 +375,7 @@ static const char* ArrowIpcArrayStreamReaderGetLastError(
 
 ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
-    struct ArrowIpcArrayStreamReaderOptions options) {
+    struct ArrowIpcArrayStreamReaderOptions* options) {
   struct ArrowIpcArrayStreamReaderPrivate* private_data =
       (struct ArrowIpcArrayStreamReaderPrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcArrayStreamReaderPrivate));
@@ -392,7 +393,12 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   ArrowBufferInit(&private_data->body);
   private_data->out_schema.release = NULL;
   ArrowIpcInputStreamMove(input_stream, &private_data->input);
-  private_data->field_index = options.field_index;
+
+  if (options != NULL) {
+    private_data->field_index = options->field_index;
+  } else {
+    private_data->field_index = -1;
+  }
 
   out->private_data = private_data;
   out->get_schema = &ArrowIpcArrayStreamReaderGetSchema;

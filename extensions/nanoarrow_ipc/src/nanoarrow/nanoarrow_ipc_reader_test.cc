@@ -150,7 +150,7 @@ TEST(NanoarrowIpcReader, StreamReaderBasic) {
   ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
 
   struct ArrowArrayStream stream;
-  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, {-1}), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
 
   struct ArrowSchema schema;
   ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
