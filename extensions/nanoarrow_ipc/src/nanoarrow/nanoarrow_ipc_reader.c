@@ -194,7 +194,8 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
 }
 
 static int ArrowIpcArrayStreamReaderNextHeader(
-    struct ArrowIpcArrayStreamReaderPrivate* private_data) {
+    struct ArrowIpcArrayStreamReaderPrivate* private_data,
+    enum ArrowIpcMessageType message_type) {
   private_data->header.size_bytes = 0;
   int64_t bytes_read = 0;
 
@@ -206,6 +207,10 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   private_data->header.size_bytes += bytes_read;
 
   if (bytes_read == 0) {
+    // The caller might not use this error message (e.g., if the end of the stream
+    // is one of the valid outcomes) but we set the error anyway in case it gets
+    // propagated higher (e.g., if the stream is emtpy and there's no schema message)
+    ArrowErrorSet(&private_data->error, "No data available on stream");
     return ENODATA;
   } else if (bytes_read != 8) {
     ArrowErrorSet(&private_data->error,
@@ -238,6 +243,13 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderVerifyHeader(&private_data->decoder, input_view,
                                                       &private_data->error));
+
+  // Don't decode the message if it's of the wrong type (because the error message
+  // is better communicated by the caller)
+  if (private_data->decoder.message_type != message_type) {
+    return NANOARROW_OK;
+  }
+
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeHeader(&private_data->decoder, input_view,
                                                       &private_data->error));
   return NANOARROW_OK;
@@ -265,7 +277,8 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
     return NANOARROW_OK;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextHeader(private_data));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextHeader(
+      private_data, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA));
 
   // Error if this isn't a schema message
   if (private_data->decoder.message_type != NANOARROW_IPC_MESSAGE_TYPE_SCHEMA) {
@@ -338,7 +351,8 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderReadSchemaIfNeeded(private_data));
 
   // Read + decode the next header
-  int result = ArrowIpcArrayStreamReaderNextHeader(private_data);
+  int result = ArrowIpcArrayStreamReaderNextHeader(
+      private_data, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
   if (result == ENODATA) {
     // If the stream is finished, release the input
     private_data->input.release(&private_data->input);

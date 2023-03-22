@@ -57,6 +57,8 @@ static uint8_t kSimpleRecordBatch[] = {
     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
+static uint8_t kEndOfStream[] = {0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
+
 TEST(NanoarrowIpcReader, InputStreamBuffer) {
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowBuffer input;
@@ -167,6 +169,146 @@ TEST(NanoarrowIpcReader, StreamReaderBasic) {
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleRecordBatch)),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kEndOfStream, sizeof(kEndOfStream)),
+            NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+s");
+  schema.release(&schema);
+
+  struct ArrowArray array;
+  ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
+  EXPECT_EQ(array.length, 3);
+  array.release(&array);
+
+  ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
+  EXPECT_EQ(array.release, nullptr);
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+s");
+  schema.release(&schema);
+
+  struct ArrowArray array;
+  ASSERT_EQ(stream.get_next(&stream, &array), EINVAL);
+  EXPECT_STREQ(stream.get_last_error(&stream),
+               "Unexpected message type (expected RecordBatch)");
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderExpectedSchema) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), EINVAL);
+  EXPECT_STREQ(stream.get_last_error(&stream),
+               "Unexpected message type at start of input (expected Schema)");
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderUnsupportedFieldIndex) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleRecordBatch)),
+      NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  struct ArrowIpcArrayStreamReaderOptions options;
+  options.field_index = 0;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), ENOTSUP);
+  EXPECT_STREQ(stream.get_last_error(&stream), "Field index != -1 is not yet supported");
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderEmptyInput) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), ENODATA);
+  EXPECT_STREQ(stream.get_last_error(&stream), "No data available on stream");
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderIncompletePrefix) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppendUInt8(&input_buffer, 0x00), NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), EINVAL);
+  EXPECT_STREQ(stream.get_last_error(&stream),
+               "Expected at least 8 bytes in remainder of stream");
 
   stream.release(&stream);
 }
