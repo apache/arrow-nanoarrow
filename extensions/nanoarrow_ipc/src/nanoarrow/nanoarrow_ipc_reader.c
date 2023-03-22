@@ -86,6 +86,81 @@ ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
   return NANOARROW_OK;
 }
 
+struct ArrowIpcInputStreamFilePrivate {
+  FILE* file_ptr;
+  int stream_finished;
+  int close_on_release;
+};
+
+static void ArrowIpcInputStreamFileRelease(struct ArrowIpcInputStream* stream) {
+  struct ArrowIpcInputStreamFilePrivate* private_data =
+      (struct ArrowIpcInputStreamFilePrivate*)stream->private_data;
+
+  if (private_data->file_ptr != NULL && private_data->close_on_release) {
+    fclose(private_data->file_ptr);
+  }
+
+  ArrowFree(private_data);
+  stream->release = NULL;
+}
+
+static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* stream, void* buf,
+                                   int64_t buf_size_bytes, int64_t* size_read_out,
+                                   struct ArrowError* error) {
+  struct ArrowIpcInputStreamFilePrivate* private_data =
+      (struct ArrowIpcInputStreamFilePrivate*)stream->private_data;
+
+  if (private_data->stream_finished) {
+    *size_read_out = 0;
+    return NANOARROW_OK;
+  }
+
+  // Do the read
+  int64_t bytes_read = (int64_t)fread(buf, 1, buf_size_bytes, private_data->file_ptr);
+  *size_read_out = bytes_read;
+
+  if (bytes_read != buf_size_bytes) {
+    private_data->stream_finished = 1;
+
+    // Inspect error
+    int has_error = !feof(private_data->file_ptr) && ferror(private_data->file_ptr);
+
+    // Try to close the file now
+    if (private_data->close_on_release) {
+      if (fclose(private_data->file_ptr) == 0) {
+        private_data->file_ptr = NULL;
+      }
+    }
+
+    // Maybe return error
+    if (has_error) {
+      ArrowErrorSet(error, "ArrowIpcInputStreamFile IO error");
+      return EIO;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
+                                           void* file_ptr, int close_on_release) {
+  struct ArrowIpcInputStreamFilePrivate* private_data =
+      (struct ArrowIpcInputStreamFilePrivate*)ArrowMalloc(
+          sizeof(struct ArrowIpcInputStreamFilePrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  private_data->file_ptr = (FILE*)file_ptr;
+  private_data->close_on_release = close_on_release;
+  private_data->stream_finished = 0;
+
+  stream->read = &ArrowIpcInputStreamFileRead;
+  stream->release = &ArrowIpcInputStreamFileRelease;
+  stream->private_data = private_data;
+  return NANOARROW_OK;
+}
+
 struct ArrowIpcArrayStreamReaderPrivate {
   struct ArrowIpcInputStream input;
   struct ArrowIpcDecoder decoder;

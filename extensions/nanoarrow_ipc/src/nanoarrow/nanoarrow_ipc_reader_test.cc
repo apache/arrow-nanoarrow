@@ -17,6 +17,8 @@
 
 #include <gtest/gtest.h>
 
+#include <stdio.h>
+
 #include "nanoarrow_ipc.h"
 
 static uint8_t kSimpleSchema[] = {
@@ -67,6 +69,46 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
 
   ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&stream, &input), NANOARROW_OK);
   EXPECT_EQ(input.data, nullptr);
+
+  EXPECT_EQ(stream.read(&stream, output_data, 2, &size_read_bytes, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(size_read_bytes, 2);
+  uint8_t output_data1[] = {0x01, 0x02, 0xff, 0xff, 0xff};
+  EXPECT_EQ(memcmp(output_data, output_data1, sizeof(output_data)), 0);
+
+  EXPECT_EQ(stream.read(&stream, output_data + 2, 2, &size_read_bytes, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(size_read_bytes, 2);
+  uint8_t output_data2[] = {0x01, 0x02, 0x03, 0x04, 0xff};
+  EXPECT_EQ(memcmp(output_data, output_data2, sizeof(output_data)), 0);
+
+  EXPECT_EQ(stream.read(&stream, output_data + 4, 2, &size_read_bytes, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(size_read_bytes, 1);
+  uint8_t output_data3[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  EXPECT_EQ(memcmp(output_data, output_data3, sizeof(output_data)), 0);
+
+  EXPECT_EQ(stream.read(&stream, nullptr, 2, &size_read_bytes, nullptr), NANOARROW_OK);
+  EXPECT_EQ(size_read_bytes, 0);
+
+  EXPECT_EQ(stream.read(&stream, nullptr, 0, &size_read_bytes, nullptr), NANOARROW_OK);
+  EXPECT_EQ(size_read_bytes, 0);
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, InputStreamFile) {
+  uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  FILE* file_ptr = tmpfile();
+  ASSERT_NE(file_ptr, nullptr);
+  ASSERT_EQ(fwrite(input_data, 1, sizeof(input_data), file_ptr), sizeof(input_data));
+  fseek(file_ptr, 0, SEEK_SET);
+
+  struct ArrowIpcInputStream stream;
+  uint8_t output_data[] = {0xff, 0xff, 0xff, 0xff, 0xff};
+  int64_t size_read_bytes;
+
+  ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, file_ptr, 1), NANOARROW_OK);
 
   EXPECT_EQ(stream.read(&stream, output_data, 2, &size_read_bytes, nullptr),
             NANOARROW_OK);

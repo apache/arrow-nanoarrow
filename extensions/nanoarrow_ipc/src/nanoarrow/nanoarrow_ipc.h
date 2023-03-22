@@ -253,6 +253,10 @@ void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
 ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
                                              struct ArrowBuffer* input);
 
+/// \brief Create an input stream from a C FILE* pointer
+ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
+                                           void* file_ptr, int close_on_release);
+
 struct ArrowIpcArrayStreamReaderOptions {
   int64_t field_index;
 };
