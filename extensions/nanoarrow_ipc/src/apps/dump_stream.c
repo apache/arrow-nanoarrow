@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 void dump_schema_to_stdout(struct ArrowSchema* schema, int level, char* buf,
                            int buf_size) {
@@ -34,7 +35,6 @@ void dump_schema_to_stdout(struct ArrowSchema* schema, int level, char* buf,
     fprintf(stdout, "%s: %s\n", schema->name, buf);
   }
 
-
   for (int64_t i = 0; i < schema->n_children; i++) {
     dump_schema_to_stdout(schema->children[i], level + 1, buf, buf_size);
   }
@@ -46,6 +46,10 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Usage: dump_stream FILENAME (or - for stdin)\n");
     return 1;
   }
+
+  // Allocate a buffer for file IO. The default size (4096 bytes) results in
+  // very slow IO operations.
+  char io_buffer[1048576];
 
   // Sort the input stream
   FILE* file_ptr;
@@ -74,6 +78,8 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  clock_t begin = clock();
+
   struct ArrowSchema schema;
   result = stream.get_schema(&stream, &schema);
   if (result != NANOARROW_OK) {
@@ -87,6 +93,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  clock_t end = clock();
+  double elapsed = (end - begin) / ((double)CLOCKS_PER_SEC);
+  fprintf(stdout, "Read Schema <%.06f seconds>\n", elapsed);
+
   char schema_tmp[8096];
   memset(schema_tmp, 0, sizeof(schema_tmp));
   dump_schema_to_stdout(&schema, 0, schema_tmp, sizeof(schema_tmp));
@@ -94,7 +104,11 @@ int main(int argc, char* argv[]) {
 
   struct ArrowArray array;
   array.release = NULL;
+
   int64_t batch_count = 0;
+  int64_t row_count = 0;
+  begin = clock();
+
   while (1) {
     result = stream.get_next(&stream, &array);
     if (result != NANOARROW_OK) {
@@ -109,11 +123,18 @@ int main(int argc, char* argv[]) {
     }
 
     if (array.release != NULL) {
+      row_count += array.length;
+      batch_count++;
       array.release(&array);
     } else {
       break;
     }
   }
+
+  end = clock();
+  elapsed = (end - begin) / ((double)CLOCKS_PER_SEC);
+  fprintf(stdout, "Read %ld rows in %ld batch(es) <%.06f seconds>\n", (long)row_count,
+          (long)batch_count, elapsed);
 
   stream.release(&stream);
   fclose(file_ptr);
