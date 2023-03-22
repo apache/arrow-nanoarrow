@@ -22,6 +22,7 @@ include(FetchContent)
 project(nanoarrow_ipc)
 
 option(NANOARROW_IPC_BUILD_TESTS "Build tests" OFF)
+option(NANOARROW_IPC_BUILD_APPS "Build utility applications" OFF)
 option(NANOARROW_IPC_BUNDLE "Create bundled nanoarrow_ipc.h and nanoarrow_ipc.c" OFF)
 option(NANOARROW_IPC_FLATCC_ROOT_DIR "Root directory for flatcc include and lib directories" OFF)
 option(NANOARROW_IPC_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
@@ -203,4 +204,9 @@ if (NANOARROW_IPC_BUILD_TESTS)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_ipc_decoder_test)
+endif()
+
+if (NANOARROW_IPC_BUILD_APPS)
+  add_executable(dump_stream src/apps/dump_stream.c)
+  target_link_libraries(dump_stream nanoarrow_ipc nanoarrow)
 endif()
