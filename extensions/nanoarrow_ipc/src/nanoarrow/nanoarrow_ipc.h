@@ -240,7 +240,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 /// to by out takes ownership of the original body and a copy of the reference-counted
 /// shared buffer is injected in its place (e.g., such that it can be used for
 /// subsequent calls to this function). In all cases the caller must ArrowBufferReset()
-/// body.
+/// body. If ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released
+/// by another thread.
 ArrowErrorCode ArrowIpcDecoderDecodeArrayFromOwned(struct ArrowIpcDecoder* decoder,
                                                    struct ArrowBuffer* body, int64_t i,
                                                    struct ArrowArray* out,
@@ -293,10 +294,11 @@ struct ArrowIpcArrayStreamReaderOptions {
 
   /// \brief Set to a non-zero value to share the message body buffer among decoded arrays
   ///
-  /// Defaults to true. Sharing buffers is a good default when (1) using memory-mapped IO
+  /// Sharing buffers is a good choice when (1) using memory-mapped IO
   /// (since unreferenced portions of the file are often not loaded into memory) or
   /// (2) if all data from all columns are about to be referenced anyway. When loading
   /// a single field there is probably no advantage to using shared buffers.
+  /// Defaults to the value of ArrowIpcSharedBufferIsThreadSafe().
   int use_shared_buffers;
 };
 

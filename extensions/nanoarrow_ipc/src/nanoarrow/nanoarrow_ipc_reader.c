@@ -422,7 +422,7 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     private_data->use_shared_buffers = options->use_shared_buffers;
   } else {
     private_data->field_index = -1;
-    private_data->use_shared_buffers = 1;
+    private_data->use_shared_buffers = ArrowIpcSharedBufferIsThreadSafe();
   }
 
   out->private_data = private_data;
