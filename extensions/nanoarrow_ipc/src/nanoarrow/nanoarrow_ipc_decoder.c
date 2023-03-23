@@ -1051,6 +1051,54 @@ ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
   }
 }
 
+struct ArrowIpcSharedBuffer {
+  struct ArrowBuffer src;
+  int64_t reference_count;
+};
+
+static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                     int64_t size) {
+  struct ArrowIpcSharedBuffer* private_data =
+      (struct ArrowIpcSharedBuffer*)allocator->private_data;
+  // TODO: make this thread safe, maybe using C11 atomics? Or maybe there's a lock
+  // of some kind in C99?
+  private_data->reference_count--;
+  if (private_data->reference_count == 0) {
+    ArrowBufferReset(&private_data->src);
+    ArrowFree(private_data);
+  }
+}
+
+static int ArrowIpcSharedBufferInit(struct ArrowBuffer* buffer) {
+  struct ArrowIpcSharedBuffer* private_data =
+      (struct ArrowIpcSharedBuffer*)ArrowMalloc(sizeof(struct ArrowIpcSharedBuffer));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  ArrowBufferMove(buffer, &private_data->src);
+  private_data->reference_count = 1;
+
+  ArrowBufferInit(buffer);
+  buffer->data = private_data->src.data;
+  buffer->size_bytes = private_data->src.size_bytes;
+  // Don't expose any extra capcity from src so that any calls to ArrowBufferAppend
+  // on this buffer will fail.
+  buffer->capacity_bytes = private_data->src.size_bytes;
+  buffer->allocator = ArrowBufferDeallocator(&ArrowIpcSharedBufferFree, private_data);
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcSharedBufferClone(struct ArrowBuffer* shared,
+                                      struct ArrowBuffer* shared_out) {
+  struct ArrowIpcSharedBuffer* private_data =
+      (struct ArrowIpcSharedBuffer*)shared->allocator.private_data;
+  // This doesn't need to be thread safe because we don't construct this type of
+  // buffer using threads.
+  private_data->reference_count++;
+  memcpy(shared_out, shared, sizeof(struct ArrowBuffer));
+}
+
 struct ArrowIpcArraySetter {
   ns(FieldNode_vec_t) fields;
   int64_t field_i;
