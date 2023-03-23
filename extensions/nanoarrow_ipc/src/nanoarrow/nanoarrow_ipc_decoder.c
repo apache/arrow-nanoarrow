@@ -1119,15 +1119,6 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
                                                  struct ArrowError* error) {
   struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
 
-  // Check that this buffer fits within the body
-  int64_t buffer_start = src->body_offset_bytes;
-  int64_t buffer_end = buffer_start + src->buffer_length_bytes;
-  if (buffer_start < 0 || buffer_end > body->size_bytes) {
-    ArrowErrorSet(error, "Buffer requires body offsets [%ld..%ld) but body has size %ld",
-                  (long)buffer_start, (long)buffer_end, body->size_bytes);
-    return EINVAL;
-  }
-
   if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
     ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
     return ENOTSUP;
@@ -1168,6 +1159,7 @@ struct ArrowIpcArraySetter {
   int64_t field_i;
   ns(Buffer_vec_t) buffers;
   int64_t buffer_i;
+  int64_t body_size_bytes;
   struct ArrowIpcBufferSource src;
   struct ArrowIpcBufferFactory factory;
 };
@@ -1177,6 +1169,15 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
                                      struct ArrowError* error) {
   if (length == 0) {
     return NANOARROW_OK;
+  }
+
+  // Check that this buffer fits within the body
+  int64_t buffer_start = offset;
+  int64_t buffer_end = buffer_start + length;
+  if (buffer_start < 0 || buffer_end > setter->body_size_bytes) {
+    ArrowErrorSet(error, "Buffer requires body offsets [%ld..%ld) but body has size %ld",
+                  (long)buffer_start, (long)buffer_end, (long)setter->body_size_bytes);
+    return EINVAL;
   }
 
   setter->src.body_offset_bytes = offset;
@@ -1258,9 +1259,15 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   setter.field_i = field_i;
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
+  setter.body_size_bytes = decoder->body_size_bytes;
   setter.factory = ArrowIpcBufferFactoryFromView(&body);
   setter.src.codec = decoder->codec;
   setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
+
+  // If the body provided is smaller than the expected body size, use that size instead
+  if (body.size_bytes < decoder->body_size_bytes) {
+    setter.body_size_bytes = body.size_bytes;
+  }
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
