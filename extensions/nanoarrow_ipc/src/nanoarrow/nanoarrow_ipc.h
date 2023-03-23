@@ -281,10 +281,18 @@ ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
 
 /// \brief Options for ArrowIpcArrayStreamReaderInit()
 struct ArrowIpcArrayStreamReaderOptions {
-  /// \brief The field index to extract. Defaults to -1 (i.e., read all fields).
+  /// \brief The field index to extract.
+  ///
+  /// Defaults to -1 (i.e., read all fields). Note that this field index refers to
+  /// the flattened tree of children and not necessarily the column index.
   int64_t field_index;
 
   /// \brief Set to a non-zero value to share the message body buffer among decoded arrays
+  ///
+  /// Defaults to true. Sharing buffers is a good default when (1) using memory-mapped IO
+  /// (since unreferenced portions of the file are often not loaded into memory) or
+  /// (2) if all data from all columns are about to be referenced anyway. When loading
+  /// a single field there is probably no advantage to using shared buffers.
   int use_shared_buffers;
 };
 
