@@ -23,6 +23,8 @@
 #ifdef NANOARROW_NAMESPACE
 
 #define ArrowIpcCheckRuntime NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCheckRuntime)
+#define ArrowIpcSharedBufferIsThreadSafe \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferIsThreadSafe)
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
 #define ArrowIpcDecoderPeekHeader \
@@ -89,6 +91,8 @@ enum ArrowIpcCompressionType {
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
+
+int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief Decoder for Arrow IPC messages
 ///

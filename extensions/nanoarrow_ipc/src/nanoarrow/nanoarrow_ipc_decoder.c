@@ -19,6 +19,19 @@
 #include <stdio.h>
 #include <string.h>
 
+// For thread safe shared buffers we need C11 + stdatomic.h
+#if !defined(NANOARROW_IPC_USE_STDATOMIC)
+#define NANOARROW_IPC_USE_STDATOMIC 0
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if !defined(__STDC_NO_ATOMICS__)
+#include <stdatomic.h>
+#undef NANOARROW_IPC_USE_STDATOMIC
+#define NANOARROW_IPC_USE_STDATOMIC 1
+#endif
+#endif
+
+#endif
+
 #include "nanoarrow.h"
 #include "nanoarrow_ipc.h"
 #include "nanoarrow_ipc_flatcc_generated.h"
@@ -1051,19 +1064,54 @@ ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
   }
 }
 
+#if NANOARROW_IPC_USE_STDATOMIC
+struct ArrowIpcSharedBuffer {
+  struct ArrowBuffer src;
+  atomic_long reference_count;
+};
+
+static int64_t ArrowIpcSharedBufferUpdate(
+    struct ArrowIpcSharedBuffer* private_data, int delta) {
+  int64_t old_count = atomic_fetch_add(&private_data->reference_count, delta);
+  return old_count + delta;
+}
+
+static void ArrowIpcSharedBufferSet(
+    struct ArrowIpcSharedBuffer* private_data, int64_t count) {
+  atomic_store(&private_data->reference_count, count);
+}
+
+int ArrowIpcSharedBufferIsThreadSafe(void) {
+  return 1;
+}
+#else
 struct ArrowIpcSharedBuffer {
   struct ArrowBuffer src;
   int64_t reference_count;
 };
 
+static int64_t ArrowIpcSharedBufferUpdate(
+    struct ArrowIpcSharedBuffer* private_data, int delta) {
+  private_data->reference_count += delta;
+  return private_data->reference_count;
+}
+
+static void ArrowIpcSharedBufferSet(
+    struct ArrowIpcSharedBuffer* private_data, int64_t count) {
+  private_data->reference_count = count;
+}
+
+int ArrowIpcSharedBufferIsThreadSafe(void) {
+  return 0;
+}
+#endif
+
 static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                      int64_t size) {
   struct ArrowIpcSharedBuffer* private_data =
       (struct ArrowIpcSharedBuffer*)allocator->private_data;
-  // TODO: make this thread safe, maybe using C11 atomics? Or maybe there's a lock
-  // of some kind in C99?
-  private_data->reference_count--;
-  if (private_data->reference_count == 0) {
+
+  if (ArrowIpcSharedBufferUpdate(private_data, -1) == 0) {
     ArrowBufferReset(&private_data->src);
     ArrowFree(private_data);
   }
@@ -1077,7 +1125,7 @@ static int ArrowIpcSharedBufferInit(struct ArrowBuffer* buffer) {
   }
 
   ArrowBufferMove(buffer, &private_data->src);
-  private_data->reference_count = 1;
+  ArrowIpcSharedBufferSet(private_data, 1);
 
   ArrowBufferInit(buffer);
   buffer->data = private_data->src.data;
@@ -1093,9 +1141,7 @@ static void ArrowIpcSharedBufferClone(struct ArrowBuffer* shared,
                                       struct ArrowBuffer* shared_out) {
   struct ArrowIpcSharedBuffer* private_data =
       (struct ArrowIpcSharedBuffer*)shared->allocator.private_data;
-  // This doesn't need to be thread safe because we don't construct this type of
-  // buffer using threads?
-  private_data->reference_count++;
+  ArrowIpcSharedBufferUpdate(private_data, 1);
   memcpy(shared_out, shared, sizeof(struct ArrowBuffer));
 }
 
