@@ -490,8 +490,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchOwned) {
   EXPECT_EQ(memcmp(array.buffers[1], one_two_three_le, sizeof(one_two_three_le)), 0);
 
   array.release(&array);
-
   schema.release(&schema);
+  ArrowBufferReset(&body);
   ArrowIpcDecoderReset(&decoder);
 }
 
