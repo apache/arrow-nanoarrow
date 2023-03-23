@@ -227,6 +227,19 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowArray* out,
                                           struct ArrowError* error);
 
+/// \brief Decode an ArrowArray from an owned buffer
+///
+/// This implementation takes advantage of the fact that it can take ownership of
+/// body to avoid copying individual buffers. On success, the ArrowArray pointed
+/// to by out takes ownership of the original body and a copy of the reference-counted
+/// shared buffer is injected in its place (e.g., such that it can be used for
+/// subsequent calls to this function). In all cases the caller must ArrowBufferReset()
+/// body.
+ArrowErrorCode ArrowIpcDecoderDecodeArrayFromOwned(struct ArrowIpcDecoder* decoder,
+                                                   struct ArrowBuffer* body, int64_t i,
+                                                   struct ArrowArray* out,
+                                                   struct ArrowError* error);
+
 /// \brief An user-extensible input data source
 struct ArrowIpcInputStream {
   /// \brief Read up to buf_size_bytes from stream into buf

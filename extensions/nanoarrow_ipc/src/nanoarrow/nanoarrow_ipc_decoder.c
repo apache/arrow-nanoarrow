@@ -1260,3 +1260,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   ArrowArrayMove(&temp, out);
   return NANOARROW_OK;
 }
+
+ArrowErrorCode ArrowIpcDecoderDecodeArrayFromOwned(struct ArrowIpcDecoder* decoder,
+                                                   struct ArrowBuffer* body, int64_t i,
+                                                   struct ArrowArray* out,
+                                                   struct ArrowError* error) {
+  struct ArrowBufferView body_view;
+  body_view.data.data = body->data;
+  body_view.size_bytes = body->size_bytes;
+
+  return ArrowIpcDecoderDecodeArray(decoder, body_view, i, out, error);
+}

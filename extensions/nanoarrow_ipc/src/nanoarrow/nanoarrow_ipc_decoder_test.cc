@@ -436,6 +436,66 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchOwned) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+
+  // Data buffer content of the hard-coded record batch message
+  uint8_t one_two_three_le[] = {0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+                                0x00, 0x00, 0x03, 0x00, 0x00, 0x00};
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatch;
+  data.size_bytes = sizeof(kSimpleRecordBatch);
+
+  ArrowIpcDecoderInit(&decoder);
+  auto decoder_private =
+      reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
+
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+
+  struct ArrowBuffer body;
+  ArrowBufferInit(&body);
+  ASSERT_EQ(ArrowBufferAppend(&body, kSimpleRecordBatch + decoder.header_size_bytes,
+                              decoder.body_size_bytes),
+            NANOARROW_OK);
+
+  // Check full struct extract
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromOwned(&decoder, &body, -1, &array, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(array.length, 3);
+  EXPECT_EQ(array.null_count, 0);
+  ASSERT_EQ(array.n_children, 1);
+  ASSERT_EQ(array.children[0]->n_buffers, 2);
+  ASSERT_EQ(array.children[0]->length, 3);
+  EXPECT_EQ(array.children[0]->null_count, 0);
+  EXPECT_EQ(
+      memcmp(array.children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le)),
+      0);
+
+  array.release(&array);
+
+  // Check field extract
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromOwned(&decoder, &body, 0, &array, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(array.n_buffers, 2);
+  ASSERT_EQ(array.length, 3);
+  EXPECT_EQ(array.null_count, 0);
+  EXPECT_EQ(memcmp(array.buffers[1], one_two_three_le, sizeof(one_two_three_le)), 0);
+
+  array.release(&array);
+
+  schema.release(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
   std::shared_ptr<arrow::Schema> dummy_schema =
