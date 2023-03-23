@@ -335,8 +335,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   // Field extract should fail if body is too small
   body.size_bytes = 0;
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message,
-               "Buffer 1 requires body offsets [0..12) but body has size 0");
+  EXPECT_STREQ(error.message, "Buffer requires body offsets [0..12) but body has size 0");
 
   // Should error if the number of buffers or field nodes doesn't match
   // (different numbers because we count the root struct and the message does not)

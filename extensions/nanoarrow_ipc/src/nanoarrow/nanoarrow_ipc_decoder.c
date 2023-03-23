@@ -1094,9 +1094,73 @@ static void ArrowIpcSharedBufferClone(struct ArrowBuffer* shared,
   struct ArrowIpcSharedBuffer* private_data =
       (struct ArrowIpcSharedBuffer*)shared->allocator.private_data;
   // This doesn't need to be thread safe because we don't construct this type of
-  // buffer using threads.
+  // buffer using threads?
   private_data->reference_count++;
   memcpy(shared_out, shared, sizeof(struct ArrowBuffer));
+}
+
+struct ArrowIpcBufferSource {
+  int64_t body_offset_bytes;
+  int64_t buffer_length_bytes;
+  enum ArrowIpcCompressionType codec;
+  int swap_endian;
+};
+
+struct ArrowIpcBufferFactory {
+  ArrowErrorCode (*make_buffer)(struct ArrowIpcBufferFactory* factory,
+                                struct ArrowIpcBufferSource* src, struct ArrowBuffer* dst,
+                                struct ArrowError* error);
+  void* private_data;
+};
+
+static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* factory,
+                                                 struct ArrowIpcBufferSource* src,
+                                                 struct ArrowBuffer* dst,
+                                                 struct ArrowError* error) {
+  struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
+
+  // Check that this buffer fits within the body
+  int64_t buffer_start = src->body_offset_bytes;
+  int64_t buffer_end = buffer_start + src->buffer_length_bytes;
+  if (buffer_start < 0 || buffer_end > body->size_bytes) {
+    ArrowErrorSet(error, "Buffer requires body offsets [%ld..%ld) but body has size %ld",
+                  (long)buffer_start, (long)buffer_end, body->size_bytes);
+    return EINVAL;
+  }
+
+  if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
+    return ENOTSUP;
+  }
+
+  if (src->swap_endian) {
+    ArrowErrorSet(error,
+                  "The nanoarrow_ipc extension does not support non-system endianness");
+    return ENOTSUP;
+  }
+
+  struct ArrowBufferView view;
+  view.data.as_uint8 = body->data.as_uint8 + src->body_offset_bytes;
+  view.size_bytes = src->buffer_length_bytes;
+
+  ArrowBufferInit(dst);
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, view));
+  return NANOARROW_OK;
+}
+
+static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromView(
+    struct ArrowBufferView* buffer_view) {
+  struct ArrowIpcBufferFactory out;
+  out.make_buffer = &ArrowIpcMakeBufferFromView;
+  out.private_data = buffer_view;
+  return out;
+}
+
+static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
+    struct ArrowBuffer* shared) {
+  struct ArrowIpcBufferFactory out;
+  out.private_data = shared;
+  return out;
 }
 
 struct ArrowIpcArraySetter {
@@ -1104,9 +1168,8 @@ struct ArrowIpcArraySetter {
   int64_t field_i;
   ns(Buffer_vec_t) buffers;
   int64_t buffer_i;
-  struct ArrowBufferView body;
-  enum ArrowIpcCompressionType codec;
-  int swap_endian;
+  struct ArrowIpcBufferSource src;
+  struct ArrowIpcBufferFactory factory;
 };
 
 static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
@@ -1116,36 +1179,10 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
     return NANOARROW_OK;
   }
 
-  // Check that this buffer fits within the body
-  if (offset < 0 || (offset + length) > setter->body.size_bytes) {
-    ArrowErrorSet(error,
-                  "Buffer %ld requires body offsets [%ld..%ld) but body has size %ld",
-                  (long)setter->buffer_i - 1, (long)offset, (long)offset + (long)length,
-                  setter->body.size_bytes);
-    return EINVAL;
-  }
-
-  struct ArrowBufferView view;
-  view.data.as_uint8 = setter->body.data.as_uint8 + offset;
-  view.size_bytes = length;
-
-  if (setter->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
-    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
-    return ENOTSUP;
-  }
-
-  if (setter->swap_endian) {
-    ArrowErrorSet(error,
-                  "The nanoarrow_ipc extension does not support non-system endianness");
-    return ENOTSUP;
-  }
-
-  int result = ArrowBufferAppendBufferView(out, view);
-  if (result != NANOARROW_OK) {
-    ArrowErrorSet(error, "Failed to copy buffer");
-    return result;
-  }
-
+  setter->src.body_offset_bytes = offset;
+  setter->src.buffer_length_bytes = length;
+  NANOARROW_RETURN_NOT_OK(
+      setter->factory.make_buffer(&setter->factory, &setter->src, out, error));
   return NANOARROW_OK;
 }
 
@@ -1221,9 +1258,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   setter.field_i = field_i;
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
-  setter.body = body;
-  setter.codec = decoder->codec;
-  setter.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
+  setter.factory = ArrowIpcBufferFactoryFromView(&body);
+  setter.src.codec = decoder->codec;
+  setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
