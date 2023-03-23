@@ -333,7 +333,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_UNINITIALIZED);
 
   // Field extract should fail if body is too small
-  body.size_bytes = 0;
+  decoder.body_size_bytes = 0;
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Buffer requires body offsets [0..12) but body has size 0");
 

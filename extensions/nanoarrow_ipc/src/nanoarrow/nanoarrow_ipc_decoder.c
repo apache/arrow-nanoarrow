@@ -1147,9 +1147,21 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromView(
   return out;
 }
 
+static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory* factory,
+                                                   struct ArrowIpcBufferSource* src,
+                                                   struct ArrowBuffer* dst,
+                                                   struct ArrowError* error) {
+  struct ArrowBuffer* shared = (struct ArrowBuffer*)factory->private_data;
+  ArrowIpcSharedBufferClone(shared, dst);
+  dst->data += src->body_offset_bytes;
+  dst->size_bytes = src->buffer_length_bytes;
+  return NANOARROW_OK;
+}
+
 static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
     struct ArrowBuffer* shared) {
   struct ArrowIpcBufferFactory out;
+  out.make_buffer = &ArrowIpcMakeBufferFromShared;
   out.private_data = shared;
   return out;
 }
@@ -1228,10 +1240,9 @@ static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
-                                          struct ArrowBufferView body, int64_t field_i,
-                                          struct ArrowArray* out,
-                                          struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
+    int64_t field_i, struct ArrowArray* out, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1260,14 +1271,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
   setter.body_size_bytes = decoder->body_size_bytes;
-  setter.factory = ArrowIpcBufferFactoryFromView(&body);
+  setter.factory = factory;
   setter.src.codec = decoder->codec;
   setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
-
-  // If the body provided is smaller than the expected body size, use that size instead
-  if (body.size_bytes < decoder->body_size_bytes) {
-    setter.body_size_bytes = body.size_bytes;
-  }
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
@@ -1305,13 +1311,24 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
+                                          struct ArrowBufferView body, int64_t i,
+                                          struct ArrowArray* out,
+                                          struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeArrayInternal(decoder, ArrowIpcBufferFactoryFromView(&body),
+                                            i, out, error);
+}
+
 ArrowErrorCode ArrowIpcDecoderDecodeArrayFromOwned(struct ArrowIpcDecoder* decoder,
                                                    struct ArrowBuffer* body, int64_t i,
                                                    struct ArrowArray* out,
                                                    struct ArrowError* error) {
-  struct ArrowBufferView body_view;
-  body_view.data.data = body->data;
-  body_view.size_bytes = body->size_bytes;
+  int result = ArrowIpcSharedBufferInit(body);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "Failed to initialize shared buffer");
+    return result;
+  }
 
-  return ArrowIpcDecoderDecodeArray(decoder, body_view, i, out, error);
+  return ArrowIpcDecoderDecodeArrayInternal(
+      decoder, ArrowIpcBufferFactoryFromShared(body), i, out, error);
 }
