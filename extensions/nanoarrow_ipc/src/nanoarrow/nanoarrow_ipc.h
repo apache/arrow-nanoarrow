@@ -283,6 +283,9 @@ ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
 struct ArrowIpcArrayStreamReaderOptions {
   /// \brief The field index to extract. Defaults to -1 (i.e., read all fields).
   int64_t field_index;
+
+  /// \brief Set to a non-zero value to share the message body buffer among decoded arrays
+  int use_shared_buffers;
 };
 
 /// \brief Initialize an ArrowArrayStream from an input stream of bytes
