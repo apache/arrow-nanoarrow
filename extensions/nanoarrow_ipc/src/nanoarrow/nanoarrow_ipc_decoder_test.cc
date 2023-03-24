@@ -16,6 +16,7 @@
 // under the License.
 
 #include <stdexcept>
+#include <thread>
 
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
@@ -435,7 +436,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchOwned) {
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
   struct ArrowSchema schema;
@@ -500,6 +501,66 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchOwned) {
   schema.release(&schema);
   ArrowBufferReset(&body);
   ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
+  if (!ArrowIpcSharedBufferIsThreadSafe()) {
+    GTEST_SKIP();
+  }
+
+  struct ArrowIpcDecoder decoder;
+  struct ArrowSchema schema;
+
+  // Data buffer content of the hard-coded record batch message
+  uint8_t one_two_three_le[] = {0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+                                0x00, 0x00, 0x03, 0x00, 0x00, 0x00};
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatch;
+  data.size_bytes = sizeof(kSimpleRecordBatch);
+
+  ArrowIpcDecoderInit(&decoder);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, nullptr), NANOARROW_OK);
+
+  struct ArrowBuffer body;
+  ArrowBufferInit(&body);
+  ASSERT_EQ(ArrowBufferAppend(&body, kSimpleRecordBatch + decoder.header_size_bytes,
+                              decoder.body_size_bytes),
+            NANOARROW_OK);
+
+  struct ArrowIpcSharedBuffer shared;
+  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
+
+  struct ArrowArray arrays[10];
+  for (int i = 0; i < 10; i++) {
+    ASSERT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, arrays + i, nullptr),
+            NANOARROW_OK);
+  }
+
+  // Clean up
+  ArrowIpcSharedBufferReset(&shared);
+  ArrowIpcDecoderReset(&decoder);
+  schema.release(&schema);
+
+  // Access the data and release from another thread
+  std::thread threads[10];
+  for (int i = 0; i < 10; i++) {
+    threads[i] = std::thread([&arrays, i, &one_two_three_le] {
+      memcmp(arrays[i].children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le));
+      arrays[i].release(arrays + i);
+    });
+  }
+
+  for (int i = 0; i < 10; i++) {
+    threads[i].join();
+  }
+
+  // We will get a (occasional) memory leak if the atomic counter does not work
 }
 
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {

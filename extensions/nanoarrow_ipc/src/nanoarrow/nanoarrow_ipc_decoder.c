@@ -94,7 +94,7 @@ static void ArrowIpcSharedBufferSet(struct ArrowIpcSharedBufferPrivate* private_
 
 int ArrowIpcSharedBufferIsThreadSafe(void) { return 1; }
 #else
-struct ArrowIpcSharedBuffer {
+struct ArrowIpcSharedBufferPrivate {
   struct ArrowBuffer src;
   int64_t reference_count;
 };
