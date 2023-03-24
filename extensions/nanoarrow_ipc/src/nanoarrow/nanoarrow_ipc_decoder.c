@@ -1148,6 +1148,12 @@ ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
   }
 }
 
+/// \brief Information required to read and/or decompress a single buffer
+///
+/// The RecordBatch message header contains a description of each buffer
+/// in the message body. The ArrowIpcBufferSource is the parsed result of
+/// a single buffer with compression and endian information such that the
+/// original buffer can be reconstructed.
 struct ArrowIpcBufferSource {
   int64_t body_offset_bytes;
   int64_t buffer_length_bytes;
@@ -1155,10 +1161,30 @@ struct ArrowIpcBufferSource {
   int swap_endian;
 };
 
+/// \brief Materializing ArrowBuffer objects
+///
+/// Given a description of where a buffer is located inside the message body, make
+/// the ArrowBuffer that will be placed into the correct ArrowArray. The decoder
+/// does not do any IO and does not make any assumptions about how or if the body
+/// has been read into memory. This abstraction is currently internal and exists
+/// to support the two obvious ways a user might go about this: (1) using a
+/// non-owned view of memory that must be copied slice-wise or (2) adding a reference
+/// to an ArrowIpcSharedBuffer and returning a slice of that memory.
 struct ArrowIpcBufferFactory {
+  /// \brief User-defined callback to create initialize the desired buffer into dst
+  ///
+  /// At the time that this callback is called, the ArrowIpcBufferSource has been checked
+  /// to ensure that it is within the body size declared by the message header. If
+  /// NANOARROW_OK is returned, the caller is responsible for dst. Otherwise, error must
+  /// contain a null-terminated message.
   ArrowErrorCode (*make_buffer)(struct ArrowIpcBufferFactory* factory,
                                 struct ArrowIpcBufferSource* src, struct ArrowBuffer* dst,
                                 struct ArrowError* error);
+
+  /// \brief Caller-defined private data to be used in the callback.
+  ///
+  /// Usually this would be a description of where the body has been read into memory or
+  /// information required to do so.
   void* private_data;
 };
 
@@ -1167,17 +1193,6 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
                                                  struct ArrowBuffer* dst,
                                                  struct ArrowError* error) {
   struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
-
-  if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
-    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
-    return ENOTSUP;
-  }
-
-  if (src->swap_endian) {
-    ArrowErrorSet(error,
-                  "The nanoarrow_ipc extension does not support non-system endianness");
-    return ENOTSUP;
-  }
 
   struct ArrowBufferView view;
   view.data.as_uint8 = body->data.as_uint8 + src->body_offset_bytes;
@@ -1240,6 +1255,20 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
     ArrowErrorSet(error, "Buffer requires body offsets [%ld..%ld) but body has size %ld",
                   (long)buffer_start, (long)buffer_end, (long)setter->body_size_bytes);
     return EINVAL;
+  }
+
+  // If the ArrowIpcBufferFactory is made public, these should get moved (since then a
+  // user could inject support for either one). More likely, by the time that happens,
+  // this library will be able to support some of these features.
+  if (setter->src.codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
+    return ENOTSUP;
+  }
+
+  if (setter->src.swap_endian) {
+    ArrowErrorSet(error,
+                  "The nanoarrow_ipc extension does not support non-system endianness");
+    return ENOTSUP;
   }
 
   setter->src.body_offset_bytes = offset;
