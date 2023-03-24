@@ -90,17 +90,34 @@ enum ArrowIpcCompressionType {
 #define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
+/// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
+/// \brief A structure representing a reference-counted buffer that may be passed to
+/// ArrowIpcDecoderDecodeArrayFromShared().
 struct ArrowIpcSharedBuffer {
   struct ArrowBuffer private_src;
 };
 
+/// \brief Initialize the contents of a ArrowIpcSharedBuffer struct
+///
+/// If NANOARROW_OK is returned, the ArrowIpcSharedBuffer takes ownership of
+/// src.
 ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
                                         struct ArrowBuffer* src);
 
+/// \brief Release the caller's copy of the shared buffer
+///
+/// When finished, the caller must relinquish its own copy of the shared data
+/// using this function. The original buffer will continue to exist until all
+/// ArrowArray objects that refer to it have also been released.
 void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
 
+/// \brief Check for shared buffer thread safety
+///
+/// Thread-safe shared buffers require C11 and the stdatomic.h header.
+/// If either are unavailable, shared buffers are still possible but
+/// the resulting arrays must not be passed to other threads to be released.
 int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief Decoder for Arrow IPC messages
