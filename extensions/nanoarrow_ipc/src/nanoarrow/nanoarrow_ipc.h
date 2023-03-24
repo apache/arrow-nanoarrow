@@ -23,6 +23,12 @@
 #ifdef NANOARROW_NAMESPACE
 
 #define ArrowIpcCheckRuntime NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCheckRuntime)
+#define ArrowIpcSharedBufferIsThreadSafe \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferIsThreadSafe)
+#define ArrowIpcSharedBufferInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferInit)
+#define ArrowIpcSharedBufferReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferReset)
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
 #define ArrowIpcDecoderPeekHeader \
@@ -35,6 +41,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeSchema)
 #define ArrowIpcDecoderDecodeArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArray)
+#define ArrowIpcDecoderDecodeArrayFromShared \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArrayFromShared)
 #define ArrowIpcDecoderSetSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
 #define ArrowIpcDecoderSetEndianness \
@@ -86,7 +94,35 @@ enum ArrowIpcCompressionType {
 #define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
+/// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
+
+/// \brief A structure representing a reference-counted buffer that may be passed to
+/// ArrowIpcDecoderDecodeArrayFromShared().
+struct ArrowIpcSharedBuffer {
+  struct ArrowBuffer private_src;
+};
+
+/// \brief Initialize the contents of a ArrowIpcSharedBuffer struct
+///
+/// If NANOARROW_OK is returned, the ArrowIpcSharedBuffer takes ownership of
+/// src.
+ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
+                                        struct ArrowBuffer* src);
+
+/// \brief Release the caller's copy of the shared buffer
+///
+/// When finished, the caller must relinquish its own copy of the shared data
+/// using this function. The original buffer will continue to exist until all
+/// ArrowArray objects that refer to it have also been released.
+void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
+
+/// \brief Check for shared buffer thread safety
+///
+/// Thread-safe shared buffers require C11 and the stdatomic.h header.
+/// If either are unavailable, shared buffers are still possible but
+/// the resulting arrays must not be passed to other threads to be released.
+int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief Decoder for Arrow IPC messages
 ///
@@ -227,6 +263,18 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowArray* out,
                                           struct ArrowError* error);
 
+/// \brief Decode an ArrowArray from an owned buffer
+///
+/// This implementation takes advantage of the fact that it can avoid copying individual
+/// buffers. In all cases the caller must ArrowIpcSharedBufferReset() body after one or
+/// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
+/// ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released by another
+/// thread.
+ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* decoder,
+                                                    struct ArrowIpcSharedBuffer* shared,
+                                                    int64_t i, struct ArrowArray* out,
+                                                    struct ArrowError* error);
+
 /// \brief An user-extensible input data source
 struct ArrowIpcInputStream {
   /// \brief Read up to buf_size_bytes from stream into buf
@@ -266,8 +314,20 @@ ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
 
 /// \brief Options for ArrowIpcArrayStreamReaderInit()
 struct ArrowIpcArrayStreamReaderOptions {
-  /// \brief The field index to extract. Defaults to -1 (i.e., read all fields).
+  /// \brief The field index to extract.
+  ///
+  /// Defaults to -1 (i.e., read all fields). Note that this field index refers to
+  /// the flattened tree of children and not necessarily the column index.
   int64_t field_index;
+
+  /// \brief Set to a non-zero value to share the message body buffer among decoded arrays
+  ///
+  /// Sharing buffers is a good choice when (1) using memory-mapped IO
+  /// (since unreferenced portions of the file are often not loaded into memory) or
+  /// (2) if all data from all columns are about to be referenced anyway. When loading
+  /// a single field there is probably no advantage to using shared buffers.
+  /// Defaults to the value of ArrowIpcSharedBufferIsThreadSafe().
+  int use_shared_buffers;
 };
 
 /// \brief Initialize an ArrowArrayStream from an input stream of bytes

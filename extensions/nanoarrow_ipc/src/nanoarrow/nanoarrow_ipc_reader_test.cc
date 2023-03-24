@@ -59,6 +59,14 @@ static uint8_t kSimpleRecordBatch[] = {
 
 static uint8_t kEndOfStream[] = {0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00};
 
+// If we have an explicit compile with or without atomics, test the return value of
+// ArrowIpcSharedBufferIsThreadSafe()
+#if defined(NANOARROW_IPC_USE_STDATOMIC)
+TEST(NanoarrowIpcReader, ArrowIpcSharedBufferIsThreadSafe) {
+  EXPECT_EQ(ArrowIpcSharedBufferIsThreadSafe(), NANOARROW_IPC_USE_STDATOMIC != 0);
+}
+#endif
+
 TEST(NanoarrowIpcReader, InputStreamBuffer) {
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowBuffer input;
@@ -153,6 +161,43 @@ TEST(NanoarrowIpcReader, StreamReaderBasic) {
 
   struct ArrowArrayStream stream;
   ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+s");
+  schema.release(&schema);
+
+  struct ArrowArray array;
+  ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
+  EXPECT_EQ(array.length, 3);
+  array.release(&array);
+
+  ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
+  EXPECT_EQ(array.release, nullptr);
+
+  ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
+  EXPECT_EQ(array.release, nullptr);
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleRecordBatch)),
+      NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  struct ArrowIpcArrayStreamReaderOptions options;
+  options.field_index = -1;
+  options.use_shared_buffers = 0;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
 
   struct ArrowSchema schema;
   ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
@@ -268,6 +313,7 @@ TEST(NanoarrowIpcReader, StreamReaderUnsupportedFieldIndex) {
   struct ArrowArrayStream stream;
   struct ArrowIpcArrayStreamReaderOptions options;
   options.field_index = 0;
+  options.use_shared_buffers = 0;
   ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
 
   struct ArrowSchema schema;

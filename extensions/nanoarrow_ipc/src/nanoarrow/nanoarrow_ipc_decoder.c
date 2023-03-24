@@ -19,6 +19,19 @@
 #include <stdio.h>
 #include <string.h>
 
+// For thread safe shared buffers we need C11 + stdatomic.h
+#if !defined(NANOARROW_IPC_USE_STDATOMIC)
+#define NANOARROW_IPC_USE_STDATOMIC 0
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#if !defined(__STDC_NO_ATOMICS__)
+#include <stdatomic.h>
+#undef NANOARROW_IPC_USE_STDATOMIC
+#define NANOARROW_IPC_USE_STDATOMIC 1
+#endif
+#endif
+
+#endif
+
 #include "nanoarrow.h"
 #include "nanoarrow_ipc.h"
 #include "nanoarrow_ipc_flatcc_generated.h"
@@ -60,6 +73,90 @@ static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
   } else {
     return NANOARROW_IPC_ENDIANNESS_BIG;
   }
+}
+
+#if NANOARROW_IPC_USE_STDATOMIC
+struct ArrowIpcSharedBufferPrivate {
+  struct ArrowBuffer src;
+  atomic_long reference_count;
+};
+
+static int64_t ArrowIpcSharedBufferUpdate(
+    struct ArrowIpcSharedBufferPrivate* private_data, int delta) {
+  int64_t old_count = atomic_fetch_add(&private_data->reference_count, delta);
+  return old_count + delta;
+}
+
+static void ArrowIpcSharedBufferSet(struct ArrowIpcSharedBufferPrivate* private_data,
+                                    int64_t count) {
+  atomic_store(&private_data->reference_count, count);
+}
+
+int ArrowIpcSharedBufferIsThreadSafe(void) { return 1; }
+#else
+struct ArrowIpcSharedBuffer {
+  struct ArrowBuffer src;
+  int64_t reference_count;
+};
+
+static int64_t ArrowIpcSharedBufferUpdate(
+    struct ArrowIpcSharedBufferPrivate* private_data, int delta) {
+  private_data->reference_count += delta;
+  return private_data->reference_count;
+}
+
+static void ArrowIpcSharedBufferSet(struct ArrowIpcSharedBufferPrivate* private_data,
+                                    int64_t count) {
+  private_data->reference_count = count;
+}
+
+int ArrowIpcSharedBufferIsThreadSafe(void) { return 0; }
+#endif
+
+static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                     int64_t size) {
+  struct ArrowIpcSharedBufferPrivate* private_data =
+      (struct ArrowIpcSharedBufferPrivate*)allocator->private_data;
+
+  if (ArrowIpcSharedBufferUpdate(private_data, -1) == 0) {
+    ArrowBufferReset(&private_data->src);
+    ArrowFree(private_data);
+  }
+}
+
+ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
+                                        struct ArrowBuffer* src) {
+  struct ArrowIpcSharedBufferPrivate* private_data =
+      (struct ArrowIpcSharedBufferPrivate*)ArrowMalloc(
+          sizeof(struct ArrowIpcSharedBufferPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  ArrowBufferMove(src, &private_data->src);
+  ArrowIpcSharedBufferSet(private_data, 1);
+
+  ArrowBufferInit(&shared->private_src);
+  shared->private_src.data = private_data->src.data;
+  shared->private_src.size_bytes = private_data->src.size_bytes;
+  // Don't expose any extra capcity from src so that any calls to ArrowBufferAppend
+  // on this buffer will fail.
+  shared->private_src.capacity_bytes = private_data->src.size_bytes;
+  shared->private_src.allocator =
+      ArrowBufferDeallocator(&ArrowIpcSharedBufferFree, private_data);
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcSharedBufferClone(struct ArrowIpcSharedBuffer* shared,
+                                      struct ArrowBuffer* shared_out) {
+  struct ArrowIpcSharedBufferPrivate* private_data =
+      (struct ArrowIpcSharedBufferPrivate*)shared->private_src.allocator.private_data;
+  ArrowIpcSharedBufferUpdate(private_data, 1);
+  memcpy(shared_out, shared, sizeof(struct ArrowBuffer));
+}
+
+void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared) {
+  ArrowBufferReset(&shared->private_src);
 }
 
 static int ArrowIpcDecoderNeedsSwapEndian(struct ArrowIpcDecoder* decoder) {
@@ -1051,14 +1148,97 @@ ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
   }
 }
 
+/// \brief Information required to read and/or decompress a single buffer
+///
+/// The RecordBatch message header contains a description of each buffer
+/// in the message body. The ArrowIpcBufferSource is the parsed result of
+/// a single buffer with compression and endian information such that the
+/// original buffer can be reconstructed.
+struct ArrowIpcBufferSource {
+  int64_t body_offset_bytes;
+  int64_t buffer_length_bytes;
+  enum ArrowIpcCompressionType codec;
+  int swap_endian;
+};
+
+/// \brief Materializing ArrowBuffer objects
+///
+/// Given a description of where a buffer is located inside the message body, make
+/// the ArrowBuffer that will be placed into the correct ArrowArray. The decoder
+/// does not do any IO and does not make any assumptions about how or if the body
+/// has been read into memory. This abstraction is currently internal and exists
+/// to support the two obvious ways a user might go about this: (1) using a
+/// non-owned view of memory that must be copied slice-wise or (2) adding a reference
+/// to an ArrowIpcSharedBuffer and returning a slice of that memory.
+struct ArrowIpcBufferFactory {
+  /// \brief User-defined callback to create initialize the desired buffer into dst
+  ///
+  /// At the time that this callback is called, the ArrowIpcBufferSource has been checked
+  /// to ensure that it is within the body size declared by the message header. If
+  /// NANOARROW_OK is returned, the caller is responsible for dst. Otherwise, error must
+  /// contain a null-terminated message.
+  ArrowErrorCode (*make_buffer)(struct ArrowIpcBufferFactory* factory,
+                                struct ArrowIpcBufferSource* src, struct ArrowBuffer* dst,
+                                struct ArrowError* error);
+
+  /// \brief Caller-defined private data to be used in the callback.
+  ///
+  /// Usually this would be a description of where the body has been read into memory or
+  /// information required to do so.
+  void* private_data;
+};
+
+static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* factory,
+                                                 struct ArrowIpcBufferSource* src,
+                                                 struct ArrowBuffer* dst,
+                                                 struct ArrowError* error) {
+  struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
+
+  struct ArrowBufferView view;
+  view.data.as_uint8 = body->data.as_uint8 + src->body_offset_bytes;
+  view.size_bytes = src->buffer_length_bytes;
+
+  ArrowBufferInit(dst);
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, view));
+  return NANOARROW_OK;
+}
+
+static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromView(
+    struct ArrowBufferView* buffer_view) {
+  struct ArrowIpcBufferFactory out;
+  out.make_buffer = &ArrowIpcMakeBufferFromView;
+  out.private_data = buffer_view;
+  return out;
+}
+
+static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory* factory,
+                                                   struct ArrowIpcBufferSource* src,
+                                                   struct ArrowBuffer* dst,
+                                                   struct ArrowError* error) {
+  struct ArrowIpcSharedBuffer* shared =
+      (struct ArrowIpcSharedBuffer*)factory->private_data;
+  ArrowIpcSharedBufferClone(shared, dst);
+  dst->data += src->body_offset_bytes;
+  dst->size_bytes = src->buffer_length_bytes;
+  return NANOARROW_OK;
+}
+
+static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
+    struct ArrowIpcSharedBuffer* shared) {
+  struct ArrowIpcBufferFactory out;
+  out.make_buffer = &ArrowIpcMakeBufferFromShared;
+  out.private_data = shared;
+  return out;
+}
+
 struct ArrowIpcArraySetter {
   ns(FieldNode_vec_t) fields;
   int64_t field_i;
   ns(Buffer_vec_t) buffers;
   int64_t buffer_i;
-  struct ArrowBufferView body;
-  enum ArrowIpcCompressionType codec;
-  int swap_endian;
+  int64_t body_size_bytes;
+  struct ArrowIpcBufferSource src;
+  struct ArrowIpcBufferFactory factory;
 };
 
 static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
@@ -1069,35 +1249,32 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
   }
 
   // Check that this buffer fits within the body
-  if (offset < 0 || (offset + length) > setter->body.size_bytes) {
-    ArrowErrorSet(error,
-                  "Buffer %ld requires body offsets [%ld..%ld) but body has size %ld",
-                  (long)setter->buffer_i - 1, (long)offset, (long)offset + (long)length,
-                  setter->body.size_bytes);
+  int64_t buffer_start = offset;
+  int64_t buffer_end = buffer_start + length;
+  if (buffer_start < 0 || buffer_end > setter->body_size_bytes) {
+    ArrowErrorSet(error, "Buffer requires body offsets [%ld..%ld) but body has size %ld",
+                  (long)buffer_start, (long)buffer_end, (long)setter->body_size_bytes);
     return EINVAL;
   }
 
-  struct ArrowBufferView view;
-  view.data.as_uint8 = setter->body.data.as_uint8 + offset;
-  view.size_bytes = length;
-
-  if (setter->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+  // If the ArrowIpcBufferFactory is made public, these should get moved (since then a
+  // user could inject support for either one). More likely, by the time that happens,
+  // this library will be able to support some of these features.
+  if (setter->src.codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
     ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
     return ENOTSUP;
   }
 
-  if (setter->swap_endian) {
+  if (setter->src.swap_endian) {
     ArrowErrorSet(error,
                   "The nanoarrow_ipc extension does not support non-system endianness");
     return ENOTSUP;
   }
 
-  int result = ArrowBufferAppendBufferView(out, view);
-  if (result != NANOARROW_OK) {
-    ArrowErrorSet(error, "Failed to copy buffer");
-    return result;
-  }
-
+  setter->src.body_offset_bytes = offset;
+  setter->src.buffer_length_bytes = length;
+  NANOARROW_RETURN_NOT_OK(
+      setter->factory.make_buffer(&setter->factory, &setter->src, out, error));
   return NANOARROW_OK;
 }
 
@@ -1142,10 +1319,9 @@ static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
-                                          struct ArrowBufferView body, int64_t field_i,
-                                          struct ArrowArray* out,
-                                          struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
+    int64_t field_i, struct ArrowArray* out, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1173,9 +1349,10 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   setter.field_i = field_i;
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
-  setter.body = body;
-  setter.codec = decoder->codec;
-  setter.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
+  setter.body_size_bytes = decoder->body_size_bytes;
+  setter.factory = factory;
+  setter.src.codec = decoder->codec;
+  setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
@@ -1211,4 +1388,20 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 
   ArrowArrayMove(&temp, out);
   return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
+                                          struct ArrowBufferView body, int64_t i,
+                                          struct ArrowArray* out,
+                                          struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeArrayInternal(decoder, ArrowIpcBufferFactoryFromView(&body),
+                                            i, out, error);
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* decoder,
+                                                    struct ArrowIpcSharedBuffer* body,
+                                                    int64_t i, struct ArrowArray* out,
+                                                    struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeArrayInternal(
+      decoder, ArrowIpcBufferFactoryFromShared(body), i, out, error);
 }

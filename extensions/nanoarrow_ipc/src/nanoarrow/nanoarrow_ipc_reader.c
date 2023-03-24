@@ -166,6 +166,7 @@ ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
 struct ArrowIpcArrayStreamReaderPrivate {
   struct ArrowIpcInputStream input;
   struct ArrowIpcDecoder decoder;
+  int use_shared_buffers;
   struct ArrowSchema out_schema;
   int64_t field_index;
   struct ArrowBuffer header;
@@ -370,13 +371,22 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   // Read in the body
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
 
-  struct ArrowBufferView body_view;
-  body_view.data.data = private_data->body.data;
-  body_view.size_bytes = private_data->body.size_bytes;
+  if (private_data->use_shared_buffers) {
+    struct ArrowIpcSharedBuffer shared;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcSharedBufferInit(&shared, &private_data->body));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
+        &private_data->decoder, &shared, private_data->field_index, out,
+        &private_data->error));
+    ArrowIpcSharedBufferReset(&shared);
+  } else {
+    struct ArrowBufferView body_view;
+    body_view.data.data = private_data->body.data;
+    body_view.size_bytes = private_data->body.size_bytes;
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArray(&private_data->decoder, body_view,
-                                                     private_data->field_index, out,
-                                                     &private_data->error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArray(&private_data->decoder, body_view,
+                                                       private_data->field_index, out,
+                                                       &private_data->error));
+  }
 
   return NANOARROW_OK;
 }
@@ -411,8 +421,10 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
 
   if (options != NULL) {
     private_data->field_index = options->field_index;
+    private_data->use_shared_buffers = options->use_shared_buffers;
   } else {
     private_data->field_index = -1;
+    private_data->use_shared_buffers = ArrowIpcSharedBufferIsThreadSafe();
   }
 
   out->private_data = private_data;

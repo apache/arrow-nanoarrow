@@ -333,10 +333,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_UNINITIALIZED);
 
   // Field extract should fail if body is too small
-  body.size_bytes = 0;
+  decoder.body_size_bytes = 0;
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message,
-               "Buffer 1 requires body offsets [0..12) but body has size 0");
+  EXPECT_STREQ(error.message, "Buffer requires body offsets [0..12) but body has size 0");
 
   // Should error if the number of buffers or field nodes doesn't match
   // (different numbers because we count the root struct and the message does not)
@@ -433,6 +432,73 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), dummy_schema->ToString());
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema, true));
 
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchOwned) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+
+  // Data buffer content of the hard-coded record batch message
+  uint8_t one_two_three_le[] = {0x01, 0x00, 0x00, 0x00, 0x02, 0x00,
+                                0x00, 0x00, 0x03, 0x00, 0x00, 0x00};
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatch;
+  data.size_bytes = sizeof(kSimpleRecordBatch);
+
+  ArrowIpcDecoderInit(&decoder);
+  auto decoder_private =
+      reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
+
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+
+  struct ArrowBuffer body;
+  ArrowBufferInit(&body);
+  ASSERT_EQ(ArrowBufferAppend(&body, kSimpleRecordBatch + decoder.header_size_bytes,
+                              decoder.body_size_bytes),
+            NANOARROW_OK);
+
+  struct ArrowIpcSharedBuffer shared;
+  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
+
+  // Check full struct extract
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, &array, nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 3);
+  EXPECT_EQ(array.null_count, 0);
+  ASSERT_EQ(array.n_children, 1);
+  ASSERT_EQ(array.children[0]->n_buffers, 2);
+  ASSERT_EQ(array.children[0]->length, 3);
+  EXPECT_EQ(array.children[0]->null_count, 0);
+  EXPECT_EQ(
+      memcmp(array.children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le)),
+      0);
+
+  array.release(&array);
+
+  // Check field extract
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, 0, &array, nullptr),
+            NANOARROW_OK);
+  // Release the original shared (forthcoming array buffers should still be valid)
+  ArrowIpcSharedBufferReset(&shared);
+
+  ASSERT_EQ(array.n_buffers, 2);
+  ASSERT_EQ(array.length, 3);
+  EXPECT_EQ(array.null_count, 0);
+  EXPECT_EQ(memcmp(array.buffers[1], one_two_three_le, sizeof(one_two_three_le)), 0);
+
+  array.release(&array);
+  schema.release(&schema);
+  ArrowBufferReset(&body);
   ArrowIpcDecoderReset(&decoder);
 }
 

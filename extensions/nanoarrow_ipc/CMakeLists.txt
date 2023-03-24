@@ -204,6 +204,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_ipc_decoder_test)
+  gtest_discover_tests(nanoarrow_ipc_reader_test)
 endif()
 
 if (NANOARROW_IPC_BUILD_APPS)
