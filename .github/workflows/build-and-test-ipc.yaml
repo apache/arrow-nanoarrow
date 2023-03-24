@@ -42,6 +42,7 @@ jobs:
       matrix:
         config:
           - {label: default-build, cmake_args: "-DNANOARROW_IPC_BUILD_APPS=ON"}
+          - {label: default-noatomics, cmake_args: "-DCMAKE_C_FLAGS='-DNANOARROW_IPC_USE_STDATOMIC=0'"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
 
@@ -111,7 +112,7 @@ jobs:
           cat examples/cmake-ipc/schema-valid.arrows | $SUBDIR/build/dump_stream -
 
       - name: Run tests with valgrind
-        if: matrix.config.label == 'default-build'
+        if: matrix.config.label == 'default-build' || matrix.config.label == 'default-noatomics'
         run: |
           cd $SUBDIR
 
