@@ -261,13 +261,11 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 
 /// \brief Decode an ArrowArray from an owned buffer
 ///
-/// This implementation takes advantage of the fact that it can take ownership of
-/// body to avoid copying individual buffers. On success, the ArrowArray pointed
-/// to by out takes ownership of the original body and a copy of the reference-counted
-/// shared buffer is injected in its place (e.g., such that it can be used for
-/// subsequent calls to this function). In all cases the caller must ArrowBufferReset()
-/// body. If ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released
-/// by another thread.
+/// This implementation takes advantage of the fact that it can avoid copying individual
+/// buffers. In all cases the caller must ArrowIpcSharedBufferReset() body after one or
+/// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
+/// ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released by another
+/// thread.
 ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* decoder,
                                                     struct ArrowIpcSharedBuffer* shared,
                                                     int64_t i, struct ArrowArray* out,
