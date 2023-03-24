@@ -560,7 +560,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
     threads[i].join();
   }
 
-  // We will get a (occasional) memory leak is the atomic counter does not work
+  // We will get a (occasional) memory leak if the atomic counter does not work
 }
 
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
