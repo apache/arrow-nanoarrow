@@ -92,6 +92,15 @@ enum ArrowIpcCompressionType {
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
+struct ArrowIpcSharedBuffer {
+  struct ArrowBuffer private_src;
+};
+
+ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
+                                        struct ArrowBuffer* src);
+
+void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
+
 int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief Decoder for Arrow IPC messages
@@ -242,10 +251,10 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 /// subsequent calls to this function). In all cases the caller must ArrowBufferReset()
 /// body. If ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released
 /// by another thread.
-ArrowErrorCode ArrowIpcDecoderDecodeArrayFromOwned(struct ArrowIpcDecoder* decoder,
-                                                   struct ArrowBuffer* body, int64_t i,
-                                                   struct ArrowArray* out,
-                                                   struct ArrowError* error);
+ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* decoder,
+                                                    struct ArrowIpcSharedBuffer* shared,
+                                                    int64_t i, struct ArrowArray* out,
+                                                    struct ArrowError* error);
 
 /// \brief An user-extensible input data source
 struct ArrowIpcInputStream {

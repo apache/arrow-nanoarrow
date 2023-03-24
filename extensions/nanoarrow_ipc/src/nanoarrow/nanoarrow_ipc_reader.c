@@ -372,10 +372,12 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
 
   if (private_data->use_shared_buffers) {
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromOwned(
-        &private_data->decoder, &private_data->body, private_data->field_index, out,
+    struct ArrowIpcSharedBuffer shared;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcSharedBufferInit(&shared, &private_data->body));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
+        &private_data->decoder, &shared, private_data->field_index, out,
         &private_data->error));
-    ArrowBufferReset(&private_data->body);
+    ArrowIpcSharedBufferReset(&shared);
   } else {
     struct ArrowBufferView body_view;
     body_view.data.data = private_data->body.data;

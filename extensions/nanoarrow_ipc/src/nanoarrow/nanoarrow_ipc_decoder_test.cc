@@ -466,9 +466,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchOwned) {
                               decoder.body_size_bytes),
             NANOARROW_OK);
 
+  struct ArrowIpcSharedBuffer shared;
+  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
+
   // Check full struct extract
-  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromOwned(&decoder, &body, -1, &array, nullptr),
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, &array, nullptr),
             NANOARROW_OK);
+
   EXPECT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
   ASSERT_EQ(array.n_children, 1);
@@ -482,8 +486,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchOwned) {
   array.release(&array);
 
   // Check field extract
-  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromOwned(&decoder, &body, 0, &array, nullptr),
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, 0, &array, nullptr),
             NANOARROW_OK);
+  // Release the original shared (forthcoming array buffers should still be valid)
+  ArrowIpcSharedBufferReset(&shared);
+
   ASSERT_EQ(array.n_buffers, 2);
   ASSERT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
