@@ -236,7 +236,12 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
     int64_t* buffer_data = (int64_t*)buffer->data;
     for (int64_t i = 0; i < len; i++) {
-      buffer_data[i] = x_data[i];
+      // UBSAN warns for buffer_data[i] = nan
+      if (R_IsNA(x_data[i]) || R_IsNaN(x_data[i])) {
+        buffer_data[i] = 0;
+      } else {
+        buffer_data[i] = x_data[i];
+      }
     }
 
     buffer->size_bytes = len * sizeof(int64_t);
@@ -254,7 +259,10 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     // It's easy to accidentally overflow here, so make sure to warn
     int64_t n_overflow = 0;
     for (int64_t i = 0; i < len; i++) {
-      if (x_data[i] > INT_MAX || x_data[i] < INT_MIN) {
+      // UBSAN warns for buffer_data[i] = nan
+      if (R_IsNA(x_data[i]) || R_IsNaN(x_data[i])) {
+        buffer_data[i] = 0;
+      } else if (x_data[i] > INT_MAX || x_data[i] < INT_MIN) {
         n_overflow++;
         buffer_data[i] = 0;
       } else {
