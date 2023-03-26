@@ -163,10 +163,10 @@ test_that("as_nanoarrow_array() works for double() -> na_int32()", {
     as.raw(array$buffers[[1]]),
     packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
   )
-  # The last element here is (int)NaN not NA_integer_
+  # The last element here is 0 because (int)nan is undefined behaviour
   expect_identical(
-    head(as.raw(array$buffers[[2]]), 10 * 4L),
-    as.raw(as_nanoarrow_buffer(1:10))
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(1:10, 0L)))
   )
 
   # With overflow
