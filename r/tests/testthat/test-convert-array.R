@@ -329,13 +329,13 @@ test_that("convert to vector works for null -> logical()", {
 })
 
 test_that("convert to vector warns for invalid integer()", {
-  array <- as_nanoarrow_array(.Machine$double.xmax)
+  array <- as_nanoarrow_array(.Machine$integer.max + 1)
   expect_warning(
     expect_identical(convert_array(array, integer()), NA_integer_),
     "1 value\\(s\\) outside integer range set to NA"
   )
 
-  array <- as_nanoarrow_array(c(NA, .Machine$double.xmax))
+  array <- as_nanoarrow_array(c(NA, .Machine$integer.max + 1))
   expect_warning(
     expect_identical(convert_array(array, integer()), c(NA_integer_, NA_integer_)),
     "1 value\\(s\\) outside integer range set to NA"
