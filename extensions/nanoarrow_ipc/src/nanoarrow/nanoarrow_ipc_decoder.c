@@ -1158,8 +1158,59 @@ struct ArrowIpcBufferSource {
   int64_t body_offset_bytes;
   int64_t buffer_length_bytes;
   enum ArrowIpcCompressionType codec;
+  enum ArrowType data_type;
+  int32_t element_size_bits;
   int swap_endian;
 };
+
+static int ArrowIpcDecoderSwapEndianInPlace(struct ArrowIpcBufferSource* src,
+                                            struct ArrowBuffer* dst,
+                                            struct ArrowError* error) {
+  switch (src->data_type) {
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
+    case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      ArrowErrorSet(error, "Endian swapping for buffer type %s is not supported",
+                    ArrowTypeString(src->data_type));
+      return ENOTSUP;
+    default:
+      switch (src->element_size_bits) {
+        case 1:
+        case 8:
+          // None needed
+          break;
+        case 16: {
+          uint16_t* ptr = (uint16_t*)dst->data;
+          for (int64_t i = 0; i < (dst->size_bytes / 16); i++) {
+            ptr[i] = bswap16(ptr[i]);
+          }
+          break;
+        }
+        case 32: {
+          uint32_t* ptr = (uint32_t*)dst->data;
+          for (int64_t i = 0; i < (dst->size_bytes / 32); i++) {
+            ptr[i] = bswap32(ptr[i]);
+          }
+          break;
+        }
+        case 64: {
+          uint64_t* ptr = (uint64_t*)dst->data;
+          for (int64_t i = 0; i < (dst->size_bytes / 64); i++) {
+            ptr[i] = bswap64(ptr[i]);
+          }
+          break;
+        }
+        default:
+          ArrowErrorSet(error, "Endian swapping for element bitwidth %d is not supported",
+                        (int)src->element_size_bits);
+          return ENOTSUP;
+      }
+      break;
+  }
+
+  return NANOARROW_OK;
+}
 
 /// \brief Materializing ArrowBuffer objects
 ///
@@ -1200,6 +1251,11 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
 
   ArrowBufferInit(dst);
   NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, view));
+
+  if (src->swap_endian) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSwapEndianInPlace(src, dst, error));
+  }
+
   return NANOARROW_OK;
 }
 
@@ -1220,6 +1276,16 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
   ArrowIpcSharedBufferClone(shared, dst);
   dst->data += src->body_offset_bytes;
   dst->size_bytes = src->buffer_length_bytes;
+
+  if (src->swap_endian) {
+    struct ArrowBuffer dst_copy;
+    ArrowBufferInit(&dst_copy);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&dst_copy, dst->data, dst->size_bytes));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSwapEndianInPlace(src, &dst_copy, error));
+    ArrowBufferReset(dst);
+    ArrowBufferMove(&dst_copy, dst);
+  }
+
   return NANOARROW_OK;
 }
 
@@ -1241,16 +1307,15 @@ struct ArrowIpcArraySetter {
   struct ArrowIpcBufferFactory factory;
 };
 
-static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
-                                     int64_t length, struct ArrowBuffer* out,
-                                     struct ArrowError* error) {
-  if (length == 0) {
+static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter,
+                                     struct ArrowBuffer* out, struct ArrowError* error) {
+  if (setter->src.buffer_length_bytes == 0) {
     return NANOARROW_OK;
   }
 
   // Check that this buffer fits within the body
-  int64_t buffer_start = offset;
-  int64_t buffer_end = buffer_start + length;
+  int64_t buffer_start = setter->src.body_offset_bytes;
+  int64_t buffer_end = buffer_start + setter->src.buffer_length_bytes;
   if (buffer_start < 0 || buffer_end > setter->body_size_bytes) {
     ArrowErrorSet(error, "Buffer requires body offsets [%ld..%ld) but body has size %ld",
                   (long)buffer_start, (long)buffer_end, (long)setter->body_size_bytes);
@@ -1271,8 +1336,6 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
     return ENOTSUP;
   }
 
-  setter->src.body_offset_bytes = offset;
-  setter->src.buffer_length_bytes = length;
   NANOARROW_RETURN_NOT_OK(
       setter->factory.make_buffer(&setter->factory, &setter->src, out, error));
   return NANOARROW_OK;
@@ -1280,6 +1343,7 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
 
 static int ArrowIpcDecoderWalkGetArray(struct ArrowIpcArraySetter* setter,
                                        struct ArrowArray* array,
+                                       struct ArrowArrayView* array_view,
                                        struct ArrowError* error) {
   ns(FieldNode_struct_t) field =
       ns(FieldNode_vec_at(setter->fields, (size_t)setter->field_i));
@@ -1288,20 +1352,60 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowIpcArraySetter* setter,
   setter->field_i += 1;
 
   for (int64_t i = 0; i < array->n_buffers; i++) {
+    // Add buffer location information
     ns(Buffer_struct_t) buffer =
         ns(Buffer_vec_at(setter->buffers, (size_t)setter->buffer_i));
-    int64_t buffer_offset = ns(Buffer_offset(buffer));
-    int64_t buffer_length = ns(Buffer_length(buffer));
+    setter->src.body_offset_bytes = ns(Buffer_offset(buffer));
+    setter->src.buffer_length_bytes = ns(Buffer_length(buffer));
+
+    // Add information about the buffer (required for endian swapping)
+    setter->src.element_size_bits = array_view->layout.element_size_bits[i];
+    switch (array_view->layout.buffer_type[i]) {
+      case NANOARROW_BUFFER_TYPE_VALIDITY:
+        setter->src.data_type = NANOARROW_TYPE_BOOL;
+        break;
+      case NANOARROW_BUFFER_TYPE_TYPE_ID:
+        setter->src.data_type = NANOARROW_TYPE_INT8;
+        break;
+      case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+        setter->src.data_type = NANOARROW_TYPE_INT32;
+        break;
+      case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+        if (setter->src.element_size_bits == 32) {
+          setter->src.data_type = NANOARROW_TYPE_INT32;
+        } else {
+          setter->src.data_type = NANOARROW_TYPE_INT64;
+        }
+        break;
+      case NANOARROW_BUFFER_TYPE_DATA:
+        switch (array_view->storage_type) {
+          case NANOARROW_TYPE_BINARY:
+          case NANOARROW_TYPE_LARGE_BINARY:
+          case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+            setter->src.data_type = NANOARROW_TYPE_UINT8;
+            break;
+          case NANOARROW_TYPE_STRING:
+          case NANOARROW_TYPE_LARGE_STRING:
+            setter->src.data_type = NANOARROW_TYPE_INT8;
+            break;
+          default:
+            setter->src.data_type = array_view->storage_type;
+            break;
+        }
+        break;
+      default:
+        break;
+    }
+
     setter->buffer_i += 1;
 
     struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(array, i);
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderMakeBuffer(setter, buffer_offset,
-                                                      buffer_length, buffer_dst, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderMakeBuffer(setter, buffer_dst, error));
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcDecoderWalkGetArray(setter, array->children[i], error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(setter, array->children[i],
+                                                        array_view->children[i], error));
   }
 
   return NANOARROW_OK;
@@ -1363,14 +1467,15 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
     setter.buffer_i++;
 
     for (int64_t i = 0; i < temp.n_children; i++) {
-      result = ArrowIpcDecoderWalkGetArray(&setter, temp.children[i], error);
+      result = ArrowIpcDecoderWalkGetArray(&setter, temp.children[i],
+                                           root->array_view->children[i], error);
       if (result != NANOARROW_OK) {
         temp.release(&temp);
         return result;
       }
     }
   } else {
-    result = ArrowIpcDecoderWalkGetArray(&setter, &temp, error);
+    result = ArrowIpcDecoderWalkGetArray(&setter, &temp, root->array_view, error);
     if (result != NANOARROW_OK) {
       temp.release(&temp);
       return result;
