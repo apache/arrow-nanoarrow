@@ -142,6 +142,7 @@ jobs:
       matrix:
         config:
           - {platform: "ubuntu", arch: "amd64"}
+          - {platform: "ubuntu", arch: "arm64"}
           - {platform: "fedora", arch: "amd64"}
           - {platform: "archlinux", arch: "amd64"}
           - {platform: "alpine", arch: "amd64"}
@@ -166,5 +167,4 @@ jobs:
 
         run: |
           cd src
-          # docker compose pull verify
           docker compose run verify
