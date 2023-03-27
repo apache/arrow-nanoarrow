@@ -22021,12 +22021,6 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
                                             struct ArrowArray* out) {
   struct ArrowIpcArrayStreamReaderPrivate* private_data =
       (struct ArrowIpcArrayStreamReaderPrivate*)stream->private_data;
-  // Check if we are all done
-  if (private_data->input.release == NULL) {
-    out->release = NULL;
-    return NANOARROW_OK;
-  }
-
   private_data->error.message[0] = '\0';
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderReadSchemaIfNeeded(private_data));
 
@@ -22034,8 +22028,8 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   int result = ArrowIpcArrayStreamReaderNextHeader(
       private_data, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
   if (result == ENODATA) {
-    // If the stream is finished, release the input
-    private_data->input.release(&private_data->input);
+    // Stream is finished either because there is no input or because
+    // end of stream bytes were read.
     out->release = NULL;
     return NANOARROW_OK;
   }
