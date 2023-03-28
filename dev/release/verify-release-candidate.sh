@@ -30,6 +30,7 @@
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
 # - TEST_C: Builds C libraries and tests using the default CMake
 #   configuration. Defaults to the value of TEST_SOURCE.
+# - TEST_C_BUNDLED: Tests the bundled version of the C libraries.
 # - TEST_R: Builds the R package source tarball and runs R CMD check.
 #   Defaults to the value of TEST_SOURCE.
 # - TEST_WITH_MEMCHECK: Set to a nonzero value to additionally run tests
@@ -212,11 +213,13 @@ test_c() {
   show_header "Build and test C library"
   test_cmake_project build . -DNANOARROW_BUILD_TESTS=ON
 
-  show_header "Build test bundled C library"
-  test_cmake_project build-bundled . -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
-
   show_header "Build and test C IPC extension"
   test_cmake_project build-ipc extensions/nanoarrow_ipc -DNANOARROW_IPC_BUILD_TESTS=ON
+}
+
+test_c_bundled() {
+  show_header "Build test bundled C library"
+  test_cmake_project build-bundled . -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
 
   show_header "Build and test bundled C IPC extension"
   test_cmake_project build-ipc extensions/nanoarrow_ipc \
@@ -320,6 +323,7 @@ test_source_distribution() {
 
 : ${TEST_SOURCE:=${TEST_DEFAULT}}
 : ${TEST_C:=${TEST_SOURCE}}
+: ${TEST_C_BUNDLED:=${TEST_C}}
 : ${TEST_R:=${TEST_SOURCE}}
 
 TEST_SUCCESS=no
