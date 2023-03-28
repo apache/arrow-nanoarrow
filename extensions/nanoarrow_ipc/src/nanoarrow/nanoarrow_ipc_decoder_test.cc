@@ -375,6 +375,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   EXPECT_EQ(decoder_private->fields[1].array_view->storage_type, NANOARROW_TYPE_INT32);
   EXPECT_EQ(decoder_private->fields[1].buffer_offset, 1);
 
+  // Make sure we can re-set a schema too
+  EXPECT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  EXPECT_EQ(decoder_private->n_fields, 2);
+  EXPECT_EQ(decoder_private->n_buffers, 3);
+
   schema.release(&schema);
   ArrowIpcDecoderReset(&decoder);
 }

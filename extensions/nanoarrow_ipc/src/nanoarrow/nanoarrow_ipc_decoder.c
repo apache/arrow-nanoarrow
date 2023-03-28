@@ -1096,8 +1096,10 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
+  // Reset previously allocated schema-specific resources
+  private_data->n_buffers = 0;
+  private_data->n_fields = 0;
   ArrowArrayViewReset(&private_data->array_view);
-
   if (private_data->fields != NULL) {
     ArrowFree(private_data->fields);
   }
@@ -1114,7 +1116,6 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
   }
 
   // Walk tree and calculate how many fields we need to allocate
-  private_data->n_fields = 0;
   ArrowIpcDecoderCountFields(schema, &private_data->n_fields);
   private_data->fields = (struct ArrowIpcField*)ArrowMalloc(private_data->n_fields *
                                                             sizeof(struct ArrowIpcField));
