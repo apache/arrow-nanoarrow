@@ -903,7 +903,7 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
 
   if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION ||
       array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION) {
-    // Slightly easier to check the default 0...n union type id
+    // Check that we have valid type ids
     if (array_view->union_type_id_map == NULL ||
         _ArrowParsedUnionTypeIdsWillEqualChildIndices(array_view->union_type_id_map,
                                                       array_view->n_children,
@@ -914,6 +914,22 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(array_view->buffer_views[0],
                                                 array_view->union_type_id_map + 128,
                                                 array_view->n_children, error));
+    }
+  }
+
+  if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION) {
+    // Check that offsets refer to child elements that actually exist
+    for (int64_t i = 0; i < array_view->array->length; i++) {
+      int8_t child_id = ArrowArrayViewUnionChildIndex(array_view, i);
+      int64_t offset = ArrowArrayViewUnionChildOffset(array_view, i);
+      int64_t child_length = array_view->array->children[child_id]->length;
+      if (offset < 0 || offset > child_length) {
+        ArrowErrorSet(error,
+                      "Expected union offset for child id %d to be between 0 and %ld but "
+                      "found offset value %ld at position %ld",
+                      (int)child_id, (long)child_length, offset, (long)i);
+        return EINVAL;
+      }
     }
   }
 

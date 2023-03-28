@@ -1752,15 +1752,24 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
 
-  // Check that bad type ids are caught by validate full
+  // Check that bad type ids/offset are caught by validate full
   struct ArrowError error;
   int8_t* type_ids =
       const_cast<int8_t*>(reinterpret_cast<const int8_t*>(array.buffers[0]));
+  int32_t* offsets =
+      const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
   type_ids[0] = -1;
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected buffer value between 0 and 1 but found value -1 at position 0");
   type_ids[0] = 0;
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected union offset for child id 0 to be between 0 and 1 but found "
+               "offset value -1 at position 0");
+  offsets[0] = 0;
 
   ArrowArrayViewReset(&array_view);
 
