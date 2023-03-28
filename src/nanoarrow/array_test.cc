@@ -1745,11 +1745,22 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   // The test schema explicitly sets the type_ids 0,1 and this should work too
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
+
+  // Check that bad type ids are caught by validate full
+  struct ArrowError error;
+  int8_t* type_ids =
+      const_cast<int8_t*>(reinterpret_cast<const int8_t*>(array.buffers[0]));
+  type_ids[0] = -1;
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected buffer value between 0 and 1 but found value -1 at position 0");
+  type_ids[0] = 0;
 
   ArrowArrayViewReset(&array_view);
 
@@ -1764,6 +1775,12 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 1);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 0);
+
+  // Check that bad type ids are caught by validate full
+  type_ids[0] = -1;
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Unexpected buffer value -1 at position 0");
+  type_ids[0] = 0;
 
   ArrowArrayViewReset(&array_view);
 
