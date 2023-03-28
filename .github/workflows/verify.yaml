@@ -146,7 +146,8 @@ jobs:
           - {platform: "archlinux", arch: "amd64"}
           - {platform: "alpine", arch: "amd64"}
           - {platform: "ubuntu", arch: "amd64",
-             extra_label: "-memcheck", extra_env: "TEST_WITH_MEMCHECK=1 TEST_C_BUNDLED=0"}
+             extra_label: "-memcheck",
+             compose_args: "-e TEST_WITH_MEMCHECK=1 -e TEST_C_BUNDLED=0"}
           - {platform: "ubuntu", arch: "arm64"}
           - {platform: "alpine", arch: "s390x"}
 
@@ -169,4 +170,4 @@ jobs:
 
         run: |
           cd src
-          ${{ matrix.config.extra_env }} docker compose run verify
+          docker compose ${{ matrix.config.compose_args }} run verify
