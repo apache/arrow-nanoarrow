@@ -94,10 +94,9 @@ static inline int8_t _ArrowParseUnionTypeIds(const char* type_ids, int8_t* out) 
   return -1;
 }
 
-static inline int8_t _ArrowUnionTypeIdsWillEqualChildIndices(const char* type_id_str,
-                                                             int64_t n_children) {
-  int8_t type_ids[128];
-  int8_t n_type_ids = _ArrowParseUnionTypeIds(type_id_str, type_ids);
+static inline int8_t _ArrowParsedUnionTypeIdsWillEqualChildIndices(const int8_t* type_ids,
+                                                                   int64_t n_type_ids,
+                                                                   int64_t n_children) {
   if (n_type_ids != n_children) {
     return 0;
   }
@@ -109,6 +108,13 @@ static inline int8_t _ArrowUnionTypeIdsWillEqualChildIndices(const char* type_id
   }
 
   return 1;
+}
+
+static inline int8_t _ArrowUnionTypeIdsWillEqualChildIndices(const char* type_id_str,
+                                                             int64_t n_children) {
+  int8_t type_ids[128];
+  int8_t n_type_ids = _ArrowParseUnionTypeIds(type_id_str, type_ids);
+  return _ArrowParsedUnionTypeIdsWillEqualChildIndices(type_ids, n_type_ids, n_children);
 }
 
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) {

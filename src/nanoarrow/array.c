@@ -904,7 +904,10 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
   if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION ||
       array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION) {
     // Slightly easier to check the default 0...n union type id
-    if (array_view->union_type_id_map == NULL) {
+    if (array_view->union_type_id_map == NULL ||
+        _ArrowParsedUnionTypeIdsWillEqualChildIndices(array_view->union_type_id_map,
+                                                      array_view->n_children,
+                                                      array_view->n_children)) {
       NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(array_view->buffer_views[0], 0,
                                                    array_view->n_children - 1, error));
     } else {

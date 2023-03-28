@@ -503,7 +503,8 @@ struct ArrowArrayView {
   ///
   /// If storage_type is a union type, a 256-byte ArrowMalloc()ed buffer
   /// such that child_index == union_type_id_map[type_id] and
-  /// type_id == union_type_id_map[128 + child_index]
+  /// type_id == union_type_id_map[128 + child_index]. This value may be
+  /// NULL in the case where child_id == type_id.
   int8_t* union_type_id_map;
 };
 
