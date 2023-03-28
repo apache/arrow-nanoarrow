@@ -151,8 +151,8 @@ jobs:
               extra_label: "-memcheck",
               compose_args: "-e TEST_WITH_MEMCHECK=1 -e TEST_C_BUNDLED=0"
             }
-          - {platform: "ubuntu", arch: "arm64"}
-          - {platform: "alpine", arch: "s390x"}
+          - {platform: "ubuntu", arch: "arm64", compose_args: "-e TEST_C_BUNDLED=0"}
+          - {platform: "alpine", arch: "s390x", compose_args: "-e TEST_C_BUNDLED=0"}
 
     steps:
       - uses: actions/checkout@v3
