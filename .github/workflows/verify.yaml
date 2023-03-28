@@ -142,10 +142,11 @@ jobs:
       matrix:
         config:
           - {platform: "ubuntu", arch: "amd64"}
-          - {platform: "ubuntu", arch: "arm64"}
           - {platform: "fedora", arch: "amd64"}
           - {platform: "archlinux", arch: "amd64"}
           - {platform: "alpine", arch: "amd64"}
+          - {platform: "ubuntu", arch: "amd64", extra_env: "TEST_WITH_MEMCHECK=1"}
+          - {platform: "ubuntu", arch: "arm64"}
           - {platform: "alpine", arch: "s390x"}
 
     steps:
@@ -167,4 +168,4 @@ jobs:
 
         run: |
           cd src
-          docker compose run verify
+          ${{ matrix.config.extra_env }} docker compose run verify
