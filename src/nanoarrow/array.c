@@ -663,15 +663,25 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   }
 
   if (array_view->n_children != array->n_children) {
+    ArrowErrorSet(error, "Expected %ld children but found %ld children",
+                  (long)array_view->n_children, (long)array->n_children);
     return EINVAL;
   }
 
   // Check child sizes and calculate sizes that depend on data in the array buffers
+  int64_t first_offset;
   int64_t last_offset;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
+        first_offset = array_view->buffer_views[1].data.as_int32[0];
+        if (first_offset < 0) {
+          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+                        (long)first_offset);
+          return EINVAL;
+        }
+
         last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
         array_view->buffer_views[2].size_bytes = last_offset;
@@ -680,6 +690,13 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
+        first_offset = array_view->buffer_views[1].data.as_int64[0];
+        if (first_offset < 0) {
+          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+                        (long)first_offset);
+          return EINVAL;
+        }
+
         last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];
         array_view->buffer_views[2].size_bytes = last_offset;
@@ -709,6 +726,13 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
 
       if (array_view->buffer_views[1].size_bytes != 0) {
+        first_offset = array_view->buffer_views[1].data.as_int32[0];
+        if (first_offset < 0) {
+          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+                        (long)first_offset);
+          return EINVAL;
+        }
+
         last_offset =
             array_view->buffer_views[1].data.as_int32[array->offset + array->length];
         if (array->children[0]->length < last_offset) {
@@ -731,6 +755,13 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
 
       if (array_view->buffer_views[1].size_bytes != 0) {
+        first_offset = array_view->buffer_views[1].data.as_int64[0];
+        if (first_offset < 0) {
+          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+                        (long)first_offset);
+          return EINVAL;
+        }
+
         last_offset =
             array_view->buffer_views[1].data.as_int64[array->offset + array->length];
         if (array->children[0]->length < last_offset) {
