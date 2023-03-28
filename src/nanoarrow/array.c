@@ -622,6 +622,21 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
                                       struct ArrowArray* array,
                                       struct ArrowError* error) {
   array_view->array = array;
+
+  // Check length and offset
+  if (array->offset < 0) {
+    ArrowErrorSet(error, "Expected array offset >= 0 but found array offset of %ld",
+                  (long)array->offset);
+    return EINVAL;
+  }
+
+  if (array->offset < 0) {
+    ArrowErrorSet(error, "Expected array length >= 0 but found array length of %ld",
+                  (long)array->length);
+    return EINVAL;
+  }
+
+  // First pass setting lengths that do not depend on the data buffer
   ArrowArrayViewSetLength(array_view, array->offset + array->length);
 
   int64_t buffers_required = 0;
@@ -754,6 +769,119 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(
         ArrowArrayViewSetArray(array_view->children[i], array->children[i], error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowAssertIncreasingInt32(struct ArrowBufferView view,
+                                      struct ArrowError* error) {
+  if (view.size_bytes <= (int64_t)sizeof(int32_t)) {
+    return NANOARROW_OK;
+  }
+
+  for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int32_t); i++) {
+    int32_t diff = view.data.as_int32[i] - view.data.as_int32[i - 1];
+    if (diff < 0) {
+      ArrowErrorSet(error,
+                    "Expected element size >0 but found element size %ld at position %ld",
+                    (long)diff, (long)i);
+      return EINVAL;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowAssertIncreasingInt64(struct ArrowBufferView view,
+                                      struct ArrowError* error) {
+  if (view.size_bytes <= (int64_t)sizeof(int64_t)) {
+    return NANOARROW_OK;
+  }
+
+  for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int64_t); i++) {
+    int64_t diff = view.data.as_int64[i] - view.data.as_int64[i - 1];
+    if (diff < 0) {
+      ArrowErrorSet(error,
+                    "Expected element size >0 but found element size %ld at position %ld",
+                    (long)diff, (long)i);
+      return EINVAL;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowAssertRangeInt8(struct ArrowBufferView view, int8_t min_value,
+                                int8_t max_value, struct ArrowError* error) {
+  for (int64_t i = 0; i < view.size_bytes; i++) {
+    if (view.data.as_int8[i] < min_value || view.data.as_int8[i] > max_value) {
+      ArrowErrorSet(
+          error,
+          "Expected buffer value between %d and %d but found value %d at position %ld",
+          (int)min_value, (int)max_value, (int)view.data.as_int8[i], (long)i);
+      return EINVAL;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
+                             int64_t n_values, struct ArrowError* error) {
+  for (int64_t i = 0; i < view.size_bytes; i++) {
+    int item_found = 0;
+    for (int64_t j = 0; j < n_values; j++) {
+      if (view.data.as_int8[i] == values[j]) {
+        item_found = 1;
+        break;
+      }
+    }
+
+    if (!item_found) {
+      ArrowErrorSet(error, "Unexpected buffer value %d at position %ld",
+                    (int)view.data.as_int8[i], (long)i);
+      return EINVAL;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
+                                          struct ArrowArray* array,
+                                          struct ArrowError* error) {
+  for (int i = 0; i < array->n_buffers; i++) {
+    switch (array_view->layout.buffer_type[i]) {
+      case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+        NANOARROW_RETURN_NOT_OK(
+            ArrowAssertIncreasingInt32(array_view->buffer_views[i], error));
+        break;
+      case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+        if (array_view->layout.element_size_bits[i] == 32) {
+          NANOARROW_RETURN_NOT_OK(
+              ArrowAssertIncreasingInt32(array_view->buffer_views[i], error));
+        } else {
+          NANOARROW_RETURN_NOT_OK(
+              ArrowAssertIncreasingInt64(array_view->buffer_views[i], error));
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION ||
+      array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION) {
+    // Slightly easier to check the default 0...n union type id
+    if (array_view->union_type_id_map == NULL) {
+      NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(array_view->buffer_views[0], 0,
+                                                   array_view->n_children - 1, error));
+    } else {
+      NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(array_view->buffer_views[0],
+                                                array_view->union_type_id_map + 128,
+                                                array_view->n_children, error));
+    }
   }
 
   return NANOARROW_OK;
