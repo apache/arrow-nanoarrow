@@ -1282,6 +1282,17 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 3 * sizeof(int32_t));
 
+  // Expect error for bad offset + length
+  array.length = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected array length >= 0 but found array length of -1");
+  array.length = 3;
+
+  array.offset = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected array offset >= 0 but found array offset of -1");
+  array.offset = 0;
+
   // Expect error for the wrong number of buffers
   ArrowArrayViewReset(&array_view);
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
@@ -1366,7 +1377,7 @@ TEST(ArrayTest, ArrayViewTestString) {
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected element size >0 but found element size -1 at position 1");
 
@@ -1433,7 +1444,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected element size >0 but found element size -1 at position 1");
 
@@ -1496,7 +1507,8 @@ TEST(ArrayTest, ArrayViewTestList) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
@@ -1516,7 +1528,7 @@ TEST(ArrayTest, ArrayViewTestList) {
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected element size >0 but found element size -1 at position 1");
 
@@ -1548,7 +1560,8 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
@@ -1568,7 +1581,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected element size >0 but found element size -1 at position 1");
 

@@ -630,7 +630,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
     return EINVAL;
   }
 
-  if (array->offset < 0) {
+  if (array->length < 0) {
     ArrowErrorSet(error, "Expected array length >= 0 but found array length of %ld",
                   (long)array->length);
     return EINVAL;
@@ -880,9 +880,8 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
 }
 
 ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
-                                          struct ArrowArray* array,
                                           struct ArrowError* error) {
-  for (int i = 0; i < array->n_buffers; i++) {
+  for (int i = 0; i < 3; i++) {
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         NANOARROW_RETURN_NOT_OK(
@@ -913,6 +912,10 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                                                 array_view->union_type_id_map + 128,
                                                 array_view->n_children, error));
     }
+  }
+
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->children[i], error));
   }
 
   return NANOARROW_OK;
