@@ -19,7 +19,7 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales git cmake r-base gnupg curl
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales git cmake r-base gnupg curl valgrind
 RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 
 # For Arrow C++
@@ -29,5 +29,10 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
     apt-get update && \
     apt-get install -y -V libarrow-dev
 
-# For R. Note that arrow is not installed (takes too long).
+# For R. Note that we install arrow here so that the integration tests for R run
+# in at least one test image.
 RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+
+# Required for this to work on MacOS/arm64
+RUN mkdir ~/.R && echo "CXX17FLAGS += -fPIC" > ~/.R/Makevars
+RUN ARROW_USE_PKG_CONFIG=false ARROW_R_DEV=true R -e 'install.packages("arrow", repos = "https://cloud.r-project.org"); library(arrow)'
