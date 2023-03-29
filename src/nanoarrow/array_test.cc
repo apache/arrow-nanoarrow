@@ -292,6 +292,32 @@ TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
   array.release(&array);
 }
 
+TEST(ArrayTest, ArrayTestValidateMinimalBufferAccess) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("5678")), NANOARROW_OK);
+
+  // Temporarily make it so that referencing the offsets buffer will crash
+  // but make sure it has the correct size_bytes and passes minimal validation
+  uint8_t* tmp = ArrowArrayBuffer(&array, 1)->data;
+  ArrowArrayBuffer(&array, 1)->data = nullptr;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, nullptr),
+            NANOARROW_OK);
+
+  // ...and fails without crashing with the incorrect size_bytes
+  ArrowArrayBuffer(&array, 1)->size_bytes = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, nullptr),
+            EINVAL);
+
+  // ...restore the pointer so we don't leak memory
+  ArrowArrayBuffer(&array, 1)->data = tmp;
+
+  array.release(&array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToNullArray) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
