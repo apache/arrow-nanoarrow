@@ -19,9 +19,10 @@
 #include <fstream>
 #include <sstream>
 
-#include <arrow/array.h>
+#include <arrow/table.h>
 #include <arrow/c/bridge.h>
 #include <arrow/ipc/api.h>
+#include <arrow/filesystem/api.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow.hpp"
@@ -108,9 +109,45 @@ class TestFile {
       arrays.push_back(std::move(array));
     }
 
+    // If the file was supposed to fail the read but did not, fail here
     if (expected_return_code_ != NANOARROW_OK) {
       GTEST_FAIL() << MakeError(NANOARROW_OK, "");
     }
+
+    // Read the same file with Arrow C++
+    auto options = ipc::IpcReadOptions::Defaults();
+    auto fs = fs::LocalFileSystem();
+    auto maybe_input_stream = fs.OpenInputStream(path_builder.str());
+    if (!maybe_input_stream.ok()) {
+      GTEST_FAIL() << maybe_input_stream.status().message();
+    }
+
+    auto maybe_reader = ipc::RecordBatchStreamReader::Open(*maybe_input_stream);
+    if (!maybe_reader.ok()) {
+      GTEST_FAIL() << maybe_reader.status().message();
+    }
+
+    auto maybe_table_arrow = maybe_reader.ValueUnsafe()->ToTable();
+    if (!maybe_table_arrow.ok()) {
+      GTEST_FAIL() << maybe_table_arrow.status().message();
+    }
+
+    // Make a Table from the our vector of arrays
+    auto maybe_schema = ImportSchema(schema.get());
+    if (!maybe_schema.ok()) {
+      GTEST_FAIL() << maybe_schema.status().message();
+    }
+
+    ASSERT_TRUE(maybe_table_arrow.ValueUnsafe()->schema()->Equals(**maybe_schema, true));
+
+    std::vector<std::shared_ptr<RecordBatch>> batches;
+    for (auto& array : arrays) {
+      auto maybe_batch = ImportRecordBatch(array.get(), *maybe_schema);
+      batches.push_back(std::move(*maybe_batch));
+    }
+
+    auto maybe_table = Table::FromRecordBatches(*maybe_schema, batches);
+    EXPECT_TRUE(maybe_table.ValueUnsafe()->Equals(**maybe_table_arrow, true));
   }
 
   bool Check(int result, std::string msg) {
@@ -155,7 +192,8 @@ TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFile) {
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowTestingPathParameterizedTestFixture,
     ::testing::Values(
-        // Comment to keep the first line from wrapping
+        // Files in data/arrow-ipc-stream/integration/1.0.0-littleendian/
+        // should read without error and the data should match Arrow C++'s read
         TestFile::OK("data/arrow-ipc-stream/integration/1.0.0-littleendian/"
                      "generated_custom_metadata.stream"),
         TestFile::OK("data/arrow-ipc-stream/integration/1.0.0-littleendian/"
@@ -194,7 +232,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("data/arrow-ipc-stream/integration/1.0.0-littleendian/"
                      "generated_union.stream"),
 
-        // Dictionary encoding not yet supported
+        // Files with features that are not yet supported (Dictionary encoding)
         TestFile::NotSupported(
             "data/arrow-ipc-stream/integration/1.0.0-littleendian/"
             "generated_dictionary_unsigned.stream",
