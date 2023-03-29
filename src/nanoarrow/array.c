@@ -437,9 +437,12 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         enum ArrowValidationLevel validation_level,
                                         struct ArrowError* error) {
-  // Even if the data buffer is size zero, the value needed to be non-null
-  // in Arrow C++ < 11.0.0.
-  NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array));
+  // Even if the data buffer is size zero, the pointer value needed to be non-null
+  // in some implementations (at least one version of Arrow C++ at the time this
+  // was added). Only do this fix if we can assume CPU data access.
+  if (validation_level >= NANOARROW_VALIDATION_LEVEL_DEFAULT) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array));
+  }
 
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
