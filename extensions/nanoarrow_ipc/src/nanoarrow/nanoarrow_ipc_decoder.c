@@ -706,7 +706,7 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
                                    struct ArrowError* error) {
   // No dictionary support yet
   if (ns(Field_dictionary_is_present(field))) {
-    ArrowErrorSet(error, "Field DictionaryEncoding not supported");
+    ArrowErrorSet(error, "Schema message field with DictionaryEncoding not supported");
     return ENOTSUP;
   }
 
