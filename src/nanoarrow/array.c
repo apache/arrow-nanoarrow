@@ -677,7 +677,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int32[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+          ArrowErrorSet(error, "Expected first offset >=0 but found %ld",
                         (long)first_offset);
           return EINVAL;
         }
@@ -692,7 +692,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int64[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+          ArrowErrorSet(error, "Expected first offset >=0 but found %ld",
                         (long)first_offset);
           return EINVAL;
         }
