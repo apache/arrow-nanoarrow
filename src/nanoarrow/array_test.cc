@@ -1376,14 +1376,13 @@ TEST(ArrayTest, ArrayViewTestString) {
 
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected first offset >0 but found -1");
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
   offsets[0] = 0;
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
-  EXPECT_STREQ(error.message,
-               "Expected element size >0 but found element size -1 at position 1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1445,14 +1444,13 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
 
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected first offset >0 but found -1");
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
   offsets[0] = 0;
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
-  EXPECT_STREQ(error.message,
-               "Expected element size >0 but found element size -1 at position 1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1530,14 +1528,13 @@ TEST(ArrayTest, ArrayViewTestList) {
 
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected first offset >0 but found -1");
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
   offsets[0] = 0;
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
-  EXPECT_STREQ(error.message,
-               "Expected element size >0 but found element size -1 at position 1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1584,14 +1581,13 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
 
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected first offset >0 but found -1");
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
   offsets[0] = 0;
 
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
-  EXPECT_STREQ(error.message,
-               "Expected element size >0 but found element size -1 at position 1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1761,14 +1757,14 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   type_ids[0] = -1;
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected buffer value between 0 and 1 but found value -1 at position 0");
+               "[0] Expected buffer value between 0 and 1 but found value -1");
   type_ids[0] = 0;
 
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected union offset for child id 0 to be between 0 and 1 but found "
-               "offset value -1 at position 0");
+               "[0] Expected union offset for child id 0 to be between 0 and 1 but found "
+               "offset value -1");
   offsets[0] = 0;
 
   ArrowArrayViewReset(&array_view);
@@ -1788,7 +1784,7 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   // Check that bad type ids are caught by validate full
   type_ids[0] = -1;
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Unexpected buffer value -1 at position 0");
+  EXPECT_STREQ(error.message, "[0] Unexpected buffer value -1");
   type_ids[0] = 0;
 
   ArrowArrayViewReset(&array_view);

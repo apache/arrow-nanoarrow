@@ -677,7 +677,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int32[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >=0 but found %ld",
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
                         (long)first_offset);
           return EINVAL;
         }
@@ -692,7 +692,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int64[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >=0 but found %ld",
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
                         (long)first_offset);
           return EINVAL;
         }
@@ -728,7 +728,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int32[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
                         (long)first_offset);
           return EINVAL;
         }
@@ -757,7 +757,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int64[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >0 but found %ld",
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
                         (long)first_offset);
           return EINVAL;
         }
@@ -814,9 +814,8 @@ static int ArrowAssertIncreasingInt32(struct ArrowBufferView view,
   for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int32_t); i++) {
     int32_t diff = view.data.as_int32[i] - view.data.as_int32[i - 1];
     if (diff < 0) {
-      ArrowErrorSet(error,
-                    "Expected element size >0 but found element size %ld at position %ld",
-                    (long)diff, (long)i);
+      ArrowErrorSet(error, "[%ld] Expected element size >= 0 but found element size %ld",
+                    (long)i, (long)diff);
       return EINVAL;
     }
   }
@@ -833,9 +832,8 @@ static int ArrowAssertIncreasingInt64(struct ArrowBufferView view,
   for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int64_t); i++) {
     int64_t diff = view.data.as_int64[i] - view.data.as_int64[i - 1];
     if (diff < 0) {
-      ArrowErrorSet(error,
-                    "Expected element size >0 but found element size %ld at position %ld",
-                    (long)diff, (long)i);
+      ArrowErrorSet(error, "[%ld] Expected element size >= 0 but found element size %ld",
+                    (long)i, (long)diff);
       return EINVAL;
     }
   }
@@ -847,10 +845,9 @@ static int ArrowAssertRangeInt8(struct ArrowBufferView view, int8_t min_value,
                                 int8_t max_value, struct ArrowError* error) {
   for (int64_t i = 0; i < view.size_bytes; i++) {
     if (view.data.as_int8[i] < min_value || view.data.as_int8[i] > max_value) {
-      ArrowErrorSet(
-          error,
-          "Expected buffer value between %d and %d but found value %d at position %ld",
-          (int)min_value, (int)max_value, (int)view.data.as_int8[i], (long)i);
+      ArrowErrorSet(error,
+                    "[%ld] Expected buffer value between %d and %d but found value %d",
+                    (long)i, (int)min_value, (int)max_value, (int)view.data.as_int8[i]);
       return EINVAL;
     }
   }
@@ -870,8 +867,8 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
     }
 
     if (!item_found) {
-      ArrowErrorSet(error, "Unexpected buffer value %d at position %ld",
-                    (int)view.data.as_int8[i], (long)i);
+      ArrowErrorSet(error, "[%ld] Unexpected buffer value %d", (long)i,
+                    (int)view.data.as_int8[i]);
       return EINVAL;
     }
   }
@@ -924,10 +921,11 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       int64_t offset = ArrowArrayViewUnionChildOffset(array_view, i);
       int64_t child_length = array_view->array->children[child_id]->length;
       if (offset < 0 || offset > child_length) {
-        ArrowErrorSet(error,
-                      "Expected union offset for child id %d to be between 0 and %ld but "
-                      "found offset value %ld at position %ld",
-                      (int)child_id, (long)child_length, offset, (long)i);
+        ArrowErrorSet(
+            error,
+            "[%ld] Expected union offset for child id %d to be between 0 and %ld but "
+            "found offset value %ld",
+            (long)i, (int)child_id, (long)child_length, offset);
         return EINVAL;
       }
     }
