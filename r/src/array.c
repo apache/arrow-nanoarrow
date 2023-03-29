@@ -288,9 +288,9 @@ SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) 
     Rf_error("move_array_buffers: %s", error.message);
   }
 
-  result = ArrowArrayFinishBuilding(array_dst, &error);
+  result = ArrowArrayFinishBuildingDefault(array_dst, &error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuilding(): %s", error.message);
+    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error.message);
   }
 
   UNPROTECT(1);

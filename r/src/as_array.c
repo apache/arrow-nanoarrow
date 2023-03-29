@@ -109,9 +109,9 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 
   array->null_count = null_count;
-  result = ArrowArrayFinishBuilding(array, error);
+  result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
   }
 }
 
@@ -187,9 +187,9 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 
   array->null_count = null_count;
-  result = ArrowArrayFinishBuilding(array, error);
+  result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
   }
 }
 
@@ -312,9 +312,9 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 
   array->null_count = null_count;
-  result = ArrowArrayFinishBuilding(array, error);
+  result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
   }
 }
 
@@ -397,9 +397,9 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 
   array->null_count = null_count;
-  result = ArrowArrayFinishBuilding(array, error);
+  result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
   }
 }
 
@@ -529,9 +529,9 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
   }
 
   array->null_count = null_count;
-  result = ArrowArrayFinishBuilding(array, error);
+  result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuilding(): %s", error->message);
+    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
   }
 }
 
