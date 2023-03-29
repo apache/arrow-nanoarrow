@@ -535,7 +535,8 @@ struct ArrowArrayView {
   ///
   /// If storage_type is a union type, a 256-byte ArrowMalloc()ed buffer
   /// such that child_index == union_type_id_map[type_id] and
-  /// type_id == union_type_id_map[128 + child_index]
+  /// type_id == union_type_id_map[128 + child_index]. This value may be
+  /// NULL in the case where child_id == type_id.
   int8_t* union_type_id_map;
 };
 
@@ -685,6 +686,8 @@ struct ArrowArrayPrivateData {
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetLength)
 #define ArrowArrayViewSetArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArray)
+#define ArrowArrayViewValidateFull \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewValidateFull)
 #define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
 #define ArrowBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBasicArrayStreamInit)
@@ -1466,6 +1469,10 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
                                       struct ArrowArray* array, struct ArrowError* error);
 
+/// \brief Performs extra checks on the array that was set via ArrowArrayViewSetArray()
+ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
+                                          struct ArrowError* error);
+
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
@@ -2155,10 +2162,9 @@ static inline int8_t _ArrowParseUnionTypeIds(const char* type_ids, int8_t* out) 
   return -1;
 }
 
-static inline int8_t _ArrowUnionTypeIdsWillEqualChildIndices(const char* type_id_str,
-                                                             int64_t n_children) {
-  int8_t type_ids[128];
-  int8_t n_type_ids = _ArrowParseUnionTypeIds(type_id_str, type_ids);
+static inline int8_t _ArrowParsedUnionTypeIdsWillEqualChildIndices(const int8_t* type_ids,
+                                                                   int64_t n_type_ids,
+                                                                   int64_t n_children) {
   if (n_type_ids != n_children) {
     return 0;
   }
@@ -2170,6 +2176,13 @@ static inline int8_t _ArrowUnionTypeIdsWillEqualChildIndices(const char* type_id
   }
 
   return 1;
+}
+
+static inline int8_t _ArrowUnionTypeIdsWillEqualChildIndices(const char* type_id_str,
+                                                             int64_t n_children) {
+  int8_t type_ids[128];
+  int8_t n_type_ids = _ArrowParseUnionTypeIds(type_id_str, type_ids);
+  return _ArrowParsedUnionTypeIdsWillEqualChildIndices(type_ids, n_type_ids, n_children);
 }
 
 static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) {
