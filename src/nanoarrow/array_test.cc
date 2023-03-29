@@ -1267,6 +1267,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 3 * sizeof(int32_t));
   EXPECT_EQ(array_view.buffer_views[1].data.as_int32[0], 11);
@@ -1279,8 +1280,20 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 3 * sizeof(int32_t));
+
+  // Expect error for bad offset + length
+  array.length = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected array length >= 0 but found array length of -1");
+  array.length = 3;
+
+  array.offset = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected array offset >= 0 but found array offset of -1");
+  array.offset = 0;
 
   // Expect error for the wrong number of buffers
   ArrowArrayViewReset(&array_view);
@@ -1338,6 +1351,7 @@ TEST(ArrayTest, ArrayViewTestString) {
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   array.null_count = 0;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
@@ -1351,9 +1365,24 @@ TEST(ArrayTest, ArrayViewTestString) {
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, (1 + 1) * sizeof(int32_t));
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 4);
+
+  // Expect error for offsets that will cause bad access
+  int32_t* offsets =
+      const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  offsets[0] = 0;
+
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1390,6 +1419,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   array.null_count = 0;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
@@ -1403,9 +1433,24 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, (1 + 1) * sizeof(int64_t));
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 4);
+
+  // Expect error for offsets that will cause bad access
+  int64_t* offsets =
+      const_cast<int64_t*>(reinterpret_cast<const int64_t*>(array.buffers[1]));
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  offsets[0] = 0;
+
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1462,6 +1507,36 @@ TEST(ArrayTest, ArrayViewTestList) {
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, (5 + 1) * sizeof(int32_t));
 
+  // Build a valid array
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
+
+  // Expect error for offsets that will cause bad access
+  struct ArrowError error;
+  int32_t* offsets =
+      const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  offsets[0] = 0;
+
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+
+  array.release(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1485,6 +1560,36 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, (5 + 1) * sizeof(int64_t));
 
+  // Build a valid array
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
+
+  // Expect error for offsets that will cause bad access
+  struct ArrowError error;
+  int64_t* offsets =
+      const_cast<int64_t*>(reinterpret_cast<const int64_t*>(array.buffers[1]));
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  offsets[0] = 0;
+
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+
+  array.release(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1544,6 +1649,7 @@ TEST(ArrayTest, ArrayViewTestStructArray) {
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].size_bytes, sizeof(int32_t));
   EXPECT_EQ(array_view.children[0]->buffer_views[1].data.as_int32[0], 123);
 
@@ -1586,6 +1692,7 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   ASSERT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].size_bytes, 3 * sizeof(int32_t));
   EXPECT_EQ(array_view.children[0]->buffer_views[1].data.as_int32[0], 123);
 
@@ -1622,6 +1729,7 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   ArrowArrayViewInitFromType(array_view.children[1], NANOARROW_TYPE_STRING);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
@@ -1633,11 +1741,31 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   // The test schema explicitly sets the type_ids 0,1 and this should work too
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
+
+  // Check that bad type ids/offset are caught by validate full
+  struct ArrowError error;
+  int8_t* type_ids =
+      const_cast<int8_t*>(reinterpret_cast<const int8_t*>(array.buffers[0]));
+  int32_t* offsets =
+      const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
+  type_ids[0] = -1;
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "[0] Expected buffer value between 0 and 1 but found value -1");
+  type_ids[0] = 0;
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "[0] Expected union offset for child id 0 to be between 0 and 1 but found "
+               "offset value -1");
+  offsets[0] = 0;
 
   ArrowArrayViewReset(&array_view);
 
@@ -1646,11 +1774,18 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+ud:1,0"), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 1);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 0);
+
+  // Check that bad type ids are caught by validate full
+  type_ids[0] = -1;
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), EINVAL);
+  EXPECT_STREQ(error.message, "[0] Unexpected buffer value -1");
+  type_ids[0] = 0;
 
   ArrowArrayViewReset(&array_view);
 
@@ -1692,6 +1827,7 @@ TEST(ArrayTest, ArrayViewTestDenseUnionGet) {
   // Initialize the array view
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
 
   // Check the values that will be used to index into children
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
@@ -1736,6 +1872,7 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   // Initialize the array view
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
 
   // Check the values that will be used to index into children
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
@@ -1776,6 +1913,7 @@ void TestGetFromNumericArrayView() {
   ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
@@ -1806,6 +1944,7 @@ void TestGetFromNumericArrayView() {
   ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
 
   // We're trying to test behavior with no validity buffer, so make sure that's true
   ASSERT_EQ(array_view.buffer_views[0].data.data, nullptr);
@@ -1852,6 +1991,7 @@ void TestGetFromBinary(BuilderClass& builder) {
   ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
