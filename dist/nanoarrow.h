@@ -351,6 +351,25 @@ enum ArrowTimeUnit {
   NANOARROW_TIME_UNIT_NANO = 3
 };
 
+/// \brief Validation level enumerator
+/// \ingroup nanoarrow-array
+enum ArrowValidationLevel {
+  /// \brief Do not validate buffer sizes or content.
+  NANOARROW_VALIDATION_LEVEL_NONE = 0,
+
+  /// \brief Validate buffer sizes that depend on array length but do not validate buffer
+  /// sizes that depend on buffer data access.
+  NANOARROW_VALIDATION_LEVEL_MINIMAL = 1,
+
+  /// \brief Validate all buffer sizes, including those that require buffer data access,
+  /// but do not perform any checks that are O(1) along the length of the buffers.
+  NANOARROW_VALIDATION_LEVEL_DEFAULT = 2,
+
+  /// \brief Validate all buffer sizes and all buffer content. This is useful in the
+  /// context of untrusted input or input that may have been corrupted in transit.
+  NANOARROW_VALIDATION_LEVEL_FULL = 3
+};
+
 /// \brief Get a string value of an enum ArrowTimeUnit value
 /// \ingroup nanoarrow-utils
 ///
@@ -676,6 +695,8 @@ struct ArrowArrayPrivateData {
 #define ArrowArrayReserve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayReserve)
 #define ArrowArrayFinishBuilding \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuilding)
+#define ArrowArrayFinishBuildingDefault \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuildingDefault)
 #define ArrowArrayViewInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromType)
 #define ArrowArrayViewInitFromSchema \
@@ -1278,7 +1299,10 @@ static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 
 /// \defgroup nanoarrow-array Creating arrays
 ///
-/// These functions allocate, copy, and destroy ArrowArray structures
+/// These functions allocate, copy, and destroy ArrowArray structures.
+/// Once an ArrowArray has been initialized via ArrowArrayInitFromType()
+/// or ArrowArrayInitFromSchema(), the caller is responsible for releasing
+/// it using the embedded release callback.
 ///
 /// @{
 
@@ -1426,10 +1450,21 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 /// \brief Finish building an ArrowArray
 ///
 /// Flushes any pointers from internal buffers that may have been reallocated
-/// into the array->buffers array and checks the actual size of the buffers
+/// into array->buffers and checks the actual size of the buffers
 /// against the expected size based on the final length.
 /// array must have been allocated using ArrowArrayInitFromType()
+ArrowErrorCode ArrowArrayFinishBuildingDefault(struct ArrowArray* array,
+                                               struct ArrowError* error);
+
+/// \brief Finish building an ArrowArray with explicit validation
+///
+/// Finish building with an explicit validation level. This could perform less validation
+/// (i.e. NANOARROW_VALIDATION_LEVEL_NONE or NANOARROW_VALIDATION_LEVEL_MINIMAL) if CPU
+/// buffer data access is not possible or more validation (i.e.,
+/// NANOARROW_VALIDATION_LEVEL_FULL) if buffer content was obtained from an untrusted or
+/// corruptable source.
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                        enum ArrowValidationLevel validation_level,
                                         struct ArrowError* error);
 
 /// @}
