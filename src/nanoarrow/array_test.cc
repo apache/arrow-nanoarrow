@@ -236,6 +236,62 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   array.release(&array);
 }
 
+TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
+  struct ArrowArray array;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("5678")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+
+  int32_t* offsets =
+      const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
+
+  // Valid at validation_level < NANOARROW_VALIDATION_LEVEL_FULL
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+  offsets[1] = 4;
+
+  // Valid at validation_level < NANOARROW_VALIDATION_LEVEL_DEFAULT
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
+            EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  offsets[0] = 0;
+
+  // Valid at validation_level < NANOARROW_VALIDATION_LEVEL_MINIMAL
+  ArrowBufferReset(ArrowArrayBuffer(&array, 1));
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+            EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
+            EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected buffer 1 to size >= 12 bytes but found buffer with 0 bytes");
+
+  array.release(&array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToNullArray) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
