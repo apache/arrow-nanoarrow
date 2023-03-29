@@ -26,7 +26,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayTest) {
   ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_INT32);
   ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.get(), 123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuilding(array.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
 
   EXPECT_NE(array->release, nullptr);
   EXPECT_EQ(array->length, 1);
@@ -191,7 +191,7 @@ TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
   EXPECT_EQ(ArrowArrayInitFromType(array_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(array_in.get()), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(array_in.get(), 1234), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(array_in.get(), nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(array_in.get(), nullptr), NANOARROW_OK);
 
   nanoarrow::UniqueSchema schema_in;
   EXPECT_EQ(ArrowSchemaInitFromType(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);

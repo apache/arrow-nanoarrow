@@ -207,7 +207,7 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
 
   array.length = 7;
   EXPECT_EQ(ArrowArrayShrinkToFit(&array), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
   EXPECT_EQ(memcmp(array.buffers[0], validity_bitmap, 1), 0);
   EXPECT_EQ(memcmp(array.buffers[1], offsets, 8 * sizeof(int32_t)), 0);
@@ -222,16 +222,98 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   EXPECT_EQ(ArrowArrayBuffer(&array, 2)->size_bytes, 10);
 
   array.length = 8;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected buffer 1 to size >= 36 bytes but found buffer with 32 bytes");
 
   array.length = 7;
   int32_t* offsets_buffer = reinterpret_cast<int32_t*>(ArrowArrayBuffer(&array, 1)->data);
   offsets_buffer[7] = offsets_buffer[7] + 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected buffer 2 to size >= 11 bytes but found buffer with 10 bytes");
+
+  array.release(&array);
+}
+
+TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
+  struct ArrowArray array;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("5678")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+
+  int32_t* offsets =
+      const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
+
+  // Valid at validation_level < NANOARROW_VALIDATION_LEVEL_FULL
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+  offsets[1] = 4;
+
+  // Valid at validation_level < NANOARROW_VALIDATION_LEVEL_DEFAULT
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
+            EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  offsets[0] = 0;
+
+  // Valid at validation_level < NANOARROW_VALIDATION_LEVEL_MINIMAL
+  ArrowBufferReset(ArrowArrayBuffer(&array, 1));
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+            EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
+            EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected buffer 1 to size >= 12 bytes but found buffer with 0 bytes");
+
+  array.release(&array);
+}
+
+TEST(ArrayTest, ArrayTestValidateMinimalBufferAccess) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("1234")), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("5678")), NANOARROW_OK);
+
+  // Temporarily make it so that referencing the offsets buffer will crash
+  // but make sure it has the correct size_bytes and passes minimal validation
+  uint8_t* tmp = ArrowArrayBuffer(&array, 1)->data;
+  ArrowArrayBuffer(&array, 1)->data = nullptr;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, nullptr),
+            NANOARROW_OK);
+
+  // ...and fails without crashing with the incorrect size_bytes
+  ArrowArrayBuffer(&array, 1)->size_bytes = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_MINIMAL, nullptr),
+            EINVAL);
+
+  // ...restore the pointer so we don't leak memory
+  ArrowArrayBuffer(&array, 1)->data = tmp;
 
   array.release(&array);
 }
@@ -244,7 +326,7 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 3);
@@ -277,7 +359,7 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
@@ -311,7 +393,7 @@ TEST(ArrayTest, ArrayTestAppendToInt32Array) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
   EXPECT_EQ(array.null_count, 0);
@@ -337,7 +419,7 @@ TEST(ArrayTest, ArrayTestAppendToInt16Array) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
   EXPECT_EQ(array.null_count, 0);
@@ -363,7 +445,7 @@ TEST(ArrayTest, ArrayTestAppendToInt8Array) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, std::numeric_limits<int64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 1);
   EXPECT_EQ(array.null_count, 0);
@@ -395,7 +477,7 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
@@ -428,7 +510,7 @@ TEST(ArrayTest, ArrayTestAppendEmptyToString) {
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
   EXPECT_NE(array.buffers[2], nullptr);
   array.release(&array);
 }
@@ -441,7 +523,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 3), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -476,7 +558,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
@@ -507,7 +589,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
@@ -538,7 +620,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
   EXPECT_EQ(ArrowArrayAppendUInt(&array, std::numeric_limits<uint64_t>::max()), EINVAL);
   EXPECT_EQ(ArrowArrayAppendInt(&array, -1), EINVAL);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
@@ -574,7 +656,7 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   EXPECT_EQ(ArrowArrayAppendDouble(&array, -INFINITY), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, -1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 11);
   EXPECT_EQ(array.null_count, 2);
@@ -631,7 +713,7 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_EQ(ArrowArrayAppendDouble(&array, -INFINITY), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, -1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 11);
   EXPECT_EQ(array.null_count, 2);
@@ -679,7 +761,7 @@ TEST(ArrayTest, ArrayTestAppendToBoolArray) {
   EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 0), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
@@ -717,7 +799,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("56789")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
@@ -764,7 +846,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendBytes(&array, {"67890", 5}), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
@@ -818,20 +900,20 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
 
   // Make sure number of children is checked at finish
   array.n_children = 0;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected 1 child of list array but found 0 child arrays");
   array.n_children = 1;
 
   // Make sure final child size is checked at finish
   array.children[0]->length = array.children[0]->length - 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
       "Expected child of list array with length >= 3 but found array with length 2");
 
   array.children[0]->length = array.children[0]->length + 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -879,20 +961,20 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
 
   // Make sure number of children is checked at finish
   array.n_children = 0;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected 1 child of large list array but found 0 child arrays");
   array.n_children = 1;
 
   // Make sure final child size is checked at finish
   array.children[0]->length = array.children[0]->length - 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected child of large list array with length >= 3 but found array with "
                "length 2");
 
   array.children[0]->length = array.children[0]->length + 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -944,20 +1026,20 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
 
   // Make sure number of children is checked at finish
   array.n_children = 0;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected 1 child of map array but found 0 child arrays");
   array.n_children = 1;
 
   // Make sure final child size is checked at finish
   array.children[0]->length = array.children[0]->length - 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
       "Expected child of map array with length >= 1 but found array with length 0");
 
   array.children[0]->length = array.children[0]->length + 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
   auto maybe_arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(maybe_arrow_array);
@@ -1011,20 +1093,20 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
 
   // Make sure number of children is checked at finish
   array.n_children = 0;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected 1 child of fixed-size array but found 0 child arrays");
   array.n_children = 1;
 
   // Make sure final child size is checked at finish
   array.children[0]->length = array.children[0]->length - 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, &error), EINVAL);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected child of fixed-size list array with length >= 8 but found array "
                "with length 7");
 
   array.children[0]->length = array.children[0]->length + 1;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -1075,7 +1157,7 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
 
   ASSERT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -1148,7 +1230,7 @@ TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
 
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -1193,7 +1275,7 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
@@ -1264,7 +1346,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 13), NANOARROW_OK);
   array.length = 3;
   array.null_count = 0;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
@@ -1277,7 +1359,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   // Build with validity buffer
   ASSERT_EQ(ArrowBitmapAppend(ArrowArrayValidityBitmap(&array), 1, 3), NANOARROW_OK);
   array.null_count = -1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
@@ -1362,7 +1444,7 @@ TEST(ArrayTest, ArrayViewTestString) {
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 4), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "abcd", 4);
   array.length = 1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
@@ -1430,7 +1512,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 4), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "abcd", 4);
   array.length = 1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
@@ -1516,7 +1598,7 @@ TEST(ArrayTest, ArrayViewTestList) {
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
@@ -1569,7 +1651,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
@@ -1646,7 +1728,7 @@ TEST(ArrayTest, ArrayViewTestStructArray) {
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 123),
             NANOARROW_OK);
   array.children[0]->length = 1;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
@@ -1689,7 +1771,7 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(array.children[0], 1), 789),
             NANOARROW_OK);
   array.children[0]->length = 3;
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, &error), NANOARROW_OK);
@@ -1720,7 +1802,7 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   ASSERT_EQ(ArrowArrayAppendString(array.children[1], ArrowCharView("one twenty four")),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   // The ArrayView for a union could in theroy be created without a schema,
   // in which case the type_ids are assumed to equal child indices
@@ -1822,7 +1904,7 @@ TEST(ArrayTest, ArrayViewTestDenseUnionGet) {
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   // Initialize the array view
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
@@ -1867,7 +1949,7 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuilding(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   // Initialize the array view
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);

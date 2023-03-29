@@ -435,13 +435,22 @@ static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
 }
 
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
+                                        enum ArrowValidationLevel validation_level,
                                         struct ArrowError* error) {
-  // Even if the data buffer is size zero, the value needs to be non-null
-  NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array));
+  // Even if the data buffer is size zero, the pointer value needed to be non-null
+  // in some implementations (at least one version of Arrow C++ at the time this
+  // was added). Only do this fix if we can assume CPU data access.
+  if (validation_level >= NANOARROW_VALIDATION_LEVEL_DEFAULT) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array));
+  }
 
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
   ArrowArrayFlushInternalPointers(array);
+
+  if (validation_level == NANOARROW_VALIDATION_LEVEL_NONE) {
+    return NANOARROW_OK;
+  }
 
   // Check buffer sizes to make sure we are not sending an ArrowArray
   // into the wild that is going to segfault
@@ -458,6 +467,11 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
     return result;
   }
 
+  if (validation_level == NANOARROW_VALIDATION_LEVEL_MINIMAL) {
+    ArrowArrayViewReset(&array_view);
+    return NANOARROW_OK;
+  }
+
   result = ArrowArrayViewSetArray(&array_view, array, error);
   if (result != NANOARROW_OK) {
     ArrowArrayViewReset(&array_view);
@@ -465,8 +479,24 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   }
 
   result = ArrowArrayCheckInternalBufferSizes(array, &array_view, 0, error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(&array_view);
+    return result;
+  }
+
+  if (validation_level == NANOARROW_VALIDATION_LEVEL_DEFAULT) {
+    ArrowArrayViewReset(&array_view);
+    return NANOARROW_OK;
+  }
+
+  result = ArrowArrayViewValidateFull(&array_view, error);
   ArrowArrayViewReset(&array_view);
   return result;
+}
+
+ArrowErrorCode ArrowArrayFinishBuildingDefault(struct ArrowArray* array,
+                                               struct ArrowError* error) {
+  return ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_DEFAULT, error);
 }
 
 void ArrowArrayViewInitFromType(struct ArrowArrayView* array_view,
