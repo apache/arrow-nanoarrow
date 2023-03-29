@@ -102,6 +102,8 @@
 #define ArrowArrayReserve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayReserve)
 #define ArrowArrayFinishBuilding \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuilding)
+#define ArrowArrayFinishBuildingDefault \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuildingDefault)
 #define ArrowArrayViewInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromType)
 #define ArrowArrayViewInitFromSchema \
