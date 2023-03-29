@@ -706,7 +706,10 @@ static inline void ArrowBitmapReset(struct ArrowBitmap* bitmap);
 
 /// \defgroup nanoarrow-array Creating arrays
 ///
-/// These functions allocate, copy, and destroy ArrowArray structures
+/// These functions allocate, copy, and destroy ArrowArray structures.
+/// Once an ArrowArray has been initialized via ArrowArrayInitFromType()
+/// or ArrowArrayInitFromSchema(), the caller is responsible for releasing
+/// it using the embedded release callback.
 ///
 /// @{
 
