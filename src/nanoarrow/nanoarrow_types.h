@@ -319,6 +319,25 @@ enum ArrowTimeUnit {
   NANOARROW_TIME_UNIT_NANO = 3
 };
 
+/// \brief Validation level enumerator
+/// \ingroup nanoarrow-array
+enum ArrowValidationLevel {
+  /// \brief Do not validate buffer sizes or content.
+  NANOARROW_VALIDATION_LEVEL_NONE = 0,
+
+  /// \brief Validate buffer sizes that depend on array length but do not validate buffer
+  /// sizes that depend on buffer data access.
+  NANOARROW_VALIDATION_LEVEL_MINIMAL = 1,
+
+  /// \brief Validate all buffer sizes, including those that require buffer data access,
+  /// but do not perform any checks that are O(1) along the length of the buffers.
+  NANOARROW_VALIDATION_LEVEL_DEFAULT = 2,
+
+  /// \brief Validate all buffer sizes and all buffer content. This is useful in the
+  /// context of untrusted input or input that may have been corrupted in transit.
+  NANOARROW_VALIDATION_LEVEL_FULL = 3
+};
+
 /// \brief Get a string value of an enum ArrowTimeUnit value
 /// \ingroup nanoarrow-utils
 ///
