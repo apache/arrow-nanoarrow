@@ -173,5 +173,4 @@ jobs:
 
         run: |
           cd src
-          # Set GITHUB_WORKSPACE to set more log-friendly headers
-          docker compose run -e GITHUB_WORKSPACE=1 ${{ matrix.config.compose_args }} verify
+          docker compose run -e GITHUB_ACTIONS ${{ matrix.config.compose_args }} verify

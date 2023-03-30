@@ -76,7 +76,7 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 NANOARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
 show_header() {
-  if [ -z "$GITHUB_WORKSPACE" ]; then
+  if [ -z "$GITHUB_ACTIONS" ]; then
     echo ""
     printf '=%.0s' $(seq ${#1}); printf '\n'
     echo "${1}"
