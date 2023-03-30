@@ -19,8 +19,9 @@
 #include <fstream>
 #include <sstream>
 
+#include <arrow/buffer.h>
 #include <arrow/c/bridge.h>
-#include <arrow/filesystem/api.h>
+#include <arrow/io/api.h>
 #include <arrow/ipc/api.h>
 #include <arrow/table.h>
 #include <gtest/gtest.h>
@@ -73,18 +74,27 @@ class TestFile {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << path_;
 
-    // Read the whole file into an ArrowBuffer
+    // Read the whole file into an ArrowBuffer. We need the whole thing in memory
+    // to avoid requiring Arrow C++ with filesystem.
     std::ifstream infile(path_builder.str(), std::ios::in | std::ios::binary);
-    nanoarrow::UniqueBuffer buf;
+    nanoarrow::UniqueBuffer content;
     do {
-      buf->size_bytes += infile.gcount();
-      ArrowBufferReserve(buf.get(), 8096);
-    } while (infile.read(reinterpret_cast<char*>(buf->data + buf->size_bytes), 8096));
-    buf->size_bytes += infile.gcount();
+      content->size_bytes += infile.gcount();
+      ASSERT_EQ(ArrowBufferReserve(content.get(), 8096), NANOARROW_OK);
+    } while (
+        infile.read(reinterpret_cast<char*>(content->data + content->size_bytes), 8096));
+    content->size_bytes += infile.gcount();
+
+    // Make a copy into another buffer and wrap it in something Arrow C++ understands
+    nanoarrow::UniqueBuffer content_copy;
+    ASSERT_EQ(ArrowBufferAppend(content_copy.get(), content->data, content->size_bytes),
+              NANOARROW_OK);
+    auto content_copy_wrapped =
+        Buffer::Wrap<uint8_t>(content_copy->data, content_copy->size_bytes);
 
     struct ArrowIpcInputStream input;
     nanoarrow::UniqueArrayStream stream;
-    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, buf.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, content.get()), NANOARROW_OK);
     ASSERT_EQ(ArrowIpcArrayStreamReaderInit(stream.get(), &input, nullptr), NANOARROW_OK);
 
     nanoarrow::UniqueSchema schema;
@@ -126,12 +136,9 @@ class TestFile {
 
     // Read the same file with Arrow C++
     auto options = ipc::IpcReadOptions::Defaults();
-    auto fs = fs::LocalFileSystem();
-    auto maybe_input_stream = fs.OpenInputStream(path_builder.str());
-    if (!maybe_input_stream.ok()) {
-      GTEST_FAIL() << maybe_input_stream.status().message();
-    }
-
+    auto buffer_reader = std::make_shared<io::BufferReader>(content_copy_wrapped);
+    auto maybe_input_stream =
+        io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
     auto maybe_reader = ipc::RecordBatchStreamReader::Open(*maybe_input_stream);
     if (!maybe_reader.ok()) {
       GTEST_FAIL() << maybe_reader.status().message();
