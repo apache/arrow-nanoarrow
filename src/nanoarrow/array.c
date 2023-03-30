@@ -948,7 +948,8 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     }
   }
 
-  if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION) {
+  if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION &&
+      array_view->union_type_id_map != NULL) {
     // Check that offsets refer to child elements that actually exist
     for (int64_t i = 0; i < array_view->array->length; i++) {
       int8_t child_id = ArrowArrayViewUnionChildIndex(array_view, i);
