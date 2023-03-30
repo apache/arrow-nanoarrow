@@ -295,6 +295,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   // Check full struct extract
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, -1, &array, nullptr),
             NANOARROW_OK);
+  EXPECT_EQ(
+      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+      NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
   ASSERT_EQ(array.n_children, 1);
@@ -309,6 +312,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
 
   // Check field extract
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(
+      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+      NANOARROW_OK);
   ASSERT_EQ(array.n_buffers, 2);
   ASSERT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
@@ -478,6 +484,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   // Check full struct extract
   EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, &array, nullptr),
             NANOARROW_OK);
+  EXPECT_EQ(
+      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+      NANOARROW_OK);
 
   EXPECT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
@@ -494,6 +503,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   // Check field extract
   EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, 0, &array, nullptr),
             NANOARROW_OK);
+  EXPECT_EQ(
+      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+      NANOARROW_OK);
+
   // Release the original shared (forthcoming array buffers should still be valid)
   ArrowIpcSharedBufferReset(&shared);
 
@@ -543,8 +556,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
 
   struct ArrowArray arrays[10];
   for (int i = 0; i < 10; i++) {
-    ASSERT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, arrays + i, nullptr),
-            NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, arrays + i, nullptr),
+        NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcDecoderValidateArray(arrays + i, NANOARROW_VALIDATION_LEVEL_FULL,
+                                           nullptr),
+              NANOARROW_OK);
   }
 
   // Clean up
@@ -556,7 +573,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   std::thread threads[10];
   for (int i = 0; i < 10; i++) {
     threads[i] = std::thread([&arrays, i, &one_two_three_le] {
-      memcmp(arrays[i].children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le));
+      memcmp(arrays[i].children[0]->buffers[1], one_two_three_le,
+             sizeof(one_two_three_le));
       arrays[i].release(arrays + i);
     });
   }
@@ -605,6 +623,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   buffer_view.size_bytes -= decoder.header_size_bytes;
   ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array, nullptr),
             NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+      NANOARROW_OK);
 
   auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());
@@ -622,6 +643,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   buffer_view.size_bytes -= decoder.header_size_bytes;
   ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array, nullptr),
             NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+      NANOARROW_OK);
 
   maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());

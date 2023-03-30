@@ -1378,10 +1378,9 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
     }
   }
 
-  // TODO: this performs some validation but doesn't do everything we need it to do
-  // notably it doesn't loop over offset buffers to look for values that will cause
-  // out-of-bounds buffer access on the data buffer or child arrays.
-  result = ArrowArrayFinishBuildingDefault(&temp, error);
+  // Finish building to flush internal pointers but defer validation to
+  // ArrowIpcDecoderValidateArray()
+  result = ArrowArrayFinishBuilding(&temp, NANOARROW_VALIDATION_LEVEL_NONE, error);
   if (result != NANOARROW_OK) {
     temp.release(&temp);
     return result;
@@ -1405,4 +1404,10 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* deco
                                                     struct ArrowError* error) {
   return ArrowIpcDecoderDecodeArrayInternal(
       decoder, ArrowIpcBufferFactoryFromShared(body), i, out, error);
+}
+
+ArrowErrorCode ArrowIpcDecoderValidateArray(struct ArrowArray* decoded,
+                                            enum ArrowValidationLevel validation_level,
+                                            struct ArrowError* error) {
+  return ArrowArrayFinishBuilding(decoded, validation_level, error);
 }
