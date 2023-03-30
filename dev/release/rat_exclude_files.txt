@@ -10,3 +10,7 @@ r/nanoarrow.Rproj
 *.Rd
 r/tests/testthat/_snaps/*.md
 r/cran-comments.md
+dist/flatcc/*
+dist/flatcc.c
+extensions/nanoarrow_ipc/src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
+extensions/nanoarrow_ipc/thirdparty/*

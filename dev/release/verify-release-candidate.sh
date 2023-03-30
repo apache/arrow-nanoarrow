@@ -28,12 +28,13 @@
 # - NANOARROW_CMAKE_OPTIONS (e.g., to help cmake find Arrow C++)
 # - R_HOME: Path to the desired R installation. Defaults to `R` on PATH.
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
-# - TEST_C: Builds the C library and tests using the default CMake
+# - TEST_C: Builds C libraries and tests using the default CMake
 #   configuration. Defaults to the value of TEST_SOURCE.
-# - TEST_C_BUNDLED: Bundles and builds the nanoarrow.h/nanorrow.c distribution
-#   and runs tests. Defaults to the value of TEST_SOURCE.
+# - TEST_C_BUNDLED: Tests the bundled version of the C libraries.
 # - TEST_R: Builds the R package source tarball and runs R CMD check.
 #   Defaults to the value of TEST_SOURCE.
+# - TEST_WITH_MEMCHECK: Set to a nonzero value to additionally run tests
+#   with memcheck. This requires valgrind on PATH.
 
 set -e
 set -o pipefail
@@ -75,7 +76,7 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 NANOARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
 show_header() {
-  if [ -z "$GITHUB_WORKSPACE" ]; then
+  if [ -z "$GITHUB_ACTIONS" ]; then
     echo ""
     printf '=%.0s' $(seq ${#1}); printf '\n'
     echo "${1}"
@@ -176,9 +177,8 @@ setup_tempdir() {
   echo "Working in sandbox ${NANOARROW_TMPDIR}"
 }
 
-test_c() {
-  show_header "Build and test C library"
-
+# Usage: test_cmake_project build-dir src-dir extra-config-arg1 extra-config-arg...
+test_cmake_project() {
   if [ -z "${CMAKE_BIN}" ]; then
     CMAKE_BIN=cmake
   fi
@@ -187,50 +187,44 @@ test_c() {
     CTEST_BIN=ctest
   fi
 
-  mkdir -p $NANOARROW_TMPDIR/build
-  pushd $NANOARROW_TMPDIR/build
+  mkdir -p "${NANOARROW_TMPDIR}/${1}"
+  pushd "${NANOARROW_TMPDIR}/${1}"
 
   show_info "Configure CMake Project"
-  "$CMAKE_BIN" ${NANOARROW_SOURCE_DIR} \
-    -DNANOARROW_BUILD_TESTS=ON \
+  ${CMAKE_BIN} "${NANOARROW_SOURCE_DIR}/${2}" \
+    "${@:3}" \
     ${NANOARROW_CMAKE_OPTIONS:-}
 
   show_info "Build CMake Project"
-  "$CMAKE_BIN" --build .
+  ${CMAKE_BIN} --build .
 
   show_info "Run Tests"
-  "$CTEST_BIN" --output-on-failure
+  ${CTEST_BIN} --output-on-failure
+
+  if [ ${TEST_WITH_MEMCHECK} -gt 0 ]; then
+    show_info "Run Tests with memcheck"
+    ${CTEST_BIN} -T memcheck .
+  fi
 
   popd
 }
 
+test_c() {
+  show_header "Build and test C library"
+  test_cmake_project build . -DNANOARROW_BUILD_TESTS=ON
+
+  show_header "Build and test C IPC extension"
+  test_cmake_project build-ipc extensions/nanoarrow_ipc -DNANOARROW_IPC_BUILD_TESTS=ON
+}
+
 test_c_bundled() {
-  show_header "Build test C library"
+  show_header "Build test bundled C library"
+  test_cmake_project build-bundled . -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
 
-  if [ -z "${CMAKE_BIN}" ]; then
-    CMAKE_BIN=cmake
-  fi
-
-  if [ -z "${CTEST_BIN}" ]; then
-    CTEST_BIN=ctest
-  fi
-
-  mkdir -p $NANOARROW_TMPDIR/build_bundled
-  pushd $NANOARROW_TMPDIR/build_bundled
-
-  show_info "Configure CMake Project"
-  "$CMAKE_BIN" ${NANOARROW_SOURCE_DIR} \
-    -DNANOARROW_BUILD_TESTS=ON \
-    -DNANOARROW_BUNDLE=ON \
-    ${NANOARROW_CMAKE_OPTIONS:-}
-
-  show_info "Build CMake Project"
-  "$CMAKE_BIN" --build .
-
-  show_info "Run Tests"
-  "$CTEST_BIN" --output-on-failure
-
-  popd
+  show_header "Build and test bundled C IPC extension"
+  test_cmake_project build-ipc extensions/nanoarrow_ipc \
+    -DNANOARROW_IPC_BUILD_TESTS=ON \
+    -DNANOARROW_IPC_BUNDLE=ON
 }
 
 test_r() {
@@ -325,10 +319,11 @@ test_source_distribution() {
 # To deactivate one test, deactivate the test and all of its dependents
 # To explicitly select one test, set TEST_DEFAULT=0 TEST_X=1
 : ${TEST_DEFAULT:=1}
+: ${TEST_WITH_MEMCHECK:=0}
 
 : ${TEST_SOURCE:=${TEST_DEFAULT}}
 : ${TEST_C:=${TEST_SOURCE}}
-: ${TEST_C_BUNDLED:=${TEST_SOURCE}}
+: ${TEST_C_BUNDLED:=${TEST_C}}
 : ${TEST_R:=${TEST_SOURCE}}
 
 TEST_SUCCESS=no

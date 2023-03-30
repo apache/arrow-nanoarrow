@@ -135,7 +135,7 @@ jobs:
           name: nanoarrow-verify-tmp
 
   verify-docker:
-    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
+    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.arch }}${{ matrix.config.extra_label}}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -145,7 +145,20 @@ jobs:
           - {platform: "fedora", arch: "amd64"}
           - {platform: "archlinux", arch: "amd64"}
           - {platform: "alpine", arch: "amd64"}
-          - {platform: "alpine", arch: "s390x"}
+          - {
+              platform: "ubuntu",
+              arch: "amd64",
+              extra_label: "-memcheck",
+              compose_args: "-e TEST_WITH_MEMCHECK=1 -e TEST_C_BUNDLED=0"
+            }
+          - {
+              platform: "ubuntu",
+              arch: "amd64",
+              extra_label: "-c99",
+              compose_args: "-e NANOARROW_CMAKE_OPTIONS=-DCMAKE_C_STANDARD=99"
+            }
+          - {platform: "ubuntu", arch: "arm64", compose_args: "-e TEST_C_BUNDLED=0"}
+          - {platform: "alpine", arch: "s390x", compose_args: "-e TEST_C_BUNDLED=0"}
 
     steps:
       - uses: actions/checkout@v3
@@ -166,5 +179,5 @@ jobs:
 
         run: |
           cd src
-          # docker compose pull verify
-          docker compose run verify
+          echo "::group::Docker Pull"
+          docker compose run -e GITHUB_ACTIONS ${{ matrix.config.compose_args }} verify

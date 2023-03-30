@@ -16,8 +16,12 @@
 # under the License.
 
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.14)
 include(FetchContent)
+
+if(NOT DEFINED CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 11)
+endif()
 
 project(nanoarrow_ipc)
 
@@ -181,11 +185,26 @@ if (NANOARROW_IPC_BUILD_TESTS)
   message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
   # Warning about timestamps of downloaded files
-  cmake_policy(SET CMP0135 NEW)
-  FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/release-1.11.0.zip
-  )
+  if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
+      cmake_policy(SET CMP0135 NEW)
+  endif()
+
+  # Use an old version of googletest if we have to to support gcc 4.8
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
+    CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "5.0.0")
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/release-1.11.0.zip
+        URL_HASH SHA256=353571c2440176ded91c2de6d6cd88ddd41401d14692ec1f99e35d013feda55a
+    )
+  else()
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/release-1.10.0.zip
+        URL_HASH SHA256=94c634d499558a76fa649edb13721dce6e98fb1e7018dfaeba3cd7a083945e91
+    )
+  endif()
+
   FetchContent_MakeAvailable(googletest)
 
   enable_testing()
@@ -199,8 +218,20 @@ if (NANOARROW_IPC_BUILD_TESTS)
     target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
   endif()
 
-  target_link_libraries(nanoarrow_ipc_decoder_test nanoarrow_ipc nanoarrow arrow_shared gtest_main)
-  target_link_libraries(nanoarrow_ipc_reader_test nanoarrow_ipc nanoarrow gtest_main)
+  # On Windows, dynamically linking Arrow is difficult to get right,
+  # so use static linking by default.
+  if (MSVC)
+      set(NANOARROW_IPC_ARROW_TARGET arrow_static)
+  else()
+      set(NANOARROW_IPC_ARROW_TARGET arrow_shared)
+  endif()
+
+  target_link_libraries(
+    nanoarrow_ipc_decoder_test
+    nanoarrow_ipc nanoarrow ${NANOARROW_IPC_ARROW_TARGET} gtest_main)
+  target_link_libraries(
+    nanoarrow_ipc_reader_test
+    nanoarrow_ipc nanoarrow gtest_main)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_ipc_decoder_test)
