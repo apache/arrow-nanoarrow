@@ -58,8 +58,6 @@
 #define ArrowIpcArrayStreamReaderInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamReaderInit)
 
-ArrowIpcDecoderValidateArray
-
 #endif
 
 #ifdef __cplusplus
