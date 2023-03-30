@@ -48,12 +48,20 @@ jobs:
 
     env:
       SUBDIR: 'extensions/nanoarrow_ipc'
+      NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Checkout arrow-testing
+        uses: actions/checkout@v3
+        with:
+          repository: apache/arrow-testing
+          fetch-depth: 0
+          path: arrow-testing
 
       - name: Install dependencies
         run: |

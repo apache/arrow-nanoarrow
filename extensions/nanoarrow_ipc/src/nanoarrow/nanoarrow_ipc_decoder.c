@@ -20,13 +20,23 @@
 #include <string.h>
 
 // For thread safe shared buffers we need C11 + stdatomic.h
+// Can compile with -DNANOARROW_IPC_USE_STDATOMIC=0 or 1 to override
+// automatic detection
 #if !defined(NANOARROW_IPC_USE_STDATOMIC)
 #define NANOARROW_IPC_USE_STDATOMIC 0
+
+// Check for C11
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+
+// Check for GCC 4.8, which doesn't include stdatomic.h but does
+// not define __STDC_NO_ATOMICS__
+#if defined(__clang__) || !defined(__GNUC__) || __GNUC__ >= 5
+
 #if !defined(__STDC_NO_ATOMICS__)
 #include <stdatomic.h>
 #undef NANOARROW_IPC_USE_STDATOMIC
 #define NANOARROW_IPC_USE_STDATOMIC 1
+#endif
 #endif
 #endif
 
@@ -126,6 +136,11 @@ static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uin
 
 ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
                                         struct ArrowBuffer* src) {
+  if (src->data == NULL) {
+    ArrowBufferMove(src, &shared->private_src);
+    return NANOARROW_OK;
+  }
+
   struct ArrowIpcSharedBufferPrivate* private_data =
       (struct ArrowIpcSharedBufferPrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcSharedBufferPrivate));
@@ -149,6 +164,13 @@ ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
 
 static void ArrowIpcSharedBufferClone(struct ArrowIpcSharedBuffer* shared,
                                       struct ArrowBuffer* shared_out) {
+  if (shared->private_src.data == NULL) {
+    ArrowBufferInit(shared_out);
+    shared_out->size_bytes = shared_out->size_bytes;
+    shared_out->capacity_bytes = shared_out->capacity_bytes;
+    return;
+  }
+
   struct ArrowIpcSharedBufferPrivate* private_data =
       (struct ArrowIpcSharedBufferPrivate*)shared->private_src.allocator.private_data;
   ArrowIpcSharedBufferUpdate(private_data, 1);
@@ -706,7 +728,7 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
                                    struct ArrowError* error) {
   // No dictionary support yet
   if (ns(Field_dictionary_is_present(field))) {
-    ArrowErrorSet(error, "Field DictionaryEncoding not supported");
+    ArrowErrorSet(error, "Schema message field with DictionaryEncoding not supported");
     return ENOTSUP;
   }
 

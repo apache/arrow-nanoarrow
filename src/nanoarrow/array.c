@@ -910,10 +910,6 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                                           struct ArrowError* error) {
   for (int i = 0; i < 3; i++) {
     switch (array_view->layout.buffer_type[i]) {
-      case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-        NANOARROW_RETURN_NOT_OK(
-            ArrowAssertIncreasingInt32(array_view->buffer_views[i], error));
-        break;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         if (array_view->layout.element_size_bits[i] == 32) {
           NANOARROW_RETURN_NOT_OK(
