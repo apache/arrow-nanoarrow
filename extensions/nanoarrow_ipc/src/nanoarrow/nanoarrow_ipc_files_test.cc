@@ -232,7 +232,7 @@ TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFileNativeEndia
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowTestingPathParameterizedTestFixture,
     ::testing::Values(
-        // Files in data/arrow-ipc-stream/integration/1.0.0-littleendian/
+        // Files in data/arrow-ipc-stream/integration/1.0.0-(little|big)endian/
         // should read without error and the data should match Arrow C++'s read
         TestFile::OK("generated_custom_metadata.stream"),
         TestFile::OK("generated_datetime.stream"),
