@@ -192,17 +192,6 @@ setup_arrow_testing() {
   echo "Using arrow-testing at '${NANOARROW_ARROW_TESTING_DIR}'"
 }
 
-setup_arrow_testing() {
-  show_header "Setting up arrow-testing"
-
-  if [ -z "${NANOARROW_ARROW_TESTING_DIR}" ]; then
-    export NANOARROW_ARROW_TESTING_DIR="${NANOARROW_TMPDIR}/arrow-testing"
-    git clone --depth=1 https://github.com/apache/arrow-testing ${NANOARROW_ARROW_TESTING_DIR}
-  fi
-
-  echo "Using arrow-testing at '${NANOARROW_ARROW_TESTING_DIR}'"
-}
-
 # Usage: test_cmake_project build-dir src-dir extra-config-arg1 extra-config-arg...
 test_cmake_project() {
   if [ -z "${CMAKE_BIN}" ]; then
