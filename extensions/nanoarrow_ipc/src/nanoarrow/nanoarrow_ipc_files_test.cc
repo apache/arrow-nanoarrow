@@ -139,7 +139,12 @@ class TestFile {
     auto buffer_reader = std::make_shared<io::BufferReader>(content_copy_wrapped);
     auto maybe_input_stream =
         io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
-    auto maybe_reader = ipc::RecordBatchStreamReader::Open(*maybe_input_stream);
+    if (!maybe_input_stream.ok()) {
+      GTEST_FAIL() << maybe_input_stream.status().message();
+    }
+
+    auto maybe_reader =
+        ipc::RecordBatchStreamReader::Open(maybe_input_stream.ValueUnsafe());
     if (!maybe_reader.ok()) {
       GTEST_FAIL() << maybe_reader.status().message();
     }
