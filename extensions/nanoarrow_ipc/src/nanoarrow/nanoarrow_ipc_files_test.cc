@@ -85,12 +85,11 @@ class TestFile {
         infile.read(reinterpret_cast<char*>(content->data + content->size_bytes), 8096));
     content->size_bytes += infile.gcount();
 
-    // Make a copy into another buffer and wrap it in something Arrow C++ understands
+    // Make a copy into another buffer so we can wrap it in something Arrow C++
+    // understands
     nanoarrow::UniqueBuffer content_copy;
     ASSERT_EQ(ArrowBufferAppend(content_copy.get(), content->data, content->size_bytes),
               NANOARROW_OK);
-    auto content_copy_wrapped =
-        Buffer::Wrap<uint8_t>(content_copy->data, content_copy->size_bytes);
 
     struct ArrowIpcInputStream input;
     nanoarrow::UniqueArrayStream stream;
@@ -134,17 +133,27 @@ class TestFile {
       GTEST_FAIL() << MakeError(NANOARROW_OK, "");
     }
 
-    // Read the same file with Arrow C++
-    auto options = ipc::IpcReadOptions::Defaults();
+    // Read the same data with Arrow C++.
+    auto content_copy_wrapped =
+        Buffer::Wrap<uint8_t>(content_copy->data, content_copy->size_bytes);
     auto buffer_reader = std::make_shared<io::BufferReader>(content_copy_wrapped);
+
+    // Support Arrow 9.0.0 for Fedora and Centos7 images
+#if ARROW_VERSION_MAJOR >= 10
     auto maybe_input_stream =
         io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
     if (!maybe_input_stream.ok()) {
       GTEST_FAIL() << maybe_input_stream.status().message();
     }
 
+    std::shared_ptr<io::InputStream> input_stream = maybe_input_stream.ValueUnsafe();
+#else
+    std::shared_ptr<io::InputStream> input_stream =
+        io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
+#endif
+
     auto maybe_reader =
-        ipc::RecordBatchStreamReader::Open(maybe_input_stream.ValueUnsafe());
+        ipc::RecordBatchStreamReader::Open(input_stream);
     if (!maybe_reader.ok()) {
       GTEST_FAIL() << maybe_reader.status().message();
     }
