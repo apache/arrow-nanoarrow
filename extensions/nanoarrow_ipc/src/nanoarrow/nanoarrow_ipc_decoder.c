@@ -126,6 +126,11 @@ static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uin
 
 ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
                                         struct ArrowBuffer* src) {
+  if (src->data == NULL) {
+    ArrowBufferMove(src->data, &shared->private_src);
+    return NANOARROW_OK;
+  }
+
   struct ArrowIpcSharedBufferPrivate* private_data =
       (struct ArrowIpcSharedBufferPrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcSharedBufferPrivate));
@@ -149,6 +154,13 @@ ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
 
 static void ArrowIpcSharedBufferClone(struct ArrowIpcSharedBuffer* shared,
                                       struct ArrowBuffer* shared_out) {
+  if (shared->private_src.data == NULL) {
+    ArrowBufferInit(shared_out);
+    shared_out->size_bytes = shared_out->size_bytes;
+    shared_out->capacity_bytes = shared_out->capacity_bytes;
+    return;
+  }
+
   struct ArrowIpcSharedBufferPrivate* private_data =
       (struct ArrowIpcSharedBufferPrivate*)shared->private_src.allocator.private_data;
   ArrowIpcSharedBufferUpdate(private_data, 1);
