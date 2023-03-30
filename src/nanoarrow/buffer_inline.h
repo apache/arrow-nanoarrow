@@ -55,7 +55,9 @@ static inline ArrowErrorCode ArrowBufferSetAllocator(
 }
 
 static inline void ArrowBufferReset(struct ArrowBuffer* buffer) {
-  if (buffer->data != NULL) {
+  // We do want to call the allocator's free method in the case where there is
+  // private data that may need to be freed.
+  if (buffer->data != NULL || buffer->allocator.private_data != NULL) {
     buffer->allocator.free(&buffer->allocator, (uint8_t*)buffer->data,
                            buffer->capacity_bytes);
     buffer->data = NULL;
