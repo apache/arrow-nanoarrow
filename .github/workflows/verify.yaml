@@ -179,4 +179,5 @@ jobs:
 
         run: |
           cd src
+          echo "::group::Docker Pull"
           docker compose run -e GITHUB_ACTIONS ${{ matrix.config.compose_args }} verify
