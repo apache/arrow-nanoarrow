@@ -155,7 +155,7 @@ jobs:
               platform: "ubuntu",
               arch: "amd64",
               extra_label: "-c99",
-              compose_args: "-e NANOARROW_CMAKE_OPTIONS=CMAKE_C_STANDARD=99"
+              compose_args: "-e NANOARROW_CMAKE_OPTIONS=-DCMAKE_C_STANDARD=99"
             }
           - {platform: "ubuntu", arch: "arm64", compose_args: "-e TEST_C_BUNDLED=0"}
           - {platform: "alpine", arch: "s390x", compose_args: "-e TEST_C_BUNDLED=0"}
