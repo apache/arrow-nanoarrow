@@ -365,11 +365,13 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   // Read in the body
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
 
+  struct ArrowArray tmp;
+
   if (private_data->use_shared_buffers) {
     struct ArrowIpcSharedBuffer shared;
     NANOARROW_RETURN_NOT_OK(ArrowIpcSharedBufferInit(&shared, &private_data->body));
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
-        &private_data->decoder, &shared, private_data->field_index, out,
+        &private_data->decoder, &shared, private_data->field_index, &tmp,
         &private_data->error));
     ArrowIpcSharedBufferReset(&shared);
   } else {
@@ -378,10 +380,18 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     body_view.size_bytes = private_data->body.size_bytes;
 
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArray(&private_data->decoder, body_view,
-                                                       private_data->field_index, out,
+                                                       private_data->field_index, &tmp,
                                                        &private_data->error));
   }
 
+  result = ArrowIpcDecoderValidateArray(&tmp, NANOARROW_VALIDATION_LEVEL_FULL,
+                                        &private_data->error);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
+  ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
 }
 

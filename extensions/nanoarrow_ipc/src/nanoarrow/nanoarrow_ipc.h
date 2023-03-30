@@ -275,6 +275,15 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* deco
                                                     int64_t i, struct ArrowArray* out,
                                                     struct ArrowError* error);
 
+/// \brief Validate a decoded ArrowArray
+///
+/// Verifies buffer lengths and contents depending on validation_level. Users
+/// are reccomended to use NANOARROW_VALIDATION_LEVEL_FULL as any lesser value
+/// may result in some types of corrupted data crashing a process on read.
+ArrowErrorCode ArrowIpcDecoderValidateArray(struct ArrowArray* decoded,
+                                            enum ArrowValidationLevel validation_level,
+                                            struct ArrowError* error);
+
 /// \brief An user-extensible input data source
 struct ArrowIpcInputStream {
   /// \brief Read up to buf_size_bytes from stream into buf
