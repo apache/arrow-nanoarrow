@@ -27,6 +27,10 @@
 # - CTEST_BIN: Command to use for ctest (e.g., ctest3 on Centos7)
 # - NANOARROW_CMAKE_OPTIONS (e.g., to help cmake find Arrow C++)
 # - R_HOME: Path to the desired R installation. Defaults to `R` on PATH.
+# - NANOARROW_ARROW_TESTING_DIR: A path to a checkout of apache/arrow-testing.
+#   If unset, the script will check out a version into NANOARROW_TMPDIR.
+# - NANOARROW_TMPDIR: Use to specify a persistent directory such that verification
+#   results are more easily retrieved.
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
 # - TEST_C: Builds C libraries and tests using the default CMake
 #   configuration. Defaults to the value of TEST_SOURCE.
@@ -175,6 +179,28 @@ setup_tempdir() {
   fi
 
   echo "Working in sandbox ${NANOARROW_TMPDIR}"
+}
+
+setup_arrow_testing() {
+  show_header "Setting up arrow-testing"
+
+  if [ -z "${NANOARROW_ARROW_TESTING_DIR}" ]; then
+    export NANOARROW_ARROW_TESTING_DIR="${NANOARROW_TMPDIR}/arrow-testing"
+    git clone --depth=1 https://github.com/apache/arrow-testing ${NANOARROW_ARROW_TESTING_DIR}
+  fi
+
+  echo "Using arrow-testing at '${NANOARROW_ARROW_TESTING_DIR}'"
+}
+
+setup_arrow_testing() {
+  show_header "Setting up arrow-testing"
+
+  if [ -z "${NANOARROW_ARROW_TESTING_DIR}" ]; then
+    export NANOARROW_ARROW_TESTING_DIR="${NANOARROW_TMPDIR}/arrow-testing"
+    git clone --depth=1 https://github.com/apache/arrow-testing ${NANOARROW_ARROW_TESTING_DIR}
+  fi
+
+  echo "Using arrow-testing at '${NANOARROW_ARROW_TESTING_DIR}'"
 }
 
 # Usage: test_cmake_project build-dir src-dir extra-config-arg1 extra-config-arg...
@@ -329,6 +355,7 @@ test_source_distribution() {
 TEST_SUCCESS=no
 
 setup_tempdir
+setup_arrow_testing
 ensure_source_directory
 test_source_distribution
 
