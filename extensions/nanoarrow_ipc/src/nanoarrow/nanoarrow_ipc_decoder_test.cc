@@ -623,7 +623,6 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   buffer_view.size_bytes -= decoder.header_size_bytes;
   ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array, nullptr),
             NANOARROW_OK);
-  struct ArrowError error;
   ASSERT_EQ(
       ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
       NANOARROW_OK);
