@@ -21652,7 +21652,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
   // TODO: this performs some validation but doesn't do everything we need it to do
   // notably it doesn't loop over offset buffers to look for values that will cause
   // out-of-bounds buffer access on the data buffer or child arrays.
-  result = ArrowArrayFinishBuilding(&temp, error);
+  result = ArrowArrayFinishBuildingDefault(&temp, error);
   if (result != NANOARROW_OK) {
     temp.release(&temp);
     return result;
