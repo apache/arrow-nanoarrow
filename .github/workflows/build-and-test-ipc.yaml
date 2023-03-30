@@ -48,7 +48,7 @@ jobs:
 
     env:
       SUBDIR: 'extensions/nanoarrow_ipc'
-      NANOARROW_ARROW_TESTING_DIR: 'arrow-testing'
+      NANOARROW_ARROW_TESTING_DIR: '${{ env.GITHUB_WORKSPACE }}/arrow-testing'
 
     steps:
       - name: Checkout repo
