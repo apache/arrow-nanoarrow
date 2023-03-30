@@ -127,7 +127,7 @@ static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uin
 ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
                                         struct ArrowBuffer* src) {
   if (src->data == NULL) {
-    ArrowBufferMove(src->data, &shared->private_src);
+    ArrowBufferMove(src, &shared->private_src);
     return NANOARROW_OK;
   }
 
