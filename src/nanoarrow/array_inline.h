@@ -831,13 +831,13 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
 static inline void ArrowArrayViewGetDecimalUnsafe(struct ArrowArrayView* array_view,
                                                   int64_t i, struct ArrowDecimal* out) {
   i += array_view->array->offset;
-  const uint8_t* data_view = array_view->buffer_views[2].data.as_uint8;
+  const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_DECIMAL128:
-      ArrowDecimalSetBytes(out, data_view + (i * 32));
+      ArrowDecimalSetBytes(out, data_view + (i * 16));
       break;
     case NANOARROW_TYPE_DECIMAL256:
-      ArrowDecimalSetBytes(out, data_view + (i * 64));
+      ArrowDecimalSetBytes(out, data_view + (i * 32));
       break;
     default:
       memset(out->words, 0, sizeof(out->words));

@@ -600,9 +600,7 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
 /// within the signed 64-bit integer range (A precision less than or equal
 /// to 18 is sufficiently small).
 static inline int64_t ArrowDecimalGetIntUnsafe(struct ArrowDecimal* decimal) {
-  int64_t value = decimal->words[decimal->low_word_index];
-  int64_t sign_word = decimal->words[decimal->high_word_index];
-  return value |= sign_word;
+  return (int64_t)decimal->words[decimal->low_word_index];
 }
 
 /// \brief Copy the bytes of this decimal into a sufficiently large buffer
