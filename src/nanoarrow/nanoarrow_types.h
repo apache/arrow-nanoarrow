@@ -172,6 +172,13 @@ typedef int ArrowErrorCode;
 #define NANOARROW_RETURN_NOT_OK(EXPR) \
   _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
 
+static char _ArrowIsLittleEndian(void) {
+  uint32_t check = 1;
+  char first_byte;
+  memcpy(&first_byte, &check, sizeof(char));
+  return first_byte;
+}
+
 /// \brief Arrow type enumerator
 /// \ingroup nanoarrow-utils
 ///
@@ -589,9 +596,13 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
   decimal->scale = scale;
   decimal->n_words = bitwidth / 8 / sizeof(uint64_t);
 
-  // TODO: This won't work on big endian
-  decimal->low_word_index = 0;
-  decimal->high_word_index = decimal->n_words - 1;
+  if (_ArrowIsLittleEndian()) {
+    decimal->low_word_index = 0;
+    decimal->high_word_index = decimal->n_words - 1;
+  } else {
+    decimal->low_word_index = decimal->n_words - 1;
+    decimal->high_word_index = 0;
+  }
 }
 
 /// \brief Get a signed integer value of a sufficiently small ArrowDecimal
@@ -619,10 +630,7 @@ static inline int64_t ArrowDecimalSign(struct ArrowDecimal* decimal) {
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t value) {
   if (value < 0) {
-    decimal->words[decimal->high_word_index] = (uint64_t)-1;
-    for (int i = decimal->low_word_index + 1; i < decimal->high_word_index; i++) {
-      decimal->words[i] = ~0;
-    }
+    memset(decimal->words, 0xff, decimal->n_words * sizeof(uint64_t));
   } else {
     memset(decimal->words, 0, decimal->n_words * sizeof(uint64_t));
   }

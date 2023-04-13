@@ -159,7 +159,12 @@ TEST(DecimalTest, Decimal128Test) {
   EXPECT_EQ(decimal.n_words, 2);
   EXPECT_EQ(decimal.precision, 10);
   EXPECT_EQ(decimal.scale, 3);
-  EXPECT_EQ(decimal.high_word_index - decimal.low_word_index + 1, decimal.n_words);
+
+  if (_ArrowIsLittleEndian()) {
+    EXPECT_EQ(decimal.high_word_index - decimal.low_word_index + 1, decimal.n_words);
+  } else {
+    EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
+  }
 
   auto dec_pos = *Decimal128::FromString("12.345");
   uint8_t bytes_pos[16];
@@ -191,7 +196,12 @@ TEST(DecimalTest, Decimal256Test) {
   EXPECT_EQ(decimal.n_words, 4);
   EXPECT_EQ(decimal.precision, 10);
   EXPECT_EQ(decimal.scale, 3);
-  EXPECT_EQ(decimal.high_word_index - decimal.low_word_index + 1, decimal.n_words);
+
+  if (_ArrowIsLittleEndian()) {
+    EXPECT_EQ(decimal.high_word_index - decimal.low_word_index + 1, decimal.n_words);
+  } else {
+    EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
+  }
 
   auto dec_pos = *Decimal256::FromString("12.345");
   uint8_t bytes_pos[32];
