@@ -519,6 +519,30 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
   }
 }
 
+static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
+                                                     struct ArrowDecimal* value) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
+
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_DECIMAL128:
+      if (value->n_words != 2) {
+        return EINVAL;
+      } else {
+        return ArrowBufferAppend(data_buffer, value->words, 2 * sizeof(uint64_t));
+      }
+    case NANOARROW_TYPE_DECIMAL256:
+      if (value->n_words != 4) {
+        return EINVAL;
+      } else {
+        return ArrowBufferAppend(data_buffer, value->words, 4 * sizeof(uint64_t));
+      }
+    default:
+      return EINVAL;
+  }
+}
+
 static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;

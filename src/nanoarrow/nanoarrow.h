@@ -824,11 +824,19 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
                                                    struct ArrowBufferView value);
 
 /// \brief Append a string value to an array
+///
 /// Returns NANOARROW_OK if value can be exactly represented by
 /// the underlying storage type or EINVAL otherwise (e.g.,
 /// the underlying array is not a string or large string array).
 static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
                                                     struct ArrowStringView value);
+
+/// \brief Append a decimal value to an array
+///
+/// Returns NANOARROW_OK if array is a decimal array with the appropriate
+/// bitwidth or EINVAL otherwise.
+static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
+                                                     struct ArrowDecimal* value);
 
 /// \brief Finish a nested array element
 ///
