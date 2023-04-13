@@ -966,6 +966,14 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     struct ArrowArrayView* array_view, int64_t i);
 
+/// \brief Get an element in an ArrowArrayView as an ArrowDecimal
+///
+/// This function does not check for null values. The out parameter must
+/// be initialized with ArrowDecimalInit() with the proper parameters for this
+/// type before calling this for the first time.
+static inline void ArrowArrayViewGetDecimalUnsafe(struct ArrowArrayView* array_view,
+                                                  int64_t i, struct ArrowDecimal* out);
+
 /// @}
 
 /// \defgroup nanoarrow-basic-array-stream Basic ArrowArrayStream implementation
