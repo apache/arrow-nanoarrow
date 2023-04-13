@@ -618,9 +618,15 @@ static inline int64_t ArrowDecimalSign(struct ArrowDecimal* decimal) {
 /// \brief Sets the integer value of this decimal
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t value) {
-  int64_t sign_word = value & ((int64_t)1) << 63;
-  value &= ~(((int64_t)1) << 63);
-  decimal->words[decimal->high_word_index] = (uint64_t)sign_word;
+  if (value < 0) {
+    decimal->words[decimal->high_word_index] = (uint64_t)-1;
+    for (int i = decimal->low_word_index + 1; i < decimal->high_word_index; i++) {
+      decimal->words[i] = ~0;
+    }
+  } else {
+    memset(decimal->words, 0, decimal->n_words * sizeof(uint64_t));
+  }
+
   decimal->words[decimal->low_word_index] = value;
 }
 

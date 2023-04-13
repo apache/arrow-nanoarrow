@@ -19,6 +19,7 @@
 #include <string>
 
 #include <arrow/memory_pool.h>
+#include <arrow/util/decimal.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.h"
@@ -149,4 +150,68 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
   buffer = arrow_allocator.reallocate(&arrow_allocator, buffer, 0,
                                       std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
+}
+
+TEST(DecimalTest, Decimal128Test) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 128, 10, 3);
+
+  EXPECT_EQ(decimal.n_words, 2);
+  EXPECT_EQ(decimal.precision, 10);
+  EXPECT_EQ(decimal.scale, 3);
+  EXPECT_EQ(decimal.high_word_index - decimal.low_word_index + 1, decimal.n_words);
+
+  auto dec_pos = *Decimal128::FromString("12.345");
+  uint8_t bytes_pos[16];
+  dec_pos.ToBytes(bytes_pos);
+
+  auto dec_neg = *Decimal128::FromString("-34.567");
+  uint8_t bytes_neg[16];
+  dec_neg.ToBytes(bytes_neg);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_pos);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+
+  ArrowDecimalSetInt(&decimal, -34567);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -34567);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_neg);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+}
+
+TEST(DecimalTest, Decimal256Test) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 256, 10, 3);
+
+  EXPECT_EQ(decimal.n_words, 4);
+  EXPECT_EQ(decimal.precision, 10);
+  EXPECT_EQ(decimal.scale, 3);
+  EXPECT_EQ(decimal.high_word_index - decimal.low_word_index + 1, decimal.n_words);
+
+  auto dec_pos = *Decimal256::FromString("12.345");
+  uint8_t bytes_pos[32];
+  dec_pos.ToBytes(bytes_pos);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_pos);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+
+  auto dec_neg = *Decimal256::FromString("-34.567");
+  uint8_t bytes_neg[32];
+  dec_neg.ToBytes(bytes_neg);
+
+  ArrowDecimalSetInt(&decimal, -34567);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -34567);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_neg);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 }
