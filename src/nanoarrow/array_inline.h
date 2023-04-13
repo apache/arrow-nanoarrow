@@ -530,17 +530,28 @@ static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
       if (value->n_words != 2) {
         return EINVAL;
       } else {
-        return ArrowBufferAppend(data_buffer, value->words, 2 * sizeof(uint64_t));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, 2 * sizeof(uint64_t)));
+        break;
       }
     case NANOARROW_TYPE_DECIMAL256:
       if (value->n_words != 4) {
         return EINVAL;
       } else {
-        return ArrowBufferAppend(data_buffer, value->words, 4 * sizeof(uint64_t));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, 4 * sizeof(uint64_t)));
+        break;
       }
     default:
       return EINVAL;
   }
+
+  if (private_data->bitmap.buffer.data != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
+  }
+
+  array->length++;
+  return NANOARROW_OK;
 }
 
 static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {

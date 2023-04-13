@@ -874,6 +874,86 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
+TEST(ArrayTest, ArrayTestAppendToDecimal128Array) {
+  struct ArrowArray array;
+  struct ArrowDecimal decimal;
+
+  ArrowDecimalInit(&decimal, 128, 10, 3);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DECIMAL128), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0b00001001);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(memcmp(data_buffer, decimal.words, 16), 0);
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(memcmp(data_buffer + 3 * 16, decimal.words, 16), 0);
+
+  auto arrow_array = ImportArray(&array, decimal128(10, 3));
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto builder = Decimal128Builder(decimal128(10, 3));
+  ARROW_EXPECT_OK(builder.Append(*Decimal128::FromString("12.345")));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(*Decimal128::FromString("-67.890")));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToDecimal256Array) {
+  struct ArrowArray array;
+  struct ArrowDecimal decimal;
+
+  ArrowDecimalInit(&decimal, 256, 10, 3);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DECIMAL256), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0b00001001);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(memcmp(data_buffer, decimal.words, 32), 0);
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(memcmp(data_buffer + 3 * 32, decimal.words, 32), 0);
+
+  auto arrow_array = ImportArray(&array, decimal256(10, 3));
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto builder = Decimal256Builder(decimal256(10, 3));
+  ARROW_EXPECT_OK(builder.Append(*Decimal256::FromString("12.345")));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(*Decimal256::FromString("-67.890")));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
 TEST(ArrayTest, ArrayTestAppendToListArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
