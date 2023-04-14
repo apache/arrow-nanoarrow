@@ -824,11 +824,19 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
                                                    struct ArrowBufferView value);
 
 /// \brief Append a string value to an array
+///
 /// Returns NANOARROW_OK if value can be exactly represented by
 /// the underlying storage type or EINVAL otherwise (e.g.,
 /// the underlying array is not a string or large string array).
 static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
                                                     struct ArrowStringView value);
+
+/// \brief Append a decimal value to an array
+///
+/// Returns NANOARROW_OK if array is a decimal array with the appropriate
+/// bitwidth or EINVAL otherwise.
+static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
+                                                     struct ArrowDecimal* value);
 
 /// \brief Finish a nested array element
 ///
@@ -965,6 +973,14 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
 /// This function does not check for null values.
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     struct ArrowArrayView* array_view, int64_t i);
+
+/// \brief Get an element in an ArrowArrayView as an ArrowDecimal
+///
+/// This function does not check for null values. The out parameter must
+/// be initialized with ArrowDecimalInit() with the proper parameters for this
+/// type before calling this for the first time.
+static inline void ArrowArrayViewGetDecimalUnsafe(struct ArrowArrayView* array_view,
+                                                  int64_t i, struct ArrowDecimal* out);
 
 /// @}
 

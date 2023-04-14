@@ -519,6 +519,41 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
   }
 }
 
+static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
+                                                     struct ArrowDecimal* value) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
+
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_DECIMAL128:
+      if (value->n_words != 2) {
+        return EINVAL;
+      } else {
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, 2 * sizeof(uint64_t)));
+        break;
+      }
+    case NANOARROW_TYPE_DECIMAL256:
+      if (value->n_words != 4) {
+        return EINVAL;
+      } else {
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, 4 * sizeof(uint64_t)));
+        break;
+      }
+    default:
+      return EINVAL;
+  }
+
+  if (private_data->bitmap.buffer.data != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
+  }
+
+  array->length++;
+  return NANOARROW_OK;
+}
+
 static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -826,6 +861,23 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
   }
 
   return view;
+}
+
+static inline void ArrowArrayViewGetDecimalUnsafe(struct ArrowArrayView* array_view,
+                                                  int64_t i, struct ArrowDecimal* out) {
+  i += array_view->array->offset;
+  const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DECIMAL128:
+      ArrowDecimalSetBytes(out, data_view + (i * 16));
+      break;
+    case NANOARROW_TYPE_DECIMAL256:
+      ArrowDecimalSetBytes(out, data_view + (i * 32));
+      break;
+    default:
+      memset(out->words, 0, sizeof(out->words));
+      break;
+  }
 }
 
 #ifdef __cplusplus
