@@ -26,10 +26,10 @@ RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # For Arrow C++. Use 9.0.0 because this version works fine with the default gcc
-RUN curl https://dlcdn.apache.org/arrow/arrow-9.0.0/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
+RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
     mkdir /arrow-build && \
     cd /arrow-build && \
-    cmake3 ../apache-arrow-9.0.0/cpp \
+    cmake3 ../arrow-apache-arrow-9.0.0/cpp \
         -DARROW_JEMALLOC=OFF \
         -DARROW_SIMD_LEVEL=NONE \
         -DCMAKE_INSTALL_PREFIX=../arrow && \

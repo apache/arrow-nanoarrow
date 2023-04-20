@@ -22,10 +22,10 @@ FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl
 
 # For Arrow C++
-RUN curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | tar -zxf - && \
+RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-11.0.0.tar.gz | tar -zxf - && \
     mkdir /arrow-build && \
     cd /arrow-build && \
-    cmake ../apache-arrow-11.0.0/cpp \
+    cmake ../arrow-apache-arrow-11.0.0/cpp \
         -DARROW_JEMALLOC=OFF \
         -DARROW_SIMD_LEVEL=NONE \
         -DCMAKE_INSTALL_PREFIX=../arrow && \
