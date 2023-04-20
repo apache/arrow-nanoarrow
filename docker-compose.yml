@@ -30,3 +30,23 @@ services:
     volumes:
       - .:/nanoarrow
     command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh"
+
+  docs_build:
+    image: ${REPO}:ubuntu-${NANOARROW_ARCH}
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:ubuntu-${NANOARROW_ARCH}
+      dockerfile: ci/docker/ubuntu.dockerfile
+      args:
+        NANOARROW_ARCH: ${NANOARROW_ARCH}
+    volumes:
+      - .:/nanoarrow
+    command: "/bin/bash /nanoarrow/ci/scripts/build-docs.sh"
+
+  docs_serve:
+    image: nginx
+    ports:
+        - 8000:80
+    volumes:
+        - ./docs/_build/html:/usr/share/nginx/html
