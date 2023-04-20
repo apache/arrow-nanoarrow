@@ -29,7 +29,7 @@ ENV LC_ALL en_US.UTF-8
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
     mkdir /arrow-build && \
     cd /arrow-build && \
-    cmake3 ../apache-arrow-9.0.0/cpp \
+    cmake3 ../arrow-apache-arrow-9.0.0/cpp \
         -DARROW_JEMALLOC=OFF \
         -DARROW_SIMD_LEVEL=NONE \
         -DCMAKE_INSTALL_PREFIX=../arrow && \
