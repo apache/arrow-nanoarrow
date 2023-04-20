@@ -20291,13 +20291,23 @@ static inline int org_apache_arrow_flatbuf_Tensor_verify_as_root_with_type_hash(
 #include <string.h>
 
 // For thread safe shared buffers we need C11 + stdatomic.h
+// Can compile with -DNANOARROW_IPC_USE_STDATOMIC=0 or 1 to override
+// automatic detection
 #if !defined(NANOARROW_IPC_USE_STDATOMIC)
 #define NANOARROW_IPC_USE_STDATOMIC 0
+
+// Check for C11
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+
+// Check for GCC 4.8, which doesn't include stdatomic.h but does
+// not define __STDC_NO_ATOMICS__
+#if defined(__clang__) || !defined(__GNUC__) || __GNUC__ >= 5
+
 #if !defined(__STDC_NO_ATOMICS__)
 #include <stdatomic.h>
 #undef NANOARROW_IPC_USE_STDATOMIC
 #define NANOARROW_IPC_USE_STDATOMIC 1
+#endif
 #endif
 #endif
 
@@ -20397,6 +20407,11 @@ static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uin
 
 ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
                                         struct ArrowBuffer* src) {
+  if (src->data == NULL) {
+    ArrowBufferMove(src, &shared->private_src);
+    return NANOARROW_OK;
+  }
+
   struct ArrowIpcSharedBufferPrivate* private_data =
       (struct ArrowIpcSharedBufferPrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcSharedBufferPrivate));
@@ -20420,6 +20435,13 @@ ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
 
 static void ArrowIpcSharedBufferClone(struct ArrowIpcSharedBuffer* shared,
                                       struct ArrowBuffer* shared_out) {
+  if (shared->private_src.data == NULL) {
+    ArrowBufferInit(shared_out);
+    shared_out->size_bytes = shared_out->size_bytes;
+    shared_out->capacity_bytes = shared_out->capacity_bytes;
+    return;
+  }
+
   struct ArrowIpcSharedBufferPrivate* private_data =
       (struct ArrowIpcSharedBufferPrivate*)shared->private_src.allocator.private_data;
   ArrowIpcSharedBufferUpdate(private_data, 1);
@@ -20977,7 +20999,7 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
                                    struct ArrowError* error) {
   // No dictionary support yet
   if (ns(Field_dictionary_is_present(field))) {
-    ArrowErrorSet(error, "Field DictionaryEncoding not supported");
+    ArrowErrorSet(error, "Schema message field with DictionaryEncoding not supported");
     return ENOTSUP;
   }
 
@@ -21649,10 +21671,9 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
     }
   }
 
-  // TODO: this performs some validation but doesn't do everything we need it to do
-  // notably it doesn't loop over offset buffers to look for values that will cause
-  // out-of-bounds buffer access on the data buffer or child arrays.
-  result = ArrowArrayFinishBuildingDefault(&temp, error);
+  // Finish building to flush internal pointers but defer validation to
+  // ArrowIpcDecoderValidateArray()
+  result = ArrowArrayFinishBuilding(&temp, NANOARROW_VALIDATION_LEVEL_NONE, error);
   if (result != NANOARROW_OK) {
     temp.release(&temp);
     return result;
@@ -21676,6 +21697,12 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* deco
                                                     struct ArrowError* error) {
   return ArrowIpcDecoderDecodeArrayInternal(
       decoder, ArrowIpcBufferFactoryFromShared(body), i, out, error);
+}
+
+ArrowErrorCode ArrowIpcDecoderValidateArray(struct ArrowArray* decoded,
+                                            enum ArrowValidationLevel validation_level,
+                                            struct ArrowError* error) {
+  return ArrowArrayFinishBuilding(decoded, validation_level, error);
 }
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
@@ -22044,11 +22071,13 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   // Read in the body
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
 
+  struct ArrowArray tmp;
+
   if (private_data->use_shared_buffers) {
     struct ArrowIpcSharedBuffer shared;
     NANOARROW_RETURN_NOT_OK(ArrowIpcSharedBufferInit(&shared, &private_data->body));
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
-        &private_data->decoder, &shared, private_data->field_index, out,
+        &private_data->decoder, &shared, private_data->field_index, &tmp,
         &private_data->error));
     ArrowIpcSharedBufferReset(&shared);
   } else {
@@ -22057,10 +22086,18 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     body_view.size_bytes = private_data->body.size_bytes;
 
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArray(&private_data->decoder, body_view,
-                                                       private_data->field_index, out,
+                                                       private_data->field_index, &tmp,
                                                        &private_data->error));
   }
 
+  result = ArrowIpcDecoderValidateArray(&tmp, NANOARROW_VALIDATION_LEVEL_FULL,
+                                        &private_data->error);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
+  ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
 }
 
