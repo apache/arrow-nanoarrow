@@ -30,7 +30,7 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
     apt-get install -y -V libarrow-dev
 
 # For documentation build
-RUN pip3 install pip3 install pydata-sphinx-theme sphinx breathe
+RUN pip3 install pydata-sphinx-theme sphinx breathe
 
 # For R. Note that we install arrow here so that the integration tests for R run
 # in at least one test image.
