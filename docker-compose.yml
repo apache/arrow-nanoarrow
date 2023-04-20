@@ -47,6 +47,6 @@ services:
   docs_serve:
     image: nginx
     ports:
-        - 8000:80
+        - "8000:80"
     volumes:
         - ./docs/_build/html:/usr/share/nginx/html
