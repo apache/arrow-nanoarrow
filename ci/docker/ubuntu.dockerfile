@@ -19,7 +19,11 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales git cmake r-base gnupg curl valgrind python3-pip doxygen pandoc lcov
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    locales git cmake r-base gnupg curl valgrind python3-pip doxygen pandoc lcov \
+    libxml2-dev libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev \
+    libjpeg-dev libpng-dev libtiff-dev
+
 RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 
 # For Arrow C++
