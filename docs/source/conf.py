@@ -50,7 +50,10 @@ extensions = [
 ]
 
 # Breathe configuration
-breathe_projects = {"nanoarrow_c": "../../src/apidoc/xml"}
+breathe_projects = {
+    "nanoarrow_c": "../../src/apidoc/xml",
+    "nanoarrow_ipc": "../../extensions/nanoarrow_ipc/src/apidoc/xml"
+}
 breathe_default_project = "nanoarrow_c"
 
 # Add any paths that contain templates here, relative to this directory.

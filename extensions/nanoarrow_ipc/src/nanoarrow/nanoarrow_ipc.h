@@ -64,6 +64,18 @@
 extern "C" {
 #endif
 
+/// \defgroup nanoarrow_ipc Nanoarrow IPC extension
+///
+/// Except where noted, objects are not thread-safe and clients should
+/// take care to serialize accesses to methods.
+///
+/// Because this library is intended to be vendored, it provides full type
+/// definitions and encourages clients to stack or statically allocate
+/// where convenient.
+///
+/// @{
+
+/// \brief Metadata version enumerator
 enum ArrowIpcMetadataVersion {
   NANOARROW_IPC_METADATA_VERSION_V1,
   NANOARROW_IPC_METADATA_VERSION_V2,
@@ -72,6 +84,7 @@ enum ArrowIpcMetadataVersion {
   NANOARROW_IPC_METADATA_VERSION_V5
 };
 
+/// \brief Message type enumerator
 enum ArrowIpcMessageType {
   NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED,
   NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
@@ -81,19 +94,24 @@ enum ArrowIpcMessageType {
   NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSOR
 };
 
+/// \brief Endianness enumerator
 enum ArrowIpcEndianness {
   NANOARROW_IPC_ENDIANNESS_UNINITIALIZED,
   NANOARROW_IPC_ENDIANNESS_LITTLE,
   NANOARROW_IPC_ENDIANNESS_BIG
 };
 
+/// \brief Compression type enumerator
 enum ArrowIpcCompressionType {
   NANOARROW_IPC_COMPRESSION_TYPE_NONE,
   NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
   NANOARROW_IPC_COMPRESSION_TYPE_ZSTD
 };
 
+/// \brief Feature flag for a stream that uses dictionary replacement
 #define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
+
+/// \brief Feature flag for a stream that uses compression
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
@@ -351,6 +369,8 @@ struct ArrowIpcArrayStreamReaderOptions {
 ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options);
+
+/// @}
 
 #ifdef __cplusplus
 }

@@ -15,14 +15,9 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-.. include:: README_generated.rst
+IPC Extension Reference
+=======================
 
-Contents
---------
-
-.. toctree::
-   :maxdepth: 2
-
-   C API Reference <c>
-   C++ API Reference <cpp>
-   IPC Extension Reference <ipc>
+.. doxygengroup:: nanoarrow_ipc
+   :project: nanoarrow_ipc
+   :members:
