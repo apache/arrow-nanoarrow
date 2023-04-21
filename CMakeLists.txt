@@ -194,8 +194,6 @@ if(NANOARROW_BUILD_TESTS)
         target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
         target_link_options(coverage_config INTERFACE --coverage)
         target_link_libraries(nanoarrow coverage_config)
-        # Because nanoarrow.hpp is header-only we have to link the test here to get coverage
-        target_link_libraries(nanoarrow_hpp_test coverage_config)
     endif()
 
     # On Windows, dynamically linking Arrow is difficult to get right,
@@ -206,12 +204,12 @@ if(NANOARROW_BUILD_TESTS)
         set(NANOARROW_ARROW_TARGET arrow_shared)
     endif()
 
-    target_link_libraries(utils_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
-    target_link_libraries(buffer_test nanoarrow gtest_main)
-    target_link_libraries(array_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
-    target_link_libraries(schema_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
-    target_link_libraries(array_stream_test nanoarrow gtest_main)
-    target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main)
+    target_link_libraries(utils_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET} coverage_config)
+    target_link_libraries(buffer_test nanoarrow gtest_main coverage_config)
+    target_link_libraries(array_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET} coverage_config)
+    target_link_libraries(schema_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET} coverage_config)
+    target_link_libraries(array_stream_test nanoarrow gtest_main coverage_config)
+    target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main coverage_config)
 
     include(GoogleTest)
     gtest_discover_tests(utils_test)
