@@ -71,3 +71,6 @@ lcov --list coverage.info
 genhtml coverage.info --output-directory html --prefix "${NANOARROW_SOURCE_DIR}"
 
 popd
+
+# Run covr::package_coverage() on the R package
+Rscript -e 'coverage <- covr::package_coverage("../r", relative_path = "/nanoarrow/"); covr::to_codecov(coverage)'
