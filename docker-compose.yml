@@ -28,10 +28,10 @@ services:
       args:
         NANOARROW_ARCH: ${NANOARROW_ARCH}
     volumes:
-      - .:/nanoarrow
+      - ${NANOARROW_SOURCE_DIR}:/nanoarrow
     command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh"
 
-  docs_build:
+  docs:
     image: ${REPO}:ubuntu-${NANOARROW_ARCH}
     build:
       context: .
@@ -41,12 +41,5 @@ services:
       args:
         NANOARROW_ARCH: ${NANOARROW_ARCH}
     volumes:
-      - .:/nanoarrow
+      - ${NANOARROW_SOURCE_DIR}:/nanoarrow
     command: "/bin/bash /nanoarrow/ci/scripts/build-docs.sh"
-
-  docs:
-    image: nginx:latest
-    ports:
-      - 8080:80
-    volumes:
-      - ./docs/_build/html:/usr/share/nginx/html
