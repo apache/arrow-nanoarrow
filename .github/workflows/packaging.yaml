@@ -123,14 +123,14 @@ jobs:
 
       - name: Build documentation
         run: |
-          echo "::group::Build documentation"
           pushd nanoarrow
-          EXIT_CODE=0
-          docker compose run --rm docs || EXIT_CODE=1
-          echo "::group::Logs"
-          cat docs/_build/build-docs.log
-          exit $EXIT_CODE
+          docker compose run --rm docs
           popd
+
+      - name: Documentation build logs
+        if: always()
+        run: |
+          cat nanoarrow/docs/_build/build-docs.log
 
       - name: Compress docs
         shell: bash

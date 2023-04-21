@@ -39,12 +39,12 @@ jobs:
 
       - name: Build documentation
         run: |
-          echo "::group::Build documentation"
-          EXIT_CODE=0
-          docker compose run --rm docs || EXIT_CODE=1
-          echo "::group::Logs"
+          docker compose run --rm docs
+
+      - name: Documentation build logs
+        if: always()
+        run: |
           cat docs/_build/build-docs.log
-          exit $EXIT_CODE
 
       - name: Upload built documentation
         uses: actions/upload-artifact@main
