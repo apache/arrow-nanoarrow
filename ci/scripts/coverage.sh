@@ -112,7 +112,7 @@ function main() {
     show_header "Build + test R package"
     pushd "${SANDBOX_DIR}"
     TARGET_NANOARROW_R_DIR="${TARGET_NANOARROW_DIR}/r" \
-        Rscript -e 'saveRDS(covr::package_coverage(Sys.getenv("TARGET_NANOARROW_R_DIR"), relative_path = "/nanoarrow/"), "r_coverage.rds")'
+        Rscript -e 'saveRDS(covr::package_coverage(Sys.getenv("TARGET_NANOARROW_R_DIR"), relative_path = FALSE), "r_coverage.rds")'
     Rscript -e 'covr:::to_codecov(readRDS("r_coverage.rds")) |> brio::write_file("r_coverage.json")'
 
     show_header "R package coverage summary"

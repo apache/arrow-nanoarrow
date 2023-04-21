@@ -45,7 +45,7 @@ jobs:
       - name: Calculate code coverage
         run: |
           echo "::group::Docker Pull"
-          docker compose run --rm coverage
+          docker compose run --rm -e GITHUB_ACTIONS coverage
 
       - name: Upload coverage artifacts
         if: always()
@@ -58,3 +58,4 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           files: '_coverage/coverage.info,_coverage/r_coverage.json'
+          root_dir: '/nanoarrow'
