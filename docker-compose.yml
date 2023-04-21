@@ -28,5 +28,20 @@ services:
       args:
         NANOARROW_ARCH: ${NANOARROW_ARCH}
     volumes:
-      - .:/nanoarrow
+      - ${NANOARROW_SOURCE_DIR}:/nanoarrow
     command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh"
+
+  docs:
+    image: ${REPO}:ubuntu-${NANOARROW_ARCH}
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:ubuntu-${NANOARROW_ARCH}
+      dockerfile: ci/docker/ubuntu.dockerfile
+      args:
+        NANOARROW_ARCH: ${NANOARROW_ARCH}
+    volumes:
+      # Don't mix the "dev tools" and "source" checkouts
+      - ./ci/scripts/build-docs.sh:/build-docs.sh
+      - ${NANOARROW_SOURCE_DIR}:/nanoarrow
+    command: "/bin/bash /build-docs.sh /nanoarrow"

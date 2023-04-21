@@ -36,49 +36,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      # Probably a better way to do this, but for now do the vendor step manually
-      - name: Vendor nanoarrow into the R package
+
+      - name: Build documentation
         run: |
-          cd r
-          ./configure
-      
-      - uses: r-lib/actions/setup-pandoc@v2
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::pkgdown, local::.
-          needs: website
-          working-directory: r
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      
-      - name: Install dependencies
+          docker compose run --rm docs
+
+      - name: Documentation build logs
+        if: always()
         run: |
-          sudo apt-get install doxygen
-          python -m pip install --upgrade pip
-          pip install -r docs/requirements.txt
-      
-      - name: Run doxygen
-        run: |
-          cd src/apidoc
-          doxygen
-      
-      - name: Regenerate index content from README
-        run: |
-          cd docs
-          pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
-      
-      - name: Run sphinx
-        run: |
-          cd docs
-          sphinx-build source _build/html
-      
-      - name: Run pkgdown
-        run: pkgdown::build_site_github_pages("r", dest_dir = "../docs/_build/html/r", new_process = FALSE, install = FALSE)
-        shell: Rscript {0}
+          cat docs/_build/build-docs.log
 
       - name: Upload built documentation
         uses: actions/upload-artifact@main
