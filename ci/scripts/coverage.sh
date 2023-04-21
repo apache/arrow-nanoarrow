@@ -20,57 +20,82 @@
 set -e
 set -o pipefail
 
-SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-NANOARROW_SOURCE_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
-
-# Use a sandbox dir for intermediate results. This also makes it easier
-# to debug the process.
-SANDBOX_DIR="${NANOARROW_SOURCE_DIR}/_coverage"
-if [ -d "${SANDBOX_DIR}" ]; then
-    rm -rf "${SANDBOX_DIR}"
+if [ ${VERBOSE:-0} -gt 0 ]; then
+  set -x
 fi
-mkdir "${SANDBOX_DIR}"
 
-# Bulid + run tests with gcov for core library
-mkdir "${SANDBOX_DIR}/nanoarrow"
-pushd "${SANDBOX_DIR}/nanoarrow"
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+NANOARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
-cmake "${NANOARROW_SOURCE_DIR}" \
-    -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
-cmake --build .
-ctest .
+case $# in
+  0) TARGET_NANOARROW_DIR="${NANOARROW_DIR}"
+     ;;
+  1) TARGET_NANOARROW_DIR="$1"
+     ;;
+  *) echo "Usage:"
+     echo "  Build documentation based on a source checkout elsewhere:"
+     echo "    $0 path/to/arrow-nanoarrow"
+     echo "  Build documentation for this nanoarrow checkout:"
+     echo "    $0"
+     exit 1
+     ;;
+esac
 
-popd
+function main() {
+    SANDBOX_DIR="${TARGET_NANOARROW_DIR}/_coverage"
+    if [ -d "${SANDBOX_DIR}" ]; then
+        rm -rf "${SANDBOX_DIR}"
+    fi
+    mkdir "${SANDBOX_DIR}"
 
-# Build + run tests with gcov for IPC extension
-mkdir "${SANDBOX_DIR}/nanoarrow_ipc"
-pushd "${SANDBOX_DIR}/nanoarrow_ipc"
+    # Bulid + run tests with gcov for core library
+    mkdir "${SANDBOX_DIR}/nanoarrow"
+    pushd "${SANDBOX_DIR}/nanoarrow"
 
-cmake "${NANOARROW_SOURCE_DIR}/extensions/nanoarrow_ipc" \
-    -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_IPC_CODE_COVERAGE=ON
-cmake --build .
-ctest .
+    cmake "${TARGET_NANOARROW_DIR}" \
+        -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
+    cmake --build .
+    ctest .
 
-popd
+    popd
 
-pushd "${SANDBOX_DIR}"
+    # Build + run tests with gcov for IPC extension
+    mkdir "${SANDBOX_DIR}/nanoarrow_ipc"
+    pushd "${SANDBOX_DIR}/nanoarrow_ipc"
 
-# Generate coverage.info file for both cmake projects using lcov
-lcov --capture --directory . \
-    --exclude "*_test.cc" \
-    --exclude "/usr/*" \
-    --exclude "*/gtest/*" \
-    --exclude "*/flatcc/*" \
-    --exclude "*_generated.h" \
-    --output-file coverage.info
+    cmake "${TARGET_NANOARROW_DIR}/extensions/nanoarrow_ipc" \
+        -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_IPC_CODE_COVERAGE=ON
+    cmake --build .
+    ctest .
 
-# Print some debug output
-lcov --list coverage.info
+    popd
 
-# Generate the html coverage while we're here
-genhtml coverage.info --output-directory html --prefix "${NANOARROW_SOURCE_DIR}"
+    pushd "${SANDBOX_DIR}"
 
-popd
+    # Generate coverage.info file for both cmake projects using lcov
+    lcov --capture --directory . \
+        --exclude "*_test.cc" \
+        --exclude "/usr/*" \
+        --exclude "*/gtest/*" \
+        --exclude "*/flatcc/*" \
+        --exclude "*_generated.h" \
+        --output-file coverage.info
 
-# Run covr::package_coverage() on the R package
-Rscript -e 'coverage <- covr::package_coverage("../r", relative_path = "/nanoarrow/"); covr::to_codecov(coverage)'
+    # Print a summary
+    lcov --list coverage.info
+
+    # Generate the html coverage while we're here
+    genhtml coverage.info --output-directory html --prefix "${TARGET_NANOARROW_DIR}"
+
+    popd
+
+    # Run covr::package_coverage() on the R package
+    pushd "${SANDBOX_DIR}"
+    TARGET_NANOARROW_R_DIR="${TARGET_NANOARROW_DIR}/r" \
+        Rscript -e 'saveRDS(covr::package_coverage(Sys.getenv("TARGET_NANOARROW_R_DIR"), relative_path = "/nanoarrow/"), "r_coverage.rds")'
+    Rscript -e 'library(covr); print(readRDS("r_coverage.rds"))'
+    Rscript -e 'covr:::to_codecov(readRDS("r_coverage.rds")) |> brio::write_file("r_coverage.json")'
+    popd
+}
+
+main
