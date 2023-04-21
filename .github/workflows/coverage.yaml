@@ -1,0 +1,60 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/coverage.yaml'
+      - 'ci/scripts/coverage.sh'
+      - 'ci/docker/ubuntu.dockerfile'
+      - 'docker-compose.yml'
+      - 'CMakeLists.txt'
+      - 'src/nanoarrow/**'
+      - 'extensions/nanoarrow_ipc/**'
+      - 'r/**'
+
+jobs:
+  coverage:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Calculate code coverage
+        run: |
+          echo "::group::Docker Pull"
+          docker compose run --rm -e GITHUB_ACTIONS coverage
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@main
+        with:
+          name: nanarrow-coverage
+          path: _coverage
+
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          files: '_coverage/coverage.info,_coverage/r_coverage.json'

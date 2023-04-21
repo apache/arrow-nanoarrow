@@ -229,13 +229,13 @@ if (NANOARROW_IPC_BUILD_TESTS)
 
   target_link_libraries(
     nanoarrow_ipc_decoder_test
-    nanoarrow_ipc nanoarrow ${NANOARROW_IPC_ARROW_TARGET} gtest_main)
+    nanoarrow_ipc nanoarrow ${NANOARROW_IPC_ARROW_TARGET} gtest_main ipc_coverage_config)
   target_link_libraries(
     nanoarrow_ipc_reader_test
-    nanoarrow_ipc nanoarrow gtest_main)
+    nanoarrow_ipc nanoarrow gtest_main ipc_coverage_config)
   target_link_libraries(
     nanoarrow_ipc_files_test
-    nanoarrow_ipc nanoarrow ${NANOARROW_IPC_ARROW_TARGET} gtest_main)
+    nanoarrow_ipc nanoarrow ${NANOARROW_IPC_ARROW_TARGET} gtest_main ipc_coverage_config)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_ipc_decoder_test)
