@@ -49,6 +49,11 @@ main() {
     doxygen
     popd
 
+    # Run doxygen
+    pushd extensions/nanoarrow_ipc/src/apidoc
+    doxygen
+    popd
+
     pushd docs
 
     # Use the README as the docs homepage
