@@ -16,7 +16,7 @@
 .. under the License.
 
 IPC Extension Reference
-==================
+=======================
 
 .. doxygengroup:: nanoarrow_ipc
    :project: nanoarrow_ipc
