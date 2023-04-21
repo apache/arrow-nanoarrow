@@ -44,6 +44,7 @@ jobs:
 
       - name: Calculate code coverage
         run: |
+          echo "::group::Docker Pull"
           docker compose run --rm coverage
 
       - name: Upload coverage artifacts

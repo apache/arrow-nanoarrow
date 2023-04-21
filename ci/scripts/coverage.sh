@@ -27,6 +27,17 @@ fi
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 NANOARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
+show_header() {
+  if [ -z "$GITHUB_ACTIONS" ]; then
+    echo ""
+    printf '=%.0s' $(seq ${#1}); printf '\n'
+    echo "${1}"
+    printf '=%.0s' $(seq ${#1}); printf '\n'
+  else
+    echo "::group::${1}"; printf '\n'
+  fi
+}
+
 case $# in
   0) TARGET_NANOARROW_DIR="${NANOARROW_DIR}"
      ;;
@@ -49,6 +60,7 @@ function main() {
     mkdir "${SANDBOX_DIR}"
 
     # Bulid + run tests with gcov for core library
+    show_header "Build + test nanoarrow"
     mkdir "${SANDBOX_DIR}/nanoarrow"
     pushd "${SANDBOX_DIR}/nanoarrow"
 
@@ -60,6 +72,7 @@ function main() {
     popd
 
     # Build + run tests with gcov for IPC extension
+    show_header "Build + test nanoarrow_ipc"
     mkdir "${SANDBOX_DIR}/nanoarrow_ipc"
     pushd "${SANDBOX_DIR}/nanoarrow_ipc"
 
@@ -73,6 +86,7 @@ function main() {
     pushd "${SANDBOX_DIR}"
 
     # Generate coverage.info file for both cmake projects using lcov
+    show_header "Calculate CMake project coverage"
     lcov --capture --directory . \
         --exclude "*_test.cc" \
         --exclude "/usr/*" \
@@ -81,20 +95,28 @@ function main() {
         --exclude "*_generated.h" \
         --output-file coverage.info
 
-    # Print a summary
-    lcov --list coverage.info
-
     # Generate the html coverage while we're here
     genhtml coverage.info --output-directory html --prefix "${TARGET_NANOARROW_DIR}"
 
+    # Print a summary
+    show_header "CMake project coverage summary"
+    lcov --list coverage.info
+
+    # Clean up the build directories
+    rm -rf nanoarrow
+    rm -rf nanoarrow_ipc
+
     popd
 
-    # Run covr::package_coverage() on the R package
+    # Build + test R package
+    show_header "Build + test R package"
     pushd "${SANDBOX_DIR}"
     TARGET_NANOARROW_R_DIR="${TARGET_NANOARROW_DIR}/r" \
         Rscript -e 'saveRDS(covr::package_coverage(Sys.getenv("TARGET_NANOARROW_R_DIR"), relative_path = "/nanoarrow/"), "r_coverage.rds")'
-    Rscript -e 'library(covr); print(readRDS("r_coverage.rds"))'
     Rscript -e 'covr:::to_codecov(readRDS("r_coverage.rds")) |> brio::write_file("r_coverage.json")'
+
+    show_header "R package coverage summary"
+    Rscript -e 'library(covr); print(readRDS("r_coverage.rds"))'
     popd
 }
 
