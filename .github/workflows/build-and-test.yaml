@@ -40,7 +40,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build, cmake_args: "-DNANOARROW_CODE_COVERAGE=ON"}
+          - {label: default-build}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
           - {label: bundled-cpp-build, cmake_args: "-DNANOARROW_BUNDLE=ON -DNANOARROW_BUNDLE_AS_CPP=ON"}
@@ -107,20 +107,6 @@ jobs:
         with:
           name: nanoarrow-memcheck
           path: build/Testing/Temporary/MemoryChecker.*.log
-
-      - name: Calculate coverage
-        if: success() && matrix.config.label == 'default-build'
-        run: |
-          SOURCE_PREFIX=`pwd`
-          mkdir build/cov
-          cd build/cov
-          gcov -abcfu --source-prefix=$SOURCE_PREFIX `find ../CMakeFiles/nanoarrow.dir/ -name "*.gcno"`
-
-      - name: Upload coverage
-        if: success() && matrix.config.label == 'default-build'
-        uses: codecov/codecov-action@v2
-        with:
-          directory: build/cov
 
   bundle-dist:
     needs: test-c
