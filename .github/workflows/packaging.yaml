@@ -123,8 +123,13 @@ jobs:
 
       - name: Build documentation
         run: |
+          cat "::group::Build documentation"
           pushd nanoarrow
-          docker compose run --rm docs
+          EXIT_CODE=0
+          docker compose run --rm docs || EXIT_CODE=1
+          cat "::group::Logs"
+          cat docs/_build/build-docs.log
+          exit $EXIT_CODE
           popd
 
       - name: Compress docs

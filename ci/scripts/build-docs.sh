@@ -51,10 +51,6 @@ main() {
 
     pushd docs
 
-    # Clean the previous build
-    rm -rf _build
-    mkdir -p _build
-
     # Use the README as the docs homepage
     pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
 
@@ -72,5 +68,9 @@ main() {
     popd
 }
 
-main >> "${TARGET_NANOARROW_DIR}/docs/_build/build.log"
+# Clean the previous build
+rm -rf _build
+mkdir -p _build
+
+main >> "${TARGET_NANOARROW_DIR}/docs/_build/html/build-docs.log" 2>&1
 echo "${TARGET_NANOARROW_DIR}/docs/_build/html"
