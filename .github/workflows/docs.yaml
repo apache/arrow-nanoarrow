@@ -26,7 +26,11 @@ on:
       - main
     paths:
       - '.github/workflows/docs.yaml'
-      - 'src/nanoarrow/**'
+      - 'ci/scripts/coverage.sh'
+      - 'ci/docker/ubuntu.dockerfile'
+      - 'docker-compose.yml'
+      - 'extensions/nanoarrow_ipc/src/**'
+      - 'src/**'
       - 'r/**'
 
 jobs:
@@ -39,12 +43,8 @@ jobs:
 
       - name: Build documentation
         run: |
-          docker compose run --rm docs
-
-      - name: Documentation build logs
-        if: always()
-        run: |
-          cat docs/_build/build-docs.log
+          echo "::group::Docker Pull"
+          docker compose run --rm -e GITHUB_ACTIONS docs
 
       - name: Upload built documentation
         uses: actions/upload-artifact@main

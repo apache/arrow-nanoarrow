@@ -27,6 +27,17 @@ fi
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 NANOARROW_DIR="$(cd "${SOURCE_DIR}/../.." && pwd)"
 
+show_header() {
+  if [ -z "$GITHUB_ACTIONS" ]; then
+    echo ""
+    printf '=%.0s' $(seq ${#1}); printf '\n'
+    echo "${1}"
+    printf '=%.0s' $(seq ${#1}); printf '\n'
+  else
+    echo "::group::${1}"; printf '\n'
+  fi
+}
+
 case $# in
   0) TARGET_NANOARROW_DIR="${NANOARROW_DIR}"
      ;;
@@ -42,40 +53,45 @@ case $# in
 esac
 
 main() {
-    pushd "${TARGET_NANOARROW_DIR}"
+   pushd "${TARGET_NANOARROW_DIR}"
 
-    # Run doxygen
-    pushd src/apidoc
-    doxygen
-    popd
+   # Clean the previous build
+   rm -rf docs/_build
+   mkdir -p docs/_build
 
-    # Run doxygen
-    pushd extensions/nanoarrow_ipc/src/apidoc
-    doxygen
-    popd
+   # Run doxygen
+   show_header "Run Doxygen for C library"
+   pushd src/apidoc
+   doxygen
+   popd
 
-    pushd docs
+   # Run doxygen
+   show_header "Run Doxygen for IPC extension"
+   pushd extensions/nanoarrow_ipc/src/apidoc
+   doxygen
+   popd
 
-    # Use the README as the docs homepage
-    pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
+   pushd docs
 
-    # Build sphinx project
-    sphinx-build source _build/html
+   show_header "Build Sphinx project"
 
-    # Install the R package from source
-    R CMD INSTALL ../r --preclean
+   # Use the README as the docs homepage
+   pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
 
-    # Build R documentation
-    Rscript -e 'pkgdown::build_site_github_pages("../r", dest_dir = "../docs/_build/html/r", new_process = FALSE, install = FALSE)'
+   # Build sphinx project
+   sphinx-build source _build/html
 
-    popd
+   show_header "Build R documentation"
 
-    popd
+   # Install the R package from source
+   R CMD INSTALL ../r --preclean
+
+   # Build R documentation
+   Rscript -e 'pkgdown::build_site_github_pages("../r", dest_dir = "../docs/_build/html/r", new_process = FALSE, install = FALSE)'
+
+   popd
+
+   popd
 }
 
-# Clean the previous build
-rm -rf "${TARGET_NANOARROW_DIR}/docs/_build"
-mkdir -p "${TARGET_NANOARROW_DIR}/docs/_build"
-
-main >> "${TARGET_NANOARROW_DIR}/docs/_build/build-docs.log" 2>&1
-echo "${TARGET_NANOARROW_DIR}/docs/_build/html"
+main
