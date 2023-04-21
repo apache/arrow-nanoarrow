@@ -43,7 +43,7 @@ jobs:
           EXIT_CODE=0
           docker compose run --rm docs || EXIT_CODE=1
           echo "::group::Logs"
-          cat docs/_build/html/build-docs.log
+          cat docs/_build/build-docs.log
           exit $EXIT_CODE
 
       - name: Upload built documentation
