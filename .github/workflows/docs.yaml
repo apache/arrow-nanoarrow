@@ -39,10 +39,10 @@ jobs:
 
       - name: Build documentation
         run: |
-          cat "::group::Build documentation"
+          echo "::group::Build documentation"
           EXIT_CODE=0
           docker compose run --rm docs || EXIT_CODE=1
-          cat "::group::Logs"
+          echo "::group::Logs"
           cat docs/_build/html/build-docs.log
           exit $EXIT_CODE
 
