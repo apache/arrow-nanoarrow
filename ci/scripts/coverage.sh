@@ -98,6 +98,11 @@ function main() {
     # Generate the html coverage while we're here
     genhtml coverage.info --output-directory html --prefix "${TARGET_NANOARROW_DIR}"
 
+    # Stripping the leading /nanoarrow/ out of the path is probably possible with
+    # an argument of lcov but none of the obvious ones seem to work so...
+    sed -i.bak coverage.info -e 's|SF:/nanoarrow/|SF:|'
+    rm coverage.info.bak
+
     # Print a summary
     show_header "CMake project coverage summary"
     lcov --list coverage.info
@@ -112,7 +117,7 @@ function main() {
     show_header "Build + test R package"
     pushd "${SANDBOX_DIR}"
     TARGET_NANOARROW_R_DIR="${TARGET_NANOARROW_DIR}/r" \
-        Rscript -e 'saveRDS(covr::package_coverage(Sys.getenv("TARGET_NANOARROW_R_DIR"), relative_path = FALSE), "r_coverage.rds")'
+        Rscript -e 'saveRDS(covr::package_coverage(Sys.getenv("TARGET_NANOARROW_R_DIR"), relative_path = "/nanoarrow/"), "r_coverage.rds")'
     Rscript -e 'covr:::to_codecov(readRDS("r_coverage.rds")) |> brio::write_file("r_coverage.json")'
 
     show_header "R package coverage summary"
