@@ -41,5 +41,7 @@ services:
       args:
         NANOARROW_ARCH: ${NANOARROW_ARCH}
     volumes:
+      # Don't mix the "dev tools" and "source" checkouts
+      - ./ci/scripts/build-docs.sh:/build-docs.sh
       - ${NANOARROW_SOURCE_DIR}:/nanoarrow
-    command: "/bin/bash /nanoarrow/ci/scripts/build-docs.sh"
+    command: "/bin/bash /build-docs.sh /nanoarrow"

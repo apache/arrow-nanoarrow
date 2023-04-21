@@ -69,8 +69,8 @@ main() {
 }
 
 # Clean the previous build
-rm -rf _build
-mkdir -p _build
+rm -rf "${TARGET_NANOARROW_DIR}/docs/_build"
+mkdir -p "${TARGET_NANOARROW_DIR}/docs/_build"
 
 main >> "${TARGET_NANOARROW_DIR}/docs/_build/build-docs.log" 2>&1
 echo "${TARGET_NANOARROW_DIR}/docs/_build/html"
