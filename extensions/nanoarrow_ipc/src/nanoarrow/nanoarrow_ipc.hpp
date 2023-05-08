@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "nanoarrow.hpp"
 #include "nanoarrow_ipc.h"
 
 #ifndef NANOARROW_IPC_HPP_INCLUDED
@@ -56,6 +55,11 @@ static inline void release_pointer(struct ArrowIpcInputStream* data) {
 }
 
 }  // namespace internal
+}  // namespace nanoarrow
+
+#include "nanoarrow.hpp"
+
+namespace nanoarrow {
 
 namespace ipc {
 

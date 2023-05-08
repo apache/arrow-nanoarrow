@@ -20,6 +20,27 @@
 #include "nanoarrow_ipc.hpp"
 
 TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDecoder) {
-  // foo
-  EXPECT_EQ(4, 4);
+  nanoarrow::ipc::UniqueDecoder decoder;
+
+  EXPECT_EQ(decoder->private_data, nullptr);
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  EXPECT_NE(decoder->private_data, nullptr);
+
+  nanoarrow::ipc::UniqueDecoder decoder2 = std::move(decoder);
+  EXPECT_NE(decoder2->private_data, nullptr);
+  EXPECT_EQ(decoder->private_data, nullptr);
+}
+
+TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueInputStream) {
+  nanoarrow::ipc::UniqueInputStream input;
+  nanoarrow::UniqueBuffer buf;
+  ASSERT_EQ(ArrowBufferAppend(buf.get(), "abcdefg", 7), NANOARROW_OK);
+
+  EXPECT_EQ(input->release, nullptr);
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(input.get(), buf.get()), NANOARROW_OK);
+  EXPECT_NE(input->release, nullptr);
+
+  nanoarrow::ipc::UniqueInputStream input2 = std::move(input);
+  EXPECT_NE(input2->release, nullptr);
+  EXPECT_EQ(input->release, nullptr);
 }
