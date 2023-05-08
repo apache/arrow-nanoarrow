@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <stdexcept>
 #include <vector>
 
 #include "nanoarrow.h"
@@ -30,6 +31,41 @@
 /// These utilities are not intended to mirror the nanoarrow C API.
 
 namespace nanoarrow {
+
+/// \defgroup nanoarrow_hpp-errors Error handling helpers
+///
+/// Most functions in the C API return an ArrowErrorCode to communicate
+/// possible failure. Except where documented, it is usually not safe to
+/// continue after a non-zero value has been returned. While the
+/// nanoarrow C++ helpers do not throw any exceptions of their own,
+/// these helpers are provided to facilitate using the nanoarrow C++ helpers
+/// in frameworks where this is a useful error handling idiom.
+///
+/// @{
+
+class Exception : public std::exception {
+ public:
+  Exception(const std::string& msg) : msg_(msg) {}
+  const char* what() const noexcept { return msg_.c_str(); }
+
+ private:
+  std::string msg_;
+};
+
+#define _THROW_NOT_OK_IMPL(NAME, EXPR, EXPR_STR)                      \
+  do {                                                                \
+    const int NAME = (EXPR);                                          \
+    if (NAME) {                                                       \
+      throw nanoarrow::Exception(std::string(EXPR_STR) +              \
+                                 std::string(" failed with errno ") + \
+                                 std::to_string(NAME));               \
+    }                                                                 \
+  } while (0)
+
+#define THROW_NOT_OK(EXPR) \
+  _THROW_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
+
+/// @}
 
 namespace internal {
 

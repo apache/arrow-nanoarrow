@@ -19,6 +19,16 @@
 
 #include "nanoarrow/nanoarrow.hpp"
 
+TEST(NanoarrowHppTest, NanoarrowHppExceptionTest) {
+  ASSERT_THROW(THROW_NOT_OK(EINVAL), nanoarrow::Exception);
+  ASSERT_NO_THROW(THROW_NOT_OK(NANOARROW_OK));
+  try {
+    THROW_NOT_OK(EINVAL);
+  } catch (const nanoarrow::Exception& e) {
+    EXPECT_EQ(std::string(e.what()), "EINVAL failed with errno 22");
+  }
+}
+
 TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayTest) {
   nanoarrow::UniqueArray array;
   EXPECT_EQ(array->release, nullptr);
