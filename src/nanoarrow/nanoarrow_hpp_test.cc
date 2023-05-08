@@ -20,10 +20,10 @@
 #include "nanoarrow/nanoarrow.hpp"
 
 TEST(NanoarrowHppTest, NanoarrowHppExceptionTest) {
-  ASSERT_THROW(THROW_NOT_OK(EINVAL), nanoarrow::Exception);
-  ASSERT_NO_THROW(THROW_NOT_OK(NANOARROW_OK));
+  ASSERT_THROW(NANOARROW_THROW_NOT_OK(EINVAL), nanoarrow::Exception);
+  ASSERT_NO_THROW(NANOARROW_THROW_NOT_OK(NANOARROW_OK));
   try {
-    THROW_NOT_OK(EINVAL);
+    NANOARROW_THROW_NOT_OK(EINVAL);
   } catch (const nanoarrow::Exception& e) {
     EXPECT_EQ(std::string(e.what()), "EINVAL failed with errno 22");
   }

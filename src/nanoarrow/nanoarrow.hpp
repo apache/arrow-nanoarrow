@@ -52,7 +52,7 @@ class Exception : public std::exception {
   std::string msg_;
 };
 
-#define _THROW_NOT_OK_IMPL(NAME, EXPR, EXPR_STR)                      \
+#define _NANOARROW_THROW_NOT_OK_IMPL(NAME, EXPR, EXPR_STR)            \
   do {                                                                \
     const int NAME = (EXPR);                                          \
     if (NAME) {                                                       \
@@ -62,8 +62,9 @@ class Exception : public std::exception {
     }                                                                 \
   } while (0)
 
-#define THROW_NOT_OK(EXPR) \
-  _THROW_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
+#define NANOARROW_THROW_NOT_OK(EXPR)                                                   \
+  _NANOARROW_THROW_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, \
+                               #EXPR)
 
 /// @}
 

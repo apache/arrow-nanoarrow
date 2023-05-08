@@ -31,14 +31,21 @@ TEST(BuildIdTest, VersionTest) {
   EXPECT_EQ(ArrowNanoarrowVersionInt(), NANOARROW_VERSION_INT);
 }
 
+TEST(ErrorTest, ErrorTestInit) {
+  struct ArrowError error;
+  memset(&error.message, 0xff, sizeof(ArrowError));
+  ArrowErrorInit(&error);
+  EXPECT_STREQ(error.message, "");
+}
+
 TEST(ErrorTest, ErrorTestSet) {
-  ArrowError error;
+  struct ArrowError error;
   EXPECT_EQ(ArrowErrorSet(&error, "there were %d foxes", 4), NANOARROW_OK);
   EXPECT_STREQ(ArrowErrorMessage(&error), "there were 4 foxes");
 }
 
 TEST(ErrorTest, ErrorTestSetOverrun) {
-  ArrowError error;
+  struct ArrowError error;
   char big_error[2048];
   const char* a_few_chars = "abcdefg";
   for (int i = 0; i < 2047; i++) {
