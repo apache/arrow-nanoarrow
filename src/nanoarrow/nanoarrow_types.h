@@ -164,14 +164,26 @@ static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
 #define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
   NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
-#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(EXPR, ERROR_PTR_EXPR, EXPR_STR)  \
-  do {                                                                            \
-    const int NAME = (EXPR);                                                      \
-    if (NAME) {                                                                   \
-      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d", EXPR_STR, NAME); \
-      return NAME;                                                                \
-    }                                                                             \
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
+  do {                                                                                 \
+    const int NAME = (EXPR);                                                           \
+    if (NAME) {                                                                        \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d\n* %s:%d", EXPR_STR,    \
+                    NAME, __FILE__, __LINE__);                                         \
+      return NAME;                                                                     \
+    }                                                                                  \
   } while (0)
+#else
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
+  do {                                                                                 \
+    const int NAME = (EXPR);                                                           \
+    if (NAME) {                                                                        \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d", EXPR_STR, NAME);      \
+      return NAME;                                                                     \
+    }                                                                                  \
+  } while (0)
+#endif
 
 /// \brief Return code for success.
 /// \ingroup nanoarrow-errors
@@ -195,7 +207,7 @@ typedef int ArrowErrorCode;
 /// a nanoarrow function that does *not* accept ArrowError).
 #define NANOARROW_RETURN_NOT_OK_WITH_ERROR(EXPR, ERROR_EXPR) \
   _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(                  \
-      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR)
+      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR, #EXPR)
 
 #if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
 #define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                  \
