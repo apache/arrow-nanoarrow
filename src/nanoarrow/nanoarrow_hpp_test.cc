@@ -25,7 +25,7 @@ TEST(NanoarrowHppTest, NanoarrowHppExceptionTest) {
   try {
     NANOARROW_THROW_NOT_OK(EINVAL);
   } catch (const nanoarrow::Exception& e) {
-    EXPECT_EQ(std::string(e.what()), "EINVAL failed with errno 22");
+    EXPECT_EQ(std::string(e.what()).substr(0, 24), "EINVAL failed with errno");
   }
 }
 

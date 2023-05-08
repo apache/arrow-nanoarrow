@@ -52,6 +52,18 @@ class Exception : public std::exception {
   std::string msg_;
 };
 
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_THROW_NOT_OK_IMPL(NAME, EXPR, EXPR_STR)                      \
+  do {                                                                          \
+    const int NAME = (EXPR);                                                    \
+    if (NAME) {                                                                 \
+      throw nanoarrow::Exception(                                               \
+          std::string(EXPR_STR) + std::string(" failed with errno ") +          \
+          std::to_string(NAME) + std::string("\n * ") + std::string(__FILE__) + \
+          std::string(":") + std::to_string(__LINE__) + std::string("\n"));     \
+    }                                                                           \
+  } while (0)
+#else
 #define _NANOARROW_THROW_NOT_OK_IMPL(NAME, EXPR, EXPR_STR)            \
   do {                                                                \
     const int NAME = (EXPR);                                          \
@@ -61,6 +73,7 @@ class Exception : public std::exception {
                                  std::to_string(NAME));               \
     }                                                                 \
   } while (0)
+#endif
 
 #define NANOARROW_THROW_NOT_OK(EXPR)                                                   \
   _NANOARROW_THROW_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, \
