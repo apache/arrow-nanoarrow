@@ -164,6 +164,15 @@ static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
 #define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
   NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(EXPR, ERROR_PTR_EXPR, EXPR_STR)  \
+  do {                                                                            \
+    const int NAME = (EXPR);                                                      \
+    if (NAME) {                                                                   \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d", EXPR_STR, NAME); \
+      return NAME;                                                                \
+    }                                                                             \
+  } while (0)
+
 /// \brief Return code for success.
 /// \ingroup nanoarrow-errors
 #define NANOARROW_OK 0
@@ -176,6 +185,17 @@ typedef int ArrowErrorCode;
 /// \ingroup nanoarrow-errors
 #define NANOARROW_RETURN_NOT_OK(EXPR) \
   _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
+/// \brief Check the result of an expression and return it if not NANOARROW_OK,
+/// adding an auto-generated message to an ArrowError.
+/// \ingroup nanoarrow-errors
+///
+/// This macro is used to ensure that functions that accept an ArrowError
+/// as input always set its message when returning an error code (e.g., when calling
+/// a nanoarrow function that does *not* accept ArrowError).
+#define NANOARROW_RETURN_NOT_OK_WITH_ERROR(EXPR, ERROR_EXPR) \
+  _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(                  \
+      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR)
 
 #if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
 #define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                  \
