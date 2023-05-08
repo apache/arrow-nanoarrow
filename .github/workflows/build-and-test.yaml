@@ -40,7 +40,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build}
+          - {label: default-build, cmake_args: "-DCMAKE_BUILD_TYPE=Debug"}
+          - {label: release-build}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
           - {label: bundled-cpp-build, cmake_args: "-DNANOARROW_BUNDLE=ON -DNANOARROW_BUNDLE_AS_CPP=ON"}
@@ -67,7 +68,7 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_BUILD_TESTS=ON ${{ matrix.config.cmake_args }}
+          cmake .. -DNANOARROW_BUILD_TESTS=ON ${{ matrix.config.cmake_args }}
           cmake --build .
 
       - name: Check for non-namespaced symbols in namespaced build

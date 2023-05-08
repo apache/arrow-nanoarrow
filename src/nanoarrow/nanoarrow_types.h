@@ -204,7 +204,7 @@ typedef int ArrowErrorCode;
 #define NANOARROW_ASSERT_OK(EXPR) \
   _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
 #else
-#define NANOARROW_ASSERT_OK(...)
+#define NANOARROW_ASSERT_OK(EXPR) EXPR
 #endif
 
 static char _ArrowIsLittleEndian(void) {
