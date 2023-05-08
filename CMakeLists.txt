@@ -41,6 +41,12 @@ else()
     set(NANOARROW_NAMESPACE_DEFINE "// #define NANOARROW_NAMESPACE YourNamespaceHere")
 endif()
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(NANOARROW_DEBUG_DEFINE "#define NANOARROW_DEBUG 1")
+else()
+    set(NANOARROW_DEBUG_DEFINE "// #define NANOARROW_DEBUG 1")
+endif()
+
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 

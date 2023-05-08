@@ -23,6 +23,11 @@
 
 #include "nanoarrow_config.h"
 
+#if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
+#include <stdio.h>
+#include <stdlib.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -171,6 +176,36 @@ typedef int ArrowErrorCode;
 /// \ingroup nanoarrow-errors
 #define NANOARROW_RETURN_NOT_OK(EXPR) \
   _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
+#if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
+#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                        \
+  do {                                                                                  \
+    fprintf(stderr, "%s failed with errno %d\n%s:%d", EXPR_STR, (int)(VALUE), __FILE__, \
+            (int)__LINE__);                                                             \
+    abort();                                                                            \
+  } while (0)
+#endif
+
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_ASSERT_OK_IMPL(NAME, EXPR, EXPR_STR) \
+  do {                                                  \
+    const int NAME = (EXPR);                            \
+    if (NAME) NANOARROW_PRINT_AND_DIE(NAME, EXPR_STR);  \
+  } while (0)
+
+/// \brief Assert that an expression's value is NANOARROW_OK
+/// \ingroup nanoarrow-errors
+///
+/// If nanoarrow was built in debug mode (i.e., defined(NANOARROW_DEBUG) is true),
+/// print a message to stderr and abort. If nanoarrow was bulit in release mode,
+/// this statement has no effect. You can customize fatal error behaviour
+/// be defining the NANOARROW_PRINT_AND_DIE macro before including nanoarrow.h
+/// This macro is provided as a convenience for users and is not used internally.
+#define NANOARROW_ASSERT_OK(EXPR) \
+  _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
+#else
+#define NANOARROW_ASSERT_OK(...)
+#endif
 
 static char _ArrowIsLittleEndian(void) {
   uint32_t check = 1;

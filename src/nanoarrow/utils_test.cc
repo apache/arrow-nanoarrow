@@ -60,6 +60,22 @@ TEST(ErrorTest, ErrorTestSetOverrun) {
   EXPECT_EQ(ArrowErrorSet(&error, "%ls", bad_string), EINVAL);
 }
 
+#if defined(NANOARROW_DEBUG)
+#undef NANOARROW_PRINT_AND_DIE
+#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)             \
+  do {                                                       \
+    ArrowErrorSet(&error, "%s failed with errno", EXPR_STR); \
+  } while (0)
+
+TEST(ErrorTest, ErrorTestAssertNotOkDebug) {
+  struct ArrowError error;
+  NANOARROW_ASSERT_OK(EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "EINVAL failed with errno");
+}
+#else
+TEST(ErrorTest, ErrorTestAssertNotOkRelease) { NANOARROW_ASSERT_OK(EINVAL); }
+#endif
+
 static uint8_t* MemoryPoolReallocate(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                      int64_t old_size, int64_t new_size) {
   MemoryPool* pool = reinterpret_cast<MemoryPool*>(allocator->private_data);
