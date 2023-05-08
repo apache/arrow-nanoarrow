@@ -1222,7 +1222,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
   view.size_bytes = src->buffer_length_bytes;
 
   ArrowBufferInit(dst);
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, view));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendBufferView(dst, view), error);
   return NANOARROW_OK;
 }
 
