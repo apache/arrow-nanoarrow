@@ -178,11 +178,11 @@ typedef int ArrowErrorCode;
   _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
 
 #if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
-#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                        \
-  do {                                                                                  \
-    fprintf(stderr, "%s failed with errno %d\n%s:%d", EXPR_STR, (int)(VALUE), __FILE__, \
-            (int)__LINE__);                                                             \
-    abort();                                                                            \
+#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                  \
+  do {                                                                            \
+    fprintf(stderr, "%s failed with errno %d\n* %s:%d\n", EXPR_STR, (int)(VALUE), \
+            __FILE__, (int)__LINE__);                                             \
+    abort();                                                                      \
   } while (0)
 #endif
 
