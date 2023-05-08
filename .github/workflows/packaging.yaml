@@ -127,11 +127,6 @@ jobs:
           docker compose run --rm docs
           popd
 
-      - name: Documentation build logs
-        if: always()
-        run: |
-          cat nanoarrow/docs/_build/build-docs.log
-
       - name: Compress docs
         shell: bash
         run: |
