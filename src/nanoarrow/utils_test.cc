@@ -35,7 +35,9 @@ TEST(ErrorTest, ErrorTestInit) {
   struct ArrowError error;
   memset(&error.message, 0xff, sizeof(ArrowError));
   ArrowErrorInit(&error);
-  EXPECT_STREQ(error.message, "");
+  EXPECT_STREQ(ArrowErrorMessage(&error), "");
+  ArrowErrorInit(nullptr);
+  EXPECT_STREQ(ArrowErrorMessage(nullptr), "");
 }
 
 TEST(ErrorTest, ErrorTestSet) {

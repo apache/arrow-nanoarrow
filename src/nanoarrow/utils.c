@@ -49,7 +49,13 @@ int ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   }
 }
 
-const char* ArrowErrorMessage(struct ArrowError* error) { return error->message; }
+const char* ArrowErrorMessage(struct ArrowError* error) {
+  if (error == NULL) {
+    return "";
+  } else {
+    return error->message;
+  }
+}
 
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_VALIDITY;
