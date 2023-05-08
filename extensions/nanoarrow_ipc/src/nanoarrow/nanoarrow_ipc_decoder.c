@@ -212,15 +212,17 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  ArrowArrayViewReset(&private_data->array_view);
+  if (private_data != NULL) {
+    ArrowArrayViewReset(&private_data->array_view);
 
-  if (private_data->fields != NULL) {
-    ArrowFree(private_data->fields);
-    private_data->n_fields = 0;
+    if (private_data->fields != NULL) {
+      ArrowFree(private_data->fields);
+      private_data->n_fields = 0;
+    }
+
+    ArrowFree(private_data);
+    memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   }
-
-  ArrowFree(private_data);
-  memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
 }
 
 static inline uint32_t ArrowIpcReadContinuationBytes(struct ArrowBufferView* data) {
