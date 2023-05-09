@@ -91,7 +91,6 @@ if(NANOARROW_BUNDLE)
     if(NANOARROW_BUILD_TESTS)
         include_directories(${CMAKE_BINARY_DIR}/amalgamation)
         add_library(nanoarrow ${NANOARROW_C_TEMP})
-        target_compile_definitions(nanoarrow PUBLIC -DNANOARROW_DEBUG)
     endif()
 
     # Install the amalgamated header and source
@@ -109,7 +108,6 @@ else()
         $<INSTALL_INTERFACE:include>)
     target_include_directories(nanoarrow PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_definitions(nanoarrow PUBLIC -DNANOARROW_DEBUG)
         if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
             target_compile_options(
                 nanoarrow
@@ -139,6 +137,9 @@ else()
     install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h DESTINATION include/nanoarrow)
 endif()
+
+# Add debug define if we're in a Debug build
+target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
 if(NANOARROW_BUILD_TESTS)
     # For testing we use GTest + Arrow C++
