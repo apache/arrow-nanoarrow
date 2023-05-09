@@ -182,7 +182,16 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
 /// need to communicate more verbose error information accept a pointer
 /// to an ArrowError. This can be stack or statically allocated. The
 /// content of the message is undefined unless an error code has been
-/// returned.
+/// returned. If a nanoarrow function is passed a non-null ArrowError pointer, the
+/// ArrowError pointed to by the argument will be propagated with a
+/// null-terminated error message. It is safe to pass a NULL ArrowError anywhere
+/// in the nanoarrow API.
+///
+/// Except where documented, it is generally not safe to continue after a
+/// function has returned a non-zero ArrowErrorCode. The NANOARROW_RETURN_NOT_OK and
+/// NANOARROW_ASSERT_OK macros are provided to help propagate errors. C++ clients can use
+/// the helpers provided in the nanoarrow.hpp header to facilitate using C++ idioms
+/// for memory management and error propgagtion.
 ///
 /// @{
 
@@ -192,10 +201,24 @@ struct ArrowError {
   char message[1024];
 };
 
-/// \brief Set the contents of an error using printf syntax
+/// \brief Ensure an ArrowError is null-terminated by zeroing the first character.
+///
+/// If error is NULL, this function does nothing.
+static inline void ArrowErrorInit(struct ArrowError* error) {
+  if (error) {
+    error->message[0] = '\0';
+  }
+}
+
+/// \brief Set the contents of an error using printf syntax.
+///
+/// If error is NULL, this function does nothing and returns NANOARROW_OK.
 ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
 
 /// \brief Get the contents of an error
+///
+/// If error is NULL, returns "", or returns the contents of the error message
+/// otherwise.
 const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// @}

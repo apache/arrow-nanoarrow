@@ -20,6 +20,12 @@ C++ API Reference
 
 .. doxygengroup:: nanoarrow_hpp
 
+Error handling
+--------------
+
+.. doxygengroup:: nanoarrow_hpp-errors
+   :members:
+
 Owning object wrappers
 ----------------------
 .. doxygengroup:: nanoarrow_hpp-unique

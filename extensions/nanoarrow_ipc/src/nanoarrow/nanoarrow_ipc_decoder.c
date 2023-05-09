@@ -212,15 +212,17 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  ArrowArrayViewReset(&private_data->array_view);
+  if (private_data != NULL) {
+    ArrowArrayViewReset(&private_data->array_view);
 
-  if (private_data->fields != NULL) {
-    ArrowFree(private_data->fields);
-    private_data->n_fields = 0;
+    if (private_data->fields != NULL) {
+      ArrowFree(private_data->fields);
+      private_data->n_fields = 0;
+    }
+
+    ArrowFree(private_data);
+    memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   }
-
-  ArrowFree(private_data);
-  memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
 }
 
 static inline uint32_t ArrowIpcReadContinuationBytes(struct ArrowBufferView* data) {
@@ -1222,7 +1224,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
   view.size_bytes = src->buffer_length_bytes;
 
   ArrowBufferInit(dst);
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, view));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendBufferView(dst, view), error);
   return NANOARROW_OK;
 }
 

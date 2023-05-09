@@ -91,6 +91,7 @@ if(NANOARROW_BUNDLE)
     if(NANOARROW_BUILD_TESTS)
         include_directories(${CMAKE_BINARY_DIR}/amalgamation)
         add_library(nanoarrow ${NANOARROW_C_TEMP})
+        target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
     endif()
 
     # Install the amalgamated header and source
@@ -107,6 +108,8 @@ else()
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:include>)
     target_include_directories(nanoarrow PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>)
+    target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
             target_compile_options(

@@ -18,6 +18,16 @@
 IPC Extension Reference
 =======================
 
+C API
+------------------------
+
 .. doxygengroup:: nanoarrow_ipc
+   :project: nanoarrow_ipc
+   :members:
+
+C++ Helpers
+------------------------
+
+.. doxygengroup:: nanoarrow_ipc_hpp-unique
    :project: nanoarrow_ipc
    :members:

@@ -31,14 +31,23 @@ TEST(BuildIdTest, VersionTest) {
   EXPECT_EQ(ArrowNanoarrowVersionInt(), NANOARROW_VERSION_INT);
 }
 
+TEST(ErrorTest, ErrorTestInit) {
+  struct ArrowError error;
+  memset(&error.message, 0xff, sizeof(ArrowError));
+  ArrowErrorInit(&error);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "");
+  ArrowErrorInit(nullptr);
+  EXPECT_STREQ(ArrowErrorMessage(nullptr), "");
+}
+
 TEST(ErrorTest, ErrorTestSet) {
-  ArrowError error;
+  struct ArrowError error;
   EXPECT_EQ(ArrowErrorSet(&error, "there were %d foxes", 4), NANOARROW_OK);
   EXPECT_STREQ(ArrowErrorMessage(&error), "there were 4 foxes");
 }
 
 TEST(ErrorTest, ErrorTestSetOverrun) {
-  ArrowError error;
+  struct ArrowError error;
   char big_error[2048];
   const char* a_few_chars = "abcdefg";
   for (int i = 0; i < 2047; i++) {
@@ -52,6 +61,22 @@ TEST(ErrorTest, ErrorTestSetOverrun) {
   wchar_t bad_string[] = {0xFFFF, 0};
   EXPECT_EQ(ArrowErrorSet(&error, "%ls", bad_string), EINVAL);
 }
+
+#if defined(NANOARROW_DEBUG)
+#undef NANOARROW_PRINT_AND_DIE
+#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)             \
+  do {                                                       \
+    ArrowErrorSet(&error, "%s failed with errno", EXPR_STR); \
+  } while (0)
+
+TEST(ErrorTest, ErrorTestAssertNotOkDebug) {
+  struct ArrowError error;
+  NANOARROW_ASSERT_OK(EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "EINVAL failed with errno");
+}
+#else
+TEST(ErrorTest, ErrorTestAssertNotOkRelease) { NANOARROW_ASSERT_OK(EINVAL); }
+#endif
 
 static uint8_t* MemoryPoolReallocate(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                      int64_t old_size, int64_t new_size) {

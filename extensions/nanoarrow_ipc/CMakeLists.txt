@@ -212,6 +212,7 @@ if (NANOARROW_IPC_BUILD_TESTS)
   add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
   add_executable(nanoarrow_ipc_reader_test src/nanoarrow/nanoarrow_ipc_reader_test.cc)
   add_executable(nanoarrow_ipc_files_test src/nanoarrow/nanoarrow_ipc_files_test.cc)
+  add_executable(nanoarrow_ipc_hpp_test src/nanoarrow/nanoarrow_ipc_hpp_test.cc)
 
   if(NANOARROW_IPC_CODE_COVERAGE)
     target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
@@ -236,11 +237,15 @@ if (NANOARROW_IPC_BUILD_TESTS)
   target_link_libraries(
     nanoarrow_ipc_files_test
     nanoarrow_ipc nanoarrow ${NANOARROW_IPC_ARROW_TARGET} gtest_main ipc_coverage_config)
+  target_link_libraries(
+      nanoarrow_ipc_hpp_test
+      nanoarrow_ipc nanoarrow ${NANOARROW_IPC_ARROW_TARGET} gtest_main ipc_coverage_config)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_ipc_decoder_test)
   gtest_discover_tests(nanoarrow_ipc_reader_test)
   gtest_discover_tests(nanoarrow_ipc_files_test)
+  gtest_discover_tests(nanoarrow_ipc_hpp_test)
 endif()
 
 if (NANOARROW_IPC_BUILD_APPS)

@@ -23,6 +23,11 @@
 
 #include "nanoarrow_config.h"
 
+#if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
+#include <stdio.h>
+#include <stdlib.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -159,6 +164,27 @@ static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
 #define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
   NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
+  do {                                                                                 \
+    const int NAME = (EXPR);                                                           \
+    if (NAME) {                                                                        \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d\n* %s:%d", EXPR_STR,    \
+                    NAME, __FILE__, __LINE__);                                         \
+      return NAME;                                                                     \
+    }                                                                                  \
+  } while (0)
+#else
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
+  do {                                                                                 \
+    const int NAME = (EXPR);                                                           \
+    if (NAME) {                                                                        \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d", EXPR_STR, NAME);      \
+      return NAME;                                                                     \
+    }                                                                                  \
+  } while (0)
+#endif
+
 /// \brief Return code for success.
 /// \ingroup nanoarrow-errors
 #define NANOARROW_OK 0
@@ -171,6 +197,47 @@ typedef int ArrowErrorCode;
 /// \ingroup nanoarrow-errors
 #define NANOARROW_RETURN_NOT_OK(EXPR) \
   _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
+/// \brief Check the result of an expression and return it if not NANOARROW_OK,
+/// adding an auto-generated message to an ArrowError.
+/// \ingroup nanoarrow-errors
+///
+/// This macro is used to ensure that functions that accept an ArrowError
+/// as input always set its message when returning an error code (e.g., when calling
+/// a nanoarrow function that does *not* accept ArrowError).
+#define NANOARROW_RETURN_NOT_OK_WITH_ERROR(EXPR, ERROR_EXPR) \
+  _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(                  \
+      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR, #EXPR)
+
+#if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
+#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                  \
+  do {                                                                            \
+    fprintf(stderr, "%s failed with errno %d\n* %s:%d\n", EXPR_STR, (int)(VALUE), \
+            __FILE__, (int)__LINE__);                                             \
+    abort();                                                                      \
+  } while (0)
+#endif
+
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_ASSERT_OK_IMPL(NAME, EXPR, EXPR_STR) \
+  do {                                                  \
+    const int NAME = (EXPR);                            \
+    if (NAME) NANOARROW_PRINT_AND_DIE(NAME, EXPR_STR);  \
+  } while (0)
+
+/// \brief Assert that an expression's value is NANOARROW_OK
+/// \ingroup nanoarrow-errors
+///
+/// If nanoarrow was built in debug mode (i.e., defined(NANOARROW_DEBUG) is true),
+/// print a message to stderr and abort. If nanoarrow was bulit in release mode,
+/// this statement has no effect. You can customize fatal error behaviour
+/// be defining the NANOARROW_PRINT_AND_DIE macro before including nanoarrow.h
+/// This macro is provided as a convenience for users and is not used internally.
+#define NANOARROW_ASSERT_OK(EXPR) \
+  _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
+#else
+#define NANOARROW_ASSERT_OK(EXPR) EXPR
+#endif
 
 static char _ArrowIsLittleEndian(void) {
   uint32_t check = 1;
