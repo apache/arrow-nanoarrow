@@ -20483,15 +20483,17 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  ArrowArrayViewReset(&private_data->array_view);
+  if (private_data != NULL) {
+    ArrowArrayViewReset(&private_data->array_view);
 
-  if (private_data->fields != NULL) {
-    ArrowFree(private_data->fields);
-    private_data->n_fields = 0;
+    if (private_data->fields != NULL) {
+      ArrowFree(private_data->fields);
+      private_data->n_fields = 0;
+    }
+
+    ArrowFree(private_data);
+    memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   }
-
-  ArrowFree(private_data);
-  memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
 }
 
 static inline uint32_t ArrowIpcReadContinuationBytes(struct ArrowBufferView* data) {
@@ -21493,7 +21495,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
   view.size_bytes = src->buffer_length_bytes;
 
   ArrowBufferInit(dst);
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, view));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendBufferView(dst, view), error);
   return NANOARROW_OK;
 }
 
@@ -21908,7 +21910,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   int64_t bytes_read = 0;
 
   // Read 8 bytes (continuation + header size in bytes)
-  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&private_data->header, 8));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(&private_data->header, 8),
+                                     &private_data->error);
   NANOARROW_RETURN_NOT_OK(private_data->input.read(&private_data->input,
                                                    private_data->header.data, 8,
                                                    &bytes_read, &private_data->error));
@@ -21939,8 +21942,9 @@ static int ArrowIpcArrayStreamReaderNextHeader(
 
   // Read the header bytes
   int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;
-  NANOARROW_RETURN_NOT_OK(
-      ArrowBufferReserve(&private_data->header, expected_header_bytes));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowBufferReserve(&private_data->header, expected_header_bytes),
+      &private_data->error);
   NANOARROW_RETURN_NOT_OK(
       private_data->input.read(&private_data->input, private_data->header.data + 8,
                                expected_header_bytes, &bytes_read, &private_data->error));
@@ -21970,7 +21974,8 @@ static int ArrowIpcArrayStreamReaderNextBody(
 
   // Read the body bytes
   private_data->body.size_bytes = 0;
-  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&private_data->body, bytes_to_read));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowBufferReserve(&private_data->body, bytes_to_read), &private_data->error);
   NANOARROW_RETURN_NOT_OK(private_data->input.read(&private_data->input,
                                                    private_data->body.data, bytes_to_read,
                                                    &bytes_read, &private_data->error));
@@ -22010,8 +22015,10 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
   }
 
   // Notify the decoder of buffer endianness
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetEndianness(&private_data->decoder,
-                                                       private_data->decoder.endianness));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcDecoderSetEndianness(&private_data->decoder,
+                                   private_data->decoder.endianness),
+      &private_data->error);
 
   struct ArrowSchema tmp;
   NANOARROW_RETURN_NOT_OK(
@@ -22075,7 +22082,8 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
 
   if (private_data->use_shared_buffers) {
     struct ArrowIpcSharedBuffer shared;
-    NANOARROW_RETURN_NOT_OK(ArrowIpcSharedBufferInit(&shared, &private_data->body));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
         &private_data->decoder, &shared, private_data->field_index, &tmp,
         &private_data->error));
