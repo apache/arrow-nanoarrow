@@ -141,21 +141,61 @@ Next, we'll provide definitions for the functions we'll implement below:
 #include <string>
 #include <util>
 
-#define LINESTRING_OK 0
-
-int linesplitter_read(const char* src, struct ArrowArray* out);
+int linesplitter_read(const std::string& src, struct ArrowArray* out);
 std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
-int linesplitter_separate_longer(struct ArrowArray* input, struct ArrowArray* output);
+int linesplitter_separate_longer(struct ArrowArray* input, struct ArrowArray* out);
 ```
 
-## The basics
+## Arow C data interface basics
 
-- Error handling
-- Memory management
+Now that we've seen the functions we need to implement and the Arrow types exposed
+in the C data interface, let's unpack a few basics about using the Arrow C data
+interface and a few conventions used in the nanoarrow implementation.
 
-## The tests
+First, let's discuss the `ArrowSchema` and the `ArrowArray`. You can think of an
+`ArrowSchema` as an expression of a data type, whereas an `ArrowArray` is the
+data itself. These structures accomodate nested types: columns are encoded in
+the `children` member of each. You always need to know the data type of an
+`ArrowArray` before accessing its contents. In our case we only operate on arrays
+of one type ("string") and document that in our interface; for functions that
+operate on more than one type of array you will need to accept an `ArrowSchema`
+and inspect it (e.g., using nanoarrow's helper functions).
 
+Second, lets discuss error handling. You may have noticed in the function definitions
+above that we return `int`, which is an errno-compatible error code or `0` to
+indicate success. This is the error reporting scheme used by the C data interface and
+nanoarrow and is common in C where exceptions and C++17's `std::optional<>` are not
+possible. If your library performs becomes complex and needs to communicate detailed
+error information you will need to choose one of those idioms. In our library, the
+only thing that can go wrong is if the OS fails to allocate memory, and this is
+sufficiently communicated using the errno code `ENOMEM`.
 
+## Building the library
+
+We'll fill in the implementations below, but for now we can add enough stubs that
+the project will compile. In `linesplitter.cc`, add:
+
+```c
+#include <string>
+#include <util>
+#include <errno.h>
+
+#include "nanoarrow.h"
+
+#include "linesplitter.h"
+
+int linesplitter_read(const std::string& src, struct ArrowArray* out) {
+  return ENOTSUP;
+}
+
+std::pair<int, std::string> linesplitter_write(struct ArrowArray* input) {
+  return {ENOTSUP, ""};
+}
+
+int linesplitter_separate_longer(struct ArrowArray* input, struct ArrowArray* out) {
+    return ENOTSUP;
+}
+```
 
 ## Reading into an ArrowArray
 
