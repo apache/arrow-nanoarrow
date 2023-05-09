@@ -41,12 +41,6 @@ else()
     set(NANOARROW_NAMESPACE_DEFINE "// #define NANOARROW_NAMESPACE YourNamespaceHere")
 endif()
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(NANOARROW_DEBUG_DEFINE "#define NANOARROW_DEBUG 1")
-else()
-    set(NANOARROW_DEBUG_DEFINE "// #define NANOARROW_DEBUG 1")
-endif()
-
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 
@@ -97,6 +91,7 @@ if(NANOARROW_BUNDLE)
     if(NANOARROW_BUILD_TESTS)
         include_directories(${CMAKE_BINARY_DIR}/amalgamation)
         add_library(nanoarrow ${NANOARROW_C_TEMP})
+        target_compile_definitions(nanoarrow PUBLIC -DNANOARROW_DEBUG)
     endif()
 
     # Install the amalgamated header and source
@@ -114,6 +109,7 @@ else()
         $<INSTALL_INTERFACE:include>)
     target_include_directories(nanoarrow PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_definitions(nanoarrow PUBLIC -DNANOARROW_DEBUG)
         if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
             target_compile_options(
                 nanoarrow
