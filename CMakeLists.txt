@@ -138,8 +138,10 @@ else()
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h DESTINATION include/nanoarrow)
 endif()
 
-# Add debug define if we're in a Debug build
-target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+# Add debug define if we're building a library
+if(NOT NANOARRROW_BUNDLE OR NANOARROW_BUILD_TESTS)
+    target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+endif()
 
 if(NANOARROW_BUILD_TESTS)
     # For testing we use GTest + Arrow C++
