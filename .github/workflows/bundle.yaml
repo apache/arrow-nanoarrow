@@ -23,8 +23,8 @@ on:
       - main
     paths:
       - '.github/workflows/bundle.yaml'
-    schedule:
-      - cron: '0 1 * * *'
+  schedule:
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 jobs:
