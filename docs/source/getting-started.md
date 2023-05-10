@@ -58,6 +58,10 @@ For the sake of argument, we'll call it `linesplitter`.
 
 ## The development environment
 
+If you're reading this tutorial there is a good chance you already have a
+workflow for building and testing C/C++ libraries. If you do, skip to the
+next section!
+
 There are many excellent IDEs that can be used to develop C and C++ libraries. For
 this tutorial, we will use [VSCode](https://code.visualstudio.com/) and
 [CMake](https://cmake.org/). You'll need both installed to follow along:
@@ -163,17 +167,18 @@ and inspect it (e.g., using nanoarrow's helper functions).
 
 Second, lets discuss error handling. You may have noticed in the function definitions
 above that we return `int`, which is an errno-compatible error code or `0` to
-indicate success. This is the error reporting scheme used by the C data interface and
+indicate success. This is the error reporting scheme used by the C stream interface and
 nanoarrow and is common in C where exceptions and C++17's `std::optional<>` are not
-possible. If your library performs becomes complex and needs to communicate detailed
+possible. If your library becomes complex and needs to communicate detailed
 error information you will need to choose one of those idioms. In our library, the
 only thing that can go wrong is if the OS fails to allocate memory, and this is
 sufficiently communicated using the errno code `ENOMEM`.
 
 ## Building the library
 
-We'll fill in the implementations below, but for now we can add enough stubs that
-the project will compile. In `linesplitter.cc`, add:
+Our library implementation will live in `linesplitter.cc`. Before writing the
+actual implementations, let's add just enough to our project that we can
+build it using VSCode's C/C++/CMake integration:
 
 ```c
 #include <string>
@@ -196,6 +201,32 @@ int linesplitter_separate_longer(struct ArrowArray* input, struct ArrowArray* ou
     return ENOTSUP;
 }
 ```
+
+We also need a `CMakeLists.txt` file that tells CMake and VSCode what to build.
+CMake has a lot of options and scale to coordinate very large projects; however
+we only need a few lines to leverage VSCode's integration.
+
+```cmake
+include(FetchContent)
+
+project(linesplitter)
+
+FetchContent_Declare(
+  nanoarrow
+  URL https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.1.0/apache-arrow-nanoarrow-0.1.0.tar.gz
+  URL_HASH SHA512=dc62480b986ee76aaad8e38c6fbc602f8cef2cc35a5f5ede7da2a93b4db2b63839bdca3eefe8a44ae1cb6895a2fd3f090e3f6ea1020cf93cfe86437304dfee17)
+
+FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
+
+add_library(linesplitter linesplitter.cc)
+```
+
+After saving `CMakeLists.txt`, you may have to close and re-open the `linesplitter`
+directory in VSCode to activate the CMake integration. From the command pallete
+(i.e., Control/Command-Shift-P), choose **CMake: Build**. If all went well, you should
+see a few lines of output indicating progress towards building and linking `linesplitter`.
+
+If you're not using VSCode, the equivalent in a terminal would be `mkdir build && cd build && cmake .. && cmake --build .`.
 
 ## Reading into an ArrowArray
 
