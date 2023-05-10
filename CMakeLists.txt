@@ -168,6 +168,16 @@ if(NANOARROW_BUILD_TESTS)
         cmake_policy(SET CMP0135 NEW)
     endif()
 
+    # On Windows, dynamically linking Arrow is difficult to get right,
+    # so use static linking by default. GTest needs to use shared C runtime
+    # when using MSVC.
+    if (MSVC)
+        set(gtest_force_shared_crt on)
+        set(NANOARROW_ARROW_TARGET arrow_static)
+    else()
+        set(NANOARROW_ARROW_TARGET arrow_shared)
+    endif()
+
     # Use an old version of googletest if we have to to support gcc 4.8
     if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
        CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "5.0.0")
@@ -197,14 +207,6 @@ if(NANOARROW_BUILD_TESTS)
         target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
         target_link_options(coverage_config INTERFACE --coverage)
         target_link_libraries(nanoarrow coverage_config)
-    endif()
-
-    # On Windows, dynamically linking Arrow is difficult to get right,
-    # so use static linking by default.
-    if (MSVC)
-        set(NANOARROW_ARROW_TARGET arrow_static)
-    else()
-        set(NANOARROW_ARROW_TARGET arrow_shared)
     endif()
 
     target_link_libraries(utils_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET} coverage_config)
