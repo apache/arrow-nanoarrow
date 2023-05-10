@@ -29,7 +29,6 @@ on:
 
 jobs:
   bundle-dist:
-    needs: test-c
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
