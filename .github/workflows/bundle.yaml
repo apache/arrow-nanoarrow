@@ -59,7 +59,7 @@ jobs:
 
       - name: Compress bundle
         run: |
-          zip nanoarrow-latest.zip nanoarrow-latest/**/*.*
+          zip nanoarrow-latest.zip $(find nanoarrow-latest -type f)
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@main
