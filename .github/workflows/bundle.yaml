@@ -71,8 +71,10 @@ jobs:
       - name: Commit bundle to dist/
         if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
+          mv dist/README.md dist-readme.md
           rm -rf dist
           mv nanoarrow-latest dist
+          mv dist-readme.md dist/README.md
           git add dist/**/*.*
 
           # only commit if there are changes
