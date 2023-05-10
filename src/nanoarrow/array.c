@@ -938,7 +938,7 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                    array_view->union_type_id_map, array_view->n_children,
                    array_view->n_children)) {
       NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(array_view->buffer_views[0], 0,
-                                                   array_view->n_children - 1, error));
+                                                   (int8_t)(array_view->n_children - 1), error));
     } else {
       NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(array_view->buffer_views[0],
                                                 array_view->union_type_id_map + 128,
