@@ -43,6 +43,11 @@ nanoarrow may provide all the functionality you need.
 Now that we've talked about why you might want to build a library with nanoarrow...let's
 build one!
 
+Note: This tutorial also goes over some of the basic structure of writing a C++ library.
+If you already know how to do this, feel free to scroll to the code examples provided
+below or take a look at the
+[complete example source](https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter).
+
 ## The library
 
 The library we'll write in this tutorial is a simple text processing library that splits
@@ -57,10 +62,6 @@ and reassembles lines of text. It will be able to:
 For the sake of argument, we'll call it `linesplitter`.
 
 ## The development environment
-
-If you're reading this tutorial there is a good chance you already have a
-workflow for building and testing C/C++ libraries. If you do, skip to the
-next section!
 
 There are many excellent IDEs that can be used to develop C and C++ libraries. For
 this tutorial, we will use [VSCode](https://code.visualstudio.com/) and
@@ -82,7 +83,7 @@ We'll expose the interface to our library as a header called `linesplitter.h`.
 To ensure the definitions are only included once in any given source file, we'll
 add the following line at the top:
 
-```c
+```cpp
 #pragma once
 ```
 
@@ -93,7 +94,7 @@ implementations on which our API will be built. It's designed to be copy and
 pasted in this way - there's no need to put it in another file include
 something from another project.
 
-```c
+```cpp
 #include <stdint.h>
 
 #ifndef ARROW_C_DATA_INTERFACE
@@ -143,7 +144,7 @@ Next, we'll provide definitions for the functions we'll implement below:
 
 ```c
 #include <string>
-#include <util>
+#include <utility>
 
 int linesplitter_read(const std::string& src, struct ArrowArray* out);
 std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
@@ -180,9 +181,9 @@ Our library implementation will live in `linesplitter.cc`. Before writing the
 actual implementations, let's add just enough to our project that we can
 build it using VSCode's C/C++/CMake integration:
 
-```c
+```cpp
 #include <string>
-#include <util>
+#include <utility>
 #include <errno.h>
 
 #include "nanoarrow.h"
@@ -207,18 +208,19 @@ CMake has a lot of options and scale to coordinate very large projects; however
 we only need a few lines to leverage VSCode's integration.
 
 ```cmake
-include(FetchContent)
-
 project(linesplitter)
 
+set(CMAKE_CXX_STANDARD 11)
+
+include(FetchContent)
 FetchContent_Declare(
   nanoarrow
   URL https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.1.0/apache-arrow-nanoarrow-0.1.0.tar.gz
   URL_HASH SHA512=dc62480b986ee76aaad8e38c6fbc602f8cef2cc35a5f5ede7da2a93b4db2b63839bdca3eefe8a44ae1cb6895a2fd3f090e3f6ea1020cf93cfe86437304dfee17)
-
-FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
+FetchContent_MakeAvailable(nanoarrow)
 
 add_library(linesplitter linesplitter.cc)
+target_link_libraries(linesplitter PRIVATE nanoarrow)
 ```
 
 After saving `CMakeLists.txt`, you may have to close and re-open the `linesplitter`
@@ -226,9 +228,25 @@ directory in VSCode to activate the CMake integration. From the command pallete
 (i.e., Control/Command-Shift-P), choose **CMake: Build**. If all went well, you should
 see a few lines of output indicating progress towards building and linking `linesplitter`.
 
-If you're not using VSCode, the equivalent in a terminal would be `mkdir build && cd build && cmake .. && cmake --build .`.
+Depending on your version of CMake you might also see a few warnings. This CMakeLists.txt
+is intentionally minimal and as such does not attempt to silence them.
+
+If you're not using VSCode, you can accomplish the equivalent task in in a terminal
+with `mkdir build && cd build && cmake .. && cmake --build .`.
 
 ## Reading into an ArrowArray
+
+```cpp
+static int64_t find_newline(const ArrowStringView& src) {
+  for (int64_t i = 0; i < src.size_bytes; i++) {
+    if (src.data[i] == '\n') {
+      return i;
+    }
+  }
+
+  return src.size_bytes - 1;
+}
+```
 
 read lines into a string array
 
