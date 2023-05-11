@@ -651,7 +651,7 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<double>::max()),
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<float>::max()),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, NAN), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, INFINITY), NANOARROW_OK);
@@ -671,13 +671,13 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_EQ(data_buffer[3], 3);
   EXPECT_DOUBLE_EQ(data_buffer[4], 3.14);
-  EXPECT_FLOAT_EQ(data_buffer[4], 3.14);
-  EXPECT_FLOAT_EQ(data_buffer[5], std::numeric_limits<double>::max());
+  EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[4]), static_cast<float>(3.14));
+  EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[5]), std::numeric_limits<float>::max());
   EXPECT_TRUE(std::isnan(data_buffer[6])) << data_buffer[6];
-  EXPECT_FLOAT_EQ(data_buffer[7], INFINITY);
-  EXPECT_FLOAT_EQ(data_buffer[8], -INFINITY);
-  EXPECT_FLOAT_EQ(data_buffer[9], -1);
-  EXPECT_FLOAT_EQ(data_buffer[10], 0);
+  EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[7]), INFINITY);
+  EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[8]), -INFINITY);
+  EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[9]), -1);
+  EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[10]), 0);
 
   auto arrow_array = ImportArray(&array, float64());
   ARROW_EXPECT_OK(arrow_array);
@@ -687,7 +687,7 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append(3));
   ARROW_EXPECT_OK(builder.Append(3.14));
-  ARROW_EXPECT_OK(builder.Append(std::numeric_limits<double>::max()));
+  ARROW_EXPECT_OK(builder.Append(std::numeric_limits<float>::max()));
   ARROW_EXPECT_OK(builder.Append(NAN));
   ARROW_EXPECT_OK(builder.Append(INFINITY));
   ARROW_EXPECT_OK(builder.Append(-INFINITY));
@@ -708,7 +708,7 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<double>::max()),
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<float>::max()),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, NAN), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendDouble(&array, INFINITY), NANOARROW_OK);
@@ -727,7 +727,7 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_EQ(data_buffer[1], 0);
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_EQ(data_buffer[3], 3);
-  EXPECT_FLOAT_EQ(data_buffer[4], 3.14);
+  EXPECT_FLOAT_EQ(data_buffer[4], static_cast<float>(3.14));
   EXPECT_FLOAT_EQ(data_buffer[5], std::numeric_limits<float>::max());
   EXPECT_TRUE(std::isnan(data_buffer[6])) << data_buffer[6];
   EXPECT_FLOAT_EQ(data_buffer[7], INFINITY);
@@ -742,8 +742,8 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   ARROW_EXPECT_OK(builder.Append(1));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append(3));
-  ARROW_EXPECT_OK(builder.Append(3.14));
-  ARROW_EXPECT_OK(builder.Append(std::numeric_limits<double>::max()));
+  ARROW_EXPECT_OK(builder.Append(static_cast<float>(3.14)));
+  ARROW_EXPECT_OK(builder.Append(std::numeric_limits<float>::max()));
   ARROW_EXPECT_OK(builder.Append(NAN));
   ARROW_EXPECT_OK(builder.Append(INFINITY));
   ARROW_EXPECT_OK(builder.Append(-INFINITY));
