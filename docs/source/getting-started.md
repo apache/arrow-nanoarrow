@@ -33,7 +33,8 @@ Becauase Arrow has bindings in many languages, it means that you or others can e
 bind or use your tool in higher-level runtimes like R, Java, C++, Python, Rust, Julia,
 Go, or Ruby, among others.
 
-The nanoarrow library is not the only way that an Arrow-based API can be implemented: Arrow C++, Rust, and Go are all excellent choices and can compile into
+The nanoarrow library is not the only way that an Arrow-based API can be implemented:
+Arrow C++, Rust, and Go are all excellent choices and can compile into
 static libraries that are C-linkable from other languages; however, existing Arrow
 implementations produce relatively large static libraries and can present complex build-time
 or run-time linking requirements depending on the implementation and features used. If
@@ -68,7 +69,8 @@ this tutorial, we will use [VSCode](https://code.visualstudio.com/) and
 VSCode can be downloaded from the official site for most platforms;
 CMake is typically installed via your favourite package manager
 (e.g., `brew install cmake`, `apt-get install cmake` `dnf install cmake`,
-etc.). You will also need a C and C++ compiler: on MacOS these can be installed using `xcode-select --install`; on Linux you will need the packages that provice
+etc.). You will also need a C and C++ compiler: on MacOS these can be installed
+using `xcode-select --install`; on Linux you will need the packages that provice
 `gcc`, `g++`, and `make`; on Windows you will need to install
 [Visual Studio](https://visualstudio.microsoft.com/downloads/) and
 CMake from the official download pages.
