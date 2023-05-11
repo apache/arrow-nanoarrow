@@ -43,7 +43,8 @@ nanoarrow may provide all the functionality you need.
 Now that we've talked about why you might want to build a library with nanoarrow...let's
 build one!
 
-Note: This tutorial also goes over some of the basic structure of writing a C++ library.
+Note:
+This tutorial also goes over some of the basic structure of writing a C++ library.
 If you already know how to do this, feel free to scroll to the code examples provided
 below or take a look at the
 [complete example source](https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter).
@@ -56,8 +57,6 @@ and reassembles lines of text. It will be able to:
 - Read text from a buffer into an `ArrowArray` as one element per line,
 - Write elements of an `ArrowArray` into a buffer, inserting line breaks
   after every element, and
-- Split the elements of an `ArrowArray` after every line and produce an
-  `ArrowArray` with one element per line.
 
 For the sake of argument, we'll call it `linesplitter`.
 
@@ -143,12 +142,9 @@ struct ArrowArray {
 Next, we'll provide definitions for the functions we'll implement below:
 
 ```c
-#include <string>
-#include <utility>
-
-int linesplitter_read(const std::string& src, struct ArrowArray* out);
+std::pair<int, std::string> linesplitter_read(const std::string& src,
+                                              struct ArrowArray* out);
 std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
-int linesplitter_separate_longer(struct ArrowArray* input, struct ArrowArray* out);
 ```
 
 ## Arrow C data/nanoarrow interface basics
@@ -244,29 +240,11 @@ actual implementations, let's add just enough to our project that we can
 build it using VSCode's C/C++/CMake integration:
 
 ```cpp
-#include <string>
-#include <utility>
-#include <errno.h>
 
-#include "nanoarrow.h"
-
-#include "linesplitter.h"
-
-int linesplitter_read(const std::string& src, struct ArrowArray* out) {
-  return ENOTSUP;
-}
-
-std::pair<int, std::string> linesplitter_write(struct ArrowArray* input) {
-  return {ENOTSUP, ""};
-}
-
-int linesplitter_separate_longer(struct ArrowArray* input, struct ArrowArray* out) {
-    return ENOTSUP;
-}
 ```
 
 We also need a `CMakeLists.txt` file that tells CMake and VSCode what to build.
-CMake has a lot of options and scale to coordinate very large projects; however
+CMake has a lot of options and can scale to coordinate very large projects; however
 we only need a few lines to leverage VSCode's integration.
 
 ```cmake
@@ -275,6 +253,7 @@ project(linesplitter)
 set(CMAKE_CXX_STANDARD 11)
 
 include(FetchContent)
+
 FetchContent_Declare(
   nanoarrow
   URL https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.1.0/apache-arrow-nanoarrow-0.1.0.tar.gz
@@ -290,13 +269,19 @@ directory in VSCode to activate the CMake integration. From the command pallete
 (i.e., Control/Command-Shift-P), choose **CMake: Build**. If all went well, you should
 see a few lines of output indicating progress towards building and linking `linesplitter`.
 
+Note:
 Depending on your version of CMake you might also see a few warnings. This CMakeLists.txt
 is intentionally minimal and as such does not attempt to silence them.
 
+Note:
 If you're not using VSCode, you can accomplish the equivalent task in in a terminal
 with `mkdir build && cd build && cmake .. && cmake --build .`.
 
-## Reading into an ArrowArray
+## Building an ArrowArray
+
+The input for our `linesplitter_read()` function in an `std::string`, which we'll iterate
+over and add each detected line as its own element. First, some core logic to detect
+the number of characters until the next `\n` or end-of-string.
 
 ```cpp
 static int64_t find_newline(const ArrowStringView& src) {
@@ -310,12 +295,97 @@ static int64_t find_newline(const ArrowStringView& src) {
 }
 ```
 
-read lines into a string array
+The next function we'll define is an internal function that uses nanoarrow-style error
+handling. This uses the `ArrowArrayAppend*()` family of functions provided by
+nanoarrow to build the array:
 
-## Writing from an ArrowArray
+```cpp
+static int linesplitter_read_internal(const std::string& src, ArrowArray* out,
+                                      ArrowError* error) {
+  nanoarrow::UniqueArray tmp;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(tmp.get(), NANOARROW_TYPE_STRING));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(tmp.get()));
 
-assemble lines from a string array
+  ArrowStringView src_view = {src.data(), static_cast<int64_t>(src.size())};
+  ArrowStringView line_view;
+  int64_t next_newline = -1;
+  while ((next_newline = find_newline(src_view)) >= 0) {
+    line_view = {src_view.data, next_newline};
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(tmp.get(), line_view));
+    src_view.data += next_newline + 1;
+    src_view.size_bytes -= next_newline + 1;
+  }
 
-## Exposing a function
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(tmp.get(), error));
 
-Count lines
+  ArrowArrayMove(tmp.get(), out);
+  return NANOARROW_OK;
+}
+```
+
+Finally, we define a wrapper that corresponds to the outer function definition.
+
+```cpp
+std::pair<int, std::string> linesplitter_read(const std::string& src, ArrowArray* out) {
+  ArrowError error;
+  int code = linesplitter_read_internal(src, out, &error);
+  if (code != NANOARROW_OK) {
+    return {code, std::string(ArrowErrorMessage(&error))};
+  } else {
+    return {NANOARROW_OK, ""};
+  }
+}
+```
+
+## Reading an ArrowArray
+
+The input for our `linesplitter_write()` function is an `ArrowArray*` like the one we
+create in `linesplitter_read()`. Just as nanoarrow provides helpers to build arrays,
+it also provides helpers to read them via the `ArrowArrayView*()` family of functions.
+Again, we first define an internal function that uses nanoarrow-style error handling:
+
+```cpp
+static int linesplitter_write_internal(ArrowArray* input, std::stringstream& out,
+                                       ArrowError* error) {
+  nanoarrow::UniqueArrayView input_view;
+  ArrowArrayViewInitFromType(input_view.get(), NANOARROW_TYPE_STRING);
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(input_view.get(), input, error));
+
+  ArrowStringView item;
+  for (int64_t i = 0; i < input->length; i++) {
+    if (ArrowArrayViewIsNull(input_view.get(), i)) {
+      out << "\n";
+    } else {
+      item = ArrowArrayViewGetStringUnsafe(input_view.get(), i);
+      out << std::string(item.data, item.size_bytes) << "\n";
+    }
+  }
+
+  return NANOARROW_OK;
+}
+```
+
+Then, provide an outer wrapper that corresponds to the outer function definition.
+
+```cpp
+std::pair<int, std::string> linesplitter_write(ArrowArray* input) {
+  std::stringstream out;
+  ArrowError error;
+  int code = linesplitter_write_internal(input, out, &error);
+  if (code != NANOARROW_OK) {
+    return {code, std::string(ArrowErrorMessage(&error))};
+  } else {
+    return {NANOARROW_OK, out.str()};
+  }
+}
+
+```
+
+## Testing
+
+Add a quick section on gtest? If nothing else, to make sure the tutorial implementations
+actually work?
+
+## Summary
+
+TODO

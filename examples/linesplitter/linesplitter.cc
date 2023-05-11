@@ -1,9 +1,9 @@
 
-#include <string>
-#include <sstream>
-#include <utility>
 #include <cerrno>
 #include <cstdint>
+#include <sstream>
+#include <string>
+#include <utility>
 
 #include "nanoarrow/nanoarrow.hpp"
 
@@ -19,7 +19,8 @@ static int64_t find_newline(const ArrowStringView& src) {
   return src.size_bytes - 1;
 }
 
-static int linesplitter_read_internal(const std::string& src, ArrowArray* out, ArrowError* error) {
+static int linesplitter_read_internal(const std::string& src, ArrowArray* out,
+                                      ArrowError* error) {
   nanoarrow::UniqueArray tmp;
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(tmp.get(), NANOARROW_TYPE_STRING));
   NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(tmp.get()));
@@ -50,7 +51,8 @@ std::pair<int, std::string> linesplitter_read(const std::string& src, ArrowArray
   }
 }
 
-static int linesplitter_write_internal(ArrowArray* input, std::stringstream& out, ArrowError* error) {
+static int linesplitter_write_internal(ArrowArray* input, std::stringstream& out,
+                                       ArrowError* error) {
   nanoarrow::UniqueArrayView input_view;
   ArrowArrayViewInitFromType(input_view.get(), NANOARROW_TYPE_STRING);
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(input_view.get(), input, error));

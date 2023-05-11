@@ -47,5 +47,6 @@ struct ArrowArray {
 
 #endif  // ARROW_C_DATA_INTERFACE
 
-std::pair<int, std::string> linesplitter_read(const std::string& src, struct ArrowArray* out);
+std::pair<int, std::string> linesplitter_read(const std::string& src,
+                                              struct ArrowArray* out);
 std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
