@@ -55,6 +55,11 @@
 
 
 
+#if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
+#include <stdio.h>
+#include <stdlib.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -191,6 +196,27 @@ static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
 #define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
   NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
+  do {                                                                                 \
+    const int NAME = (EXPR);                                                           \
+    if (NAME) {                                                                        \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d\n* %s:%d", EXPR_STR,    \
+                    NAME, __FILE__, __LINE__);                                         \
+      return NAME;                                                                     \
+    }                                                                                  \
+  } while (0)
+#else
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
+  do {                                                                                 \
+    const int NAME = (EXPR);                                                           \
+    if (NAME) {                                                                        \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d", EXPR_STR, NAME);      \
+      return NAME;                                                                     \
+    }                                                                                  \
+  } while (0)
+#endif
+
 /// \brief Return code for success.
 /// \ingroup nanoarrow-errors
 #define NANOARROW_OK 0
@@ -203,6 +229,47 @@ typedef int ArrowErrorCode;
 /// \ingroup nanoarrow-errors
 #define NANOARROW_RETURN_NOT_OK(EXPR) \
   _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+
+/// \brief Check the result of an expression and return it if not NANOARROW_OK,
+/// adding an auto-generated message to an ArrowError.
+/// \ingroup nanoarrow-errors
+///
+/// This macro is used to ensure that functions that accept an ArrowError
+/// as input always set its message when returning an error code (e.g., when calling
+/// a nanoarrow function that does *not* accept ArrowError).
+#define NANOARROW_RETURN_NOT_OK_WITH_ERROR(EXPR, ERROR_EXPR) \
+  _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(                  \
+      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR, #EXPR)
+
+#if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
+#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                  \
+  do {                                                                            \
+    fprintf(stderr, "%s failed with errno %d\n* %s:%d\n", EXPR_STR, (int)(VALUE), \
+            __FILE__, (int)__LINE__);                                             \
+    abort();                                                                      \
+  } while (0)
+#endif
+
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_ASSERT_OK_IMPL(NAME, EXPR, EXPR_STR) \
+  do {                                                  \
+    const int NAME = (EXPR);                            \
+    if (NAME) NANOARROW_PRINT_AND_DIE(NAME, EXPR_STR);  \
+  } while (0)
+
+/// \brief Assert that an expression's value is NANOARROW_OK
+/// \ingroup nanoarrow-errors
+///
+/// If nanoarrow was built in debug mode (i.e., defined(NANOARROW_DEBUG) is true),
+/// print a message to stderr and abort. If nanoarrow was bulit in release mode,
+/// this statement has no effect. You can customize fatal error behaviour
+/// be defining the NANOARROW_PRINT_AND_DIE macro before including nanoarrow.h
+/// This macro is provided as a convenience for users and is not used internally.
+#define NANOARROW_ASSERT_OK(EXPR) \
+  _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
+#else
+#define NANOARROW_ASSERT_OK(EXPR) EXPR
+#endif
 
 static char _ArrowIsLittleEndian(void) {
   uint32_t check = 1;
@@ -866,7 +933,16 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
 /// need to communicate more verbose error information accept a pointer
 /// to an ArrowError. This can be stack or statically allocated. The
 /// content of the message is undefined unless an error code has been
-/// returned.
+/// returned. If a nanoarrow function is passed a non-null ArrowError pointer, the
+/// ArrowError pointed to by the argument will be propagated with a
+/// null-terminated error message. It is safe to pass a NULL ArrowError anywhere
+/// in the nanoarrow API.
+///
+/// Except where documented, it is generally not safe to continue after a
+/// function has returned a non-zero ArrowErrorCode. The NANOARROW_RETURN_NOT_OK and
+/// NANOARROW_ASSERT_OK macros are provided to help propagate errors. C++ clients can use
+/// the helpers provided in the nanoarrow.hpp header to facilitate using C++ idioms
+/// for memory management and error propgagtion.
 ///
 /// @{
 
@@ -876,10 +952,24 @@ struct ArrowError {
   char message[1024];
 };
 
-/// \brief Set the contents of an error using printf syntax
+/// \brief Ensure an ArrowError is null-terminated by zeroing the first character.
+///
+/// If error is NULL, this function does nothing.
+static inline void ArrowErrorInit(struct ArrowError* error) {
+  if (error) {
+    error->message[0] = '\0';
+  }
+}
+
+/// \brief Set the contents of an error using printf syntax.
+///
+/// If error is NULL, this function does nothing and returns NANOARROW_OK.
 ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
 
 /// \brief Get the contents of an error
+///
+/// If error is NULL, returns "", or returns the contents of the error message
+/// otherwise.
 const char* ArrowErrorMessage(struct ArrowError* error);
 
 /// @}
@@ -2286,7 +2376,7 @@ static inline int8_t _ArrowParseUnionTypeIds(const char* type_ids, int8_t* out) 
     }
 
     if (out != NULL) {
-      out[i] = type_id;
+      out[i] = (int8_t)type_id;
     }
 
     i++;
@@ -2559,10 +2649,10 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
       _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
       return ArrowArrayAppendUInt(array, value);
     case NANOARROW_TYPE_DOUBLE:
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendDouble(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendDouble(data_buffer, (double)value));
       break;
     case NANOARROW_TYPE_FLOAT:
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
     case NANOARROW_TYPE_BOOL:
       NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
@@ -2609,10 +2699,10 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
       _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
       return ArrowArrayAppendInt(array, value);
     case NANOARROW_TYPE_DOUBLE:
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendDouble(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendDouble(data_buffer, (double)value));
       break;
     case NANOARROW_TYPE_FLOAT:
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, value));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
     case NANOARROW_TYPE_BOOL:
       NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
@@ -2675,7 +2765,7 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
         return EINVAL;
       }
 
-      offset += value.size_bytes;
+      offset += (int32_t)value.size_bytes;
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t)));
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
@@ -2932,9 +3022,9 @@ static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_vi
     case NANOARROW_TYPE_UINT8:
       return data_view->data.as_uint8[i];
     case NANOARROW_TYPE_DOUBLE:
-      return data_view->data.as_double[i];
+      return (int64_t)data_view->data.as_double[i];
     case NANOARROW_TYPE_FLOAT:
-      return data_view->data.as_float[i];
+      return (int64_t)data_view->data.as_float[i];
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
@@ -2964,9 +3054,9 @@ static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_
     case NANOARROW_TYPE_UINT8:
       return data_view->data.as_uint8[i];
     case NANOARROW_TYPE_DOUBLE:
-      return data_view->data.as_double[i];
+      return (uint64_t)data_view->data.as_double[i];
     case NANOARROW_TYPE_FLOAT:
-      return data_view->data.as_float[i];
+      return (uint64_t)data_view->data.as_float[i];
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
@@ -2980,9 +3070,9 @@ static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_
   struct ArrowBufferView* data_view = &array_view->buffer_views[1];
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_INT64:
-      return data_view->data.as_int64[i];
+      return (double)data_view->data.as_int64[i];
     case NANOARROW_TYPE_UINT64:
-      return data_view->data.as_uint64[i];
+      return (double)data_view->data.as_uint64[i];
     case NANOARROW_TYPE_INT32:
       return data_view->data.as_int32[i];
     case NANOARROW_TYPE_UINT32:
