@@ -151,7 +151,7 @@ std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
 int linesplitter_separate_longer(struct ArrowArray* input, struct ArrowArray* out);
 ```
 
-## Arow C data interface basics
+## Arrow C data/nanoarrow interface basics
 
 Now that we've seen the functions we need to implement and the Arrow types exposed
 in the C data interface, let's unpack a few basics about using the Arrow C data
@@ -166,14 +166,76 @@ of one type ("string") and document that in our interface; for functions that
 operate on more than one type of array you will need to accept an `ArrowSchema`
 and inspect it (e.g., using nanoarrow's helper functions).
 
-Second, lets discuss error handling. You may have noticed in the function definitions
+Second, let's discuss error handling. You may have noticed in the function definitions
 above that we return `int`, which is an errno-compatible error code or `0` to
-indicate success. This is the error reporting scheme used by the C stream interface and
-nanoarrow and is common in C where exceptions and C++17's `std::optional<>` are not
-possible. If your library becomes complex and needs to communicate detailed
-error information you will need to choose one of those idioms. In our library, the
-only thing that can go wrong is if the OS fails to allocate memory, and this is
-sufficiently communicated using the errno code `ENOMEM`.
+indicate success. Functions in nanoarrow that need to communicate more detailed
+error information accept an `ArrowError*` argument (which can be `NULL` if
+the caller does care about the extra information). Any nanoarrow function that
+might fail communicates errors in this way. To avoid verbose code like the
+following:
+
+```c
+int init_string_non_null(struct ArrowSchema* schema) {
+  int code = ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRING);
+  if (code != NANOARROW_OK) {
+    return code;
+  }
+
+  schema->flags &= ~ARROW_FLAG_NULLABLE;
+  return NANOARROW_OK;
+}
+```
+
+...you can use the `NANOARROW_RETURN_NOT_OK()` macro:
+
+```c
+int init_string_non_null(struct ArrowSchema* schema) {
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRING));
+  schema->flags &= ~ARROW_FLAG_NULLABLE;
+  return NANOARROW_OK;
+}
+```
+
+This works as long as your internal functions that use nanoarrow also return
+`int` and/or an `ArrowError*` argument. This usually means that there is
+an outer function that presents a more idiomatic interface (e.g., returning
+`std::optional<>` or throwing an exception) and an inner function that uses
+nanoarrow-style error handling. Embracing `NANOARROW_RETURN_NOT_OK()` is key
+to hapiness when using the nanoarrow library.
+
+Third, let's discuss memory management. Because nanoarrow is implemented in C
+and provides a C interface, the library by default uses C-style memory management
+(i.e., if you allocate it, you clean it up). This is unnecessary when you have
+C++ at your disposal, so nanoarrow also provides a C++ header (`nanoarrow.hpp`) with
+`std::unique_ptr<>`-like wrappers around anything that requires explicit clean up.
+Whereas in C you might have to write code like this:
+
+```c
+struct ArrowSchema schema;
+struct ArrowArray array;
+
+// Ok: if this returns, array was not initialized
+NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRING));
+
+// Verbose: if this fails, we need to release schema before returning
+// or it will leak.
+int code = ArrowArrayInitFromSchema(&array, &schema, NULL);
+if (code != NANOARROW_OK) {
+  schema.release(&schema);
+  return code;
+}
+```
+
+...using the `nanoarrow.hpp` types we can do:
+
+```cpp
+// These objects have C++ deleters that clean up the underlying
+nanoarrow::UniqueSchema schema;
+nanoarrow::UniqueArray array;
+
+NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRING));
+NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema.get(), NULL));
+```
 
 ## Building the library
 
