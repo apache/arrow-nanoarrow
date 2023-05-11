@@ -1,0 +1,86 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: bundle
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/bundle.yaml'
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  bundle-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y cmake
+
+      - name: Bundle nanoarrow
+        run: |
+          mkdir build && cd build
+          cmake .. -DNANOARROW_BUNDLE=ON
+          cmake --build .
+          cmake --install . --prefix=../nanoarrow-latest
+          cd ..
+          cp LICENSE.txt nanoarrow-latest/LICENSE.txt
+
+      - name: Bundle nanoarrow_ipc
+        run: |
+          cd extensions/nanoarrow_ipc
+          mkdir build && cd build
+          cmake .. -DNANOARROW_IPC_BUNDLE=ON
+          cmake --build .
+          cmake --install . --prefix=../../../nanoarrow-latest
+
+      - name: Compress bundle
+        run: |
+          zip nanoarrow-latest.zip $(find nanoarrow-latest -type f)
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: nanoarrow-latest
+          path: nanoarrow-latest.zip
+
+      - name: Commit bundle to dist/
+        if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+        run: |
+          mv dist/README.md dist-readme.md
+          rm -rf dist
+          mv nanoarrow-latest dist
+          mv dist-readme.md dist/README.md
+          git add dist/**/*.*
+
+          # only commit if there are changes
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          UPDATED=`git diff --name-only --cached`
+          if [ "$UPDATED" ]; then
+            git commit -m "Update dist/ for commit ${{ github.sha }}"
+            git push
+          fi
