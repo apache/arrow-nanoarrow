@@ -32,7 +32,7 @@ static int64_t find_newline(const ArrowStringView& src) {
     }
   }
 
-  return src.size_bytes - 1;
+  return src.size_bytes;
 }
 
 static int linesplitter_read_internal(const std::string& src, ArrowArray* out,

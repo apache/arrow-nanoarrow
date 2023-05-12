@@ -17,8 +17,34 @@
 
 #include <gtest/gtest.h>
 
+#include <nanoarrow/nanoarrow.hpp>
+
 #include "linesplitter.h"
 
-TEST(Linesplitter, LinesplitterBasic) {
-  EXPECT_EQ(4, 4);
+TEST(Linesplitter, LinesplitterRoundtrip) {
+  nanoarrow::UniqueArray out;
+  auto result = linesplitter_read("line1\nline2\nline3", out.get());
+  ASSERT_EQ(result.first, 0);
+  ASSERT_EQ(result.second, "");
+
+  ASSERT_EQ(out->length, 3);
+
+  nanoarrow::UniqueArrayView out_view;
+  ArrowArrayViewInitFromType(out_view.get(), NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewSetArray(out_view.get(), out.get(), nullptr), 0);
+  ArrowStringView item;
+
+  item = ArrowArrayViewGetStringUnsafe(out_view.get(), 0);
+  ASSERT_EQ(std::string(item.data, item.size_bytes), "line1");
+
+  item = ArrowArrayViewGetStringUnsafe(out_view.get(), 1);
+  ASSERT_EQ(std::string(item.data, item.size_bytes), "line2");
+
+  item = ArrowArrayViewGetStringUnsafe(out_view.get(), 2);
+  ASSERT_EQ(std::string(item.data, item.size_bytes), "line3");
+
+
+  auto result2 = linesplitter_write(out.get());
+  ASSERT_EQ(result2.first, 0);
+  ASSERT_EQ(result2.second, "line1\nline2\nline3\n");
 }

@@ -339,7 +339,7 @@ static int64_t find_newline(const ArrowStringView& src) {
     }
   }
 
-  return src.size_bytes - 1;
+  return src.size_bytes;
 }
 ```
 
@@ -443,9 +443,11 @@ add the following:
 ```cpp
 #include <gtest/gtest.h>
 
+#include "nanoarrow/nanoarrow.hpp"
+
 #include "linesplitter.h"
 
-TEST(Linesplitter, LinesplitterBasic) {
+TEST(Linesplitter, LinesplitterRoundtrip) {
   EXPECT_EQ(4, 4);
 }
 ```
@@ -479,6 +481,46 @@ or you can use VSCode's "Testing" panel to visually inspect which tests passed.
   with ``cd build && ctest .``.
 
 ```
+
+Now we're ready to fill in the test! Our two functions happen to round trip,
+so a useful first test might be to check.
+
+```cpp
+TEST(Linesplitter, LinesplitterRoundtrip) {
+  nanoarrow::UniqueArray out;
+  auto result = linesplitter_read("line1\nline2\nline3", out.get());
+  ASSERT_EQ(result.first, 0);
+  ASSERT_EQ(result.second, "");
+
+  ASSERT_EQ(out->length, 3);
+
+  nanoarrow::UniqueArrayView out_view;
+  ArrowArrayViewInitFromType(out_view.get(), NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewSetArray(out_view.get(), out.get(), nullptr), 0);
+  ArrowStringView item;
+
+  item = ArrowArrayViewGetStringUnsafe(out_view.get(), 0);
+  ASSERT_EQ(std::string(item.data, item.size_bytes), "line1");
+
+  item = ArrowArrayViewGetStringUnsafe(out_view.get(), 1);
+  ASSERT_EQ(std::string(item.data, item.size_bytes), "line2");
+
+  item = ArrowArrayViewGetStringUnsafe(out_view.get(), 2);
+  ASSERT_EQ(std::string(item.data, item.size_bytes), "line3");
+
+
+  auto result2 = linesplitter_write(out.get());
+  ASSERT_EQ(result2.first, 0);
+  ASSERT_EQ(result2.second, "line1\nline2\nline3\n");
+}
+```
+
+Writing tests in this way also opens up a relatively straightforward debug
+path via the **CMake: Set Debug target** and **CMake: Debug** commands.
+If the first thing that happens when you write run your test is a crash,
+running the tests with the debugger turned on will automatically pause at
+the line of code that caused the crash. For more fine-tuned debugging,
+you can set breakpoints and step through code.
 
 ## Summary
 
