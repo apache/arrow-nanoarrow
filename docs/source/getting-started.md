@@ -38,18 +38,19 @@ Arrow C++, Rust, and Go are all excellent choices and can compile into
 static libraries that are C-linkable from other languages; however, existing Arrow
 implementations produce relatively large static libraries and can present complex build-time
 or run-time linking requirements depending on the implementation and features used. If
-the set of libraries you're working with already provide the conveniences you need,
+the set of libraries you're working with already provide the conveniences you require,
 nanoarrow may provide all the functionality you need.
 
 Now that we've talked about why you might want to build a library with nanoarrow...let's
 build one!
 
-```
+```{=rst}
 .. note::
   This tutorial also goes over some of the basic structure of writing a C++ library.
   If you already know how to do this, feel free to scroll to the code examples provided
   below or take a look at the
-  [complete example source](https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter).
+  `final example project <https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter>`__.
+
 ```
 
 ## The library
@@ -161,13 +162,14 @@ std::pair<int, std::string> linesplitter_read(const std::string& src,
 std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
 ```
 
-```
+```{=rst}
 .. note::
   You may notice that we don't include or mention nanoarrow in any way in the header
   that is exposed to users. Because nanoarrow is designed to be vendored and is not
   distributed as a system library, it is not safe for users of your library to
-  `#include "nanoarrow.h"` because it might conflict with another library that does
+  ``#include "nanoarrow.h"`` because it might conflict with another library that does
   the same (with possibly a different version of nanoarrow).
+
 ```
 
 ## Arrow C data/nanoarrow interface basics
@@ -308,16 +310,18 @@ directory in VSCode to activate the CMake integration. From the command pallete
 (i.e., Control/Command-Shift-P), choose **CMake: Build**. If all went well, you should
 see a few lines of output indicating progress towards building and linking `linesplitter`.
 
-```
+```{=rst}
 .. note::
   Depending on your version of CMake you might also see a few warnings. This CMakeLists.txt
   is intentionally minimal and as such does not attempt to silence them.
-```
 
 ```
+
+```{=rst}
 .. note::
   If you're not using VSCode, you can accomplish the equivalent task in in a terminal
-  with `mkdir build && cd build && cmake .. && cmake --build .`.
+  with ``mkdir build && cd build && cmake .. && cmake --build .``.
+
 ```
 
 ## Building an ArrowArray
