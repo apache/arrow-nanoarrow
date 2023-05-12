@@ -44,20 +44,22 @@ nanoarrow may provide all the functionality you need.
 Now that we've talked about why you might want to build a library with nanoarrow...let's
 build one!
 
-Note:
-This tutorial also goes over some of the basic structure of writing a C++ library.
-If you already know how to do this, feel free to scroll to the code examples provided
-below or take a look at the
-[complete example source](https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter).
+```
+.. note::
+  This tutorial also goes over some of the basic structure of writing a C++ library.
+  If you already know how to do this, feel free to scroll to the code examples provided
+  below or take a look at the
+  [complete example source](https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter).
+```
 
 ## The library
 
 The library we'll write in this tutorial is a simple text processing library that splits
 and reassembles lines of text. It will be able to:
 
-- Read text from a buffer into an `ArrowArray` as one element per line,
+- Read text from a buffer into an `ArrowArray` as one element per line, and
 - Write elements of an `ArrowArray` into a buffer, inserting line breaks
-  after every element, and
+  after every element.
 
 For the sake of argument, we'll call it `linesplitter`.
 
@@ -70,8 +72,9 @@ VSCode can be downloaded from the official site for most platforms;
 CMake is typically installed via your favourite package manager
 (e.g., `brew install cmake`, `apt-get install cmake` `dnf install cmake`,
 etc.). You will also need a C and C++ compiler: on MacOS these can be installed
-using `xcode-select --install`; on Linux you will need the packages that provice
-`gcc`, `g++`, and `make`; on Windows you will need to install
+using `xcode-select --install`; on Linux you will need the packages that provide
+`gcc`, `g++`, and `make` (e.g., `apt-get install build-essential`); on Windows
+you will need to install
 [Visual Studio](https://visualstudio.microsoft.com/downloads/) and
 CMake from the official download pages.
 
@@ -144,9 +147,27 @@ struct ArrowArray {
 Next, we'll provide definitions for the functions we'll implement below:
 
 ```c
+// Builds an ArrowArray of type string that will contain one element for each line
+// in src and places it into out.
+//
+// On success, returns {0, ""}; on error, returns {<errno code>, <error message>}
 std::pair<int, std::string> linesplitter_read(const std::string& src,
                                               struct ArrowArray* out);
+
+// Concatenates all elements of a string ArrowArray inserting a newline between
+// elements.
+//
+// On success, returns {0, <result>}; on error, returns {<errno code>, <error message>}
 std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
+```
+
+```
+.. note::
+  You may notice that we don't include or mention nanoarrow in any way in the header
+  that is exposed to users. Because nanoarrow is designed to be vendored and is not
+  distributed as a system library, it is not safe for users of your library to
+  `#include "nanoarrow.h"` because it might conflict with another library that does
+  the same (with possibly a different version of nanoarrow).
 ```
 
 ## Arrow C data/nanoarrow interface basics
@@ -227,7 +248,6 @@ if (code != NANOARROW_OK) {
 ...using the `nanoarrow.hpp` types we can do:
 
 ```cpp
-// These objects have C++ deleters that clean up the underlying
 nanoarrow::UniqueSchema schema;
 nanoarrow::UniqueArray array;
 
@@ -242,7 +262,24 @@ actual implementations, let's add just enough to our project that we can
 build it using VSCode's C/C++/CMake integration:
 
 ```cpp
+#include <cerrno>
+#include <cstdint>
+#include <sstream>
+#include <string>
+#include <utility>
 
+#include "nanoarrow/nanoarrow.hpp"
+
+#include "linesplitter.h"
+
+std::pair<int, std::string> linesplitter_read(const std::string& src,
+                                              struct ArrowArray* out) {
+  return ENOTSUP;
+}
+
+std::pair<int, std::string> linesplitter_write(struct ArrowArray* input) {
+  return ENOTSUP;
+}
 ```
 
 We also need a `CMakeLists.txt` file that tells CMake and VSCode what to build.
@@ -271,13 +308,17 @@ directory in VSCode to activate the CMake integration. From the command pallete
 (i.e., Control/Command-Shift-P), choose **CMake: Build**. If all went well, you should
 see a few lines of output indicating progress towards building and linking `linesplitter`.
 
-Note:
-Depending on your version of CMake you might also see a few warnings. This CMakeLists.txt
-is intentionally minimal and as such does not attempt to silence them.
+```
+.. note::
+  Depending on your version of CMake you might also see a few warnings. This CMakeLists.txt
+  is intentionally minimal and as such does not attempt to silence them.
+```
 
-Note:
-If you're not using VSCode, you can accomplish the equivalent task in in a terminal
-with `mkdir build && cd build && cmake .. && cmake --build .`.
+```
+.. note::
+  If you're not using VSCode, you can accomplish the equivalent task in in a terminal
+  with `mkdir build && cd build && cmake .. && cmake --build .`.
+```
 
 ## Building an ArrowArray
 
@@ -318,7 +359,7 @@ static int linesplitter_read_internal(const std::string& src, ArrowArray* out,
     src_view.size_bytes -= next_newline + 1;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(tmp.get(), error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(tmp.get(), error));
 
   ArrowArrayMove(tmp.get(), out);
   return NANOARROW_OK;
@@ -380,14 +421,54 @@ std::pair<int, std::string> linesplitter_write(ArrowArray* input) {
     return {NANOARROW_OK, out.str()};
   }
 }
-
 ```
 
 ## Testing
 
-Add a quick section on gtest? If nothing else, to make sure the tutorial implementations
-actually work?
+We have an implementation, but does it work? Unlike higher-level runtimes like
+R and Python, we can't just open a prompt and type some code to find out. For
+C and C++ libraries, the
+[googletest](https://google.github.io/googletest/quickstart-cmake.html)
+framework provides a quick and easy way to do this that scales nicely as the
+complexity of your project grows.
+
+First, we'll add a stub test and some CMake to get going. In `linesplitter_test.cc`,
+add the following:
+
+```cpp
+#include <gtest/gtest.h>
+
+#include "linesplitter.h"
+
+TEST(Linesplitter, LinesplitterBasic) {
+  EXPECT_EQ(4, 4);
+}
+```
+
+Then, add the following to your `CMakeLists.txt`:
+
+```cmake
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip
+)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+add_executable(linesplitter_test linesplitter_test.cc)
+target_link_libraries(linesplitter_test linesplitter GTest::gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(linesplitter_test)
+```
+
+After you're done, build the project again using the **CMake: Build** command from
+the command palette. If all goes well, choose **Test: Run All Tests** from the command
+pallete to run them! You should see some output indiciating that tests ran successfully,
+or you can use VSCode's "Testing" panel to visually inspect which tests passed.
 
 ## Summary
 
-TODO
+This tutorial covered the basics of writing and testing a C++ library exposing an
+Arrow-based API implemented using the nanoarrow C library.
