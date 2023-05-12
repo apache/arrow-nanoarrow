@@ -32,6 +32,7 @@ on:
       - 'extensions/nanoarrow_ipc/src/**'
       - 'src/**'
       - 'r/**'
+      - 'docs/source/**'
 
 jobs:
   docs:

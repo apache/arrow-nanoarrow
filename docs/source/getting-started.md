@@ -473,6 +473,13 @@ the command palette. If all goes well, choose **Test: Run All Tests** from the c
 pallete to run them! You should see some output indiciating that tests ran successfully,
 or you can use VSCode's "Testing" panel to visually inspect which tests passed.
 
+```{=rst}
+.. note::
+  If you're not using VSCode, you can accomplish the equivalent task in in a terminal
+  with ``cd build && ctest .``.
+
+```
+
 ## Summary
 
 This tutorial covered the basics of writing and testing a C++ library exposing an
