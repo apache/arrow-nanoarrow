@@ -79,8 +79,9 @@ you will need to install
 [Visual Studio](https://visualstudio.microsoft.com/downloads/) and
 CMake from the official download pages.
 
-After installing the required dependencies, create a folder called `linesplitter`
-and open it.
+Once you have VSCode installed, ensure you have the **CMake Tools** and **C/C++**
+extensions installed. Once your environment is set up, create a folder called
+`linesplitter` and open it using **File -> Open Folder**.
 
 ## The interface
 
