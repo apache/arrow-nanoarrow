@@ -78,6 +78,9 @@ main() {
    # Use the README as the docs homepage
    pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
 
+   # Do some Markdown -> reST conversion
+   pandoc source/getting-started.md --from markdown --to rst -s -o source/getting-started_generated.rst
+
    # Build sphinx project
    sphinx-build source _build/html
 

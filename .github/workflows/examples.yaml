@@ -101,3 +101,11 @@ jobs:
           gcc -o example_vendored_ipc_app app.c libexample_vendored_ipc_library.a
 
           cat ../schema-valid.arrows | ./example_vendored_ipc_app
+
+      - name: Getting Started Tutorial Example
+        run: |
+          cd examples/linesplitter
+          mkdir build && cd build
+          cmake ..
+          cmake --build .
+          ctest .
