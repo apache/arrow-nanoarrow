@@ -277,11 +277,11 @@ build it using VSCode's C/C++/CMake integration:
 
 std::pair<int, std::string> linesplitter_read(const std::string& src,
                                               struct ArrowArray* out) {
-  return ENOTSUP;
+  return {ENOTSUP, ""};
 }
 
 std::pair<int, std::string> linesplitter_write(struct ArrowArray* input) {
-  return ENOTSUP;
+  return {ENOTSUP, ""};
 }
 ```
 
