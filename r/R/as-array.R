@@ -211,6 +211,10 @@ as_nanoarrow_array.vctrs_unspecified <- function(x, ..., schema = NULL) {
 }
 
 union_array_from_data_frame <- function(x, schema) {
+  if (length(x) == 0) {
+    stop("Can't convert zero-column data frame to Union")
+  }
+
   x_is_na <- lapply(x, is.na)
   child_index <- rep_len(0L, nrow(x))
   seq_x <- seq_along(x)
@@ -226,12 +230,30 @@ union_array_from_data_frame <- function(x, schema) {
   switch(
     nanoarrow_schema_parse(schema)$storage_type,
     "dense_union" = {
-      stop("todo")
+      is_child <- lapply(seq_x - 1L, "==", child_index)
+      child_offset_each <- lapply(is_child, function(x) cumsum(x) - 1L)
+      child_offset <- lapply(seq_along(child_index), function(i) {
+        child_offset_each[[child_index[i] + 1]][i]
+      })
+
+      children <- Map("[", x, is_child, drop = FALSE)
+      array <- nanoarrow_array_init(schema)
+      nanoarrow_array_modify(
+        array,
+        list(
+          length = length(child_index),
+          null_count = 0,
+          buffers = list(child_index, as.integer(child_offset)),
+          children = children
+        )
+      )
     },
     "sparse_union" = {
       struct_schema <- na_struct(schema$children)
-      struct_array <- as_nanoarrow_array(x, schema = struct_schema)
-      stop("todo")
+      array <- as_nanoarrow_array(x, array = struct_schema)
+      nanoarrow_array_set_schema(array, schema, validate = FALSE)
+      array$buffers[[1]] <- child_index
+      array
     },
     stop("Attempt to create union from non-union array type")
   )
