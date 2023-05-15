@@ -23,6 +23,7 @@
 #include "array_stream.h"
 #include "nanoarrow.h"
 #include "schema.h"
+#include "util.h"
 
 void finalize_array_stream_xptr(SEXP array_stream_xptr) {
   struct ArrowArrayStream* array_stream =
@@ -103,4 +104,80 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
 
   UNPROTECT(1);
   return array_stream_xptr;
+}
+
+// Implementation of an ArrowArrayStream that keeps a dependent object valid
+struct WrapperArrayStreamData {
+  SEXP parent_array_stream_xptr;
+  struct ArrowArrayStream* parent_array_stream;
+};
+
+static void finalize_wrapper_array_stream(struct ArrowArrayStream* array_stream) {
+  if (array_stream->private_data != NULL) {
+    struct WrapperArrayStreamData* data =
+        (struct WrapperArrayStreamData*)array_stream->private_data;
+    nanoarrow_release_sexp(data->parent_array_stream_xptr);
+    ArrowFree(array_stream->private_data);
+  }
+
+  array_stream->release = NULL;
+}
+
+static const char* wrapper_array_stream_get_last_error(
+    struct ArrowArrayStream* array_stream) {
+  struct WrapperArrayStreamData* data =
+      (struct WrapperArrayStreamData*)array_stream->private_data;
+  return data->parent_array_stream->get_last_error(data->parent_array_stream);
+}
+
+static int wrapper_array_stream_get_schema(struct ArrowArrayStream* array_stream,
+                                           struct ArrowSchema* out) {
+  struct WrapperArrayStreamData* data =
+      (struct WrapperArrayStreamData*)array_stream->private_data;
+  return data->parent_array_stream->get_schema(data->parent_array_stream, out);
+}
+
+static int wrapper_array_stream_get_next(struct ArrowArrayStream* array_stream,
+                                         struct ArrowArray* out) {
+  struct WrapperArrayStreamData* data =
+      (struct WrapperArrayStreamData*)array_stream->private_data;
+  return data->parent_array_stream->get_next(data->parent_array_stream, out);
+}
+
+void array_stream_export(SEXP parent_array_stream_xptr,
+                         struct ArrowArrayStream* array_stream_copy) {
+  struct ArrowArrayStream* parent_array_stream =
+      array_stream_from_xptr(parent_array_stream_xptr);
+
+  // If there is no dependent object, don't bother with this wrapper
+  SEXP dependent_sexp = R_ExternalPtrProtected(parent_array_stream_xptr);
+  if (dependent_sexp == R_NilValue) {
+    ArrowArrayStreamMove(parent_array_stream, array_stream_copy);
+    return;
+  }
+
+  // Allocate a new external pointer for an array stream (for consistency:
+  // we always move an array stream when exporting)
+  SEXP parent_array_stream_xptr_new = PROTECT(array_stream_owning_xptr());
+  struct ArrowArrayStream* parent_array_stream_new =
+      (struct ArrowArrayStream*)R_ExternalPtrAddr(parent_array_stream_xptr_new);
+  ArrowArrayStreamMove(parent_array_stream, parent_array_stream_new);
+  R_SetExternalPtrProtected(parent_array_stream_xptr_new, dependent_sexp);
+
+  array_stream_copy->private_data = NULL;
+  array_stream_copy->get_last_error = &wrapper_array_stream_get_last_error;
+  array_stream_copy->get_schema = &wrapper_array_stream_get_schema;
+  array_stream_copy->get_next = &wrapper_array_stream_get_next;
+  array_stream_copy->release = &finalize_wrapper_array_stream;
+
+  struct WrapperArrayStreamData* data =
+      (struct WrapperArrayStreamData*)ArrowMalloc(sizeof(struct WrapperArrayStreamData));
+  check_trivial_alloc(data, "struct WrapperArrayStreamData");
+  data->parent_array_stream_xptr = parent_array_stream_xptr_new;
+  data->parent_array_stream = parent_array_stream_new;
+  array_stream_copy->private_data = data;
+
+  // Transfer responsibility for the stream_xptr to the C object
+  nanoarrow_preserve_sexp(parent_array_stream_xptr_new);
+  UNPROTECT(1);
 }

@@ -11,6 +11,7 @@
 \alias{nanoarrow_allocate_schema}
 \alias{nanoarrow_allocate_array}
 \alias{nanoarrow_allocate_array_stream}
+\alias{nanoarrow_pointer_set_protected}
 \title{Danger zone: low-level pointer operations}
 \usage{
 nanoarrow_pointer_is_valid(ptr)
@@ -32,10 +33,17 @@ nanoarrow_allocate_schema()
 nanoarrow_allocate_array()
 
 nanoarrow_allocate_array_stream()
+
+nanoarrow_pointer_set_protected(ptr_src, protected)
 }
 \arguments{
 \item{ptr, ptr_src, ptr_dst}{An external pointer to a \verb{struct ArrowSchema},
 \verb{struct ArrowArray}, or \verb{struct ArrowArrayStream}.}
+
+\item{protected}{An object whose scope must outlive that of \code{ptr}. This is
+useful for array streams since at least two specifications involving the
+array stream specify that the stream is only valid for the lifecycle of
+another object (e.g., an AdbcStatement or OGRDataset).}
 }
 \value{
 \itemize{

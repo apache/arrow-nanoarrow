@@ -194,6 +194,8 @@ test_that("nanoarrow_pointer_export() works for array_stream", {
   expect_false(nanoarrow_pointer_is_valid(ptr))
   expect_true(nanoarrow_pointer_is_valid(dst))
 
+  expect_identical(convert_array_stream(dst), data.frame(a = integer()))
+
   expect_error(
     nanoarrow_pointer_export(ptr, dst),
     "`ptr_dst` is a valid struct ArrowArrayStream"
@@ -201,8 +203,21 @@ test_that("nanoarrow_pointer_export() works for array_stream", {
 
   expect_error(
     nanoarrow_pointer_export(nanoarrow_allocate_array_stream(), ptr),
-    "is not a valid struct ArrowArrayStream"
+    "has already been released"
   )
+})
+
+test_that("nanoarrow_pointer_export() works for wrapped array_stream", {
+  some_dependent_object <- list()
+  ptr <- as_nanoarrow_array_stream(data.frame(a = integer()))
+  nanoarrow_pointer_set_protected(ptr, some_dependent_object)
+
+  dst <- nanoarrow_allocate_array_stream()
+  nanoarrow_pointer_export(ptr, dst)
+  expect_false(nanoarrow_pointer_is_valid(ptr))
+  expect_true(nanoarrow_pointer_is_valid(dst))
+
+  expect_identical(convert_array_stream(dst), data.frame(a = integer()))
 })
 
 test_that("nanoarrow_pointer_export() errors for unknown object", {
