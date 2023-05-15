@@ -210,6 +210,33 @@ as_nanoarrow_array.vctrs_unspecified <- function(x, ..., schema = NULL) {
   )
 }
 
+union_array_from_data_frame <- function(x, schema) {
+  x_is_na <- lapply(x, is.na)
+  child_index <- rep_len(0L, nrow(x))
+  seq_x <- seq_along(x)
+  for (i in seq_along(child_index)) {
+    for (j in seq_x) {
+      if (!x_is_na[[j]][i]) {
+        child_index[i] <- j - 1L
+        break;
+      }
+    }
+  }
+
+  switch(
+    nanoarrow_schema_parse(schema)$storage_type,
+    "dense_union" = {
+      stop("todo")
+    },
+    "sparse_union" = {
+      struct_schema <- na_struct(schema$children)
+      struct_array <- as_nanoarrow_array(x, schema = struct_schema)
+      stop("todo")
+    },
+    stop("Attempt to create union from non-union array type")
+  )
+}
+
 # This is defined because it's verbose to pass named arguments from C.
 # When converting data frame columns, we try the internal C conversions
 # first to save R evaluation overhead. When the internal conversions fail,
