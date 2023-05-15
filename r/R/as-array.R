@@ -210,6 +210,7 @@ as_nanoarrow_array.vctrs_unspecified <- function(x, ..., schema = NULL) {
   )
 }
 
+# Called from C to create a union array when requested
 union_array_from_data_frame <- function(x, schema) {
   if (length(x) == 0) {
     stop("Can't convert zero-column data frame to Union")
@@ -237,6 +238,7 @@ union_array_from_data_frame <- function(x, schema) {
       })
 
       children <- Map("[", x, is_child, drop = FALSE)
+      names(children) <- names(schema$children)
       array <- nanoarrow_array_init(schema)
       nanoarrow_array_modify(
         array,

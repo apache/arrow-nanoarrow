@@ -29,8 +29,8 @@
 #include "util.h"
 
 static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array,
-                                    SEXP schema_xptr) {
-  SEXP fun = PROTECT(Rf_install("as_nanoarrow_array_from_c"));
+                                    SEXP schema_xptr, const char* fun_name) {
+  SEXP fun = PROTECT(Rf_install(fun_name));
   SEXP call = PROTECT(Rf_lang3(fun, x_sexp, schema_xptr));
   SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
 
@@ -57,7 +57,7 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
   // Only consider the default create for now
   if (schema_view.type != NANOARROW_TYPE_INT32) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
     return;
   }
 
@@ -132,7 +132,7 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
   // Only consider bool for now
   if (schema_view.type != NANOARROW_TYPE_BOOL) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
     return;
   }
 
@@ -210,7 +210,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     case NANOARROW_TYPE_INT32:
       break;
     default:
-      call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
       return;
   }
 
@@ -329,7 +329,7 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
   // Only consider the default create for now
   if (schema_view.type != NANOARROW_TYPE_STRING) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
     return;
   }
 
@@ -415,9 +415,16 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
     Rf_error("ArrowSchemaViewInit(): %s", error->message);
   }
 
-  if (schema_view.type != NANOARROW_TYPE_STRUCT) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
-    return;
+  switch (schema_view.type) {
+    case NANOARROW_TYPE_SPARSE_UNION:
+    case NANOARROW_TYPE_DENSE_UNION:
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "union_array_from_data_frame");
+      return;
+    case NANOARROW_TYPE_STRUCT:
+      break;
+    default:
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
+      return;
   }
 
   if (Rf_xlength(x_sexp) != schema->n_children) {
@@ -459,7 +466,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
   // Arbitrary nested list support is complicated without some concept of a
   // "builder", which we don't use.
   if (schema_view.type != NANOARROW_TYPE_BINARY) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
     return;
   }
 
@@ -542,7 +549,7 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
       as_array_data_frame(x_sexp, array, schema_xptr, error);
       return;
     } else {
-      call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
       return;
     }
   }
@@ -564,7 +571,7 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
       as_array_list(x_sexp, array, schema_xptr, error);
       return;
     default:
-      call_as_nanoarrow_array(x_sexp, array, schema_xptr);
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array");
       return;
   }
 }

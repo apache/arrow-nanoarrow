@@ -203,7 +203,8 @@ static int nanoarrow_materialize_data_frame(struct RConverter* converter,
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_SPARSE_UNION:
       // Pre-fill everything with nulls
-      fill_vec_with_nulls(converter->dst.vec_sexp, converter->dst.offset, converter->dst.length);
+      fill_vec_with_nulls(converter->dst.vec_sexp, converter->dst.offset,
+                          converter->dst.length);
 
       // Fill in the possibly non-null values one at a time
       for (R_xlen_t i = 0; i < converter->dst.length; i++) {
@@ -219,6 +220,8 @@ static int nanoarrow_materialize_data_frame(struct RConverter* converter,
         NANOARROW_RETURN_NOT_OK(nanoarrow_materialize(converter->children[child_index],
                                                       child_converter_xptr));
       }
+      return NANOARROW_OK;
+
     default:
       return ENOTSUP;
   }
