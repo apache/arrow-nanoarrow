@@ -495,3 +495,77 @@ test_that("as_nanoarrow_array() works for bad unspecified() create", {
     as_nanoarrow_array(vctrs::unspecified(5), schema = na_interval_day_time())
   )
 })
+
+test_that("as_nanoarrow_array() can convert data.frame() to sparse_union()", {
+  # Features: At least one element with more than one non-NA value,
+  # one element with all NA values.
+  test_df <- data.frame(
+    lgl = c(TRUE, NA, NA, NA, NA, FALSE),
+    int = c(NA, 123L, NA, NA, NA, NA),
+    dbl = c(NA, NA, 456, NA, NA, NA),
+    chr = c(NA, NA, NA, "789", NA, NA)
+  )
+
+  array <- as_nanoarrow_array(
+    test_df,
+    schema = na_sparse_union(lapply(test_df, infer_nanoarrow_schema))
+  )
+
+  expect_identical(infer_nanoarrow_schema(array)$format, "+us:0,1,2,3")
+  expect_identical(array$length, 6L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    as.raw(as_nanoarrow_buffer(as.raw(c(0L, 1L, 2L, 3L, 0L, 0L))))
+  )
+
+  expect_identical(
+    lapply(array$children, convert_array),
+    lapply(test_df, identity)
+  )
+  expect_identical(convert_array(array), test_df)
+})
+
+test_that("as_nanoarrow_array() can convert data.frame() to sparse_union()", {
+  test_df <- data.frame(
+    lgl = c(TRUE, NA, NA, NA, NA, FALSE),
+    int = c(NA, 123L, NA, NA, NA, NA),
+    dbl = c(NA, NA, 456, NA, NA, NA),
+    chr = c(NA, NA, NA, "789", NA, NA)
+  )
+
+  array <- as_nanoarrow_array(
+    test_df,
+    schema = na_dense_union(lapply(test_df, infer_nanoarrow_schema))
+  )
+
+  expect_identical(infer_nanoarrow_schema(array)$format, "+ud:0,1,2,3")
+  expect_identical(array$length, 6L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    as.raw(as_nanoarrow_buffer(as.raw(c(0L, 1L, 2L, 3L, 0L, 0L))))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(0L, 0L, 0L, 0L, 1L, 2L)))
+  )
+
+  expect_identical(
+    lapply(array$children, convert_array),
+    list(
+      lgl = c(TRUE, NA, FALSE),
+      int = 123L,
+      dbl = 456,
+      chr = "789"
+    )
+  )
+  expect_identical(convert_array(array), test_df)
+})
+
+test_that("as_nanoarrow_array() for union type errors for unsupported objects", {
+  expect_error(
+    as_nanoarrow_array(data.frame(), schema = na_dense_union()),
+    "Can't convert data frame with 0 columns"
+  )
+})

@@ -210,18 +210,32 @@ as_nanoarrow_array.vctrs_unspecified <- function(x, ..., schema = NULL) {
   )
 }
 
-# Called from C to create a union array when requested
+# Called from C to create a union array when requested.
+# There are other types of objects that might make sense to
+# convert to a union but we basically just need enough to
+# for testing at this point.
 union_array_from_data_frame <- function(x, schema) {
-  if (length(x) == 0) {
-    stop("Can't convert zero-column data frame to Union")
+  if (length(x) == 0 || length(x) > 127) {
+    stop(
+      sprintf(
+        "Can't convert data frame with %d columns to union array",
+        length(x)
+      )
+    )
   }
 
-  x_is_na <- lapply(x, is.na)
+  # Compute NAs
+  x_is_na <- do.call("cbind", lapply(x, is.na))
+
+  # Make sure we only have one non-NA value per row to make sure we don't drop
+  # values
+  stopifnot(all(rowSums(!x_is_na) <= 1))
+
   child_index <- rep_len(0L, nrow(x))
   seq_x <- seq_along(x)
   for (i in seq_along(child_index)) {
     for (j in seq_x) {
-      if (!x_is_na[[j]][i]) {
+      if (!x_is_na[i, j]) {
         child_index[i] <- j - 1L
         break;
       }
@@ -245,7 +259,7 @@ union_array_from_data_frame <- function(x, schema) {
         list(
           length = length(child_index),
           null_count = 0,
-          buffers = list(child_index, as.integer(child_offset)),
+          buffers = list(as.raw(child_index), as.integer(child_offset)),
           children = children
         )
       )
@@ -254,7 +268,7 @@ union_array_from_data_frame <- function(x, schema) {
       struct_schema <- na_struct(schema$children)
       array <- as_nanoarrow_array(x, array = struct_schema)
       nanoarrow_array_set_schema(array, schema, validate = FALSE)
-      array$buffers[[1]] <- child_index
+      array$buffers[[1]] <- as.raw(child_index)
       array
     },
     stop("Attempt to create union from non-union array type")
