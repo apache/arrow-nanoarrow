@@ -220,6 +220,20 @@ test_that("nanoarrow_pointer_export() works for wrapped array_stream", {
   expect_identical(convert_array_stream(dst), data.frame(a = integer()))
 })
 
+test_that("nanoarrow_pointer_set_protected() errors appropriately", {
+  expect_error(
+    nanoarrow_pointer_set_protected(NULL),
+    "must inherit from 'nanoarrow_schema', 'nanoarrow_array', or 'nanoarrow_array_stream'"
+  )
+
+  dst <- nanoarrow_allocate_array_stream()
+  nanoarrow_pointer_set_protected(dst, 1234)
+  expect_error(
+    nanoarrow_pointer_set_protected(dst, 5678),
+    "External pointer protected value has already been set"
+  )
+})
+
 test_that("nanoarrow_pointer_export() errors for unknown object", {
   expect_error(nanoarrow_pointer_export(NULL), "must inherit from")
 })
