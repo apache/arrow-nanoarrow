@@ -79,4 +79,11 @@ static inline SEXP schema_owning_xptr(void) {
   return schema_xptr;
 }
 
+static inline void schema_export(SEXP schema_xptr, struct ArrowSchema* schema_copy) {
+  int result = ArrowSchemaDeepCopy(schema_from_xptr(schema_xptr), schema_copy);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaDeepCopy() failed");
+  }
+}
+
 #endif
