@@ -214,7 +214,7 @@ static int nanoarrow_materialize_data_frame(struct RConverter* converter,
                                                               converter->src.offset + i);
         converter->children[child_index]->src.offset = child_offset;
         converter->children[child_index]->src.length = 1;
-        converter->children[child_index]->dst.offset = i;
+        converter->children[child_index]->dst.offset = converter->dst.offset + i;
         converter->children[child_index]->dst.length = 1;
         SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, child_index);
         NANOARROW_RETURN_NOT_OK(nanoarrow_materialize(converter->children[child_index],
