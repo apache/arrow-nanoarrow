@@ -61,6 +61,10 @@
 #'
 #' @param ptr,ptr_src,ptr_dst An external pointer to a `struct ArrowSchema`,
 #'   `struct ArrowArray`, or `struct ArrowArrayStream`.
+#' @param protected An object whose scope must outlive that of `ptr`. This is
+#'   useful for array streams since at least two specifications involving the
+#'   array stream specify that the stream is only valid for the lifecycle of
+#'   another object (e.g., an AdbcStatement or OGRDataset).
 #' @return
 #'   - `nanoarrow_pointer_is_valid()` returns TRUE if the pointer is non-null
 #'     and has a non-null release callback.
@@ -116,17 +120,18 @@ nanoarrow_pointer_move <- function(ptr_src, ptr_dst) {
 #' @export
 nanoarrow_pointer_export <- function(ptr_src, ptr_dst) {
   if (inherits(ptr_src, "nanoarrow_schema")) {
-    invisible(.Call(nanoarrow_c_export_schema, ptr_src, ptr_dst))
+    .Call(nanoarrow_c_export_schema, ptr_src, ptr_dst)
   } else if (inherits(ptr_src, "nanoarrow_array")) {
-    invisible(.Call(nanoarrow_c_export_array, ptr_src, ptr_dst))
+    .Call(nanoarrow_c_export_array, ptr_src, ptr_dst)
   } else if (inherits(ptr_src, "nanoarrow_array_stream")) {
-    # for streams, we don't keep the original pointer alive
-    nanoarrow_pointer_move(ptr_src, ptr_dst)
+    .Call(nanoarrow_c_export_array_stream, ptr_src, ptr_dst)
   } else {
     stop(
       "`ptr_src` must inherit from 'nanoarrow_schema', 'nanoarrow_array', or 'nanoarrow_array_stream'"
     )
   }
+
+  invisible(ptr_dst)
 }
 
 #' @rdname nanoarrow_pointer_is_valid
@@ -145,4 +150,17 @@ nanoarrow_allocate_array <- function() {
 #' @export
 nanoarrow_allocate_array_stream <- function() {
   .Call(nanoarrow_c_allocate_array_stream)
+}
+
+#' @rdname nanoarrow_pointer_is_valid
+#' @export
+nanoarrow_pointer_set_protected <- function(ptr_src, protected) {
+  if (!inherits(ptr_src, c("nanoarrow_schema", "nanoarrow_array", "nanoarrow_array_stream"))) {
+    stop(
+      "`ptr_src` must inherit from 'nanoarrow_schema', 'nanoarrow_array', or 'nanoarrow_array_stream'"
+    )
+  }
+
+  .Call(nanoarrow_c_pointer_set_protected, ptr_src, protected)
+  invisible(ptr_src)
 }

@@ -238,3 +238,30 @@ SEXP nanoarrow_c_export_array(SEXP array_xptr, SEXP ptr_dst) {
   UNPROTECT(1);
   return R_NilValue;
 }
+
+SEXP nanoarrow_c_export_array_stream(SEXP array_stream_xptr, SEXP ptr_dst) {
+  SEXP xptr_dst = PROTECT(nanoarrow_c_pointer(ptr_dst));
+
+  struct ArrowArrayStream* obj_dst =
+      (struct ArrowArrayStream*)R_ExternalPtrAddr(xptr_dst);
+  if (obj_dst == NULL) {
+    Rf_error("`ptr_dst` is a pointer to NULL");
+  }
+
+  if (obj_dst->release != NULL) {
+    Rf_error("`ptr_dst` is a valid struct ArrowArrayStream");
+  }
+
+  array_stream_export(array_stream_xptr, obj_dst);
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
+SEXP nanoarrow_c_pointer_set_protected(SEXP ptr_src, SEXP protected_sexp) {
+  if (R_ExternalPtrProtected(ptr_src) != R_NilValue) {
+    Rf_error("External pointer protected value has already been set");
+  }
+
+  R_SetExternalPtrProtected(ptr_src, protected_sexp);
+  return R_NilValue;
+}

@@ -47,4 +47,11 @@ int64_t nanoarrow_preserved_empty(void);
 // For testing
 void nanoarrow_preserve_and_release_on_other_thread(SEXP obj);
 
+// Checker for very small mallocs()
+static inline void check_trivial_alloc(const void* ptr, const char* ptr_type) {
+  if (ptr == NULL) {
+    Rf_error("ArrowMalloc(sizeof(%s)) failed", ptr_type);  // # nocov
+  }
+}
+
 #endif
