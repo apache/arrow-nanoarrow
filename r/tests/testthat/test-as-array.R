@@ -503,7 +503,8 @@ test_that("as_nanoarrow_array() can convert data.frame() to sparse_union()", {
     lgl = c(TRUE, NA, NA, NA, NA, FALSE),
     int = c(NA, 123L, NA, NA, NA, NA),
     dbl = c(NA, NA, 456, NA, NA, NA),
-    chr = c(NA, NA, NA, "789", NA, NA)
+    chr = c(NA, NA, NA, "789", NA, NA),
+    stringsAsFactors = FALSE
   )
 
   array <- as_nanoarrow_array(
@@ -531,7 +532,8 @@ test_that("as_nanoarrow_array() can convert data.frame() to sparse_union()", {
     lgl = c(TRUE, NA, NA, NA, NA, FALSE),
     int = c(NA, 123L, NA, NA, NA, NA),
     dbl = c(NA, NA, 456, NA, NA, NA),
-    chr = c(NA, NA, NA, "789", NA, NA)
+    chr = c(NA, NA, NA, "789", NA, NA),
+    stringsAsFactors = FALSE
   )
 
   array <- as_nanoarrow_array(
