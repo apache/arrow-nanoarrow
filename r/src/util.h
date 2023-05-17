@@ -43,6 +43,7 @@ void nanoarrow_preserve_sexp(SEXP obj);
 void nanoarrow_release_sexp(SEXP obj);
 int64_t nanoarrow_preserved_count(void);
 int64_t nanoarrow_preserved_empty(void);
+int nanoarrow_is_main_thread(void);
 
 // For testing
 void nanoarrow_preserve_and_release_on_other_thread(SEXP obj);

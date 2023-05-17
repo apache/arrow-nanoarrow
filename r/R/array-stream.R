@@ -50,6 +50,40 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
   .Call(nanoarrow_c_basic_array_stream, batches, schema, validate)
 }
 
+#' Register an array stream finalizer
+#'
+#' In some cases, R functions that return an [arrow_array_stream][as_arrow_array_stream]
+#' may require that the scope of some other object outlive that of the array
+#' stream. If there is a need for that object to be released deterministically
+#' (e.g., to close open files), you can register a function to run after the
+#' stream's release callback is invoked from the R thread. Note that this
+#' finalizer will **not** be run if the stream's release callback is invoked
+#' from a **non**-R thread. In this case, the finalizer and its chain of
+#' environments will be garbage-collected when `nanoarrow:::preserved_empty()`
+#' is run.
+#'
+#' @param array_stream An [arrow_array_stream][as_arrow_array_stream]
+#' @param finalizer A function that will be called with zero arguments.
+#'
+#' @return `array_stream`, invisibly
+#' @export
+#'
+#' @examples
+#' stream <- basic_array_stream(list(1:5))
+#' array_stream_set_finalizer(stream, function() message("All done!"))
+#' stream$release()
+#'
+array_stream_set_finalizer <- function(array_stream, finalizer) {
+  stopifnot(is.function(finalizer))
+
+  prot <- new.env(parent = emptyenv())
+  prot$array_stream_finalizer <- finalizer
+  class(prot) <- "nanoarrow_array_stream_finalizer"
+
+  nanoarrow_pointer_set_protected(array_stream, prot)
+  invisible(array_stream)
+}
+
 #' Convert an object to a nanoarrow array_stream
 #'
 #' In nanoarrow, an 'array stream' corresponds to the `struct ArrowArrayStream`

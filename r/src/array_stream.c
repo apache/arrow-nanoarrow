@@ -25,11 +25,23 @@
 #include "schema.h"
 #include "util.h"
 
+void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
+  SEXP protected = R_ExternalPtrProtected(array_stream_xptr);
+  if (Rf_inherits(protected, "nanoarrow_array_stream_finalizer")) {
+    SEXP finalizer_sym = PROTECT(Rf_install("array_stream_finalizer"));
+    SEXP finalizer_call = PROTECT(Rf_lang1(finalizer_sym));
+    Rf_eval(finalizer_call, protected);
+    UNPROTECT(2);
+    R_SetExternalPtrProtected(array_stream_xptr, R_NilValue);
+  }
+}
+
 void finalize_array_stream_xptr(SEXP array_stream_xptr) {
   struct ArrowArrayStream* array_stream =
       (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
   if (array_stream != NULL && array_stream->release != NULL) {
     array_stream->release(array_stream);
+    run_user_array_stream_finalizer(array_stream_xptr);
   }
 
   if (array_stream != NULL) {
@@ -121,6 +133,15 @@ static void finalize_wrapper_array_stream(struct ArrowArrayStream* array_stream)
   if (array_stream->private_data != NULL) {
     struct WrapperArrayStreamData* data =
         (struct WrapperArrayStreamData*)array_stream->private_data;
+
+    // If safe to do so, attempt to do an eager evaluation of a release
+    // callback that may have been registered. If it is not safe to do so,
+    // garbage collection will run any finalizers that have been set
+    // on the chain of environments leading up to the finalizer.
+    if (nanoarrow_is_main_thread()) {
+      run_user_array_stream_finalizer(data->parent_array_stream_xptr);
+    }
+
     nanoarrow_release_sexp(data->parent_array_stream_xptr);
     ArrowFree(array_stream->private_data);
   }
