@@ -7,7 +7,7 @@
 array_stream_set_finalizer(array_stream, finalizer)
 }
 \arguments{
-\item{array_stream}{An \link[=as_arrow_array_stream]{arrow_array_stream}}
+\item{array_stream}{An \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}}
 
 \item{finalizer}{A function that will be called with zero arguments.}
 }
@@ -15,7 +15,7 @@ array_stream_set_finalizer(array_stream, finalizer)
 \code{array_stream}, invisibly
 }
 \description{
-In some cases, R functions that return an \link[=as_arrow_array_stream]{arrow_array_stream}
+In some cases, R functions that return an \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}
 may require that the scope of some other object outlive that of the array
 stream. If there is a need for that object to be released deterministically
 (e.g., to close open files), you can register a function to run after the

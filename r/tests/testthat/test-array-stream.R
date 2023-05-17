@@ -196,3 +196,17 @@ test_that("User array stream finalizers are run on explicit release even when ex
   expect_output(stream2$release(), "All done!")
   expect_silent(stream2$release())
 })
+
+test_that("Errors from user array stream finalizer are ignored", {
+  stream <- basic_array_stream(list(1:5))
+  array_stream_set_finalizer(stream, function() stop("Error that will be ignored"))
+  # Because this comes from REprintf(), it's not a message and not "output"
+  # according to testthat, so we use capture.output()
+  expect_identical(
+    capture.output(stream$release(), type = "message"),
+    "Error evaluating user-supplied array stream finalizer"
+  )
+
+  expect_false(nanoarrow_pointer_is_valid(stream))
+  expect_silent(stream$release())
+})
