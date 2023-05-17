@@ -19,8 +19,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -60,6 +60,8 @@ class PreservedSEXPRegistry {
       : preserved_count_(0), main_thread_id_(std::this_thread::get_id()) {}
 
   int64_t size() { return preserved_count_; }
+
+  bool is_main_thread() { return std::this_thread::get_id() == main_thread_id_; }
 
   void preserve(SEXP obj) {
     if (obj == R_NilValue) {
@@ -188,6 +190,10 @@ extern "C" int64_t nanoarrow_preserved_empty(void) {
   } catch (std::exception& e) {
     return 0;
   }
+}
+
+extern "C" int nanoarrow_is_main_thread(void) {
+  return PreservedSEXPRegistry::GetInstance().is_main_thread();
 }
 
 extern "C" void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {

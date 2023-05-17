@@ -25,6 +25,34 @@
 #include "schema.h"
 #include "util.h"
 
+// Ideally user-supplied finalizers are written in such a way that they don't jump;
+// however if they do it is likely that memory will leak. Here, we use
+// R_tryCatchError to minimize the chances of that happening.
+static SEXP run_finalizer_wrapper(void* data) {
+  SEXP finalizer_sym = PROTECT(Rf_install("array_stream_finalizer"));
+  SEXP finalizer_call = PROTECT(Rf_lang1(finalizer_sym));
+  Rf_eval(finalizer_call, (SEXP)data);
+  UNPROTECT(2);
+  return R_NilValue;
+}
+
+static SEXP run_finalizer_error_handler(SEXP cond, void* hdata) {
+  REprintf("Error evaluating user-supplied array stream finalizer");
+  return R_NilValue;
+}
+
+void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
+  SEXP protected = PROTECT(R_ExternalPtrProtected(array_stream_xptr));
+  R_SetExternalPtrProtected(array_stream_xptr, R_NilValue);
+
+  if (Rf_inherits(protected, "nanoarrow_array_stream_finalizer")) {
+    R_tryCatchError(&run_finalizer_wrapper, protected, &run_finalizer_error_handler,
+                    NULL);
+  }
+
+  UNPROTECT(1);
+}
+
 void finalize_array_stream_xptr(SEXP array_stream_xptr) {
   struct ArrowArrayStream* array_stream =
       (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
@@ -35,6 +63,8 @@ void finalize_array_stream_xptr(SEXP array_stream_xptr) {
   if (array_stream != NULL) {
     ArrowFree(array_stream);
   }
+
+  run_user_array_stream_finalizer(array_stream_xptr);
 }
 
 SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
@@ -121,6 +151,15 @@ static void finalize_wrapper_array_stream(struct ArrowArrayStream* array_stream)
   if (array_stream->private_data != NULL) {
     struct WrapperArrayStreamData* data =
         (struct WrapperArrayStreamData*)array_stream->private_data;
+
+    // If safe to do so, attempt to do an eager evaluation of a release
+    // callback that may have been registered. If it is not safe to do so,
+    // garbage collection will run any finalizers that have been set
+    // on the chain of environments leading up to the finalizer.
+    if (nanoarrow_is_main_thread()) {
+      run_user_array_stream_finalizer(data->parent_array_stream_xptr);
+    }
+
     nanoarrow_release_sexp(data->parent_array_stream_xptr);
     ArrowFree(array_stream->private_data);
   }
