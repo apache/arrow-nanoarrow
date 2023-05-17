@@ -52,7 +52,7 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
 
 #' Register an array stream finalizer
 #'
-#' In some cases, R functions that return an [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#' In some cases, R functions that return a [nanoarrow_array_stream][as_nanoarrow_array_stream]
 #' may require that the scope of some other object outlive that of the array
 #' stream. If there is a need for that object to be released deterministically
 #' (e.g., to close open files), you can register a function to run after the
@@ -62,7 +62,7 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
 #' environments will be garbage-collected when `nanoarrow:::preserved_empty()`
 #' is run.
 #'
-#' @param array_stream An [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#' @param array_stream A [nanoarrow_array_stream][as_nanoarrow_array_stream]
 #' @param finalizer A function that will be called with zero arguments.
 #'
 #' @return `array_stream`, invisibly
