@@ -184,6 +184,8 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
   // also move SEXP dependencies
   R_SetExternalPtrProtected(ptr_dst, R_ExternalPtrProtected(xptr_src));
   R_SetExternalPtrTag(ptr_dst, R_ExternalPtrTag(xptr_src));
+  R_SetExternalPtrProtected(xptr_src, R_NilValue);
+  R_SetExternalPtrTag(xptr_src, R_NilValue);
 
   UNPROTECT(1);
   return R_NilValue;
@@ -254,6 +256,11 @@ SEXP nanoarrow_c_export_array_stream(SEXP array_stream_xptr, SEXP ptr_dst) {
   }
 
   array_stream_export(array_stream_xptr, obj_dst);
+
+  // Remove SEXP dependencies (if important they are kept alive by array_stream_export)
+  R_SetExternalPtrProtected(array_stream_xptr, R_NilValue);
+  R_SetExternalPtrTag(array_stream_xptr, R_NilValue);
+
   UNPROTECT(1);
   return R_NilValue;
 }

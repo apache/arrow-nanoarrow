@@ -165,3 +165,34 @@ test_that("nanoarrow_array_stream get_next() with schema = NULL", {
   array <- stream$get_next(schema = NULL)
   expect_error(infer_nanoarrow_schema(array), "has no associated schema")
 })
+
+test_that("User array stream finalizers are run on explicit release", {
+  stream <- basic_array_stream(list(1:5))
+  array_stream_set_finalizer(stream, function() cat("All done!"))
+  expect_output(stream$release(), "All done!")
+  expect_silent(stream$release())
+})
+
+test_that("User array stream finalizers are run on explicit release even when moved", {
+  stream <- basic_array_stream(list(1:5))
+  array_stream_set_finalizer(stream, function() cat("All done!"))
+
+  stream2 <- nanoarrow_allocate_array_stream()
+  nanoarrow_pointer_move(stream, stream2)
+  expect_false(nanoarrow_pointer_is_valid(stream))
+  expect_silent(nanoarrow_pointer_release(stream))
+  expect_output(stream2$release(), "All done!")
+  expect_silent(stream2$release())
+})
+
+test_that("User array stream finalizers are run on explicit release even when exported", {
+  stream <- basic_array_stream(list(1:5))
+  array_stream_set_finalizer(stream, function() cat("All done!"))
+
+  stream2 <- nanoarrow_allocate_array_stream()
+  nanoarrow_pointer_export(stream, stream2)
+  expect_false(nanoarrow_pointer_is_valid(stream))
+  expect_silent(nanoarrow_pointer_release(stream))
+  expect_output(stream2$release(), "All done!")
+  expect_silent(stream2$release())
+})

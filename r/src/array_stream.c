@@ -25,15 +25,32 @@
 #include "schema.h"
 #include "util.h"
 
+// Ideally user-supplied finalizers are written in such a way that they don't jump;
+// however if they do it is likely that memory will leak. Here, we use
+// R_tryCatchError to minimize the chances of that happening.
+static SEXP run_finalizer_wrapper(void* data) {
+  SEXP finalizer_sym = PROTECT(Rf_install("array_stream_finalizer"));
+  SEXP finalizer_call = PROTECT(Rf_lang1(finalizer_sym));
+  Rf_eval(finalizer_call, (SEXP)data);
+  UNPROTECT(2);
+  return R_NilValue;
+}
+
+static SEXP run_finalizer_error_handler(SEXP cond, void* hdata) {
+  REprintf("Error evaluating user-supplied array stream finalizer");
+  return R_NilValue;
+}
+
 void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
-  SEXP protected = R_ExternalPtrProtected(array_stream_xptr);
+  SEXP protected = PROTECT(R_ExternalPtrProtected(array_stream_xptr));
+  R_SetExternalPtrProtected(array_stream_xptr, R_NilValue);
+
   if (Rf_inherits(protected, "nanoarrow_array_stream_finalizer")) {
-    SEXP finalizer_sym = PROTECT(Rf_install("array_stream_finalizer"));
-    SEXP finalizer_call = PROTECT(Rf_lang1(finalizer_sym));
-    Rf_eval(finalizer_call, protected);
-    UNPROTECT(2);
-    R_SetExternalPtrProtected(array_stream_xptr, R_NilValue);
+    R_tryCatchError(&run_finalizer_wrapper, protected, &run_finalizer_error_handler,
+                    NULL);
   }
+
+  UNPROTECT(1);
 }
 
 void finalize_array_stream_xptr(SEXP array_stream_xptr) {
@@ -41,12 +58,13 @@ void finalize_array_stream_xptr(SEXP array_stream_xptr) {
       (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
   if (array_stream != NULL && array_stream->release != NULL) {
     array_stream->release(array_stream);
-    run_user_array_stream_finalizer(array_stream_xptr);
   }
 
   if (array_stream != NULL) {
     ArrowFree(array_stream);
   }
+
+  run_user_array_stream_finalizer(array_stream_xptr);
 }
 
 SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
