@@ -137,22 +137,94 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   return result;
 }
 
+// Used in union building to pre-set all values to null
+static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
+  if (nanoarrow_ptype_is_data_frame(x)) {
+    for (R_xlen_t i = 0; i < Rf_xlength(x); i++) {
+      fill_vec_with_nulls(VECTOR_ELT(x, i), offset, len);
+    }
+
+    return;
+  }
+
+  switch (TYPEOF(x)) {
+    case LGLSXP:
+    case INTSXP: {
+      int* values = INTEGER(x);
+      for (R_xlen_t i = 0; i < len; i++) {
+        values[offset + i] = NA_INTEGER;
+      }
+      return;
+    }
+    case REALSXP: {
+      double* values = REAL(x);
+      for (R_xlen_t i = 0; i < len; i++) {
+        values[offset + i] = NA_REAL;
+      }
+      return;
+    }
+    case STRSXP:
+      for (R_xlen_t i = 0; i < len; i++) {
+        SET_STRING_ELT(x, offset + i, NA_STRING);
+      }
+      return;
+    case VECSXP:
+      for (R_xlen_t i = 0; i < len; i++) {
+        SET_VECTOR_ELT(x, offset + i, R_NilValue);
+      }
+      return;
+    default:
+      Rf_error("Attempt to fill vector with nulls with unsupported type");
+  }
+}
+
 static int nanoarrow_materialize_data_frame(struct RConverter* converter,
                                             SEXP converter_xptr) {
   if (converter->ptype_view.vector_type != VECTOR_TYPE_DATA_FRAME) {
     return EINVAL;
   }
 
-  for (R_xlen_t i = 0; i < converter->n_children; i++) {
-    converter->children[i]->src.offset = converter->src.offset;
-    converter->children[i]->src.length = converter->src.length;
-    converter->children[i]->dst.offset = converter->dst.offset;
-    converter->children[i]->dst.length = converter->dst.length;
-    NANOARROW_RETURN_NOT_OK(
-        nanoarrow_materialize(converter->children[i], converter_xptr));
-  }
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
 
-  return NANOARROW_OK;
+  switch (converter->array_view.storage_type) {
+    case NANOARROW_TYPE_STRUCT:
+      for (R_xlen_t i = 0; i < converter->n_children; i++) {
+        converter->children[i]->src.offset = converter->src.offset;
+        converter->children[i]->src.length = converter->src.length;
+        converter->children[i]->dst.offset = converter->dst.offset;
+        converter->children[i]->dst.length = converter->dst.length;
+        SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, i);
+        NANOARROW_RETURN_NOT_OK(
+            nanoarrow_materialize(converter->children[i], child_converter_xptr));
+      }
+      return NANOARROW_OK;
+
+    case NANOARROW_TYPE_DENSE_UNION:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      // Pre-fill everything with nulls
+      fill_vec_with_nulls(converter->dst.vec_sexp, converter->dst.offset,
+                          converter->dst.length);
+
+      // Fill in the possibly non-null values one at a time
+      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
+        int64_t child_index = ArrowArrayViewUnionChildIndex(&converter->array_view,
+                                                            converter->src.offset + i);
+        int64_t child_offset = ArrowArrayViewUnionChildOffset(&converter->array_view,
+                                                              converter->src.offset + i);
+        converter->children[child_index]->src.offset = child_offset;
+        converter->children[child_index]->src.length = 1;
+        converter->children[child_index]->dst.offset = converter->dst.offset + i;
+        converter->children[child_index]->dst.length = 1;
+        SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, child_index);
+        NANOARROW_RETURN_NOT_OK(nanoarrow_materialize(converter->children[child_index],
+                                                      child_converter_xptr));
+      }
+      return NANOARROW_OK;
+
+    default:
+      return ENOTSUP;
+  }
 }
 
 static int materialize_list_element(struct RConverter* converter, SEXP converter_xptr,

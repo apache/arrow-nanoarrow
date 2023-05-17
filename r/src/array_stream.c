@@ -78,14 +78,19 @@ SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
 SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
                                     SEXP validate_sexp) {
   int validate = LOGICAL(validate_sexp)[0];
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+
+  // Schema needs a copy here because ArrowBasicArrayStreamInit() takes ownership
+  SEXP schema_copy_xptr = PROTECT(schema_owning_xptr());
+  struct ArrowSchema* schema_copy =
+      (struct ArrowSchema*)R_ExternalPtrAddr(schema_copy_xptr);
+  schema_export(schema_xptr, schema_copy);
 
   SEXP array_stream_xptr = PROTECT(array_stream_owning_xptr());
   struct ArrowArrayStream* array_stream =
       (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
 
   int64_t n_arrays = Rf_xlength(batches_sexp);
-  if (ArrowBasicArrayStreamInit(array_stream, schema, n_arrays) != NANOARROW_OK) {
+  if (ArrowBasicArrayStreamInit(array_stream, schema_copy, n_arrays) != NANOARROW_OK) {
     Rf_error("Failed to initialize array stream");
   }
 
@@ -102,7 +107,7 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
     }
   }
 
-  UNPROTECT(1);
+  UNPROTECT(2);
   return array_stream_xptr;
 }
 

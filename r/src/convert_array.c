@@ -33,6 +33,10 @@
 // (i.e., no need to allocate a zero-size ptype) and returning ALTREP
 // where possible.
 
+// borrow nanoarrow_c_infer_ptype() from infer_ptype.c
+SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
+enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr);
+
 // This calls nanoarrow::convert_array() (via a package helper) to try S3
 // dispatch to find a convert_array() method (or error if there
 // isn't one)
@@ -107,6 +111,21 @@ static SEXP convert_array_chr(SEXP array_xptr) {
 SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
 
 static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
+  // If array_xptr is a union, use default convert behaviour
+  struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
+  struct ArrowSchemaView schema_view;
+  if (ArrowSchemaViewInit(&schema_view, schema, NULL) != NANOARROW_OK) {
+    Rf_error("Invalid schema");
+  }
+
+  if (schema_view.storage_type != NANOARROW_TYPE_STRUCT) {
+    ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
+    SEXP default_result =
+        convert_array_default(array_xptr, VECTOR_TYPE_DATA_FRAME, ptype_sexp);
+    UNPROTECT(1);
+    return default_result;
+  }
+
   struct ArrowArray* array = array_from_xptr(array_xptr);
   R_xlen_t n_col = array->n_children;
   SEXP result = PROTECT(Rf_allocVector(VECSXP, n_col));
@@ -154,10 +173,6 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
   UNPROTECT(1);
   return result;
 }
-
-// borrow nanoarrow_c_infer_ptype() from infer_ptype.c
-SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
-enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr);
 
 SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
   // See if we can skip any ptype resolution at all
