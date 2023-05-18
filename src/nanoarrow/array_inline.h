@@ -700,17 +700,17 @@ static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* arra
   }
 }
 
-  static inline int64_t ArrowArrayViewListChildOffset(struct ArrowArrayView* array_view,
-                                                      int64_t i) {
-    switch (array->storage_type) {
+static inline int64_t ArrowArrayViewListChildOffset(struct ArrowArrayView* array_view,
+                                                    int64_t i) {
+  switch (array_view->storage_type) {
     case NANOARROW_TYPE_LIST:
       return array_view->buffer_views[1].data.as_int32[i];
     case NANOARROW_TYPE_LARGE_LIST:
       return array_view->buffer_views[1].data.as_int64[i];
     default:
       return -1;
-    }
   }
+}
 
 static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_view,
                                                  int64_t i) {
