@@ -1704,6 +1704,70 @@ TEST(ArrayTest, ArrayViewTestList) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewTestListGet) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LIST);
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
+
+  // Build a valid array
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 42), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 3), 2);
+
+  array.release(&array);
+  ArrowArrayViewReset(&array_view);
+}
+
+TEST(ArrayTest, ArrayViewTestLargeListGet) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_LIST);
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
+
+  // Build a valid array
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 42), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidateFull(&array_view, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 3), 2);
+
+  array.release(&array);
+  ArrowArrayViewReset(&array_view);
+}
+
 TEST(ArrayTest, ArrayViewTestLargeList) {
   struct ArrowArrayView array_view;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_LIST);
