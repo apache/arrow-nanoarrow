@@ -552,8 +552,8 @@ test_that("<- assignment works for schema$children", {
 
   names(schema$children)[1] <- "col1_new"
   expect_named(schema$children, c("col1_new", "col2"))
-  expect_identical(schema$children$col1$format, "b")
-  expect_identical(schema$children$col1$name, "col1_new")
+  expect_identical(schema$children$col1_new$format, "b")
+  expect_identical(schema$children$col1_new$name, "col1_new")
 })
 
 test_that("<- assignment works for schema$metadata", {
