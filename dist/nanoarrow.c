@@ -1961,7 +1961,9 @@ ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_ch
     return ENOMEM;
   }
 
-  memset(array->children, 0, n_children * sizeof(struct ArrowArray*));
+  for (int64_t i = 0; i < n_children; i++) {
+    array->children[i] = NULL;
+  }
 
   for (int64_t i = 0; i < n_children; i++) {
     array->children[i] = (struct ArrowArray*)ArrowMalloc(sizeof(struct ArrowArray));
