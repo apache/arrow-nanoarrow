@@ -574,6 +574,13 @@ struct ArrowArrayView {
   /// \brief The underlying ArrowArray or NULL if it has not been set
   struct ArrowArray* array;
 
+  /// \brief An additional offset to that of array->offset
+  int64_t offset;
+
+  /// \brief The length of this array view. In combination with offset,
+  /// this can be used to represent a slice of an ArrowArray.
+  int64_t length;
+
   /// \brief The type used to store values in this array
   ///
   /// This type represents only the minimum required information to
