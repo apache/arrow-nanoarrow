@@ -296,6 +296,16 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
   ArrowArrayViewInitFromType(array_view, private_data->storage_type);
   array_view->layout = private_data->layout;
   array_view->array = array;
+  array_view->length = array->length;
+  array_view->offset = array->offset;
+  array_view->null_count = array->null_count;
+
+  array_view->buffer_views[0].data.as_uint8 = private_data->bitmap.buffer.data;
+  array_view->buffer_views[0].size_bytes = private_data->bitmap.buffer.size_bytes;
+  array_view->buffer_views[1].data.as_uint8 = private_data->buffers[0].data;
+  array_view->buffer_views[1].size_bytes = private_data->buffers[0].size_bytes;
+  array_view->buffer_views[2].data.as_uint8 = private_data->buffers[1].data;
+  array_view->buffer_views[2].size_bytes = private_data->buffers[1].size_bytes;
 
   int result = ArrowArrayViewAllocateChildren(array_view, array->n_children);
   if (result != NANOARROW_OK) {
@@ -399,38 +409,9 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   }
 }
 
-static ArrowErrorCode ArrowArrayCheckInternalBufferSizes(
-    struct ArrowArray* array, struct ArrowArrayView* array_view, char set_length,
-    struct ArrowError* error) {
-  if (set_length) {
-    ArrowArrayViewSetLength(array_view, array->offset + array->length);
-  }
-
-  for (int64_t i = 0; i < array->n_buffers; i++) {
-    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
-        array->null_count == 0 && array->buffers[i] == NULL) {
-      continue;
-    }
-
-    int64_t expected_size = array_view->buffer_views[i].size_bytes;
-    int64_t actual_size = ArrowArrayBuffer(array, i)->size_bytes;
-
-    if (actual_size < expected_size) {
-      ArrowErrorSet(
-          error,
-          "Expected buffer %d to size >= %ld bytes but found buffer with %ld bytes",
-          (int)i, (long)expected_size, (long)actual_size);
-      return EINVAL;
-    }
-  }
-
-  for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayCheckInternalBufferSizes(
-        array->children[i], array_view->children[i], set_length, error));
-  }
-
-  return NANOARROW_OK;
-}
+static int ArrowArrayViewValidate(struct ArrowArrayView* array_view,
+                                  enum ArrowValidationLevel validation_level,
+                                  struct ArrowError* error);
 
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         enum ArrowValidationLevel validation_level,
@@ -450,45 +431,11 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
     return NANOARROW_OK;
   }
 
-  // Check buffer sizes to make sure we are not sending an ArrowArray
-  // into the wild that is going to segfault
+  // For validation, initialize an ArrowArrayView with our known buffer sizes
   struct ArrowArrayView array_view;
-
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayViewInitFromArray(&array_view, array),
                                      error);
-
-  // Check buffer sizes once without using internal buffer data since
-  // ArrowArrayViewSetArray() assumes that all the buffers are long enough
-  // and issues invalid reads on offset buffers if they are not
-  int result = ArrowArrayCheckInternalBufferSizes(array, &array_view, 1, error);
-  if (result != NANOARROW_OK) {
-    ArrowArrayViewReset(&array_view);
-    return result;
-  }
-
-  if (validation_level == NANOARROW_VALIDATION_LEVEL_MINIMAL) {
-    ArrowArrayViewReset(&array_view);
-    return NANOARROW_OK;
-  }
-
-  result = ArrowArrayViewSetArray(&array_view, array, error);
-  if (result != NANOARROW_OK) {
-    ArrowArrayViewReset(&array_view);
-    return result;
-  }
-
-  result = ArrowArrayCheckInternalBufferSizes(array, &array_view, 0, error);
-  if (result != NANOARROW_OK) {
-    ArrowArrayViewReset(&array_view);
-    return result;
-  }
-
-  if (validation_level == NANOARROW_VALIDATION_LEVEL_DEFAULT) {
-    ArrowArrayViewReset(&array_view);
-    return NANOARROW_OK;
-  }
-
-  result = ArrowArrayViewValidateFull(&array_view, error);
+  int result = ArrowArrayViewValidate(&array_view, validation_level, error);
   ArrowArrayViewReset(&array_view);
   return result;
 }
@@ -604,7 +551,6 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {
   for (int i = 0; i < 3; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
-    array_view->buffer_views[i].data.data = NULL;
 
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_VALIDITY:
@@ -648,13 +594,11 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
   }
 }
 
-ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
-                                      struct ArrowArray* array,
-                                      struct ArrowError* error) {
-  array_view->array = array;
-  array_view->offset = array->offset;
-  array_view->length = array->length;
-
+// This version recursively extracts information from the array and stores it
+// in the array view, performing any checks that require the original array.
+static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
+                                          struct ArrowArray* array,
+                                          struct ArrowError* error) {
   // Check length and offset
   if (array->offset < 0) {
     ArrowErrorSet(error, "Expected array offset >= 0 but found array offset of %ld",
@@ -668,8 +612,10 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
     return EINVAL;
   }
 
-  // First pass setting lengths that do not depend on the data buffer
-  ArrowArrayViewSetLength(array_view, array_view->offset + array_view->length);
+  array_view->array = array;
+  array_view->offset = array->offset;
+  array_view->length = array->length;
+  array_view->null_count = array->null_count;
 
   int64_t buffers_required = 0;
   for (int i = 0; i < 3; i++) {
@@ -679,28 +625,164 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
 
     buffers_required++;
 
-    // If the null_count is 0, the validity buffer can be NULL
-    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
-        array->null_count == 0 && array->buffers[i] == NULL) {
-      array_view->buffer_views[i].size_bytes = 0;
-    }
-
+    // Set buffer pointer
     array_view->buffer_views[i].data.data = array->buffers[i];
+
+    // If non-null, set buffer size to unknown.
+    if (array->buffers[i] == NULL) {
+      array_view->buffer_views[i].size_bytes = 0;
+    } else {
+      array_view->buffer_views[i].size_bytes = -1;
+    }
   }
 
+  // Check the number of buffers
   if (buffers_required != array->n_buffers) {
     ArrowErrorSet(error, "Expected array with %d buffer(s) but found %d buffer(s)",
                   (int)buffers_required, (int)array->n_buffers);
     return EINVAL;
   }
 
+  // Check number of children
   if (array_view->n_children != array->n_children) {
     ArrowErrorSet(error, "Expected %ld children but found %ld children",
                   (long)array_view->n_children, (long)array->n_children);
     return EINVAL;
   }
 
-  // Check child sizes and calculate sizes that depend on data in the array buffers
+  // Recurse for children
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayInternal(array_view->children[i],
+                                                           array->children[i], error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
+                                         struct ArrowError* error) {
+  // Calculate buffer sizes that do not require buffer access. If marked as
+  // unknown, assign the buffer size; otherwise, validate it.
+  int64_t offset_plus_length = array_view->offset + array_view->length;
+
+  for (int i = 0; i < 3; i++) {
+    int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
+    int64_t min_buffer_size_bytes;
+
+    switch (array_view->layout.buffer_type[i]) {
+      case NANOARROW_BUFFER_TYPE_VALIDITY:
+        if (array_view->null_count == 0 && array_view->buffer_views[i].size_bytes == 0) {
+          continue;
+        }
+
+        min_buffer_size_bytes = _ArrowBytesForBits(offset_plus_length);
+        break;
+      case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+        // Probably don't want/need to rely on the producer to have allocated an
+        // offsets buffer of length 1 for a zero-size array
+        min_buffer_size_bytes =
+            (offset_plus_length != 0) * element_size_bytes * (offset_plus_length + 1);
+        break;
+      case NANOARROW_BUFFER_TYPE_DATA:
+        min_buffer_size_bytes =
+            _ArrowRoundUpToMultipleOf8(array_view->layout.element_size_bits[i] *
+                                       offset_plus_length) /
+            8;
+        break;
+      case NANOARROW_BUFFER_TYPE_TYPE_ID:
+      case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+        min_buffer_size_bytes = element_size_bytes * offset_plus_length;
+        break;
+      case NANOARROW_BUFFER_TYPE_NONE:
+        continue;
+    }
+
+    // Assign or validate buffer size
+    if (array_view->buffer_views[i].size_bytes == -1) {
+      array_view->buffer_views[i].size_bytes = min_buffer_size_bytes;
+    } else if (array_view->buffer_views[i].size_bytes < min_buffer_size_bytes) {
+      ArrowErrorSet(error,
+                    "Expected %s array buffer %d to have size >= %ld bytes but found "
+                    "buffer with size %ld bytes",
+                    ArrowTypeString(array_view->storage_type), (int)i,
+                    (long)min_buffer_size_bytes,
+                    (long)array_view->buffer_views[i].size_bytes);
+      return EINVAL;
+    }
+  }
+
+  // For list, fixed-size list and map views, we can validate the number of children
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+    case NANOARROW_TYPE_MAP:
+      if (array_view->n_children != 1) {
+        ArrowErrorSet(error, "Expected 1 child of %s array but found %ld child arrays",
+                      ArrowTypeString(array_view->storage_type),
+                      (long)array_view->n_children);
+        return EINVAL;
+      }
+    default:
+      break;
+  }
+
+  // For struct, the sparse union, and the fixed-size list views, we can validate child
+  // lengths.
+  int64_t child_min_length;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_SPARSE_UNION:
+    case NANOARROW_TYPE_STRUCT:
+      child_min_length = (array_view->offset + array_view->length);
+      for (int64_t i = 0; i < array_view->n_children; i++) {
+        if (array_view->children[i]->length < child_min_length) {
+          ArrowErrorSet(
+              error,
+              "Expected struct child %d to have length >= %ld but found child with "
+              "length %ld",
+              (int)(i + 1), (long)(child_min_length),
+              (long)array_view->children[i]->length);
+          return EINVAL;
+        }
+      }
+      break;
+
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      child_min_length = (array_view->offset + array_view->length) *
+                         array_view->layout.child_size_elements;
+      if (array_view->children[0]->length < child_min_length) {
+        ArrowErrorSet(
+            error,
+            "Expected child of fixed-size list array with length >= %ld but found array "
+            "with length %ld",
+            (long)child_min_length, (long)array_view->children[0]->length);
+        return EINVAL;
+      }
+      break;
+    default:
+      break;
+  }
+
+  // Recurse for children
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewValidateMinimal(array_view->children[i], error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
+                                         struct ArrowError* error) {
+  // Perform minimal validation. This will validate or assign
+  // buffer sizes as long as buffer access is not required.
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateMinimal(array_view, error));
+
+  // Calculate buffer sizes or child lengths that require accessing the offsets
+  // buffer. Where appropriate, validate that the first offset is >= 0.
+  // If a buffer size is marked as unknown, assign it; otherwise, validate it.
+  int64_t offset_plus_length = array_view->offset + array_view->length;
+
   int64_t first_offset;
   int64_t last_offset;
   switch (array_view->storage_type) {
@@ -714,11 +796,22 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
           return EINVAL;
         }
 
-        last_offset =
-            array_view->buffer_views[1].data.as_int32[array_view->offset + array_view->length];
-        array_view->buffer_views[2].size_bytes = last_offset;
+        last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+
+        // If the data buffer size is unknown, assign it; otherwise, check it
+        if (array_view->buffer_views[2].size_bytes == -1) {
+          array_view->buffer_views[2].size_bytes = last_offset;
+        } else if (array_view->buffer_views[2].size_bytes < last_offset) {
+          ArrowErrorSet(error,
+                        "Expected %s array buffer 2 to have size >= %ld bytes but found "
+                        "buffer with size %ld bytes",
+                        ArrowTypeString(array_view->storage_type), (long)last_offset,
+                        (long)array_view->buffer_views[2].size_bytes);
+          return EINVAL;
+        }
       }
       break;
+
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
@@ -729,34 +822,38 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
           return EINVAL;
         }
 
-        last_offset =
-            array_view->buffer_views[1].data.as_int64[array_view->offset + array_view->length];
-        array_view->buffer_views[2].size_bytes = last_offset;
-      }
-      break;
-    case NANOARROW_TYPE_STRUCT:
-      for (int64_t i = 0; i < array_view->n_children; i++) {
-        if (array->children[i]->length < (array_view->offset + array_view->length)) {
-          ArrowErrorSet(
-              error,
-              "Expected struct child %d to have length >= %ld but found child with "
-              "length %ld",
-              (int)(i + 1), (long)(array_view->offset + array_view->length),
-              (long)array->children[i]->length);
+        last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+
+        // If the data buffer size is unknown, assign it; otherwise, check it
+        if (array_view->buffer_views[2].size_bytes == -1) {
+          array_view->buffer_views[2].size_bytes = last_offset;
+        } else if (array_view->buffer_views[2].size_bytes < last_offset) {
+          ArrowErrorSet(error,
+                        "Expected %s array buffer 2 to have size >= %ld bytes but found "
+                        "buffer with size %ld bytes",
+                        ArrowTypeString(array_view->storage_type), (long)last_offset,
+                        (long)array_view->buffer_views[2].size_bytes);
           return EINVAL;
         }
       }
       break;
-    case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_MAP: {
-      const char* type_name =
-          array_view->storage_type == NANOARROW_TYPE_LIST ? "list" : "map";
-      if (array->n_children != 1) {
-        ArrowErrorSet(error, "Expected 1 child of %s array but found %d child arrays",
-                      type_name, (int)array->n_children);
-        return EINVAL;
-      }
 
+    case NANOARROW_TYPE_STRUCT:
+      for (int64_t i = 0; i < array_view->n_children; i++) {
+        if (array_view->children[i]->length < offset_plus_length) {
+          ArrowErrorSet(
+              error,
+              "Expected struct child %d to have length >= %ld but found child with "
+              "length %ld",
+              (int)(i + 1), (long)offset_plus_length,
+              (long)array_view->children[i]->length);
+          return EINVAL;
+        }
+      }
+      break;
+
+    case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int32[0];
         if (first_offset < 0) {
@@ -765,27 +862,20 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
           return EINVAL;
         }
 
-        last_offset =
-            array_view->buffer_views[1].data.as_int32[array_view->offset + array_view->length];
-        if (array->children[0]->length < last_offset) {
+        last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+        if (array_view->children[0]->length < last_offset) {
           ArrowErrorSet(
               error,
-              "Expected child of %s array with length >= %ld but found array with "
+              "Expected child of %s array to have length >= %ld but found array with "
               "length %ld",
-              type_name, (long)last_offset, (long)array->children[0]->length);
+              ArrowTypeString(array_view->storage_type), (long)last_offset,
+              (long)array_view->children[0]->length);
           return EINVAL;
         }
       }
       break;
-    }
-    case NANOARROW_TYPE_LARGE_LIST:
-      if (array->n_children != 1) {
-        ArrowErrorSet(error,
-                      "Expected 1 child of large list array but found %d child arrays",
-                      (int)array->n_children);
-        return EINVAL;
-      }
 
+    case NANOARROW_TYPE_LARGE_LIST:
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int64[0];
         if (first_offset < 0) {
@@ -794,45 +884,39 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
           return EINVAL;
         }
 
-        last_offset =
-            array_view->buffer_views[1].data.as_int64[array_view->offset + array_view->length];
-        if (array->children[0]->length < last_offset) {
+        last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+        if (array_view->children[0]->length < last_offset) {
           ArrowErrorSet(
               error,
-              "Expected child of large list array with length >= %ld but found array "
+              "Expected child of large list array to have length >= %ld but found array "
               "with length %ld",
-              (long)last_offset, (long)array->children[0]->length);
+              (long)last_offset, (long)array_view->children[0]->length);
           return EINVAL;
         }
-      }
-      break;
-    case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      if (array->n_children != 1) {
-        ArrowErrorSet(error,
-                      "Expected 1 child of fixed-size array but found %d child arrays",
-                      (int)array->n_children);
-        return EINVAL;
-      }
-
-      last_offset =
-          (array_view->offset + array_view->length) * array_view->layout.child_size_elements;
-      if (array->children[0]->length < last_offset) {
-        ArrowErrorSet(
-            error,
-            "Expected child of fixed-size list array with length >= %ld but found array "
-            "with length %ld",
-            (long)last_offset, (long)array->children[0]->length);
-        return EINVAL;
       }
       break;
     default:
       break;
   }
 
+  // Recurse for children
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(
-        ArrowArrayViewSetArray(array_view->children[i], array->children[i], error));
+        ArrowArrayViewValidateDefault(array_view->children[i], error));
   }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
+                                      struct ArrowArray* array,
+                                      struct ArrowError* error) {
+  // Extract information from the array into the array view
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayInternal(array_view, array, error));
+
+  // Run default validation. Because we've marked all non-NULL buffers as having unknown
+  // size, validation will also update the buffer sizes as it goes.
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateDefault(array_view, error));
 
   return NANOARROW_OK;
 }
@@ -937,8 +1021,8 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     } else if (_ArrowParsedUnionTypeIdsWillEqualChildIndices(
                    array_view->union_type_id_map, array_view->n_children,
                    array_view->n_children)) {
-      NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(array_view->buffer_views[0], 0,
-                                                   (int8_t)(array_view->n_children - 1), error));
+      NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(
+          array_view->buffer_views[0], 0, (int8_t)(array_view->n_children - 1), error));
     } else {
       NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(array_view->buffer_views[0],
                                                 array_view->union_type_id_map + 128,
@@ -969,4 +1053,20 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
   }
 
   return NANOARROW_OK;
+}
+
+static int ArrowArrayViewValidate(struct ArrowArrayView* array_view,
+                                  enum ArrowValidationLevel validation_level,
+                                  struct ArrowError* error) {
+  switch (validation_level) {
+    case NANOARROW_VALIDATION_LEVEL_NONE:
+      return NANOARROW_OK;
+    case NANOARROW_VALIDATION_LEVEL_MINIMAL:
+      return ArrowArrayViewValidateMinimal(array_view, error);
+    case NANOARROW_VALIDATION_LEVEL_DEFAULT:
+      return ArrowArrayViewValidateDefault(array_view, error);
+    case NANOARROW_VALIDATION_LEVEL_FULL:
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateDefault(array_view, error));
+      return ArrowArrayViewValidateFull(array_view, error);
+  }
 }

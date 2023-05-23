@@ -1184,7 +1184,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   array.children[0]->length = array.children[0]->length - 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected child of fixed-size list array with length >= 8 but found array "
+               "Expected child of fixed-size list array to have length >= 8 but found array "
                "with length 7");
 
   array.children[0]->length = array.children[0]->length + 1;

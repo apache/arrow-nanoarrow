@@ -581,6 +581,9 @@ struct ArrowArrayView {
   /// this can be used to represent a slice of an ArrowArray.
   int64_t length;
 
+  /// \brief A cached null count or -1 to indicate that this value is unknown.
+  int64_t null_count;
+
   /// \brief The type used to store values in this array
   ///
   /// This type represents only the minimum required information to
