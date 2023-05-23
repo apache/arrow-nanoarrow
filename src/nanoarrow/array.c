@@ -665,7 +665,9 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   // unknown, assign the buffer size; otherwise, validate it.
   int64_t offset_plus_length = array_view->offset + array_view->length;
 
-  for (int i = 0; i < 3; i++) {
+  // Only loop over the first two buffers because the size of the third buffer
+  // is always data dependent for all current Arrow types.
+  for (int i = 0; i < 2; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
     int64_t min_buffer_size_bytes;
 

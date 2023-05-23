@@ -226,14 +226,16 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   array.length = 8;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected string array buffer 1 to have size >= 36 bytes but found buffer with 32 bytes");
+               "Expected string array buffer 1 to have size >= 36 bytes but found buffer "
+               "with 32 bytes");
 
   array.length = 7;
   int32_t* offsets_buffer = reinterpret_cast<int32_t*>(ArrowArrayBuffer(&array, 1)->data);
   offsets_buffer[7] = offsets_buffer[7] + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected string array buffer 2 to have size >= 11 bytes but found buffer with 10 bytes");
+               "Expected string array buffer 2 to have size >= 11 bytes but found buffer "
+               "with 10 bytes");
 
   array.release(&array);
 }
@@ -289,7 +291,8 @@ TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected string array buffer 1 to have size >= 12 bytes but found buffer with 0 bytes");
+               "Expected string array buffer 1 to have size >= 12 bytes but found buffer "
+               "with 0 bytes");
 
   array.release(&array);
 }
