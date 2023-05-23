@@ -471,26 +471,28 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
   return out;
 }
 
+union ArrowBufferViewData {
+  const void* data;
+  const int8_t* as_int8;
+  const uint8_t* as_uint8;
+  const int16_t* as_int16;
+  const uint16_t* as_uint16;
+  const int32_t* as_int32;
+  const uint32_t* as_uint32;
+  const int64_t* as_int64;
+  const uint64_t* as_uint64;
+  const double* as_double;
+  const float* as_float;
+  const char* as_char;
+};
+
 /// \brief An non-owning view of a buffer
 /// \ingroup nanoarrow-utils
 struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
   /// If size_bytes is 0, this value may be NULL.
-  union {
-    const void* data;
-    const int8_t* as_int8;
-    const uint8_t* as_uint8;
-    const int16_t* as_int16;
-    const uint16_t* as_uint16;
-    const int32_t* as_int32;
-    const uint32_t* as_uint32;
-    const int64_t* as_int64;
-    const uint64_t* as_uint64;
-    const double* as_double;
-    const float* as_float;
-    const char* as_char;
-  } data;
+  union ArrowBufferViewData data;
 
   /// \brief The size of the buffer in bytes
   int64_t size_bytes;
