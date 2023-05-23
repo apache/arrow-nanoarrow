@@ -226,14 +226,14 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   array.length = 8;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected buffer 1 to size >= 36 bytes but found buffer with 32 bytes");
+               "Expected string array buffer 1 to have size >= 36 bytes but found buffer with 32 bytes");
 
   array.length = 7;
   int32_t* offsets_buffer = reinterpret_cast<int32_t*>(ArrowArrayBuffer(&array, 1)->data);
   offsets_buffer[7] = offsets_buffer[7] + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected buffer 2 to size >= 11 bytes but found buffer with 10 bytes");
+               "Expected string array buffer 2 to have size >= 11 bytes but found buffer with 10 bytes");
 
   array.release(&array);
 }
@@ -289,7 +289,7 @@ TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected buffer 1 to size >= 12 bytes but found buffer with 0 bytes");
+               "Expected string array buffer 1 to have size >= 12 bytes but found buffer with 0 bytes");
 
   array.release(&array);
 }
@@ -992,7 +992,7 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
-      "Expected child of list array with length >= 3 but found array with length 2");
+      "Expected child of list array to have length >= 3 but found array with length 2");
 
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
@@ -1045,15 +1045,16 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected 1 child of large list array but found 0 child arrays");
+               "Expected 1 child of large_list array but found 0 child arrays");
   array.n_children = 1;
 
   // Make sure final child size is checked at finish
   array.children[0]->length = array.children[0]->length - 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
-  EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected child of large list array with length >= 3 but found array with "
-               "length 2");
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected child of large list array to have length >= 3 but found array with "
+      "length 2");
 
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
@@ -1118,7 +1119,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
-      "Expected child of map array with length >= 1 but found array with length 0");
+      "Expected child of map array to have length >= 1 but found array with length 0");
 
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
@@ -1177,15 +1178,16 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected 1 child of fixed-size array but found 0 child arrays");
+               "Expected 1 child of fixed_size_list array but found 0 child arrays");
   array.n_children = 1;
 
   // Make sure final child size is checked at finish
   array.children[0]->length = array.children[0]->length - 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
-  EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected child of fixed-size list array to have length >= 8 but found array "
-               "with length 7");
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected child of fixed_size_list array to have length >= 8 but found array "
+      "with length 7");
 
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);

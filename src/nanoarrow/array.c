@@ -703,7 +703,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
     } else if (array_view->buffer_views[i].size_bytes < min_buffer_size_bytes) {
       ArrowErrorSet(error,
                     "Expected %s array buffer %d to have size >= %ld bytes but found "
-                    "buffer with size %ld bytes",
+                    "buffer with %ld bytes",
                     ArrowTypeString(array_view->storage_type), (int)i,
                     (long)min_buffer_size_bytes,
                     (long)array_view->buffer_views[i].size_bytes);
@@ -751,11 +751,10 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       child_min_length = (array_view->offset + array_view->length) *
                          array_view->layout.child_size_elements;
       if (array_view->children[0]->length < child_min_length) {
-        ArrowErrorSet(
-            error,
-            "Expected child of fixed-size list array with length >= %ld but found array "
-            "with length %ld",
-            (long)child_min_length, (long)array_view->children[0]->length);
+        ArrowErrorSet(error,
+                      "Expected child of fixed_size_list array to have length >= %ld but "
+                      "found array with length %ld",
+                      (long)child_min_length, (long)array_view->children[0]->length);
         return EINVAL;
       }
       break;
@@ -804,7 +803,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         } else if (array_view->buffer_views[2].size_bytes < last_offset) {
           ArrowErrorSet(error,
                         "Expected %s array buffer 2 to have size >= %ld bytes but found "
-                        "buffer with size %ld bytes",
+                        "buffer with %ld bytes",
                         ArrowTypeString(array_view->storage_type), (long)last_offset,
                         (long)array_view->buffer_views[2].size_bytes);
           return EINVAL;
@@ -830,7 +829,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         } else if (array_view->buffer_views[2].size_bytes < last_offset) {
           ArrowErrorSet(error,
                         "Expected %s array buffer 2 to have size >= %ld bytes but found "
-                        "buffer with size %ld bytes",
+                        "buffer with %ld bytes",
                         ArrowTypeString(array_view->storage_type), (long)last_offset,
                         (long)array_view->buffer_views[2].size_bytes);
           return EINVAL;
