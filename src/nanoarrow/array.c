@@ -652,6 +652,8 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
                                       struct ArrowArray* array,
                                       struct ArrowError* error) {
   array_view->array = array;
+  array_view->offset = array->offset;
+  array_view->length = array->length;
 
   // Check length and offset
   if (array->offset < 0) {
@@ -667,7 +669,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   }
 
   // First pass setting lengths that do not depend on the data buffer
-  ArrowArrayViewSetLength(array_view, array->offset + array->length);
+  ArrowArrayViewSetLength(array_view, array_view->offset + array_view->length);
 
   int64_t buffers_required = 0;
   for (int i = 0; i < 3; i++) {
@@ -713,7 +715,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         }
 
         last_offset =
-            array_view->buffer_views[1].data.as_int32[array->offset + array->length];
+            array_view->buffer_views[1].data.as_int32[array_view->offset + array_view->length];
         array_view->buffer_views[2].size_bytes = last_offset;
       }
       break;
@@ -728,18 +730,18 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         }
 
         last_offset =
-            array_view->buffer_views[1].data.as_int64[array->offset + array->length];
+            array_view->buffer_views[1].data.as_int64[array_view->offset + array_view->length];
         array_view->buffer_views[2].size_bytes = last_offset;
       }
       break;
     case NANOARROW_TYPE_STRUCT:
       for (int64_t i = 0; i < array_view->n_children; i++) {
-        if (array->children[i]->length < (array->offset + array->length)) {
+        if (array->children[i]->length < (array_view->offset + array_view->length)) {
           ArrowErrorSet(
               error,
               "Expected struct child %d to have length >= %ld but found child with "
               "length %ld",
-              (int)(i + 1), (long)(array->offset + array->length),
+              (int)(i + 1), (long)(array_view->offset + array_view->length),
               (long)array->children[i]->length);
           return EINVAL;
         }
@@ -764,7 +766,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         }
 
         last_offset =
-            array_view->buffer_views[1].data.as_int32[array->offset + array->length];
+            array_view->buffer_views[1].data.as_int32[array_view->offset + array_view->length];
         if (array->children[0]->length < last_offset) {
           ArrowErrorSet(
               error,
@@ -793,7 +795,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
         }
 
         last_offset =
-            array_view->buffer_views[1].data.as_int64[array->offset + array->length];
+            array_view->buffer_views[1].data.as_int64[array_view->offset + array_view->length];
         if (array->children[0]->length < last_offset) {
           ArrowErrorSet(
               error,
@@ -813,7 +815,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
       }
 
       last_offset =
-          (array->offset + array->length) * array_view->layout.child_size_elements;
+          (array_view->offset + array_view->length) * array_view->layout.child_size_elements;
       if (array->children[0]->length < last_offset) {
         ArrowErrorSet(
             error,
@@ -947,10 +949,10 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
   if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION &&
       array_view->union_type_id_map != NULL) {
     // Check that offsets refer to child elements that actually exist
-    for (int64_t i = 0; i < array_view->array->length; i++) {
+    for (int64_t i = 0; i < array_view->length; i++) {
       int8_t child_id = ArrowArrayViewUnionChildIndex(array_view, i);
       int64_t offset = ArrowArrayViewUnionChildOffset(array_view, i);
-      int64_t child_length = array_view->array->children[child_id]->length;
+      int64_t child_length = array_view->children[child_id]->length;
       if (offset < 0 || offset > child_length) {
         ArrowErrorSet(
             error,
