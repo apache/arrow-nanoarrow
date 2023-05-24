@@ -267,8 +267,12 @@ union_array_from_data_frame <- function(x, schema) {
     "sparse_union" = {
       struct_schema <- na_struct(schema$children)
       array <- as_nanoarrow_array(x, array = struct_schema)
-      nanoarrow_array_set_schema(array, schema, validate = FALSE)
-      array$buffers[[1]] <- as.raw(child_index)
+      array <- nanoarrow_array_modify(
+        array,
+        list(buffers = list(as.raw(child_index))),
+        validate = FALSE
+      )
+      nanoarrow_array_set_schema(array, schema, validate = TRUE)
       array
     },
     stop("Attempt to create union from non-union array type")
