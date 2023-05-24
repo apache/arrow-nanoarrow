@@ -110,6 +110,7 @@ test_that("as.data.frame() is implemented for streams", {
     as.data.frame(stream),
     data.frame(x = 1:5)
   )
+  expect_false(nanoarrow_pointer_is_valid(stream))
 })
 
 test_that("as.vector() is implemented for streams", {
@@ -118,6 +119,7 @@ test_that("as.vector() is implemented for streams", {
     as.vector(stream),
     data.frame(x = 1:5)
   )
+  expect_false(nanoarrow_pointer_is_valid(stream))
 })
 
 test_that("nanoarrow_array_stream list interface works", {
