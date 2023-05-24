@@ -909,7 +909,7 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
 /// \defgroup nanoarrow-array-view Reading arrays
 ///
-/// These functions read and validate the contents ArrowArray structures
+/// These functions read and validate the contents ArrowArray structures.
 ///
 /// @{
 

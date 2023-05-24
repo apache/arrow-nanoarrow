@@ -568,10 +568,12 @@ struct ArrowLayout {
 /// This data structure provides access to the values contained within
 /// an ArrowArray with fields provided in a more readily-extractible
 /// form. You can re-use an ArrowArrayView for multiple ArrowArrays
-/// with the same storage type, or use it to represent a hypothetical
-/// ArrowArray that does not exist yet.
+/// with the same storage type, use it to represent a hypothetical
+/// ArrowArray that does not exist yet, or use it to validate the buffers
+/// of a future ArrowArray.
 struct ArrowArrayView {
-  /// \brief The underlying ArrowArray or NULL if it has not been set
+  /// \brief The underlying ArrowArray or NULL if it has not been set or
+  /// if the buffers in this ArrowArrayView are not backed by an ArrowArray.
   struct ArrowArray* array;
 
   /// \brief An additional offset to that of array->offset
