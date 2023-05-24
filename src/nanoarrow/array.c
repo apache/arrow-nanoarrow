@@ -409,10 +409,6 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   }
 }
 
-static int ArrowArrayViewValidate(struct ArrowArrayView* array_view,
-                                  enum ArrowValidationLevel validation_level,
-                                  struct ArrowError* error);
-
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
                                         enum ArrowValidationLevel validation_level,
                                         struct ArrowError* error) {
@@ -993,8 +989,8 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
-                                          struct ArrowError* error) {
+static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
+                                      struct ArrowError* error) {
   for (int i = 0; i < 3; i++) {
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
@@ -1056,9 +1052,9 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
   return NANOARROW_OK;
 }
 
-static int ArrowArrayViewValidate(struct ArrowArrayView* array_view,
-                                  enum ArrowValidationLevel validation_level,
-                                  struct ArrowError* error) {
+ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
+                                      enum ArrowValidationLevel validation_level,
+                                      struct ArrowError* error) {
   switch (validation_level) {
     case NANOARROW_VALIDATION_LEVEL_NONE:
       return NANOARROW_OK;
