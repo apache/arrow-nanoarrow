@@ -1070,4 +1070,7 @@ static int ArrowArrayViewValidate(struct ArrowArrayView* array_view,
       NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateDefault(array_view, error));
       return ArrowArrayViewValidateFull(array_view, error);
   }
+
+  ArrowErrorSet(error, "validation_level not recognized");
+  return EINVAL;
 }
