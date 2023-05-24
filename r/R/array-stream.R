@@ -161,6 +161,11 @@ infer_nanoarrow_schema.nanoarrow_array_stream <- function(x, ...) {
 
 #' @export
 as.data.frame.nanoarrow_array_stream <- function(x, ...) {
+  # Always release the input: we are always consuming the entire stream.
+  # For more fine-grained behaviour on error, one can use
+  # convert_array_stream()
+  on.exit(x$release())
+
   to <- infer_nanoarrow_ptype(x$get_schema())
   if (!inherits(to, "data.frame")) {
     stop("Can't convert non-struct array stream to data.frame")
@@ -171,6 +176,7 @@ as.data.frame.nanoarrow_array_stream <- function(x, ...) {
 
 #' @export
 as.vector.nanoarrow_array_stream <- function(x, mode) {
+  on.exit(x$release())
   convert_array_stream(x)
 }
 
