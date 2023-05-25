@@ -105,10 +105,6 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
   set(CMAKE_CXX_STANDARD 11)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-  find_package(Arrow REQUIRED)
-  message(STATUS "Arrow version: ${ARROW_VERSION}")
-  message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
-
   # Warning about timestamps of downloaded files
   if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
       cmake_policy(SET CMP0135 NEW)
@@ -133,7 +129,7 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
   FetchContent_MakeAvailable(googletest)
 
   enable_testing()
-  add_executable(nanoarrow_device_decoder_test src/nanoarrow/nanoarrow_device_test.cc)
+  add_executable(nanoarrow_device_test src/nanoarrow/nanoarrow_device_test.cc)
 
   if(NANOARROW_DEVICE_CODE_COVERAGE)
     target_compile_options(device_coverage_config INTERFACE -O0 -g --coverage)

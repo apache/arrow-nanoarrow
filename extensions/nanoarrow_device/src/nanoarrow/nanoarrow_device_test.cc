@@ -22,6 +22,5 @@
 #include "nanoarrow_device.h"
 
 TEST(NanoarrowDevice, CheckRuntime) {
-  EXPECT_EQ(ArrowDeviceCheckRuntime(), 44);
+  EXPECT_EQ(ArrowDeviceCheckRuntime(nullptr), NANOARROW_OK);
 }
-

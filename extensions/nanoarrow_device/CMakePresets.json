@@ -19,7 +19,7 @@
             "displayName": "Default with tests",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "NANOARROW_IPC_BUILD_TESTS": "ON"
+                "NANOARROW_DEVICE_BUILD_TESTS": "ON"
             }
         }
     ]
