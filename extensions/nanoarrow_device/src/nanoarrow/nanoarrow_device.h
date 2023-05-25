@@ -216,14 +216,43 @@ extern "C" {
 /// Except where noted, objects are not thread-safe and clients should
 /// take care to serialize accesses to methods.
 ///
-/// Because this library is intended to be vendored, it provides full type
-/// definitions and encourages clients to stack or statically allocate
-/// where convenient.
-///
 /// @{
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
+
+struct ArrowDevice {
+  ArrowDeviceType device_type;
+  int64_t device_id;
+  struct ArrowBufferAllocator allocator;
+  // How to communicate that no copy is needed?
+  ArrowErrorCode (*copy_to)(struct ArrowDevice* device, struct ArrowBufferView src,
+                            struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
+                            void** sync_event, struct ArrowError* error);
+  ArrowErrorCode (*copy_from)(struct ArrowDevice* device, struct ArrowBuffer* dst,
+                              struct ArrowDevice* device_src, struct ArrowBufferView src,
+                              void** sync_event, struct ArrowError* error);
+  void* private_data;
+};
+
+/// \brief Initialize an ArrowDeviceArray
+///
+/// Zeroes the memory of device_array and initializes it for a given device.
+void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
+                          struct ArrowDevice* device);
+
+/// \brief Initialize the CPU device singleton
+struct ArrowDevice* ArrowDeviceCpu(void);
+
+/// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
+///
+/// Wrap an ArrowArrayStream of ArrowArray objects already allocated by the specified
+/// device, as an ArrowDeviceArrayStream. This function moves the ownership of
+/// array_stream to the device_array_stream. If this function returns NANOARROW_OK, the
+/// caller is responsible for releasing the ArrowDeviceArrayStream.
+ArrowErrorCode ArrowBasicDeviceArrayStreamInit(
+    struct ArrowDeviceArrayStream* device_array_stream,
+    struct ArrowArrayStream* array_stream);
 
 /// @}
 

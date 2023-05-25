@@ -33,3 +33,29 @@ ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error) {
 
   return NANOARROW_OK;
 }
+
+void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
+                          struct ArrowDevice* device) {
+  memset(device_array, 0, sizeof(struct ArrowDeviceArray));
+  device_array->device_type = device->device_type;
+  device_array->device_id = device->device_id;
+}
+
+struct ArrowDevice* ArrowDeviceCpu(void) {
+  static struct ArrowDevice* cpu_device_singleton = NULL;
+  if (cpu_device_singleton == NULL) {
+    cpu_device_singleton = (struct ArrowDevice*)ArrowMalloc(sizeof(struct ArrowDevice));
+    cpu_device_singleton->device_type = ARROW_DEVICE_CPU;
+    cpu_device_singleton->device_id = 0;
+    cpu_device_singleton->allocator = ArrowBufferAllocatorDefault();
+    cpu_device_singleton->private_data = NULL;
+  }
+
+  return cpu_device_singleton;
+}
+
+ArrowErrorCode ArrowBasicDeviceArrayStreamInit(
+    struct ArrowDeviceArrayStream* device_array_stream,
+    struct ArrowArrayStream* array_stream) {
+  return ENOTSUP;
+}

@@ -24,3 +24,11 @@
 TEST(NanoarrowDevice, CheckRuntime) {
   EXPECT_EQ(ArrowDeviceCheckRuntime(nullptr), NANOARROW_OK);
 }
+
+TEST(NanoarrowDevice, InitCpuDevice) {
+  struct ArrowDevice* cpu = ArrowDeviceCpu();
+  ASSERT_EQ(cpu->device_type, ARROW_DEVICE_CPU);
+  ASSERT_EQ(cpu->device_id, 0);
+
+  ASSERT_EQ(cpu, ArrowDeviceCpu());
+}
