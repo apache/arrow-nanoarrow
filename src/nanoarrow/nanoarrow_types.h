@@ -576,11 +576,10 @@ struct ArrowArrayView {
   /// if the buffers in this ArrowArrayView are not backed by an ArrowArray.
   struct ArrowArray* array;
 
-  /// \brief An additional offset to that of array->offset
+  /// \brief The number of elements from the physical start of the buffers.
   int64_t offset;
 
-  /// \brief The length of this array view. In combination with offset,
-  /// this can be used to represent a slice of an ArrowArray.
+  /// \brief The number of elements in this view.
   int64_t length;
 
   /// \brief A cached null count or -1 to indicate that this value is unknown.
