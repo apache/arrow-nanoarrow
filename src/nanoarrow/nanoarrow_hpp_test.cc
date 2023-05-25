@@ -106,6 +106,14 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayStreamTest) {
   EXPECT_NE(array_stream3->release, nullptr);
   EXPECT_EQ(array_stream3->get_schema(array_stream2.get(), schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");
+
+  // releasing should clear the release callback
+  EXPECT_EQ(ArrowSchemaInitFromType(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  auto array_stream4 = nanoarrow::EmptyArrayStream::MakeUnique(schema_in.get());
+  EXPECT_NE(array_stream4->release, nullptr);
+  array_stream4->release(array_stream4.get());
+  EXPECT_EQ(array_stream4->private_data, nullptr);
+  EXPECT_EQ(array_stream4->release, nullptr);
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppUniqueBufferTest) {
