@@ -114,8 +114,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetLength)
 #define ArrowArrayViewSetArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArray)
-#define ArrowArrayViewValidateFull \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewValidateFull)
+#define ArrowArrayViewValidate \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewValidate)
 #define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
 #define ArrowBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBasicArrayStreamInit)
@@ -909,7 +909,7 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
 /// \defgroup nanoarrow-array-view Reading arrays
 ///
-/// These functions read and validate the contents ArrowArray structures
+/// These functions read and validate the contents ArrowArray structures.
 ///
 /// @{
 
@@ -942,9 +942,17 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
                                       struct ArrowArray* array, struct ArrowError* error);
 
-/// \brief Performs extra checks on the array that was set via ArrowArrayViewSetArray()
-ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
-                                          struct ArrowError* error);
+/// \brief Performs checks on the content of an ArrowArrayView
+///
+/// If using ArrowArrayViewSetArray() to back array_view with an ArrowArray,
+/// the buffer sizes and some content (fist and last offset) have already
+/// been validated at the "default" level. If setting the buffer pointers
+/// and sizes otherwise, you may wish to perform checks at a different level. See
+/// documentation for ArrowValidationLevel for the details of checks performed
+/// at each level.
+ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
+                                      enum ArrowValidationLevel validation_level,
+                                      struct ArrowError* error);
 
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);

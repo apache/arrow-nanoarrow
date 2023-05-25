@@ -471,26 +471,28 @@ static inline struct ArrowStringView ArrowCharView(const char* value) {
   return out;
 }
 
+union ArrowBufferViewData {
+  const void* data;
+  const int8_t* as_int8;
+  const uint8_t* as_uint8;
+  const int16_t* as_int16;
+  const uint16_t* as_uint16;
+  const int32_t* as_int32;
+  const uint32_t* as_uint32;
+  const int64_t* as_int64;
+  const uint64_t* as_uint64;
+  const double* as_double;
+  const float* as_float;
+  const char* as_char;
+};
+
 /// \brief An non-owning view of a buffer
 /// \ingroup nanoarrow-utils
 struct ArrowBufferView {
   /// \brief A pointer to the start of the buffer
   ///
   /// If size_bytes is 0, this value may be NULL.
-  union {
-    const void* data;
-    const int8_t* as_int8;
-    const uint8_t* as_uint8;
-    const int16_t* as_int16;
-    const uint16_t* as_uint16;
-    const int32_t* as_int32;
-    const uint32_t* as_uint32;
-    const int64_t* as_int64;
-    const uint64_t* as_uint64;
-    const double* as_double;
-    const float* as_float;
-    const char* as_char;
-  } data;
+  union ArrowBufferViewData data;
 
   /// \brief The size of the buffer in bytes
   int64_t size_bytes;
@@ -566,11 +568,22 @@ struct ArrowLayout {
 /// This data structure provides access to the values contained within
 /// an ArrowArray with fields provided in a more readily-extractible
 /// form. You can re-use an ArrowArrayView for multiple ArrowArrays
-/// with the same storage type, or use it to represent a hypothetical
-/// ArrowArray that does not exist yet.
+/// with the same storage type, use it to represent a hypothetical
+/// ArrowArray that does not exist yet, or use it to validate the buffers
+/// of a future ArrowArray.
 struct ArrowArrayView {
-  /// \brief The underlying ArrowArray or NULL if it has not been set
+  /// \brief The underlying ArrowArray or NULL if it has not been set or
+  /// if the buffers in this ArrowArrayView are not backed by an ArrowArray.
   struct ArrowArray* array;
+
+  /// \brief The number of elements from the physical start of the buffers.
+  int64_t offset;
+
+  /// \brief The number of elements in this view.
+  int64_t length;
+
+  /// \brief A cached null count or -1 to indicate that this value is unknown.
+  int64_t null_count;
 
   /// \brief The type used to store values in this array
   ///

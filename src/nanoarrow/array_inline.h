@@ -654,7 +654,7 @@ static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
 
 static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i) {
   const uint8_t* validity_buffer = array_view->buffer_views[0].data.as_uint8;
-  i += array_view->array->offset;
+  i += array_view->offset;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_NA:
       return 0x01;
@@ -715,7 +715,7 @@ static inline int64_t ArrowArrayViewListChildOffset(struct ArrowArrayView* array
 static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_view,
                                                  int64_t i) {
   struct ArrowBufferView* data_view = &array_view->buffer_views[1];
-  i += array_view->array->offset;
+  i += array_view->offset;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_INT64:
       return data_view->data.as_int64[i];
@@ -746,7 +746,7 @@ static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_vi
 
 static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_view,
                                                    int64_t i) {
-  i += array_view->array->offset;
+  i += array_view->offset;
   struct ArrowBufferView* data_view = &array_view->buffer_views[1];
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_INT64:
@@ -778,7 +778,7 @@ static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_
 
 static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_view,
                                                    int64_t i) {
-  i += array_view->array->offset;
+  i += array_view->offset;
   struct ArrowBufferView* data_view = &array_view->buffer_views[1];
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_INT64:
@@ -810,7 +810,7 @@ static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_
 
 static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
     struct ArrowArrayView* array_view, int64_t i) {
-  i += array_view->array->offset;
+  i += array_view->offset;
   struct ArrowBufferView* offsets_view = &array_view->buffer_views[1];
   const char* data_view = array_view->buffer_views[2].data.as_char;
 
@@ -843,7 +843,7 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
 
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     struct ArrowArrayView* array_view, int64_t i) {
-  i += array_view->array->offset;
+  i += array_view->offset;
   struct ArrowBufferView* offsets_view = &array_view->buffer_views[1];
   const uint8_t* data_view = array_view->buffer_views[2].data.as_uint8;
 
@@ -877,7 +877,7 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
 
 static inline void ArrowArrayViewGetDecimalUnsafe(struct ArrowArrayView* array_view,
                                                   int64_t i, struct ArrowDecimal* out) {
-  i += array_view->array->offset;
+  i += array_view->offset;
   const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_DECIMAL128:
