@@ -120,6 +120,9 @@ if (NANOARROW_DEVICE_WITH_METAL)
   find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
   message(STATUS "Foundation framework found at '${FOUNDATION_LIBRARY}'")
 
+  find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
+  message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
+
   add_library(nanoarrow_device_metal
     src/nanoarrow_device_metal/metal_impl.cc
     src/nanoarrow_device_metal/nanoarrow_device_metal.cc)
@@ -131,7 +134,7 @@ if (NANOARROW_DEVICE_WITH_METAL)
   target_link_libraries(nanoarrow_device_metal PUBLIC
     nanoarrow_device
     nanoarrow
-    ${METAL_LIBRARY} ${FOUNDATION_LIBRARY})
+    ${METAL_LIBRARY} ${FOUNDATION_LIBRARY} ${QUARTZ_CORE_LIBRARY})
 
   install(TARGETS nanoarrow_device_metal DESTINATION lib)
   install(
