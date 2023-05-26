@@ -41,21 +41,21 @@ void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
   device_array->device_id = device->device_id;
 }
 
-static ArrowErrorCode ArrowDeviceCpuCopyTo(struct ArrowDevice* device,
-                                           struct ArrowBufferView src,
-                                           struct ArrowDevice* device_dst,
-                                           struct ArrowBuffer* dst, void** sync_event,
-                                           struct ArrowError* error) {
-  switch (device->device_type) {
-    case ARROW_DEVICE_CPU:
-      ArrowBufferInit(dst);
-      dst->allocator = ArrowBufferAllocatorDefault();
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendBufferView(dst, src), error);
-      *sync_event = NULL;
-      return NANOARROW_OK;
-    default:
-      return ENOTSUP;
+static ArrowErrorCode ArrowDeviceCpuCopyBuffer(struct ArrowDevice* device_src,
+                                               struct ArrowBufferView src,
+                                               struct ArrowDevice* device_dst,
+                                               struct ArrowBuffer* dst,
+                                               void** sync_event) {
+  if (device_dst->device_type != ARROW_DEVICE_CPU ||
+      device_src->device_type != ARROW_DEVICE_CPU) {
+    return ENOTSUP;
   }
+
+  ArrowBufferInit(dst);
+  dst->allocator = ArrowBufferAllocatorDefault();
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, src));
+  *sync_event = NULL;
+  return NANOARROW_OK;
 }
 
 static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
@@ -91,7 +91,7 @@ struct ArrowDevice* ArrowDeviceCpu(void) {
 void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->device_type = ARROW_DEVICE_CPU;
   device->device_id = 0;
-  device->copy_buffer = &ArrowDeviceCpuCopyTo;
+  device->copy_buffer = &ArrowDeviceCpuCopyBuffer;
   device->synchronize_event = &ArrowDeviceCpuSynchronize;
   device->release = &ArrowDeviceCpuRelease;
   device->private_data = NULL;
@@ -100,12 +100,10 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
 ArrowErrorCode ArrowDeviceCopyBuffer(struct ArrowDevice* device_src,
                                      struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
-                                     struct ArrowBuffer* dst, void** sync_event,
-                                     struct ArrowError* error) {
-  int result =
-      device_dst->copy_buffer(device_src, src, device_dst, dst, sync_event, error);
+                                     struct ArrowBuffer* dst, void** sync_event) {
+  int result = device_dst->copy_buffer(device_src, src, device_dst, dst, sync_event);
   if (result == ENOTSUP) {
-    result = device_src->copy_buffer(device_src, src, device_dst, dst, sync_event, error);
+    result = device_src->copy_buffer(device_src, src, device_dst, dst, sync_event);
   }
 
   return result;

@@ -36,8 +36,7 @@ TEST(NanoarrowDevice, CpuDevice) {
   struct ArrowBufferView view = {data, sizeof(data)};
   void* sync_event;
 
-  ASSERT_EQ(ArrowDeviceCopyBuffer(cpu, view, cpu, &buffer, &sync_event, nullptr),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceCopyBuffer(cpu, view, cpu, &buffer, &sync_event), NANOARROW_OK);
   ASSERT_EQ(buffer.size_bytes, 5);
   ASSERT_EQ(sync_event, nullptr);
   ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
@@ -45,6 +44,54 @@ TEST(NanoarrowDevice, CpuDevice) {
 
   sync_event = &buffer;
   ASSERT_EQ(cpu->synchronize_event(cpu, cpu, sync_event, nullptr), EINVAL);
+}
+
+// Dummy device that can copy to/from the CPU
+static ArrowErrorCode DummyNonCpuCopyBuffer(struct ArrowDevice* device_src,
+                                            struct ArrowBufferView src,
+                                            struct ArrowDevice* device_dst,
+                                            struct ArrowBuffer* dst, void** sync_event) {
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+          device_dst->device_type == ARROW_DEVICE_EXT_DEV ||
+      device_dst->device_type == ARROW_DEVICE_CPU &&
+          device_src->device_type == ARROW_DEVICE_EXT_DEV) {
+    ArrowBufferInit(dst);
+    dst->allocator = ArrowBufferAllocatorDefault();
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(dst, src));
+    *sync_event = NULL;
+    return NANOARROW_OK;
+  } else {
+    return ENOTSUP;
+  }
+}
+
+TEST(NanoarrowDevice, ArrowBufferCopyDummyNonCpuDevice) {
+  struct ArrowDevice* cpu = ArrowDeviceCpu();
+  struct ArrowDevice not_cpu;
+  ArrowDeviceInitCpu(&not_cpu);
+  not_cpu.device_type = ARROW_DEVICE_EXT_DEV;
+  not_cpu.copy_buffer = &DummyNonCpuCopyBuffer;
+
+  struct ArrowBuffer buffer;
+  uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  struct ArrowBufferView view = {data, sizeof(data)};
+  void* sync_event;
+
+  ASSERT_EQ(ArrowDeviceCopyBuffer(cpu, view, &not_cpu, &buffer, &sync_event),
+            NANOARROW_OK);
+  ASSERT_EQ(buffer.size_bytes, 5);
+  ASSERT_EQ(sync_event, nullptr);
+  ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
+  ArrowBufferReset(&buffer);
+
+  ASSERT_EQ(ArrowDeviceCopyBuffer(&not_cpu, view, cpu, &buffer, &sync_event),
+            NANOARROW_OK);
+  ASSERT_EQ(buffer.size_bytes, 5);
+  ASSERT_EQ(sync_event, nullptr);
+  ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
+  ArrowBufferReset(&buffer);
+
+  not_cpu.release(&not_cpu);
 }
 
 TEST(NanoarrowDevice, BasicStreamCpu) {
