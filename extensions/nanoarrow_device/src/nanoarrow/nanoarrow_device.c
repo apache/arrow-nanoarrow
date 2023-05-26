@@ -49,27 +49,12 @@ static ArrowErrorCode ArrowDeviceCpuCopyTo(struct ArrowDevice* device,
   switch (device->device_type) {
     case ARROW_DEVICE_CPU:
       ArrowBufferInit(dst);
-      dst->allocator = device->allocator;
+      dst->allocator = ArrowBufferAllocatorDefault();
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendBufferView(dst, src), error);
       *sync_event = NULL;
       return NANOARROW_OK;
     default:
-      return device_dst->copy_from(device_dst, dst, device, src, sync_event, error);
-  }
-}
-
-static ArrowErrorCode ArrowDeviceCpuCopyFrom(
-    struct ArrowDevice* device, struct ArrowBuffer* dst, struct ArrowDevice* device_src,
-    struct ArrowBufferView src, void** sync_event, struct ArrowError* error) {
-  switch (device->device_type) {
-    case ARROW_DEVICE_CPU:
-      ArrowBufferInit(dst);
-      dst->allocator = device->allocator;
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendBufferView(dst, src), error);
-      *sync_event = NULL;
-      return NANOARROW_OK;
-    default:
-      return device_src->copy_to(device_src, src, device, dst, sync_event, error);
+      return ENOTSUP;
   }
 }
 
@@ -97,8 +82,6 @@ struct ArrowDevice* ArrowDeviceCpu(void) {
     cpu_device_singleton = (struct ArrowDevice*)ArrowMalloc(sizeof(struct ArrowDevice));
     cpu_device_singleton->device_type = ARROW_DEVICE_CPU;
     cpu_device_singleton->device_id = 0;
-    cpu_device_singleton->allocator = ArrowBufferAllocatorDefault();
-    cpu_device_singleton->copy_from = &ArrowDeviceCpuCopyFrom;
     cpu_device_singleton->copy_to = &ArrowDeviceCpuCopyTo;
     cpu_device_singleton->synchronize_event = &ArrowDeviceCpuSynchronize;
     cpu_device_singleton->private_data = NULL;

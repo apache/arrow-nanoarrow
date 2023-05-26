@@ -42,12 +42,6 @@ TEST(NanoarrowDevice, CpuDevice) {
   ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
-  ASSERT_EQ(cpu->copy_from(cpu, &buffer, cpu, view, &sync_event, nullptr), NANOARROW_OK);
-  ASSERT_EQ(buffer.size_bytes, 5);
-  ASSERT_EQ(sync_event, nullptr);
-  ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
-  ArrowBufferReset(&buffer);
-
   sync_event = &buffer;
   ASSERT_EQ(cpu->synchronize_event(cpu, cpu, sync_event, nullptr), EINVAL);
 }

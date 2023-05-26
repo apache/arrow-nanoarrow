@@ -210,7 +210,8 @@ struct ArrowDeviceArrayStream {
 #endif  // ARROW_C_DEVICE_STREAM_INTERFACE
 
 /// \brief Move the contents of src into dst and set src->array.release to NULL
-static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src, struct ArrowDeviceArray* dst) {
+static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
+                                        struct ArrowDeviceArray* dst) {
   memcpy(dst, src, sizeof(struct ArrowDeviceArray));
   src->array.release = 0;
 }
