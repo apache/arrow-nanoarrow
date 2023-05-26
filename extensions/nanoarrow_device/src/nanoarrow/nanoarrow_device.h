@@ -224,6 +224,8 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCheckRuntime)
 #define ArrowDeviceArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayInit)
 #define ArrowDeviceCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCpu)
+#define ArrowDeviceInitCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceInitCpu)
+#define ArrowDeviceCopyBuffer NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCopyBuffer)
 #define ArrowDeviceBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBasicArrayStreamInit)
 
