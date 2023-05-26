@@ -20,7 +20,9 @@
 
 #include <Metal/Metal.hpp>
 
-#include "nanoarrow/nanoarrow_device.hpp"
+#include "nanoarrow_device.hpp"
+
+#include "nanoarrow_device_metal.h"
 
 // Wrap reference-counted NS objects
 template <typename T>

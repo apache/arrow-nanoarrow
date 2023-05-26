@@ -19,7 +19,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nanoarrow/nanoarrow_device.hpp"
+#include "nanoarrow_device.hpp"
 
 #include "nanoarrow_device_metal.h"
 

@@ -26,8 +26,9 @@ endif()
 project(nanoarrow_device)
 
 option(NANOARROW_DEVICE_BUILD_TESTS "Build tests" OFF)
-option(NANOARROW_DEVICE_BUILD_APPS "Build utility applications" OFF)
 option(NANOARROW_DEVICE_BUNDLE "Create bundled nanoarrow_device.h and nanoarrow_device.c" OFF)
+option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal extension" OFF)
+
 
 option(NANOARROW_DEVICE_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(device_coverage_config INTERFACE)
@@ -86,10 +87,9 @@ else()
     src/nanoarrow/nanoarrow_device.c)
 
   target_include_directories(nanoarrow_device PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
         $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
         $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-        $<BUILD_INTERFACE:${NANOARROW_DEVICE_FLATCC_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:include>)
 
   install(TARGETS nanoarrow_device DESTINATION lib)
@@ -100,13 +100,48 @@ else()
 
 endif()
 
+if (NANOARROW_DEVICE_WITH_METAL)
+  if (NOT EXISTS "${CMAKE_BINARY_DIR}/metal-cpp")
+    message(STATUS "Fetching metal-cpp")
+    file(DOWNLOAD
+      "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
+      "${CMAKE_BINARY_DIR}/metal-cpp.zip")
+    file(ARCHIVE_EXTRACT INPUT ${CMAKE_BINARY_DIR}/metal-cpp.zip DESTINATION ${CMAKE_BINARY_DIR})
+  endif()
+
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+  endif()
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+  find_library(METAL_LIBRARY Metal REQUIRED)
+  message(STATUS "Metal framework found at '${METAL_LIBRARY}'")
+
+  add_library(nanoarrow_device_metal
+    src/nanoarrow_device_metal/metal_impl.cc
+    src/nanoarrow_device_metal/nanoarrow_device_metal.cc)
+
+  target_include_directories(nanoarrow_device_metal PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/metal-cpp>
+    $<INSTALL_INTERFACE:include>)
+
+  target_link_libraries(nanoarrow_device_metal PUBLIC nanoarrow_device ${METAL_LIBRARY})
+
+  install(TARGETS nanoarrow_device_metal DESTINATION lib)
+  install(
+    FILES
+      src/nanoarrow_device_metal/nanoarrow_device_metal.h
+    DESTINATION include/nanoarrow)
+endif()
 
 if (NANOARROW_DEVICE_BUILD_TESTS)
   set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/../../valgrind.supp --error-exitcode=1")
   include(CTest)
   include(FetchContent)
 
-  set(CMAKE_CXX_STANDARD 11)
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+  endif()
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
   # Warning about timestamps of downloaded files
@@ -152,4 +187,12 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_device_test)
   gtest_discover_tests(nanoarrow_device_hpp_test)
+
+  if (NANOARROW_DEVICE_WITH_METAL)
+    add_executable(nanoarrow_device_metal_test src/nanoarrow_device_metal/nanoarrow_device_metal_test.cc)
+    target_link_libraries(
+      nanoarrow_device_metal_test
+      nanoarrow_device_metal nanoarrow gtest_main device_coverage_config)
+    gtest_discover_tests(nanoarrow_device_metal_test)
+  endif()
 endif()
