@@ -204,6 +204,10 @@ struct ArrowDeviceArrayStream {
 
 #define ArrowDeviceCheckRuntime \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCheckRuntime)
+#define ArrowDeviceArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayInit)
+#define ArrowDeviceCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCpu)
+#define ArrowDeviceBasicArrayStreamInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBasicArrayStreamInit)
 
 #endif
 
@@ -248,8 +252,8 @@ struct ArrowDevice* ArrowDeviceCpu(void);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
 ///
-/// Wrap an ArrowArrayStream of ArrowDeviceArray objects already allocated by the specified
-/// device as an ArrowDeviceArrayStream. This function moves the ownership of
+/// Wrap an ArrowArrayStream of ArrowDeviceArray objects already allocated by the
+/// specified device as an ArrowDeviceArrayStream. This function moves the ownership of
 /// array_stream to the device_array_stream. If this function returns NANOARROW_OK, the
 /// caller is responsible for releasing the ArrowDeviceArrayStream.
 ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
