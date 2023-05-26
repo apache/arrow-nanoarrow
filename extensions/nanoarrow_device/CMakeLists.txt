@@ -130,6 +130,7 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
 
   enable_testing()
   add_executable(nanoarrow_device_test src/nanoarrow/nanoarrow_device_test.cc)
+  add_executable(nanoarrow_device_hpp_test src/nanoarrow/nanoarrow_device_hpp_test.cc)
 
   if(NANOARROW_DEVICE_CODE_COVERAGE)
     target_compile_options(device_coverage_config INTERFACE -O0 -g --coverage)
@@ -140,7 +141,11 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
   target_link_libraries(
     nanoarrow_device_test
     nanoarrow_device nanoarrow gtest_main device_coverage_config)
+  target_link_libraries(
+    nanoarrow_device_hpp_test
+    nanoarrow_device nanoarrow gtest_main device_coverage_config)
 
   include(GoogleTest)
   gtest_discover_tests(nanoarrow_device_test)
+  gtest_discover_tests(nanoarrow_device_hpp_test)
 endif()

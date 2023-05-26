@@ -19,8 +19,6 @@
 
 #include <gtest/gtest.h>
 
-#include <stdio.h>
-
 #include "nanoarrow_device.h"
 
 TEST(NanoarrowDevice, CheckRuntime) {
