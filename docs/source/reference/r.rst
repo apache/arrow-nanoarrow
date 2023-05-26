@@ -15,13 +15,7 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-.. include:: README_generated.rst
+R API Reference
+==================
 
-Contents
---------
-
-.. toctree::
-   :maxdepth: 2
-
-   Getting Started <getting-started>
-   API Reference <reference/index>
+See `R Documentation <../r/reference/index.html>`__.

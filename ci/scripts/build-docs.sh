@@ -59,15 +59,18 @@ main() {
    rm -rf docs/_build
    mkdir -p docs/_build
 
-   # Run doxygen
    show_header "Run Doxygen for C library"
    pushd src/apidoc
    doxygen
    popd
 
-   # Run doxygen
    show_header "Run Doxygen for IPC extension"
    pushd extensions/nanoarrow_ipc/src/apidoc
+   doxygen
+   popd
+
+   show_header "Run Doxygen for device extension"
+   pushd extensions/nanoarrow_device/src/apidoc
    doxygen
    popd
 

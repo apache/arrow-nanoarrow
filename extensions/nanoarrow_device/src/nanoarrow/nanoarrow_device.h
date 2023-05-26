@@ -20,6 +20,15 @@
 
 #include "nanoarrow.h"
 
+/// \defgroup nanoarrow_device-arrow-cdata Arrow C Data interface
+///
+/// The Arrow Device and Stream interfaces are part of the
+/// Arrow Columnar Format specification
+/// (https://arrow.apache.org/docs/format/Columnar.html). See the Arrow documentation for
+/// detailed documentation of these structures.
+///
+/// @{
+
 #ifndef ARROW_C_DEVICE_DATA_INTERFACE
 #define ARROW_C_DEVICE_DATA_INTERFACE
 
@@ -200,6 +209,14 @@ struct ArrowDeviceArrayStream {
 
 #endif  // ARROW_C_DEVICE_STREAM_INTERFACE
 
+/// \brief Move the contents of src into dst and set src->array.release to NULL
+static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src, struct ArrowDeviceArray* dst) {
+  memcpy(dst, src, sizeof(struct ArrowDeviceArray));
+  src->array.release = 0;
+}
+
+/// @}
+
 #ifdef NANOARROW_NAMESPACE
 
 #define ArrowDeviceCheckRuntime \
@@ -225,19 +242,32 @@ extern "C" {
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 
+/// \brief A Device wrapper with callbacks for basic memory management tasks
+///
+/// Devices are intended to be singletons (i.e., exactly one with a static lifetime
+/// for every device).
 struct ArrowDevice {
+  /// \brief The device type integer identifier (see ArrowDeviceArray)
   ArrowDeviceType device_type;
+
+  /// \brief The device identifier (see ArrowDeviceArray)
   int64_t device_id;
-  struct ArrowBufferAllocator allocator;
+
+  /// \brief Copy a buffer to a given device
+  ///
+  /// Implementations should handle at least copying to themselves and to the CPU device.
   ArrowErrorCode (*copy_to)(struct ArrowDevice* device, struct ArrowBufferView src,
                             struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
                             void** sync_event, struct ArrowError* error);
-  ArrowErrorCode (*copy_from)(struct ArrowDevice* device, struct ArrowBuffer* dst,
-                              struct ArrowDevice* device_src, struct ArrowBufferView src,
-                              void** sync_event, struct ArrowError* error);
+
+  /// \brief Wait for an event
+  ///
+  /// Implementations should handle at least waiting on the CPU host.
   ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device,
                                       struct ArrowDevice* device_event, void* sync_event,
                                       struct ArrowError* error);
+
+  /// \brief Opaque, implementation-specific data.
   void* private_data;
 };
 

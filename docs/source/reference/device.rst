@@ -15,13 +15,32 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-.. include:: README_generated.rst
+Device Extension Reference
+==========================
 
-Contents
---------
+C API
+------------------------
 
-.. toctree::
-   :maxdepth: 2
+.. doxygengroup:: nanoarrow_device
+   :project: nanoarrow_device
+   :members:
 
-   Getting Started <getting-started>
-   API Reference <reference/index>
+C++ Helpers
+------------------------
+
+.. doxygengroup:: nanoarrow_device_hpp-unique
+   :project: nanoarrow_device
+   :members:
+
+Arrow C Device Interface
+------------------------
+
+.. doxygengroup:: nanoarrow_device-arrow-cdata
+   :project: nanoarrow_device
+   :members:
+   :undoc-members:
+
+.. doxygengroup:: arrow-device-types
+   :project: nanoarrow_device
+   :members:
+   :undoc-members:

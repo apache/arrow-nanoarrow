@@ -30,8 +30,7 @@ static inline void init_pointer(struct ArrowDeviceArray* data) {
 
 static inline void move_pointer(struct ArrowDeviceArray* src,
                                 struct ArrowDeviceArray* dst) {
-  memcpy(dst, src, sizeof(struct ArrowDeviceArray));
-  src->array.release = nullptr;
+  ArrowDeviceArrayMove(src, dst);
 }
 
 static inline void release_pointer(struct ArrowDeviceArray* data) {
