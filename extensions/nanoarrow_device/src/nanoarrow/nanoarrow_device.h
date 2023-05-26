@@ -225,13 +225,15 @@ struct ArrowDevice {
   ArrowDeviceType device_type;
   int64_t device_id;
   struct ArrowBufferAllocator allocator;
-  // How to communicate that no copy is needed?
   ArrowErrorCode (*copy_to)(struct ArrowDevice* device, struct ArrowBufferView src,
                             struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
                             void** sync_event, struct ArrowError* error);
   ArrowErrorCode (*copy_from)(struct ArrowDevice* device, struct ArrowBuffer* dst,
                               struct ArrowDevice* device_src, struct ArrowBufferView src,
                               void** sync_event, struct ArrowError* error);
+  ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device,
+                                      struct ArrowDevice* device_event, void* sync_event,
+                                      struct ArrowError* error);
   void* private_data;
 };
 

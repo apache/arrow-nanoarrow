@@ -25,10 +25,26 @@ TEST(NanoarrowDevice, CheckRuntime) {
   EXPECT_EQ(ArrowDeviceCheckRuntime(nullptr), NANOARROW_OK);
 }
 
-TEST(NanoarrowDevice, InitCpuDevice) {
+TEST(NanoarrowDevice, CpuDevice) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   ASSERT_EQ(cpu->device_type, ARROW_DEVICE_CPU);
   ASSERT_EQ(cpu->device_id, 0);
-
   ASSERT_EQ(cpu, ArrowDeviceCpu());
+
+  struct ArrowBuffer buffer;
+  uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  struct ArrowBufferView view = {data, sizeof(data)};
+  void* sync_event;
+
+  ASSERT_EQ(cpu->copy_to(cpu, view, cpu, &buffer, &sync_event, nullptr), NANOARROW_OK);
+  ASSERT_EQ(buffer.size_bytes, 5);
+  ASSERT_EQ(sync_event, nullptr);
+  ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
+  ArrowBufferReset(&buffer);
+
+  ASSERT_EQ(cpu->copy_from(cpu, &buffer, cpu, view, &sync_event, nullptr), NANOARROW_OK);
+  ASSERT_EQ(buffer.size_bytes, 5);
+  ASSERT_EQ(sync_event, nullptr);
+  ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
+  ArrowBufferReset(&buffer);
 }
