@@ -57,6 +57,14 @@ jobs:
           cmake --build .
           cmake --install . --prefix=../../../nanoarrow-latest
 
+      - name: Bundle nanoarrow_device
+        run: |
+          cd extensions/nanoarrow_device
+          mkdir build && cd build
+          cmake .. -DNANOARROW_DEVICE_BUNDLE=ON
+          cmake --build .
+          cmake --install . --prefix=../../../nanoarrow-latest
+
       - name: Compress bundle
         run: |
           zip nanoarrow-latest.zip $(find nanoarrow-latest -type f)

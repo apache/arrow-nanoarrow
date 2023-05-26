@@ -54,15 +54,19 @@ if (NANOARROW_DEVICE_BUNDLE)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow)
 
-  # nanoarrow_device.h is already standalone
+  # nanoarrow_device.h is currently standalone
   set(NANOARROW_DEVICE_H_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_device.h)
   file(READ src/nanoarrow/nanoarrow_device.h SRC_FILE_CONTENTS)
   file(WRITE ${NANOARROW_DEVICE_H_TEMP} "${SRC_FILE_CONTENTS}")
 
+  # nanoarrow_device.c is currently standalone
+  set(NANOARROW_DEVICE_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_device.c)
+  file(READ src/nanoarrow/nanoarrow_device.c SRC_FILE_CONTENTS)
+  file(WRITE ${NANOARROW_DEVICE_C_TEMP} "${SRC_FILE_CONTENTS}")
+
   # Add a library that the tests can link against (but don't install it)
   if(NANOARROW_DEVICE_BUILD_TESTS)
-    add_library(nanoarrow_device
-      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_device.c)
+    add_library(nanoarrow_device ${NANOARROW_DEVICE_C_TEMP})
 
     target_include_directories(nanoarrow_device PUBLIC
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
