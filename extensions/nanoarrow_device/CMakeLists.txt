@@ -117,6 +117,9 @@ if (NANOARROW_DEVICE_WITH_METAL)
   find_library(METAL_LIBRARY Metal REQUIRED)
   message(STATUS "Metal framework found at '${METAL_LIBRARY}'")
 
+  find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
+  message(STATUS "Foundation framework found at '${FOUNDATION_LIBRARY}'")
+
   add_library(nanoarrow_device_metal
     src/nanoarrow_device_metal/metal_impl.cc
     src/nanoarrow_device_metal/nanoarrow_device_metal.cc)
@@ -125,7 +128,10 @@ if (NANOARROW_DEVICE_WITH_METAL)
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/metal-cpp>
     $<INSTALL_INTERFACE:include>)
 
-  target_link_libraries(nanoarrow_device_metal PUBLIC nanoarrow_device ${METAL_LIBRARY})
+  target_link_libraries(nanoarrow_device_metal PUBLIC
+    nanoarrow_device
+    nanoarrow
+    ${METAL_LIBRARY} ${FOUNDATION_LIBRARY})
 
   install(TARGETS nanoarrow_device_metal DESTINATION lib)
   install(

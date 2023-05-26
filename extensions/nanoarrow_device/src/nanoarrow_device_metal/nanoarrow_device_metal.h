@@ -24,7 +24,8 @@
 extern "C" {
 #endif
 
-ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device);
+ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device,
+                                           struct ArrowError* error);
 
 #ifdef __cplusplus
 }

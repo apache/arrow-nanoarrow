@@ -24,5 +24,7 @@
 #include "nanoarrow_device_metal.h"
 
 TEST(NanoarrowDeviceMetal, DefaultDevice) {
-  ASSERT_EQ(ArrowDeviceInitMetalDefault(nullptr), ENOTSUP);
+  nanoarrow::device::UniqueDevice device;
+  ASSERT_EQ(ArrowDeviceInitMetalDefault(device.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(device->device_type, ARROW_DEVICE_METAL);
 }

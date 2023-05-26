@@ -31,17 +31,59 @@ class Owner {
   Owner() : ptr_(nullptr) {}
   Owner(T* ptr) : ptr_(ptr) {}
 
-  void reset(T* ptr) {
+  T* operator->() { return ptr_; }
+
+  void reset(T* ptr = nullptr) {
     ptr_->release();
     ptr_ = ptr;
   }
 
   T* get() { return ptr_; }
 
-  ~Owner() { reset(nullptr); }
+  ~Owner() { reset(); }
 
  private:
   T* ptr_;
 };
 
-ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device) { return ENOTSUP; }
+static ArrowErrorCode ArrowDeviceMetalCopyBuffer(struct ArrowDevice* device_src,
+                                                 struct ArrowBufferView src,
+                                                 struct ArrowDevice* device_dst,
+                                                 struct ArrowBuffer* dst,
+                                                 void** sync_event) {
+  return ENOTSUP;
+}
+
+static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
+                                                  struct ArrowDevice* device_event,
+                                                  void* sync_event,
+                                                  struct ArrowError* error) {
+  if (sync_event == nullptr) {
+    return NANOARROW_OK;
+  }
+
+  return ENOTSUP;
+}
+
+static void ArrowDeviceMetalRelease(struct ArrowDevice* device) {
+  auto mtl_device = reinterpret_cast<MTL::Device*>(device->private_data);
+  mtl_device->release();
+  device->release = NULL;
+}
+
+ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device,
+                                           struct ArrowError* error) {
+  MTL::Device* default_device = MTL::CreateSystemDefaultDevice();
+  if (default_device == nullptr) {
+    ArrowErrorSet(error, "No default device found");
+    return EINVAL;
+  }
+
+  device->device_type = ARROW_DEVICE_METAL;
+  device->device_id = static_cast<int64_t>(default_device->registryID());
+  device->copy_buffer = &ArrowDeviceMetalCopyBuffer;
+  device->synchronize_event = &ArrowDeviceMetalSynchronize;
+  device->release = &ArrowDeviceMetalRelease;
+  device->private_data = default_device;
+  return NANOARROW_OK;
+}
