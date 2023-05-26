@@ -245,8 +245,8 @@ ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 
 /// \brief A Device wrapper with callbacks for basic memory management tasks
 ///
-/// Devices are intended to be singletons (i.e., exactly one with a static lifetime
-/// for every device).
+/// All device objects are currently implemented as singletons; however, this
+/// may change as implementations progress.
 struct ArrowDevice {
   /// \brief The device type integer identifier (see ArrowDeviceArray)
   ArrowDeviceType device_type;
@@ -257,9 +257,10 @@ struct ArrowDevice {
   /// \brief Copy a buffer to a given device
   ///
   /// Implementations should handle at least copying to themselves and to the CPU device.
-  ArrowErrorCode (*copy_to)(struct ArrowDevice* device, struct ArrowBufferView src,
-                            struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
-                            void** sync_event, struct ArrowError* error);
+  ArrowErrorCode (*copy_buffer)(struct ArrowDevice* device_src,
+                                struct ArrowBufferView src,
+                                struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
+                                void** sync_event, struct ArrowError* error);
 
   /// \brief Wait for an event
   ///
@@ -267,6 +268,9 @@ struct ArrowDevice {
   ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device,
                                       struct ArrowDevice* device_event, void* sync_event,
                                       struct ArrowError* error);
+
+  /// \brief Release this device and any resources it holds
+  void (*release)(struct ArrowDevice* device);
 
   /// \brief Opaque, implementation-specific data.
   void* private_data;
@@ -278,8 +282,17 @@ struct ArrowDevice {
 void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
                           struct ArrowDevice* device);
 
-/// \brief Initialize the CPU device singleton
+/// \brief Pointer to a statically-allocated CPU device singleton
 struct ArrowDevice* ArrowDeviceCpu(void);
+
+/// \brief Initialize a user-allocated device struct with a CPU device
+void ArrowDeviceInitCpu(struct ArrowDevice* device);
+
+ArrowErrorCode ArrowDeviceCopyBuffer(struct ArrowDevice* device_src,
+                                     struct ArrowBufferView src,
+                                     struct ArrowDevice* device_dst,
+                                     struct ArrowBuffer* dst, void** sync_event,
+                                     struct ArrowError* error);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
 ///

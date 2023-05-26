@@ -76,18 +76,39 @@ static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
   }
 }
 
+static void ArrowDeviceCpuRelease(struct ArrowDevice* device) { device->release = NULL; }
+
 struct ArrowDevice* ArrowDeviceCpu(void) {
   static struct ArrowDevice* cpu_device_singleton = NULL;
   if (cpu_device_singleton == NULL) {
     cpu_device_singleton = (struct ArrowDevice*)ArrowMalloc(sizeof(struct ArrowDevice));
-    cpu_device_singleton->device_type = ARROW_DEVICE_CPU;
-    cpu_device_singleton->device_id = 0;
-    cpu_device_singleton->copy_to = &ArrowDeviceCpuCopyTo;
-    cpu_device_singleton->synchronize_event = &ArrowDeviceCpuSynchronize;
-    cpu_device_singleton->private_data = NULL;
+    ArrowDeviceInitCpu(cpu_device_singleton);
   }
 
   return cpu_device_singleton;
+}
+
+void ArrowDeviceInitCpu(struct ArrowDevice* device) {
+  device->device_type = ARROW_DEVICE_CPU;
+  device->device_id = 0;
+  device->copy_buffer = &ArrowDeviceCpuCopyTo;
+  device->synchronize_event = &ArrowDeviceCpuSynchronize;
+  device->release = &ArrowDeviceCpuRelease;
+  device->private_data = NULL;
+}
+
+ArrowErrorCode ArrowDeviceCopyBuffer(struct ArrowDevice* device_src,
+                                     struct ArrowBufferView src,
+                                     struct ArrowDevice* device_dst,
+                                     struct ArrowBuffer* dst, void** sync_event,
+                                     struct ArrowError* error) {
+  int result =
+      device_dst->copy_buffer(device_src, src, device_dst, dst, sync_event, error);
+  if (result == ENOTSUP) {
+    result = device_src->copy_buffer(device_src, src, device_dst, dst, sync_event, error);
+  }
+
+  return result;
 }
 
 struct ArrowBasicDeviceArrayStreamPrivate {

@@ -36,7 +36,8 @@ TEST(NanoarrowDevice, CpuDevice) {
   struct ArrowBufferView view = {data, sizeof(data)};
   void* sync_event;
 
-  ASSERT_EQ(cpu->copy_to(cpu, view, cpu, &buffer, &sync_event, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceCopyBuffer(cpu, view, cpu, &buffer, &sync_event, nullptr),
+            NANOARROW_OK);
   ASSERT_EQ(buffer.size_bytes, 5);
   ASSERT_EQ(sync_event, nullptr);
   ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
