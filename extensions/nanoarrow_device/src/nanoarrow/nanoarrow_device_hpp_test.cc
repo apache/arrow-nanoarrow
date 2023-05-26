@@ -20,5 +20,33 @@
 #include "nanoarrow_device.hpp"
 
 TEST(NanoarrowDeviceHpp, UniqueDeviceArray) {
-  EXPECT_EQ(ArrowDeviceCheckRuntime(nullptr), NANOARROW_OK);
+  nanoarrow::device::UniqueDeviceArray array;
+  ASSERT_EQ(array->array.release, nullptr);
+  ArrowDeviceArrayInit(array.get(), ArrowDeviceCpu());
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array->array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_NE(array->array.release, nullptr);
+
+  nanoarrow::device::UniqueDeviceArray array2 = std::move(array);
+  ASSERT_EQ(array->array.release, nullptr);
+  ASSERT_NE(array2->array.release, nullptr);
+}
+
+TEST(NanoarrowDeviceHpp, UniqueDeviceArrayStream) {
+  nanoarrow::device::UniqueDeviceArrayStream stream;
+  ASSERT_EQ(stream->release, nullptr);
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream naive_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(naive_stream.get(), schema.get(), 0), NANOARROW_OK);
+
+  ASSERT_EQ(
+      ArrowDeviceBasicArrayStreamInit(stream.get(), naive_stream.get(), ArrowDeviceCpu()),
+      NANOARROW_OK);
+  ASSERT_NE(stream->release, nullptr);
+
+  nanoarrow::device::UniqueDeviceArrayStream stream2 = std::move(stream);
+  ASSERT_EQ(stream->release, nullptr);
+  ASSERT_NE(stream2->release, nullptr);
 }

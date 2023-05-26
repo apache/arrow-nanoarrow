@@ -35,7 +35,25 @@ static inline void move_pointer(struct ArrowDeviceArray* src,
 }
 
 static inline void release_pointer(struct ArrowDeviceArray* data) {
-  data->array.release(&data->array);
+  if (data->array.release != nullptr) {
+    data->array.release(&data->array);
+  }
+}
+
+static inline void init_pointer(struct ArrowDeviceArrayStream* data) {
+  data->release = nullptr;
+}
+
+static inline void move_pointer(struct ArrowDeviceArrayStream* src,
+                                struct ArrowDeviceArrayStream* dst) {
+  memcpy(dst, src, sizeof(struct ArrowDeviceArrayStream));
+  src->release = nullptr;
+}
+
+static inline void release_pointer(struct ArrowDeviceArrayStream* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
 }
 
 }  // namespace internal
@@ -56,6 +74,9 @@ namespace device {
 
 /// \brief Class wrapping a unique struct ArrowDeviceArray
 using UniqueDeviceArray = internal::Unique<struct ArrowDeviceArray>;
+
+/// \brief Class wrapping a unique struct ArrowDeviceArrayStream
+using UniqueDeviceArrayStream = internal::Unique<struct ArrowDeviceArrayStream>;
 
 /// @}
 
