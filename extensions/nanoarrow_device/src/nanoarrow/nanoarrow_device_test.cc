@@ -53,3 +53,38 @@ TEST(NanoarrowDevice, CpuDevice) {
   sync_event = &buffer;
   ASSERT_EQ(cpu->synchronize_event(cpu, cpu, sync_event, nullptr), EINVAL);
 }
+
+TEST(NanoarrowDevice, BasicStreamCpu) {
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+  struct ArrowArrayStream naive_stream;
+  struct ArrowDeviceArray device_array;
+  struct ArrowDeviceArrayStream array_stream;
+
+  // Build schema, array, and naive_stream
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowBasicArrayStreamInit(&naive_stream, &schema, 1), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(&naive_stream, 0, &array);
+
+  ASSERT_EQ(
+      ArrowDeviceBasicArrayStreamInit(&array_stream, &naive_stream, ArrowDeviceCpu()),
+      NANOARROW_OK);
+
+  ASSERT_EQ(array_stream.get_schema(&array_stream, &schema), NANOARROW_OK);
+  ASSERT_STREQ(schema.format, "i");
+  schema.release(&schema);
+
+  ASSERT_EQ(array_stream.get_next(&array_stream, &device_array), NANOARROW_OK);
+  ASSERT_EQ(device_array.device_type, ARROW_DEVICE_CPU);
+  ASSERT_EQ(device_array.device_id, 0);
+  ASSERT_EQ(device_array.array.n_buffers, 2);
+  device_array.array.release(&device_array.array);
+
+  ASSERT_EQ(array_stream.get_last_error(&array_stream), nullptr);
+
+  array_stream.release(&array_stream);
+}

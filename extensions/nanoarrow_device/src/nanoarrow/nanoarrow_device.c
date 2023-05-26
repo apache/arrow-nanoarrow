@@ -107,8 +107,65 @@ struct ArrowDevice* ArrowDeviceCpu(void) {
   return cpu_device_singleton;
 }
 
-ArrowErrorCode ArrowBasicDeviceArrayStreamInit(
+struct ArrowBasicDeviceArrayStreamPrivate {
+  struct ArrowDevice* device;
+  struct ArrowArrayStream naive_stream;
+};
+
+static int ArrowDeviceBasicArrayStreamGetSchema(
+    struct ArrowDeviceArrayStream* array_stream, struct ArrowSchema* schema) {
+  struct ArrowBasicDeviceArrayStreamPrivate* private_data =
+      (struct ArrowBasicDeviceArrayStreamPrivate*)array_stream->private_data;
+  return private_data->naive_stream.get_schema(&private_data->naive_stream, schema);
+}
+
+static int ArrowDeviceBasicArrayStreamGetNext(struct ArrowDeviceArrayStream* array_stream,
+                                              struct ArrowDeviceArray* device_array) {
+  struct ArrowBasicDeviceArrayStreamPrivate* private_data =
+      (struct ArrowBasicDeviceArrayStreamPrivate*)array_stream->private_data;
+
+  struct ArrowArray tmp;
+  NANOARROW_RETURN_NOT_OK(
+      private_data->naive_stream.get_next(&private_data->naive_stream, &tmp));
+  ArrowDeviceArrayInit(device_array, private_data->device);
+  ArrowArrayMove(&tmp, &device_array->array);
+  return NANOARROW_OK;
+}
+
+static const char* ArrowDeviceBasicArrayStreamGetLastError(
+    struct ArrowDeviceArrayStream* array_stream) {
+  struct ArrowBasicDeviceArrayStreamPrivate* private_data =
+      (struct ArrowBasicDeviceArrayStreamPrivate*)array_stream->private_data;
+  return private_data->naive_stream.get_last_error(&private_data->naive_stream);
+}
+
+static void ArrowDeviceBasicArrayStreamRelease(
+    struct ArrowDeviceArrayStream* array_stream) {
+  struct ArrowBasicDeviceArrayStreamPrivate* private_data =
+      (struct ArrowBasicDeviceArrayStreamPrivate*)array_stream->private_data;
+  private_data->naive_stream.release(&private_data->naive_stream);
+  ArrowFree(private_data);
+  array_stream->release = NULL;
+}
+
+ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
     struct ArrowDeviceArrayStream* device_array_stream,
-    struct ArrowArrayStream* array_stream) {
-  return ENOTSUP;
+    struct ArrowArrayStream* array_stream, struct ArrowDevice* device) {
+  struct ArrowBasicDeviceArrayStreamPrivate* private_data =
+      (struct ArrowBasicDeviceArrayStreamPrivate*)ArrowMalloc(
+          sizeof(struct ArrowBasicDeviceArrayStreamPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  private_data->device = device;
+  ArrowArrayStreamMove(array_stream, &private_data->naive_stream);
+
+  device_array_stream->device_type = device->device_type;
+  device_array_stream->get_schema = &ArrowDeviceBasicArrayStreamGetSchema;
+  device_array_stream->get_next = &ArrowDeviceBasicArrayStreamGetNext;
+  device_array_stream->get_last_error = &ArrowDeviceBasicArrayStreamGetLastError;
+  device_array_stream->release = &ArrowDeviceBasicArrayStreamRelease;
+  device_array_stream->private_data = private_data;
+  return NANOARROW_OK;
 }

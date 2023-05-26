@@ -248,13 +248,13 @@ struct ArrowDevice* ArrowDeviceCpu(void);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
 ///
-/// Wrap an ArrowArrayStream of ArrowArray objects already allocated by the specified
-/// device, as an ArrowDeviceArrayStream. This function moves the ownership of
+/// Wrap an ArrowArrayStream of ArrowDeviceArray objects already allocated by the specified
+/// device as an ArrowDeviceArrayStream. This function moves the ownership of
 /// array_stream to the device_array_stream. If this function returns NANOARROW_OK, the
 /// caller is responsible for releasing the ArrowDeviceArrayStream.
-ArrowErrorCode ArrowBasicDeviceArrayStreamInit(
+ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
     struct ArrowDeviceArrayStream* device_array_stream,
-    struct ArrowArrayStream* array_stream);
+    struct ArrowArrayStream* array_stream, struct ArrowDevice* device);
 
 /// @}
 
