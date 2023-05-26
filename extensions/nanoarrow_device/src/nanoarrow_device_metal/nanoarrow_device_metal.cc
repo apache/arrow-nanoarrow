@@ -22,6 +22,24 @@
 
 #include "nanoarrow/nanoarrow_device.hpp"
 
-ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device) {
-    return ENOTSUP;
-}
+// Wrap reference-counted NS objects
+template <typename T>
+class Owner {
+ public:
+  Owner() : ptr_(nullptr) {}
+  Owner(T* ptr) : ptr_(ptr) {}
+
+  void reset(T* ptr) {
+    ptr_->release();
+    ptr_ = ptr;
+  }
+
+  T* get() { return ptr_; }
+
+  ~Owner() { reset(nullptr); }
+
+ private:
+  T* ptr_;
+};
+
+ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device) { return ENOTSUP; }
