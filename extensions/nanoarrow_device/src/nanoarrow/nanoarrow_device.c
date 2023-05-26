@@ -80,6 +80,8 @@ static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
   switch (device_event->device_type) {
     case ARROW_DEVICE_CPU:
       if (sync_event != NULL) {
+        ArrowErrorSet(error, "Expected NULL sync_event for ARROW_DEVICE_CPU but got %p",
+                      sync_event);
         return EINVAL;
       } else {
         return NANOARROW_OK;

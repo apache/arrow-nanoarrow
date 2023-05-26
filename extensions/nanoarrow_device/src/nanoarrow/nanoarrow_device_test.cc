@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <errno.h>
+
 #include <gtest/gtest.h>
 
 #include <stdio.h>
@@ -47,4 +49,7 @@ TEST(NanoarrowDevice, CpuDevice) {
   ASSERT_EQ(sync_event, nullptr);
   ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
+
+  sync_event = &buffer;
+  ASSERT_EQ(cpu->synchronize_event(cpu, cpu, sync_event, nullptr), EINVAL);
 }
