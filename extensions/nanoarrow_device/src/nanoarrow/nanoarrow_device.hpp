@@ -55,6 +55,19 @@ static inline void release_pointer(struct ArrowDeviceArrayStream* data) {
   }
 }
 
+static inline void init_pointer(struct ArrowDevice* data) { data->release = nullptr; }
+
+static inline void move_pointer(struct ArrowDevice* src, struct ArrowDevice* dst) {
+  memcpy(dst, src, sizeof(struct ArrowDevice));
+  src->release = nullptr;
+}
+
+static inline void release_pointer(struct ArrowDevice* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
 }  // namespace internal
 }  // namespace nanoarrow
 
@@ -76,6 +89,9 @@ using UniqueDeviceArray = internal::Unique<struct ArrowDeviceArray>;
 
 /// \brief Class wrapping a unique struct ArrowDeviceArrayStream
 using UniqueDeviceArrayStream = internal::Unique<struct ArrowDeviceArrayStream>;
+
+/// \brief Class wrapping a unique struct ArrowDevice
+using UniqueDevice = internal::Unique<struct ArrowDevice>;
 
 /// @}
 

@@ -50,3 +50,14 @@ TEST(NanoarrowDeviceHpp, UniqueDeviceArrayStream) {
   ASSERT_EQ(stream->release, nullptr);
   ASSERT_NE(stream2->release, nullptr);
 }
+
+TEST(NanoarrowDeviceHpp, UniqueDevice) {
+  nanoarrow::device::UniqueDevice device;
+  ASSERT_EQ(device->release, nullptr);
+
+  ArrowDeviceInitCpu(device.get());
+
+  nanoarrow::device::UniqueDevice device2 = std::move(device);
+  ASSERT_EQ(device->release, nullptr);
+  ASSERT_NE(device2->release, nullptr);
+}
