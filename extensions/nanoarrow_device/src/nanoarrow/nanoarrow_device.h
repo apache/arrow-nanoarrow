@@ -15,12 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef NANOARROW_IPC_H_INCLUDED
-#define NANOARROW_IPC_H_INCLUDED
+#ifndef NANOARROW_DEVICE_H_INCLUDED
+#define NANOARROW_DEVICE_H_INCLUDED
 
 #include "nanoarrow.h"
 
-/// \defgroup nanoarrow_device-arrow-cdata Arrow C Data interface
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/// \defgroup nanoarrow_device-arrow-cdata Arrow C Device interface
 ///
 /// The Arrow Device and Stream interfaces are part of the
 /// Arrow Columnar Format specification
@@ -229,10 +233,6 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 #define ArrowDeviceBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBasicArrayStreamInit)
 
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 /// \defgroup nanoarrow_device Nanoarrow Device extension
