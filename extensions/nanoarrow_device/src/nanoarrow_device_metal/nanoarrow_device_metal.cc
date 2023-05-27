@@ -17,6 +17,7 @@
 // under the License.
 
 #include <errno.h>
+#include <string.h>
 
 #include <Metal/Metal.hpp>
 
@@ -46,6 +47,72 @@ class Owner {
   T* ptr_;
 };
 
+static uint8_t* ArrowDeviceMetalAllocatorReallocate(
+    struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
+    int64_t new_size) {
+  auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(allocator->private_data);
+
+  // After a failed allocation, this allocator currently can't reallocate
+  if (mtl_buffer == nullptr) {
+    return nullptr;
+  }
+
+  if (new_size < 64) {
+    new_size = 64;
+  }
+
+  old_size = mtl_buffer->length();
+  int64_t copy_size = new_size;
+  if (new_size == old_size) {
+    return reinterpret_cast<uint8_t*>(mtl_buffer->contents());
+  } else if (new_size > old_size) {
+    copy_size = old_size;
+  }
+
+  auto mtl_buffer_new =
+      mtl_buffer->device()->newBuffer(new_size, MTL::ResourceStorageModeShared);
+
+  // It's slightly simpler to not support reallocating after a failed allocation,
+  // although that can probably be fixed in the buffer logic that doesn't call
+  // allocator->free() on NULL.
+  if (mtl_buffer_new == nullptr) {
+    mtl_buffer->release();
+    allocator->private_data = nullptr;
+    return nullptr;
+  }
+
+  memcpy(mtl_buffer_new->contents(), mtl_buffer->contents(), copy_size);
+  mtl_buffer->release();
+  allocator->private_data = mtl_buffer_new;
+  return reinterpret_cast<uint8_t*>(mtl_buffer_new->contents());
+}
+
+static void ArrowDeviceMetalAllocatorFree(struct ArrowBufferAllocator* allocator,
+                                          uint8_t* ptr, int64_t old_size) {
+  auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(allocator->private_data);
+  if (mtl_buffer != nullptr) {
+    mtl_buffer->release();
+  }
+}
+
+ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowDevice* device,
+                                          struct ArrowBuffer* buffer) {
+  if (device->device_type != ARROW_DEVICE_METAL || device->release == nullptr) {
+    return EINVAL;
+  }
+
+  auto mtl_device = reinterpret_cast<MTL::Device*>(device->private_data);
+  auto mtl_buffer = mtl_device->newBuffer(64, MTL::ResourceStorageModeShared);
+
+  buffer->allocator.reallocate = &ArrowDeviceMetalAllocatorReallocate;
+  buffer->allocator.free = &ArrowDeviceMetalAllocatorFree;
+  buffer->allocator.private_data = mtl_buffer;
+  buffer->data = reinterpret_cast<uint8_t*>(mtl_buffer->contents());
+  buffer->size_bytes = 0;
+  buffer->capacity_bytes = mtl_buffer->length();
+  return NANOARROW_OK;
+}
+
 static ArrowErrorCode ArrowDeviceMetalCopyBuffer(struct ArrowDevice* device_src,
                                                  struct ArrowBufferView src,
                                                  struct ArrowDevice* device_dst,
@@ -69,6 +136,21 @@ static void ArrowDeviceMetalRelease(struct ArrowDevice* device) {
   auto mtl_device = reinterpret_cast<MTL::Device*>(device->private_data);
   mtl_device->release();
   device->release = NULL;
+}
+
+struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void) {
+  static struct ArrowDevice* default_device_singleton = nullptr;
+  if (default_device_singleton == nullptr) {
+    default_device_singleton =
+        (struct ArrowDevice*)ArrowMalloc(sizeof(struct ArrowDevice));
+    int result = ArrowDeviceInitMetalDefault(default_device_singleton, nullptr);
+    if (result != NANOARROW_OK) {
+      ArrowFree(default_device_singleton);
+      default_device_singleton = nullptr;
+    }
+  }
+
+  return default_device_singleton;
 }
 
 ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device,
