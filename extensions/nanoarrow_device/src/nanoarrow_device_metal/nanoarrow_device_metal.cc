@@ -143,7 +143,7 @@ struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void) {
   if (default_device_singleton == nullptr) {
     default_device_singleton =
         (struct ArrowDevice*)ArrowMalloc(sizeof(struct ArrowDevice));
-    int result = ArrowDeviceInitMetalDefault(default_device_singleton, nullptr);
+    int result = ArrowDeviceMetalInitDefaultDevice(default_device_singleton, nullptr);
     if (result != NANOARROW_OK) {
       ArrowFree(default_device_singleton);
       default_device_singleton = nullptr;
@@ -153,8 +153,8 @@ struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void) {
   return default_device_singleton;
 }
 
-ArrowErrorCode ArrowDeviceInitMetalDefault(struct ArrowDevice* device,
-                                           struct ArrowError* error) {
+ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
+                                                 struct ArrowError* error) {
   MTL::Device* default_device = MTL::CreateSystemDefaultDevice();
   if (default_device == nullptr) {
     ArrowErrorSet(error, "No default device found");

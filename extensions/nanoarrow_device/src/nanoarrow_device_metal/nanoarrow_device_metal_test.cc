@@ -25,7 +25,7 @@
 
 TEST(NanoarrowDeviceMetal, DefaultDevice) {
   nanoarrow::device::UniqueDevice device;
-  ASSERT_EQ(ArrowDeviceInitMetalDefault(device.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceMetalInitDefaultDevice(device.get(), nullptr), NANOARROW_OK);
   ASSERT_EQ(device->device_type, ARROW_DEVICE_METAL);
   ASSERT_NE(device->device_id, 0);
 
