@@ -24,14 +24,31 @@
 extern "C" {
 #endif
 
+/// \brief A pointer to the default metal device singleton
 struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
 
+/// \brief Initialize a preallocated device struct with the default metal device
 ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
                                                  struct ArrowError* error);
 
+/// \brief Initialize a buffer with the Metal allocator
+///
+/// Metal uses shared memory with the CPU; however, only page-aligned buffers
+/// or buffers created explicitly using the Metal API can be sent to the GPU.
+/// This buffer's allocator uses the Metal API so that it is cheaper to send
+/// buffers to the GPU later. You can use populate or move this buffer just
+/// like a normal ArrowBuffer.
 ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowDevice* device,
-                                          struct ArrowBuffer* buffer);
+                                          struct ArrowBuffer* buffer,
+                                          struct ArrowBufferView initial_content);
 
+/// \brief Convert an ArrowArray to buffers that use the Metal allocator
+///
+/// Replaces buffers from a given ArrowArray with ones that use the Metal
+/// allocator, copying existing content where necessary. The array is still
+/// valid to use just like a normal ArrowArray that was initialized with
+/// ArrowArrayInitFromType() (i.e., it can be appended to and finished with
+/// validation).
 ArrowErrorCode ArrowDeviceMetalInitArrayBuffers(struct ArrowDevice* device,
                                                 struct ArrowArray* array);
 

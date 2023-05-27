@@ -36,14 +36,15 @@ TEST(NanoarrowDeviceMetal, DefaultDevice) {
 TEST(NanoarrowDeviceMetal, DeviceBuffer) {
   struct ArrowBuffer buffer;
   int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  struct ArrowBufferView view = {data, sizeof(data)};
+  struct ArrowBufferView view = {nullptr, 0};
 
-  ASSERT_EQ(ArrowDeviceMetalInitBuffer(ArrowDeviceMetalDefaultDevice(), &buffer),
+  ASSERT_EQ(ArrowDeviceMetalInitBuffer(ArrowDeviceMetalDefaultDevice(), &buffer, view),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, 0);
   EXPECT_EQ(buffer.capacity_bytes, 64);
   EXPECT_NE(buffer.data, nullptr);
 
+  view = {data, sizeof(data)};
   ASSERT_EQ(ArrowBufferAppendBufferView(&buffer, view), NANOARROW_OK);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   EXPECT_EQ(buffer.capacity_bytes, 128);
@@ -65,7 +66,7 @@ TEST(NanoarrowDeviceMetal, DeviceBuffer) {
   EXPECT_EQ(buffer.data, nullptr);
   EXPECT_EQ(buffer.allocator.private_data, nullptr);
 
-  EXPECT_EQ(ArrowDeviceMetalInitBuffer(ArrowDeviceCpu(), &buffer), EINVAL);
+  EXPECT_EQ(ArrowDeviceMetalInitBuffer(ArrowDeviceCpu(), &buffer, view), EINVAL);
 }
 
 TEST(NanoarrowDeviceMetal, DeviceArrayBuffers) {
@@ -86,4 +87,12 @@ TEST(NanoarrowDeviceMetal, DeviceArrayBuffers) {
   ASSERT_EQ(
       ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
       NANOARROW_OK);
+
+  // Make sure that ArrowDeviceMetalInitArrayBuffers() copies existing content
+  ASSERT_EQ(
+      ArrowDeviceMetalInitArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
+      NANOARROW_OK);
+
+  auto data_ptr = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
+  EXPECT_EQ(data_ptr[0], 1234);
 }
