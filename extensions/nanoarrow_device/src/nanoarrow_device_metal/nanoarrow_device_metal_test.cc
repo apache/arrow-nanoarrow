@@ -18,6 +18,7 @@
 #include <errno.h>
 
 #include <gtest/gtest.h>
+#include <Metal/Metal.hpp>
 
 #include "nanoarrow_device.hpp"
 
@@ -65,4 +66,24 @@ TEST(NanoarrowDeviceMetal, DeviceBuffer) {
   EXPECT_EQ(buffer.allocator.private_data, nullptr);
 
   EXPECT_EQ(ArrowDeviceMetalInitBuffer(ArrowDeviceCpu(), &buffer), EINVAL);
+}
+
+TEST(NanoarrowDeviceMetal, DeviceArrayBuffers) {
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(array.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+
+  ASSERT_EQ(
+      ArrowDeviceMetalInitArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
+      NANOARROW_OK);
+
+  // Make sure we can build an array
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array->children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(array.get()), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+      NANOARROW_OK);
 }

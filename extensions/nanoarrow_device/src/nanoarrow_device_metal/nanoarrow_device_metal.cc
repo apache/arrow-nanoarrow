@@ -103,6 +103,9 @@ ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowDevice* device,
 
   auto mtl_device = reinterpret_cast<MTL::Device*>(device->private_data);
   auto mtl_buffer = mtl_device->newBuffer(64, MTL::ResourceStorageModeShared);
+  if (mtl_buffer == nullptr) {
+    return ENOMEM;
+  }
 
   buffer->allocator.reallocate = &ArrowDeviceMetalAllocatorReallocate;
   buffer->allocator.free = &ArrowDeviceMetalAllocatorFree;
@@ -110,6 +113,20 @@ ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowDevice* device,
   buffer->data = reinterpret_cast<uint8_t*>(mtl_buffer->contents());
   buffer->size_bytes = 0;
   buffer->capacity_bytes = mtl_buffer->length();
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowDeviceMetalInitArrayBuffers(struct ArrowDevice* device,
+                                                struct ArrowArray* array) {
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceMetalInitBuffer(device, ArrowArrayBuffer(array, i)));
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitArrayBuffers(device, array->children[i]));
+  }
+
   return NANOARROW_OK;
 }
 

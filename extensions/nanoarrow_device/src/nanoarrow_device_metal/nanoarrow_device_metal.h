@@ -32,6 +32,9 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
 ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowDevice* device,
                                           struct ArrowBuffer* buffer);
 
+ArrowErrorCode ArrowDeviceMetalInitArrayBuffers(struct ArrowDevice* device,
+                                                struct ArrowArray* array);
+
 #ifdef __cplusplus
 }
 #endif
