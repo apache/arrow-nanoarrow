@@ -17,7 +17,9 @@
 
 FROM archlinux:latest
 
-RUN pacman -Syu --noconfirm git gcc make cmake r-base gnupg curl arrow
+RUN pacman -Syu --noconfirm git gcc make cmake r-base gnupg curl arrow python-pip
+
+RUN pip3 install build Cython numpy pytest pyarrow
 
 # For R
 RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'

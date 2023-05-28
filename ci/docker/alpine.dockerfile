@@ -19,7 +19,9 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 
-RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl
+RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl py3-pip python3-dev
+
+RUN pip3 install build Cython numpy pytest
 
 # For Arrow C++
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-11.0.0.tar.gz | tar -zxf - && \

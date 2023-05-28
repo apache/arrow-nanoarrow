@@ -20,7 +20,8 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} centos:7
 
 RUN yum install -y epel-release
-RUN yum install -y git gnupg curl R gcc-c++ cmake3
+RUN yum install -y git gnupg curl R gcc-c++ cmake3 python3-devel
+RUN pip3 install build Cython numpy pytest
 
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
 ENV LC_ALL en_US.UTF-8

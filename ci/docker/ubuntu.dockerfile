@@ -20,7 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    locales git cmake r-base gnupg curl valgrind python3-pip doxygen pandoc lcov \
+    locales git cmake r-base gnupg curl valgrind python3-pip python3-venv doxygen pandoc lcov \
     libxml2-dev libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev \
     libjpeg-dev libpng-dev libtiff-dev
 
@@ -33,8 +33,8 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
     apt-get update && \
     apt-get install -y -V libarrow-dev
 
-# For documentation build
-RUN pip3 install pydata-sphinx-theme sphinx breathe
+# For documentation build + Python build
+RUN pip3 install pydata-sphinx-theme sphinx breathe build Cython numpy pytest pyarrow
 
 # For R. Note that we install arrow here so that the integration tests for R run
 # in at least one test image.
