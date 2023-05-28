@@ -38,6 +38,7 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0
     make install
 
 # For R. Note that arrow is not installed (takes too long).
+RUN mkdir ~/.R && echo "MAKEFLAGS += -j$(nproc)" > ~/.R/Makevars
 RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow

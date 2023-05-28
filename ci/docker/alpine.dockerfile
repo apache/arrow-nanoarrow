@@ -21,7 +21,11 @@ FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 
 RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl py3-pip python3-dev
 
-RUN pip3 install build Cython numpy pytest
+RUN pip3 install build Cython pytest
+
+# numpy's default build doesn't work on s390x in a VM.
+# This slows down non-s390x builds too, but we're also building Arrow C++, so go for it
+RUN pip3 install numpy --install-option "--cpu-baseline=none" --install-option "--cpu-dispatch=none"
 
 # For Arrow C++
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-11.0.0.tar.gz | tar -zxf - && \
@@ -35,6 +39,7 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-11.0.
     cmake --install . --prefix=../arrow
 
 # For R. Note that arrow is not installed (takes too long).
+RUN mkdir ~/.R && echo "MAKEFLAGS += -j$(nproc)" > ~/.R/Makevars
 RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow
