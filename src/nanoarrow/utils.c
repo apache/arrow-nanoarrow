@@ -94,8 +94,8 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
       layout->element_size_bits[1] = 64;
       break;
 
-     case NANOARROW_TYPE_STRUCT:
-     case NANOARROW_TYPE_FIXED_SIZE_LIST:
+    case NANOARROW_TYPE_STRUCT:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_NONE;
       layout->buffer_data_type[1] = NANOARROW_TYPE_UNINITIALIZED;
       break;
@@ -142,6 +142,7 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
       break;
 
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      layout->buffer_data_type[1] = NANOARROW_TYPE_BINARY;
       break;
 
     case NANOARROW_TYPE_DENSE_UNION:
@@ -171,12 +172,18 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
       break;
 
     case NANOARROW_TYPE_LARGE_STRING:
+      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT64;
+      layout->element_size_bits[1] = 64;
+      layout->buffer_type[2] = NANOARROW_BUFFER_TYPE_DATA;
+      layout->buffer_data_type[2] = NANOARROW_TYPE_STRING;
+      break;
     case NANOARROW_TYPE_LARGE_BINARY:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
       layout->buffer_data_type[1] = NANOARROW_TYPE_INT64;
       layout->element_size_bits[1] = 64;
       layout->buffer_type[2] = NANOARROW_BUFFER_TYPE_DATA;
-      layout->buffer_data_type[2] = storage_type;
+      layout->buffer_data_type[2] = NANOARROW_TYPE_BINARY;
       break;
 
     default:
