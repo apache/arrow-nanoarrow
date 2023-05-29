@@ -20,7 +20,8 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} centos:7
 
 RUN yum install -y epel-release
-RUN yum install -y git gnupg curl R gcc-c++ cmake3
+RUN yum install -y git gnupg curl R gcc-c++ cmake3 python3-devel
+RUN pip3 install build Cython numpy pytest
 
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
@@ -37,7 +38,9 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0
     make install
 
 # For R. Note that arrow is not installed (takes too long).
+RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
 RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+RUN rm -f ~/.R/Makevars
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow
 ENV CMAKE_BIN cmake3

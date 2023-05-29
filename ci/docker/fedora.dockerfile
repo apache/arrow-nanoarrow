@@ -19,7 +19,12 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} fedora:latest
 
-RUN dnf install -y git cmake R gnupg curl libarrow-devel glibc-langpack-en
+RUN dnf install -y git cmake R gnupg curl libarrow-devel glibc-langpack-en \
+    python3-pip python3-devel
+
+RUN pip3 install build Cython numpy pytest pyarrow
 
 # For R. Note that arrow is not installed (takes too long).
+RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
 RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+RUN rm -f ~/.R/Makevars
