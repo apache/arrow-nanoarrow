@@ -554,6 +554,9 @@ struct ArrowLayout {
   /// \brief The function of each buffer
   enum ArrowBufferType buffer_type[3];
 
+  /// \brief The data type of each buffer
+  enum ArrowType buffer_data_type[3];
+
   /// \brief The size of an element each buffer or 0 if this size is variable or unknown
   int64_t element_size_bits[3];
 
