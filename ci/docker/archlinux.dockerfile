@@ -22,5 +22,6 @@ RUN pacman -Syu --noconfirm git gcc make cmake r-base gnupg curl arrow python-pi
 RUN pip3 install build Cython numpy pytest pyarrow
 
 # For R
-RUN mkdir ~/.R && echo "MAKEFLAGS += -j$(nproc)" > ~/.R/Makevars
+RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
 RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+RUN rm -f ~/.R/Makevars
