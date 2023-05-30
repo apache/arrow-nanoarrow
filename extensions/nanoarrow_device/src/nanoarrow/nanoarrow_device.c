@@ -58,6 +58,35 @@ static ArrowErrorCode ArrowDeviceCpuBufferInit(struct ArrowDevice* device_src,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowDeviceCpuBufferMove(struct ArrowDevice* device_src,
+                                               struct ArrowBuffer* src,
+                                               struct ArrowDevice* device_dst,
+                                               struct ArrowBuffer* dst,
+                                               void** sync_event) {
+  if (device_dst->device_type != ARROW_DEVICE_CPU ||
+      device_src->device_type != ARROW_DEVICE_CPU) {
+    return ENOTSUP;
+  }
+
+  ArrowBufferMove(src, dst);
+  *sync_event = NULL;
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
+                                               struct ArrowBufferView src,
+                                               struct ArrowDevice* device_dst,
+                                               uint8_t* dst, void** sync_event) {
+  if (device_dst->device_type != ARROW_DEVICE_CPU ||
+      device_src->device_type != ARROW_DEVICE_CPU) {
+    return ENOTSUP;
+  }
+
+  memcpy(dst, src.data.data, src.size_bytes);
+  *sync_event = NULL;
+  return NANOARROW_OK;
+}
+
 static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
                                                 struct ArrowDevice* device_event,
                                                 void* sync_event,
@@ -92,6 +121,8 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->device_type = ARROW_DEVICE_CPU;
   device->device_id = 0;
   device->buffer_init = &ArrowDeviceCpuBufferInit;
+  device->buffer_move = &ArrowDeviceCpuBufferMove;
+  device->buffer_copy = &ArrowDeviceCpuBufferCopy;
   device->synchronize_event = &ArrowDeviceCpuSynchronize;
   device->release = &ArrowDeviceCpuRelease;
   device->private_data = NULL;

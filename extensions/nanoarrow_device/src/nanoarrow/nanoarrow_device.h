@@ -258,18 +258,42 @@ struct ArrowDevice {
 
   /// \brief Initialize an owning buffer from existing content
   ///
+  /// Creates a new buffer whose data member can be accessed by the GPU by
+  /// copying existing content.
   /// Implementations must check device_src and device_dst and return ENOTSUP if
-  /// not prepared to handle this copy operation. Users should call
-  /// ArrowDeviceBufferCopy() which may try a few implementations. The sync_event
-  /// is always provided by device_dst.
+  /// not prepared to handle this operation.
   ArrowErrorCode (*buffer_init)(struct ArrowDevice* device_src,
                                 struct ArrowBufferView src,
                                 struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
                                 void** sync_event);
 
+  /// \brief Move an owning buffer to a device
+  ///
+  /// Creates a new buffer whose data member can be accessed by the GPU by
+  /// moving an existing buffer. If NANOARROW_OK is returned, src will have
+  /// been released or moved by the implementation and dst must be released by
+  /// the caller.
+  /// Implementations must check device_src and device_dst and return ENOTSUP if
+  /// not prepared to handle this operation.
+  ArrowErrorCode (*buffer_move)(struct ArrowDevice* device_src, struct ArrowBuffer* src,
+                                struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
+                                void** sync_event);
+
+  /// \brief Copy a section of memory into a preallocated buffer
+  ///
+  /// As opposed to the other buffer operations, this is designed to support
+  /// copying very small slices of memory.
+  /// Implementations must check device_src and device_dst and return ENOTSUP if
+  /// not prepared to handle this operation.
+  ArrowErrorCode (*buffer_copy)(struct ArrowDevice* device_src,
+                                struct ArrowBufferView src,
+                                struct ArrowDevice* device_dst, uint8_t* dst,
+                                void** sync_event);
+
   /// \brief Wait for an event
   ///
   /// Implementations should handle at least waiting on the CPU host.
+  /// Implementations do not have to handle a NULL sync_event.
   ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device,
                                       struct ArrowDevice* device_event, void* sync_event,
                                       struct ArrowError* error);
@@ -297,6 +321,16 @@ ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
                                      struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
                                      struct ArrowBuffer* dst, void** sync_event);
+
+ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
+                                     struct ArrowBuffer* src,
+                                     struct ArrowDevice* device_dst,
+                                     struct ArrowBuffer* dst, void** sync_event);
+
+ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
+                                     struct ArrowBufferView src,
+                                     struct ArrowDevice* device_dst, uint8_t* dst,
+                                     void** sync_event);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
 ///
