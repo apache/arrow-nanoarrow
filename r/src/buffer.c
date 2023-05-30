@@ -99,17 +99,20 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
   }
 
   // Don't bother borrowing a zero-size buffer
+  SEXP buffer_xptr;
   if (size_bytes == 0) {
-    return buffer_owning_xptr();
-  } else if (buffer_data_type != NANOARROW_TYPE_UNINITIALIZED) {
-    SEXP buffer_xptr = PROTECT(buffer_borrowed_xptr(data, size_bytes, x_sexp));
+    buffer_xptr = PROTECT(buffer_owning_xptr());
+  } else {
+    buffer_xptr = PROTECT(buffer_borrowed_xptr(data, size_bytes, x_sexp));
+  }
+
+  if (buffer_data_type != NANOARROW_TYPE_UNINITIALIZED) {
     buffer_borrowed_xptr_set_type(buffer_xptr, NANOARROW_BUFFER_TYPE_DATA,
                                   buffer_data_type);
-    UNPROTECT(1);
-    return buffer_xptr;
-  } else {
-    return buffer_borrowed_xptr(data, size_bytes, x_sexp);
   }
+
+  UNPROTECT(1);
+  return buffer_xptr;
 }
 
 SEXP nanoarrow_c_buffer_append(SEXP buffer_xptr, SEXP new_buffer_xptr) {
