@@ -149,7 +149,7 @@ ArrowErrorCode ArrowDeviceMetalInitCpuArrayBuffers(struct ArrowDevice* device,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowDeviceMetalCopyBuffer(struct ArrowDevice* device_src,
+static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
                                                  struct ArrowBufferView src,
                                                  struct ArrowDevice* device_dst,
                                                  struct ArrowBuffer* dst,
@@ -199,7 +199,7 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
 
   device->device_type = ARROW_DEVICE_METAL;
   device->device_id = static_cast<int64_t>(default_device->registryID());
-  device->copy_buffer = &ArrowDeviceMetalCopyBuffer;
+  device->buffer_init = &ArrowDeviceMetalBufferInit;
   device->synchronize_event = &ArrowDeviceMetalSynchronize;
   device->release = &ArrowDeviceMetalRelease;
   device->private_data = default_device;

@@ -36,7 +36,7 @@ TEST(NanoarrowDevice, CpuDevice) {
   struct ArrowBufferView view = {data, sizeof(data)};
   void* sync_event;
 
-  ASSERT_EQ(ArrowDeviceCopyBuffer(cpu, view, cpu, &buffer, &sync_event), NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, cpu, &buffer, &sync_event), NANOARROW_OK);
   ASSERT_EQ(buffer.size_bytes, 5);
   ASSERT_EQ(sync_event, nullptr);
   ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
@@ -47,7 +47,7 @@ TEST(NanoarrowDevice, CpuDevice) {
 }
 
 // Dummy device that can copy to/from the CPU
-static ArrowErrorCode DummyNonCpuCopyBuffer(struct ArrowDevice* device_src,
+static ArrowErrorCode DummyNonCpuBufferInit(struct ArrowDevice* device_src,
                                             struct ArrowBufferView src,
                                             struct ArrowDevice* device_dst,
                                             struct ArrowBuffer* dst, void** sync_event) {
@@ -70,21 +70,21 @@ TEST(NanoarrowDevice, ArrowBufferCopyDummyNonCpuDevice) {
   struct ArrowDevice not_cpu;
   ArrowDeviceInitCpu(&not_cpu);
   not_cpu.device_type = ARROW_DEVICE_EXT_DEV;
-  not_cpu.copy_buffer = &DummyNonCpuCopyBuffer;
+  not_cpu.buffer_init = &DummyNonCpuBufferInit;
 
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowBufferView view = {data, sizeof(data)};
   void* sync_event;
 
-  ASSERT_EQ(ArrowDeviceCopyBuffer(cpu, view, &not_cpu, &buffer, &sync_event),
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, &not_cpu, &buffer, &sync_event),
             NANOARROW_OK);
   ASSERT_EQ(buffer.size_bytes, 5);
   ASSERT_EQ(sync_event, nullptr);
   ASSERT_EQ(memcmp(buffer.data, view.data.data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
-  ASSERT_EQ(ArrowDeviceCopyBuffer(&not_cpu, view, cpu, &buffer, &sync_event),
+  ASSERT_EQ(ArrowDeviceBufferInit(&not_cpu, view, cpu, &buffer, &sync_event),
             NANOARROW_OK);
   ASSERT_EQ(buffer.size_bytes, 5);
   ASSERT_EQ(sync_event, nullptr);

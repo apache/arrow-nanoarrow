@@ -256,13 +256,13 @@ struct ArrowDevice {
   /// \brief The device identifier (see ArrowDeviceArray)
   int64_t device_id;
 
-  /// \brief Copy a buffer
+  /// \brief Initialize an owning buffer from existing content
   ///
   /// Implementations must check device_src and device_dst and return ENOTSUP if
-  /// not prepared to handle this copy operation. ArrowDeviceBufferCopy() is the
-  /// preferred usage as it will try both device_src and device_dst. The sync_event
+  /// not prepared to handle this copy operation. Users should call
+  /// ArrowDeviceBufferCopy() which may try a few implementations. The sync_event
   /// is always provided by device_dst.
-  ArrowErrorCode (*copy_buffer)(struct ArrowDevice* device_src,
+  ArrowErrorCode (*buffer_init)(struct ArrowDevice* device_src,
                                 struct ArrowBufferView src,
                                 struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
                                 void** sync_event);
@@ -293,7 +293,7 @@ struct ArrowDevice* ArrowDeviceCpu(void);
 /// \brief Initialize a user-allocated device struct with a CPU device
 void ArrowDeviceInitCpu(struct ArrowDevice* device);
 
-ArrowErrorCode ArrowDeviceCopyBuffer(struct ArrowDevice* device_src,
+ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
                                      struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
                                      struct ArrowBuffer* dst, void** sync_event);
