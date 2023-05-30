@@ -393,7 +393,8 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
                                    array_view->buffer_views[i].size_bytes, shelter));
 
   buffer_borrowed_xptr_set_type(buffer_xptr, array_view->layout.buffer_type[i],
-                                array_view->layout.buffer_data_type[i]);
+                                array_view->layout.buffer_data_type[i],
+                                array_view->layout.element_size_bits[i]);
   UNPROTECT(2);
   return buffer_xptr;
 }

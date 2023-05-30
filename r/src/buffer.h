@@ -71,10 +71,12 @@ static inline SEXP buffer_borrowed_xptr(const void* addr, int64_t size_bytes,
 
 static inline void buffer_borrowed_xptr_set_type(SEXP buffer_xptr,
                                                  enum ArrowBufferType buffer_type,
-                                                 enum ArrowType buffer_data_type) {
-  SEXP buffer_types_sexp = PROTECT(Rf_allocVector(INTSXP, 2));
+                                                 enum ArrowType buffer_data_type,
+                                                 int32_t element_size_bits) {
+  SEXP buffer_types_sexp = PROTECT(Rf_allocVector(INTSXP, 3));
   INTEGER(buffer_types_sexp)[0] = buffer_type;
   INTEGER(buffer_types_sexp)[1] = buffer_data_type;
+  INTEGER(buffer_types_sexp)[2] = element_size_bits;
   R_SetExternalPtrTag(buffer_xptr, buffer_types_sexp);
   UNPROTECT(1);
 }

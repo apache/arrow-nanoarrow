@@ -41,6 +41,7 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
   R_xlen_t len = Rf_xlength(x_sexp);
   const void* data = NULL;
   int64_t size_bytes = 0;
+  int32_t element_size_bits = 0;
   enum ArrowType buffer_data_type = NANOARROW_TYPE_UNINITIALIZED;
 
   // For non-NA character(1), we use the first element
@@ -76,23 +77,28 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
     case RAWSXP:
       buffer_data_type = NANOARROW_TYPE_BINARY;
       size_bytes = len;
+      element_size_bits = 8;
       break;
     case LGLSXP:
     case INTSXP:
       buffer_data_type = NANOARROW_TYPE_INT32;
       size_bytes = len * sizeof(int);
+      element_size_bits = 8 * sizeof(int);
       break;
     case REALSXP:
       buffer_data_type = NANOARROW_TYPE_DOUBLE;
       size_bytes = len * sizeof(double);
+      element_size_bits = 8 * sizeof(double);
       break;
     case CPLXSXP:
       buffer_data_type = NANOARROW_TYPE_DOUBLE;
       size_bytes = len * 2 * sizeof(double);
+      element_size_bits = 8 * sizeof(double);
       break;
     case CHARSXP:
       buffer_data_type = NANOARROW_TYPE_STRING;
       size_bytes = Rf_xlength(x_sexp);
+      element_size_bits = 8;
       break;
     default:
       break;
@@ -108,7 +114,7 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
 
   if (buffer_data_type != NANOARROW_TYPE_UNINITIALIZED) {
     buffer_borrowed_xptr_set_type(buffer_xptr, NANOARROW_BUFFER_TYPE_DATA,
-                                  buffer_data_type);
+                                  buffer_data_type, element_size_bits);
   }
 
   UNPROTECT(1);
