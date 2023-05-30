@@ -38,7 +38,7 @@ TEST(NanoarrowDeviceMetal, DeviceBuffer) {
   int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   struct ArrowBufferView view = {nullptr, 0};
 
-  ASSERT_EQ(ArrowDeviceMetalInitBuffer(ArrowDeviceMetalDefaultDevice(), &buffer, view),
+  ASSERT_EQ(ArrowDeviceMetalInitCpuBuffer(ArrowDeviceMetalDefaultDevice(), &buffer, view),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, 0);
   EXPECT_EQ(buffer.capacity_bytes, 64);
@@ -66,7 +66,7 @@ TEST(NanoarrowDeviceMetal, DeviceBuffer) {
   EXPECT_EQ(buffer.data, nullptr);
   EXPECT_EQ(buffer.allocator.private_data, nullptr);
 
-  EXPECT_EQ(ArrowDeviceMetalInitBuffer(ArrowDeviceCpu(), &buffer, view), EINVAL);
+  EXPECT_EQ(ArrowDeviceMetalInitCpuBuffer(ArrowDeviceCpu(), &buffer, view), EINVAL);
 }
 
 TEST(NanoarrowDeviceMetal, DeviceArrayBuffers) {
@@ -77,7 +77,7 @@ TEST(NanoarrowDeviceMetal, DeviceArrayBuffers) {
             NANOARROW_OK);
 
   ASSERT_EQ(
-      ArrowDeviceMetalInitArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
+      ArrowDeviceMetalInitCpuArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
       NANOARROW_OK);
 
   // Make sure we can build an array
@@ -90,7 +90,7 @@ TEST(NanoarrowDeviceMetal, DeviceArrayBuffers) {
 
   // Make sure that ArrowDeviceMetalInitArrayBuffers() copies existing content
   ASSERT_EQ(
-      ArrowDeviceMetalInitArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
+      ArrowDeviceMetalInitCpuArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
       NANOARROW_OK);
 
   auto data_ptr = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);

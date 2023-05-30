@@ -95,9 +95,9 @@ static void ArrowDeviceMetalAllocatorFree(struct ArrowBufferAllocator* allocator
   }
 }
 
-ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowDevice* device,
-                                          struct ArrowBuffer* buffer,
-                                          struct ArrowBufferView initial_content) {
+ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
+                                             struct ArrowBuffer* buffer,
+                                             struct ArrowBufferView initial_content) {
   if (device->device_type != ARROW_DEVICE_METAL || device->release == nullptr) {
     return EINVAL;
   }
@@ -125,8 +125,8 @@ ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowDevice* device,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowDeviceMetalInitArrayBuffers(struct ArrowDevice* device,
-                                                struct ArrowArray* array) {
+ArrowErrorCode ArrowDeviceMetalInitCpuArrayBuffers(struct ArrowDevice* device,
+                                                   struct ArrowArray* array) {
   struct ArrowBuffer* buffer;
   struct ArrowBufferView contents;
   struct ArrowBuffer new_buffer;
@@ -136,13 +136,14 @@ ArrowErrorCode ArrowDeviceMetalInitArrayBuffers(struct ArrowDevice* device,
     contents.data.data = buffer->data;
     contents.size_bytes = buffer->size_bytes;
 
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitBuffer(device, &new_buffer, contents));
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(device, &new_buffer, contents));
     ArrowBufferReset(buffer);
     ArrowBufferMove(&new_buffer, buffer);
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitArrayBuffers(device, array->children[i]));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceMetalInitCpuArrayBuffers(device, array->children[i]));
   }
 
   return NANOARROW_OK;
