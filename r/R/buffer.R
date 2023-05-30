@@ -73,12 +73,22 @@ print.nanoarrow_buffer <- function(x, ...) {
 #' @export
 format.nanoarrow_buffer <- function(x, ...) {
   info <- nanoarrow_buffer_info(x)
+  if (info$data_type == "unknown") {
+    len <- ""
+  } else if (info$element_size_bits == 0 || info$data_type %in% c("binary", "string")) {
+    len <- sprintf("[%s b]", info$size_bytes)
+  } else {
+    logical_length <- (info$size_bytes * 8) %/% info$element_size_bits
+    len <- sprintf("[%s][%s b]", logical_length, info$size_bytes)
+  }
+
+
   sprintf(
-    "<%s %s<%s>[%s b] at %s>",
+    "<%s %s<%s>%s at %s>",
     class(x)[1],
     info$type,
     info$data_type,
-    info$size_bytes,
+    len,
     nanoarrow_pointer_addr_pretty(info$data)
   )
 }
@@ -138,7 +148,7 @@ length.nanoarrow_buffer <- function(x, ...) {
 
 #' @export
 names.nanoarrow_buffer <- function(x, ...) {
-  c("data", "size_bytes", "capacity_bytes", "type", "data_type")
+  c("data", "size_bytes", "capacity_bytes", "type", "data_type", "element_size_bits")
 }
 
 #' @export

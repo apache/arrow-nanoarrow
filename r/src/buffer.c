@@ -71,9 +71,6 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
 
   switch (TYPEOF(x_sexp)) {
     case NILSXP:
-      buffer_data_type = NANOARROW_TYPE_UNINITIALIZED;
-      size_bytes = 0;
-      break;
     case RAWSXP:
       buffer_data_type = NANOARROW_TYPE_BINARY;
       size_bytes = len;
@@ -112,10 +109,8 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
     buffer_xptr = PROTECT(buffer_borrowed_xptr(data, size_bytes, x_sexp));
   }
 
-  if (buffer_data_type != NANOARROW_TYPE_UNINITIALIZED) {
-    buffer_borrowed_xptr_set_type(buffer_xptr, NANOARROW_BUFFER_TYPE_DATA,
-                                  buffer_data_type, element_size_bits);
-  }
+  buffer_borrowed_xptr_set_type(buffer_xptr, NANOARROW_BUFFER_TYPE_DATA, buffer_data_type,
+                                element_size_bits);
 
   UNPROTECT(1);
   return buffer_xptr;
@@ -140,9 +135,12 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
 
   SEXP buffer_type_sexp;
   SEXP buffer_data_type_sexp;
+  int32_t element_size_bits;
+
   if (buffer_types_sexp == R_NilValue) {
     buffer_type_sexp = PROTECT(Rf_mkString("unknown"));
     buffer_data_type_sexp = PROTECT(Rf_mkString("unknown"));
+    element_size_bits = 0;
   } else {
     enum ArrowBufferType buffer_type = INTEGER(buffer_types_sexp)[0];
     const char* buffer_type_string;
@@ -172,15 +170,19 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
 
     buffer_type_sexp = PROTECT(Rf_mkString(buffer_type_string));
     buffer_data_type_sexp = PROTECT(Rf_mkString(buffer_data_type_string));
+    element_size_bits = INTEGER(buffer_types_sexp)[2];
   }
 
-  const char* names[] = {"data", "size_bytes", "capacity_bytes", "type", "data_type", ""};
+  const char* names[] = {"data", "size_bytes", "capacity_bytes",
+                         "type", "data_type",  "element_size_bits",
+                         ""};
   SEXP info = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(info, 0, R_MakeExternalPtr(buffer->data, NULL, buffer_xptr));
   SET_VECTOR_ELT(info, 1, Rf_ScalarReal(buffer->size_bytes));
   SET_VECTOR_ELT(info, 2, Rf_ScalarReal(buffer->capacity_bytes));
   SET_VECTOR_ELT(info, 3, buffer_type_sexp);
   SET_VECTOR_ELT(info, 4, buffer_data_type_sexp);
+  SET_VECTOR_ELT(info, 5, Rf_ScalarInteger(element_size_bits));
   UNPROTECT(3);
   return info;
 }

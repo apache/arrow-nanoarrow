@@ -366,14 +366,7 @@ static SEXP borrow_array_view_child(struct ArrowArrayView* array_view, int64_t i
 }
 
 static SEXP borrow_unknown_buffer(struct ArrowArray* array, int64_t i, SEXP shelter) {
-  SEXP buffer_class = PROTECT(Rf_allocVector(STRSXP, 2));
-  SET_STRING_ELT(buffer_class, 0, Rf_mkChar("nanoarrow_buffer_unknown"));
-  SET_STRING_ELT(buffer_class, 1, Rf_mkChar("nanoarrow_buffer"));
-
-  SEXP buffer = PROTECT(buffer_borrowed_xptr(array->buffers[i], 0, shelter));
-  Rf_setAttrib(buffer, R_ClassSymbol, buffer_class);
-  UNPROTECT(2);
-  return buffer;
+  return buffer_borrowed_xptr(array->buffers[i], 0, shelter);
 }
 
 static SEXP length_from_int64(int64_t value) {
