@@ -50,6 +50,17 @@ test_that("as_nanoarrow_buffer() works for R atomic types", {
   expect_identical(convert_buffer(buffer_chr), "1234")
 })
 
+test_that("buffers can be printed", {
+  expect_snapshot(str(as_nanoarrow_buffer(1:10)))
+  expect_snapshot(str(as_nanoarrow_buffer(1:10000)))
+  expect_snapshot(str(as_nanoarrow_buffer(strrep("abcdefg", 100))))
+  expect_snapshot(str(as_nanoarrow_buffer(charToRaw(strrep("abcdefg", 100)))))
+
+  array <- as_nanoarrow_array(1:100)
+  nanoarrow_array_set_schema(array, NULL)
+  expect_snapshot(str(array$buffers[[2]]))
+})
+
 test_that("as_nanoarrow_buffer() errors for unsupported types", {
   expect_error(
     as_nanoarrow_buffer(environment()),

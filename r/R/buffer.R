@@ -57,8 +57,49 @@ as_nanoarrow_buffer.default <- function(x, ...) {
 
 #' @importFrom utils str
 #' @export
-str.nanoarrow_buffer <- function(object, ...) {
-  cat(sprintf("%s\n", format(object)))
+str.nanoarrow_buffer <- function(object, ..., db = F, indent.str = "",
+                                 width = getOption("width")) {
+  formatted <- format(object)
+  cat(formatted)
+
+  info <- nanoarrow_buffer_info(object)
+  if (info$data_type == "unknown") {
+    cat("\n")
+    return(invisible(object))
+  }
+
+  # Worst case is decimal256, which might occupy 2 output characters per
+  # 256 buffer bytes per element. The actual number isn't too important here,
+  # it's just important to make sure this won't try to format gigabytes of
+  # text.
+  width <- width - nchar(indent.str) - nchar(formatted) - 3
+  max_print_bytes <- width / 2 * 256
+  buffer_print <- nanoarrow_buffer_head_bytes(object, max_print_bytes)
+
+  try({
+    array <- as_nanoarrow_array.nanoarrow_buffer(buffer_print)
+    vector <- convert_array(array)
+
+    # binary output here is just '[blob xxb]` which is not all that useful here
+    if (inherits(vector, "blob")) {
+      vector <- vector[[1]]
+    }
+
+    formatted_data <- paste(
+      format(vector, trim = TRUE),
+      collapse = " "
+    )
+
+    cat(" `")
+    if (nchar(formatted_data) > width) {
+      cat(substr(formatted_data, 1, width - 3))
+      cat("...")
+    } else {
+      cat(formatted_data)
+    }
+  }, silent = TRUE)
+
+  cat("`\n")
   invisible(object)
 }
 
@@ -82,12 +123,11 @@ format.nanoarrow_buffer <- function(x, ...) {
 
 
   sprintf(
-    "<%s %s<%s>%s at %s>",
+    "<%s %s<%s>%s>",
     class(x)[1],
     info$type,
     info$data_type,
-    len,
-    nanoarrow_pointer_addr_pretty(info$data)
+    len
   )
 }
 
@@ -140,6 +180,10 @@ as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
   }
 
   info <- nanoarrow_buffer_info(x)
+  if (info$data_type %in% c("binary", "string")) {
+    info$element_size_bits <- 8L
+  }
+
   if (info$data_type == "unknown" || info$element_size_bits == 0) {
     stop("Can't convert buffer with unknown type or unknown element size")
   }
@@ -196,6 +240,9 @@ nanoarrow_buffer_info <- function(x) {
   .Call(nanoarrow_c_buffer_info, x)
 }
 
+nanoarrow_buffer_head_bytes <- function(x, max_bytes) {
+  .Call(nanoarrow_c_buffer_head_bytes, x, as.double(max_bytes)[1])
+}
 
 # This is the list()-like interface to nanoarrow_buffer that allows $ and [[
 # to make nice auto-complete when interacting in an IDE

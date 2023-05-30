@@ -187,6 +187,20 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
   return info;
 }
 
+SEXP nanoarrow_c_buffer_head_bytes(SEXP buffer_xptr, SEXP max_bytes_sexp) {
+  struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
+  int64_t max_bytes = REAL(max_bytes_sexp)[0];
+
+  if (buffer->size_bytes <= max_bytes) {
+    return buffer_xptr;
+  }
+
+  SEXP buffer_clone_xptr = PROTECT(buffer_borrowed_xptr(buffer->data, max_bytes, buffer_xptr));
+  R_SetExternalPtrTag(buffer_clone_xptr, Rf_duplicate(R_ExternalPtrTag(buffer_xptr)));
+  UNPROTECT(1);
+  return buffer_clone_xptr;
+}
+
 SEXP nanoarrow_c_buffer_as_raw(SEXP buffer_xptr) {
   struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
 

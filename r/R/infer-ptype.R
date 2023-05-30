@@ -70,7 +70,7 @@ infer_ptype_other <- function(schema) {
     parsed$type,
     "na" = vctrs::unspecified(),
     "binary" = ,
-    "large_binary" = blob::new_blob(),
+    "large_binary" = new_blob_internal(),
     "date32" = structure(numeric(), class = "Date"),
     "time32" = ,
     "time64" = hms::hms(),
@@ -124,4 +124,18 @@ stop_cant_infer_ptype <- function(schema, n = 0) {
   }
 
   stop(cnd)
+}
+
+# Try to load the blob namespace. If it fails, we still return the correct
+# ptype object. This is not ideal because the behaviour of the output object
+# may be slightly different if blob isn't installed; however, we use this
+# conversion for printing buffers and it's difficult to work around with the
+# current system for conversion.
+new_blob_internal <- function() {
+  requireNamespace("blob", quietly = TRUE)
+  structure(
+    list(),
+    ptype = raw(0),
+    class = c("blob", "vctrs_list_of", "vctrs_vctr", "list")
+  )
 }
