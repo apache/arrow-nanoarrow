@@ -24,14 +24,12 @@
 #' @export
 #'
 #' @examples
-#' array <- as_nanoarrow_array(1:4)
-#' array$buffers[[2]]
+#' array <- as_nanoarrow_array(c(NA, 1:4))
+#' array$buffers
+#' as.raw(array$buffers[[1]])
 #' as.raw(array$buffers[[2]])
-#'
-#' as_nanoarrow_buffer(1:5)
-#'
-#' buffer <- as_nanoarrow_buffer(NULL)
-#'
+#' convert_buffer(array$buffers[[1]])
+#' convert_buffer(array$buffers[[2]])
 #'
 as_nanoarrow_buffer <- function(x, ...) {
   UseMethod("as_nanoarrow_buffer")
@@ -187,6 +185,11 @@ as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
 #' @export
 as.raw.nanoarrow_buffer <- function(x, ...) {
   .Call(nanoarrow_c_buffer_as_raw, x)
+}
+
+#' @export
+as.vector.nanoarrow_buffer <- function(x, mode) {
+  convert_buffer(x)
 }
 
 nanoarrow_buffer_info <- function(x) {

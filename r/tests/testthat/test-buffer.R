@@ -24,6 +24,7 @@ test_that("as_nanoarrow_buffer() works for R atomic types", {
   buffer_null <- as_nanoarrow_buffer(NULL)
   expect_identical(as.raw(buffer_null), raw(0))
   expect_identical(convert_buffer(buffer_null), blob::blob(raw(0)))
+  expect_identical(as.vector(buffer_null), convert_buffer(buffer_null))
 
   buffer_raw <- as_nanoarrow_buffer(as.raw(0x00))
   expect_identical(as.raw(buffer_raw), raw(1))
