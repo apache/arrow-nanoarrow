@@ -73,11 +73,12 @@ print.nanoarrow_buffer <- function(x, ...) {
 #' @export
 format.nanoarrow_buffer <- function(x, ...) {
   info <- nanoarrow_buffer_info(x)
-  size_bytes <- info$size_bytes %||% NA_integer_
   sprintf(
-    "<%s[%s b] at %s>",
+    "<%s %s<%s>[%s b] at %s>",
     class(x)[1],
-    size_bytes,
+    info$type,
+    info$data_type,
+    info$size_bytes,
     nanoarrow_pointer_addr_pretty(info$data)
   )
 }
@@ -124,4 +125,28 @@ nanoarrow_buffer_append <- function(buffer, new_buffer) {
 
 nanoarrow_buffer_info <- function(x) {
   .Call(nanoarrow_c_buffer_info, x)
+}
+
+
+# This is the list()-like interface to nanoarrow_buffer that allows $ and [[
+# to make nice auto-complete when interacting in an IDE
+
+#' @export
+length.nanoarrow_buffer <- function(x, ...) {
+  5L
+}
+
+#' @export
+names.nanoarrow_buffer <- function(x, ...) {
+  c("data", "size_bytes", "capacity_bytes", "type", "data_type")
+}
+
+#' @export
+`[[.nanoarrow_buffer` <- function(x, i, ...) {
+  nanoarrow_buffer_info(x)[[i]]
+}
+
+#' @export
+`$.nanoarrow_buffer` <- function(x, i, ...) {
+  x[[i]]
 }
