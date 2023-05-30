@@ -93,14 +93,10 @@ format.nanoarrow_buffer <- function(x, ...) {
   )
 }
 
-#' @export
-as.raw.nanoarrow_buffer <- function(x, ...) {
-  .Call(nanoarrow_c_buffer_as_raw, x)
-}
-
 #' Create and modify nanoarrow buffers
 #'
 #' @param buffer,new_buffer [nanoarrow_buffer][as_nanoarrow_buffer]s.
+#' @inheritParams convert_array
 #'
 #' @return
 #'   - `nanoarrow_buffer_init()`: An object of class 'nanoarrow_buffer'
@@ -131,6 +127,66 @@ nanoarrow_buffer_append <- function(buffer, new_buffer) {
   .Call(nanoarrow_c_buffer_append, buffer, new_buffer)
 
   invisible(buffer)
+}
+
+#' @rdname nanoarrow_buffer_init
+#' @export
+convert_buffer <- function(buffer, to = NULL) {
+  convert_array(as_nanoarrow_array.nanoarrow_buffer(buffer), to = to)
+}
+
+#' @export
+as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
+  if (!is.null(schema)) {
+    stop("as_nanoarrow_array(<nanoarow_buffer>) with non-NULL schema is not supported")
+  }
+
+  info <- nanoarrow_buffer_info(x)
+  if (info$data_type == "unknown" || info$element_size_bits == 0) {
+    stop("Can't convert buffer with unknown type or unknown element size")
+  }
+
+  data_type <- info$data_type
+  logical_length <- (info$size_bytes * 8) %/% info$element_size_bits
+
+  if (data_type %in% c("string", "binary") && logical_length <= .Machine$integer.max) {
+    array <- nanoarrow_array_init(na_type(data_type))
+    offsets <- as.integer(c(0, logical_length))
+    nanoarrow_array_modify(
+      array,
+      list(
+        length = 1,
+        null_count = 0,
+        buffers = list(NULL, offsets, x)
+      )
+    )
+  } else if(data_type %in% c("string", "binary")) {
+    array <- nanoarrow_array_init(na_type(paste0("large_", data_type)))
+    offsets <- as_nanoarrow_array(c(0, logical_length), schema = na_int64())$buffers[[2]]
+    nanoarrow_array_modify(
+      array,
+      list(
+        length = 1,
+        null_count = 0,
+        buffers = list(NULL, offsets, x)
+      )
+    )
+  } else {
+    array <- nanoarrow_array_init(na_type(data_type))
+    nanoarrow_array_modify(
+      array,
+      list(
+        length = logical_length,
+        null_count = 0,
+        buffers = list(NULL, x)
+      )
+    )
+  }
+}
+
+#' @export
+as.raw.nanoarrow_buffer <- function(x, ...) {
+  .Call(nanoarrow_c_buffer_as_raw, x)
 }
 
 nanoarrow_buffer_info <- function(x) {
