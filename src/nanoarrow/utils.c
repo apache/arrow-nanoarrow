@@ -59,8 +59,11 @@ const char* ArrowErrorMessage(struct ArrowError* error) {
 
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_VALIDITY;
-  layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_NONE;
+  layout->buffer_data_type[0] = NANOARROW_TYPE_BOOL;
+  layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
+  layout->buffer_data_type[1] = storage_type;
   layout->buffer_type[2] = NANOARROW_BUFFER_TYPE_NONE;
+  layout->buffer_data_type[2] = NANOARROW_TYPE_UNINITIALIZED;
 
   layout->element_size_bits[0] = 1;
   layout->element_size_bits[1] = 0;
@@ -72,43 +75,53 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
     case NANOARROW_TYPE_NA:
       layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_NONE;
+      layout->buffer_data_type[0] = NANOARROW_TYPE_UNINITIALIZED;
+      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_NONE;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_UNINITIALIZED;
       layout->element_size_bits[0] = 0;
       break;
 
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_MAP:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT32;
       layout->element_size_bits[1] = 32;
       break;
 
     case NANOARROW_TYPE_LARGE_LIST:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT64;
       layout->element_size_bits[1] = 64;
       break;
 
+    case NANOARROW_TYPE_STRUCT:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_NONE;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_UNINITIALIZED;
+      break;
+
     case NANOARROW_TYPE_BOOL:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
       layout->element_size_bits[1] = 1;
       break;
 
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT8:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
       layout->element_size_bits[1] = 8;
       break;
 
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT16:
     case NANOARROW_TYPE_HALF_FLOAT:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
       layout->element_size_bits[1] = 16;
       break;
 
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT32:
     case NANOARROW_TYPE_FLOAT:
+      layout->element_size_bits[1] = 32;
+      break;
     case NANOARROW_TYPE_INTERVAL_MONTHS:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT32;
       layout->element_size_bits[1] = 32;
       break;
 
@@ -116,49 +129,61 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_DOUBLE:
     case NANOARROW_TYPE_INTERVAL_DAY_TIME:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
       layout->element_size_bits[1] = 64;
       break;
 
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
       layout->element_size_bits[1] = 128;
       break;
 
     case NANOARROW_TYPE_DECIMAL256:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
       layout->element_size_bits[1] = 256;
       break;
 
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_BINARY;
       break;
 
     case NANOARROW_TYPE_DENSE_UNION:
       layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_TYPE_ID;
+      layout->buffer_data_type[0] = NANOARROW_TYPE_INT8;
       layout->element_size_bits[0] = 8;
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_UNION_OFFSET;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT32;
       layout->element_size_bits[1] = 32;
       break;
 
     case NANOARROW_TYPE_SPARSE_UNION:
       layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_TYPE_ID;
+      layout->buffer_data_type[0] = NANOARROW_TYPE_INT8;
       layout->element_size_bits[0] = 8;
+      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_NONE;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_UNINITIALIZED;
       break;
 
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT32;
       layout->element_size_bits[1] = 32;
       layout->buffer_type[2] = NANOARROW_BUFFER_TYPE_DATA;
+      layout->buffer_data_type[2] = storage_type;
       break;
 
     case NANOARROW_TYPE_LARGE_STRING:
-    case NANOARROW_TYPE_LARGE_BINARY:
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT64;
       layout->element_size_bits[1] = 64;
       layout->buffer_type[2] = NANOARROW_BUFFER_TYPE_DATA;
+      layout->buffer_data_type[2] = NANOARROW_TYPE_STRING;
+      break;
+    case NANOARROW_TYPE_LARGE_BINARY:
+      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_OFFSET;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_INT64;
+      layout->element_size_bits[1] = 64;
+      layout->buffer_type[2] = NANOARROW_BUFFER_TYPE_DATA;
+      layout->buffer_data_type[2] = NANOARROW_TYPE_BINARY;
       break;
 
     default:

@@ -575,6 +575,9 @@ void ExpectSimpleTypeOk(std::shared_ptr<DataType> arrow_t, enum ArrowType nanoar
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], nanoarrow_t);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], bitwidth);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -638,6 +641,9 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_DECIMAL128);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 128);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -654,6 +660,9 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_DECIMAL256);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 256);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -721,6 +730,9 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_BINARY);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 123 * 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -735,6 +747,9 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_STRING);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -748,6 +763,9 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_BINARY);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -761,6 +779,9 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_BINARY);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -774,6 +795,9 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_STRING);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -1037,6 +1061,9 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -1050,6 +1077,9 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -1063,6 +1093,9 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -1109,6 +1142,9 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -1158,6 +1194,9 @@ TEST(SchemaViewTest, SchemaViewInitNestedMap) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -1238,6 +1277,9 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_TYPE_ID);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_UNION_OFFSET);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_INT8);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
@@ -1252,6 +1294,9 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_TYPE_ID);
   EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_NONE);
   EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_INT8);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(schema_view.layout.element_size_bits[0], 8);
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 0);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
