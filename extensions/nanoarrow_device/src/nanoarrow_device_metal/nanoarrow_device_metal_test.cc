@@ -158,40 +158,38 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferCopy) {
   ArrowBufferReset(&buffer);
 }
 
-TEST(NanoarrowDeviceMetal, DeviceCpuBuffer) {
+TEST(NanoarrowDeviceMetal, DeviceAlignedBuffer) {
   struct ArrowBuffer buffer;
-  int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  struct ArrowBufferView view = {nullptr, 0};
+  int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8};
+  struct ArrowBufferView view = {data, sizeof(data)};
 
-  ASSERT_EQ(ArrowDeviceMetalInitCpuBuffer(ArrowDeviceMetalDefaultDevice(), &buffer, view),
-            NANOARROW_OK);
-  EXPECT_EQ(buffer.size_bytes, 0);
-  EXPECT_EQ(buffer.capacity_bytes, 64);
-  EXPECT_NE(buffer.data, nullptr);
-
-  view = {data, sizeof(data)};
+  ArrowDeviceMetalInitBuffer(&buffer);
   ASSERT_EQ(ArrowBufferAppendBufferView(&buffer, view), NANOARROW_OK);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
-  EXPECT_EQ(buffer.capacity_bytes, 128);
+  EXPECT_EQ(buffer.capacity_bytes, 64);
 
-  // Check that we can also reallocate smaller
+  // Check that when we reallocate larger but less then the allocation size,
+  // the pointer does not change
   uint8_t* old_ptr = buffer.data;
+  ASSERT_EQ(ArrowBufferAppendBufferView(&buffer, view), NANOARROW_OK);
+  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
+  EXPECT_EQ(memcmp(buffer.data + sizeof(data), data, sizeof(data)), 0);
+  EXPECT_EQ(buffer.capacity_bytes, 128);
+  EXPECT_EQ(buffer.data, old_ptr);
+
+  // But we can still shrink buffers with reallocation
   ASSERT_EQ(ArrowBufferResize(&buffer, 64, true), NANOARROW_OK);
+  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   EXPECT_NE(buffer.data, old_ptr);
   EXPECT_EQ(buffer.size_bytes, 64);
   EXPECT_EQ(buffer.capacity_bytes, 64);
 
-  // When we reallocate smaller than 64 bytes, the underlying buffer stays the same
-  old_ptr = buffer.data;
-  ASSERT_EQ(ArrowBufferResize(&buffer, 0, true), NANOARROW_OK);
-  EXPECT_EQ(buffer.data, old_ptr);
-
   // When we reallocate to an invalid size, we get null
+  ArrowBufferReset(&buffer);
+  ArrowDeviceMetalInitBuffer(&buffer);
   EXPECT_EQ(ArrowBufferReserve(&buffer, std::numeric_limits<intptr_t>::max()), ENOMEM);
   EXPECT_EQ(buffer.data, nullptr);
   EXPECT_EQ(buffer.allocator.private_data, nullptr);
-
-  EXPECT_EQ(ArrowDeviceMetalInitCpuBuffer(ArrowDeviceCpu(), &buffer, view), EINVAL);
 }
 
 TEST(NanoarrowDeviceMetal, DeviceCpuArrayBuffers) {
@@ -201,9 +199,7 @@ TEST(NanoarrowDeviceMetal, DeviceCpuArrayBuffers) {
   ASSERT_EQ(ArrowArrayInitFromType(array->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
 
-  ASSERT_EQ(
-      ArrowDeviceMetalInitCpuArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceMetalAlignArrayBuffers(array.get()), NANOARROW_OK);
 
   // Make sure we can build an array
   ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
@@ -214,9 +210,7 @@ TEST(NanoarrowDeviceMetal, DeviceCpuArrayBuffers) {
       NANOARROW_OK);
 
   // Make sure that ArrowDeviceMetalInitArrayBuffers() copies existing content
-  ASSERT_EQ(
-      ArrowDeviceMetalInitCpuArrayBuffers(ArrowDeviceMetalDefaultDevice(), array.get()),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceMetalAlignArrayBuffers(array.get()), NANOARROW_OK);
 
   auto data_ptr = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
   EXPECT_EQ(data_ptr[0], 1234);
@@ -224,9 +218,8 @@ TEST(NanoarrowDeviceMetal, DeviceCpuArrayBuffers) {
 
 #include <unistd.h>
 
-MTL::Buffer* MakeBufferTest(MTL::Device* mtl_device,
-                                            const void* arbitrary_addr,
-                                            int64_t size_bytes) {
+MTL::Buffer* MakeBufferTest(MTL::Device* mtl_device, const void* arbitrary_addr,
+                            int64_t size_bytes) {
   // Cache the page size from the system call
   static int pagesize = 0;
   if (pagesize == 0) {
@@ -252,8 +245,8 @@ MTL::Buffer* MakeBufferTest(MTL::Device* mtl_device,
   memcpy(ptr_aligned, arbitrary_addr, size_bytes);
 
   // Create the (non-owning) buffer
-  mtl_buffer = mtl_device->newBuffer(
-      ptr_aligned, allocation_size, MTL::ResourceStorageModeShared, nullptr);
+  mtl_buffer = mtl_device->newBuffer(ptr_aligned, allocation_size,
+                                     MTL::ResourceStorageModeShared, nullptr);
 
   return mtl_buffer;
 }
@@ -265,7 +258,8 @@ TEST(ArrowDeviceMetal, Checkerino) {
   MTL::Buffer* mtl_buffer = MakeBufferTest(mtl_device, data, sizeof(data));
   ASSERT_NE(mtl_buffer, nullptr);
 
-  MTL::Buffer* mtl_buffer2 = MakeBufferTest(mtl_device, mtl_buffer->contents(), sizeof(data));
+  MTL::Buffer* mtl_buffer2 =
+      MakeBufferTest(mtl_device, mtl_buffer->contents(), sizeof(data));
   ASSERT_NE(mtl_buffer, nullptr);
   ASSERT_EQ(mtl_buffer2->contents(), mtl_buffer->contents());
 }

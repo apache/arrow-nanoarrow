@@ -72,9 +72,7 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
 /// This buffer's allocator uses the Metal API so that it is cheaper to send
 /// buffers to the GPU later. You can use, append to, or move this buffer just
 /// like a normal ArrowBuffer.
-ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
-                                             struct ArrowBuffer* buffer,
-                                             struct ArrowBufferView initial_content);
+void ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer);
 
 /// \brief Convert an ArrowArray to buffers that use the Metal allocator
 ///
@@ -83,8 +81,7 @@ ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
 /// valid to use just like a normal ArrowArray that was initialized with
 /// ArrowArrayInitFromType() (i.e., it can be appended to and finished with
 /// validation).
-ArrowErrorCode ArrowDeviceMetalInitCpuArrayBuffers(struct ArrowDevice* device,
-                                                   struct ArrowArray* array);
+ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array);
 
 /// @}
 

@@ -18,6 +18,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <Metal/Metal.hpp>
 
@@ -25,121 +26,100 @@
 
 #include "nanoarrow_device_metal.h"
 
-struct ArrowMetalBufferView {
-  MTL::Buffer* mtl_buffer;
-  int64_t offset_bytes;
-  int64_t length_bytes;
-};
+// If non-null, caller must ->release() the return value. This doesn't
+// release the underlying memory (which must be managed separately).
+static MTL::Buffer* ArrowDeviceMetalWrapBufferNonOwning(MTL::Device* mtl_device,
+                                                        const void* arbitrary_addr,
+                                                        int64_t size_bytes) {
+  // Cache the page size from the system call
+  static int pagesize = 0;
+  if (pagesize == 0) {
+    pagesize = getpagesize();
+  }
 
-static inline ArrowMetalBufferView GetArrowMetalBufferView(
-    struct ArrowDeviceBufferView view) {
-  return {reinterpret_cast<MTL::Buffer*>(view.private_data), view.offset_bytes,
-          view.size_bytes};
+  int64_t allocation_size;
+  if (size_bytes % pagesize == 0) {
+    allocation_size = size_bytes;
+  } else {
+    allocation_size = (size_bytes / pagesize) + 1 * pagesize;
+  }
+
+  // Will return nullptr if the memory is improperly aligned
+  return mtl_device->newBuffer(arbitrary_addr, allocation_size,
+                               MTL::ResourceStorageModeShared, nullptr);
 }
 
 static uint8_t* ArrowDeviceMetalAllocatorReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
     int64_t new_size) {
-  auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(allocator->private_data);
-
-  // After a failed allocation, this allocator currently can't reallocate
-  if (mtl_buffer == nullptr) {
-    return nullptr;
+  // Cache the page size from the system call
+  static int pagesize = 0;
+  if (pagesize == 0) {
+    pagesize = getpagesize();
   }
 
-  if (new_size < 64) {
-    new_size = 64;
+  int64_t allocation_size;
+  if (new_size % pagesize == 0) {
+    allocation_size = new_size;
+  } else {
+    allocation_size = (new_size / pagesize) + 1 * pagesize;
   }
 
-  old_size = mtl_buffer->length();
-  int64_t copy_size = new_size;
-  if (new_size == old_size) {
-    return reinterpret_cast<uint8_t*>(mtl_buffer->contents());
-  } else if (new_size > old_size) {
+  // If growing an existing buffer but the allocation size is still big enough,
+  // return the same pointer and do nothing.
+  if (ptr != nullptr && new_size >= old_size && new_size <= allocation_size) {
+    return ptr;
+  }
+
+  int64_t copy_size;
+  if (new_size > old_size) {
     copy_size = old_size;
+  } else {
+    copy_size = new_size;
   }
 
-  auto mtl_buffer_new =
-      mtl_buffer->device()->newBuffer(new_size, MTL::ResourceStorageModeShared);
-
-  // It's slightly simpler to not support reallocating after a failed allocation,
-  // although that can probably be fixed in the buffer logic that doesn't call
-  // allocator->free() on NULL.
-  if (mtl_buffer_new == nullptr) {
-    mtl_buffer->release();
-    allocator->private_data = nullptr;
-    return nullptr;
+  void* new_ptr = nullptr;
+  posix_memalign(&new_ptr, pagesize, allocation_size);
+  if (new_ptr != nullptr && ptr != nullptr) {
+    memcpy(new_ptr, ptr, copy_size);
   }
 
-  memcpy(mtl_buffer_new->contents(), mtl_buffer->contents(), copy_size);
-  mtl_buffer->release();
-  allocator->private_data = mtl_buffer_new;
-  return reinterpret_cast<uint8_t*>(mtl_buffer_new->contents());
+  if (ptr != nullptr) {
+    free(ptr);
+  }
+
+  return reinterpret_cast<uint8_t*>(new_ptr);
 }
 
 static void ArrowDeviceMetalAllocatorFree(struct ArrowBufferAllocator* allocator,
                                           uint8_t* ptr, int64_t old_size) {
-  auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(allocator->private_data);
-  if (mtl_buffer != nullptr) {
-    mtl_buffer->release();
-  }
+  free(ptr);
 }
 
-static void ArrowDeviceMetalInitCpuBufferInternal(struct ArrowBuffer* buffer,
-                                                  MTL::Buffer* mtl_buffer) {
+void ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer) {
   buffer->allocator.reallocate = &ArrowDeviceMetalAllocatorReallocate;
   buffer->allocator.free = &ArrowDeviceMetalAllocatorFree;
-  buffer->allocator.private_data = mtl_buffer;
-  buffer->data = reinterpret_cast<uint8_t*>(mtl_buffer->contents());
+  buffer->allocator.private_data = nullptr;
+  buffer->data = nullptr;
   buffer->size_bytes = 0;
-  buffer->capacity_bytes = mtl_buffer->length();
+  buffer->capacity_bytes = 0;
 }
 
-ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
-                                             struct ArrowBuffer* buffer,
-                                             struct ArrowBufferView initial_content) {
-  if (device->device_type != ARROW_DEVICE_METAL || device->release == nullptr) {
-    return EINVAL;
-  }
-
-  auto mtl_device = reinterpret_cast<MTL::Device*>(device->private_data);
-  MTL::Buffer* mtl_buffer;
-  if (initial_content.size_bytes > 0) {
-    mtl_buffer =
-        mtl_device->newBuffer(initial_content.data.data, initial_content.size_bytes,
-                              MTL::ResourceStorageModeShared);
-  } else {
-    mtl_buffer = mtl_device->newBuffer(64, MTL::ResourceStorageModeShared);
-  }
-
-  if (mtl_buffer == nullptr) {
-    return ENOMEM;
-  }
-
-  ArrowDeviceMetalInitCpuBufferInternal(buffer, mtl_buffer);
-  buffer->size_bytes = initial_content.size_bytes;
-  return NANOARROW_OK;
-}
-
-ArrowErrorCode ArrowDeviceMetalInitCpuArrayBuffers(struct ArrowDevice* device,
-                                                   struct ArrowArray* array) {
+ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array) {
   struct ArrowBuffer* buffer;
-  struct ArrowBufferView contents;
   struct ArrowBuffer new_buffer;
 
   for (int64_t i = 0; i < array->n_buffers; i++) {
     buffer = ArrowArrayBuffer(array, i);
-    contents.data.data = buffer->data;
-    contents.size_bytes = buffer->size_bytes;
-
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(device, &new_buffer, contents));
+    ArrowDeviceMetalInitBuffer(&new_buffer);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(&new_buffer, buffer->data, buffer->size_bytes));
     ArrowBufferReset(buffer);
     ArrowBufferMove(&new_buffer, buffer);
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceMetalInitCpuArrayBuffers(device, array->children[i]));
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalAlignArrayBuffers(array->children[i]));
   }
 
   return NANOARROW_OK;
@@ -152,30 +132,28 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
                                                  void** sync_event) {
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
-    auto cpu_src = reinterpret_cast<uint8_t*>(src.private_data);
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(
-        device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
-    dst->data = reinterpret_cast<uint8_t*>(dst->allocator.private_data);
+    struct ArrowBuffer tmp;
+    ArrowDeviceMetalInitBuffer(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.private_data, src.size_bytes));
+    ArrowBufferMove(&tmp, dst);
     *sync_event = nullptr;
     return NANOARROW_OK;
 
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
-    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
-    auto cpu_src = reinterpret_cast<uint8_t*>(mtl_src->contents());
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(
-        device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
-    dst->data = reinterpret_cast<uint8_t*>(dst->allocator.private_data);
+    struct ArrowBuffer tmp;
+    ArrowDeviceMetalInitBuffer(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.private_data, src.size_bytes));
+    ArrowBufferMove(&tmp, dst);
     *sync_event = nullptr;
     return NANOARROW_OK;
 
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    ArrowBufferInit(dst);
-    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-        dst, reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
-        src.size_bytes));
+    struct ArrowBuffer tmp;
+    ArrowDeviceMetalInitBuffer(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.private_data, src.size_bytes));
+    ArrowBufferMove(&tmp, dst);
     *sync_event = nullptr;
     return NANOARROW_OK;
 
@@ -191,14 +169,24 @@ static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
                                                  void** sync_event) {
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
-    struct ArrowDeviceBufferView buffer_view;
-    buffer_view.private_data = src->data;
-    buffer_view.offset_bytes = 0;
-    buffer_view.size_bytes = src->size_bytes;
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceMetalBufferInit(device_src, buffer_view, device_dst, dst, sync_event));
+    // Check if the input is already aligned
+    auto mtl_device = reinterpret_cast<MTL::Device*>(device_dst->private_data);
+    MTL::Buffer* mtl_buffer =
+        ArrowDeviceMetalWrapBufferNonOwning(mtl_device, src->data, src->size_bytes);
+    if (mtl_buffer != nullptr) {
+      mtl_buffer->release();
+      ArrowBufferMove(src, dst);
+      *sync_event = nullptr;
+      return NANOARROW_OK;
+    }
+
+    // Otherwise, initialize a new buffer and copy
+    struct ArrowBuffer tmp;
+    ArrowDeviceMetalInitBuffer(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src->data, src->size_bytes));
+    ArrowBufferMove(&tmp, dst);
     ArrowBufferReset(src);
-    *sync_event = NULL;
+    *sync_event = nullptr;
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
@@ -208,11 +196,8 @@ static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    // Metal -> CPU is a move except that the data pointer points to MTL::Buffer* and
-    // not to actual data on the GPU, and on the CPU the pointer can be restored.
+    // Metal -> CPU is also just a move since the memory is CPU accessible
     ArrowBufferMove(src, dst);
-    MTL::Buffer* mtl_buffer = reinterpret_cast<MTL::Buffer*>(dst->allocator.private_data);
-    dst->data = reinterpret_cast<uint8_t*>(mtl_buffer->contents());
     *sync_event = NULL;
     return NANOARROW_OK;
   } else {
@@ -225,32 +210,23 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
                                                  struct ArrowDevice* device_dst,
                                                  struct ArrowDeviceBufferView dst,
                                                  void** sync_event) {
-  // This is all just memcpy with the correct interpretation of the
-  // device buffer view's private data.
+  // This is all just memcpy since it's all living in the same address space
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
-    auto cpu_src = reinterpret_cast<uint8_t*>(src.private_data);
-    auto mtl_dst = reinterpret_cast<MTL::Buffer*>(dst.private_data);
-    memcpy(reinterpret_cast<uint8_t*>(mtl_dst->contents()) + dst.offset_bytes,
-           cpu_src + src.offset_bytes, dst.size_bytes);
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
     *sync_event = NULL;
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
-    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
-    auto mtl_dst = reinterpret_cast<MTL::Buffer*>(dst.private_data);
-    memcpy(reinterpret_cast<uint8_t*>(mtl_dst->contents()) + dst.offset_bytes,
-           reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
-           dst.size_bytes);
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
     *sync_event = NULL;
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
-    auto cpu_dst = reinterpret_cast<uint8_t*>(dst.private_data);
-    memcpy(cpu_dst + dst.offset_bytes,
-           reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
-           dst.size_bytes);
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
     *sync_event = NULL;
     return NANOARROW_OK;
   } else {
