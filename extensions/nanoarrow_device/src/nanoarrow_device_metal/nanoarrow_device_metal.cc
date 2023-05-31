@@ -95,6 +95,16 @@ static void ArrowDeviceMetalAllocatorFree(struct ArrowBufferAllocator* allocator
   }
 }
 
+static void ArrowDeviceMetalInitCpuBufferInternal(struct ArrowBuffer* buffer,
+                                                  MTL::Buffer* mtl_buffer) {
+  buffer->allocator.reallocate = &ArrowDeviceMetalAllocatorReallocate;
+  buffer->allocator.free = &ArrowDeviceMetalAllocatorFree;
+  buffer->allocator.private_data = mtl_buffer;
+  buffer->data = reinterpret_cast<uint8_t*>(mtl_buffer->contents());
+  buffer->size_bytes = 0;
+  buffer->capacity_bytes = mtl_buffer->length();
+}
+
 ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
                                              struct ArrowBuffer* buffer,
                                              struct ArrowBufferView initial_content) {
@@ -116,12 +126,7 @@ ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
     return ENOMEM;
   }
 
-  buffer->allocator.reallocate = &ArrowDeviceMetalAllocatorReallocate;
-  buffer->allocator.free = &ArrowDeviceMetalAllocatorFree;
-  buffer->allocator.private_data = mtl_buffer;
-  buffer->data = reinterpret_cast<uint8_t*>(mtl_buffer->contents());
-  buffer->size_bytes = 0;
-  buffer->capacity_bytes = mtl_buffer->length();
+  ArrowDeviceMetalInitCpuBufferInternal(buffer, mtl_buffer);
   return NANOARROW_OK;
 }
 
@@ -154,6 +159,51 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
                                                  struct ArrowDevice* device_dst,
                                                  struct ArrowBuffer* dst,
                                                  void** sync_event) {
+  // From CPU -> Metal is a copy: we need a MTL::Buffer to send to the GPU
+  // but we can't create one from a raw pointer unless that pointer is page-aligned.
+  // T
+  return ENOTSUP;
+}
+
+static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
+                                                 struct ArrowBuffer* src,
+                                                 struct ArrowDevice* device_dst,
+                                                 struct ArrowBuffer* dst,
+                                                 void** sync_event) {
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_METAL) {
+    struct ArrowBufferView buffer_view;
+    buffer_view.data.data = src->data;
+    buffer_view.size_bytes = src->size_bytes;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceMetalBufferInit(device_src, buffer_view, device_dst, dst, sync_event));
+    ArrowBufferReset(src);
+    *sync_event = NULL;
+    return NANOARROW_OK;
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_METAL) {
+    // Metal -> Metal is always just a move
+    ArrowBufferMove(src, dst);
+    *sync_event = NULL;
+    return NANOARROW_OK;
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    // Metal -> CPU is a move except that the data pointer points to MTL::Buffer* and
+    // not to actual data on the GPU, and on the CPU the pointer can be restored.
+    ArrowBufferMove(src, dst);
+    MTL::Buffer* mtl_buffer = reinterpret_cast<MTL::Buffer*>(dst->allocator.private_data);
+    dst->data = reinterpret_cast<uint8_t*>(mtl_buffer->contents());
+    *sync_event = NULL;
+    return NANOARROW_OK;
+  } else {
+    return ENOTSUP;
+  }
+}
+
+static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
+                                                 struct ArrowBufferView src,
+                                                 struct ArrowDevice* device_dst,
+                                                 uint8_t* dst, void** sync_event) {
   return ENOTSUP;
 }
 
@@ -200,6 +250,8 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
   device->device_type = ARROW_DEVICE_METAL;
   device->device_id = static_cast<int64_t>(default_device->registryID());
   device->buffer_init = &ArrowDeviceMetalBufferInit;
+  device->buffer_move = &ArrowDeviceMetalBufferMove;
+  device->buffer_copy = &ArrowDeviceMetalBufferCopy;
   device->synchronize_event = &ArrowDeviceMetalSynchronize;
   device->release = &ArrowDeviceMetalRelease;
   device->private_data = default_device;
