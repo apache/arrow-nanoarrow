@@ -26,13 +26,22 @@ extern "C" {
 
 /// \defgroup nanoarrow_device_metal Apple Metal Device extension
 ///
-/// An Apple Metal implementation of the Arrow C Device interface.
-/// In this implementation, "GPU buffers" are represented as a
-/// pointer to an `MTL::Buffer` instead of a pointer to its contents.
-/// This is necessary because the methods that send a buffer to the GPU
-/// only accept an `MTL::Buffer*` (with offset + length) and it is not
-/// currently possible to wrap an arbitrary CPU memory region as an
-/// `MTL::Buffer*` unless that memory region is page-aligned.
+/// An Apple Metal implementation of the Arrow C Device interface, primarily targeted to
+/// the M1 series of CPU/GPUs that feature shared CPU/GPU memory. Even though the memory
+/// regions are shared, it is currently not possible to wrap an arbitrary CPU memory
+/// region as an `MTL::Buffer*` unless that memory region is page-aligned. Because of
+/// this, a copy is still required in most cases to make memory GPU accessible. After GPU
+/// calculations are complete; however, moving the buffers back to the CPU is zero-copy.
+///
+/// Because of the buffer wrapping contraint, In this implementation, "GPU buffers" (i.e.,
+/// the pointers in the ArrowArray buffers member) are represented as a pointer to an
+/// `MTL::Buffer` instead of a pointer to its contents. This is necessary because the
+/// methods that send a buffer to the GPU only accept an `MTL::Buffer*` (with offset +
+/// length).
+///
+/// Sync events are represented as an `MTL::Event*`. The degree to which the pointers
+/// to `MTL::Event*` and `MTL::Buffer*` are stable across metal-cpp versions/builds is
+/// currently unknown.
 ///
 /// @{
 
