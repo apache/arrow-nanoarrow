@@ -25,27 +25,17 @@
 
 #include "nanoarrow_device_metal.h"
 
-// Wrap reference-counted NS objects
-template <typename T>
-class Owner {
- public:
-  Owner() : ptr_(nullptr) {}
-  Owner(T* ptr) : ptr_(ptr) {}
-
-  T* operator->() { return ptr_; }
-
-  void reset(T* ptr = nullptr) {
-    ptr_->release();
-    ptr_ = ptr;
-  }
-
-  T* get() { return ptr_; }
-
-  ~Owner() { reset(); }
-
- private:
-  T* ptr_;
+struct ArrowMetalBufferView {
+  MTL::Buffer* mtl_buffer;
+  int64_t offset_bytes;
+  int64_t length_bytes;
 };
+
+static inline ArrowMetalBufferView GetArrowMetalBufferView(
+    struct ArrowDeviceBufferView view) {
+  return {reinterpret_cast<MTL::Buffer*>(view.private_data), view.offset_bytes,
+          view.size_bytes};
+}
 
 static uint8_t* ArrowDeviceMetalAllocatorReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
@@ -155,7 +145,7 @@ ArrowErrorCode ArrowDeviceMetalInitCpuArrayBuffers(struct ArrowDevice* device,
 }
 
 static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
-                                                 struct ArrowBufferView src,
+                                                 struct ArrowDeviceBufferView src,
                                                  struct ArrowDevice* device_dst,
                                                  struct ArrowBuffer* dst,
                                                  void** sync_event) {
@@ -172,8 +162,9 @@ static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
                                                  void** sync_event) {
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
-    struct ArrowBufferView buffer_view;
-    buffer_view.data.data = src->data;
+    struct ArrowDeviceBufferView buffer_view;
+    buffer_view.private_data = src->data;
+    buffer_view.offset_bytes = 0;
     buffer_view.size_bytes = src->size_bytes;
     NANOARROW_RETURN_NOT_OK(
         ArrowDeviceMetalBufferInit(device_src, buffer_view, device_dst, dst, sync_event));
@@ -201,10 +192,35 @@ static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
-                                                 struct ArrowBufferView src,
+                                                 struct ArrowDeviceBufferView src,
                                                  struct ArrowDevice* device_dst,
-                                                 uint8_t* dst, void** sync_event) {
-  return ENOTSUP;
+                                                 struct ArrowDeviceBufferView dst,
+                                                 void** sync_event) {
+  // This is all just memcpy with the correct interpretation of the
+  // device buffer view's private data.
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_METAL) {
+    auto cpu_src = reinterpret_cast<uint8_t*>(src.private_data);
+    auto mtl_dst = reinterpret_cast<MTL::Buffer*>(dst.private_data);
+    memcpy(reinterpret_cast<uint8_t*>(mtl_dst->contents()) + dst.offset_bytes,
+           cpu_src + src.offset_bytes, dst.size_bytes);
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_METAL) {
+    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
+    auto mtl_dst = reinterpret_cast<MTL::Buffer*>(dst.private_data);
+    memcpy(reinterpret_cast<uint8_t*>(mtl_dst->contents()) + dst.offset_bytes,
+           reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
+           dst.size_bytes);
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
+    auto cpu_dst = reinterpret_cast<uint8_t*>(dst.private_data);
+    memcpy(cpu_dst + dst.offset_bytes,
+           reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
+           dst.size_bytes);
+  } else {
+    return ENOTSUP;
+  }
 }
 
 static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,

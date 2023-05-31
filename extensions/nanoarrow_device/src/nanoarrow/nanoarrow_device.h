@@ -245,6 +245,12 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 
+struct ArrowDeviceBufferView {
+  void* private_data;
+  int64_t offset_bytes;
+  int64_t size_bytes;
+};
+
 /// \brief A Device wrapper with callbacks for basic memory management tasks
 ///
 /// All device objects are currently implemented as singletons; however, this
@@ -263,7 +269,7 @@ struct ArrowDevice {
   /// Implementations must check device_src and device_dst and return ENOTSUP if
   /// not prepared to handle this operation.
   ArrowErrorCode (*buffer_init)(struct ArrowDevice* device_src,
-                                struct ArrowBufferView src,
+                                struct ArrowDeviceBufferView src,
                                 struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
                                 void** sync_event);
 
@@ -286,9 +292,9 @@ struct ArrowDevice {
   /// Implementations must check device_src and device_dst and return ENOTSUP if
   /// not prepared to handle this operation.
   ArrowErrorCode (*buffer_copy)(struct ArrowDevice* device_src,
-                                struct ArrowBufferView src,
-                                struct ArrowDevice* device_dst, uint8_t* dst,
-                                void** sync_event);
+                                struct ArrowDeviceBufferView src,
+                                struct ArrowDevice* device_dst,
+                                struct ArrowDeviceBufferView dst, void** sync_event);
 
   /// \brief Wait for an event
   ///
@@ -318,7 +324,7 @@ struct ArrowDevice* ArrowDeviceCpu(void);
 void ArrowDeviceInitCpu(struct ArrowDevice* device);
 
 ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
-                                     struct ArrowBufferView src,
+                                     struct ArrowDeviceBufferView src,
                                      struct ArrowDevice* device_dst,
                                      struct ArrowBuffer* dst, void** sync_event);
 
@@ -328,8 +334,9 @@ ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
                                      struct ArrowBuffer* dst, void** sync_event);
 
 ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
-                                     struct ArrowBufferView src,
-                                     struct ArrowDevice* device_dst, uint8_t* dst,
+                                     struct ArrowDeviceBufferView src,
+                                     struct ArrowDevice* device_dst,
+                                     struct ArrowDeviceBufferView dst,
                                      void** sync_event);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
