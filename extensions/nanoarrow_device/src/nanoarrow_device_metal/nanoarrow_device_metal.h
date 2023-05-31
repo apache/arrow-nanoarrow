@@ -24,7 +24,19 @@
 extern "C" {
 #endif
 
-/// \brief A pointer to the default metal device singleton
+/// \defgroup nanoarrow_device_metal Apple Metal Device extension
+///
+/// An Apple Metal implementation of the Arrow C Device interface.
+/// In this implementation, "GPU buffers" are represented as a
+/// pointer to an `MTL::Buffer` instead of a pointer to its contents.
+/// This is necessary because the methods that send a buffer to the GPU
+/// only accept an `MTL::Buffer*` (with offset + length) and it is not
+/// currently possible to wrap an arbitrary CPU memory region as an
+/// `MTL::Buffer*` unless that memory region is page-aligned.
+///
+/// @{
+
+/// \brief A pointer to a default metal device singleton
 struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
 
 /// \brief Initialize a preallocated device struct with the default metal device
@@ -51,6 +63,8 @@ ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
 /// validation).
 ArrowErrorCode ArrowDeviceMetalInitCpuArrayBuffers(struct ArrowDevice* device,
                                                    struct ArrowArray* array);
+
+/// @}
 
 #ifdef __cplusplus
 }

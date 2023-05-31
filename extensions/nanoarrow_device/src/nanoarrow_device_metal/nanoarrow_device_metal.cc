@@ -149,10 +149,35 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
                                                  struct ArrowDevice* device_dst,
                                                  struct ArrowBuffer* dst,
                                                  void** sync_event) {
-  // From CPU -> Metal is a copy: we need a MTL::Buffer to send to the GPU
-  // but we can't create one from a raw pointer unless that pointer is page-aligned.
-  // T
-  return ENOTSUP;
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_METAL) {
+    auto cpu_src = reinterpret_cast<uint8_t*>(src.private_data);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
+    dst->data = reinterpret_cast<uint8_t*>(dst->allocator.private_data);
+    *sync_event = nullptr;
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_METAL) {
+    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
+    auto cpu_src = reinterpret_cast<uint8_t*>(mtl_src->contents());
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
+    dst->data = reinterpret_cast<uint8_t*>(dst->allocator.private_data);
+    *sync_event = nullptr;
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
+        dst, reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
+        src.size_bytes));
+    *sync_event = nullptr;
+    return NANOARROW_OK;
+
+  } else {
+    return ENOTSUP;
+  }
 }
 
 static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
@@ -204,6 +229,8 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
     auto mtl_dst = reinterpret_cast<MTL::Buffer*>(dst.private_data);
     memcpy(reinterpret_cast<uint8_t*>(mtl_dst->contents()) + dst.offset_bytes,
            cpu_src + src.offset_bytes, dst.size_bytes);
+    *sync_event = NULL;
+    return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
     auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
@@ -211,6 +238,8 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
     memcpy(reinterpret_cast<uint8_t*>(mtl_dst->contents()) + dst.offset_bytes,
            reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
            dst.size_bytes);
+    *sync_event = NULL;
+    return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
     auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
@@ -218,6 +247,8 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
     memcpy(cpu_dst + dst.offset_bytes,
            reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
            dst.size_bytes);
+    *sync_event = NULL;
+    return NANOARROW_OK;
   } else {
     return ENOTSUP;
   }
