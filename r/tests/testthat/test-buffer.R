@@ -23,24 +23,42 @@ test_that("as_nanoarrow_buffer() works for nanoarrow_buffer", {
 test_that("as_nanoarrow_buffer() works for R atomic types", {
   buffer_null <- as_nanoarrow_buffer(NULL)
   expect_identical(as.raw(buffer_null), raw(0))
+  expect_identical(convert_buffer(buffer_null), blob::blob(raw(0)))
+  expect_identical(as.vector(buffer_null), convert_buffer(buffer_null))
 
   buffer_raw <- as_nanoarrow_buffer(as.raw(0x00))
   expect_identical(as.raw(buffer_raw), raw(1))
+  expect_identical(convert_buffer(buffer_raw), blob::blob(as.raw(0x00)))
 
   buffer_lgl <- as_nanoarrow_buffer(FALSE)
   expect_identical(as.raw(buffer_lgl), raw(4))
+  expect_identical(convert_buffer(buffer_lgl), 0L)
 
   buffer_int <- as_nanoarrow_buffer(0L)
   expect_identical(as.raw(buffer_lgl), raw(4))
+  expect_identical(convert_buffer(buffer_lgl), 0L)
 
   buffer_dbl <- as_nanoarrow_buffer(0)
   expect_identical(as.raw(buffer_lgl), raw(4))
 
   buffer_cplx <- as_nanoarrow_buffer(complex(real = 0, imaginary = 0))
   expect_identical(as.raw(buffer_cplx), raw(16))
+  expect_identical(convert_buffer(buffer_cplx), c(0, 0))
 
   buffer_chr <- as_nanoarrow_buffer("1234")
   expect_identical(as.raw(buffer_chr), charToRaw("1234"))
+  expect_identical(convert_buffer(buffer_chr), "1234")
+})
+
+test_that("buffers can be printed", {
+  expect_snapshot(str(as_nanoarrow_buffer(1:10)))
+  expect_snapshot(str(as_nanoarrow_buffer(1:10000)))
+  expect_snapshot(str(as_nanoarrow_buffer(strrep("abcdefg", 100))))
+  expect_snapshot(str(as_nanoarrow_buffer(charToRaw(strrep("abcdefg", 100)))))
+
+  array <- as_nanoarrow_array(1:100)
+  nanoarrow_array_set_schema(array, NULL)
+  expect_snapshot(str(array$buffers[[2]]))
 })
 
 test_that("as_nanoarrow_buffer() errors for unsupported types", {

@@ -147,59 +147,31 @@ test_that("array list interface classes data buffers for relevant types", {
   arrays <- lapply(types, function(x) nanoarrow_array_init(x))
 
   for (nm in names(arrays)) {
-    expect_s3_class(
-      as_nanoarrow_array(arrays[[!!nm]])$buffers[[1]],
-      "nanoarrow_buffer_validity"
-    )
-    expect_s3_class(
-      as_nanoarrow_array(arrays[[!!nm]])$buffers[[2]],
-      paste0("nanoarrow_buffer_data_", nm)
-    )
+    expect_identical(arrays[[!!nm]]$buffers[[1]]$type, "validity")
+    expect_identical(arrays[[!!nm]]$buffers[[1]]$data_type, "bool")
+    expect_identical(arrays[[!!nm]]$buffers[[2]]$type, "data")
+    expect_identical(arrays[[!!nm]]$buffers[[2]]$data_type, nm)
   }
 })
 
 test_that("array list interface classes offset buffers for relevant types", {
   arr_string <- nanoarrow_array_init(na_string())
-  expect_s3_class(
-    as_nanoarrow_array(arr_string)$buffers[[2]],
-    "nanoarrow_buffer_data_offset32"
-  )
-  expect_s3_class(
-    as_nanoarrow_array(arr_string)$buffers[[3]],
-    "nanoarrow_buffer_data_utf8"
-  )
+  expect_identical(arr_string$buffers[[2]]$type, "data_offset")
+  expect_identical(arr_string$buffers[[2]]$data_type, "int32")
+  expect_identical(arr_string$buffers[[3]]$type, "data")
+  expect_identical(arr_string$buffers[[3]]$data_type, "string")
 
-  skip_if_not_installed("arrow")
+  arr_large_string <- nanoarrow_array_init(na_large_string())
+  expect_identical(arr_large_string$buffers[[2]]$type, "data_offset")
+  expect_identical(arr_large_string$buffers[[2]]$data_type, "int64")
 
-  arr_large_string <- arrow::concat_arrays(type = arrow::large_utf8())
-  expect_s3_class(
-    as_nanoarrow_array(arr_large_string)$buffers[[2]],
-    "nanoarrow_buffer_data_offset64"
-  )
-  expect_s3_class(
-    as_nanoarrow_array(arr_large_string)$buffers[[3]],
-    "nanoarrow_buffer_data_utf8"
-  )
+  arr_binary <- nanoarrow_array_init(na_binary())
+  expect_identical(arr_binary$buffers[[2]]$type, "data_offset")
+  expect_identical(arr_binary$buffers[[2]]$data_type, "int32")
 
-  arr_binary <- arrow::concat_arrays(type = arrow::binary())
-  expect_s3_class(
-    as_nanoarrow_array(arr_binary)$buffers[[2]],
-    "nanoarrow_buffer_data_offset32"
-  )
-  expect_s3_class(
-    as_nanoarrow_array(arr_binary)$buffers[[3]],
-    "nanoarrow_buffer_data_uint8"
-  )
-
-  arr_large_binary <- arrow::concat_arrays(type = arrow::large_binary())
-  expect_s3_class(
-    as_nanoarrow_array(arr_large_binary)$buffers[[2]],
-    "nanoarrow_buffer_data_offset64"
-  )
-  expect_s3_class(
-    as_nanoarrow_array(arr_large_binary)$buffers[[3]],
-    "nanoarrow_buffer_data_uint8"
-  )
+  arr_large_binary <- nanoarrow_array_init(na_large_binary())
+  expect_identical(arr_large_binary$buffers[[2]]$type, "data_offset")
+  expect_identical(arr_large_binary$buffers[[2]]$data_type, "int64")
 })
 
 test_that("array list interface works for nested types", {
@@ -209,25 +181,27 @@ test_that("array list interface works for nested types", {
   expect_s3_class(array$children[[1]], "nanoarrow_array")
   expect_s3_class(infer_nanoarrow_schema(array$children[[1]]), "nanoarrow_schema")
 
-  expect_s3_class(array$buffers[[1]], "nanoarrow_buffer_validity")
-  expect_s3_class(array$children$a$buffers[[2]], "nanoarrow_buffer_data_int32")
-  expect_s3_class(array$children$b$buffers[[2]], "nanoarrow_buffer_data_offset32")
-
   info_recursive <- nanoarrow_array_proxy_safe(array, recursive = TRUE)
   expect_type(info_recursive$children, "list")
-  expect_s3_class(info_recursive$children$a$buffers[[2]], "nanoarrow_buffer_data_int32")
-  expect_s3_class(info_recursive$children$b$buffers[[2]], "nanoarrow_buffer_data_offset32")
+  expect_identical(
+    info_recursive$children$a$buffers[[2]]$type,
+    "data"
+  )
+  expect_identical(
+    info_recursive$children$b$buffers[[2]]$type,
+    "data_offset"
+  )
 })
 
 test_that("array list interface works for dictionary types", {
   array <- as_nanoarrow_array(factor(letters[1:5]))
 
-  expect_s3_class(array$buffers[[2]], "nanoarrow_buffer_data_int32")
-  expect_s3_class(array$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
+  expect_identical(array$buffers[[2]]$type, "data")
+  expect_identical(array$dictionary$buffers[[2]]$type, "data_offset")
 
   info_recursive <- nanoarrow_array_proxy_safe(array, recursive = TRUE)
   expect_type(info_recursive$dictionary, "list")
-  expect_s3_class(info_recursive$dictionary$buffers[[2]], "nanoarrow_buffer_data_offset32")
+  expect_identical(info_recursive$dictionary$buffers[[2]]$type, "data_offset")
 })
 
 test_that("array modify errors for invalid components", {

@@ -3,14 +3,23 @@
 \name{nanoarrow_buffer_init}
 \alias{nanoarrow_buffer_init}
 \alias{nanoarrow_buffer_append}
+\alias{convert_buffer}
 \title{Create and modify nanoarrow buffers}
 \usage{
 nanoarrow_buffer_init()
 
 nanoarrow_buffer_append(buffer, new_buffer)
+
+convert_buffer(buffer, to = NULL)
 }
 \arguments{
 \item{buffer, new_buffer}{\link[=as_nanoarrow_buffer]{nanoarrow_buffer}s.}
+
+\item{to}{A target prototype object describing the type to which \code{array}
+should be converted, or \code{NULL} to use the default conversion as
+returned by \code{\link[=infer_nanoarrow_ptype]{infer_nanoarrow_ptype()}}. Alternatively, a function can be
+passed to perform an alternative calculation of the default ptype as
+a function of \code{array} and the default inference of the prototype.}
 }
 \value{
 \itemize{
