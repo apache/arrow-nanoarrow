@@ -38,17 +38,40 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   struct ArrowDevice* gpu = ArrowDeviceMetalDefaultDevice();
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowDeviceBufferView view = {data, 0, sizeof(data)};
+  struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
   void* sync_event;
 
+  auto mtl_device = reinterpret_cast<MTL::Device*>(gpu->private_data);
+  MTL::Buffer* mtl_buffer_src =
+      mtl_device->newBuffer(data, sizeof(data), MTL::ResourceStorageModeShared);
+  struct ArrowDeviceBufferView gpu_view = {mtl_buffer_src, 0, sizeof(data)};
+
   // CPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, gpu, &buffer, &sync_event), NANOARROW_OK);
-  EXPECT_EQ(buffer.size_bytes, 5);
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer, &sync_event),
+            NANOARROW_OK);
+  EXPECT_EQ(buffer.size_bytes, sizeof(data));
   EXPECT_EQ(sync_event, nullptr);
   auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
-  EXPECT_EQ(mtl_buffer->length(), 5);
-  EXPECT_EQ(memcmp(mtl_buffer->contents(), view.private_data, sizeof(data)), 0);
+  EXPECT_EQ(mtl_buffer->length(), sizeof(data));
+  EXPECT_EQ(memcmp(mtl_buffer->contents(), data, sizeof(data)), 0);
+  ArrowBufferReset(&buffer);
 
+  // GPU -> GPU
+  ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, gpu, &buffer, &sync_event),
+            NANOARROW_OK);
+  EXPECT_EQ(buffer.size_bytes, sizeof(data));
+  EXPECT_EQ(sync_event, nullptr);
+  mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
+  EXPECT_EQ(mtl_buffer->length(), sizeof(data));
+  EXPECT_EQ(memcmp(mtl_buffer->contents(), data, sizeof(data)), 0);
+  ArrowBufferReset(&buffer);
+
+  // GPU -> CPU
+  ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, cpu, &buffer, &sync_event),
+            NANOARROW_OK);
+  EXPECT_EQ(buffer.size_bytes, sizeof(data));
+  EXPECT_EQ(sync_event, nullptr);
+  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 }
 

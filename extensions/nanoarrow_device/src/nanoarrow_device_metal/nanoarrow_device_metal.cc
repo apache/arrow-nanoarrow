@@ -153,7 +153,8 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
     auto cpu_src = reinterpret_cast<uint8_t*>(src.private_data);
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(
+        device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
     dst->data = reinterpret_cast<uint8_t*>(dst->allocator.private_data);
     *sync_event = nullptr;
     return NANOARROW_OK;
@@ -162,13 +163,15 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
              device_dst->device_type == ARROW_DEVICE_METAL) {
     auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
     auto cpu_src = reinterpret_cast<uint8_t*>(mtl_src->contents());
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitCpuBuffer(
+        device_dst, dst, {cpu_src + src.offset_bytes, src.size_bytes}));
     dst->data = reinterpret_cast<uint8_t*>(dst->allocator.private_data);
     *sync_event = nullptr;
     return NANOARROW_OK;
 
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
+    ArrowBufferInit(dst);
     auto mtl_src = reinterpret_cast<MTL::Buffer*>(src.private_data);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
         dst, reinterpret_cast<uint8_t*>(mtl_src->contents()) + src.offset_bytes,
