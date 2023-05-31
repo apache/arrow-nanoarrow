@@ -221,3 +221,51 @@ TEST(NanoarrowDeviceMetal, DeviceCpuArrayBuffers) {
   auto data_ptr = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
   EXPECT_EQ(data_ptr[0], 1234);
 }
+
+#include <unistd.h>
+
+MTL::Buffer* MakeBufferTest(MTL::Device* mtl_device,
+                                            const void* arbitrary_addr,
+                                            int64_t size_bytes) {
+  // Cache the page size from the system call
+  static int pagesize = 0;
+  if (pagesize == 0) {
+    pagesize = getpagesize();
+  }
+
+  int64_t allocation_size;
+  if (size_bytes % pagesize == 0) {
+    allocation_size = size_bytes;
+  } else {
+    allocation_size = (size_bytes / pagesize) + 1 * pagesize;
+  }
+
+  // Attempt wrapping as is in the event that the allocation is already aligned
+  MTL::Buffer* mtl_buffer = mtl_device->newBuffer(
+      arbitrary_addr, allocation_size, MTL::ResourceStorageModeShared, nullptr);
+  if (mtl_buffer != nullptr) {
+    return mtl_buffer;
+  }
+
+  void* ptr_aligned;
+  int result = posix_memalign(&ptr_aligned, pagesize, allocation_size);
+  memcpy(ptr_aligned, arbitrary_addr, size_bytes);
+
+  // Create the (non-owning) buffer
+  mtl_buffer = mtl_device->newBuffer(
+      ptr_aligned, allocation_size, MTL::ResourceStorageModeShared, nullptr);
+
+  return mtl_buffer;
+}
+
+TEST(ArrowDeviceMetal, Checkerino) {
+  int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  auto mtl_device =
+      reinterpret_cast<MTL::Device*>(ArrowDeviceMetalDefaultDevice()->private_data);
+  MTL::Buffer* mtl_buffer = MakeBufferTest(mtl_device, data, sizeof(data));
+  ASSERT_NE(mtl_buffer, nullptr);
+
+  MTL::Buffer* mtl_buffer2 = MakeBufferTest(mtl_device, mtl_buffer->contents(), sizeof(data));
+  ASSERT_NE(mtl_buffer, nullptr);
+  ASSERT_EQ(mtl_buffer2->contents(), mtl_buffer->contents());
+}
