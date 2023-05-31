@@ -229,7 +229,9 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 #define ArrowDeviceArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayInit)
 #define ArrowDeviceCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCpu)
 #define ArrowDeviceInitCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceInitCpu)
-#define ArrowDeviceCopyBuffer NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCopyBuffer)
+#define ArrowDeviceBufferInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferInit)
+#define ArrowDeviceBufferMove NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferMove)
+#define ArrowDeviceBufferCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferCopy)
 #define ArrowDeviceBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBasicArrayStreamInit)
 
@@ -245,9 +247,16 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 
+/// \brief A description of a buffer
 struct ArrowDeviceBufferView {
+  /// \brief Device-defined handle for a buffer. For the CPU device, this is
+  /// a normal memory address.
   void* private_data;
+
+  /// \brief An offset into the buffer handle defined by private_data
   int64_t offset_bytes;
+
+  /// \brief The size of the buffer in bytes
   int64_t size_bytes;
 };
 
@@ -336,8 +345,7 @@ ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
 ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
                                      struct ArrowDeviceBufferView src,
                                      struct ArrowDevice* device_dst,
-                                     struct ArrowDeviceBufferView dst,
-                                     void** sync_event);
+                                     struct ArrowDeviceBufferView dst, void** sync_event);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
 ///

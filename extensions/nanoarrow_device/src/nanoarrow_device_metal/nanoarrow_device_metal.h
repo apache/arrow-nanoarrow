@@ -20,6 +20,19 @@
 
 #include "nanoarrow_device.h"
 
+#ifdef NANOARROW_NAMESPACE
+
+#define ArrowDeviceMetalDefaultDevice \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalDefaultDevice)
+#define ArrowDeviceMetalInitDefaultDevice \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalInitDefaultDevice)
+#define ArrowDeviceMetalInitCpuBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalInitCpuBuffer)
+#define ArrowDeviceMetalInitCpuArrayBuffers \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalInitCpuArrayBuffers)
+
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
