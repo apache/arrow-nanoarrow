@@ -140,6 +140,30 @@ ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
   return result;
 }
 
+ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
+                                     struct ArrowBuffer* src,
+                                     struct ArrowDevice* device_dst,
+                                     struct ArrowBuffer* dst, void** sync_event) {
+  int result = device_dst->buffer_move(device_src, src, device_dst, dst, sync_event);
+  if (result == ENOTSUP) {
+    result = device_src->buffer_move(device_src, src, device_dst, dst, sync_event);
+  }
+
+  return result;
+}
+
+ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
+                                     struct ArrowBufferView src,
+                                     struct ArrowDevice* device_dst, uint8_t* dst,
+                                     void** sync_event) {
+  int result = device_dst->buffer_copy(device_src, src, device_dst, dst, sync_event);
+  if (result == ENOTSUP) {
+    result = device_src->buffer_copy(device_src, src, device_dst, dst, sync_event);
+  }
+
+  return result;
+}
+
 struct ArrowBasicDeviceArrayStreamPrivate {
   struct ArrowDevice* device;
   struct ArrowArrayStream naive_stream;
