@@ -87,7 +87,8 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
             NANOARROW_OK);
   EXPECT_EQ(buffer2.size_bytes, 5);
   EXPECT_EQ(sync_event, nullptr);
-  EXPECT_EQ(memcmp(buffer2.data, data, sizeof(data)), 0);
+  auto mtl_buffer2 = reinterpret_cast<MTL::Buffer*>(buffer2.data);
+  EXPECT_EQ(memcmp(mtl_buffer2->contents(), data, sizeof(data)), 0);
   EXPECT_EQ(buffer.data, nullptr);
 
   ArrowBufferReset(&buffer2);

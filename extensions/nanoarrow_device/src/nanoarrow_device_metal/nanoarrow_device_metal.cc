@@ -117,6 +117,7 @@ ArrowErrorCode ArrowDeviceMetalInitCpuBuffer(struct ArrowDevice* device,
   }
 
   ArrowDeviceMetalInitCpuBufferInternal(buffer, mtl_buffer);
+  buffer->size_bytes = initial_content.size_bytes;
   return NANOARROW_OK;
 }
 
