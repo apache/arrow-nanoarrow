@@ -41,19 +41,17 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
   void* sync_event;
 
-  auto mtl_device = reinterpret_cast<MTL::Device*>(gpu->private_data);
-  MTL::Buffer* mtl_buffer_src =
-      mtl_device->newBuffer(data, sizeof(data), MTL::ResourceStorageModeShared);
-  struct ArrowDeviceBufferView gpu_view = {mtl_buffer_src, 0, sizeof(data)};
+  struct ArrowBuffer buffer_aligned;
+  ArrowDeviceMetalInitBuffer(&buffer_aligned);
+  ASSERT_EQ(ArrowBufferAppend(&buffer_aligned, data, sizeof(data)), NANOARROW_OK);
+  struct ArrowDeviceBufferView gpu_view = {buffer_aligned.data, 0, sizeof(data)};
 
   // CPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer, &sync_event),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
   EXPECT_EQ(sync_event, nullptr);
-  auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
-  EXPECT_EQ(mtl_buffer->length(), sizeof(data));
-  EXPECT_EQ(memcmp(mtl_buffer->contents(), data, sizeof(data)), 0);
+  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
   // GPU -> GPU
@@ -61,9 +59,7 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
   EXPECT_EQ(sync_event, nullptr);
-  mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
-  EXPECT_EQ(mtl_buffer->length(), sizeof(data));
-  EXPECT_EQ(memcmp(mtl_buffer->contents(), data, sizeof(data)), 0);
+  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
   // GPU -> CPU
@@ -73,6 +69,8 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   EXPECT_EQ(sync_event, nullptr);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
+
+  ArrowBufferReset(&buffer_aligned);
 }
 
 TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
@@ -88,30 +86,43 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, gpu, &buffer, &sync_event), NANOARROW_OK);
   auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
 
-  // GPU -> GPU: buffer data pointer stays the same
+  // GPU -> GPU: just a move
+  uint8_t* old_ptr = buffer.data;
   ASSERT_EQ(ArrowDeviceBufferMove(gpu, &buffer, gpu, &buffer2, &sync_event),
             NANOARROW_OK);
   EXPECT_EQ(buffer2.size_bytes, 5);
   EXPECT_EQ(sync_event, nullptr);
-  EXPECT_EQ(reinterpret_cast<MTL::Buffer*>(buffer2.data), mtl_buffer);
+  EXPECT_EQ(buffer2.data, old_ptr);
   EXPECT_EQ(buffer.data, nullptr);
 
-  // GPU -> CPU: CPU buffer points to GPU buffer contents
+  // GPU -> CPU: just a move
   ASSERT_EQ(ArrowDeviceBufferMove(gpu, &buffer2, cpu, &buffer, &sync_event),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, 5);
   EXPECT_EQ(sync_event, nullptr);
-  EXPECT_EQ(reinterpret_cast<void*>(buffer.data), mtl_buffer->contents());
+  EXPECT_EQ(buffer.data, old_ptr);
   EXPECT_EQ(buffer2.data, nullptr);
 
-  // CPU -> GPU: introduces a copy; new buffer data is a new MTL::Buffer
-  // with the same content but the old MTL::Buffer has been destroyed
+  // CPU -> GPU: should be just a move here because the buffer is properly aligned
+  // from the initial GPU allocation.
   ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2, &sync_event),
             NANOARROW_OK);
   EXPECT_EQ(buffer2.size_bytes, 5);
   EXPECT_EQ(sync_event, nullptr);
-  auto mtl_buffer2 = reinterpret_cast<MTL::Buffer*>(buffer2.data);
-  EXPECT_EQ(memcmp(mtl_buffer2->contents(), data, sizeof(data)), 0);
+  EXPECT_EQ(buffer2.data, old_ptr);
+  EXPECT_EQ(buffer.data, nullptr);
+  ArrowBufferReset(&buffer2);
+
+  // CPU -> GPU without alignment should trigger a copy and release the input
+  ArrowBufferInit(&buffer);
+  ASSERT_EQ(ArrowBufferAppend(&buffer, data, sizeof(data)), NANOARROW_OK);
+  old_ptr = buffer.data;
+  ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2, &sync_event),
+            NANOARROW_OK);
+  EXPECT_EQ(buffer2.size_bytes, 5);
+  EXPECT_EQ(sync_event, nullptr);
+  EXPECT_NE(buffer2.data, old_ptr);
+  EXPECT_EQ(memcmp(buffer2.data, data, sizeof(data)), 0);
   EXPECT_EQ(buffer.data, nullptr);
 
   ArrowBufferReset(&buffer2);
@@ -120,19 +131,20 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
 TEST(NanoarrowDeviceMetal, DeviceGpuBufferCopy) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceMetalDefaultDevice();
-  struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
   void* sync_event;
 
+  struct ArrowBuffer buffer;
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer, &sync_event),
             NANOARROW_OK);
-  auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
-  struct ArrowDeviceBufferView gpu_view = {mtl_buffer, 0, sizeof(data)};
-  auto mtl_buffer_dest =
-      mtl_buffer->device()->newBuffer(5, MTL::ResourceStorageModeShared);
-  uint8_t* gpu_dest = reinterpret_cast<uint8_t*>(mtl_buffer_dest->contents());
-  struct ArrowDeviceBufferView gpu_dest_view = {mtl_buffer_dest, 0, sizeof(data)};
+  struct ArrowDeviceBufferView gpu_view = {buffer.data, 0, sizeof(data)};
+
+  struct ArrowBuffer buffer_dest;
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer_dest, &sync_event),
+            NANOARROW_OK);
+  struct ArrowDeviceBufferView gpu_dest_view = {buffer_dest.data, 0, sizeof(data)};
+  void* gpu_dest = buffer_dest.data;
 
   uint8_t cpu_dest[5];
   struct ArrowDeviceBufferView cpu_dest_view = {cpu_dest, 0, sizeof(data)};
@@ -154,8 +166,8 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferCopy) {
             NANOARROW_OK);
   EXPECT_EQ(memcmp(gpu_dest, data, sizeof(data)), 0);
 
-  mtl_buffer_dest->release();
   ArrowBufferReset(&buffer);
+  ArrowBufferReset(&buffer_dest);
 }
 
 TEST(NanoarrowDeviceMetal, DeviceAlignedBuffer) {
@@ -214,52 +226,4 @@ TEST(NanoarrowDeviceMetal, DeviceCpuArrayBuffers) {
 
   auto data_ptr = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);
   EXPECT_EQ(data_ptr[0], 1234);
-}
-
-#include <unistd.h>
-
-MTL::Buffer* MakeBufferTest(MTL::Device* mtl_device, const void* arbitrary_addr,
-                            int64_t size_bytes) {
-  // Cache the page size from the system call
-  static int pagesize = 0;
-  if (pagesize == 0) {
-    pagesize = getpagesize();
-  }
-
-  int64_t allocation_size;
-  if (size_bytes % pagesize == 0) {
-    allocation_size = size_bytes;
-  } else {
-    allocation_size = (size_bytes / pagesize) + 1 * pagesize;
-  }
-
-  // Attempt wrapping as is in the event that the allocation is already aligned
-  MTL::Buffer* mtl_buffer = mtl_device->newBuffer(
-      arbitrary_addr, allocation_size, MTL::ResourceStorageModeShared, nullptr);
-  if (mtl_buffer != nullptr) {
-    return mtl_buffer;
-  }
-
-  void* ptr_aligned;
-  int result = posix_memalign(&ptr_aligned, pagesize, allocation_size);
-  memcpy(ptr_aligned, arbitrary_addr, size_bytes);
-
-  // Create the (non-owning) buffer
-  mtl_buffer = mtl_device->newBuffer(ptr_aligned, allocation_size,
-                                     MTL::ResourceStorageModeShared, nullptr);
-
-  return mtl_buffer;
-}
-
-TEST(ArrowDeviceMetal, Checkerino) {
-  int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  auto mtl_device =
-      reinterpret_cast<MTL::Device*>(ArrowDeviceMetalDefaultDevice()->private_data);
-  MTL::Buffer* mtl_buffer = MakeBufferTest(mtl_device, data, sizeof(data));
-  ASSERT_NE(mtl_buffer, nullptr);
-
-  MTL::Buffer* mtl_buffer2 =
-      MakeBufferTest(mtl_device, mtl_buffer->contents(), sizeof(data));
-  ASSERT_NE(mtl_buffer, nullptr);
-  ASSERT_EQ(mtl_buffer2->contents(), mtl_buffer->contents());
 }
