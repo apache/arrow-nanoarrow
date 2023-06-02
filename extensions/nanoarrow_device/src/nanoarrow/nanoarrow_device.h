@@ -233,6 +233,12 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewReset)
 #define ArrowDeviceArrayViewSetArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewSetArray)
+#define ArrowDeviceArrayViewCopy \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopy)
+#define ArrowDeviceArrayViewCopyRequired \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopyRequired)
+#define ArrowDeviceArrayTryMove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayTryMove)
 #define ArrowDeviceResolve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceResolve)
 #define ArrowDeviceCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCpu)
 #define ArrowDeviceInitCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceInitCpu)
@@ -376,7 +382,7 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
 ///
 /// Returns 1 if a copy is required or 0 if the source array can be moved.
 int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
-                                    struct ArrowDevice* device_dst);
+                                     struct ArrowDevice* device_dst);
 
 /// \brief Move an ArrowDeviceArrayView to a device if possible
 ///
