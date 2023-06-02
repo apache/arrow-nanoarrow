@@ -417,3 +417,83 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
 
   return NANOARROW_OK;
 }
+
+static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* device_src,
+                                                       struct ArrowArrayView* src,
+                                                       struct ArrowDevice* device_dst,
+                                                       struct ArrowArray* dst) {
+  // Currently no attempt to minimize the amount of meory copied (i.e.,
+  // by applying offset + length and copying potentially fewer bytes)
+  struct ArrowDeviceBufferView buffer_view_src;
+  buffer_view_src.offset_bytes = 0;
+  void* sync_event;
+
+  for (int i = 0; i < 3; i++) {
+    if (src->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
+      break;
+    }
+
+    buffer_view_src.private_data = src->buffer_views[i].data.data;
+    buffer_view_src.size_bytes = src->buffer_views[i].size_bytes;
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferInit(device_src, buffer_view_src, device_dst,
+                                                  ArrowArrayBuffer(dst, i), &sync_event));
+  }
+
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCopyInternal(
+        device_src, src->children[i], device_dst, dst->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
+                                        struct ArrowDevice* device_dst,
+                                        struct ArrowDeviceArray* dst) {
+  struct ArrowArray tmp;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&tmp, &src->array_view, NULL));
+
+  int result =
+      ArrowDeviceArrayViewCopyInternal(src->device, &src->array_view, device_dst, &tmp);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
+  ArrowDeviceArrayInit(dst, device_dst);
+  ArrowArrayMove(&tmp, &dst->array);
+  return result;
+}
+
+int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
+                                     struct ArrowDevice* device_dst) {
+  // Can always move if device type and ID match
+  if (src->device->device_type == device_dst->device_type &&
+      src->device->device_id == device_dst->device_id) {
+    return 0;
+  }
+
+  // Otherwise, see if the source device knows
+  int result = src->device->copy_required(src->device, &src->array_view, device_dst);
+  if (result == -1) {
+    // Otherwise, see if the destination device knows
+    result = device_dst->copy_required(src->device, &src->array_view, device_dst);
+  }
+
+  // If nobody knows, we have to copy
+  return result != 0;
+}
+
+ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArrayView* src_view,
+                                       struct ArrowDeviceArray* src,
+                                       struct ArrowDevice* device_dst,
+                                       struct ArrowDeviceArray* dst) {
+  if (ArrowDeviceArrayViewCopyRequired(src_view, device_dst)) {
+    return ArrowDeviceArrayViewCopy(src_view, device_dst, dst);
+  } else {
+    ArrowDeviceArrayMove(src, dst);
+    dst->device_type = device_dst->device_type;
+    dst->device_id = device_dst->device_id;
+    return NANOARROW_OK;
+  }
+}

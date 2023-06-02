@@ -31,6 +31,11 @@
 static MTL::Buffer* ArrowDeviceMetalWrapBufferNonOwning(MTL::Device* mtl_device,
                                                         const void* arbitrary_addr,
                                                         int64_t size_bytes) {
+  // We can wrap any zero-size buffer
+  if (size_bytes == 0) {
+    return mtl_device->newBuffer(0, MTL::ResourceStorageModeShared);
+  }
+
   // Cache the page size from the system call
   static int pagesize = 0;
   if (pagesize == 0) {
@@ -269,6 +274,7 @@ static int ArrowDeviceCpuCopyRequired(struct ArrowDevice* device_src,
     }
 
     return false;
+
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
     // Metal -> Metal is always a move

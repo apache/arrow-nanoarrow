@@ -367,6 +367,26 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     struct ArrowError* error);
 
+/// \brief Copy an ArrowDeviceArrayView to a device
+ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
+                                        struct ArrowDevice* device_dst,
+                                        struct ArrowDeviceArray* dst);
+
+/// \brief Calculate if a copy is required to move an ArrowDeviceArrayView to a device
+///
+/// Returns 1 if a copy is required or 0 if the source array can be moved.
+int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
+                                    struct ArrowDevice* device_dst);
+
+/// \brief Move an ArrowDeviceArrayView to a device if possible
+///
+/// Will attempt to zero-copy move a device array to the given device, falling back
+/// to a copy otherwise.
+ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArrayView* src_view,
+                                       struct ArrowDeviceArray* src,
+                                       struct ArrowDevice* device_dst,
+                                       struct ArrowDeviceArray* dst);
+
 /// \brief Pointer to a statically-allocated CPU device singleton
 struct ArrowDevice* ArrowDeviceCpu(void);
 
