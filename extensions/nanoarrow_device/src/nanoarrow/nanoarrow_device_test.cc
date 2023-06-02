@@ -108,7 +108,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, cpu->device_id);
 
-  device_array2.array.release(&device_array.array);
+  device_array2.array.release(&device_array2.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
@@ -172,7 +172,7 @@ TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewList) {
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, cpu->device_id);
 
-  device_array2.array.release(&device_array.array);
+  device_array2.array.release(&device_array2.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 

@@ -279,7 +279,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
   // Copy shouldn't be required to the CPU either
   ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
 
-  device_array2.array.release(&device_array.array);
+  device_array2.array.release(&device_array2.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
@@ -352,7 +352,7 @@ TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewList) {
   // Copy shouldn't be required to the CPU either
   ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
 
-  device_array2.array.release(&device_array.array);
+  device_array2.array.release(&device_array2.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
