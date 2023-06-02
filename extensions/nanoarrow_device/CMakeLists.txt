@@ -83,14 +83,49 @@ if (NANOARROW_DEVICE_BUNDLE)
     DESTINATION ".")
 else()
   # This is a normal CMake build that builds + installs some includes and a static lib
+  if (NANOARROW_DEVICE_WITH_METAL)
+    if (NOT EXISTS "${CMAKE_BINARY_DIR}/metal-cpp")
+      message(STATUS "Fetching metal-cpp")
+      file(DOWNLOAD
+        "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
+        "${CMAKE_BINARY_DIR}/metal-cpp.zip")
+      file(ARCHIVE_EXTRACT INPUT ${CMAKE_BINARY_DIR}/metal-cpp.zip DESTINATION ${CMAKE_BINARY_DIR})
+    endif()
+
+    if(NOT DEFINED CMAKE_CXX_STANDARD)
+      set(CMAKE_CXX_STANDARD 17)
+    endif()
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+    find_library(METAL_LIBRARY Metal REQUIRED)
+    message(STATUS "Metal framework found at '${METAL_LIBRARY}'")
+
+    find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
+    message(STATUS "Foundation framework found at '${FOUNDATION_LIBRARY}'")
+
+    find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
+    message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
+
+    set(NANOARROW_DEVICE_SOURCES_METAL
+      src/nanoarrow_device_metal/metal_impl.cc
+      src/nanoarrow_device_metal/nanoarrow_device_metal.cc)
+    set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
+    set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY} ${QUARTZ_CORE_LIBRARY})
+    set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
+  endif()
+
   add_library(nanoarrow_device
-    src/nanoarrow/nanoarrow_device.c)
+    src/nanoarrow/nanoarrow_device.c ${NANOARROW_DEVICE_SOURCES_METAL})
 
   target_include_directories(nanoarrow_device PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
         $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
         $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+        $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
         $<INSTALL_INTERFACE:include>)
+
+  target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL})
+  target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL})
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(
@@ -100,48 +135,7 @@ else()
 
 endif()
 
-if (NANOARROW_DEVICE_WITH_METAL)
-  if (NOT EXISTS "${CMAKE_BINARY_DIR}/metal-cpp")
-    message(STATUS "Fetching metal-cpp")
-    file(DOWNLOAD
-      "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
-      "${CMAKE_BINARY_DIR}/metal-cpp.zip")
-    file(ARCHIVE_EXTRACT INPUT ${CMAKE_BINARY_DIR}/metal-cpp.zip DESTINATION ${CMAKE_BINARY_DIR})
-  endif()
 
-  if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 17)
-  endif()
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-  find_library(METAL_LIBRARY Metal REQUIRED)
-  message(STATUS "Metal framework found at '${METAL_LIBRARY}'")
-
-  find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
-  message(STATUS "Foundation framework found at '${FOUNDATION_LIBRARY}'")
-
-  find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
-  message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
-
-  add_library(nanoarrow_device_metal
-    src/nanoarrow_device_metal/metal_impl.cc
-    src/nanoarrow_device_metal/nanoarrow_device_metal.cc)
-
-  target_include_directories(nanoarrow_device_metal PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/metal-cpp>
-    $<INSTALL_INTERFACE:include>)
-
-  target_link_libraries(nanoarrow_device_metal PUBLIC
-    nanoarrow_device
-    nanoarrow
-    ${METAL_LIBRARY} ${FOUNDATION_LIBRARY} ${QUARTZ_CORE_LIBRARY})
-
-  install(TARGETS nanoarrow_device_metal DESTINATION lib)
-  install(
-    FILES
-      src/nanoarrow_device_metal/nanoarrow_device_metal.h
-    DESTINATION include/nanoarrow)
-endif()
 
 if (NANOARROW_DEVICE_BUILD_TESTS)
   set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/../../valgrind.supp --error-exitcode=1")
@@ -201,7 +195,7 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
     add_executable(nanoarrow_device_metal_test src/nanoarrow_device_metal/nanoarrow_device_metal_test.cc)
     target_link_libraries(
       nanoarrow_device_metal_test
-      nanoarrow_device_metal nanoarrow gtest_main device_coverage_config)
+      nanoarrow_device nanoarrow gtest_main device_coverage_config)
     gtest_discover_tests(nanoarrow_device_metal_test)
   endif()
 endif()

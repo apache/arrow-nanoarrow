@@ -143,7 +143,7 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->private_data = NULL;
 }
 
-#ifdef NANOAROW_DEVICE_WITH_METAL
+#ifdef NANOARROW_DEVICE_WITH_METAL
 struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
 #endif
 
@@ -152,9 +152,9 @@ struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t devi
     return ArrowDeviceCpu();
   }
 
-#ifdef NANOAROW_DEVICE_WITH_METAL
+#ifdef NANOARROW_DEVICE_WITH_METAL
   if (device_type == ARROW_DEVICE_METAL) {
-    struct ArrowDevice* default_device == ArrowDeviceMetalDefaultDevice();
+    struct ArrowDevice* default_device = ArrowDeviceMetalDefaultDevice();
     if (device_id == default_device->device_id) {
       return default_device;
     }
