@@ -256,6 +256,11 @@ void ArrowDeviceArrayViewInit(struct ArrowDeviceArrayView* device_array_view) {
   memset(device_array_view, 0, sizeof(struct ArrowDeviceArrayView));
 }
 
+void ArrowDeviceArrayViewReset(struct ArrowDeviceArrayView* device_array_view) {
+  ArrowArrayViewReset(&device_array_view->array_view);
+  device_array_view->device = NULL;
+}
+
 static ArrowErrorCode ArrowDeviceBufferGetInt32(struct ArrowDevice* device,
                                                 struct ArrowBufferView buffer_view,
                                                 int64_t i, int32_t* out) {
@@ -303,7 +308,6 @@ static ArrowErrorCode ArrowDeviceArrayViewValidateDefault(
   // last buffer and doesn't set a nice error message (could implement those, too
   // later on).
   int64_t offset_plus_length = array_view->offset + array_view->length;
-
   int32_t last_offset32;
   int64_t last_offset64;
 

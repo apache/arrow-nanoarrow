@@ -229,6 +229,8 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 #define ArrowDeviceArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayInit)
 #define ArrowDeviceArrayViewInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewInit)
+#define ArrowDeviceArrayViewReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewReset)
 #define ArrowDeviceArrayViewSetArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewSetArray)
 #define ArrowDeviceResolve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceResolve)
@@ -256,7 +258,7 @@ ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 struct ArrowDeviceBufferView {
   /// \brief Device-defined handle for a buffer. For the CPU device, this is
   /// a normal memory address.
-  void* private_data;
+  const void* private_data;
 
   /// \brief An offset into the buffer handle defined by private_data
   int64_t offset_bytes;
@@ -342,6 +344,9 @@ void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
 /// array_view member using nanoarrow core functions that can initialize from
 /// a type identifier or schema.
 void ArrowDeviceArrayViewInit(struct ArrowDeviceArrayView* device_array_view);
+
+/// \brief Release the underlying ArrowArrayView
+void ArrowDeviceArrayViewReset(struct ArrowDeviceArrayView* device_array_view);
 
 /// \brief Set ArrowArrayView buffer information from a device array
 ///
