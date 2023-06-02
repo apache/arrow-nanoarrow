@@ -462,6 +462,8 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
 
   ArrowDeviceArrayInit(dst, device_dst);
   ArrowArrayMove(&tmp, &dst->array);
+  dst->device_type = device_dst->device_type;
+  dst->device_id = device_dst->device_id;
   return result;
 }
 
@@ -489,7 +491,9 @@ ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArray* src,
                                        struct ArrowDevice* device_dst,
                                        struct ArrowDeviceArray* dst) {
   if (ArrowDeviceArrayViewCopyRequired(src_view, device_dst)) {
-    return ArrowDeviceArrayViewCopy(src_view, device_dst, dst);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCopy(src_view, device_dst, dst));
+    src->array.release(&src->array);
+    return NANOARROW_OK;
   } else {
     ArrowDeviceArrayMove(src, dst);
     dst->device_type = device_dst->device_type;

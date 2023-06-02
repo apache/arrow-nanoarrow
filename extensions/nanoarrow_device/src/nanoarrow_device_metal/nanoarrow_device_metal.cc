@@ -245,9 +245,9 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
   }
 }
 
-static int ArrowDeviceCpuCopyRequired(struct ArrowDevice* device_src,
-                                      struct ArrowArrayView* src,
-                                      struct ArrowDevice* device_dst) {
+static int ArrowDeviceMetalCopyRequired(struct ArrowDevice* device_src,
+                                        struct ArrowArrayView* src,
+                                        struct ArrowDevice* device_dst) {
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
     // Only if all buffers in src can be wrapped as an MTL::Buffer
@@ -267,7 +267,7 @@ static int ArrowDeviceCpuCopyRequired(struct ArrowDevice* device_src,
     }
 
     for (int64_t i = 0; i < src->n_children; i++) {
-      int result = ArrowDeviceCpuCopyRequired(device_src, src->children[i], device_dst);
+      int result = ArrowDeviceMetalCopyRequired(device_src, src->children[i], device_dst);
       if (result != 0) {
         return result;
       }
@@ -334,6 +334,7 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
   device->buffer_init = &ArrowDeviceMetalBufferInit;
   device->buffer_move = &ArrowDeviceMetalBufferMove;
   device->buffer_copy = &ArrowDeviceMetalBufferCopy;
+  device->copy_required = &ArrowDeviceMetalCopyRequired;
   device->synchronize_event = &ArrowDeviceMetalSynchronize;
   device->release = &ArrowDeviceMetalRelease;
   device->private_data = default_device;
