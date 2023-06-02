@@ -320,19 +320,31 @@ struct ArrowDevice {
   void* private_data;
 };
 
+struct ArrowDeviceArrayView {
+  struct ArrowDevice* device;
+  struct ArrowArrayView array_view;
+};
+
 /// \brief Initialize an ArrowDeviceArray
 ///
 /// Zeroes the memory of device_array and initializes it for a given device.
 void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
                           struct ArrowDevice* device);
 
+/// \brief Initialize an ArrowDeviceArrayView
+///
+/// Zeroes memory for the device array view struct. Callers must initialize the
+/// array_view member using nanoarrow core functions that can initialize from
+/// a type identifier or schema.
+void ArrowDeviceArrayViewInit(struct ArrowDeviceArrayView* device_array_view);
+
 /// \brief Set ArrowArrayView buffer information from a device array
 ///
 /// Whereas ArrowArrayViewSetArray() works ArrowArray objects with CPU-accessible memory,
 /// it will crash arrays whose buffer addresses cannot be dereferenced.
-ArrowErrorCode ArrowDeviceArrayViewSetArray(struct ArrowArrayView* array_view,
-                                            struct ArrowDeviceArray* device_array,
-                                            struct ArrowError* error);
+ArrowErrorCode ArrowDeviceArrayViewSetArray(
+    struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
+    struct ArrowError* error);
 
 /// \brief Pointer to a statically-allocated CPU device singleton
 struct ArrowDevice* ArrowDeviceCpu(void);
