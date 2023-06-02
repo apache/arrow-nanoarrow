@@ -39,7 +39,6 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
-  void* sync_event;
 
   struct ArrowBuffer buffer_aligned;
   ArrowDeviceMetalInitBuffer(&buffer_aligned);
@@ -47,26 +46,20 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   struct ArrowDeviceBufferView gpu_view = {buffer_aligned.data, 0, sizeof(data)};
 
   // CPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer), NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
-  EXPECT_EQ(sync_event, nullptr);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
   // GPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, gpu, &buffer, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, gpu, &buffer), NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
-  EXPECT_EQ(sync_event, nullptr);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
   // GPU -> CPU
-  ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, cpu, &buffer, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, cpu, &buffer), NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
-  EXPECT_EQ(sync_event, nullptr);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
@@ -81,34 +74,27 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
 
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowDeviceBufferView view = {data, 0, sizeof(data)};
-  void* sync_event;
 
-  ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, gpu, &buffer, &sync_event), NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, gpu, &buffer), NANOARROW_OK);
   auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
 
   // GPU -> GPU: just a move
   uint8_t* old_ptr = buffer.data;
-  ASSERT_EQ(ArrowDeviceBufferMove(gpu, &buffer, gpu, &buffer2, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferMove(gpu, &buffer, gpu, &buffer2), NANOARROW_OK);
   EXPECT_EQ(buffer2.size_bytes, 5);
-  EXPECT_EQ(sync_event, nullptr);
   EXPECT_EQ(buffer2.data, old_ptr);
   EXPECT_EQ(buffer.data, nullptr);
 
   // GPU -> CPU: just a move
-  ASSERT_EQ(ArrowDeviceBufferMove(gpu, &buffer2, cpu, &buffer, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferMove(gpu, &buffer2, cpu, &buffer), NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, 5);
-  EXPECT_EQ(sync_event, nullptr);
   EXPECT_EQ(buffer.data, old_ptr);
   EXPECT_EQ(buffer2.data, nullptr);
 
   // CPU -> GPU: should be just a move here because the buffer is properly aligned
   // from the initial GPU allocation.
-  ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2), NANOARROW_OK);
   EXPECT_EQ(buffer2.size_bytes, 5);
-  EXPECT_EQ(sync_event, nullptr);
   EXPECT_EQ(buffer2.data, old_ptr);
   EXPECT_EQ(buffer.data, nullptr);
   ArrowBufferReset(&buffer2);
@@ -117,10 +103,8 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
   ArrowBufferInit(&buffer);
   ASSERT_EQ(ArrowBufferAppend(&buffer, data, sizeof(data)), NANOARROW_OK);
   old_ptr = buffer.data;
-  ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2), NANOARROW_OK);
   EXPECT_EQ(buffer2.size_bytes, 5);
-  EXPECT_EQ(sync_event, nullptr);
   EXPECT_NE(buffer2.data, old_ptr);
   EXPECT_EQ(memcmp(buffer2.data, data, sizeof(data)), 0);
   EXPECT_EQ(buffer.data, nullptr);
@@ -133,16 +117,13 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferCopy) {
   struct ArrowDevice* gpu = ArrowDeviceMetalDefaultDevice();
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
-  void* sync_event;
 
   struct ArrowBuffer buffer;
-  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer), NANOARROW_OK);
   struct ArrowDeviceBufferView gpu_view = {buffer.data, 0, sizeof(data)};
 
   struct ArrowBuffer buffer_dest;
-  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer_dest, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer_dest), NANOARROW_OK);
   struct ArrowDeviceBufferView gpu_dest_view = {buffer_dest.data, 0, sizeof(data)};
   void* gpu_dest = buffer_dest.data;
 
@@ -150,20 +131,17 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferCopy) {
   struct ArrowDeviceBufferView cpu_dest_view = {cpu_dest, 0, sizeof(data)};
 
   // GPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, gpu, gpu_dest_view, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, gpu, gpu_dest_view), NANOARROW_OK);
   EXPECT_EQ(memcmp(gpu_dest, data, sizeof(data)), 0);
   memset(gpu_dest, 0, sizeof(data));
 
   // GPU -> CPU
-  ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, cpu, cpu_dest_view, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, cpu, cpu_dest_view), NANOARROW_OK);
   EXPECT_EQ(memcmp(cpu_dest, data, sizeof(data)), 0);
   memset(cpu_dest, 0, sizeof(data));
 
   // CPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferCopy(cpu, cpu_view, gpu, gpu_dest_view, &sync_event),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceBufferCopy(cpu, cpu_view, gpu, gpu_dest_view), NANOARROW_OK);
   EXPECT_EQ(memcmp(gpu_dest, data, sizeof(data)), 0);
 
   ArrowBufferReset(&buffer);
