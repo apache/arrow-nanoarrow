@@ -46,15 +46,8 @@ extern "C" {
 /// this, a copy is still required in most cases to make memory GPU accessible. After GPU
 /// calculations are complete; however, moving the buffers back to the CPU is zero-copy.
 ///
-/// Because of the buffer wrapping contraint, In this implementation, "GPU buffers" (i.e.,
-/// the pointers in the ArrowArray buffers member) are represented as a pointer to an
-/// `MTL::Buffer` instead of a pointer to its contents. This is necessary because the
-/// methods that send a buffer to the GPU only accept an `MTL::Buffer*` (with offset +
-/// length).
-///
 /// Sync events are represented as an `MTL::Event*`. The degree to which the pointers
-/// to `MTL::Event*` and `MTL::Buffer*` are stable across metal-cpp versions/builds is
-/// currently unknown.
+/// to `MTL::Event*` are stable across metal-cpp versions/builds is currently unknown.
 ///
 /// @{
 
