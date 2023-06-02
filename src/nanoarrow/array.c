@@ -1021,6 +1021,19 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
+                                             struct ArrowArray* array,
+                                             struct ArrowError* error) {
+  // Extract information from the array into the array view
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayInternal(array_view, array, error));
+
+  // Run default validation. Because we've marked all non-NULL buffers as having unknown
+  // size, validation will also update the buffer sizes as it goes.
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateMinimal(array_view, error));
+
+  return NANOARROW_OK;
+}
+
 static int ArrowAssertIncreasingInt32(struct ArrowBufferView view,
                                       struct ArrowError* error) {
   if (view.size_bytes <= (int64_t)sizeof(int32_t)) {

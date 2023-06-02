@@ -957,6 +957,12 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
                                       struct ArrowArray* array, struct ArrowError* error);
 
+/// \brief Set buffer sizes and data pointers from an ArrowArray except for those
+/// that require dereferencing buffer content.
+ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
+                                             struct ArrowArray* array,
+                                             struct ArrowError* error);
+
 /// \brief Performs checks on the content of an ArrowArrayView
 ///
 /// If using ArrowArrayViewSetArray() to back array_view with an ArrowArray,

@@ -131,6 +131,27 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->private_data = NULL;
 }
 
+#ifdef NANOAROW_DEVICE_WITH_METAL
+struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
+#endif
+
+struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id) {
+  if (device_type == ARROW_DEVICE_CPU && device_id == 0) {
+    return ArrowDeviceCpu();
+  }
+
+#ifdef NANOAROW_DEVICE_WITH_METAL
+  if (device_type == ARROW_DEVICE_METAL) {
+    struct ArrowDevice* default_device == ArrowDeviceMetalDefaultDevice();
+    if (device_id == default_device->device_id) {
+      return default_device;
+    }
+  }
+#endif
+
+  return NULL;
+}
+
 ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
                                      struct ArrowDeviceBufferView src,
                                      struct ArrowDevice* device_dst,
@@ -228,5 +249,29 @@ ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
   device_array_stream->get_last_error = &ArrowDeviceBasicArrayStreamGetLastError;
   device_array_stream->release = &ArrowDeviceBasicArrayStreamRelease;
   device_array_stream->private_data = private_data;
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceArrayViewValidateDefault(
+    struct ArrowDevice* device, struct ArrowArrayView* array_view,
+    struct ArrowError* error) {
+  return ENOTSUP;
+}
+
+ArrowErrorCode ArrowDeviceArrayViewSetArray(struct ArrowArrayView* array_view,
+                                            struct ArrowDeviceArray* device_array,
+                                            struct ArrowError* error) {
+  struct ArrowDevice* device =
+      ArrowDeviceResolve(device_array->device_type, device_array->device_id);
+  if (device == NULL) {
+    ArrowErrorSet(error, "Can't resolve device with type %d and identifier %ld",
+                  (int)device_array->device_type, (long)device_array->device_id);
+    return EINVAL;
+  }
+
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayViewSetArrayMinimal(array_view, &device_array->array, error));
+  NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewValidateDefault(device, array_view, error));
+
   return NANOARROW_OK;
 }

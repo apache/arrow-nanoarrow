@@ -326,11 +326,27 @@ struct ArrowDevice {
 void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
                           struct ArrowDevice* device);
 
+/// \brief Set ArrowArrayView buffer information from a device array
+///
+/// Whereas ArrowArrayViewSetArray() works ArrowArray objects with CPU-accessible memory,
+/// it will crash arrays whose buffer addresses cannot be dereferenced.
+ArrowErrorCode ArrowDeviceArrayViewSetArray(struct ArrowArrayView* array_view,
+                                            struct ArrowDeviceArray* device_array,
+                                            struct ArrowError* error);
+
 /// \brief Pointer to a statically-allocated CPU device singleton
 struct ArrowDevice* ArrowDeviceCpu(void);
 
 /// \brief Initialize a user-allocated device struct with a CPU device
 void ArrowDeviceInitCpu(struct ArrowDevice* device);
+
+/// \brief Resolve a device pointer from a type + identifier
+///
+/// Depending on which libraries this build of the device extension was built with,
+/// some device types may or may not be supported. The CPU type is always supported.
+/// Returns NULL for device that does not exist or cannot be returned as a singleton.
+/// Callers must not release the pointed-to device.
+struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id);
 
 ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
                                      struct ArrowDeviceBufferView src,
