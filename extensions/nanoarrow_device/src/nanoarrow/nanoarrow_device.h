@@ -388,8 +388,8 @@ int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
 ///
 /// Will attempt to zero-copy move a device array to the given device, falling back
 /// to a copy otherwise.
-ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArrayView* src_view,
-                                       struct ArrowDeviceArray* src,
+ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArray* src,
+                                       struct ArrowDeviceArrayView* src_view,
                                        struct ArrowDevice* device_dst,
                                        struct ArrowDeviceArray* dst);
 

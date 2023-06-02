@@ -96,7 +96,19 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
 
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
 
-  device_array.array.release(&device_array.array);
+  // Copy shouldn't be required to the same device
+  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
+
+  struct ArrowDeviceArray device_array2;
+  device_array2.array.release = nullptr;
+  ASSERT_EQ(
+      ArrowDeviceArrayTryMove(&device_array, &device_array_view, cpu, &device_array2),
+      NANOARROW_OK);
+  ASSERT_EQ(device_array.array.release, nullptr);
+  ASSERT_NE(device_array2.array.release, nullptr);
+  ASSERT_EQ(device_array2.device_id, cpu->device_id);
+
+  device_array2.array.release(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
@@ -148,7 +160,19 @@ TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewList) {
   EXPECT_EQ(device_array_view.array_view.children[0]->buffer_views[1].size_bytes,
             3 * sizeof(int32_t));
 
-  device_array.array.release(&device_array.array);
+  // Copy shouldn't be required to the same device
+  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
+
+  struct ArrowDeviceArray device_array2;
+  device_array2.array.release = nullptr;
+  ASSERT_EQ(
+      ArrowDeviceArrayTryMove(&device_array, &device_array_view, cpu, &device_array2),
+      NANOARROW_OK);
+  ASSERT_EQ(device_array.array.release, nullptr);
+  ASSERT_NE(device_array2.array.release, nullptr);
+  ASSERT_EQ(device_array2.device_id, cpu->device_id);
+
+  device_array2.array.release(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 

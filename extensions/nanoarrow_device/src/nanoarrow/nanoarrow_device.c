@@ -484,8 +484,8 @@ int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
   return result != 0;
 }
 
-ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArrayView* src_view,
-                                       struct ArrowDeviceArray* src,
+ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArray* src,
+                                       struct ArrowDeviceArrayView* src_view,
                                        struct ArrowDevice* device_dst,
                                        struct ArrowDeviceArray* dst) {
   if (ArrowDeviceArrayViewCopyRequired(src_view, device_dst)) {
