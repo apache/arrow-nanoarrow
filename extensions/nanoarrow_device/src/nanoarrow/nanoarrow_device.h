@@ -317,6 +317,12 @@ struct ArrowDevice {
                                 struct ArrowDevice* device_dst,
                                 struct ArrowDeviceBufferView dst, void** sync_event);
 
+  /// \brief Check if a copy is required to move between devices
+  ///
+  /// Returns 1 (copy is required), 0 (copy not required; move is OK), or -1 (don't know)
+  int (*copy_required)(struct ArrowDevice* device_src, struct ArrowArrayView* src,
+                       struct ArrowDevice* device_dst);
+
   /// \brief Wait for an event
   ///
   /// Implementations should handle at least waiting on the CPU host.

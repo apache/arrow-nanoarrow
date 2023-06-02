@@ -240,6 +240,49 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
   }
 }
 
+static int ArrowDeviceCpuCopyRequired(struct ArrowDevice* device_src,
+                                      struct ArrowArrayView* src,
+                                      struct ArrowDevice* device_dst) {
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_METAL) {
+    // Only if all buffers in src can be wrapped as an MTL::Buffer
+    auto mtl_device = reinterpret_cast<MTL::Device*>(device_dst->private_data);
+    for (int i = 0; i < 3; i++) {
+      if (src->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
+        break;
+      }
+
+      MTL::Buffer* maybe_buffer = ArrowDeviceMetalWrapBufferNonOwning(
+          mtl_device, src->buffer_views[i].data.data, src->buffer_views[i].size_bytes);
+      if (maybe_buffer == nullptr) {
+        return true;
+      }
+
+      maybe_buffer->release();
+    }
+
+    for (int64_t i = 0; i < src->n_children; i++) {
+      int result = ArrowDeviceCpuCopyRequired(device_src, src->children[i], device_dst);
+      if (result != 0) {
+        return result;
+      }
+    }
+
+    return false;
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_METAL) {
+    // Metal -> Metal is always a move
+    return 0;
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    // We can always go from super-aligned metal land to CPU land
+    return 0;
+  } else {
+    // Fall back to the other device's implementation
+    return -1;
+  }
+}
+
 static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
                                                   struct ArrowDevice* device_event,
                                                   void* sync_event,

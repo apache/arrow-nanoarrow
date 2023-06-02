@@ -90,6 +90,17 @@ static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
   return NANOARROW_OK;
 }
 
+static int ArrowDeviceCpuCopyRequired(struct ArrowDevice* device_src,
+                                      struct ArrowArrayView* src,
+                                      struct ArrowDevice* device_dst) {
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_CPU) {
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
 static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
                                                 struct ArrowDevice* device_event,
                                                 void* sync_event,
@@ -126,6 +137,7 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->buffer_init = &ArrowDeviceCpuBufferInit;
   device->buffer_move = &ArrowDeviceCpuBufferMove;
   device->buffer_copy = &ArrowDeviceCpuBufferCopy;
+  device->copy_required = &ArrowDeviceCpuCopyRequired;
   device->synchronize_event = &ArrowDeviceCpuSynchronize;
   device->release = &ArrowDeviceCpuRelease;
   device->private_data = NULL;
