@@ -61,3 +61,16 @@ TEST(NanoarrowDeviceHpp, UniqueDevice) {
   ASSERT_EQ(device->release, nullptr);
   ASSERT_NE(device2->release, nullptr);
 }
+
+TEST(NanoarrowDeviceHpp, UniqueDeviceArrayView) {
+  nanoarrow::device::UniqueDeviceArrayView array_view;
+  ASSERT_EQ(array_view->device, nullptr);
+  ArrowDeviceArrayViewInit(array_view.get());
+  ArrowArrayViewInitFromType(&array_view->array_view, NANOARROW_TYPE_INT32);
+
+  ASSERT_EQ(array_view->array_view.storage_type, NANOARROW_TYPE_INT32);
+
+  nanoarrow::device::UniqueDeviceArrayView array_view2 = std::move(array_view);
+  ASSERT_EQ(array_view2->array_view.storage_type, NANOARROW_TYPE_INT32);
+  ASSERT_EQ(array_view->array_view.storage_type, NANOARROW_TYPE_UNINITIALIZED);
+}

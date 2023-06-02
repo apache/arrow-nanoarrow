@@ -55,6 +55,21 @@ static inline void release_pointer(struct ArrowDeviceArrayStream* data) {
   }
 }
 
+static inline void init_pointer(struct ArrowDeviceArrayView* data) {
+  ArrowDeviceArrayViewInit(data);
+}
+
+static inline void move_pointer(struct ArrowDeviceArrayView* src,
+                                struct ArrowDeviceArrayView* dst) {
+  ArrowArrayViewMove(&src->array_view, &dst->array_view);
+  dst->device = src->device;
+  src->device = nullptr;
+}
+
+static inline void release_pointer(struct ArrowDeviceArrayView* data) {
+  ArrowArrayViewReset(&data->array_view);
+}
+
 static inline void init_pointer(struct ArrowDevice* data) { data->release = nullptr; }
 
 static inline void move_pointer(struct ArrowDevice* src, struct ArrowDevice* dst) {
@@ -92,6 +107,9 @@ using UniqueDeviceArrayStream = internal::Unique<struct ArrowDeviceArrayStream>;
 
 /// \brief Class wrapping a unique struct ArrowDevice
 using UniqueDevice = internal::Unique<struct ArrowDevice>;
+
+/// \brief Class wrapping a unique struct ArrowDeviceArrayView
+using UniqueDeviceArrayView = internal::Unique<struct ArrowDeviceArrayView>;
 
 /// @}
 
