@@ -42,6 +42,7 @@ struct ArrowIpcDecoderPrivate {
   enum ArrowIpcEndianness endianness;
   enum ArrowIpcEndianness system_endianness;
   struct ArrowArrayView array_view;
+  struct ArrowArray array;
   int64_t n_fields;
   struct ArrowIpcField* fields;
   int64_t n_buffers;

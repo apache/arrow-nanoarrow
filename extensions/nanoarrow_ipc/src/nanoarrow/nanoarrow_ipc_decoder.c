@@ -1129,6 +1129,9 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
   private_data->n_buffers = 0;
   private_data->n_fields = 0;
   ArrowArrayViewReset(&private_data->array_view);
+  if (private_data->array.release != NULL) {
+    private_data->array.release(&private_data->array);
+  }
   if (private_data->fields != NULL) {
     ArrowFree(private_data->fields);
   }
@@ -1137,6 +1140,8 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
   // this will fail if the schema is not valid.
   NANOARROW_RETURN_NOT_OK(
       ArrowArrayViewInitFromSchema(&private_data->array_view, schema, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&private_data->array,
+                                                      &private_data->array_view, error));
 
   // Root must be a struct
   if (private_data->array_view.storage_type != NANOARROW_TYPE_STRUCT) {
