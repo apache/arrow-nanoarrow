@@ -35,6 +35,7 @@ using namespace arrow;
 extern "C" {
 struct ArrowIpcField {
   struct ArrowArrayView* array_view;
+  struct ArrowArray* array;
   int64_t buffer_offset;
 };
 

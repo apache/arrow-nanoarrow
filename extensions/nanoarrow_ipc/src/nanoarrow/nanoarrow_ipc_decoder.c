@@ -48,6 +48,7 @@
 
 struct ArrowIpcField {
   struct ArrowArrayView* array_view;
+  struct ArrowArray* array;
   int64_t buffer_offset;
 };
 
@@ -1102,20 +1103,23 @@ static void ArrowIpcDecoderCountFields(struct ArrowSchema* schema, int64_t* n_fi
 }
 
 static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
-                                      struct ArrowArrayView* view, int64_t* n_fields,
+                                      struct ArrowArrayView* array_view,
+                                      struct ArrowArray* array, int64_t* n_fields,
                                       int64_t* n_buffers) {
   struct ArrowIpcField* field = fields + (*n_fields);
-  field->array_view = view;
+  field->array_view = array_view;
+  field->array = array;
   field->buffer_offset = *n_buffers;
 
   for (int i = 0; i < 3; i++) {
-    *n_buffers += view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
+    *n_buffers += array_view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
   }
 
   *n_fields += 1;
 
-  for (int64_t i = 0; i < view->n_children; i++) {
-    ArrowIpcDecoderInitFields(fields, view->children[i], n_fields, n_buffers);
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    ArrowIpcDecoderInitFields(fields, array_view->children[i], array->children[i],
+                              n_fields, n_buffers);
   }
 }
 
@@ -1136,8 +1140,8 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
     ArrowFree(private_data->fields);
   }
 
-  // Allocate Array and ArrayView based on schema without moving the schema
-  // this will fail if the schema is not valid.
+  // Allocate Array and ArrayView based on schema without moving the schema.
+  // This will fail if the schema is not valid.
   NANOARROW_RETURN_NOT_OK(
       ArrowArrayViewInitFromSchema(&private_data->array_view, schema, error));
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&private_data->array,
@@ -1161,8 +1165,8 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
 
   // Init field information and calculate starting buffer offset for each
   int64_t field_i = 0;
-  ArrowIpcDecoderInitFields(private_data->fields, &private_data->array_view, &field_i,
-                            &private_data->n_buffers);
+  ArrowIpcDecoderInitFields(private_data->fields, &private_data->array_view,
+                            &private_data->array, &field_i, &private_data->n_buffers);
 
   return NANOARROW_OK;
 }
@@ -1230,12 +1234,8 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
                                                  struct ArrowBuffer* dst,
                                                  struct ArrowError* error) {
   struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
-
   dst_view->data.as_uint8 = body->data.as_uint8 + src->body_offset_bytes;
   dst_view->size_bytes = src->buffer_length_bytes;
-
-  ArrowBufferInit(dst);
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendBufferView(dst, *dst_view), error);
   return NANOARROW_OK;
 }
 
@@ -1254,6 +1254,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
                                                    struct ArrowError* error) {
   struct ArrowIpcSharedBuffer* shared =
       (struct ArrowIpcSharedBuffer*)factory->private_data;
+  ArrowBufferReset(dst);
   ArrowIpcSharedBufferClone(shared, dst);
   dst->data += src->body_offset_bytes;
   dst->size_bytes = src->buffer_length_bytes;
@@ -1317,37 +1318,40 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
   return NANOARROW_OK;
 }
 
-static int ArrowIpcDecoderWalkGetArray(struct ArrowIpcArraySetter* setter,
-                                       struct ArrowArray* array,
+static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
+                                       struct ArrowArray* array, struct ArrowArray* out,
                                        struct ArrowError* error) {
-  ns(FieldNode_struct_t) field =
-      ns(FieldNode_vec_at(setter->fields, (size_t)setter->field_i));
-  array->length = ns(FieldNode_length(field));
-  array->null_count = ns(FieldNode_null_count(field));
-  setter->field_i += 1;
+  out->length = array_view->length;
+  out->null_count = array_view->null_count;
 
   for (int64_t i = 0; i < array->n_buffers; i++) {
-    ns(Buffer_struct_t) buffer =
-        ns(Buffer_vec_at(setter->buffers, (size_t)setter->buffer_i));
-    int64_t buffer_offset = ns(Buffer_offset(buffer));
-    int64_t buffer_length = ns(Buffer_length(buffer));
-    setter->buffer_i += 1;
+    struct ArrowBufferView view = array_view->buffer_views[i];
+    struct ArrowBuffer* scratch_buffer = ArrowArrayBuffer(array, i);
+    struct ArrowBuffer* buffer_out = ArrowArrayBuffer(out, i);
 
-    struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(array, i);
-    struct ArrowBufferView view_dst;
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderMakeBuffer(
-        setter, buffer_offset, buffer_length, &view_dst, buffer_dst, error));
+    // If the scratch buffer was used, move it to the final array. Otherwise,
+    // copy the view.
+    if (scratch_buffer->size_bytes == 0) {
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendBufferView(buffer_out, view));
+    } else if (scratch_buffer->data == view.data.as_uint8) {
+      ArrowBufferMove(scratch_buffer, buffer_out);
+    } else {
+      ArrowErrorSet(
+          error,
+          "Internal: scratch buffer was used but doesn't point to the same data as view");
+      return EINVAL;
+    }
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcDecoderWalkGetArray(setter, array->children[i], error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(
+        array_view->children[i], array->children[i], out->children[i], error));
   }
 
   return NANOARROW_OK;
 }
 
-static int ArrowIpcDecoderWalkGetArrayView(struct ArrowIpcArraySetter* setter,
+static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
                                            struct ArrowArrayView* array_view,
                                            struct ArrowArray* array,
                                            struct ArrowError* error) {
@@ -1358,7 +1362,7 @@ static int ArrowIpcDecoderWalkGetArrayView(struct ArrowIpcArraySetter* setter,
   setter->field_i += 1;
 
   for (int64_t i = 0; i < 3; i++) {
-    if (array_view->layout.buffer_type == NANOARROW_BUFFER_TYPE_NONE) {
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
 
@@ -1368,15 +1372,24 @@ static int ArrowIpcDecoderWalkGetArrayView(struct ArrowIpcArraySetter* setter,
     int64_t buffer_length = ns(Buffer_length(buffer));
     setter->buffer_i += 1;
 
+    // Provide a buffer that will be used if any allocation has to occur
     struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(array, i);
-    buffer_dst->size_bytes = 0;
+
+    // Attempt to re-use any previous allocation unless this buffer is
+    // wrapping a custom allocator.
+    if (buffer_dst->allocator.private_data != NULL) {
+      ArrowBufferReset(buffer_dst);
+    } else {
+      buffer_dst->size_bytes = 0;
+    }
+
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderMakeBuffer(setter, buffer_offset, buffer_length,
-                                  &array_view->buffer_views[i], &buffer_dst, error));
+                                  &array_view->buffer_views[i], buffer_dst, error));
   }
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArrayView(
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkSetArrayView(
         setter, array_view->children[i], array->children[i], error));
   }
 
@@ -1427,14 +1440,21 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
     setter.buffer_i++;
 
     for (int64_t i = 0; i < temp.n_children; i++) {
-      result = ArrowIpcDecoderWalkGetArray(&setter, temp.children[i], error);
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderWalkSetArrayView(&setter, private_data->array_view.children[i],
+                                          private_data->array.children[i], error));
+      result = ArrowIpcDecoderWalkGetArray(private_data->array_view.children[i],
+                                           private_data->array.children[i],
+                                           temp.children[i], error);
       if (result != NANOARROW_OK) {
         temp.release(&temp);
         return result;
       }
     }
   } else {
-    result = ArrowIpcDecoderWalkGetArray(&setter, &temp, error);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderWalkSetArrayView(&setter, root->array_view, root->array, error));
+    result = ArrowIpcDecoderWalkGetArray(root->array_view, root->array, &temp, error);
     if (result != NANOARROW_OK) {
       temp.release(&temp);
       return result;
