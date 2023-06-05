@@ -1284,6 +1284,9 @@ struct ArrowIpcArraySetter {
 static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
                                      int64_t length, struct ArrowBufferView* out_view,
                                      struct ArrowBuffer* out, struct ArrowError* error) {
+  out_view->data.data = NULL;
+  out_view->size_bytes = 0;
+
   if (length == 0) {
     return NANOARROW_OK;
   }
