@@ -55,6 +55,7 @@ struct ArrowIpcDecoderPrivate {
   enum ArrowIpcEndianness endianness;
   enum ArrowIpcEndianness system_endianness;
   struct ArrowArrayView array_view;
+  struct ArrowArray array;
   int64_t n_fields;
   struct ArrowIpcField* fields;
   int64_t n_buffers;
@@ -214,6 +215,10 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
 
   if (private_data != NULL) {
     ArrowArrayViewReset(&private_data->array_view);
+
+    if (private_data->array.release != NULL) {
+      private_data->array.release(&private_data->array);
+    }
 
     if (private_data->fields != NULL) {
       ArrowFree(private_data->fields);
@@ -1332,18 +1337,6 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowIpcArraySetter* setter,
   return NANOARROW_OK;
 }
 
-static int ArrowIpcArrayInitFromArrayView(struct ArrowArray* array,
-                                          struct ArrowArrayView* array_view) {
-  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array, array_view->storage_type));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateChildren(array, array_view->n_children));
-  for (int64_t i = 0; i < array_view->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcArrayInitFromArrayView(array->children[i], array_view->children[i]));
-  }
-
-  return NANOARROW_OK;
-}
-
 static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
     int64_t field_i, struct ArrowArray* out, struct ArrowError* error) {
@@ -1363,7 +1356,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
 
   struct ArrowArray temp;
   temp.release = NULL;
-  int result = ArrowIpcArrayInitFromArrayView(&temp, root->array_view);
+  int result = ArrowArrayInitFromArrayView(&temp, root->array_view, NULL);
   if (result != NANOARROW_OK) {
     ArrowErrorSet(error, "Failed to initialize output array");
     return result;

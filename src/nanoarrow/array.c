@@ -165,9 +165,9 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                                  struct ArrowArrayView* array_view,
-                                                  struct ArrowError* error) {
+ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                           struct ArrowArrayView* array_view,
+                                           struct ArrowError* error) {
   ArrowArrayInitFromType(array, array_view->storage_type);
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;

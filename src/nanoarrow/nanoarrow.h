@@ -752,6 +752,15 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
                                         struct ArrowSchema* schema,
                                         struct ArrowError* error);
 
+/// \brief Initialize the contents of an ArrowArray from an ArrowArrayView
+///
+/// Caller is responsible for calling the array->release callback if
+/// NANOARROW_OK is returned.
+ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                           struct ArrowArrayView* array_view,
+                                           struct ArrowError* error);
+
+
 /// \brief Allocate the array->children array
 ///
 /// Includes the memory for each child struct ArrowArray,

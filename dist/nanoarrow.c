@@ -1898,9 +1898,9 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                                  struct ArrowArrayView* array_view,
-                                                  struct ArrowError* error) {
+ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                           struct ArrowArrayView* array_view,
+                                           struct ArrowError* error) {
   ArrowArrayInitFromType(array, array_view->storage_type);
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -2670,8 +2670,8 @@ ArrowErrorCode ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     } else if (_ArrowParsedUnionTypeIdsWillEqualChildIndices(
                    array_view->union_type_id_map, array_view->n_children,
                    array_view->n_children)) {
-      NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(array_view->buffer_views[0], 0,
-                                                   (int8_t)(array_view->n_children - 1), error));
+      NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(
+          array_view->buffer_views[0], 0, (int8_t)(array_view->n_children - 1), error));
     } else {
       NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(array_view->buffer_views[0],
                                                 array_view->union_type_id_map + 128,
@@ -2793,8 +2793,9 @@ static void ArrowBasicArrayStreamRelease(struct ArrowArrayStream* array_stream) 
 
 ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
                                          struct ArrowSchema* schema, int64_t n_arrays) {
-  struct BasicArrayStreamPrivate* private_data = (struct BasicArrayStreamPrivate*)ArrowMalloc(
-      sizeof(struct BasicArrayStreamPrivate));
+  struct BasicArrayStreamPrivate* private_data =
+      (struct BasicArrayStreamPrivate*)ArrowMalloc(
+          sizeof(struct BasicArrayStreamPrivate));
   if (private_data == NULL) {
     return ENOMEM;
   }
