@@ -1399,9 +1399,10 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
+static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
-    int64_t field_i, struct ArrowArray* out, struct ArrowError* error) {
+    int64_t field_i, struct ArrowArray* out, struct ArrowArrayView** out_view,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1434,32 +1435,36 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
     setter.field_i++;
     setter.buffer_i++;
 
-    if (out != NULL) {
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayInitFromArrayView(out, &private_data->array_view, error));
-      out->length = ns(RecordBatch_length(batch));
-      out->null_count = 0;
-    }
-
     for (int64_t i = 0; i < private_data->array_view.n_children; i++) {
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcDecoderWalkSetArrayView(&setter, private_data->array_view.children[i],
                                           private_data->array.children[i], error));
-      if (out != NULL) {
-        NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(
-            private_data->array_view.children[i], private_data->array.children[i],
-            out->children[i], error));
-      }
     }
+
+    *out_view = &private_data->array_view;
   } else {
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderWalkSetArrayView(&setter, root->array_view, root->array, error));
+    *out_view = root->array_view;
+  }
 
-    if (out != NULL) {
-      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(out, root->array_view, error));
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcDecoderWalkGetArray(root->array_view, root->array, out, error));
+  // If needed, allocate and build the array
+  if (out != NULL && field_i == -1) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayInitFromArrayView(out, &private_data->array_view, error));
+    out->length = ns(RecordBatch_length(batch));
+    out->null_count = 0;
+
+    for (int64_t i = 0; i < private_data->array_view.n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(
+          private_data->array_view.children[i], private_data->array.children[i],
+          out->children[i], error));
     }
+
+  } else if (out != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(out, root->array_view, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderWalkGetArray(root->array_view, root->array, out, error));
   }
 
   // Finish building to flush internal pointers but defer validation to
@@ -1471,14 +1476,24 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
+                                              struct ArrowBufferView body, int64_t i,
+                                              struct ArrowArrayView** out,
+                                              struct ArrowError* error) {
+  return ENOTSUP;
+}
+
 ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowBufferView body, int64_t i,
                                           struct ArrowArray* out,
                                           struct ArrowError* error) {
   struct ArrowArray temp;
   temp.release = NULL;
-  int result = ArrowIpcDecoderDecodeArrayInternal(
-      decoder, ArrowIpcBufferFactoryFromView(&body), i, &temp, error);
+  struct ArrowArrayView* array_view;
+
+  int result = ArrowIpcDecoderDecodeArrayViewInternal(
+      decoder, ArrowIpcBufferFactoryFromView(&body), i, &temp, &array_view, error);
+
   if (result != NANOARROW_OK && temp.release != NULL) {
     temp.release(&temp);
   } else if (result == NANOARROW_OK) {
@@ -1494,8 +1509,11 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(struct ArrowIpcDecoder* deco
                                                     struct ArrowError* error) {
   struct ArrowArray temp;
   temp.release = NULL;
-  int result = ArrowIpcDecoderDecodeArrayInternal(
-      decoder, ArrowIpcBufferFactoryFromShared(body), i, &temp, error);
+  struct ArrowArrayView* array_view;
+
+  int result = ArrowIpcDecoderDecodeArrayViewInternal(
+      decoder, ArrowIpcBufferFactoryFromShared(body), i, &temp, &array_view, error);
+
   if (result != NANOARROW_OK && temp.release != NULL) {
     temp.release(&temp);
   } else if (result == NANOARROW_OK) {

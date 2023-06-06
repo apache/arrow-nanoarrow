@@ -283,6 +283,17 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowArray* out,
                                           struct ArrowError* error);
 
+/// \brief Decode an ArrowArrayView
+///
+/// After a successful call to ArrowIpcDecoderDecodeHeader(), deserialize the content
+/// of body into an internally-managed ArrowArrayView and return it. Note that field index
+/// does not equate to column index if any columns contain nested types. Use a value of -1
+/// to decode the entire array into a struct. The pointed-to ArrowArrayView is owned by
+/// the ArrowIpcDecoder and must not be released.
+///
+/// For streams that match system endianness and do not use compression, this operation
+/// will not perform any heap allocations; however, the buffers referred to by the returned
+/// ArrowArrayView are only valid as long as the buffer referred to by body stays valid.
 ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
                                               struct ArrowBufferView body, int64_t i,
                                               struct ArrowArrayView** out,
