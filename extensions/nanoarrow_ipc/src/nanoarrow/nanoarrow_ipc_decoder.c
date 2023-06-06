@@ -46,20 +46,38 @@
 #include "nanoarrow_ipc.h"
 #include "nanoarrow_ipc_flatcc_generated.h"
 
+// Internal representation of a parsed "Field" from flabuffers. This
+// represents a field in a depth-first walk of column arrays and their
+// children.
 struct ArrowIpcField {
   struct ArrowArrayView* array_view;
   struct ArrowArray* array;
   int64_t buffer_offset;
 };
 
+// Internal data specific to the read/decode process
 struct ArrowIpcDecoderPrivate {
+  // The endianness that will be assumed for decoding future RecordBatch messages
   enum ArrowIpcEndianness endianness;
+  // A cached system endianness value
   enum ArrowIpcEndianness system_endianness;
+  // An ArrowArrayView whose length/null_count/buffers are set directly from the
+  // deserialized flatbuffer message (i.e., no underlying ArrowArray exists).
   struct ArrowArrayView array_view;
+  // An ArrowArray with the same structure as the ArrowArrayView whose ArrowArrayBuffer()
+  // values are used to allocate or store memory when this is required. This ArrowArray
+  // is never moved to the caller; however, its buffers may be moved to the final output
+  // ArrowArray if the caller requests one.
   struct ArrowArray array;
+  // The number of fields in the flattened depth-first walk of columns and their children
   int64_t n_fields;
+  // Array of cached information such that given a field index it is possible to locate
+  // the ArrowArrayView/ArrowArray where the depth-first buffer/field walk should start.
   struct ArrowIpcField* fields;
+  // The number of buffers that future RecordBatch messages must have to match the schema
+  // that has been set.
   int64_t n_buffers;
+  // A pointer to the last flatbuffers message.
   const void* last_message;
 };
 
