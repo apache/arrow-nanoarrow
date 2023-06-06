@@ -85,7 +85,7 @@ jobs:
           NANOARROW_PLATFORM: ${{ matrix.config.platform }}
           DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.arch }}"
         run: |
-          docker compose push
+          docker compose push verify
 
   # Build some arch-agnostic images for non-verify docker bits
   build-docker-manifest:
