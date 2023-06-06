@@ -28,6 +28,7 @@ project(nanoarrow_device)
 option(NANOARROW_DEVICE_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_DEVICE_BUNDLE "Create bundled nanoarrow_device.h and nanoarrow_device.c" OFF)
 option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal extension" OFF)
+option(NANOARROW_DEVICE_WITH_METAL "Build CUDA extension" OFF)
 
 
 option(NANOARROW_DEVICE_CODE_COVERAGE "Enable coverage reporting" OFF)
@@ -114,8 +115,17 @@ else()
     set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
   endif()
 
+  if (NANOARROW_DEVICE_WITH_CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
+    set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cudart)
+    set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
+  endif()
+
   add_library(nanoarrow_device
-    src/nanoarrow/nanoarrow_device.c ${NANOARROW_DEVICE_SOURCES_METAL})
+    src/nanoarrow/nanoarrow_device.c
+    ${NANOARROW_DEVICE_SOURCES_METAL}
+    ${NANOARROW_DEVICE_SOURCES_CUDA})
 
   target_include_directories(nanoarrow_device PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
@@ -124,8 +134,12 @@ else()
         $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
         $<INSTALL_INTERFACE:include>)
 
-  target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL})
-  target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL})
+  target_compile_definitions(nanoarrow_device PRIVATE
+    ${NANOARROW_DEVICE_DEFS_METAL}
+    ${NANOARROW_DEVICE_DEFS_CUDA})
+  target_link_libraries(nanoarrow_device PUBLIC
+    ${NANOARROW_DEVICE_LIBS_METAL}
+    ${NANOARROW_DEVICE_LIBS_CUDA})
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(
@@ -197,5 +211,13 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
       nanoarrow_device_metal_test
       nanoarrow_device nanoarrow gtest_main device_coverage_config)
     gtest_discover_tests(nanoarrow_device_metal_test)
+  endif()
+
+  if (NANOARROW_DEVICE_WITH_CUDA)
+    add_executable(nanoarrow_device_cuda_test src/nanoarrow/nanoarrow_device_cuda_test.cc)
+    target_link_libraries(
+      nanoarrow_device_cuda_test
+      nanoarrow_device nanoarrow gtest_main device_coverage_config)
+    gtest_discover_tests(nanoarrow_device_cuda_test)
   endif()
 endif()
