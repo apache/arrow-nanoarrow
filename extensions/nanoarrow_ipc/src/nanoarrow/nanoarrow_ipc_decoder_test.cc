@@ -276,7 +276,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
       reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
 
   // Attempt to get array should fail nicely here
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, data, 0, nullptr, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, data, 0, nullptr,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
   EXPECT_STREQ(error.message, "decoder did not just decode a RecordBatch message");
 
   ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
@@ -294,11 +296,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   body.size_bytes = decoder.body_size_bytes;
 
   // Check full struct extract
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, -1, &array, nullptr),
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, -1, &array,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-      NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
   ASSERT_EQ(array.n_children, 1);
@@ -312,10 +312,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   array.release(&array);
 
   // Check field extract
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, nullptr), NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-      NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+            NANOARROW_OK);
   ASSERT_EQ(array.n_buffers, 2);
   ASSERT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
@@ -325,7 +324,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
 
   // Field extract should fail if compression was set
   decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), ENOTSUP);
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            ENOTSUP);
   EXPECT_STREQ(error.message, "The nanoarrow_ipc extension does not support compression");
   decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
 
@@ -335,14 +336,18 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   } else {
     ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_LITTLE);
   }
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), ENOTSUP);
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            ENOTSUP);
   EXPECT_STREQ(error.message,
                "The nanoarrow_ipc extension does not support non-system endianness");
   ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_UNINITIALIZED);
 
   // Field extract should fail if body is too small
   decoder.body_size_bytes = 0;
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
   EXPECT_STREQ(error.message, "Buffer requires body offsets [0..12) but body has size 0");
 
   // Should error if the number of buffers or field nodes doesn't match
@@ -483,11 +488,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
 
   // Check full struct extract
-  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, &array, nullptr),
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(
+                &decoder, &shared, -1, &array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-      NANOARROW_OK);
 
   EXPECT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 0);
@@ -502,11 +505,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   array.release(&array);
 
   // Check field extract
-  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, 0, &array, nullptr),
+  EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(
+                &decoder, &shared, 0, &array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-      NANOARROW_OK);
 
   // Release the original shared (forthcoming array buffers should still be valid)
   ArrowIpcSharedBufferReset(&shared);
@@ -558,11 +559,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   struct ArrowArray arrays[10];
   for (int i = 0; i < 10; i++) {
     ASSERT_EQ(
-        ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, arrays + i, nullptr),
+        ArrowIpcDecoderDecodeArrayFromShared(&decoder, &shared, -1, arrays + i,
+                                             NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
         NANOARROW_OK);
-    ASSERT_EQ(ArrowIpcDecoderValidateArray(arrays + i, NANOARROW_VALIDATION_LEVEL_FULL,
-                                           nullptr),
-              NANOARROW_OK);
   }
 
   // Clean up
@@ -622,11 +621,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
-  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array, nullptr),
+  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-      NANOARROW_OK);
 
   auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());
@@ -642,11 +639,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
-  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array, nullptr),
+  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array,
+                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowIpcDecoderValidateArray(&array, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-      NANOARROW_OK);
 
   maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());
