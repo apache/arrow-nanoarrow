@@ -46,12 +46,17 @@
 #include "nanoarrow_ipc.h"
 #include "nanoarrow_ipc_flatcc_generated.h"
 
-// Internal representation of a parsed "Field" from flabuffers. This
+// Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
 // children.
 struct ArrowIpcField {
+  // Pointer to the ArrowIpcDecoderPrivate::array_view or child for this node
   struct ArrowArrayView* array_view;
+  // Pointer to the ArrowIpcDecoderPrivate::array or child for this node. This
+  // array is scratch space for any intermediary allocations (i.e., it is never moved
+  // to the user).
   struct ArrowArray* array;
+  // The cumulative number of buffers preceeding this node.
   int64_t buffer_offset;
 };
 
@@ -62,7 +67,8 @@ struct ArrowIpcDecoderPrivate {
   // A cached system endianness value
   enum ArrowIpcEndianness system_endianness;
   // An ArrowArrayView whose length/null_count/buffers are set directly from the
-  // deserialized flatbuffer message (i.e., no underlying ArrowArray exists).
+  // deserialized flatbuffer message (i.e., no fully underlying ArrowArray exists,
+  // although some buffers may be temporarily owned by ArrowIpcDecoderPrivate::array).
   struct ArrowArrayView array_view;
   // An ArrowArray with the same structure as the ArrowArrayView whose ArrowArrayBuffer()
   // values are used to allocate or store memory when this is required. This ArrowArray
