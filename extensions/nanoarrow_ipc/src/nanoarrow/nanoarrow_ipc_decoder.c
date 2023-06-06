@@ -1228,12 +1228,14 @@ struct ArrowIpcBufferSource {
 /// non-owned view of memory that must be copied slice-wise or (2) adding a reference
 /// to an ArrowIpcSharedBuffer and returning a slice of that memory.
 struct ArrowIpcBufferFactory {
-  /// \brief User-defined callback to create initialize the desired buffer into dst
+  /// \brief User-defined callback to populate a buffer view
   ///
   /// At the time that this callback is called, the ArrowIpcBufferSource has been checked
-  /// to ensure that it is within the body size declared by the message header. If
-  /// NANOARROW_OK is returned, the caller is responsible for dst. Otherwise, error must
-  /// contain a null-terminated message.
+  /// to ensure that it is within the body size declared by the message header. A
+  /// possibly preallocated ArrowBuffer (dst) is provided, which implementations must use
+  /// if an allocation is required (in which case the view must be populated pointing to
+  /// the contents of the ArrowBuffer) If NANOARROW_OK is not returned, error must contain
+  /// a null-terminated message.
   ArrowErrorCode (*make_buffer)(struct ArrowIpcBufferFactory* factory,
                                 struct ArrowIpcBufferSource* src,
                                 struct ArrowBufferView* dst_view, struct ArrowBuffer* dst,
