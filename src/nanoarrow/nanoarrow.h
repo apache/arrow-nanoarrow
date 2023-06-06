@@ -92,6 +92,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromType)
 #define ArrowArrayInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
+#define ArrowArrayInitFromArrayView \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromArrayView)
 #define ArrowArrayAllocateChildren \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayAllocateChildren)
 #define ArrowArrayAllocateDictionary \
@@ -751,6 +753,14 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
 ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
                                         struct ArrowSchema* schema,
                                         struct ArrowError* error);
+
+/// \brief Initialize the contents of an ArrowArray from an ArrowArrayView
+///
+/// Caller is responsible for calling the array->release callback if
+/// NANOARROW_OK is returned.
+ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                           struct ArrowArrayView* array_view,
+                                           struct ArrowError* error);
 
 /// \brief Allocate the array->children array
 ///

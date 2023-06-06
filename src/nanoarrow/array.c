@@ -165,9 +165,9 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                                  struct ArrowArrayView* array_view,
-                                                  struct ArrowError* error) {
+ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
+                                           struct ArrowArrayView* array_view,
+                                           struct ArrowError* error) {
   ArrowArrayInitFromType(array, array_view->storage_type);
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -1009,15 +1009,16 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
 
   if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION ||
       array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION) {
-    // Check that we have valid type ids.
     if (array_view->union_type_id_map == NULL) {
-      // If the union_type_id map is NULL
-      // (e.g., when using ArrowArrayInitFromType() + ArrowArrayAllocateChildren()
-      // + ArrowArrayFinishBuilding()), we don't have enough information to validate
-      // this buffer (GH-178).
-    } else if (_ArrowParsedUnionTypeIdsWillEqualChildIndices(
-                   array_view->union_type_id_map, array_view->n_children,
-                   array_view->n_children)) {
+      // If the union_type_id map is NULL (e.g., when using ArrowArrayInitFromType() +
+      // ArrowArrayAllocateChildren() + ArrowArrayFinishBuilding()), we don't have enough
+      // information to validate this buffer.
+      ArrowErrorSet(error,
+                    "Insufficient information provided for validation of union array");
+      return EINVAL;
+    } else if (_ArrowParsedUnionTypeIdsWillEqualChildIndices(array_view->union_type_id_map,
+                                                      array_view->n_children,
+                                                      array_view->n_children)) {
       NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(
           array_view->buffer_views[0], 0, (int8_t)(array_view->n_children - 1), error));
     } else {
