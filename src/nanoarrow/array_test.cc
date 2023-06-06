@@ -1971,15 +1971,16 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
-  // The ArrayView for a union could in theroy be created without a schema,
-  // in which case the type_ids are assumed to equal child indices
+  // The ArrayView for a union could in theroy be created without a schema.
+  // Currently FULL validation will fail here since we can't guarantee that
+  // these are valid.
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_DENSE_UNION);
   ASSERT_EQ(ArrowArrayViewAllocateChildren(&array_view, 2), NANOARROW_OK);
   ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   ArrowArrayViewInitFromType(array_view.children[1], NANOARROW_TYPE_STRING);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-            NANOARROW_OK);
+            EINVAL);
 
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionTypeId(&array_view, 1), 1);
@@ -1988,7 +1989,7 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
 
   ArrowArrayViewReset(&array_view);
 
-  // The test schema explicitly sets the type_ids 0,1 and this should work too
+  // The test schema explicitly sets the type_ids 0,1 and this should validate properly
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
