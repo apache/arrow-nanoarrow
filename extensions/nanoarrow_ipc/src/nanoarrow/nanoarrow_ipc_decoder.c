@@ -1552,9 +1552,3 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
   ArrowArrayMove(&temp, out);
   return NANOARROW_OK;
 }
-
-ArrowErrorCode ArrowIpcDecoderValidateArray(struct ArrowArray* decoded,
-                                            enum ArrowValidationLevel validation_level,
-                                            struct ArrowError* error) {
-  return ArrowArrayFinishBuilding(decoded, validation_level, error);
-}

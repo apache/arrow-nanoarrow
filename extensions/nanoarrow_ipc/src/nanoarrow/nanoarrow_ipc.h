@@ -41,6 +41,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeSchema)
 #define ArrowIpcDecoderDecodeArrayView \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArrayView)
+#define ArrowIpcDecoderDecodeArray \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArray)
 #define ArrowIpcDecoderDecodeArrayFromShared \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArrayFromShared)
 #define ArrowIpcDecoderSetSchema \
