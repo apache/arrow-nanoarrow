@@ -71,8 +71,6 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
   }
 
   if (n_batches == 0L && is.data.frame(to)) {
-    to[integer(0), , drop = FALSE]
-  } else if (n_batches == 0L && is.data.frame(to)) {
     to[integer(0)]
   } else if (n_batches == 1L) {
     batches[[1]]
