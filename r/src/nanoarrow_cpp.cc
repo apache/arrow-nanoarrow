@@ -216,8 +216,6 @@ class CallbackQueue {
     void* return_value;
   };
 
-  void AddTask(std::unique_ptr<std::thread> task) { tasks_.push_back(std::move(task)); }
-
   void AddCallback(RCallback callback) {
     std::lock_guard<std::mutex> lock(callbacks_lock_);
     pending_callbacks_.push_back(callback);
@@ -251,6 +249,7 @@ class CallbackQueue {
         PROTECT(Rf_lang3(callback_sym, return_code_sexp, return_value_xptr));
 
     Rf_eval(callback_call, env_sexp);
+    UNPROTECT(6);
   }
 
   static CallbackQueue& GetInstance() {
@@ -259,7 +258,6 @@ class CallbackQueue {
   }
 
  private:
-  std::deque<std::unique_ptr<std::thread>> tasks_;
   std::deque<RCallback> pending_callbacks_;
   std::mutex callbacks_lock_;
 };
@@ -279,13 +277,11 @@ extern "C" void nanoarrow_array_stream_get_next_async(SEXP array_stream_xptr,
                                        array};
 
   // Bad: need to keep track of these somewhere instead of leaking them all
-  std::unique_ptr<std::thread> worker(new std::thread([array_stream, array, callback] {
+  std::thread* worker = new std::thread([array_stream, array, callback] {
     CallbackQueue::RCallback callback_out = callback;
     callback_out.return_code = array_stream->get_next(array_stream, array);
     CallbackQueue::GetInstance().AddCallback(callback_out);
-  }));
-
-  CallbackQueue::GetInstance().AddTask(std::move(worker));
+  });
 }
 
 extern "C" int nanoarrow_run_callbacks(void) {

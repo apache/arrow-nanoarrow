@@ -259,3 +259,13 @@ names.nanoarrow_array_stream <- function(x, ...) {
 `$.nanoarrow_array_stream` <- function(x, i, ...) {
   x[[i]]
 }
+
+nanoarrow_array_stream_get_next_async <- function(stream, callback,
+                                                  schema = stream$get_schema()) {
+  callback_env <- new.env(parent = emptyenv())
+  callback_env$callback <- callback
+  array <- nanoarrow_allocate_array()
+  nanoarrow_array_set_schema(array, schema, validate = FALSE)
+  .Call(nanoarrow_c_array_stream_get_next_async, stream, array, callback_env)
+  invisible(NULL)
+}

@@ -212,3 +212,13 @@ test_that("Errors from user array stream finalizer are ignored", {
   expect_false(nanoarrow_pointer_is_valid(stream))
   expect_silent(stream$release())
 })
+
+test_that("Async get next", {
+  stream <- basic_array_stream(list(1:5))
+  nanoarrow_array_stream_get_next_async(stream, function(code, array) {
+    expect_identical(code, 0L)
+    expect_identical(convert_array(array), 1:5)
+  })
+  Sys.sleep(0.5)
+  expect_identical(run_callbacks(), 1L)
+})
