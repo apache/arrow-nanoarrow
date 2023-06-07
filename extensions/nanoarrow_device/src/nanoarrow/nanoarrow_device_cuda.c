@@ -120,7 +120,8 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
     struct ArrowBuffer tmp;
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaAllocateBuffer(&tmp, src.size_bytes));
+    ArrowBufferInit(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&tmp, src.size_bytes));
     cudaError_t result =
         cudaMemcpy(tmp.data, ((uint8_t*)src.private_data) + src.offset_bytes,
                    (size_t)src.size_bytes, cudaMemcpyDeviceToHost);
@@ -134,22 +135,25 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
 
   } else if (device_src->device_type == ARROW_DEVICE_CPU &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    struct ArrowBuffer tmp;
-
-    ArrowBufferMove(&tmp, dst);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaHostAllocateBuffer(dst, src.size_bytes));
+    memcpy(dst->data, ((uint8_t*)src.private_data) + src.offset_bytes,
+           (size_t)src.size_bytes);
     return NANOARROW_OK;
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    struct ArrowBuffer tmp;
-
-    ArrowBufferMove(&tmp, dst);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaHostAllocateBuffer(dst, src.size_bytes));
+    memcpy(dst->data, ((uint8_t*)src.private_data) + src.offset_bytes,
+           (size_t)src.size_bytes);
     return NANOARROW_OK;
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
     struct ArrowBuffer tmp;
-
+    ArrowBufferInit(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&tmp, src.size_bytes));
+    memcpy(dst->data, ((uint8_t*)src.private_data) + src.offset_bytes,
+           (size_t)src.size_bytes);
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
 
@@ -159,9 +163,9 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
-                                            struct ArrowDeviceBufferView src,
-                                            struct ArrowDevice* device_dst,
-                                            struct ArrowDeviceBufferView dst) {
+                                                struct ArrowDeviceBufferView src,
+                                                struct ArrowDevice* device_dst,
+                                                struct ArrowDeviceBufferView dst) {
   // This is all just cudaMemcpy or memcpy
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_CUDA) {
