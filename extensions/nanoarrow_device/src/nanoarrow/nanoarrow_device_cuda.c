@@ -83,6 +83,9 @@ static ArrowErrorCode ArrowDeviceCudaHostAllocateBuffer(struct ArrowBuffer* buff
   return NANOARROW_OK;
 }
 
+// TODO: All these buffer copiers would benefit from cudaMemcpyAsync but there is
+// no good way to incorporate that just yet
+
 static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
                                                 struct ArrowDeviceBufferView src,
                                                 struct ArrowDevice* device_dst,
@@ -169,19 +172,34 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
   // This is all just cudaMemcpy or memcpy
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_CUDA) {
-    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
-           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    cudaError_t result = cudaMemcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+                                    ((uint8_t*)src.private_data) + src.offset_bytes,
+                                    dst.size_bytes, cudaMemcpyHostToDevice);
+    if (result != cudaSuccess) {
+      return EINVAL;
+    }
     return NANOARROW_OK;
+
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CUDA) {
-    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
-           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    cudaError_t result = cudaMemcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+                                    ((uint8_t*)src.private_data) + src.offset_bytes,
+                                    dst.size_bytes, cudaMemcpyDeviceToDevice);
+    if (result != cudaSuccess) {
+      return EINVAL;
+    }
     return NANOARROW_OK;
+
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
-           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    cudaError_t result = cudaMemcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+                                    ((uint8_t*)src.private_data) + src.offset_bytes,
+                                    dst.size_bytes, cudaMemcpyDeviceToHost);
+    if (result != cudaSuccess) {
+      return EINVAL;
+    }
     return NANOARROW_OK;
+
   } else if (device_src->device_type == ARROW_DEVICE_CPU &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
     memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
@@ -259,9 +277,9 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
 
   device->device_type = device_type;
   device->device_id = device_id;
-  device->buffer_init = NULL;
+  device->buffer_init = &ArrowDeviceCudaBufferInit;
   device->buffer_move = NULL;
-  device->buffer_copy = NULL;
+  device->buffer_copy = &ArrowDeviceCudaBufferCopy;
   device->copy_required = NULL;
   device->synchronize_event = &ArrowDeviceCudaSynchronize;
   device->release = &ArrowDeviceCudaRelease;
