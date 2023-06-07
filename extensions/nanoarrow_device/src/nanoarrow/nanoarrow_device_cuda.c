@@ -19,7 +19,184 @@
 
 #include "nanoarrow_device.h"
 
+static void ArrowDeviceCudaAllocatorFree(struct ArrowBufferAllocator* allocator,
+                                         uint8_t* ptr, int64_t old_size) {
+  if (ptr != NULL) {
+    cudaFree(ptr);
+  }
+}
 
+static uint8_t* ArrowDeviceCudaAllocatorReallocate(struct ArrowBufferAllocator* allocator,
+                                                   uint8_t* ptr, int64_t old_size,
+                                                   int64_t new_size) {
+  ArrowDeviceCudaAllocatorFree(allocator, ptr, old_size);
+  return NULL;
+}
+
+static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowBuffer* buffer,
+                                                    int64_t size_bytes) {
+  void* ptr = NULL;
+  cudaError_t result = cudaMalloc(&ptr, (int64_t)size_bytes);
+  if (result != cudaSuccess) {
+    return EINVAL;
+  }
+
+  buffer->data = (uint8_t*)ptr;
+  buffer->size_bytes = size_bytes;
+  buffer->capacity_bytes = size_bytes;
+  buffer->allocator.reallocate = &ArrowDeviceCudaAllocatorReallocate;
+  buffer->allocator.free = &ArrowDeviceCudaAllocatorFree;
+  // TODO: We almost certainly need device_id here
+  buffer->allocator.private_data = NULL;
+  return NANOARROW_OK;
+}
+
+static void ArrowDeviceCudaHostAllocatorFree(struct ArrowBufferAllocator* allocator,
+                                             uint8_t* ptr, int64_t old_size) {
+  if (ptr != NULL) {
+    cudaFreeHost(ptr);
+  }
+}
+
+static uint8_t* ArrowDeviceCudaHostAllocatorReallocate(
+    struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
+    int64_t new_size) {
+  ArrowDeviceCudaHostAllocatorFree(allocator, ptr, old_size);
+  return NULL;
+}
+
+static ArrowErrorCode ArrowDeviceCudaHostAllocateBuffer(struct ArrowBuffer* buffer,
+                                                        int64_t size_bytes) {
+  void* ptr = NULL;
+  cudaError_t result = cudaMallocHost(&ptr, (int64_t)size_bytes);
+  if (result != cudaSuccess) {
+    return EINVAL;
+  }
+
+  buffer->data = (uint8_t*)ptr;
+  buffer->size_bytes = size_bytes;
+  buffer->capacity_bytes = size_bytes;
+  buffer->allocator.reallocate = &ArrowDeviceCudaHostAllocatorReallocate;
+  buffer->allocator.free = &ArrowDeviceCudaHostAllocatorFree;
+  // TODO: We almost certainly need device_id here
+  buffer->allocator.private_data = NULL;
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
+                                                struct ArrowDeviceBufferView src,
+                                                struct ArrowDevice* device_dst,
+                                                struct ArrowBuffer* dst) {
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_CUDA) {
+    struct ArrowBuffer tmp;
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaAllocateBuffer(&tmp, src.size_bytes));
+    cudaError_t result =
+        cudaMemcpy(tmp.data, ((uint8_t*)src.private_data) + src.offset_bytes,
+                   (size_t)src.size_bytes, cudaMemcpyHostToDevice);
+    if (result != cudaSuccess) {
+      ArrowBufferReset(&tmp);
+      return EINVAL;
+    }
+
+    ArrowBufferMove(&tmp, dst);
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
+             device_dst->device_type == ARROW_DEVICE_CUDA) {
+    struct ArrowBuffer tmp;
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaAllocateBuffer(&tmp, src.size_bytes));
+    cudaError_t result =
+        cudaMemcpy(tmp.data, ((uint8_t*)src.private_data) + src.offset_bytes,
+                   (size_t)src.size_bytes, cudaMemcpyDeviceToDevice);
+    if (result != cudaSuccess) {
+      ArrowBufferReset(&tmp);
+      return EINVAL;
+    }
+
+    ArrowBufferMove(&tmp, dst);
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    struct ArrowBuffer tmp;
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaAllocateBuffer(&tmp, src.size_bytes));
+    cudaError_t result =
+        cudaMemcpy(tmp.data, ((uint8_t*)src.private_data) + src.offset_bytes,
+                   (size_t)src.size_bytes, cudaMemcpyDeviceToHost);
+    if (result != cudaSuccess) {
+      ArrowBufferReset(&tmp);
+      return EINVAL;
+    }
+
+    ArrowBufferMove(&tmp, dst);
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_CPU &&
+             device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
+    struct ArrowBuffer tmp;
+
+    ArrowBufferMove(&tmp, dst);
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
+             device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
+    struct ArrowBuffer tmp;
+
+    ArrowBufferMove(&tmp, dst);
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    struct ArrowBuffer tmp;
+
+    ArrowBufferMove(&tmp, dst);
+    return NANOARROW_OK;
+
+  } else {
+    return ENOTSUP;
+  }
+}
+
+static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
+                                            struct ArrowDeviceBufferView src,
+                                            struct ArrowDevice* device_dst,
+                                            struct ArrowDeviceBufferView dst) {
+  // This is all just cudaMemcpy or memcpy
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_CUDA) {
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    return NANOARROW_OK;
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
+             device_dst->device_type == ARROW_DEVICE_CUDA) {
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    return NANOARROW_OK;
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    return NANOARROW_OK;
+  } else if (device_src->device_type == ARROW_DEVICE_CPU &&
+             device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    return NANOARROW_OK;
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
+             device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    return NANOARROW_OK;
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
+           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    return NANOARROW_OK;
+  } else {
+    return ENOTSUP;
+  }
+}
 
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
                                                  struct ArrowDevice* device_event,
@@ -34,6 +211,7 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
     return ENOTSUP;
   }
 
+  // Pointer vs. not pointer...is there memory ownership to consider here?
   cudaEvent_t* cuda_event = (cudaEvent_t*)sync_event;
   cudaError_t result = cudaEventSynchronize(*cuda_event);
 
