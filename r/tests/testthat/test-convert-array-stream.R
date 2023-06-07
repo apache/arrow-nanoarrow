@@ -29,6 +29,9 @@ test_that("convert array stream works", {
     )
   )
   expect_identical(convert_array_stream(stream2), data.frame(x = 1:10))
+
+  stream3 <- basic_array_stream(list(), schema = na_int32())
+  expect_identical(convert_array_stream(stream3), integer())
 })
 
 test_that("convert array stream with explicit size works", {
