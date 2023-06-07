@@ -74,7 +74,7 @@ jobs:
           rm -rf dist
           mv nanoarrow-latest dist
           mv dist-readme.md dist/README.md
-          git add dist/**/*.*
+          git add $(find dist -type f)
 
           # only commit if there are changes
           git config --global user.email "actions@github.com"
