@@ -55,4 +55,10 @@ static inline void check_trivial_alloc(const void* ptr, const char* ptr_type) {
   }
 }
 
+// Experimental async array stream
+void nanoarrow_array_stream_get_next_async(SEXP array_stream_xptr, SEXP array_xptr,
+                                           SEXP callback_env);
+
+int nanoarrow_run_callbacks(void);
+
 #endif

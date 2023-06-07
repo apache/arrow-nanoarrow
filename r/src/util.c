@@ -65,3 +65,7 @@ SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj) {
   nanoarrow_preserve_and_release_on_other_thread(obj);
   return R_NilValue;
 }
+
+SEXP nanoarrow_c_run_callbacks(void) {
+  return Rf_ScalarInteger(nanoarrow_run_callbacks());
+}

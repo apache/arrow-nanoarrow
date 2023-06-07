@@ -72,6 +72,10 @@ current_stack_trace_chr <- function() {
   paste0(utils::capture.output(print(tb)), collapse = "\n")
 }
 
+run_callbacks <- function() {
+  invisible(.Call(nanoarrow_c_run_callbacks))
+}
+
 
 `%||%` <- function(rhs, lhs) {
   if (is.null(rhs)) lhs else rhs

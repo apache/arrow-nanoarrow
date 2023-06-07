@@ -21,10 +21,13 @@
 
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "nanoarrow.h"
 
 // Without this infrastructure, it's possible to check that all objects
 // are released by running devtools::test(); gc() in a fresh session and
@@ -200,4 +203,91 @@ extern "C" void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {
   nanoarrow_preserve_sexp(obj);
   std::thread worker([obj] { nanoarrow_release_sexp(obj); });
   worker.join();
+}
+
+class CallbackQueue {
+ public:
+  class RCallback {
+   public:
+    SEXP env_sexp;
+    SEXP shelter;
+    SEXP return_value_xptr;
+    int return_code;
+    void* return_value;
+  };
+
+  void AddTask(std::unique_ptr<std::thread> task) { tasks_.push_back(std::move(task)); }
+
+  void AddCallback(RCallback callback) {
+    std::lock_guard<std::mutex> lock(callbacks_lock_);
+    pending_callbacks_.push_back(callback);
+  }
+
+  // Note: this can and very well may longjmp
+  int RunPending() {
+    int n_run = 0;
+    while (!pending_callbacks_.empty()) {
+      RCallback callback = pending_callbacks_.front();
+      pending_callbacks_.pop_front();
+      RunCallback(callback);
+      n_run++;
+    }
+
+    // TODO: clear tasks that are finished
+    return n_run;
+  }
+
+  void RunCallback(RCallback callback) {
+    SEXP env_sexp = PROTECT(callback.env_sexp);
+    SEXP return_value_xptr = PROTECT(callback.return_value_xptr);
+    SEXP shelter = PROTECT(callback.shelter);
+    nanoarrow_release_sexp(env_sexp);
+    nanoarrow_release_sexp(return_value_xptr);
+    nanoarrow_release_sexp(shelter);
+
+    SEXP callback_sym = PROTECT(Rf_install("callback"));
+    SEXP return_code_sexp = PROTECT(Rf_ScalarInteger(callback.return_code));
+    SEXP callback_call =
+        PROTECT(Rf_lang3(callback_sym, return_code_sexp, return_value_xptr));
+
+    Rf_eval(callback_call, env_sexp);
+  }
+
+  static CallbackQueue& GetInstance() {
+    static CallbackQueue singleton;
+    return singleton;
+  }
+
+ private:
+  std::deque<std::unique_ptr<std::thread>> tasks_;
+  std::deque<RCallback> pending_callbacks_;
+  std::mutex callbacks_lock_;
+};
+
+extern "C" void nanoarrow_array_stream_get_next_async(SEXP array_stream_xptr,
+                                                      SEXP array_xptr,
+                                                      SEXP callback_env) {
+  struct ArrowArrayStream* array_stream =
+      reinterpret_cast<struct ArrowArrayStream*>(R_ExternalPtrAddr(array_stream_xptr));
+  struct ArrowArray* array =
+      reinterpret_cast<struct ArrowArray*>(R_ExternalPtrAddr(array_xptr));
+
+  nanoarrow_preserve_sexp(array_stream_xptr);
+  nanoarrow_preserve_sexp(array_xptr);
+  nanoarrow_preserve_sexp(callback_env);
+  CallbackQueue::RCallback callback = {callback_env, array_stream_xptr, array_xptr, 0,
+                                       array};
+
+  // Bad: need to keep track of these somewhere instead of leaking them all
+  std::unique_ptr<std::thread> worker(new std::thread([array_stream, array, callback] {
+    CallbackQueue::RCallback callback_out = callback;
+    callback_out.return_code = array_stream->get_next(array_stream, array);
+    CallbackQueue::GetInstance().AddCallback(callback_out);
+  }));
+
+  CallbackQueue::GetInstance().AddTask(std::move(worker));
+}
+
+extern "C" int nanoarrow_run_callbacks(void) {
+  return CallbackQueue::GetInstance().RunPending();
 }

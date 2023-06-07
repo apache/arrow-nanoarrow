@@ -30,6 +30,7 @@ extern SEXP nanoarrow_c_altrep_force_materialize(SEXP x_sexp, SEXP recursive_sex
 extern SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr, SEXP validate_sexp);
+extern SEXP nanoarrow_c_array_stream_get_next_async(SEXP array_stream_xptr, SEXP array_xptr, SEXP callback_env);
 extern SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr);
 extern SEXP nanoarrow_c_array_init(SEXP schema_xptr);
 extern SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp);
@@ -81,6 +82,7 @@ extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP diction
 extern SEXP nanoarrow_c_preserved_count(void);
 extern SEXP nanoarrow_c_preserved_empty(void);
 extern SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj);
+extern SEXP nanoarrow_c_run_callbacks(void);
 extern SEXP nanoarrow_c_version(void);
 extern SEXP nanoarrow_c_version_runtime(void);
 
@@ -92,6 +94,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_array_stream_get_schema", (DL_FUNC)&nanoarrow_c_array_stream_get_schema, 1},
     {"nanoarrow_c_array_stream_get_next", (DL_FUNC)&nanoarrow_c_array_stream_get_next, 1},
     {"nanoarrow_c_basic_array_stream", (DL_FUNC)&nanoarrow_c_basic_array_stream, 3},
+    {"nanoarrow_c_array_stream_get_next_async", (DL_FUNC)&nanoarrow_c_array_stream_get_next_async, 3},
     {"nanoarrow_c_array_view", (DL_FUNC)&nanoarrow_c_array_view, 2},
     {"nanoarrow_c_array_init", (DL_FUNC)&nanoarrow_c_array_init, 1},
     {"nanoarrow_c_array_set_length", (DL_FUNC)&nanoarrow_c_array_set_length, 2},
@@ -143,6 +146,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_preserved_count", (DL_FUNC)&nanoarrow_c_preserved_count, 0},
     {"nanoarrow_c_preserved_empty", (DL_FUNC)&nanoarrow_c_preserved_empty, 0},
     {"nanoarrow_c_preserve_and_release_on_other_thread", (DL_FUNC)&nanoarrow_c_preserve_and_release_on_other_thread, 1},
+    {"nanoarrow_c_run_callbacks", (DL_FUNC)&nanoarrow_c_run_callbacks, 0},
     {"nanoarrow_c_version", (DL_FUNC)&nanoarrow_c_version, 0},
     {"nanoarrow_c_version_runtime", (DL_FUNC)&nanoarrow_c_version_runtime, 0},
     {NULL, NULL, 0}};

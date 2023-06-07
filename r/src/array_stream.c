@@ -141,6 +141,12 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
   return array_stream_xptr;
 }
 
+SEXP nanoarrow_c_array_stream_get_next_async(SEXP array_stream_xptr, SEXP array_xptr,
+                                             SEXP callback_env) {
+  nanoarrow_array_stream_get_next_async(array_stream_xptr, array_xptr, callback_env);
+  return R_NilValue;
+}
+
 // Implementation of an ArrowArrayStream that keeps a dependent object valid
 struct WrapperArrayStreamData {
   SEXP parent_array_stream_xptr;
