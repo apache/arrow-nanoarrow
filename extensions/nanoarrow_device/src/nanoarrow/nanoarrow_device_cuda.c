@@ -19,6 +19,37 @@
 
 #include "nanoarrow_device.h"
 
+
+
+static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
+                                                 struct ArrowDevice* device_event,
+                                                 void* sync_event,
+                                                 struct ArrowError* error) {
+  if (sync_event == NULL) {
+    return NANOARROW_OK;
+  }
+
+  if (device_event->device_type != ARROW_DEVICE_CUDA ||
+      device_event->device_type != ARROW_DEVICE_CUDA_HOST) {
+    return ENOTSUP;
+  }
+
+  cudaEvent_t* cuda_event = (cudaEvent_t*)sync_event;
+  cudaError_t result = cudaEventSynchronize(*cuda_event);
+
+  if (result != cudaSuccess) {
+    ArrowErrorSet(error, "cudaEventSynchronize() failed: %s", cudaGetErrorString(result));
+    return EINVAL;
+  }
+
+  cudaEventDestroy(*cuda_event);
+  return NANOARROW_OK;
+}
+
+static void ArrowDeviceCudaRelease(struct ArrowDevice* device) {
+  // No private_data to release
+}
+
 static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
                                                 ArrowDeviceType device_type,
                                                 int64_t device_id,
@@ -50,8 +81,8 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   device->buffer_move = NULL;
   device->buffer_copy = NULL;
   device->copy_required = NULL;
-  device->synchronize_event = NULL;
-  device->release = NULL;
+  device->synchronize_event = &ArrowDeviceCudaSynchronize;
+  device->release = &ArrowDeviceCudaRelease;
   device->private_data = NULL;
   return NANOARROW_OK;
 }
