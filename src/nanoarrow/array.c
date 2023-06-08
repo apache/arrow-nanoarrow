@@ -665,7 +665,8 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   // is always data dependent for all current Arrow types.
   for (int i = 0; i < 2; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
-    int64_t min_buffer_size_bytes;
+    // Initialize with a value that will cause an error if accidentally used uninitialized
+    int64_t min_buffer_size_bytes = array_view->buffer_views[i].size_bytes + 1;
 
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_VALIDITY:
@@ -1016,9 +1017,9 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       ArrowErrorSet(error,
                     "Insufficient information provided for validation of union array");
       return EINVAL;
-    } else if (_ArrowParsedUnionTypeIdsWillEqualChildIndices(array_view->union_type_id_map,
-                                                      array_view->n_children,
-                                                      array_view->n_children)) {
+    } else if (_ArrowParsedUnionTypeIdsWillEqualChildIndices(
+                   array_view->union_type_id_map, array_view->n_children,
+                   array_view->n_children)) {
       NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(
           array_view->buffer_views[0], 0, (int8_t)(array_view->n_children - 1), error));
     } else {
