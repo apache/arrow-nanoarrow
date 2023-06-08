@@ -70,10 +70,13 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
     batches[[n_batches]] <- .Call(nanoarrow_c_convert_array, array, to)
   }
 
-  if (n_batches == 0L && is.data.frame(to)) {
-    to[integer(0), , drop = FALSE]
-  } else if (n_batches == 0L && is.data.frame(to)) {
-    to[integer(0)]
+  if (n_batches == 0L) {
+    # vec_slice(to, 0)
+    if (is.data.frame(to)) {
+      to[integer(0), , drop = FALSE]
+    } else {
+      to[integer(0)]
+    }
   } else if (n_batches == 1L) {
     batches[[1]]
   } else if (inherits(to, "data.frame")) {
