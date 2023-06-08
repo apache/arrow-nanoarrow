@@ -229,6 +229,23 @@ TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFileNativeEndia
   param.Test(dir_builder.str());
 }
 
+// TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFileSwapEndian) {
+//   const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
+//   if (testing_dir == nullptr || strlen(testing_dir) == 0) {
+//     GTEST_SKIP() << "NANOARROW_ARROW_TESTING_DIR environment variable not set";
+//   }
+
+//   std::stringstream dir_builder;
+
+// #if defined(__BIG_ENDIAN__)
+//   dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
+// #else
+//   dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
+// #endif
+//   TestFile param = GetParam();
+//   param.Test(dir_builder.str());
+// }
+
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowTestingPathParameterizedTestFixture,
     ::testing::Values(

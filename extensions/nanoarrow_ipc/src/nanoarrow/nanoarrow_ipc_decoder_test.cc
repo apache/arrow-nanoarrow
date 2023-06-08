@@ -736,8 +736,15 @@ INSTANTIATE_TEST_SUITE_P(
         // Non-nullable field
         arrow::schema({arrow::field("some_name", arrow::int32(), false)})));
 
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSwapEndian) {
-  enum ArrowType data_type = NANOARROW_TYPE_INT32;
+class ArrowTypeIdParameterizedTestFixture
+    : public ::testing::TestWithParam<enum ArrowType> {
+ protected:
+  enum ArrowType data_type;
+};
+
+TEST_P(ArrowTypeIdParameterizedTestFixture, NanoarrowIpcDecodeSwapEndian) {
+  enum ArrowType data_type = GetParam();
+  int64_t n_elements_test = 10;
 
   // Make a data buffer long enough for 10 Decimal256s with a pattern
   // where an endian swap isn't silently the same value (e.g., 0s)
@@ -803,12 +810,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSwapEndian) {
       std::make_shared<arrow::Buffer>(data_buffer_swapped, sizeof(data_buffer_swapped));
   arrow::BufferVector buffers = {empty, buffer};
   auto array_data =
-      std::make_shared<arrow::ArrayData>(arrow_data_type, 10, buffers, 0, 0);
+      std::make_shared<arrow::ArrayData>(arrow_data_type, n_elements_test, buffers, 0, 0);
   auto array = arrow::MakeArray(array_data);
 
   // Make a RecordBatch
   auto arrow_schema = arrow::schema({arrow::field("col1", arrow_data_type)});
-  auto arrow_record_batch = arrow::RecordBatch::Make(arrow_schema, 10, {array});
+  auto arrow_record_batch =
+      arrow::RecordBatch::Make(arrow_schema, n_elements_test, {array});
 
   // Serialize it
   auto options = arrow::ipc::IpcWriteOptions::Defaults();
@@ -856,3 +864,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSwapEndian) {
   schema.release(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
+
+INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
+                         ::testing::Values(NANOARROW_TYPE_BOOL, NANOARROW_TYPE_INT8,
+                                           NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32,
+                                           NANOARROW_TYPE_INT64));

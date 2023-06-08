@@ -1317,6 +1317,18 @@ struct ArrowIpcIntervalMonthDayNano {
 static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
                                      struct ArrowBufferView* out_view,
                                      struct ArrowBuffer* dst, struct ArrowError* error) {
+  // Some buffer data types don't need any endian swapping
+  switch (src->data_type) {
+    case NANOARROW_TYPE_BOOL:
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+      return NANOARROW_OK;
+    default:
+      break;
+  }
+
   // Make sure dst is not a shared buffer that we can't modify
   struct ArrowBuffer tmp;
   ArrowBufferInit(&tmp);
@@ -1384,11 +1396,6 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
     }
     default:
       switch (src->element_size_bits) {
-        case 0:
-        case 1:
-        case 8:
-          // None needed
-          break;
         case 16: {
           uint16_t* ptr = (uint16_t*)dst->data;
           for (int64_t i = 0; i < (dst->size_bytes / 2); i++) {
