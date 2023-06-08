@@ -321,6 +321,20 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
     }
   }
 
+  if (array->dictionary != NULL) {
+    result = ArrowArrayViewAllocateDictionary(array_view);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(array_view);
+      return result;
+    }
+
+    result = ArrowArrayViewInitFromArray(array_view->dictionary, array->dictionary);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(array_view);
+      return result;
+    }
+  }
+
   return NANOARROW_OK;
 }
 
@@ -521,10 +535,19 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
     }
   }
 
-  result = ArrowArrayViewAllocateDictionary(array_view);
-  if (result != NANOARROW_OK) {
-    ArrowArrayViewReset(array_view);
-    return result;
+  if (schema->dictionary != NULL) {
+    result = ArrowArrayViewAllocateDictionary(array_view);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(array_view);
+      return result;
+    }
+
+    result =
+        ArrowArrayViewInitFromSchema(array_view->dictionary, schema->dictionary, error);
+    if (result != NANOARROW_OK) {
+      ArrowArrayViewReset(array_view);
+      return result;
+    }
   }
 
   if (array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION ||
