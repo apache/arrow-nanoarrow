@@ -1308,9 +1308,16 @@ struct ArrowIpcDecimal256 {
   uint64_t words[4];
 };
 
-struct ArrowIpcIntervalMonthDayNano {
+struct ArrowIpcMonthsDays {
   uint32_t months;
   uint32_t days;
+};
+
+struct ArrowIpcIntervalMonthDayNano {
+  union {
+    uint64_t force_align_uint64;
+    struct ArrowIpcMonthsDays months_days;
+  };
   uint64_t ns;
 };
 
@@ -1388,8 +1395,8 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
           (struct ArrowIpcIntervalMonthDayNano*)dst->data;
       uint64_t words[2];
       for (int64_t i = 0; i < (dst->size_bytes / 16); i++) {
-        ptr[i].months = bswap32(ptr_src[i].months);
-        ptr[i].days = bswap32(ptr_src[i].days);
+        ptr[i].months_days.months = bswap32(ptr_src[i].months_days.months);
+        ptr[i].months_days.days = bswap32(ptr_src[i].months_days.days);
         ptr[i].ns = bswap64(ptr_src[i].ns);
       }
       break;
