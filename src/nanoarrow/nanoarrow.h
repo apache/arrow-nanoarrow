@@ -939,11 +939,14 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
                                             struct ArrowSchema* schema,
                                             struct ArrowError* error);
 
-/// \brief Allocate the schema_view->children array
+/// \brief Allocate the array_view->children array
 ///
 /// Includes the memory for each child struct ArrowArrayView
 ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
                                               int64_t n_children);
+
+/// \brief Allocate array_view->dictionary
+ArrowErrorCode ArrowArrayViewAllocateDictionary(struct ArrowArrayView* array_view);
 
 /// \brief Set data-independent buffer sizes from length
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);

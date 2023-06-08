@@ -608,6 +608,9 @@ struct ArrowArrayView {
   /// \brief Pointers to views of this array's children
   struct ArrowArrayView** children;
 
+  /// \brief Pointers to views of this array's dictionary
+  struct ArrowArrayView* dictionary;
+
   /// \brief Union type id to child index mapping
   ///
   /// If storage_type is a union type, a 256-byte ArrowMalloc()ed buffer

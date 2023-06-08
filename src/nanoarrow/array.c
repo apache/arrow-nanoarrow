@@ -478,6 +478,21 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowArrayViewAllocateDictionary(struct ArrowArrayView* array_view) {
+  if (array_view->dictionary != NULL) {
+    return EINVAL;
+  }
+
+  array_view->dictionary =
+      (struct ArrowArrayView*)ArrowMalloc(sizeof(struct ArrowArrayView));
+  if (array_view->dictionary == NULL) {
+    return ENOMEM;
+  }
+
+  ArrowArrayViewInitFromType(array_view->dictionary, NANOARROW_TYPE_UNINITIALIZED);
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
                                             struct ArrowSchema* schema,
                                             struct ArrowError* error) {
@@ -504,6 +519,12 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
       ArrowArrayViewReset(array_view);
       return result;
     }
+  }
+
+  result = ArrowArrayViewAllocateDictionary(array_view);
+  if (result != NANOARROW_OK) {
+    ArrowArrayViewReset(array_view);
+    return result;
   }
 
   if (array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION ||
@@ -535,6 +556,11 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
     }
 
     ArrowFree(array_view->children);
+  }
+
+  if (array_view->dictionary != NULL) {
+    ArrowArrayViewReset(array_view->dictionary);
+    ArrowFree(array_view->dictionary);
   }
 
   if (array_view->union_type_id_map != NULL) {
@@ -652,6 +678,22 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
                                                            array->children[i], error));
   }
 
+  // Check dictionary
+  if (array->dictionary == NULL && array_view->dictionary != NULL) {
+    ArrowErrorSet(error, "Expected dictionary but found NULL");
+    return EINVAL;
+  }
+
+  if (array->dictionary != NULL && array_view->dictionary == NULL) {
+    ArrowErrorSet(error, "Expected NULL dictionary but found dictionary member");
+    return EINVAL;
+  }
+
+  if (array->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewSetArrayInternal(array_view->dictionary, array->dictionary, error));
+  }
+
   return NANOARROW_OK;
 }
 
@@ -765,6 +807,11 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(
         ArrowArrayViewValidateMinimal(array_view->children[i], error));
+  }
+
+  // Recurse for dictionary
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateMinimal(array_view->dictionary, error));
   }
 
   return NANOARROW_OK;
@@ -901,6 +948,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(
         ArrowArrayViewValidateDefault(array_view->children[i], error));
+  }
+
+  // Recurse for dictionary
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateDefault(array_view->dictionary, error));
   }
 
   return NANOARROW_OK;
@@ -1047,8 +1099,15 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     }
   }
 
+  // Recurse for children
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->children[i], error));
+  }
+
+  // Dictionary valiation not implemented
+  if (array_view->dictionary != NULL) {
+    ArrowErrorSet(error, "Validation for dictionary-encoded arrays is not implemented");
+    return EINVAL;
   }
 
   return NANOARROW_OK;
