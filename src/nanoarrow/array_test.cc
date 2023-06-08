@@ -1950,6 +1950,53 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   array.release(&array);
 }
 
+TEST(ArrayTest, ArrayViewTestDictionary) {
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_INT32);
+  ASSERT_NE(array_view.dictionary, nullptr);
+  EXPECT_EQ(array_view.dictionary->storage_type, NANOARROW_TYPE_STRING);
+
+  // Build a dictionary array
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, ArrowCharView("abc")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, ArrowCharView("def")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array_view.buffer_views[1].size_bytes, 2 * sizeof(int32_t));
+  EXPECT_EQ(array_view.dictionary->buffer_views[2].size_bytes, 6);
+
+  // Full validation not yet supported for dictionary
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+            ENOTSUP);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 1), 1);
+
+  struct ArrowStringView item;
+  item = ArrowArrayViewGetStringUnsafe(array_view.dictionary, 0);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "abc");
+  item = ArrowArrayViewGetStringUnsafe(array_view.dictionary, 1);
+  EXPECT_EQ(std::string(item.data, item.size_bytes), "def");
+
+  schema.release(&schema);
+  array.release(&array);
+  ArrowArrayViewReset(&array_view);
+}
+
 TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   struct ArrowArrayView array_view;
   struct ArrowArray array;

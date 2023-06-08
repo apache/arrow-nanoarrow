@@ -150,9 +150,13 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
     }
   }
 
-  // Start building any child arrays
+  // Start building any child arrays or dictionaries
   for (int64_t i = 0; i < array->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array->children[i]));
+  }
+
+  if (array->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array->dictionary));
   }
 
   return NANOARROW_OK;
@@ -166,6 +170,10 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array) {
 
   for (int64_t i = 0; i < array->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayShrinkToFit(array->children[i]));
+  }
+
+  if (array->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayShrinkToFit(array->dictionary));
   }
 
   return NANOARROW_OK;

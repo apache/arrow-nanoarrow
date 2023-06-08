@@ -168,21 +168,40 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
 ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
                                            struct ArrowArrayView* array_view,
                                            struct ArrowError* error) {
-  ArrowArrayInitFromType(array, array_view->storage_type);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowArrayInitFromType(array, array_view->storage_type), error);
+  int result;
+
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
-
-  int result = ArrowArrayAllocateChildren(array, array_view->n_children);
-  if (result != NANOARROW_OK) {
-    array->release(array);
-    return result;
-  }
-
   private_data->layout = array_view->layout;
 
-  for (int64_t i = 0; i < array_view->n_children; i++) {
-    int result =
-        ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
+  if (array_view->n_children > 0) {
+    result = ArrowArrayAllocateChildren(array, array_view->n_children);
+    if (result != NANOARROW_OK) {
+      array->release(array);
+      return result;
+    }
+
+    for (int64_t i = 0; i < array_view->n_children; i++) {
+      result =
+          ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
+      if (result != NANOARROW_OK) {
+        array->release(array);
+        return result;
+      }
+    }
+  }
+
+  if (array_view->dictionary != NULL) {
+    result = ArrowArrayAllocateDictionary(array);
+    if (result != NANOARROW_OK) {
+      array->release(array);
+      return result;
+    }
+
+    result =
+        ArrowArrayInitFromArrayView(array->dictionary, array_view->dictionary, error);
     if (result != NANOARROW_OK) {
       array->release(array);
       return result;
@@ -407,6 +426,10 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->children[i]));
   }
 
+  if (array->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->dictionary));
+  }
+
   return NANOARROW_OK;
 }
 
@@ -420,6 +443,10 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
 
   for (int64_t i = 0; i < array->n_children; i++) {
     ArrowArrayFlushInternalPointers(array->children[i]);
+  }
+
+  if (array->dictionary != NULL) {
+    ArrowArrayFlushInternalPointers(array->dictionary);
   }
 }
 
@@ -1130,7 +1157,7 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
   // Dictionary valiation not implemented
   if (array_view->dictionary != NULL) {
     ArrowErrorSet(error, "Validation for dictionary-encoded arrays is not implemented");
-    return EINVAL;
+    return ENOTSUP;
   }
 
   return NANOARROW_OK;
