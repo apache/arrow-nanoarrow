@@ -1221,6 +1221,8 @@ struct ArrowIpcBufferSource {
   int64_t body_offset_bytes;
   int64_t buffer_length_bytes;
   enum ArrowIpcCompressionType codec;
+  enum ArrowType data_type;
+  int32_t element_size_bits;
   int swap_endian;
 };
 
@@ -1297,6 +1299,125 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
   return out;
 }
 
+// Just for the purposes of endian-swapping (not data access)
+struct ArrowIpcDecimal128 {
+  uint64_t words[2];
+};
+
+struct ArrowIpcDecimal256 {
+  uint64_t words[4];
+};
+
+struct ArrowIpcIntervalMonthDayNano {
+  uint32_t months;
+  uint32_t days;
+  uint64_t ns;
+};
+
+static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
+                                     struct ArrowBufferView out_view,
+                                     struct ArrowBuffer* dst, struct ArrowError* error) {
+  // Make sure dst is not a shared buffer that we can't modify
+  struct ArrowBuffer tmp;
+  ArrowBufferInit(&tmp);
+
+  if (dst->allocator.private_data != NULL) {
+    ArrowBufferMove(dst, &tmp);
+    ArrowBufferInit(dst);
+  }
+
+  if (dst->size_bytes == 0) {
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(dst, out_view.size_bytes));
+    dst->size_bytes = out_view.size_bytes;
+  }
+
+  switch (src->data_type) {
+    case NANOARROW_TYPE_DECIMAL128: {
+      struct ArrowIpcDecimal128* ptr_src = (struct ArrowIpcDecimal128*)out_view.data.data;
+      struct ArrowIpcDecimal128* ptr = (struct ArrowIpcDecimal128*)dst->data;
+      uint64_t words[2];
+      for (int64_t i = 0; i < (dst->size_bytes / 16); i++) {
+        words[0] = bswap64(ptr_src[i].words[0]);
+        words[1] = bswap64(ptr_src[i].words[1]);
+        ptr[i].words[0] = words[1];
+        ptr[i].words[1] = words[0];
+      }
+      break;
+    }
+    case NANOARROW_TYPE_DECIMAL256: {
+      struct ArrowIpcDecimal256* ptr_src = (struct ArrowIpcDecimal256*)out_view.data.data;
+      struct ArrowIpcDecimal256* ptr = (struct ArrowIpcDecimal256*)dst->data;
+      uint64_t words[4];
+      for (int64_t i = 0; i < (dst->size_bytes / 32); i++) {
+        words[0] = bswap64(ptr_src[i].words[0]);
+        words[1] = bswap64(ptr_src[i].words[1]);
+        words[2] = bswap64(ptr_src[i].words[2]);
+        words[3] = bswap64(ptr_src[i].words[3]);
+        ptr[i].words[0] = words[3];
+        ptr[i].words[1] = words[2];
+        ptr[i].words[2] = words[1];
+        ptr[i].words[3] = words[0];
+      }
+      break;
+    }
+    case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
+      uint32_t* ptr = (uint32_t*)dst->data;
+      for (int64_t i = 0; i < (dst->size_bytes / 4); i++) {
+        ptr[i] = bswap32(out_view.data.as_uint32[i]);
+      }
+      break;
+    }
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+      struct ArrowIpcIntervalMonthDayNano* ptr_src = (struct ArrowIpcIntervalMonthDayNano*)out_view.data.data;
+      struct ArrowIpcIntervalMonthDayNano* ptr = (struct ArrowIpcIntervalMonthDayNano*)dst->data;
+      uint64_t words[2];
+      for (int64_t i = 0; i < (dst->size_bytes / 16); i++) {
+        ptr[i].months = bswap32(ptr_src[i].months);
+        ptr[i].days = bswap32(ptr_src[i].days);
+        ptr[i].ns = bswap64(ptr_src[i].ns);
+      }
+      break;
+    }
+    default:
+      switch (src->element_size_bits) {
+        case 0:
+        case 1:
+        case 8:
+          // None needed
+          break;
+        case 16: {
+          uint16_t* ptr = (uint16_t*)dst->data;
+          for (int64_t i = 0; i < (dst->size_bytes / 2); i++) {
+            ptr[i] = bswap16(out_view.data.as_uint16[i]);
+          }
+          break;
+        }
+        case 32: {
+          uint32_t* ptr = (uint32_t*)dst->data;
+          for (int64_t i = 0; i < (dst->size_bytes / 4); i++) {
+            ptr[i] = bswap32(out_view.data.as_uint32[i]);
+          }
+          break;
+        }
+        case 64: {
+          uint64_t* ptr = (uint64_t*)dst->data;
+          for (int64_t i = 0; i < (dst->size_bytes / 8); i++) {
+            ptr[i] = bswap64(out_view.data.as_uint64[i]);
+          }
+          break;
+        }
+        default:
+          ArrowErrorSet(error, "Endian swapping for element bitwidth %d is not supported",
+                        (int)src->element_size_bits);
+          return ENOTSUP;
+      }
+      break;
+  }
+
+  ArrowBufferReset(&tmp);
+  return NANOARROW_OK;
+}
+
 struct ArrowIpcArraySetter {
   ns(FieldNode_vec_t) fields;
   int64_t field_i;
@@ -1334,16 +1455,16 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
     return ENOTSUP;
   }
 
-  if (setter->src.swap_endian) {
-    ArrowErrorSet(error,
-                  "The nanoarrow_ipc extension does not support non-system endianness");
-    return ENOTSUP;
-  }
-
   setter->src.body_offset_bytes = offset;
   setter->src.buffer_length_bytes = length;
   NANOARROW_RETURN_NOT_OK(
       setter->factory.make_buffer(&setter->factory, &setter->src, out_view, out, error));
+
+  if (setter->src.swap_endian) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderSwapEndian(&setter->src, *out_view, out, error));
+  }
+
   return NANOARROW_OK;
 }
 
@@ -1411,6 +1532,9 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
     } else {
       buffer_dst->size_bytes = 0;
     }
+
+    setter->src.data_type = array_view->layout.buffer_data_type[i];
+    setter->src.element_size_bits = array_view->layout.element_size_bits[i];
 
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderMakeBuffer(setter, buffer_offset, buffer_length,
