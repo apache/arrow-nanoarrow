@@ -120,6 +120,7 @@ else()
                 -Wextra
                 -Wno-type-limits
                 -Wno-unused-parameter
+                -Wmaybe-uninitialized
                 -Wpedantic
                 -Wunused-result)
         elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR
