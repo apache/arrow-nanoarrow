@@ -1393,7 +1393,6 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
           (struct ArrowIpcIntervalMonthDayNano*)out_view->data.data;
       struct ArrowIpcIntervalMonthDayNano* ptr =
           (struct ArrowIpcIntervalMonthDayNano*)dst->data;
-      uint64_t words[2];
       for (int64_t i = 0; i < (dst->size_bytes / 16); i++) {
         ptr[i].months_days.months = bswap32(ptr_src[i].months_days.months);
         ptr[i].months_days.days = bswap32(ptr_src[i].months_days.days);
