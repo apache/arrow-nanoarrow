@@ -198,16 +198,6 @@ nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
     result <- .Call(nanoarrow_c_array_proxy, array, NULL, recursive)
   }
 
-  # Recursive-ness of the dictionary is handled here because it's not
-  # part of the array view
-  if (recursive && !is.null(result$dictionary)) {
-    result$dictionary <- nanoarrow_array_proxy(
-      result$dictionary,
-      schema = schema$dictionary,
-      recursive = TRUE
-    )
-  }
-
   result
 }
 

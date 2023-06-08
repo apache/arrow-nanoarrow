@@ -249,11 +249,7 @@ static int move_array_buffers(struct ArrowArray* src, struct ArrowArray* dst,
                                                schema->children[i], error));
   }
 
-  // ArrowArrayInit() never initializes a dictionary, so do it here
   if (src->dictionary != NULL) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
-    NANOARROW_RETURN_NOT_OK(
-        ArrowArrayInitFromSchema(dst->dictionary, schema->dictionary, error));
     NANOARROW_RETURN_NOT_OK(
         move_array_buffers(src->dictionary, dst->dictionary, schema->dictionary, error));
   }
@@ -365,6 +361,15 @@ static SEXP borrow_array_view_child(struct ArrowArrayView* array_view, int64_t i
   }
 }
 
+static SEXP borrow_array_view_dictionary(struct ArrowArrayView* array_view,
+                                         SEXP shelter) {
+  if (array_view != NULL) {
+    return R_MakeExternalPtr(array_view->dictionary, R_NilValue, shelter);
+  } else {
+    return R_NilValue;
+  }
+}
+
 static SEXP borrow_unknown_buffer(struct ArrowArray* array, int64_t i, SEXP shelter) {
   return buffer_borrowed_xptr(array->buffers[i], 0, shelter);
 }
@@ -442,10 +447,21 @@ SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursi
     UNPROTECT(1);
   }
 
-  // The recursive-ness of the dictionary is handled in R because this is not part
-  // of the struct ArrowArrayView.
   if (array->dictionary != NULL) {
-    SET_VECTOR_ELT(array_proxy, 5, borrow_array_xptr(array->dictionary, array_xptr));
+    SEXP dictionary_xptr = PROTECT(borrow_array_xptr(array->dictionary, array_xptr));
+
+    if (recursive) {
+      SEXP dictionary_view_xptr =
+        PROTECT(borrow_array_view_dictionary(array_view, array_view_xptr));
+      SEXP dictionary_proxy = PROTECT(
+          nanoarrow_c_array_proxy(dictionary_xptr, dictionary_view_xptr, recursive_sexp));
+      SET_VECTOR_ELT(array_proxy, 5, dictionary_proxy);
+      UNPROTECT(2);
+    } else {
+      SET_VECTOR_ELT(array_proxy, 5, dictionary_xptr);
+    }
+
+    UNPROTECT(1);
   }
 
   UNPROTECT(1);
