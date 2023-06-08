@@ -868,4 +868,6 @@ TEST_P(ArrowTypeIdParameterizedTestFixture, NanoarrowIpcDecodeSwapEndian) {
 INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
                          ::testing::Values(NANOARROW_TYPE_BOOL, NANOARROW_TYPE_INT8,
                                            NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32,
-                                           NANOARROW_TYPE_INT64));
+                                           NANOARROW_TYPE_INT64,
+                                           NANOARROW_TYPE_DECIMAL128,
+                                           NANOARROW_TYPE_DECIMAL256));
