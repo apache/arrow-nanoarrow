@@ -1529,10 +1529,6 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
     setter->src.data_type = array_view->layout.buffer_data_type[i];
     setter->src.element_size_bits = array_view->layout.element_size_bits[i];
 
-    if (setter->src.data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
-      printf("fish!\n");
-    }
-
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderMakeBuffer(setter, buffer_offset, buffer_length,
                                   &array_view->buffer_views[i], buffer_dst, error));
