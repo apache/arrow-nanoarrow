@@ -17,9 +17,10 @@
 
 #include <errno.h>
 
+#include <cuda_runtime_api.h>
 #include <gtest/gtest.h>
-#include "nanoarrow_device.h"
 
+#include "nanoarrow_device.h"
 #include "nanoarrow_device_cuda.h"
 
 TEST(NanoarrowDeviceCuda, GetDevice) {
@@ -31,7 +32,8 @@ TEST(NanoarrowDeviceCuda, GetDevice) {
   EXPECT_EQ(cuda_host->device_type, ARROW_DEVICE_CUDA_HOST);
 
   // null return for invalid input
-  EXPECT_EQ(ArrowDeviceCuda(ARROW_DEVICE_CUDA, std::numeric_limits<int32_t>::max()), nullptr);
+  EXPECT_EQ(ArrowDeviceCuda(ARROW_DEVICE_CUDA, std::numeric_limits<int32_t>::max()),
+            nullptr);
   EXPECT_EQ(ArrowDeviceCuda(ARROW_DEVICE_CPU, 0), nullptr);
 }
 
@@ -92,4 +94,50 @@ TEST(NanoarrowDeviceCuda, DeviceCudaHostBufferInit) {
   ArrowBufferReset(&buffer);
 
   ArrowBufferReset(&buffer_gpu);
+}
+
+TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
+  struct ArrowDevice* cpu = ArrowDeviceCpu();
+  struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
+  uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+  struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
+
+  void* gpu_dest;
+  cudaError_t result = cudaMalloc(&gpu_dest, sizeof(data));
+  struct ArrowDeviceBufferView gpu_view = {gpu_dest, 0, sizeof(data)};
+  if (result != cudaSuccess) {
+    GTEST_FAIL() << "cudaMalloc(&gpu_dest) failed";
+  }
+
+  void* gpu_dest2;
+  result = cudaMalloc(&gpu_dest2, sizeof(data));
+  struct ArrowDeviceBufferView gpu_view2 = {gpu_dest2, 0, sizeof(data)};
+  if (result != cudaSuccess) {
+    GTEST_FAIL() << "cudaMalloc(&gpu_dest2) failed";
+  }
+
+  // CPU -> GPU
+  ASSERT_EQ(ArrowDeviceBufferCopy(cpu, cpu_view, gpu, gpu_view), NANOARROW_OK);
+
+  // GPU -> GPU
+  ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, gpu, gpu_view2), NANOARROW_OK);
+
+  // GPU -> CPU
+  uint8_t cpu_dest[5];
+  struct ArrowDeviceBufferView cpu_dest_view = {cpu_dest, 0, sizeof(data)};
+  ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, cpu, cpu_dest_view), NANOARROW_OK);
+
+  // Check roundtrip
+  EXPECT_EQ(memcmp(cpu_dest, data, sizeof(data)), 0);
+
+  // Clean up
+  result = cudaFree(gpu_dest);
+  if (result != cudaSuccess) {
+    GTEST_FAIL() << "cudaFree(gpu_dest) failed";
+  }
+
+  result = cudaFree(gpu_dest2);
+  if (result != cudaSuccess) {
+    GTEST_FAIL() << "cudaFree(gpu_dest2) failed";
+  }
 }
