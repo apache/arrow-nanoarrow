@@ -1992,6 +1992,23 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   item = ArrowArrayViewGetStringUnsafe(array_view.dictionary, 1);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "def");
 
+  array.release(&array);
+
+  // Setting a non-dictionary array should error
+  struct ArrowError error;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected dictionary but found NULL");
+
+  array.release(&array);
+
+  // Setting a dictionary array to a non-dictionary array view should error
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected NULL dictionary but found dictionary member");
+
   schema.release(&schema);
   array.release(&array);
   ArrowArrayViewReset(&array_view);
