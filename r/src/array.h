@@ -145,7 +145,7 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
   result = ArrowArrayAllocateChildren(array_copy, array->n_children);
   if (result != NANOARROW_OK) {
     array_copy->release(array_copy);
-    Rf_error("ArrowArraySetBuffer() failed");
+    Rf_error("ArrowArrayAllocateChildren() failed");
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
