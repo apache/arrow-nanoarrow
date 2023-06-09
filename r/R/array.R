@@ -180,19 +180,19 @@ nanoarrow_array_proxy <- function(array, schema = NULL, recursive = FALSE) {
     array_view <- .Call(nanoarrow_c_array_view, array, schema)
     result <- .Call(nanoarrow_c_array_proxy, array, array_view, recursive)
 
-    # Pass on some information from the schema if we have it
-    if (!is.null(result$dictionary)) {
-      nanoarrow_array_set_schema(result$dictionary, schema$dictionary)
-    }
-
     names(result$children) <- names(schema$children)
 
     if (!recursive) {
+      # Pass on some information from the schema if we have it
       result$children <- Map(
         nanoarrow_array_set_schema,
         result$children,
         schema$children
       )
+
+      if (!is.null(result$dictionary)) {
+        nanoarrow_array_set_schema(result$dictionary, schema$dictionary)
+      }
     }
   } else {
     result <- .Call(nanoarrow_c_array_proxy, array, NULL, recursive)
@@ -308,6 +308,8 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
         if (!is.null(value)) {
           value <- as_nanoarrow_array(value)
           value_copy <- array_shallow_copy(value, validate = validate)
+        } else {
+          value_copy <- NULL
         }
 
         .Call(nanoarrow_c_array_set_dictionary, array_copy, value_copy)
