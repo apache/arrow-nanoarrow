@@ -231,19 +231,20 @@ INSTANTIATE_TEST_SUITE_P(
                       DeviceAndType(ARROW_DEVICE_CUDA_HOST,
                                     NANOARROW_TYPE_LARGE_BINARY)));
 
-class ListTypeParameterizedTestFixture : public ::testing::TestWithParam<enum ArrowType> {
+class ListTypeParameterizedTestFixture
+    : public ::testing::TestWithParam<std::pair<ArrowDeviceType, enum ArrowType>> {
  protected:
-  enum ArrowType type;
+  std::pair<ArrowDeviceType, enum ArrowType> info;
 };
 
 TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewList) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
-  struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
+  struct ArrowDevice* gpu = ArrowDeviceCuda(GetParam().first, 0);
   struct ArrowSchema schema;
   struct ArrowArray array;
   struct ArrowDeviceArray device_array;
   struct ArrowDeviceArrayView device_array_view;
-  enum ArrowType list_type = GetParam();
+  enum ArrowType list_type = GetParam().second;
 
   ASSERT_EQ(ArrowSchemaInitFromType(&schema, list_type), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
@@ -318,6 +319,9 @@ TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewList) {
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
-INSTANTIATE_TEST_SUITE_P(NanoarrowDeviceCuda, ListTypeParameterizedTestFixture,
-                         ::testing::Values(NANOARROW_TYPE_LIST,
-                                           NANOARROW_TYPE_LARGE_LIST));
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowDeviceCuda, ListTypeParameterizedTestFixture,
+    ::testing::Values(DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LIST),
+                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_LIST),
+                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LIST),
+                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_LIST)));
