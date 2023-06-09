@@ -336,6 +336,10 @@ cdef class ArrayView:
         return ArrayViewBuffers(self)
 
     @property
+    def dictionary(self):
+        return ArrayView(self, <uintptr_t>self._ptr.dictionary, self._array.dictionary)
+
+    @property
     def array(self):
         return self._array
 
