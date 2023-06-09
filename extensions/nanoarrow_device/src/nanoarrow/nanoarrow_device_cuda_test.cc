@@ -143,18 +143,23 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
 }
 
 class StringTypeParameterizedTestFixture
-    : public ::testing::TestWithParam<enum ArrowType> {
+    : public ::testing::TestWithParam<std::pair<ArrowDeviceType, enum ArrowType>> {
  protected:
-  enum ArrowType type;
+  std::pair<ArrowDeviceType, enum ArrowType> info;
 };
+
+std::pair<ArrowDeviceType, enum ArrowType> DeviceAndType(ArrowDeviceType device_type,
+                                                         enum ArrowType arrow_type) {
+  return {device_type, arrow_type};
+}
 
 TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
-  struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
+  struct ArrowDevice* gpu = ArrowDeviceCuda(GetParam().first, 0);
   struct ArrowArray array;
   struct ArrowDeviceArray device_array;
   struct ArrowDeviceArrayView device_array_view;
-  enum ArrowType string_type = GetParam();
+  enum ArrowType string_type = GetParam().second;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
@@ -214,11 +219,17 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
-INSTANTIATE_TEST_SUITE_P(NanoarrowDeviceCuda, StringTypeParameterizedTestFixture,
-                         ::testing::Values(NANOARROW_TYPE_STRING,
-                                           NANOARROW_TYPE_LARGE_STRING,
-                                           NANOARROW_TYPE_BINARY,
-                                           NANOARROW_TYPE_LARGE_BINARY));
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowDeviceCuda, StringTypeParameterizedTestFixture,
+    ::testing::Values(DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_STRING),
+                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_STRING),
+                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_BINARY),
+                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_BINARY),
+                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_STRING),
+                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_STRING),
+                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_BINARY),
+                      DeviceAndType(ARROW_DEVICE_CUDA_HOST,
+                                    NANOARROW_TYPE_LARGE_BINARY)));
 
 class ListTypeParameterizedTestFixture : public ::testing::TestWithParam<enum ArrowType> {
  protected:
