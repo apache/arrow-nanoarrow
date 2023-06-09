@@ -608,7 +608,7 @@ struct ArrowArrayView {
   /// \brief Pointers to views of this array's children
   struct ArrowArrayView** children;
 
-  /// \brief Pointers to views of this array's dictionary
+  /// \brief Pointer to a view of this array's dictionary
   struct ArrowArrayView* dictionary;
 
   /// \brief Union type id to child index mapping
