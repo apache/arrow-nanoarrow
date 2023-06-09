@@ -784,20 +784,45 @@ TEST_P(ArrowTypeIdParameterizedTestFixture, NanoarrowIpcDecodeSwapEndian) {
       bit_width = 256;
       arrow_data_type = arrow::decimal256(10, 3);
       break;
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      bit_width = 128;
+      arrow_data_type = arrow::month_day_nano_interval();
+      break;
     default:
       GTEST_FAIL() << "Type not supported for test";
   }
 
   // "Manually" swap the endians
   uint8_t data_buffer_swapped[32 * 10];
-  if (bit_width > 8) {
-    int64_t n_elements = sizeof(data_buffer) * 8 / bit_width;
+  int64_t n_elements = sizeof(data_buffer) * 8 / bit_width;
+  if (bit_width > 8 && data_type != NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
     int byte_width = bit_width / 8;
     for (int64_t i = 0; i < n_elements; i++) {
       uint8_t* src = data_buffer + (i * byte_width);
       uint8_t* dst = data_buffer_swapped + (i * byte_width);
       for (int j = 0; j < byte_width; j++) {
         dst[j] = src[byte_width - j - 1];
+      }
+    }
+  } else if (data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
+    for (int64_t i = 0; i < n_elements; i++) {
+      uint8_t* src = data_buffer + (i * 16);
+      uint8_t* dst = data_buffer_swapped + (i * 16);
+
+      for (int j = 0; j < 4; j++) {
+        dst[j] = src[4 - j - 1];
+      }
+      src += 4;
+      dst += 4;
+
+      for (int j = 0; j < 4; j++) {
+        dst[j] = src[4 - j - 1];
+      }
+      src += 4;
+      dst += 4;
+
+      for (int j = 0; j < 8; j++) {
+        dst[j] = src[8 - j - 1];
       }
     }
   } else {
@@ -870,4 +895,5 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
                                            NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32,
                                            NANOARROW_TYPE_INT64,
                                            NANOARROW_TYPE_DECIMAL128,
-                                           NANOARROW_TYPE_DECIMAL256));
+                                           NANOARROW_TYPE_DECIMAL256,
+                                           NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
