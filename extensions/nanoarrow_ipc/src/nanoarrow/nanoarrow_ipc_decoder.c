@@ -1371,7 +1371,7 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
         item.months = bswap32(item.months);
         item.days = bswap32(item.days);
         item.ns = bswap64(item.ns);
-        memcpy(dst + i * item_size_bytes, &item, item_size_bytes);
+        memcpy(ptr_dst + i * item_size_bytes, &item, item_size_bytes);
       }
       break;
     }
@@ -1528,6 +1528,10 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
 
     setter->src.data_type = array_view->layout.buffer_data_type[i];
     setter->src.element_size_bits = array_view->layout.element_size_bits[i];
+
+    if (setter->src.data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
+      printf("fish!\n");
+    }
 
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderMakeBuffer(setter, buffer_offset, buffer_length,
