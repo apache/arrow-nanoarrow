@@ -152,8 +152,7 @@ class TestFile {
         io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
 #endif
 
-    auto maybe_reader =
-        ipc::RecordBatchStreamReader::Open(input_stream);
+    auto maybe_reader = ipc::RecordBatchStreamReader::Open(input_stream);
     if (!maybe_reader.ok()) {
       GTEST_FAIL() << maybe_reader.status().message();
     }
@@ -224,6 +223,23 @@ TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFileNativeEndia
   dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
 #else
   dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
+#endif
+  TestFile param = GetParam();
+  param.Test(dir_builder.str());
+}
+
+TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFileSwapEndian) {
+  const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
+  if (testing_dir == nullptr || strlen(testing_dir) == 0) {
+    GTEST_SKIP() << "NANOARROW_ARROW_TESTING_DIR environment variable not set";
+  }
+
+  std::stringstream dir_builder;
+
+#if defined(__BIG_ENDIAN__)
+  dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
+#else
+  dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
 #endif
   TestFile param = GetParam();
   param.Test(dir_builder.str());

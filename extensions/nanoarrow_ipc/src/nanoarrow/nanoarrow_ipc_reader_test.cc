@@ -21,8 +21,6 @@
 
 #include "nanoarrow_ipc.h"
 
-#include "flatcc/portable/pendian_detect.h"
-
 static uint8_t kSimpleSchema[] = {
     0xff, 0xff, 0xff, 0xff, 0x10, 0x01, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x0a, 0x00, 0x0e, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0a, 0x00, 0x00, 0x00,
@@ -163,14 +161,9 @@ TEST(NanoarrowIpcReader, StreamReaderBasic) {
   schema.release(&schema);
 
   struct ArrowArray array;
-  // TODO: Support endian swapping (GH-171)
-#if !defined(__BIG_ENDIAN__)
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
   array.release(&array);
-#else
-  ASSERT_EQ(stream.get_next(&stream, &array), ENOTSUP);
-#endif
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
@@ -205,14 +198,9 @@ TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
   schema.release(&schema);
 
   struct ArrowArray array;
-  // TODO: Support endian swapping (GH-171)
-#if !defined(__BIG_ENDIAN__)
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
   array.release(&array);
-#else
-  ASSERT_EQ(stream.get_next(&stream, &array), ENOTSUP);
-#endif
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
@@ -246,14 +234,9 @@ TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
   schema.release(&schema);
 
   struct ArrowArray array;
-  // TODO: Support endian swapping (GH-171)
-#if !defined(__BIG_ENDIAN__)
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
   array.release(&array);
-#else
-  ASSERT_EQ(stream.get_next(&stream, &array), ENOTSUP);
-#endif
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);

@@ -330,19 +330,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   EXPECT_STREQ(error.message, "The nanoarrow_ipc extension does not support compression");
   decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
 
-  // Field extract should fail on non-system endian
-  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
-    ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_BIG);
-  } else {
-    ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_LITTLE);
-  }
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
-                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            ENOTSUP);
-  EXPECT_STREQ(error.message,
-               "The nanoarrow_ipc extension does not support non-system endianness");
-  ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_UNINITIALIZED);
-
   // Field extract should fail if body is too small
   decoder.body_size_bytes = 0;
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
@@ -525,7 +512,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
 
 TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   if (!ArrowIpcSharedBufferIsThreadSafe()) {
-    GTEST_SKIP();
+    GTEST_SKIP() << "ArrowIpcSharedBufferIsThreadSafe() returned false";
   }
 
   struct ArrowIpcDecoder decoder;
@@ -748,3 +735,165 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::schema({}, arrow::KeyValueMetadata::Make({"key1"}, {"value1"})),
         // Non-nullable field
         arrow::schema({arrow::field("some_name", arrow::int32(), false)})));
+
+class ArrowTypeIdParameterizedTestFixture
+    : public ::testing::TestWithParam<enum ArrowType> {
+ protected:
+  enum ArrowType data_type;
+};
+
+TEST_P(ArrowTypeIdParameterizedTestFixture, NanoarrowIpcDecodeSwapEndian) {
+  enum ArrowType data_type = GetParam();
+  int64_t n_elements_test = 10;
+
+  // Make a data buffer long enough for 10 Decimal256s with a pattern
+  // where an endian swap isn't silently the same value (e.g., 0s)
+  uint8_t data_buffer[32 * 10];
+  for (int64_t i = 0; i < sizeof(data_buffer); i++) {
+    data_buffer[i] = i % 256;
+  }
+
+  int bit_width;
+  std::shared_ptr<arrow::DataType> arrow_data_type;
+  switch (data_type) {
+    case NANOARROW_TYPE_BOOL:
+      bit_width = 1;
+      arrow_data_type = arrow::boolean();
+      break;
+    case NANOARROW_TYPE_INT8:
+      bit_width = 8;
+      arrow_data_type = arrow::int8();
+      break;
+    case NANOARROW_TYPE_INT16:
+      bit_width = 16;
+      arrow_data_type = arrow::int16();
+      break;
+    case NANOARROW_TYPE_INT32:
+      bit_width = 32;
+      arrow_data_type = arrow::int32();
+      break;
+    case NANOARROW_TYPE_INT64:
+      bit_width = 64;
+      arrow_data_type = arrow::int64();
+      break;
+    case NANOARROW_TYPE_DECIMAL128:
+      arrow_data_type = arrow::decimal128(10, 3);
+      bit_width = 128;
+      break;
+    case NANOARROW_TYPE_DECIMAL256:
+      bit_width = 256;
+      arrow_data_type = arrow::decimal256(10, 3);
+      break;
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+      bit_width = 128;
+      arrow_data_type = arrow::month_day_nano_interval();
+      break;
+    default:
+      GTEST_FAIL() << "Type not supported for test";
+  }
+
+  // "Manually" swap the endians
+  uint8_t data_buffer_swapped[32 * 10];
+  int64_t n_elements = sizeof(data_buffer) * 8 / bit_width;
+  if (bit_width > 8 && data_type != NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
+    int byte_width = bit_width / 8;
+    for (int64_t i = 0; i < n_elements; i++) {
+      uint8_t* src = data_buffer + (i * byte_width);
+      uint8_t* dst = data_buffer_swapped + (i * byte_width);
+      for (int j = 0; j < byte_width; j++) {
+        dst[j] = src[byte_width - j - 1];
+      }
+    }
+  } else if (data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
+    for (int64_t i = 0; i < n_elements; i++) {
+      uint8_t* src = data_buffer + (i * 16);
+      uint8_t* dst = data_buffer_swapped + (i * 16);
+
+      for (int j = 0; j < 4; j++) {
+        dst[j] = src[4 - j - 1];
+      }
+      src += 4;
+      dst += 4;
+
+      for (int j = 0; j < 4; j++) {
+        dst[j] = src[4 - j - 1];
+      }
+      src += 4;
+      dst += 4;
+
+      for (int j = 0; j < 8; j++) {
+        dst[j] = src[8 - j - 1];
+      }
+    }
+  } else {
+    memcpy(data_buffer_swapped, data_buffer, sizeof(data_buffer));
+  }
+
+  // Make an array wrapping the swapped buffer
+  auto empty = std::make_shared<arrow::Buffer>(nullptr, 0);
+  auto buffer =
+      std::make_shared<arrow::Buffer>(data_buffer_swapped, sizeof(data_buffer_swapped));
+  arrow::BufferVector buffers = {empty, buffer};
+  auto array_data =
+      std::make_shared<arrow::ArrayData>(arrow_data_type, n_elements_test, buffers, 0, 0);
+  auto array = arrow::MakeArray(array_data);
+
+  // Make a RecordBatch
+  auto arrow_schema = arrow::schema({arrow::field("col1", arrow_data_type)});
+  auto arrow_record_batch =
+      arrow::RecordBatch::Make(arrow_schema, n_elements_test, {array});
+
+  // Serialize it
+  auto options = arrow::ipc::IpcWriteOptions::Defaults();
+  auto maybe_serialized = arrow::ipc::SerializeRecordBatch(*arrow_record_batch, options);
+  if (!maybe_serialized.ok()) {
+    GTEST_FAIL() << maybe_serialized.status();
+  }
+  auto serialized = *maybe_serialized;
+
+  struct ArrowSchema schema;
+  if (!arrow::ExportSchema(*arrow_schema, &schema).ok()) {
+    GTEST_FAIL() << "schema export failed";
+  }
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = serialized->data();
+  data.size_bytes = serialized->size();
+
+  struct ArrowIpcDecoder decoder;
+  ArrowIpcDecoderInit(&decoder);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+
+#ifdef __BIG_ENDIAN__
+  ASSERT_EQ(ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_LITTLE),
+            NANOARROW_OK);
+#else
+  ASSERT_EQ(ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_BIG),
+            NANOARROW_OK);
+#endif
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, nullptr), NANOARROW_OK);
+  data.data.as_uint8 += decoder.header_size_bytes;
+  data.size_bytes -= decoder.header_size_bytes;
+
+  struct ArrowArrayView* array_view;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, data, 0, &array_view, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(array_view->storage_type, data_type);
+
+  // Check buffer equality with our initial buffer
+  EXPECT_EQ(memcmp(array_view->buffer_views[1].data.data, data_buffer,
+                   array_view->buffer_views[1].size_bytes),
+            0);
+
+  schema.release(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
+INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
+                         ::testing::Values(NANOARROW_TYPE_BOOL, NANOARROW_TYPE_INT8,
+                                           NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32,
+                                           NANOARROW_TYPE_INT64,
+                                           NANOARROW_TYPE_DECIMAL128,
+                                           NANOARROW_TYPE_DECIMAL256,
+                                           NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
