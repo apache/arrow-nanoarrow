@@ -1299,25 +1299,10 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
   return out;
 }
 
-// Just for the purposes of endian-swapping (not data access)
-struct ArrowIpcDecimal128 {
-  uint64_t words[2];
-};
-
-struct ArrowIpcDecimal256 {
-  uint64_t words[4];
-};
-
-struct ArrowIpcMonthsDays {
+// Just for the purposes of endian-swapping
+struct ArrowIpcIntervalMonthDayNano {
   uint32_t months;
   uint32_t days;
-};
-
-struct ArrowIpcIntervalMonthDayNano {
-  union {
-    uint64_t force_align_uint64;
-    struct ArrowIpcMonthsDays months_days;
-  };
   uint64_t ns;
 };
 
@@ -1351,33 +1336,21 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
   }
 
   switch (src->data_type) {
-    case NANOARROW_TYPE_DECIMAL128: {
-      struct ArrowIpcDecimal128* ptr_src =
-          (struct ArrowIpcDecimal128*)out_view->data.data;
-      struct ArrowIpcDecimal128* ptr = (struct ArrowIpcDecimal128*)dst->data;
-      uint64_t words[2];
-      for (int64_t i = 0; i < (dst->size_bytes / 16); i++) {
-        words[0] = bswap64(ptr_src[i].words[0]);
-        words[1] = bswap64(ptr_src[i].words[1]);
-        ptr[i].words[0] = words[1];
-        ptr[i].words[1] = words[0];
-      }
-      break;
-    }
+    case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256: {
-      struct ArrowIpcDecimal256* ptr_src =
-          (struct ArrowIpcDecimal256*)out_view->data.data;
-      struct ArrowIpcDecimal256* ptr = (struct ArrowIpcDecimal256*)dst->data;
+      const uint64_t* ptr_src = out_view->data.as_uint64;
+      uint64_t* ptr_dst = (uint64_t*)dst->data;
       uint64_t words[4];
-      for (int64_t i = 0; i < (dst->size_bytes / 32); i++) {
-        words[0] = bswap64(ptr_src[i].words[0]);
-        words[1] = bswap64(ptr_src[i].words[1]);
-        words[2] = bswap64(ptr_src[i].words[2]);
-        words[3] = bswap64(ptr_src[i].words[3]);
-        ptr[i].words[0] = words[3];
-        ptr[i].words[1] = words[2];
-        ptr[i].words[2] = words[1];
-        ptr[i].words[3] = words[0];
+      int n_words = src->element_size_bits / 64;
+
+      for (int64_t i = 0; i < (dst->size_bytes / n_words / 8); i++) {
+        for (int j = 0; j < n_words; j++) {
+          words[j] = bswap64(ptr_src[i * n_words + j]);
+        }
+
+        for (int j = 0; j < n_words; j++) {
+          ptr_dst[i * n_words + j] = words[n_words - j - 1];
+        }
       }
       break;
     }
@@ -1389,14 +1362,16 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
       break;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-      struct ArrowIpcIntervalMonthDayNano* ptr_src =
-          (struct ArrowIpcIntervalMonthDayNano*)out_view->data.data;
-      struct ArrowIpcIntervalMonthDayNano* ptr =
-          (struct ArrowIpcIntervalMonthDayNano*)dst->data;
-      for (int64_t i = 0; i < (dst->size_bytes / 16); i++) {
-        ptr[i].months_days.months = bswap32(ptr_src[i].months_days.months);
-        ptr[i].months_days.days = bswap32(ptr_src[i].months_days.days);
-        ptr[i].ns = bswap64(ptr_src[i].ns);
+      const uint8_t* ptr_src = out_view->data.as_uint8;
+      uint8_t* ptr_dst = dst->data;
+      int item_size_bytes = 16;
+      struct ArrowIpcIntervalMonthDayNano item;
+      for (int64_t i = 0; i < (dst->size_bytes / item_size_bytes); i++) {
+        memcpy(&item, ptr_src + i * item_size_bytes, item_size_bytes);
+        item.months = bswap32(item.months);
+        item.days = bswap32(item.days);
+        item.ns = bswap64(item.ns);
+        memcpy(dst + i * item_size_bytes, &item, item_size_bytes);
       }
       break;
     }
