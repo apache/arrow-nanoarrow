@@ -192,7 +192,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
 
   // Copy required back to Cpu
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
+  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
 
   device_array2.array.release(&device_array2.array);
   ArrowDeviceArrayViewReset(&device_array_view);

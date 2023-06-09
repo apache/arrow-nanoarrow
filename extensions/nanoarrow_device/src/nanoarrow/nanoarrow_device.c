@@ -141,6 +141,10 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
 struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
 #endif
 
+#ifdef NANOARROW_DEVICE_WITH_CUDA
+struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_id);
+#endif
+
 struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id) {
   if (device_type == ARROW_DEVICE_CPU && device_id == 0) {
     return ArrowDeviceCpu();
@@ -152,6 +156,12 @@ struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t devi
     if (device_id == default_device->device_id) {
       return default_device;
     }
+  }
+#endif
+
+#ifdef NANOARROW_DEVICE_WITH_CUDA
+  if (device_type == ARROW_DEVICE_CUDA || device_type == ARROW_DEVICE_CUDA_HOST) {
+    return ArrowDeviceCuda(device_type, device_id);
   }
 #endif
 
