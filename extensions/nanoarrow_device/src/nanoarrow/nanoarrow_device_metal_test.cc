@@ -18,6 +18,7 @@
 #include <errno.h>
 
 #include <gtest/gtest.h>
+
 #include <Metal/Metal.hpp>
 
 #include "nanoarrow_device.hpp"

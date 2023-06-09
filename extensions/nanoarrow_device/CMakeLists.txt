@@ -107,9 +107,7 @@ else()
     find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
     message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
 
-    set(NANOARROW_DEVICE_SOURCES_METAL
-      src/nanoarrow_device_metal/metal_impl.cc
-      src/nanoarrow_device_metal/nanoarrow_device_metal.cc)
+    set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/nanoarrow_device_metal.cc)
     set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
     set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY} ${QUARTZ_CORE_LIBRARY})
     set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
@@ -206,7 +204,7 @@ if (NANOARROW_DEVICE_BUILD_TESTS)
   gtest_discover_tests(nanoarrow_device_hpp_test)
 
   if (NANOARROW_DEVICE_WITH_METAL)
-    add_executable(nanoarrow_device_metal_test src/nanoarrow_device_metal/nanoarrow_device_metal_test.cc)
+    add_executable(nanoarrow_device_metal_test src/nanoarrow/nanoarrow_device_metal_test.cc)
     target_link_libraries(
       nanoarrow_device_metal_test
       nanoarrow_device nanoarrow gtest_main device_coverage_config)

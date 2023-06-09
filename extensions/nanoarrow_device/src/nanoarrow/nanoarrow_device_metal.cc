@@ -20,6 +20,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#define NS_PRIVATE_IMPLEMENTATION
+#define MTL_PRIVATE_IMPLEMENTATION
 #include <Metal/Metal.hpp>
 
 #include "nanoarrow_device.hpp"
