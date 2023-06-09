@@ -34,7 +34,7 @@ cdef class SchemaHolder:
     def __init__(self):
         self.c_schema.release = NULL
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.c_schema.release != NULL:
           self.c_schema.release(&self.c_schema)
 
@@ -47,7 +47,7 @@ cdef class ArrayHolder:
     def __init__(self):
         self.c_array.release = NULL
 
-    def __del__(self):
+    def __dealloc__(self):
         if self.c_array.release != NULL:
           self.c_array.release(&self.c_array)
 
@@ -60,7 +60,7 @@ cdef class ArrayViewHolder:
     def __init__(self):
         ArrowArrayViewInitFromType(&self.c_array_view, NANOARROW_TYPE_UNINITIALIZED)
 
-    def __del__(self):
+    def __dealloc__(self):
         ArrowArrayViewReset(&self.c_array_view)
 
     def _addr(self):
@@ -441,18 +441,47 @@ cdef class ArrayViewChildren:
 cdef class BufferView:
     cdef object _base
     cdef ArrowBufferView* _ptr
+    cdef ArrowBufferType _buffer_type
+    cdef ArrowType _buffer_data_type
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
 
-    def __init__(self, object base, uintptr_t addr):
+    def __init__(self, object base, uintptr_t addr,
+                 ArrowBufferType buffer_type, ArrowType buffer_data_type):
         self._base = base
         self._ptr = <ArrowBufferView*>addr
+        self._buffer_type = buffer_type
+        self._buffer_data_type = buffer_data_type
         self._shape = self._ptr.size_bytes
         self._strides = 1
 
+    cdef const char* _get_format(self):
+        if self._buffer_data_type == NANOARROW_TYPE_INT8:
+            return "h"
+        elif self._buffer_data_type == NANOARROW_TYPE_UINT8:
+            return "B"
+        elif self._buffer_data_type == NANOARROW_TYPE_INT16:
+            return "h"
+        elif self._buffer_data_type == NANOARROW_TYPE_UINT16:
+            return "H"
+        elif self._buffer_data_type == NANOARROW_TYPE_INT32:
+            return "i"
+        elif self._buffer_data_type == NANOARROW_TYPE_UINT32:
+            return "I"
+        elif self._buffer_data_type == NANOARROW_TYPE_INT64:
+            return "l"
+        elif self._buffer_data_type == NANOARROW_TYPE_UINT64:
+            return "L"
+        elif self._buffer_data_type == NANOARROW_TYPE_FLOAT:
+            return "f"
+        elif self._buffer_data_type == NANOARROW_TYPE_DOUBLE:
+            return "B"
+        else:
+            return "z"
+
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         buffer.buf = self._ptr.data.data
-        buffer.format = NULL
+        buffer.format = self._get_format()
         buffer.internal = NULL
         buffer.itemsize = 1
         buffer.len = self._ptr.size_bytes
@@ -482,4 +511,9 @@ cdef class ArrayViewBuffers:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
         cdef ArrowBufferView* buffer_view = &(self._array_view._ptr.buffer_views[k])
-        return BufferView(self._array_view, <uintptr_t>buffer_view)
+        return BufferView(
+            self._array_view,
+            <uintptr_t>buffer_view,
+            self._array_view._ptr.layout.buffer_type[k],
+            self._array_view._ptr.layout.buffer_data_type[k]
+        )
