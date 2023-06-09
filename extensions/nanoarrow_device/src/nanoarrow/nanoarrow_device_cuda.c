@@ -156,7 +156,8 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
     struct ArrowBuffer tmp;
     ArrowBufferInit(&tmp);
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&tmp, src.size_bytes));
-    memcpy(dst->data, ((uint8_t*)src.private_data) + src.offset_bytes,
+    tmp.size_bytes = src.size_bytes;
+    memcpy(tmp.data, ((uint8_t*)src.private_data) + src.offset_bytes,
            (size_t)src.size_bytes);
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
@@ -307,8 +308,8 @@ struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_
         devices_singleton = NULL;
       }
 
-      result = ArrowDeviceCudaInitDevice(devices_singleton + (2 * i), ARROW_DEVICE_CUDA,
-                                         i, NULL);
+      result = ArrowDeviceCudaInitDevice(devices_singleton + n_devices + i,
+                                         ARROW_DEVICE_CUDA_HOST, i, NULL);
       if (result != NANOARROW_OK) {
         ArrowFree(devices_singleton);
         devices_singleton = NULL;
@@ -324,7 +325,7 @@ struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_
     case ARROW_DEVICE_CUDA:
       return devices_singleton + device_id;
     case ARROW_DEVICE_CUDA_HOST:
-      return devices_singleton + (2 * device_id);
+      return devices_singleton + n_devices + device_id;
     default:
       return NULL;
   }
