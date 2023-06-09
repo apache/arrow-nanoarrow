@@ -215,7 +215,8 @@ SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr) {
       }
     }
 
-    array_export(dictionary_xptr, array->dictionary);
+    struct ArrowArray* dictionary = array_from_xptr(dictionary_xptr);
+    ArrowArrayMove(dictionary, array->dictionary);
   }
 
   return R_NilValue;

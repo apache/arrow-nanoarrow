@@ -307,9 +307,10 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
       dictionary = {
         if (!is.null(value)) {
           value <- as_nanoarrow_array(value)
+          value_copy <- array_shallow_copy(value, validate = validate)
         }
 
-        .Call(nanoarrow_c_array_set_dictionary, array_copy, value)
+        .Call(nanoarrow_c_array_set_dictionary, array_copy, value_copy)
 
         if (!is.null(schema) && !is.null(value)) {
           schema <- nanoarrow_schema_modify(
