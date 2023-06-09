@@ -270,7 +270,6 @@ TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewList) {
             NANOARROW_OK);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
             NANOARROW_OK);
-
   EXPECT_EQ(device_array_view.array_view.children[0]->buffer_views[1].size_bytes,
             3 * sizeof(int32_t));
 
@@ -285,17 +284,37 @@ TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewList) {
   ASSERT_EQ(device_array.array.release, nullptr);
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, gpu->device_id);
-
-  // Copy shouldn't be required to the same device
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
             NANOARROW_OK);
+  EXPECT_EQ(device_array_view.array_view.children[0]->buffer_views[1].size_bytes,
+            3 * sizeof(int32_t));
+
+  // Copy shouldn't be required to the same device
   ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
 
-  // Copy required back to the CPU
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
+  // Copy required back to the CPU if Cuda, not for CudaHost
+  ASSERT_EQ(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu),
+            gpu->device_type == ARROW_DEVICE_CUDA);
+  ASSERT_EQ(
+      ArrowDeviceArrayTryMove(&device_array2, &device_array_view, cpu, &device_array),
+      NANOARROW_OK);
+  ASSERT_EQ(device_array2.array.release, nullptr);
+  ASSERT_NE(device_array.array.release, nullptr);
+  ASSERT_EQ(device_array.device_type, ARROW_DEVICE_CPU);
+  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(device_array_view.array_view.length, 3);
+  EXPECT_EQ(device_array_view.array_view.null_count, 1);
+
+  struct ArrowBufferView data_view =
+      device_array_view.array_view.children[0]->buffer_views[1];
+  ASSERT_EQ(data_view.size_bytes, 3 * sizeof(int32_t));
+  EXPECT_EQ(data_view.data.as_int32[0], 123);
+  EXPECT_EQ(data_view.data.as_int32[1], 456);
+  EXPECT_EQ(data_view.data.as_int32[2], 789);
 
   schema.release(&schema);
-  device_array2.array.release(&device_array2.array);
+  device_array.array.release(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
