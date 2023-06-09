@@ -448,6 +448,11 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
         device_src, src->children[i], device_dst, dst->children[i]));
   }
 
+  if (src->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCopyInternal(
+        device_src, src->dictionary, device_dst, dst->dictionary));
+  }
+
   return NANOARROW_OK;
 }
 
