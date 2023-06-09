@@ -51,7 +51,7 @@ class NanoarrowPxdGenerator:
         with open(file_out, 'wb') as output:
             output.write(header.encode('UTF-8'))
 
-            output.write(f'\ncdef extern from "{file_in_name}":\n'.encode("UTF-8"))
+            output.write(f'\ncdef extern from "{file_in_name}" nogil:\n'.encode("UTF-8"))
 
             # A few things we add in manually
             output.write(b'\n')
