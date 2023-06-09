@@ -425,6 +425,10 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
                                                        struct ArrowArray* dst) {
   // Currently no attempt to minimize the amount of meory copied (i.e.,
   // by applying offset + length and copying potentially fewer bytes)
+  dst->length = src->length;
+  dst->offset = src->offset;
+  dst->null_count = src->null_count;
+
   struct ArrowDeviceBufferView buffer_view_src;
   buffer_view_src.offset_bytes = 0;
 
@@ -455,6 +459,12 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
 
   int result =
       ArrowDeviceArrayViewCopyInternal(src->device, &src->array_view, device_dst, &tmp);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
+  result = ArrowArrayFinishBuilding(&tmp, NANOARROW_VALIDATION_LEVEL_MINIMAL, NULL);
   if (result != NANOARROW_OK) {
     tmp.release(&tmp);
     return result;

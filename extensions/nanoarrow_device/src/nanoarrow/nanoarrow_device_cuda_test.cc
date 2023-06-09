@@ -142,7 +142,6 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
   }
 }
 
-
 class StringTypeParameterizedTestFixture
     : public ::testing::TestWithParam<enum ArrowType> {
  protected:
@@ -173,6 +172,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
             NANOARROW_OK);
 
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
+  EXPECT_EQ(device_array.array.length, 3);
 
   // Copy required to Cuda
   ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
@@ -185,16 +185,32 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_EQ(device_array.array.release, nullptr);
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, gpu->device_id);
-
-  // Copy shouldn't be required to the same device
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
             NANOARROW_OK);
+  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
+  EXPECT_EQ(device_array_view.array_view.length, 3);
+  EXPECT_EQ(device_array2.array.length, 3);
+
+  // Copy shouldn't be required to the same device
   ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
 
-  // Copy required back to Cpu
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
+  // Copy required back to Cpu for Cuda; not for CudaHost
+  ASSERT_EQ(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu),
+            gpu->device_type == ARROW_DEVICE_CUDA);
+  ASSERT_EQ(
+      ArrowDeviceArrayTryMove(&device_array2, &device_array_view, cpu, &device_array),
+      NANOARROW_OK);
+  ASSERT_EQ(device_array2.array.release, nullptr);
+  ASSERT_NE(device_array.array.release, nullptr);
+  ASSERT_EQ(device_array.device_type, ARROW_DEVICE_CPU);
+  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
+            NANOARROW_OK);
 
-  device_array2.array.release(&device_array2.array);
+  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
+  EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
+            0);
+
+  device_array.array.release(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
