@@ -125,6 +125,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
     struct ArrowBuffer tmp;
     ArrowBufferInit(&tmp);
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&tmp, src.size_bytes));
+    tmp.size_bytes = src.size_bytes;
     cudaError_t result =
         cudaMemcpy(tmp.data, ((uint8_t*)src.private_data) + src.offset_bytes,
                    (size_t)src.size_bytes, cudaMemcpyDeviceToHost);
