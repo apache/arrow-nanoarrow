@@ -640,6 +640,9 @@ struct ArrowArrayView {
   /// \brief Pointers to views of this array's children
   struct ArrowArrayView** children;
 
+  /// \brief Pointer to a view of this array's dictionary
+  struct ArrowArrayView* dictionary;
+
   /// \brief Union type id to child index mapping
   ///
   /// If storage_type is a union type, a 256-byte ArrowMalloc()ed buffer
@@ -879,6 +882,8 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromSchema)
 #define ArrowArrayViewAllocateChildren \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewAllocateChildren)
+#define ArrowArrayViewAllocateDictionary \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewAllocateDictionary)
 #define ArrowArrayViewSetLength \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetLength)
 #define ArrowArrayViewSetArray \
@@ -1706,11 +1711,14 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
                                             struct ArrowSchema* schema,
                                             struct ArrowError* error);
 
-/// \brief Allocate the schema_view->children array
+/// \brief Allocate the array_view->children array
 ///
 /// Includes the memory for each child struct ArrowArrayView
 ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
                                               int64_t n_children);
+
+/// \brief Allocate array_view->dictionary
+ArrowErrorCode ArrowArrayViewAllocateDictionary(struct ArrowArrayView* array_view);
 
 /// \brief Set data-independent buffer sizes from length
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
@@ -2484,9 +2492,13 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
     }
   }
 
-  // Start building any child arrays
+  // Start building any child arrays or dictionaries
   for (int64_t i = 0; i < array->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array->children[i]));
+  }
+
+  if (array->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array->dictionary));
   }
 
   return NANOARROW_OK;
@@ -2500,6 +2512,10 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array) {
 
   for (int64_t i = 0; i < array->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayShrinkToFit(array->children[i]));
+  }
+
+  if (array->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayShrinkToFit(array->dictionary));
   }
 
   return NANOARROW_OK;
