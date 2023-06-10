@@ -158,8 +158,8 @@ def test_array_view():
     assert view.schema is array.schema
 
     data_buffer = memoryview(view.buffers[1])
-    assert len(data_buffer) == 12
     data_buffer_copy = bytes(data_buffer)
+    assert len(data_buffer_copy) == 12
 
     if sys.byteorder == 'little':
         assert data_buffer_copy == b'\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00'
@@ -194,3 +194,16 @@ def test_array_view_recursive():
     assert view.children[0].array._addr() == array.children[0]._addr()
     assert view.children[0].schema._addr() == array.schema.children[0]._addr()
     assert view.children[0].schema._addr() == array.children[0].schema._addr()
+
+def test_array_view_dictionary():
+    pa_array = pa.array(["a", "b", "b"], pa.dictionary(pa.int32(), pa.utf8()))
+
+    array = na.Array.Empty(na.Schema.empty())
+    pa_array._export_to_c(array._addr(), array.schema._addr())
+
+    assert array.schema.format == 'i'
+    assert array.dictionary.schema.format == 'u'
+
+    view = array.view()
+    assert len(view.buffers) == 2
+    assert len(view.dictionary.buffers) == 3

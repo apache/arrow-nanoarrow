@@ -447,17 +447,31 @@ cdef class BufferView:
     cdef ArrowBufferView* _ptr
     cdef ArrowBufferType _buffer_type
     cdef ArrowType _buffer_data_type
+    cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
 
     def __init__(self, object base, uintptr_t addr,
-                 ArrowBufferType buffer_type, ArrowType buffer_data_type):
+                 ArrowBufferType buffer_type, ArrowType buffer_data_type,
+                 Py_ssize_t element_size_bits):
         self._base = base
         self._ptr = <ArrowBufferView*>addr
         self._buffer_type = buffer_type
         self._buffer_data_type = buffer_data_type
-        self._shape = self._ptr.size_bytes
-        self._strides = 1
+        self._element_size_bits = element_size_bits
+        self._strides = self._item_size()
+        self._shape = self._ptr.size_bytes // self._strides
+
+
+    cdef Py_ssize_t _item_size(self):
+        if self._buffer_data_type == NANOARROW_TYPE_BOOL:
+            return 1
+        elif self._buffer_data_type == NANOARROW_TYPE_STRING:
+            return 1
+        elif self._buffer_data_type == NANOARROW_TYPE_BINARY:
+            return 1
+        else:
+            return self._element_size_bits // 8
 
     cdef const char* _get_format(self):
         if self._buffer_data_type == NANOARROW_TYPE_INT8:
@@ -479,15 +493,17 @@ cdef class BufferView:
         elif self._buffer_data_type == NANOARROW_TYPE_FLOAT:
             return "f"
         elif self._buffer_data_type == NANOARROW_TYPE_DOUBLE:
-            return "B"
+            return "d"
+        elif self._buffer_data_type == NANOARROW_TYPE_STRING:
+            return "c"
         else:
-            return "z"
+            return "B"
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         buffer.buf = self._ptr.data.data
         buffer.format = self._get_format()
         buffer.internal = NULL
-        buffer.itemsize = 1
+        buffer.itemsize = self._strides
         buffer.len = self._ptr.size_bytes
         buffer.ndim = 1
         buffer.obj = self
@@ -519,5 +535,6 @@ cdef class ArrayViewBuffers:
             self._array_view,
             <uintptr_t>buffer_view,
             self._array_view._ptr.layout.buffer_type[k],
-            self._array_view._ptr.layout.buffer_data_type[k]
+            self._array_view._ptr.layout.buffer_data_type[k],
+            self._array_view._ptr.layout.element_size_bits[k]
         )
