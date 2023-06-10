@@ -475,7 +475,7 @@ cdef class BufferView:
 
     cdef const char* _get_format(self):
         if self._buffer_data_type == NANOARROW_TYPE_INT8:
-            return "h"
+            return "b"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT8:
             return "B"
         elif self._buffer_data_type == NANOARROW_TYPE_INT16:
@@ -531,6 +531,9 @@ cdef class ArrayViewBuffers:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
         cdef ArrowBufferView* buffer_view = &(self._array_view._ptr.buffer_views[k])
+        if buffer_view.data.data == NULL:
+            return None
+
         return BufferView(
             self._array_view,
             <uintptr_t>buffer_view,

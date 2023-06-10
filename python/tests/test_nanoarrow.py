@@ -17,6 +17,7 @@
 
 import sys
 import re
+import numpy as np
 import pyarrow as pa
 import pytest
 
@@ -207,3 +208,60 @@ def test_array_view_dictionary():
     view = array.view()
     assert len(view.buffers) == 2
     assert len(view.dictionary.buffers) == 3
+
+def test_buffers_data():
+    data_types = [
+        (pa.uint8(), np.uint8()),
+        (pa.int8(), np.int8()),
+        (pa.uint16(), np.uint16()),
+        (pa.int16(), np.int16()),
+        (pa.uint32(), np.uint32()),
+        (pa.int32(), np.int32()),
+        (pa.uint64(), np.uint64()),
+        (pa.int64(), np.int64()),
+        (pa.float32(), np.float32()),
+        (pa.float64(), np.float64())
+    ]
+
+    for pa_type, np_type in data_types:
+        pa_array = pa.array([0, 1, 2], pa_type)
+        array = na.Array.Empty(na.Schema.empty())
+        pa_array._export_to_c(array._addr(), array.schema._addr())
+        view = array.view()
+
+        np.testing.assert_array_equal(
+            np.array(view.buffers[1]),
+            np.array([0, 1, 2], np_type)
+        )
+
+def test_buffers_string():
+    pa_array = pa.array(["a", "bc", "def"])
+    array = na.Array.Empty(na.Schema.empty())
+    pa_array._export_to_c(array._addr(), array.schema._addr())
+    view = array.view()
+
+    assert view.buffers[0] is None
+    np.testing.assert_array_equal(
+        np.array(view.buffers[1]),
+        np.array([0, 1, 3, 6], np.int32())
+    )
+    np.testing.assert_array_equal(
+        np.array(view.buffers[2]),
+        np.array(list("abcdef"), dtype='|S1')
+    )
+
+def test_buffers_binary():
+    pa_array = pa.array([b"a", b"bc", b"def"])
+    array = na.Array.Empty(na.Schema.empty())
+    pa_array._export_to_c(array._addr(), array.schema._addr())
+    view = array.view()
+
+    assert view.buffers[0] is None
+    np.testing.assert_array_equal(
+        np.array(view.buffers[1]),
+        np.array([0, 1, 3, 6], np.int32())
+    )
+    np.testing.assert_array_equal(
+        np.array(view.buffers[2]),
+        np.array(list(b"abcdef"))
+    )
