@@ -24,9 +24,9 @@ import pytest
 import nanoarrow as na
 
 
-def test_version():
+def test_c_version():
     re_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$")
-    assert re_version.match(na.version()) is not None
+    assert re_version.match(na.c_version()) is not None
 
 
 def test_schema_helper():

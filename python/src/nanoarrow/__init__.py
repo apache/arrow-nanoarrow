@@ -15,5 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import version, Schema, Array, ArrayView
+from ._lib import c_version, Schema, Array, ArrayView
 from .lib import schema, array

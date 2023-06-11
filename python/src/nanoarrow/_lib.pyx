@@ -25,7 +25,7 @@ from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 
-def version():
+def c_version():
     return ArrowNanoarrowVersion().decode("UTF-8")
 
 cdef class SchemaHolder:
