@@ -31,7 +31,7 @@ def c_version():
 cdef class SchemaHolder:
     cdef ArrowSchema c_schema
 
-    def __init__(self):
+    def __cinit__(self):
         self.c_schema.release = NULL
 
     def __dealloc__(self):
@@ -44,7 +44,7 @@ cdef class SchemaHolder:
 cdef class ArrayHolder:
     cdef ArrowArray c_array
 
-    def __init__(self):
+    def __cinit__(self):
         self.c_array.release = NULL
 
     def __dealloc__(self):
@@ -53,6 +53,19 @@ cdef class ArrayHolder:
 
     def _addr(self):
         return <uintptr_t>&self.c_array
+
+cdef class ArrayStreamHolder:
+    cdef ArrowArrayStream c_array_stream
+
+    def __cinit__(self):
+        self.c_array_stream.release = NULL
+
+    def __dealloc__(self):
+        if self.c_array_stream.release != NULL:
+          self.c_array_stream.release(&self.c_array_stream)
+
+    def _addr(self):
+        return <uintptr_t>&self.c_array_stream
 
 cdef class ArrayViewHolder:
     cdef ArrowArrayView c_array_view
@@ -65,6 +78,34 @@ cdef class ArrayViewHolder:
 
     def _addr(self):
         return <uintptr_t>&self.c_array_view
+
+
+class NanoarrowException(RuntimeError):
+
+    def __init__(self, what, code, message):
+        self.what = what
+        self.code = code
+        self.message = message
+
+        if self.message == "":
+            super().__init__(f"{self.what} failed ({self.code})")
+        else:
+            super().__init__(f"{self.what} failed ({self.code}): {self.message}")
+
+
+cdef class Error:
+    cdef ArrowError c_error
+
+    def __cinit__(self):
+        self.c_error.message[0] = 0
+
+    def raise_message(self, what, code):
+        raise Exception(what, code, self.c_error.message.decode("UTF-8"))
+
+    @staticmethod
+    def raise_error(what, code):
+        raise Exception(what, code, "")
+
 
 cdef class Schema:
     cdef object _base
@@ -317,6 +358,7 @@ cdef class Array:
 
         return ArrayView(holder, holder._addr(), self)
 
+
 cdef class ArrayView:
     cdef object _base
     cdef ArrowArrayView* _ptr
@@ -541,3 +583,74 @@ cdef class ArrayViewBuffers:
             self._array_view._ptr.layout.buffer_data_type[k],
             self._array_view._ptr.layout.element_size_bits[k]
         )
+
+
+cdef class ArrayStream:
+    cdef object _base
+    cdef ArrowArrayStream* _ptr
+
+    def __init__(self, object base, uintptr_t addr):
+        self._base = base,
+        self._ptr = <ArrowArrayStream*>addr
+        self._cached_schema = None
+
+    def is_valid(self):
+        return self._ptr != NULL and self._ptr.release != NULL
+
+    def _assert_valid(self):
+        if self._ptr == NULL:
+            raise RuntimeError("array stream pointer is NULL")
+        if self._ptr.release == NULL:
+            raise RuntimeError("array stream is released")
+
+    def _get_schema(self, Schema schema):
+        self._assert_valid()
+        cdef int code = self._ptr.get_schema(self._ptr, schema._ptr)
+        cdef const char* message = NULL
+        if code != NANOARROW_OK:
+            message = self._ptr.get_last_error(self._ptr)
+            if message != NULL:
+                raise NanoarrowException(
+                    "ArrowArrayStream::get_schema()",
+                    code,
+                    message.decode("UTF-8")
+                )
+            else:
+                Error.raise_error("ArrowArrayStream::get_schema()", code)
+
+        self._cached_schema = schema
+
+    def get_schema(self):
+        # Update the cached copy of the schema as an independent object
+        if self._cached_schema is not None:
+            del self._cached_schema
+        self._cached_schema = Schema.empty()
+        self._get_schema(self._cached_schema)
+
+        # Return an independent copy
+        out = Schema.empty()
+        self._get_schema(out)
+        return out
+
+    def get_next(self):
+        self._assert_valid()
+
+        if self._cached_schema is None:
+            self._cached_schema = Schema.empty()
+            self._get_schema(self._cached_schema)
+
+        cdef Array array = Array.empty(self._cached_schema)
+        cdef int code = self._ptr.get_next(self._ptr, array._ptr)
+        cdef const char* message = NULL
+        if code != NANOARROW_OK:
+            message = self._ptr.get_last_error(self._ptr)
+            if message != NULL:
+                raise NanoarrowException(
+                    "ArrowArrayStream::get_next()",
+                    code,
+                    message.decode("UTF-8")
+                )
+            else:
+                Error.raise_error("ArrowArrayStream::get_next()", code)
+
+        return array
