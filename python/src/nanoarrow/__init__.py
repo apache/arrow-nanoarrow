@@ -16,3 +16,4 @@
 # under the License.
 
 from ._lib import version, Schema, Array, ArrayView
+from .lib import schema, array

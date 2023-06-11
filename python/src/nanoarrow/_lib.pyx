@@ -249,7 +249,7 @@ cdef class Array:
     cdef Schema _schema
 
     @staticmethod
-    def Empty(Schema schema):
+    def empty(Schema schema):
         base = ArrayHolder()
         return Array(base, base._addr(), schema)
 

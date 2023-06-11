@@ -29,13 +29,34 @@ def test_version():
     assert re_version.match(na.version()) is not None
 
 
+def test_schema_helper():
+    schema = na.Schema.empty()
+    assert na.schema(schema) is schema
+
+    schema = na.schema(pa.null())
+    assert isinstance(schema, na.Schema)
+
+    with pytest.raises(TypeError):
+        na.schema(None)
+
+
+def test_array_helper():
+    array = na.Array.empty(na.Schema.empty())
+    assert na.array(array) is array
+
+    array = na.array(pa.array([], pa.null()))
+    assert isinstance(array, na.Array)
+
+    with pytest.raises(TypeError):
+        na.schema(None)
+
+
 def test_schema_basic():
     schema = na.Schema.empty()
     assert schema.is_valid() is False
     assert repr(schema) == "[invalid: schema is released]"
 
-    pa_schema = pa.schema([pa.field("some_name", pa.int32())])
-    pa_schema._export_to_c(schema._addr())
+    schema = na.schema(pa.schema([pa.field("some_name", pa.int32())]))
 
     assert schema.format == "+s"
     assert schema.flags == 0
@@ -51,16 +72,14 @@ def test_schema_basic():
 
 
 def test_schema_dictionary():
-    schema = na.Schema.empty()
-    pa.dictionary(pa.int32(), pa.utf8())._export_to_c(schema._addr())
+    schema = na.schema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
 
 
 def test_schema_metadata():
-    schema = na.Schema.empty()
     meta = {"key1": "value1", "key2": "value2"}
-    pa.field("", pa.int32(), metadata=meta)._export_to_c(schema._addr())
+    schema = na.schema(pa.field("", pa.int32(), metadata=meta))
 
     assert len(schema.metadata) == 2
 
@@ -74,7 +93,7 @@ def test_schema_view():
     with pytest.raises(RuntimeError):
         schema.view()
 
-    pa.int32()._export_to_c(schema._addr())
+    schema = na.schema(pa.int32())
     view = schema.view()
     assert view.type == "int32"
     assert view.storage_type == "int32"
@@ -90,61 +109,48 @@ def test_schema_view():
 
 
 def test_schema_view_extra_params():
-    schema = na.Schema.empty()
-    pa.binary(12)._export_to_c(schema._addr())
+    schema = na.schema(pa.binary(12))
     view = schema.view()
     assert view.fixed_size == 12
 
-    schema = na.Schema.empty()
-    pa.list_(pa.int32(), 12)._export_to_c(schema._addr())
+    schema = na.schema(pa.list_(pa.int32(), 12))
     assert view.fixed_size == 12
 
-    schema = na.Schema.empty()
-    pa.decimal128(10, 3)._export_to_c(schema._addr())
+    schema = na.schema(pa.decimal128(10, 3))
     view = schema.view()
     assert view.decimal_bitwidth == 128
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.Schema.empty()
-    pa.decimal256(10, 3)._export_to_c(schema._addr())
+    schema = na.schema(pa.decimal256(10, 3))
     view = schema.view()
     assert view.decimal_bitwidth == 256
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.Schema.empty()
-    pa.duration("us")._export_to_c(schema._addr())
+    schema = na.schema(pa.duration("us"))
     view = schema.view()
     assert view.time_unit == "us"
 
-    schema = na.Schema.empty()
-    pa.timestamp("us", tz="America/Halifax")._export_to_c(schema._addr())
+    schema = na.schema(pa.timestamp("us", tz="America/Halifax"))
     view = schema.view()
     assert view.type == "timestamp"
     assert view.storage_type == "int64"
     assert view.time_unit == "us"
     assert view.timezone == "America/Halifax"
 
-    schema = na.Schema.empty()
     meta = {
         "ARROW:extension:name": "some_name",
         "ARROW:extension:metadata": "some_metadata",
     }
-    pa.field("", pa.int32(), metadata=meta)._export_to_c(schema._addr())
+    schema = na.schema(pa.field("", pa.int32(), metadata=meta))
     view = schema.view()
     assert view.extension_name == "some_name"
     assert view.extension_metadata == b"some_metadata"
 
 
 def test_array():
-    schema = na.Schema.empty()
-    pa.int32()._export_to_c(schema._addr())
-
-    array = na.Array.Empty(schema)
-    assert array.is_valid() is False
-
-    pa.array([1, 2, 3], pa.int32())._export_to_c(array._addr())
+    array = na.array(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
     assert array.length == 3
     assert array.offset == 0
@@ -159,8 +165,7 @@ def test_array():
 
 
 def test_array_view():
-    array = na.Array.Empty(na.Schema.empty())
-    pa.array([1, 2, 3], pa.int32())._export_to_c(array._addr(), array.schema._addr())
+    array = na.array(pa.array([1, 2, 3], pa.int32()))
     view = array.view()
 
     assert view.array is array
@@ -183,8 +188,7 @@ def test_array_view_recursive():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 
-    array = na.Array.Empty(na.Schema.empty())
-    pa_array._export_to_c(array._addr(), array.schema._addr())
+    array = na.array(pa_array)
 
     assert array.schema.format == "+s"
     assert array.length == 3
@@ -208,9 +212,7 @@ def test_array_view_recursive():
 
 def test_array_view_dictionary():
     pa_array = pa.array(["a", "b", "b"], pa.dictionary(pa.int32(), pa.utf8()))
-
-    array = na.Array.Empty(na.Schema.empty())
-    pa_array._export_to_c(array._addr(), array.schema._addr())
+    array = na.array(pa_array)
 
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"
@@ -235,21 +237,14 @@ def test_buffers_data():
     ]
 
     for pa_type, np_type in data_types:
-        pa_array = pa.array([0, 1, 2], pa_type)
-        array = na.Array.Empty(na.Schema.empty())
-        pa_array._export_to_c(array._addr(), array.schema._addr())
-        view = array.view()
-
+        view = na.array(pa.array([0, 1, 2], pa_type)).view()
         np.testing.assert_array_equal(
             np.array(view.buffers[1]), np.array([0, 1, 2], np_type)
         )
 
 
 def test_buffers_string():
-    pa_array = pa.array(["a", "bc", "def"])
-    array = na.Array.Empty(na.Schema.empty())
-    pa_array._export_to_c(array._addr(), array.schema._addr())
-    view = array.view()
+    view = na.array(pa.array(["a", "bc", "def"])).view()
 
     assert view.buffers[0] is None
     np.testing.assert_array_equal(
@@ -261,10 +256,7 @@ def test_buffers_string():
 
 
 def test_buffers_binary():
-    pa_array = pa.array([b"a", b"bc", b"def"])
-    array = na.Array.Empty(na.Schema.empty())
-    pa_array._export_to_c(array._addr(), array.schema._addr())
-    view = array.view()
+    view = na.array(pa.array([b"a", b"bc", b"def"])).view()
 
     assert view.buffers[0] is None
     np.testing.assert_array_equal(

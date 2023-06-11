@@ -19,7 +19,7 @@
 [project]
 name = "nanoarrow"
 version = "1.0.0-alpha0"
-description = ""
+description = "Python bindings to the nanoarrow C library"
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.8"
