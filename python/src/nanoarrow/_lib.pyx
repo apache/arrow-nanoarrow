@@ -263,10 +263,11 @@ cdef class Schema:
     def view(self):
         self._assert_valid()
         schema_view = SchemaView()
-        cdef ArrowError error
-        cdef int result = ArrowSchemaViewInit(&schema_view._schema_view, self._ptr, &error)
+        cdef Error error = Error()
+        cdef int result = ArrowSchemaViewInit(&schema_view._schema_view, self._ptr, &error.c_error)
         if result != NANOARROW_OK:
-            raise ValueError(ArrowErrorMessage(&error))
+            error.raise_message("ArrowSchemaViewInit()", result)
+
         return schema_view
 
 
@@ -473,15 +474,15 @@ cdef class Array:
     def view(self):
         cdef ArrayViewHolder holder = ArrayViewHolder()
 
-        cdef ArrowError error
+        cdef Error error = Error()
         cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
-                                                       self._schema._ptr, &error)
+                                                       self._schema._ptr, &error.c_error)
         if result != NANOARROW_OK:
-            raise ValueError(ArrowErrorMessage(&error))
+            error.raise_message("ArrowArrayViewInitFromSchema()", result)
 
-        result = ArrowArrayViewSetArray(&holder.c_array_view, self._ptr, &error)
+        result = ArrowArrayViewSetArray(&holder.c_array_view, self._ptr, &error.c_error)
         if result != NANOARROW_OK:
-            raise ValueError(ArrowErrorMessage(&error))
+            error.raise_message("ArrowArrayViewSetArray()", result)
 
         return ArrayView(holder, holder._addr(), self)
 
@@ -576,7 +577,7 @@ cdef class SchemaMetadata:
     def _init_reader(self):
         cdef int result = ArrowMetadataReaderInit(&self._reader, self._metadata)
         if result != NANOARROW_OK:
-            raise ValueError('ArrowMetadataReaderInit() failed')
+            Error.raise_error("ArrowMetadataReaderInit()", result)
 
     def __len__(self):
         self._init_reader()
