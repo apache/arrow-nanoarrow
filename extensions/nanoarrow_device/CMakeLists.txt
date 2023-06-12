@@ -28,7 +28,7 @@ project(nanoarrow_device)
 option(NANOARROW_DEVICE_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_DEVICE_BUNDLE "Create bundled nanoarrow_device.h and nanoarrow_device.c" OFF)
 option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal extension" OFF)
-option(NANOARROW_DEVICE_WITH_METAL "Build CUDA extension" OFF)
+option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA extension" OFF)
 
 
 option(NANOARROW_DEVICE_CODE_COVERAGE "Enable coverage reporting" OFF)
