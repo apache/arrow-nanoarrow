@@ -61,9 +61,10 @@ jobs:
       - name: Run doctests
         if: success() && matrix.python-version == '3.10'
         run: |
-          # Needs editable install to run --doctest-modules
+          # Needs editable install to run --doctest-cython
+          pip install pytest-cython
           pip install -e python
-          pytest python --doctest-modules
+          pytest python --doctest-cython
 
       - name: Coverage
         if: success() && matrix.python-version == '3.10'

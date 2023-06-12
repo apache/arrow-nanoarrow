@@ -773,6 +773,7 @@ cdef class ArrayStream:
     >>> array_stream.get_schema()
     struct<col1: int32>
     >>> array_stream.get_next().length
+    3
     >>> array_stream.get_next() is None
     True
     """
