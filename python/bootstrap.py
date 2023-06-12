@@ -145,8 +145,8 @@ def copy_or_generate_nanoarrow_c():
     this_dir = os.path.abspath(os.path.dirname(__file__))
     source_dir = os.path.dirname(this_dir)
 
-    maybe_nanoarrow_h = os.path.join(this_dir, 'src/nanoarrow/nanoarrow.h')
-    maybe_nanoarrow_c = os.path.join(this_dir, 'src/nanoarrow/nanoarrow.c')
+    maybe_nanoarrow_h = os.path.join(this_dir, 'nanoarrow/nanoarrow.h')
+    maybe_nanoarrow_c = os.path.join(this_dir, 'nanoarrow/nanoarrow.c')
     for f in (maybe_nanoarrow_c, maybe_nanoarrow_h):
         if os.path.exists(f):
             os.unlink(f)
@@ -161,7 +161,7 @@ def copy_or_generate_nanoarrow_c():
             os.mkdir(build_dir)
             os.chdir(build_dir)
             os.system(f'cmake ../.. -DNANOARROW_BUNDLE=ON')
-            os.system(f'cmake --install . --prefix=../src/nanoarrow')
+            os.system(f'cmake --install . --prefix=../nanoarrow')
         finally:
             if os.path.exists(build_dir):
                 # Can fail on Windows with permission issues
@@ -176,18 +176,18 @@ def copy_or_generate_nanoarrow_c():
     else:
         raise ValueError('Attempt to build source distribution outside the nanoarrow repo')
 
-    if not os.path.exists(os.path.join(this_dir, 'src/nanoarrow/nanoarrow.h')):
+    if not os.path.exists(os.path.join(this_dir, 'nanoarrow/nanoarrow.h')):
         raise ValueError('Attempt to vendor nanoarrow.c/h failed')
 
-    maybe_nanoarrow_hpp = os.path.join(this_dir, 'src/nanoarrow/nanoarrow.hpp')
+    maybe_nanoarrow_hpp = os.path.join(this_dir, 'nanoarrow/nanoarrow.hpp')
     if os.path.exists(maybe_nanoarrow_hpp):
         os.unlink(maybe_nanoarrow_hpp)
 
 # Runs the pxd generator with some information about the file name
 def generate_nanoarrow_pxd():
      this_dir = os.path.abspath(os.path.dirname(__file__))
-     maybe_nanoarrow_h = os.path.join(this_dir, 'src/nanoarrow/nanoarrow.h')
-     maybe_nanoarrow_pxd = os.path.join(this_dir, 'src/nanoarrow/nanoarrow_c.pxd')
+     maybe_nanoarrow_h = os.path.join(this_dir, 'nanoarrow/nanoarrow.h')
+     maybe_nanoarrow_pxd = os.path.join(this_dir, 'nanoarrow/nanoarrow_c.pxd')
 
      NanoarrowPxdGenerator().generate_nanoarrow_pxd(
         maybe_nanoarrow_h,

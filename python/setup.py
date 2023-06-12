@@ -26,15 +26,15 @@ from setuptools import Extension, setup
 # checkout or copy from ../dist if the caller doesn't have cmake available.
 # Note that bootstrap.py won't exist if building from sdist.
 this_dir = os.path.dirname(__file__)
-bootstrap_py = os.path.join(this_dir, 'bootstrap.py')
+bootstrap_py = os.path.join(this_dir, "bootstrap.py")
 if os.path.exists(bootstrap_py):
     subprocess.run([sys.executable, bootstrap_py])
 
 
 # Set some extra flags for compiling with coverage support
-if os.getenv('NANOARROW_PYTHON_COVERAGE') == "1":
-    coverage_compile_args = ['--coverage']
-    coverage_link_args = ['--coverage']
+if os.getenv("NANOARROW_PYTHON_COVERAGE") == "1":
+    coverage_compile_args = ["--coverage"]
+    coverage_link_args = ["--coverage"]
     coverage_define_macros = [("CYTHON_TRACE", 1)]
 else:
     coverage_compile_args = []
@@ -44,16 +44,16 @@ else:
 setup(
     ext_modules=[
         Extension(
-            name='nanoarrow._lib',
-            include_dirs=['src/nanoarrow'],
-            language='c',
+            name="nanoarrow._lib",
+            include_dirs=["nanoarrow"],
+            language="c",
             sources=[
-                'src/nanoarrow/_lib.pyx',
-                'src/nanoarrow/nanoarrow.c',
+                "nanoarrow/_lib.pyx",
+                "nanoarrow/nanoarrow.c",
             ],
-            extra_compile_args = coverage_compile_args,
-            extra_link_args = [] + coverage_link_args,
-            define_macros= [] + coverage_define_macros,
+            extra_compile_args=coverage_compile_args,
+            extra_link_args=coverage_link_args,
+            define_macros=coverage_define_macros,
         )
     ]
 )

@@ -16,6 +16,6 @@
 # under the License.
 
 exclude bootstrap.py
-include src/nanoarrow/nanoarrow.c
-include src/nanoarrow/nanoarrow.h
-include src/nanoarrow/nanoarrow_c.pxd
+include nanoarrow/nanoarrow.c
+include nanoarrow/nanoarrow.h
+include nanoarrow/nanoarrow_c.pxd
