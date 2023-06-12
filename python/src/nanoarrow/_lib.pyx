@@ -409,11 +409,6 @@ cdef class Array:
     >>> array.null_count
     1
     >>> array_view = array.view()
-    >>> np.array(array_view.buffers[1])
-    array([ 0,  3,  6, 11, 11], dtype=int32)
-    >>> np.array(array_view.buffers[2])
-    array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
-          dtype='|S1')
     """
     cdef object _base
     cdef ArrowArray* _ptr
@@ -492,6 +487,25 @@ cdef class Array:
 
 
 cdef class ArrayView:
+    """ArrowArrayView wrapper
+
+    The ArrowArrayView is a nanoarrow C library structure that facilitates
+    access to the deserialized content of an ArrowArray (e.g., buffer types,
+    lengths, and content). This wrapper extends that facility to Python.
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import numpy as np
+    >>> import nanoarrow as na
+    >>> array_view = na.array(pa.array(["one", "two", "three", None])).view()
+    >>> np.array(array_view.buffers[1])
+    array([ 0,  3,  6, 11, 11], dtype=int32)
+    >>> np.array(array_view.buffers[2])
+    array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
+          dtype='|S1')
+    """
     cdef object _base
     cdef ArrowArrayView* _ptr
     cdef Array _array
@@ -522,6 +536,8 @@ cdef class ArrayView:
         return self._array._schema
 
 cdef class SchemaChildren:
+    """Wrapper for a lazily-resolved list of Schema children
+    """
     cdef Schema _parent
     cdef int64_t _length
 
@@ -544,7 +560,11 @@ cdef class SchemaChildren:
         cdef ArrowSchema* child = children[i]
         return <uintptr_t>child
 
+
 cdef class SchemaMetadata:
+    """Wrapper for a lazily-parsed Schema.metadata string
+    """
+
     cdef object _parent
     cdef const char* _metadata
     cdef ArrowMetadataReader _reader
@@ -572,7 +592,10 @@ cdef class SchemaMetadata:
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
 
+
 cdef class ArrayChildren:
+    """Wrapper for a lazily-resolved list of Array children
+    """
     cdef Array _parent
     cdef int64_t _length
 
@@ -594,7 +617,10 @@ cdef class ArrayChildren:
         cdef ArrowArray* child = children[i]
         return <uintptr_t>child
 
+
 cdef class ArrayViewChildren:
+    """Wrapper for a lazily-resolved list of ArrayView children
+    """
     cdef ArrayView _parent
     cdef int64_t _length
 
@@ -617,6 +643,13 @@ cdef class ArrayViewChildren:
         return <uintptr_t>child
 
 cdef class BufferView:
+    """Wrapper for Array buffer content
+
+    This object is a Python wrapper around a buffer held by an Array.
+    It implements the Python buffer protocol and is best accessed through
+    another implementor (e.g., `np.array(array_view.buffers[1])`)). Note that
+    this buffer content does not apply any parent offset.
+    """
     cdef object _base
     cdef ArrowBufferView* _ptr
     cdef ArrowBufferType _buffer_type
@@ -689,7 +722,10 @@ cdef class BufferView:
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
 
+
 cdef class ArrayViewBuffers:
+    """A lazily-resolved list of ArrayView buffers
+    """
     cdef ArrayView _array_view
     cdef int64_t _length
 
@@ -718,6 +754,27 @@ cdef class ArrayViewBuffers:
 
 
 cdef class ArrayStream:
+    """ArrowArrayStream wrapper
+
+    This class provides a user-facing interface to access the fields of
+    an ArrowArrayStream as defined in the Arrow C Stream interface.
+    These objects are usually created using `nanoarrow.array_stream()`.
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> pa_column = pa.array([1, 2, 3], pa.int32())
+    >>> pa_batch = pa.record_batch([pa_column], names=["col1"])
+    >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
+    >>> array_stream = na.array_stream(pa_reader)
+    >>> array_stream.get_schema()
+    struct<col1: int32>
+    >>> array_stream.get_next().length
+    >>> array_stream.get_next() is None
+    True
+    """
     cdef object _base
     cdef ArrowArrayStream* _ptr
     cdef object _cached_schema
@@ -757,6 +814,8 @@ cdef class ArrayStream:
         self._cached_schema = schema
 
     def get_schema(self):
+        """Get the schema associated with this stream
+        """
         # Update the cached copy of the schema as an independent object
         self._cached_schema = Schema.empty()
         self._get_schema(self._cached_schema)
@@ -767,6 +826,10 @@ cdef class ArrayStream:
         return out
 
     def get_next(self):
+        """Get the next Array from this stream
+
+        Returns None when there are no more arrays in this stream.
+        """
         self._assert_valid()
 
         if self._cached_schema is None:
