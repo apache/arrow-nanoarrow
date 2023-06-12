@@ -189,7 +189,7 @@ cdef class Schema:
     cdef ArrowSchema* _ptr
 
     @staticmethod
-    def empty():
+    def allocate():
         base = SchemaHolder()
         return Schema(base, base._addr())
 
@@ -817,11 +817,11 @@ cdef class ArrayStream:
         """Get the schema associated with this stream
         """
         # Update the cached copy of the schema as an independent object
-        self._cached_schema = Schema.empty()
+        self._cached_schema = Schema.allocate()
         self._get_schema(self._cached_schema)
 
         # Return an independent copy
-        out = Schema.empty()
+        out = Schema.allocate()
         self._get_schema(out)
         return out
 
@@ -833,7 +833,7 @@ cdef class ArrayStream:
         self._assert_valid()
 
         if self._cached_schema is None:
-            self._cached_schema = Schema.empty()
+            self._cached_schema = Schema.allocate()
             self._get_schema(self._cached_schema)
 
         cdef Array array = Array.empty(self._cached_schema)
@@ -862,6 +862,6 @@ cdef class ArrayStream:
             array = self.get_next()
 
     @staticmethod
-    def empty():
+    def allocate():
         base = ArrayStreamHolder()
         return ArrayStream(base, base._addr())

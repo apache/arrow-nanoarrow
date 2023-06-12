@@ -26,7 +26,7 @@ def schema(obj):
     # array, schema, or array_stream. The ideal
     # solution here would be something like __arrow_c_schema__()
     if hasattr(obj, "_export_to_c"):
-        out = Schema.empty()
+        out = Schema.allocate()
         obj._export_to_c(out._addr())
         return out
     else:
@@ -43,7 +43,7 @@ def array(obj):
     # not fail with a crash (but will fail with a confusing error). The ideal
     # solution here would be something like __arrow_c_array__()
     if hasattr(obj, "_export_to_c"):
-        out = Array.empty(Schema.empty())
+        out = Array.empty(Schema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
     else:
@@ -60,10 +60,10 @@ def array_stream(obj):
     # array, schema, or array_stream. The ideal
     # solution here would be something like __arrow_c_array_stream__()
     if hasattr(obj, "_export_to_c"):
-        out = ArrayStream.empty()
+        out = ArrayStream.allocate()
         obj._export_to_c(out._addr())
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.Schema"
+            f"Can't convert object of type {type(obj).__name__} to nanoarrow.ArrowArrayStream"
         )

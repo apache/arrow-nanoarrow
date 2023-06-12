@@ -30,7 +30,7 @@ def test_c_version():
 
 
 def test_schema_helper():
-    schema = na.Schema.empty()
+    schema = na.Schema.allocate()
     assert na.schema(schema) is schema
 
     schema = na.schema(pa.null())
@@ -41,7 +41,7 @@ def test_schema_helper():
 
 
 def test_array_helper():
-    array = na.Array.empty(na.Schema.empty())
+    array = na.Array.empty(na.Schema.allocate())
     assert na.array(array) is array
 
     array = na.array(pa.array([], pa.null()))
@@ -52,7 +52,7 @@ def test_array_helper():
 
 
 def test_schema_basic():
-    schema = na.Schema.empty()
+    schema = na.Schema.allocate()
     assert schema.is_valid() is False
     assert repr(schema) == "[invalid: schema is released]"
 
@@ -89,7 +89,7 @@ def test_schema_metadata():
 
 
 def test_schema_view():
-    schema = na.Schema.empty()
+    schema = na.Schema.allocate()
     with pytest.raises(RuntimeError):
         schema.view()
 
@@ -266,7 +266,7 @@ def test_buffers_binary():
 
 
 def test_array_stream():
-    array_stream = na.ArrayStream.empty()
+    array_stream = na.ArrayStream.allocate()
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):
         array_stream.get_schema()
@@ -282,6 +282,7 @@ def test_array_stream():
     array = array_stream.get_next()
     assert array.schema.children[0].name == "some_column"
     assert array_stream.get_next() is None
+
 
 def test_array_stream_iter():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
