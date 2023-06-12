@@ -80,7 +80,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: arrow
-          key: arrow-${{ runner.os }}-2
+          key: arrow-${{ runner.os }}-3
 
       # For Arrow C++
       - name: Install Arrow C++ (MacOS)
@@ -103,10 +103,10 @@ jobs:
         if: matrix.config.label == 'windows' && steps.cache-arrow-build.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
+          curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-12.0.0.tar.gz | \
             tar -zxf -
           mkdir arrow-build && cd arrow-build
-          cmake ../apache-arrow-11.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+          cmake ../apache-arrow-12.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
           cmake --build .
           cmake --install . --prefix=../arrow --config=Debug
           cd ..
