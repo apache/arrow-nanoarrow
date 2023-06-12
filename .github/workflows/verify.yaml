@@ -69,6 +69,8 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
+          windows-path-include-rtools: false
+          windows-path-include-mingw: false
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           needs: check
@@ -103,10 +105,10 @@ jobs:
         if: matrix.config.label == 'windows' && steps.cache-arrow-build.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          curl https://dlcdn.apache.org/arrow/arrow-12.0.0/apache-arrow-12.0.0.tar.gz | \
+          curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-12.0.0.tar.gz | \
             tar -zxf -
           mkdir arrow-build && cd arrow-build
-          cmake ../apache-arrow-12.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow -G 'Visual Studio 17 2022'
+          cmake ../apache-arrow-12.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
           cmake --build .
           cmake --install . --prefix=../arrow --config=Debug
           cd ..
@@ -115,7 +117,7 @@ jobs:
         if: matrix.config.label == 'windows'
         shell: bash
         run: |
-          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -G 'Visual Studio 17 2022' -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
+          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
 
       - name: Run dev/release/verify-release-candidate.sh
         shell: bash
