@@ -106,7 +106,7 @@ jobs:
           curl https://dlcdn.apache.org/arrow/arrow-12.0.0/apache-arrow-12.0.0.tar.gz | \
             tar -zxf -
           mkdir arrow-build && cd arrow-build
-          cmake ../apache-arrow-12.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+          cmake ../apache-arrow-12.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow -G 'Visual Studio 17 2022'
           cmake --build .
           cmake --install . --prefix=../arrow --config=Debug
           cd ..
