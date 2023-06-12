@@ -30,6 +30,17 @@ bootstrap_py = os.path.join(this_dir, 'bootstrap.py')
 if os.path.exists(bootstrap_py):
     subprocess.run([sys.executable, bootstrap_py])
 
+
+# Set some extra flags for compiling with coverage support
+if os.getenv('NANOARROW_PYTHON_COVERAGE') == "1":
+    coverage_compile_args = ['--coverage']
+    coverage_link_args = ['--coverage']
+    coverage_define_macros = [("CYTHON_TRACE", 1)]
+else:
+    coverage_compile_args = []
+    coverage_link_args = []
+    coverage_define_macros = []
+
 setup(
     ext_modules=[
         Extension(
@@ -40,6 +51,9 @@ setup(
                 'src/nanoarrow/_lib.pyx',
                 'src/nanoarrow/nanoarrow.c',
             ],
+            extra_compile_args = coverage_compile_args,
+            extra_link_args = [] + coverage_link_args,
+            define_macros= [] + coverage_define_macros,
         )
     ]
 )

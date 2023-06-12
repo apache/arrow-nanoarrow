@@ -16,8 +16,16 @@
 # under the License.
 
 # cython: language_level = 3
+# cython: linetrace=True
 
-"""Low-level nanoarrow Python bindings."""
+"""Low-level nanoarrow Python bindings
+
+This Cython extension provides low-level Python wrappers around the
+Arrow C Data and Arrow C Stream interface structs. In general, there
+is one wrapper per C struct and pointer validity is managed by keeping
+strong references to Python objects. These wrappers are intended to
+be literal and stay close to the structure definitions.
+"""
 
 from libc.stdint cimport uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
@@ -26,9 +34,17 @@ from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 
 def c_version():
+    """Return the nanoarrow C library version string
+    """
     return ArrowNanoarrowVersion().decode("UTF-8")
 
 cdef class SchemaHolder:
+    """Memory holder for an ArrowSchema
+
+    This class is responsible for the lifecycle of the ArrowSchema
+    whose memory it is responsible. When this object is deleted,
+    a non-NULL release callback is invoked.
+    """
     cdef ArrowSchema c_schema
 
     def __cinit__(self):
@@ -42,6 +58,12 @@ cdef class SchemaHolder:
         return <uintptr_t>&self.c_schema
 
 cdef class ArrayHolder:
+    """Memory holder for an ArrowArray
+
+    This class is responsible for the lifecycle of the ArrowArray
+    whose memory it is responsible. When this object is deleted,
+    a non-NULL release callback is invoked.
+    """
     cdef ArrowArray c_array
 
     def __cinit__(self):
@@ -55,6 +77,12 @@ cdef class ArrayHolder:
         return <uintptr_t>&self.c_array
 
 cdef class ArrayStreamHolder:
+    """Memory holder for an ArrowArrayStream
+
+    This class is responsible for the lifecycle of the ArrowArrayStream
+    whose memory it is responsible. When this object is deleted,
+    a non-NULL release callback is invoked.
+    """
     cdef ArrowArrayStream c_array_stream
 
     def __cinit__(self):
@@ -68,6 +96,12 @@ cdef class ArrayStreamHolder:
         return <uintptr_t>&self.c_array_stream
 
 cdef class ArrayViewHolder:
+    """Memory holder for an ArrowArrayView
+
+    This class is responsible for the lifecycle of the ArrowArrayView
+    whose memory it is responsible. When this object is deleted,
+    ArrowArrayViewReset() is called on the contents.
+    """
     cdef ArrowArrayView c_array_view
 
     def __init__(self):
@@ -81,6 +115,13 @@ cdef class ArrayViewHolder:
 
 
 class NanoarrowException(RuntimeError):
+    """An error resulting from a call to the nanoarrow C library
+
+    Calls to the nanoarrow C library and/or the Arrow C Stream interface
+    callbacks return an errno error code and sometimes a message with extra
+    detail. This exception wraps a RuntimeError to format a suitable message
+    and store the components of the original error.
+    """
 
     def __init__(self, what, code, message):
         self.what = what
@@ -94,20 +135,56 @@ class NanoarrowException(RuntimeError):
 
 
 cdef class Error:
+    """Memory holder for an ArrowError
+
+    ArrowError is the C struct that is optionally passed to nanoarrow functions
+    when a detailed error message might be returned. This class holds a C
+    reference to the object and provides helpers for raising exceptions based
+    on the contained message.
+    """
     cdef ArrowError c_error
 
     def __cinit__(self):
         self.c_error.message[0] = 0
 
     def raise_message(self, what, code):
-        raise Exception(what, code, self.c_error.message.decode("UTF-8"))
+        """Raise a NanoarrowException from this message
+        """
+        raise NanoarrowException(what, code, self.c_error.message.decode("UTF-8"))
 
     @staticmethod
     def raise_error(what, code):
-        raise Exception(what, code, "")
+        """Raise a NanoarrowException without a message
+        """
+        raise NanoarrowException(what, code, "")
 
 
 cdef class Schema:
+    """ArrowSchema wrapper
+
+    This class provides a user-facing interface to access the fields of
+    an ArrowSchema as defined in the Arrow C Data interface. These objects
+    are usually created using `nanoarrow.schema()`. This Python wrapper
+    allows access to schema fields but does not automatically deserialize
+    their content: use `.view()` to validate and deserialize the content
+    into a more easily inspectable object.
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> schema = na.schema(pa.int32())
+    >>> schema.is_valid()
+    True
+    >>> schema.format
+    'i'
+    >>> schema.name
+    ''
+    >>> schema_view = schema.view()
+    >>> schema_view.type
+    'int32'
+    """
     cdef object _base
     cdef ArrowSchema* _ptr
 
@@ -124,9 +201,11 @@ cdef class Schema:
         return <uintptr_t>self._ptr
 
     def is_valid(self):
-        return self._ptr.release != NULL
+        return self._ptr != NULL and self._ptr.release != NULL
 
     def _assert_valid(self):
+        if self._ptr == NULL:
+            raise RuntimeError("schema is NULL")
         if self._ptr.release == NULL:
             raise RuntimeError("schema is released")
 
@@ -190,7 +269,30 @@ cdef class Schema:
             raise ValueError(ArrowErrorMessage(&error))
         return schema_view
 
+
 cdef class SchemaView:
+    """ArrowSchemaView wrapper
+
+    The ArrowSchemaView is a nanoarrow C library structure that facilitates
+    access to the deserialized content of an ArrowSchema (e.g., parameter
+    values for parameterized types). This wrapper extends that facility to Python.
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> schema = na.schema(pa.decimal128(10, 3))
+    >>> schema_view = schema.view()
+    >>> schema_view.type
+    'decimal128'
+    >>> schema_view.decimal_bitwidth
+    128
+    >>> schema_view.decimal_precision
+    10
+    >>> schema_view.decimal_scale
+    3
+    """
     cdef ArrowSchemaView _schema_view
 
     _fixed_size_types = (
@@ -285,6 +387,34 @@ cdef class SchemaView:
             )
 
 cdef class Array:
+    """ArrowArray wrapper
+
+    This class provides a user-facing interface to access the fields of
+    an ArrowArray as defined in the Arrow C Data interface, holding an
+    optional reference to a Schema that can be used to safely deserialize
+    the content. These objects are usually created using `nanoarrow.array()`.
+    This Python wrapper allows access to array fields but does not
+    automatically deserialize their content: use `.view()` to validate and
+    deserialize the content into a more easily inspectable object.
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import numpy as np
+    >>> import nanoarrow as na
+    >>> array = na.array(pa.array(["one", "two", "three", None]))
+    >>> array.length
+    4
+    >>> array.null_count
+    1
+    >>> array_view = array.view()
+    >>> np.array(array_view.buffers[1])
+    array([ 0,  3,  6, 11, 11], dtype=int32)
+    >>> np.array(array_view.buffers[2])
+    array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
+          dtype='|S1')
+    """
     cdef object _base
     cdef ArrowArray* _ptr
     cdef Schema _schema
@@ -303,9 +433,11 @@ cdef class Array:
         return <uintptr_t>self._ptr
 
     def is_valid(self):
-        return self._ptr.release != NULL
+        return self._ptr != NULL and self._ptr.release != NULL
 
     def _assert_valid(self):
+        if self._ptr == NULL:
+            raise RuntimeError("Array is NULL")
         if self._ptr.release == NULL:
             raise RuntimeError("Array is released")
 
