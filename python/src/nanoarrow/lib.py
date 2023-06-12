@@ -1,4 +1,4 @@
-from ._lib import Schema, Array
+from ._lib import Schema, Array, ArrayStream
 
 
 def schema(obj):
@@ -43,7 +43,7 @@ def array_stream(obj):
     # array, schema, or array_stream. The ideal
     # solution here would be something like __arrow_c_array_stream__()
     if hasattr(obj, "_export_to_c"):
-        out = Schema.empty()
+        out = ArrayStream.empty()
         obj._export_to_c(out._addr())
         return out
     else:

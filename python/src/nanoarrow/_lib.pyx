@@ -588,11 +588,15 @@ cdef class ArrayViewBuffers:
 cdef class ArrayStream:
     cdef object _base
     cdef ArrowArrayStream* _ptr
+    cdef object _cached_schema
 
     def __init__(self, object base, uintptr_t addr):
         self._base = base,
         self._ptr = <ArrowArrayStream*>addr
         self._cached_schema = None
+
+    def _addr(self):
+        return <uintptr_t>self._ptr
 
     def is_valid(self):
         return self._ptr != NULL and self._ptr.release != NULL
@@ -622,8 +626,6 @@ cdef class ArrayStream:
 
     def get_schema(self):
         # Update the cached copy of the schema as an independent object
-        if self._cached_schema is not None:
-            del self._cached_schema
         self._cached_schema = Schema.empty()
         self._get_schema(self._cached_schema)
 
@@ -653,4 +655,18 @@ cdef class ArrayStream:
             else:
                 Error.raise_error("ArrowArrayStream::get_next()", code)
 
-        return array
+        if not array.is_valid():
+            return None
+        else:
+            return array
+
+    def __iter__(self):
+        array = self.get_next()
+        while array is not None:
+            yield array
+            array = self.get_next()
+
+    @staticmethod
+    def empty():
+        base = ArrayStreamHolder()
+        return ArrayStream(base, base._addr())

@@ -263,3 +263,32 @@ def test_buffers_binary():
         np.array(view.buffers[1]), np.array([0, 1, 3, 6], np.int32())
     )
     np.testing.assert_array_equal(np.array(view.buffers[2]), np.array(list(b"abcdef")))
+
+
+def test_array_stream():
+    array_stream = na.ArrayStream.empty()
+    assert array_stream.is_valid() is False
+    with pytest.raises(RuntimeError):
+        array_stream.get_schema()
+    with pytest.raises(RuntimeError):
+        array_stream.get_next()
+
+    pa_array_child = pa.array([1, 2, 3], pa.int32())
+    pa_array = pa.record_batch([pa_array_child], names=["some_column"])
+    reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
+    array_stream = na.array_stream(reader)
+
+    assert array_stream.is_valid() is True
+    array = array_stream.get_next()
+    assert array.schema.children[0].name == "some_column"
+    assert array_stream.get_next() is None
+
+def test_array_stream_iter():
+    pa_array_child = pa.array([1, 2, 3], pa.int32())
+    pa_array = pa.record_batch([pa_array_child], names=["some_column"])
+    reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
+    array_stream = na.array_stream(reader)
+
+    arrays = list(array_stream)
+    assert len(arrays) == 1
+    assert arrays[0].schema.children[0].name == "some_column"
