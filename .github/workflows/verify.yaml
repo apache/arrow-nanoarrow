@@ -115,7 +115,7 @@ jobs:
         if: matrix.config.label == 'windows'
         shell: bash
         run: |
-          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
+          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -G "Visual Studio 17 2022" -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
 
       - name: Run dev/release/verify-release-candidate.sh
         shell: bash
