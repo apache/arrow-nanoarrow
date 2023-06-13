@@ -21,3 +21,10 @@
     ...
     fun:_dl_allocate_tls
 }
+
+{
+    <jemalloc>:Thread locals don't appear to be freed
+    Memcheck:Leak
+    ...
+    fun:__tls_get_addr
+}
