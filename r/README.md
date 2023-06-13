@@ -116,8 +116,8 @@ as_nanoarrow_array(1:5)
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 2
-#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   ..$ :<nanoarrow_buffer_data_int32[20 b] at 0x14e4bd638>
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   ..$ :<nanoarrow_buffer data<int32>[5][20 b]> `1 2 3 4 5`
 #>  $ dictionary: NULL
 #>  $ children  : list()
 as_nanoarrow_array(data.frame(col1 = c(1.1, 2.2)))
@@ -126,15 +126,15 @@ as_nanoarrow_array(data.frame(col1 = c(1.1, 2.2)))
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 1
-#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
 #>  $ children  :List of 1
 #>   ..$ col1:<nanoarrow_array double[2]>
 #>   .. ..$ length    : int 2
 #>   .. ..$ null_count: int 0
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
-#>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x14e62ccb8>
+#>   .. .. ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   .. .. ..$ :<nanoarrow_buffer data<double>[2][16 b]> `1.1 2.2`
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
@@ -198,15 +198,15 @@ stream$get_next()
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 1
-#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
 #>  $ children  :List of 1
 #>   ..$ col1:<nanoarrow_array double[2]>
 #>   .. ..$ length    : int 2
 #>   .. ..$ null_count: int 0
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
-#>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x13af88b38>
+#>   .. .. ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   .. .. ..$ :<nanoarrow_buffer data<double>[2][16 b]> `1.1 2.2`
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
@@ -216,15 +216,15 @@ stream$get_next()
 #>  $ null_count: int 0
 #>  $ offset    : int 0
 #>  $ buffers   :List of 1
-#>   ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
 #>  $ children  :List of 1
 #>   ..$ col1:<nanoarrow_array double[2]>
 #>   .. ..$ length    : int 2
 #>   .. ..$ null_count: int 0
 #>   .. ..$ offset    : int 0
 #>   .. ..$ buffers   :List of 2
-#>   .. .. ..$ :<nanoarrow_buffer_validity[0 b] at 0x0>
-#>   .. .. ..$ :<nanoarrow_buffer_data_double[16 b] at 0x13af886f8>
+#>   .. .. ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   .. .. ..$ :<nanoarrow_buffer data<double>[2][16 b]> `3.3 4.4`
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
