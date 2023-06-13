@@ -21813,10 +21813,9 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(struct ArrowIpcDecoder* decoder,
-                                                         int64_t field_i,
-                                                         struct ArrowArray* out,
-                                                         struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
+    struct ArrowIpcDecoder* decoder, int64_t field_i, struct ArrowArray* out,
+    enum ArrowValidationLevel validation_level, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -21840,8 +21839,17 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(struct ArrowIpcDecoder*
         ArrowIpcDecoderWalkGetArray(root->array_view, root->array, out, error));
   }
 
-  // If validation is going to happen it has already occurred
-  ArrowArrayFinishBuilding(out, NANOARROW_VALIDATION_LEVEL_NONE, error);
+  // If validation is going to happen it has already occurred; however, the part of
+  // ArrowArrayFinishBuilding() that allocates a data buffer if the data buffer is
+  // NULL (required for compatability with Arrow <= 9.0.0) assumes CPU data access
+  // and thus needs a validation level >= default.
+  if (validation_level >= NANOARROW_VALIDATION_LEVEL_DEFAULT) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayFinishBuilding(out, NANOARROW_VALIDATION_LEVEL_DEFAULT, error));
+  } else {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayFinishBuilding(out, NANOARROW_VALIDATION_LEVEL_NONE, error));
+  }
 
   return NANOARROW_OK;
 }
@@ -21915,7 +21923,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 
   struct ArrowArray temp;
   temp.release = NULL;
-  int result = ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, error);
+  int result =
+      ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, validation_level, error);
   if (result != NANOARROW_OK && temp.release != NULL) {
     temp.release(&temp);
   } else if (result != NANOARROW_OK) {
@@ -21938,7 +21947,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
 
   struct ArrowArray temp;
   temp.release = NULL;
-  int result = ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, error);
+  int result =
+      ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, validation_level, error);
   if (result != NANOARROW_OK && temp.release != NULL) {
     temp.release(&temp);
   } else if (result != NANOARROW_OK) {
