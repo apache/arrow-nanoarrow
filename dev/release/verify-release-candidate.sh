@@ -256,7 +256,7 @@ test_r() {
   # (but the arrow integration tests will run if the arrow package is installed anyway).
   # Using a manual approach because installing pak takes a while on some systems and
   # beacuse the package versions don't matter much.
-  "$R_BIN" -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr")) if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
+  "$R_BIN" -e 'for (pkg in c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "pkgbuild")) if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg, repos = "https://cloud.r-project.org/")'
 
   show_info "Build the R package source tarball"
 
@@ -274,6 +274,15 @@ test_r() {
   show_info "Run R CMD check"
   # Runs R CMD check on the tarball
   _R_CHECK_FORCE_SUGGESTS_=false "$R_BIN" CMD check "$R_PACKAGE_TARBALL_NAME" --no-manual
+
+  if [ ${TEST_WITH_MEMCHECK} -gt 0 ]; then
+    show_info "Run R tests with valgrind"
+    pushd "$NANOARROW_SOURCE_DIR"
+    "$R_BIN" \
+      -d "valgrind --tool=memcheck --leak-check=full --suppressions=valgrind.supp --error-exitcode=1" \
+      -e "testthat::test_local('r')"
+    popd
+  fi
 
   popd
 }
