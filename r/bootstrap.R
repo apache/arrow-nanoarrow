@@ -27,7 +27,7 @@ dist_dir <- file.path(temp_dir, "dist")
 dir.create(build_dir)
 dir.create(dist_dir)
 
-cmake_command <- shQuote(Sys.getenv("CMAKE", "cmake"))
+cmake_command <- shQuote(Sys.getenv("CMAKE_BIN", "cmake"))
 
 run_cmake <- function(args, wd = ".") {
   force(args)
