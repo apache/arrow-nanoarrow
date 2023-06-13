@@ -41,7 +41,7 @@ def test_schema_helper():
 
 
 def test_array_helper():
-    array = na.Array.empty(na.Schema.allocate())
+    array = na.Array.allocate(na.Schema.allocate())
     assert na.array(array) is array
 
     array = na.array(pa.array([], pa.null()))

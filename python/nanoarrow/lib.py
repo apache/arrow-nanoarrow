@@ -43,7 +43,7 @@ def array(obj):
     # not fail with a crash (but will fail with a confusing error). The ideal
     # solution here would be something like __arrow_c_array__()
     if hasattr(obj, "_export_to_c"):
-        out = Array.empty(Schema.allocate())
+        out = Array.allocate(Schema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
     else:

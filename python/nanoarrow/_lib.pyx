@@ -416,7 +416,7 @@ cdef class Array:
     cdef Schema _schema
 
     @staticmethod
-    def empty(Schema schema):
+    def allocate(Schema schema):
         base = ArrayHolder()
         return Array(base, base._addr(), schema)
 
@@ -838,7 +838,7 @@ cdef class ArrayStream:
             self._cached_schema = Schema.allocate()
             self._get_schema(self._cached_schema)
 
-        cdef Array array = Array.empty(self._cached_schema)
+        cdef Array array = Array.allocate(self._cached_schema)
         cdef int code = self._ptr.get_next(self._ptr, array._ptr)
         cdef const char* message = NULL
         if code != NANOARROW_OK:
