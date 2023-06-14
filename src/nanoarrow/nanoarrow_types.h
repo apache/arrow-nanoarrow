@@ -164,6 +164,9 @@ static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
 #define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
   NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
+#define _NANOARROW_CHECK_UPPER_LIMIT(x_, max_) \
+  NANOARROW_RETURN_NOT_OK((x_ <= max_) ? NANOARROW_OK : EINVAL)
+
 #if defined(NANOARROW_DEBUG)
 #define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
   do {                                                                                 \
