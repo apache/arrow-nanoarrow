@@ -38,6 +38,7 @@ def c_version():
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
 
+
 cdef class SchemaHolder:
     """Memory holder for an ArrowSchema
 
@@ -56,6 +57,7 @@ cdef class SchemaHolder:
 
     def _addr(self):
         return <uintptr_t>&self.c_schema
+
 
 cdef class ArrayHolder:
     """Memory holder for an ArrowArray
@@ -95,6 +97,7 @@ cdef class ArrayStreamHolder:
     def _addr(self):
         return <uintptr_t>&self.c_array_stream
 
+
 cdef class ArrayViewHolder:
     """Memory holder for an ArrowArrayView
 
@@ -123,7 +126,7 @@ class NanoarrowException(RuntimeError):
     and store the components of the original error.
     """
 
-    def __init__(self, what, code, message):
+    def __init__(self, what, code, message=""):
         self.what = what
         self.code = code
         self.message = message
@@ -708,7 +711,7 @@ cdef class BufferView:
             return "B"
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        buffer.buf = self._ptr.data.data
+        buffer.buf = <void*>self._ptr.data.data
         buffer.format = self._get_format()
         buffer.internal = NULL
         buffer.itemsize = self._strides
@@ -782,7 +785,7 @@ cdef class ArrayStream:
     cdef object _cached_schema
 
     def __cinit__(self, object base, uintptr_t addr):
-        self._base = base,
+        self._base = base
         self._ptr = <ArrowArrayStream*>addr
         self._cached_schema = None
 
@@ -811,18 +814,13 @@ cdef class ArrayStream:
                     message.decode("UTF-8")
                 )
             else:
-                Error.raise_error("ArrowArrayStream::get_schema()", code)
+                raise NanoarrowException("ArrowArrayStream::get_schema()", code)
 
         self._cached_schema = schema
 
     def get_schema(self):
         """Get the schema associated with this stream
         """
-        # Update the cached copy of the schema as an independent object
-        self._cached_schema = Schema.allocate()
-        self._get_schema(self._cached_schema)
-
-        # Return an independent copy
         out = Schema.allocate()
         self._get_schema(out)
         return out
@@ -834,6 +832,10 @@ cdef class ArrayStream:
         """
         self._assert_valid()
 
+        # We return a reference to the same Python object for each
+        # Array that is returned. This is independent of get_schema(),
+        # which is guaranteed to call the C object's callback and
+        # faithfully pass on the returned value.
         if self._cached_schema is None:
             self._cached_schema = Schema.allocate()
             self._get_schema(self._cached_schema)
@@ -850,7 +852,7 @@ cdef class ArrayStream:
                     message.decode("UTF-8")
                 )
             else:
-                Error.raise_error("ArrowArrayStream::get_next()", code)
+                raise NanoarrowException("ArrowArrayStream::get_next()", code)
 
         if not array.is_valid():
             return None
