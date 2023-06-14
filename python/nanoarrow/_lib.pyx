@@ -42,7 +42,7 @@ cdef class SchemaHolder:
     """Memory holder for an ArrowSchema
 
     This class is responsible for the lifecycle of the ArrowSchema
-    whose memory it is responsible. When this object is deleted,
+    whose memory it is responsible for. When this object is deleted,
     a non-NULL release callback is invoked.
     """
     cdef ArrowSchema c_schema
