@@ -855,15 +855,13 @@ cdef class ArrayStream:
                 raise NanoarrowException("ArrowArrayStream::get_next()", code)
 
         if not array.is_valid():
-            return None
+            raise StopIteration()
         else:
             return array
 
     def __iter__(self):
-        array = self.get_next()
-        while array is not None:
-            yield array
-            array = self.get_next()
+        while True:
+            yield self.get_next()
 
     @staticmethod
     def allocate():

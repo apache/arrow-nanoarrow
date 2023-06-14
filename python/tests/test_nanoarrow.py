@@ -281,7 +281,8 @@ def test_array_stream():
     assert array_stream.is_valid() is True
     array = array_stream.get_next()
     assert array.schema.children[0].name == "some_column"
-    assert array_stream.get_next() is None
+    with pytest.raises(StopIteration):
+        array_stream.get_next()
 
 
 def test_array_stream_iter():
