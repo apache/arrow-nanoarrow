@@ -104,7 +104,7 @@ cdef class ArrayViewHolder:
     """
     cdef ArrowArrayView c_array_view
 
-    def __init__(self):
+    def __cinit__(self):
         ArrowArrayViewInitFromType(&self.c_array_view, NANOARROW_TYPE_UNINITIALIZED)
 
     def __dealloc__(self):
@@ -193,7 +193,7 @@ cdef class Schema:
         base = SchemaHolder()
         return Schema(base, base._addr())
 
-    def __init__(self, object base, uintptr_t addr):
+    def __cinit__(self, object base, uintptr_t addr):
         self._base = base,
         self._ptr = <ArrowSchema*>addr
 
@@ -318,7 +318,7 @@ cdef class SchemaView:
         NANOARROW_TYPE_SPARSE_UNION
     )
 
-    def __init__(self):
+    def __cinit__(self):
         self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
         self._schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED
 
@@ -420,7 +420,7 @@ cdef class Array:
         base = ArrayHolder()
         return Array(base, base._addr(), schema)
 
-    def __init__(self, object base, uintptr_t addr, Schema schema):
+    def __cinit__(self, object base, uintptr_t addr, Schema schema):
         self._base = base,
         self._ptr = <ArrowArray*>addr
         self._schema = schema
@@ -511,7 +511,7 @@ cdef class ArrayView:
     cdef ArrowArrayView* _ptr
     cdef Array _array
 
-    def __init__(self, object base, uintptr_t addr, Array array):
+    def __cinit__(self, object base, uintptr_t addr, Array array):
         self._base = base,
         self._ptr = <ArrowArrayView*>addr
         self._array = array
@@ -542,7 +542,7 @@ cdef class SchemaChildren:
     cdef Schema _parent
     cdef int64_t _length
 
-    def __init__(self, Schema parent):
+    def __cinit__(self, Schema parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -570,7 +570,7 @@ cdef class SchemaMetadata:
     cdef const char* _metadata
     cdef ArrowMetadataReader _reader
 
-    def __init__(self, object parent, uintptr_t ptr):
+    def __cinit__(self, object parent, uintptr_t ptr):
         self._parent = parent
         self._metadata = <const char*>ptr
 
@@ -600,7 +600,7 @@ cdef class ArrayChildren:
     cdef Array _parent
     cdef int64_t _length
 
-    def __init__(self, Array parent):
+    def __cinit__(self, Array parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -625,7 +625,7 @@ cdef class ArrayViewChildren:
     cdef ArrayView _parent
     cdef int64_t _length
 
-    def __init__(self, ArrayView parent):
+    def __cinit__(self, ArrayView parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -659,7 +659,7 @@ cdef class BufferView:
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
 
-    def __init__(self, object base, uintptr_t addr,
+    def __cinit__(self, object base, uintptr_t addr,
                  ArrowBufferType buffer_type, ArrowType buffer_data_type,
                  Py_ssize_t element_size_bits):
         self._base = base
@@ -730,7 +730,7 @@ cdef class ArrayViewBuffers:
     cdef ArrayView _array_view
     cdef int64_t _length
 
-    def __init__(self, ArrayView array_view):
+    def __cinit__(self, ArrayView array_view):
         self._array_view = array_view
         self._length = array_view._array._ptr.n_buffers
 
@@ -781,7 +781,7 @@ cdef class ArrayStream:
     cdef ArrowArrayStream* _ptr
     cdef object _cached_schema
 
-    def __init__(self, object base, uintptr_t addr):
+    def __cinit__(self, object base, uintptr_t addr):
         self._base = base,
         self._ptr = <ArrowArrayStream*>addr
         self._cached_schema = None
