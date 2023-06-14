@@ -487,15 +487,18 @@ cdef class Array:
         if result != NANOARROW_OK:
             error.raise_message("ArrowArrayViewSetArray()", result)
 
-        return ArrayView(holder, holder._addr(), self)
+        return ArrayView(holder, holder._addr(), self._schema, self)
 
 
 cdef class ArrayView:
     """ArrowArrayView wrapper
 
-    The ArrowArrayView is a nanoarrow C library structure that facilitates
-    access to the deserialized content of an ArrowArray (e.g., buffer types,
-    lengths, and content). This wrapper extends that facility to Python.
+    The ArrowArrayView is a nanoarrow C library structure that provides
+    structured access to buffers addresses, buffer sizes, and buffer
+    data types. The buffer data is usually propagated from an ArrowArray
+    but can also be propagated from other types of objects (e.g., serialized
+    IPC). The offset and length of this view are independent of its parent
+    (i.e., this object can also represent a slice of its parent).
 
     Examples
     --------
@@ -512,12 +515,26 @@ cdef class ArrayView:
     """
     cdef object _base
     cdef ArrowArrayView* _ptr
-    cdef Array _array
+    cdef Schema _schema
+    cdef object _base_buffer
 
-    def __cinit__(self, object base, uintptr_t addr, Array array):
-        self._base = base,
+    def __cinit__(self, object base, uintptr_t addr, Schema schema, object base_buffer):
+        self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._array = array
+        self._schema = schema
+        self._base_buffer = base_buffer
+
+    @property
+    def length(self):
+        return self._ptr.length
+
+    @property
+    def offset(self):
+        return self._ptr.offset
+
+    @property
+    def null_count(self):
+        return self._ptr.null_count
 
     @property
     def children(self):
@@ -529,15 +546,20 @@ cdef class ArrayView:
 
     @property
     def dictionary(self):
-        return ArrayView(self, <uintptr_t>self._ptr.dictionary, self._array.dictionary)
-
-    @property
-    def array(self):
-        return self._array
+        if self._ptr.dictionary == NULL:
+            return None
+        else:
+            return ArrayView(
+                self,
+                <uintptr_t>self._ptr.dictionary,
+                self._schema.dictionary,
+                None
+            )
 
     @property
     def schema(self):
-        return self._array._schema
+        return self._schema
+
 
 cdef class SchemaChildren:
     """Wrapper for a lazily-resolved list of Schema children
@@ -639,12 +661,18 @@ cdef class ArrayViewChildren:
         k = int(k)
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
-        return ArrayView(self._parent, self._child_addr(k), self._parent._array.children[k])
+        return ArrayView(
+            self._parent,
+            self._child_addr(k),
+            self._parent._schema.children[k],
+            None
+        )
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArrayView** children = self._parent._ptr.children
         cdef ArrowArrayView* child = children[i]
         return <uintptr_t>child
+
 
 cdef class BufferView:
     """Wrapper for Array buffer content
@@ -735,7 +763,11 @@ cdef class ArrayViewBuffers:
 
     def __cinit__(self, ArrayView array_view):
         self._array_view = array_view
-        self._length = array_view._array._ptr.n_buffers
+        self._length = 3
+        for i in range(3):
+            if self._array_view._ptr.layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE:
+                self._length = i
+                break
 
     def __len__(self):
         return self._length

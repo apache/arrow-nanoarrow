@@ -168,7 +168,6 @@ def test_array_view():
     array = na.array(pa.array([1, 2, 3], pa.int32()))
     view = array.view()
 
-    assert view.array is array
     assert view.schema is array.schema
 
     data_buffer = memoryview(view.buffers[1])
@@ -201,11 +200,9 @@ def test_array_view_recursive():
     view = array.view()
     assert len(view.buffers) == 1
     assert len(view.children) == 1
-    assert view.array._addr() == array._addr()
     assert view.schema._addr() == array.schema._addr()
 
     assert len(view.children[0].buffers) == 2
-    assert view.children[0].array._addr() == array.children[0]._addr()
     assert view.children[0].schema._addr() == array.schema.children[0]._addr()
     assert view.children[0].schema._addr() == array.children[0].schema._addr()
 
