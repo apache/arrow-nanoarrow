@@ -196,6 +196,9 @@ static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
 #define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
   NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
+#define _NANOARROW_CHECK_UPPER_LIMIT(x_, max_) \
+  NANOARROW_RETURN_NOT_OK((x_ <= max_) ? NANOARROW_OK : EINVAL)
+
 #if defined(NANOARROW_DEBUG)
 #define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
   do {                                                                                 \
@@ -330,6 +333,8 @@ enum ArrowType {
 /// \ingroup nanoarrow-utils
 ///
 /// Returns NULL for invalid values for type
+static inline const char* ArrowTypeString(enum ArrowType type);
+
 static inline const char* ArrowTypeString(enum ArrowType type) {
   switch (type) {
     case NANOARROW_TYPE_NA:
@@ -448,6 +453,8 @@ enum ArrowValidationLevel {
 /// \ingroup nanoarrow-utils
 ///
 /// Returns NULL for invalid values for time_unit
+static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit);
+
 static inline const char* ArrowTimeUnitString(enum ArrowTimeUnit time_unit) {
   switch (time_unit) {
     case NANOARROW_TIME_UNIT_SECOND:
@@ -490,6 +497,8 @@ struct ArrowStringView {
 
 /// \brief Return a view of a const C string
 /// \ingroup nanoarrow-utils
+static inline struct ArrowStringView ArrowCharView(const char* value);
+
 static inline struct ArrowStringView ArrowCharView(const char* value) {
   struct ArrowStringView out;
 
@@ -2731,22 +2740,22 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &value, sizeof(uint64_t)));
       break;
     case NANOARROW_TYPE_UINT32:
-      _NANOARROW_CHECK_RANGE(value, 0, UINT32_MAX);
+      _NANOARROW_CHECK_UPPER_LIMIT(value, UINT32_MAX);
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt32(data_buffer, (uint32_t)value));
       break;
     case NANOARROW_TYPE_UINT16:
-      _NANOARROW_CHECK_RANGE(value, 0, UINT16_MAX);
+      _NANOARROW_CHECK_UPPER_LIMIT(value, UINT16_MAX);
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, (uint16_t)value));
       break;
     case NANOARROW_TYPE_UINT8:
-      _NANOARROW_CHECK_RANGE(value, 0, UINT8_MAX);
+      _NANOARROW_CHECK_UPPER_LIMIT(value, UINT8_MAX);
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(data_buffer, (uint8_t)value));
       break;
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_INT32:
     case NANOARROW_TYPE_INT16:
     case NANOARROW_TYPE_INT8:
-      _NANOARROW_CHECK_RANGE(value, 0, INT64_MAX);
+      _NANOARROW_CHECK_UPPER_LIMIT(value, INT64_MAX);
       return ArrowArrayAppendInt(array, value);
     case NANOARROW_TYPE_DOUBLE:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendDouble(data_buffer, (double)value));
