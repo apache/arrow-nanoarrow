@@ -17,33 +17,43 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import shutil
-from pathlib import Path
-
+import os
+import sys
+import subprocess
 from setuptools import Extension, setup
 
-import numpy as np
+# Run bootstrap.py to run cmake generating a fresh bundle based on this
+# checkout or copy from ../dist if the caller doesn't have cmake available.
+# Note that bootstrap.py won't exist if building from sdist.
+this_dir = os.path.dirname(__file__)
+bootstrap_py = os.path.join(this_dir, "bootstrap.py")
+if os.path.exists(bootstrap_py):
+    subprocess.run([sys.executable, bootstrap_py])
 
 
-# setuptools gets confused by relative paths that extend above the project root
-target = Path(__file__).parent / "src" / "nanoarrow"
-shutil.copy(
-    Path(__file__).parent / "../dist/nanoarrow.c", target / "nanoarrow.c"
-)
-shutil.copy(
-    Path(__file__).parent / "../dist/nanoarrow.h", target / "nanoarrow.h"
-)
+# Set some extra flags for compiling with coverage support
+if os.getenv("NANOARROW_PYTHON_COVERAGE") == "1":
+    coverage_compile_args = ["--coverage"]
+    coverage_link_args = ["--coverage"]
+    coverage_define_macros = [("CYTHON_TRACE", 1)]
+else:
+    coverage_compile_args = []
+    coverage_link_args = []
+    coverage_define_macros = []
 
 setup(
     ext_modules=[
         Extension(
             name="nanoarrow._lib",
-            include_dirs=[np.get_include(), "src/nanoarrow"],
-            language="c++",
+            include_dirs=["nanoarrow"],
+            language="c",
             sources=[
-                "src/nanoarrow/_lib.pyx",
-                "src/nanoarrow/nanoarrow.c",
+                "nanoarrow/_lib.pyx",
+                "nanoarrow/nanoarrow.c",
             ],
+            extra_compile_args=coverage_compile_args,
+            extra_link_args=coverage_link_args,
+            define_macros=coverage_define_macros,
         )
     ]
 )

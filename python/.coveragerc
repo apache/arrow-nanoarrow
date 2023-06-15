@@ -15,6 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import (  # noqa: F401
-    as_numpy_array,
-)
+# .coveragerc to control coverage.py
+[run]
+plugins = Cython.Coverage

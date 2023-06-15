@@ -1,4 +1,3 @@
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,25 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[project]
-name = "nanoarrow"
-version = "1.0.0-alpha0"
-description = "Python bindings to the nanoarrow C library"
-authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
-requires-python = ">=3.8"
-
-[project.optional-dependencies]
-test = ["pyarrow", "pytest", "numpy"]
-
-[project.urls]
-homepage = "https://arrow.apache.org"
-repository = "https://github.com/apache/arrow-nanoarrow"
-
-[build-system]
-requires = [
-    "setuptools >= 61.0.0",
-    "setuptools-scm",
-    "Cython"
-]
-build-backend = "setuptools.build_meta"
+from ._lib import c_version, Schema, Array, ArrayView, ArrayStream
+from .lib import schema, array, array_stream
