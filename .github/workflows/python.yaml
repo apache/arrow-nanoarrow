@@ -74,6 +74,7 @@ jobs:
           pushd python
 
           # Build with Cython + gcc coverage options
+          pip install -e .
           NANOARROW_PYTHON_COVERAGE=1 python setup.py build_ext --inplace
 
           # Run tests + coverage.py (generates .coverage + coverage.xml files)
