@@ -810,7 +810,9 @@ cdef class ArrayStream:
     >>> array_stream.get_next().length
     3
     >>> array_stream.get_next() is None
-    True
+    Traceback (most recent call last):
+      ...
+    StopIteration
     """
     cdef object _base
     cdef ArrowArrayStream* _ptr
