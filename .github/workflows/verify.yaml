@@ -179,6 +179,7 @@ jobs:
           NANOARROW_ARCH: ${{ matrix.config.arch }}
           NANOARROW_PLATFORM: ${{ matrix.config.platform }}
           DOCKER_DEFAULT_PLATFORM: linux/${{ matrix.config.arch }}
+          NANOARROW_VERIFY_ARGS: ${{ inputs.version }} ${{ inputs.rc }}
 
         run: |
           cd src
