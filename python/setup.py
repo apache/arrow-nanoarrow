@@ -45,11 +45,11 @@ setup(
     ext_modules=[
         Extension(
             name="nanoarrow._lib",
-            include_dirs=["nanoarrow"],
+            include_dirs=["src/nanoarrow"],
             language="c",
             sources=[
-                "nanoarrow/_lib.pyx",
-                "nanoarrow/nanoarrow.c",
+                "src/nanoarrow/_lib.pyx",
+                "src/nanoarrow/nanoarrow.c",
             ],
             extra_compile_args=coverage_compile_args,
             extra_link_args=coverage_link_args,
