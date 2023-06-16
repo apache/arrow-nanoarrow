@@ -29,7 +29,7 @@ services:
         NANOARROW_ARCH: ${NANOARROW_ARCH}
     volumes:
       - ${NANOARROW_SOURCE_DIR}:/nanoarrow
-    command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh"
+    command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh $NANOARROW_VERIFY_ARGS"
 
   coverage:
     image: ${REPO}:ubuntu-${NANOARROW_ARCH}
