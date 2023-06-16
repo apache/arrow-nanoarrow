@@ -25,7 +25,7 @@ Release candidates for nanoarrow are uploaded to https://dist.apache.org/repos/d
 prior to a release vote being called on the
 [Apache Arrow developer mailing list](https://lists.apache.org/list.html?dev@arrow.apache.org).
 A script (`verify-release-candidate.sh`) is provided to verify such a release candidate.
-For example, to verify nanoarrow 0.2.0-rc1, one could run:
+For example, to verify nanoarrow 0.2.0-rc0, one could run:
 
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git arrow-nanoarrow
