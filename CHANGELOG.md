@@ -38,7 +38,7 @@
 - set map entries/key to non-nullable (#107)
 - **ci**: Actually commit bundled IPC extension to dist/ (#96)
 
-## ls (2023-06-16)
+## nanoarrow 0.2.0 (2023-06-16)
 
 ### Feat
 
