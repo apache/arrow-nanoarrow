@@ -25,12 +25,12 @@ Release candidates for nanoarrow are uploaded to https://dist.apache.org/repos/d
 prior to a release vote being called on the
 [Apache Arrow developer mailing list](https://lists.apache.org/list.html?dev@arrow.apache.org).
 A script (`verify-release-candidate.sh`) is provided to verify such a release candidate.
-For example, to verify nanoarrow 0.1.0-rc1, one could run:
+For example, to verify nanoarrow 0.2.0-rc0, one could run:
 
-```
+```bash
 git clone https://github.com/apache/arrow-nanoarrow.git arrow-nanoarrow
 cd arrow-nanoarrow/dev/release
-./verify-release-candidate.sh 0.1.0 1
+./verify-release-candidate.sh 0.2.0 0
 ```
 
 Full verification requires [CMake](https://cmake.org/download/) to build and run the test
@@ -56,13 +56,13 @@ manager except on Windows (see below).
 To run only C library verification (requires CMake and Arrow C++ but not R):
 
 ```bash
-TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.1.0 1
+TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.2.0 0
 ```
 
 To run only R package verification (requires R but not CMake or Arrow C++):
 
 ```bash
-TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.1.0 1
+TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.2.0 0
 ```
 
 ### MacOS
@@ -109,8 +109,14 @@ conda create --name nanoarrow-verify-rc
 conda activate nanoarrow-verify-rc
 conda config --set channel_priority strict
 
-conda install -c conda-forge compilers git cmake gnupg arrow-cpp gtest
+conda install -c conda-forge compilers git cmake gnupg arrow-cpp
+# For R (see below about potential interactions with system R
+# before installing via conda on MacOS)
+conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild
 ```
+
+Note that using conda-provided R when there is also a system install of R
+on MacOS is unlikely to work.
 
 ### Windows
 
@@ -127,16 +133,16 @@ the verification script.
 
 ```bash
 # Build Arrow C++ from source
-curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
+curl https://dlcdn.apache.org/arrow/arrow-12.0.1/apache-arrow-12.0.1.tar.gz | \
   tar -zxf -
 mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-11.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+cmake ../apache-arrow-12.0.1/cpp -DCMAKE_INSTALL_PREFIX=../arrow
 cmake --build .
 cmake --install . --prefix=../arrow --config=Debug
 cd ..
 
 # Pass location of Arrow and R to the verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow"
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow gtest_force_shared_crt=ON"
 export R_HOME="/c/Program Files/R/R-4.2.2"
 ```
 
@@ -145,7 +151,7 @@ export R_HOME="/c/Program Files/R/R-4.2.2"
 On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install prerequisites using `apt`.
 
 ```bash
-apt-get update && apt-get install -y git cmake r-base gnupg curl
+apt-get update && apt-get install -y git g++ cmake r-base gnupg curl
 
 # For Arrow C++
 apt-get install -y -V ca-certificates lsb-release wget
@@ -154,6 +160,11 @@ apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename 
 apt-get update
 apt-get install -y -V libarrow-dev
 ```
+
+If you have never installed an R package before, R verification will fail when it
+tries to install any missing dependencies. Because of how R is configured by
+default, you must install your first package in an interactive session and select
+`yes` when it asks if you would like to create a user-specific directory.
 
 ### Fedora
 
@@ -175,24 +186,22 @@ pacman -S git gcc make cmake r-base gnupg curl arrow
 
 ### Alpine Linux
 
-On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), most prerequisites are available
-using `apk add` except Arrow C++ which must be built and installed from source.
+On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), most prerequisites are available using `apk add` except for Arrow C++ which requires enabling the
+community repository.
 
 ```bash
-apk add bash linux-headers git cmake R R-dev g++ gnupg curl
+# Enable community repository for Arrow C++. Alternatively, you can build Arrow C++
+# from source and pass its location via NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=...".
+cat > /etc/apk/repositories << EOF; $(echo)
 
-# Build Arrow C++ from source
-curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
-  tar -zxf -
-mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-11.0.0/cpp \
-    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE -DCMAKE_INSTALL_PREFIX=../arrow
-cmake --build .
-cmake --install . --prefix=../arrow
-cd ..
+https://dl-cdn.alpinelinux.org/alpine/v$(cut -d'.' -f1,2 /etc/alpine-release)/main/
+https://dl-cdn.alpinelinux.org/alpine/v$(cut -d'.' -f1,2 /etc/alpine-release)/community/
+https://dl-cdn.alpinelinux.org/alpine/edge/testing/
 
-# Pass location of Arrow to the verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
+EOF
+apk update
+
+apk add bash linux-headers git cmake R R-dev g++ gnupg curl apache-arrow-dev
 ```
 
 ### Centos7
@@ -206,20 +215,21 @@ compiler (gcc 4.8).
 yum install epel-release # needed to install R
 yum install git gnupg curl R gcc-c++ cmake3
 
-# Needed for R CMD check if the en_US.UTF-8 locale is not defined
+# Needed to get a warning-free R CMD check if the en_US.UTF-8 locale is not defined
 # (e.g., in the centos:7 docker image)
 # localedef -c -f UTF-8 -i en_US en_US.UTF-8
 # export LC_ALL=en_US.UTF-8
 
 # Build Arrow C++ 9.0.0 from source
-curl https://dlcdn.apache.org/arrow/arrow-9.0.0/apache-arrow-9.0.0.tar.gz | \
-  tar -zxf -
-mkdir arrow-build && cd arrow-build
-cmake3 ../apache-arrow-9.0.0/cpp \
-    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE -DCMAKE_INSTALL_PREFIX=../arrow
-cmake3 --build .
-make install
-cd ..
+curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
+    mkdir /arrow-build && \
+    cd /arrow-build && \
+    cmake3 ../arrow-apache-arrow-9.0.0/cpp \
+        -DARROW_JEMALLOC=OFF \
+        -DARROW_SIMD_LEVEL=NONE \
+        -DCMAKE_INSTALL_PREFIX=../arrow && \
+    cmake3 --build . && \
+    make install
 
 # Pass location of Arrow, cmake, and ctest to the verification script
 export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
@@ -231,7 +241,7 @@ export CTEST_BIN=ctest3
 
 One can verify a nanoarrow release candidate on big endian by setting
 `DOCKER_DEFAULT_PLATFORM=linux/s390x` and following the instructions for
-[Alpine Linux](#alpine-linux).
+[Alpine Linux](#alpine-linux) or [Fedora](#fedora).
 
 ## Creating a release candidate
 
@@ -242,11 +252,11 @@ and run
 ```bash
 # from the repository root
 # 01-prepare.sh <nanoarrow-dir> <prev_veresion> <version> <next_version> <rc-num>
-dev/release/01-prepare.sh . 0.0.0 0.1.0 0.2.0 1
+dev/release/01-prepare.sh . 0.0.0 0.2.0 0.3.0 0
 ```
 
 This will update version numbers, the changelong, and create the git tag
-`apache-arrow-nanoarrow-0.1.0-rc0`. Check to make sure that the changelog
+`apache-arrow-nanoarrow-0.2.0-rc0`. Check to make sure that the changelog
 and versions are what you expect them to be before pushing the tag (you
 may wish to do this by opening a dummy PR to run CI and look at the diff
 from the main branch). When you are satisfied that the code at this tag
@@ -268,7 +278,7 @@ file to exist setting the appropriate `GPG_KEY_ID` environment variable.
 
 ```
 # 02-sign.sh <version> <rc-num>
-dev/release/02-sign.sh 0.1.0 1
+dev/release/02-sign.sh 0.2.0 0
 ```
 
 Finally, run
@@ -325,14 +335,14 @@ After a passing release vote, the following tasks must be completed:
 Template for the email to announce@apache.org:
 
 ```
-[ANNOUNCE] Apache Arrow nanoarrow 0.1.0 Released
+[ANNOUNCE] Apache Arrow nanoarrow 0.2.0 Released
 
-The Apache Arrow community is pleased to announce the 0.1.0 release of Apache Arrow nanoarrow. This initial release covers 31 resolved issues from 6 contributors[1].
+The Apache Arrow community is pleased to announce the 0.2.0 release of Apache Arrow nanoarrow. This initial release covers 31 resolved issues from 6 contributors[1].
 
 The release is available now from [2].
 
 Release notes are available at:
-https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.1.0/CHANGELOG.md
+https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.2.0/CHANGELOG.md
 
 What is Apache Arrow?
 ---------------------
@@ -348,8 +358,8 @@ Please report any feedback to the mailing lists ([4], [5]).
 Regards,
 The Apache Arrow Community
 
-[1]: https://github.com/apache/arrow-nanoarrow/issues?q=is%3Aissue+milestone%3A%22nanoarrow+0.1.0%22+is%3Aclosed
-[2]: https://www.apache.org/dyn/closer.cgi/arrow/apache-arrow-nanoarrow-0.1.0
+[1]: https://github.com/apache/arrow-nanoarrow/issues?q=is%3Aissue+milestone%3A%22nanoarrow+0.2.0%22+is%3Aclosed
+[2]: https://www.apache.org/dyn/closer.cgi/arrow/apache-arrow-nanoarrow-0.2.0
 [3]: https://github.com/apache/arrow-nanoarrow
 [4]: https://lists.apache.org/list.html?user@arrow.apache.org
 [5]: https://lists.apache.org/list.html?dev@arrow.apache.org
