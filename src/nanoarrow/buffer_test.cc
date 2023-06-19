@@ -306,18 +306,29 @@ TEST(BitmapTest, BitmapTestCountSet) {
   ArrowBitSet(bitmap, 23);
   ArrowBitSet(bitmap, 74);
 
+  // Check masking of the last byte
   EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 80), 3);
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 57), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 79), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 78), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 77), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 76), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 75), 3);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 74), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 73), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 72), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 0, 71), 2);
 
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 0), 0);
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 1), 1);
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 2), 1);
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 3), 1);
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 4), 1);
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 5), 1);
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 6), 2);
-
-  EXPECT_EQ(ArrowBitCountSet(bitmap, 23, 1), 1);
+  // Check masking of the first byte
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 15, 17), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 16, 16), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 17, 15), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 18, 14), 2);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 19, 13), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 20, 12), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 21, 11), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 22, 10), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 23, 9), 1);
+  EXPECT_EQ(ArrowBitCountSet(bitmap, 24, 8), 0);
 }
 
 TEST(BitmapTest, BitmapTestCountSetSingleByte) {
