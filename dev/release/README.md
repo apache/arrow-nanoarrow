@@ -235,6 +235,11 @@ curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar
 export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
 export CMAKE_BIN=cmake3
 export CTEST_BIN=ctest3
+
+# gpg on centos7 errors for some keys in the Arrow KEYS file. This does
+# not skip verifying signatures, just allows errors for unsupported entries in
+# the global Arrow KEYS file.
+export NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR=1
 ```
 
 ### Big endian
