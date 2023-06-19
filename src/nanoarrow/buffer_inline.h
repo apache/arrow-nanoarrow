@@ -296,36 +296,37 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t start_offset
 
   const int64_t i_begin = start_offset;
   const int64_t i_end = start_offset + length;
+  const int64_t i_last_valid = i_end - 1;
 
   const int64_t bytes_begin = i_begin / 8;
-  const int64_t bytes_end = i_end / 8 + 1;
+  const int64_t bytes_last_valid = i_last_valid / 8;
 
-  if (bytes_end == bytes_begin + 1) {
+  if (bytes_begin == bytes_last_valid) {
     // count bits within a single byte
     const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_end % 8];
     const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_begin % 8];
 
     const uint8_t only_byte_mask =
-        i_end % 8 == 0 ? first_byte_mask : (uint8_t)(first_byte_mask & last_byte_mask);
+        i_end % 8 == 0 ? last_byte_mask : (uint8_t)(first_byte_mask & last_byte_mask);
 
     const uint8_t byte_masked = bits[bytes_begin] & only_byte_mask;
     return _ArrowkBytePopcount[byte_masked];
   }
 
   const uint8_t first_byte_mask = _ArrowkPrecedingBitmask[i_begin % 8];
-  const uint8_t last_byte_mask = _ArrowkTrailingBitmask[i_end % 8];
+  const uint8_t last_byte_mask = i_end % 8 == 0 ? 0 : _ArrowkTrailingBitmask[i_end % 8];
   int64_t count = 0;
 
   // first byte
   count += _ArrowkBytePopcount[bits[bytes_begin] & ~first_byte_mask];
 
   // middle bytes
-  for (int64_t i = bytes_begin + 1; i < (bytes_end - 1); i++) {
+  for (int64_t i = bytes_begin + 1; i < bytes_last_valid; i++) {
     count += _ArrowkBytePopcount[bits[i]];
   }
 
   // last byte
-  count += _ArrowkBytePopcount[bits[bytes_end - 1] & ~last_byte_mask];
+  count += _ArrowkBytePopcount[bits[bytes_last_valid] & ~last_byte_mask];
 
   return count;
 }
