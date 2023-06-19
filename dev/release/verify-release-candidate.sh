@@ -31,6 +31,10 @@
 #   If unset, the script will check out a version into NANOARROW_TMPDIR.
 # - NANOARROW_TMPDIR: Use to specify a persistent directory such that verification
 #   results are more easily retrieved.
+# - NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR: Don't stop verification even when
+#   "gpg --import KEYS" returns an error. In general, we should not use this
+#   to ensure importing all GPG keys. But newer algorithms such as ed25519 may
+#   not be supported in old GPG such as GPG on CentOS 7.
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
 # - TEST_C: Builds C libraries and tests using the default CMake
 #   configuration. Defaults to the value of TEST_SOURCE.
@@ -114,7 +118,12 @@ import_gpg_keys() {
     return 0
   fi
   download_dist_file KEYS
-  gpg --import KEYS
+
+  if [ "${NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR:-0}" -gt 0 ]; then
+    gpg --import KEYS || true
+  else
+    gpg --import KEYS
+  fi
 
   GPGKEYS_ALREADY_IMPORTED=1
 }
