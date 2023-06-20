@@ -118,6 +118,10 @@ conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild
 Note that using conda-provided R when there is also a system install of R
 on MacOS is unlikely to work.
 
+Linux users that have built and installed a custom build of Arrow C++ may
+have to `export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib` before running the
+verification script.
+
 ### Windows
 
 On Windows, prerequisites can be installed using officially provided
