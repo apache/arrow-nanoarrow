@@ -102,14 +102,16 @@ You can install R using the instructions provided on the
 ### Conda (Linux and MacOS)
 
 Using `conda`, one can install all requirements needed for verification on Linux
-or MacOS:
+or MacOS. Users are reccomended to install `gnupg` using
+a system installer because of interactions with other installations that
+may cause a crash.
 
 ```bash
 conda create --name nanoarrow-verify-rc
 conda activate nanoarrow-verify-rc
 conda config --set channel_priority strict
 
-conda install -c conda-forge compilers git cmake gnupg arrow-cpp
+conda install -c conda-forge compilers git cmake arrow-cpp
 # For R (see below about potential interactions with system R
 # before installing via conda on MacOS)
 conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild
