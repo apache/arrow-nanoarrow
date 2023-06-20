@@ -279,7 +279,6 @@ static int ArrowDeviceMetalCopyRequired(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
-                                                  struct ArrowDevice* device_event,
                                                   void* sync_event,
                                                   struct ArrowError* error) {
   if (sync_event == nullptr) {
