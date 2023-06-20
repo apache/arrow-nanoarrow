@@ -126,6 +126,8 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewInit)
 #define ArrowDeviceArrayViewReset \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewReset)
+#define ArrowDeviceArrayViewSetArrayMinimal \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewSetArrayMinimal)
 #define ArrowDeviceArrayViewSetArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewSetArray)
 #define ArrowDeviceArrayViewCopy \
@@ -236,10 +238,19 @@ void ArrowDeviceArrayViewInit(struct ArrowDeviceArrayView* device_array_view);
 /// \brief Release the underlying ArrowArrayView
 void ArrowDeviceArrayViewReset(struct ArrowDeviceArrayView* device_array_view);
 
+/// \brief Set minimal ArrowArrayView buffer information from a device array
+///
+/// A thin wrapper around ArrowArrayViewSetArrayMinimal() that does not attempt
+/// to resolve buffer sizes of variable-length buffers by copying data from the device.
+ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
+    struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
+    struct ArrowError* error);
+
 /// \brief Set ArrowArrayView buffer information from a device array
 ///
-/// Whereas ArrowArrayViewSetArray() works ArrowArray objects with CPU-accessible memory,
-/// it will crash arrays whose buffer addresses cannot be dereferenced.
+/// Runs ArrowDeviceArrayViewSetArrayMinimal() but also sets buffer sizes for
+/// variable-length buffers by copying data from the device. This function will block on
+/// the device_array's sync_event.
 ArrowErrorCode ArrowDeviceArrayViewSetArray(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     struct ArrowError* error);

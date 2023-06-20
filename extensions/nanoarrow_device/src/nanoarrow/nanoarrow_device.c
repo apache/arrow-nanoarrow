@@ -303,7 +303,7 @@ static ArrowErrorCode ArrowDeviceBufferGetInt64(struct ArrowDevice* device,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowDeviceArrayViewValidateDefault(
+static ArrowErrorCode ArrowDeviceArrayViewResolveBufferSizes(
     struct ArrowDevice* device, struct ArrowArrayView* array_view) {
   // Calculate buffer sizes or child lengths that require accessing the offsets
   // buffer. Unlike the nanoarrow core default validation, this just checks the
@@ -323,8 +323,6 @@ static ArrowErrorCode ArrowDeviceArrayViewValidateDefault(
         // If the data buffer size is unknown, assign it; otherwise, check it
         if (array_view->buffer_views[2].size_bytes == -1) {
           array_view->buffer_views[2].size_bytes = last_offset32;
-        } else if (array_view->buffer_views[2].size_bytes < last_offset32) {
-          return EINVAL;
         }
       }
       break;
@@ -338,29 +336,6 @@ static ArrowErrorCode ArrowDeviceArrayViewValidateDefault(
         // If the data buffer size is unknown, assign it; otherwise, check it
         if (array_view->buffer_views[2].size_bytes == -1) {
           array_view->buffer_views[2].size_bytes = last_offset64;
-        } else if (array_view->buffer_views[2].size_bytes < last_offset64) {
-          return EINVAL;
-        }
-      }
-      break;
-
-    case NANOARROW_TYPE_LIST:
-    case NANOARROW_TYPE_MAP:
-      if (array_view->buffer_views[1].size_bytes != 0) {
-        NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferGetInt32(
-            device, array_view->buffer_views[1], offset_plus_length, &last_offset32));
-        if (array_view->children[0]->length < last_offset32) {
-          return EINVAL;
-        }
-      }
-      break;
-
-    case NANOARROW_TYPE_LARGE_LIST:
-      if (array_view->buffer_views[1].size_bytes != 0) {
-        NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferGetInt64(
-            device, array_view->buffer_views[1], offset_plus_length, &last_offset64));
-        if (array_view->children[0]->length < last_offset64) {
-          return EINVAL;
         }
       }
       break;
@@ -371,15 +346,16 @@ static ArrowErrorCode ArrowDeviceArrayViewValidateDefault(
   // Recurse for children
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceArrayViewValidateDefault(device, array_view->children[i]));
+        ArrowDeviceArrayViewResolveBufferSizes(device, array_view->children[i]));
   }
 
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowDeviceArrayViewSetArray(
+ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     struct ArrowError* error) {
+  // Resolve device
   struct ArrowDevice* device =
       ArrowDeviceResolve(device_array->device_type, device_array->device_id);
   if (device == NULL) {
@@ -388,21 +364,31 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
     return EINVAL;
   }
 
-  // Wait on device_array to synchronize with the CPU
-  NANOARROW_RETURN_NOT_OK(
-      device->synchronize_event(device, device_array->sync_event, error));
-
   // Set the device array device
   device_array_view->device = device;
 
-  // nanoarrow's minimal validation is fine here (sets buffer sizes for non offset-buffer
-  // types and errors for invalid ones)
+  // Populate the array_view
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayMinimal(&device_array_view->array_view,
                                                         &device_array->array, error));
-  // Run custom validator that copies memory to the CPU where required.
-  // The custom implementation doesn't set nice error messages yet.
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowDeviceArrayViewSetArray(
+    struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
+    struct ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      ArrowDeviceArrayViewSetArrayMinimal(device_array_view, device_array, error));
+
+  // Wait on device_array to synchronize with the CPU
+  NANOARROW_RETURN_NOT_OK(device_array_view->device->synchronize_event(
+      device_array_view->device, device_array->sync_event, error));
+
+  // Resolve unknown buffer sizes (i.e., string, binary, large string, large binary)
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowDeviceArrayViewValidateDefault(device, &device_array_view->array_view), error);
+      ArrowDeviceArrayViewResolveBufferSizes(device_array_view->device,
+                                             &device_array_view->array_view),
+      error);
 
   return NANOARROW_OK;
 }
