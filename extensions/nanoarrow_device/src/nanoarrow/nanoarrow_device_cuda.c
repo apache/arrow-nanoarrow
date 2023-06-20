@@ -267,19 +267,18 @@ static int ArrowDeviceCudaCopyRequired(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
-                                                 struct ArrowDevice* device_event,
                                                  void* sync_event,
                                                  struct ArrowError* error) {
   if (sync_event == NULL) {
     return NANOARROW_OK;
   }
 
-  if (device_event->device_type != ARROW_DEVICE_CUDA ||
-      device_event->device_type != ARROW_DEVICE_CUDA_HOST) {
+  if (device->device_type != ARROW_DEVICE_CUDA ||
+      device->device_type != ARROW_DEVICE_CUDA_HOST) {
     return ENOTSUP;
   }
 
-  // Pointer vs. not pointer...is there memory ownership to consider here?
+  // Memory for cuda_event is owned by the ArrowArray member of the ArrowDeviceArray
   cudaEvent_t* cuda_event = (cudaEvent_t*)sync_event;
   cudaError_t result = cudaEventSynchronize(*cuda_event);
 
@@ -288,7 +287,6 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
     return EINVAL;
   }
 
-  cudaEventDestroy(*cuda_event);
   return NANOARROW_OK;
 }
 

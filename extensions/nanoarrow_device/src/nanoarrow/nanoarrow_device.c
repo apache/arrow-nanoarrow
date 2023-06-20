@@ -96,10 +96,9 @@ static int ArrowDeviceCpuCopyRequired(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
-                                                struct ArrowDevice* device_event,
                                                 void* sync_event,
                                                 struct ArrowError* error) {
-  switch (device_event->device_type) {
+  switch (device->device_type) {
     case ARROW_DEVICE_CPU:
       if (sync_event != NULL) {
         ArrowErrorSet(error, "Expected NULL sync_event for ARROW_DEVICE_CPU but got %p",
@@ -109,7 +108,7 @@ static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
         return NANOARROW_OK;
       }
     default:
-      return device_event->synchronize_event(device_event, device, sync_event, error);
+      return device->synchronize_event(device, sync_event, error);
   }
 }
 
@@ -400,9 +399,8 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
   }
 
   // Wait on device_array to synchronize with the CPU
-  NANOARROW_RETURN_NOT_OK(device->synchronize_event(ArrowDeviceCpu(), device,
-                                                    device_array->sync_event, error));
-  device_array->sync_event = NULL;
+  NANOARROW_RETURN_NOT_OK(
+      device->synchronize_event(device, device_array->sync_event, error));
 
   // Set the device array device
   device_array_view->device = device;

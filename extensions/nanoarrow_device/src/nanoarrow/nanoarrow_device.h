@@ -222,12 +222,8 @@ struct ArrowDevice {
   int (*copy_required)(struct ArrowDevice* device_src, struct ArrowArrayView* src,
                        struct ArrowDevice* device_dst);
 
-  /// \brief Wait for an event
-  ///
-  /// Implementations should handle at least waiting on the CPU host.
-  /// Implementations do not have to handle a NULL sync_event.
-  ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device,
-                                      struct ArrowDevice* device_event, void* sync_event,
+  /// \brief Wait for an event on the CPU host
+  ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device, void* sync_event,
                                       struct ArrowError* error);
 
   /// \brief Release this device and any resources it holds
