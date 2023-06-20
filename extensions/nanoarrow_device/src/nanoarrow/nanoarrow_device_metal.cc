@@ -133,7 +133,7 @@ ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array) {
 }
 
 static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
-                                                 struct ArrowDeviceBufferView src,
+                                                 struct ArrowBufferView src,
                                                  struct ArrowDevice* device_dst,
                                                  struct ArrowBuffer* dst) {
   if (device_src->device_type == ARROW_DEVICE_CPU &&
@@ -141,7 +141,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
     struct ArrowBuffer tmp;
     ArrowDeviceMetalInitBuffer(&tmp);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-        &tmp, reinterpret_cast<const uint8_t*>(src.private_data) + src.offset_bytes,
+        &tmp, src.data.as_uint8,
         src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
@@ -151,7 +151,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
     struct ArrowBuffer tmp;
     ArrowDeviceMetalInitBuffer(&tmp);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-        &tmp, reinterpret_cast<const uint8_t*>(src.private_data) + src.offset_bytes,
+        &tmp, src.data.as_uint8,
         src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
@@ -161,7 +161,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
     struct ArrowBuffer tmp;
     ArrowDeviceMetalInitBuffer(&tmp);
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-        &tmp, reinterpret_cast<const uint8_t*>(src.private_data) + src.offset_bytes,
+        &tmp, src.data.as_uint8,
         src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
@@ -210,24 +210,24 @@ static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
-                                                 struct ArrowDeviceBufferView src,
+                                                 struct ArrowBufferView src,
                                                  struct ArrowDevice* device_dst,
-                                                 struct ArrowDeviceBufferView dst) {
+                                                 struct ArrowBufferView dst) {
   // This is all just memcpy since it's all living in the same address space
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
-    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
-           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    memcpy(dst.data.as_uint8,
+           src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
-    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
-           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    memcpy(dst.data.as_uint8,
+           src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
-           ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+    memcpy(dst.data.as_uint8,
+           src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else {
     return ENOTSUP;

@@ -42,7 +42,7 @@ void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
 }
 
 static ArrowErrorCode ArrowDeviceCpuBufferInit(struct ArrowDevice* device_src,
-                                               struct ArrowDeviceBufferView src,
+                                               struct ArrowBufferView src,
                                                struct ArrowDevice* device_dst,
                                                struct ArrowBuffer* dst) {
   if (device_dst->device_type != ARROW_DEVICE_CPU ||
@@ -52,8 +52,7 @@ static ArrowErrorCode ArrowDeviceCpuBufferInit(struct ArrowDevice* device_src,
 
   ArrowBufferInit(dst);
   dst->allocator = ArrowBufferAllocatorDefault();
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-      dst, ((uint8_t*)src.private_data) + src.offset_bytes, src.size_bytes));
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(dst, src.data.as_uint8, src.size_bytes));
   return NANOARROW_OK;
 }
 
@@ -71,16 +70,15 @@ static ArrowErrorCode ArrowDeviceCpuBufferMove(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
-                                               struct ArrowDeviceBufferView src,
+                                               struct ArrowBufferView src,
                                                struct ArrowDevice* device_dst,
-                                               struct ArrowDeviceBufferView dst) {
+                                               struct ArrowBufferView dst) {
   if (device_dst->device_type != ARROW_DEVICE_CPU ||
       device_src->device_type != ARROW_DEVICE_CPU) {
     return ENOTSUP;
   }
 
-  memcpy(((uint8_t*)dst.private_data) + dst.offset_bytes,
-         ((uint8_t*)src.private_data) + src.offset_bytes, dst.size_bytes);
+  memcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
   return NANOARROW_OK;
 }
 
@@ -168,7 +166,7 @@ struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t devi
 }
 
 ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
-                                     struct ArrowDeviceBufferView src,
+                                     struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
                                      struct ArrowBuffer* dst) {
   int result = device_dst->buffer_init(device_src, src, device_dst, dst);
@@ -192,9 +190,9 @@ ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
 }
 
 ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
-                                     struct ArrowDeviceBufferView src,
+                                     struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
-                                     struct ArrowDeviceBufferView dst) {
+                                     struct ArrowBufferView dst) {
   int result = device_dst->buffer_copy(device_src, src, device_dst, dst);
   if (result == ENOTSUP) {
     result = device_src->buffer_copy(device_src, src, device_dst, dst);
@@ -278,16 +276,12 @@ void ArrowDeviceArrayViewReset(struct ArrowDeviceArrayView* device_array_view) {
 static ArrowErrorCode ArrowDeviceBufferGetInt32(struct ArrowDevice* device,
                                                 struct ArrowBufferView buffer_view,
                                                 int64_t i, int32_t* out) {
-  struct ArrowDeviceBufferView device_buffer_view;
-  void* sync_event = NULL;
-
-  struct ArrowDeviceBufferView out_view;
-  out_view.private_data = out;
-  out_view.offset_bytes = 0;
+  struct ArrowBufferView out_view;
+  out_view.data.as_int32 = out;
   out_view.size_bytes = sizeof(int32_t);
 
-  device_buffer_view.private_data = buffer_view.data.data;
-  device_buffer_view.offset_bytes = i * sizeof(int32_t);
+  struct ArrowBufferView device_buffer_view;
+  device_buffer_view.data.as_int32 = buffer_view.data.as_int32 + i;
   device_buffer_view.size_bytes = sizeof(int32_t);
   NANOARROW_RETURN_NOT_OK(
       ArrowDeviceBufferCopy(device, device_buffer_view, ArrowDeviceCpu(), out_view));
@@ -297,16 +291,12 @@ static ArrowErrorCode ArrowDeviceBufferGetInt32(struct ArrowDevice* device,
 static ArrowErrorCode ArrowDeviceBufferGetInt64(struct ArrowDevice* device,
                                                 struct ArrowBufferView buffer_view,
                                                 int64_t i, int64_t* out) {
-  struct ArrowDeviceBufferView device_buffer_view;
-  void* sync_event = NULL;
-
-  struct ArrowDeviceBufferView out_view;
-  out_view.private_data = out;
-  out_view.offset_bytes = 0;
+  struct ArrowBufferView out_view;
+  out_view.data.as_int64 = out;
   out_view.size_bytes = sizeof(int64_t);
 
-  device_buffer_view.private_data = buffer_view.data.data;
-  device_buffer_view.offset_bytes = i * sizeof(int64_t);
+  struct ArrowBufferView device_buffer_view;
+  device_buffer_view.data.as_int64 = buffer_view.data.as_int64 + i;
   device_buffer_view.size_bytes = sizeof(int64_t);
   NANOARROW_RETURN_NOT_OK(
       ArrowDeviceBufferCopy(device, device_buffer_view, ArrowDeviceCpu(), out_view));
@@ -427,18 +417,13 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
   dst->offset = src->offset;
   dst->null_count = src->null_count;
 
-  struct ArrowDeviceBufferView buffer_view_src;
-  buffer_view_src.offset_bytes = 0;
-
   for (int i = 0; i < 3; i++) {
     if (src->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
 
-    buffer_view_src.private_data = src->buffer_views[i].data.data;
-    buffer_view_src.size_bytes = src->buffer_views[i].size_bytes;
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferInit(device_src, buffer_view_src, device_dst,
-                                                  ArrowArrayBuffer(dst, i)));
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferInit(device_src, src->buffer_views[i],
+                                                  device_dst, ArrowArrayBuffer(dst, i)));
   }
 
   for (int64_t i = 0; i < src->n_children; i++) {

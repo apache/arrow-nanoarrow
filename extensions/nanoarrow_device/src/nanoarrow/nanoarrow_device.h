@@ -155,24 +155,6 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 
-/// \brief A description of a buffer
-struct ArrowDeviceBufferView {
-  /// \brief Device-defined handle for a buffer.
-  ///
-  /// For the CPU device, this is a normal memory address; for all other types that are
-  /// currently supported, this is a device memory address on which CPU-like arithmetic
-  /// can be performed. This may not be true for future devices (i.e., it may be a pointer
-  /// to some buffer abstraction if the concept of a memory address does not exist or
-  /// is impractical).
-  const void* private_data;
-
-  /// \brief An offset into the buffer handle defined by private_data
-  int64_t offset_bytes;
-
-  /// \brief The size of the buffer in bytes
-  int64_t size_bytes;
-};
-
 /// \brief A Device wrapper with callbacks for basic memory management tasks
 ///
 /// All device objects are currently implemented as singletons; however, this
@@ -191,7 +173,7 @@ struct ArrowDevice {
   /// Implementations must check device_src and device_dst and return ENOTSUP if
   /// not prepared to handle this operation.
   ArrowErrorCode (*buffer_init)(struct ArrowDevice* device_src,
-                                struct ArrowDeviceBufferView src,
+                                struct ArrowBufferView src,
                                 struct ArrowDevice* device_dst, struct ArrowBuffer* dst);
 
   /// \brief Move an owning buffer to a device
@@ -212,9 +194,9 @@ struct ArrowDevice {
   /// Implementations must check device_src and device_dst and return ENOTSUP if
   /// not prepared to handle this operation.
   ArrowErrorCode (*buffer_copy)(struct ArrowDevice* device_src,
-                                struct ArrowDeviceBufferView src,
+                                struct ArrowBufferView src,
                                 struct ArrowDevice* device_dst,
-                                struct ArrowDeviceBufferView dst);
+                                struct ArrowBufferView dst);
 
   /// \brief Check if a copy is required to move between devices
   ///
@@ -297,7 +279,7 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device);
 struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id);
 
 ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
-                                     struct ArrowDeviceBufferView src,
+                                     struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
                                      struct ArrowBuffer* dst);
 
@@ -307,9 +289,9 @@ ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
                                      struct ArrowBuffer* dst);
 
 ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
-                                     struct ArrowDeviceBufferView src,
+                                     struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
-                                     struct ArrowDeviceBufferView dst);
+                                     struct ArrowBufferView dst);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
 ///

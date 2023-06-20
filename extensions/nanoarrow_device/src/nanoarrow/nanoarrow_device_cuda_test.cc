@@ -43,13 +43,13 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferInit) {
   struct ArrowBuffer buffer_gpu;
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
+  struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
   // CPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer_gpu), NANOARROW_OK);
   EXPECT_EQ(buffer_gpu.size_bytes, sizeof(data));
   // (Content is tested on the roundtrip)
-  struct ArrowDeviceBufferView gpu_view = {buffer_gpu.data, 0, buffer_gpu.size_bytes};
+  struct ArrowBufferView gpu_view = {buffer_gpu.data, buffer_gpu.size_bytes};
 
   // GPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, gpu, &buffer), NANOARROW_OK);
@@ -72,14 +72,14 @@ TEST(NanoarrowDeviceCuda, DeviceCudaHostBufferInit) {
   struct ArrowBuffer buffer_gpu;
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
+  struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
   // CPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer_gpu), NANOARROW_OK);
   EXPECT_EQ(buffer_gpu.size_bytes, sizeof(data));
   EXPECT_EQ(memcmp(buffer_gpu.data, data, sizeof(data)), 0);
   // Here, "GPU" is memory in the CPU space allocated by cudaMallocHost
-  struct ArrowDeviceBufferView gpu_view = {buffer_gpu.data, 0, buffer_gpu.size_bytes};
+  struct ArrowBufferView gpu_view = {buffer_gpu.data, buffer_gpu.size_bytes};
 
   // GPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferInit(gpu, gpu_view, gpu, &buffer), NANOARROW_OK);
@@ -100,18 +100,18 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowDeviceBufferView cpu_view = {data, 0, sizeof(data)};
+  struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
   void* gpu_dest;
   cudaError_t result = cudaMalloc(&gpu_dest, sizeof(data));
-  struct ArrowDeviceBufferView gpu_view = {gpu_dest, 0, sizeof(data)};
+  struct ArrowBufferView gpu_view = {gpu_dest, sizeof(data)};
   if (result != cudaSuccess) {
     GTEST_FAIL() << "cudaMalloc(&gpu_dest) failed";
   }
 
   void* gpu_dest2;
   result = cudaMalloc(&gpu_dest2, sizeof(data));
-  struct ArrowDeviceBufferView gpu_view2 = {gpu_dest2, 0, sizeof(data)};
+  struct ArrowBufferView gpu_view2 = {gpu_dest2, sizeof(data)};
   if (result != cudaSuccess) {
     GTEST_FAIL() << "cudaMalloc(&gpu_dest2) failed";
   }
@@ -124,7 +124,7 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
 
   // GPU -> CPU
   uint8_t cpu_dest[5];
-  struct ArrowDeviceBufferView cpu_dest_view = {cpu_dest, 0, sizeof(data)};
+  struct ArrowBufferView cpu_dest_view = {cpu_dest, sizeof(data)};
   ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, cpu, cpu_dest_view), NANOARROW_OK);
 
   // Check roundtrip
