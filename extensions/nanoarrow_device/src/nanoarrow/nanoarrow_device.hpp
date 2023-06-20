@@ -26,6 +26,7 @@ namespace internal {
 
 static inline void init_pointer(struct ArrowDeviceArray* data) {
   data->array.release = nullptr;
+  data->sync_event = nullptr;
 }
 
 static inline void move_pointer(struct ArrowDeviceArray* src,
@@ -37,6 +38,8 @@ static inline void release_pointer(struct ArrowDeviceArray* data) {
   if (data->array.release != nullptr) {
     data->array.release(&data->array);
   }
+
+  data->sync_event = nullptr;
 }
 
 static inline void init_pointer(struct ArrowDeviceArrayStream* data) {

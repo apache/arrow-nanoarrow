@@ -22,7 +22,6 @@
 TEST(NanoarrowDeviceHpp, UniqueDeviceArray) {
   nanoarrow::device::UniqueDeviceArray array;
   ASSERT_EQ(array->array.release, nullptr);
-  ArrowDeviceArrayInit(array.get(), ArrowDeviceCpu());
 
   ASSERT_EQ(ArrowArrayInitFromType(&array->array, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_NE(array->array.release, nullptr);

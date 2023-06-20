@@ -22,6 +22,7 @@
 static void ArrowDeviceCudaAllocatorFree(struct ArrowBufferAllocator* allocator,
                                          uint8_t* ptr, int64_t old_size) {
   if (ptr != NULL) {
+    // TODO: We need the device_id here
     cudaFree(ptr);
   }
 }
@@ -46,7 +47,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowBuffer* buffer,
   buffer->capacity_bytes = size_bytes;
   buffer->allocator.reallocate = &ArrowDeviceCudaAllocatorReallocate;
   buffer->allocator.free = &ArrowDeviceCudaAllocatorFree;
-  // TODO: We almost certainly need device_id here
+  // TODO: We need the device_id here
   buffer->allocator.private_data = NULL;
   return NANOARROW_OK;
 }
@@ -54,6 +55,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowBuffer* buffer,
 static void ArrowDeviceCudaHostAllocatorFree(struct ArrowBufferAllocator* allocator,
                                              uint8_t* ptr, int64_t old_size) {
   if (ptr != NULL) {
+    // TODO: We need the device_id here
     cudaFreeHost(ptr);
   }
 }
@@ -78,8 +80,52 @@ static ArrowErrorCode ArrowDeviceCudaHostAllocateBuffer(struct ArrowBuffer* buff
   buffer->capacity_bytes = size_bytes;
   buffer->allocator.reallocate = &ArrowDeviceCudaHostAllocatorReallocate;
   buffer->allocator.free = &ArrowDeviceCudaHostAllocatorFree;
-  // TODO: We almost certainly need device_id here
+  // TODO: We need the device_id here
   buffer->allocator.private_data = NULL;
+  return NANOARROW_OK;
+}
+
+struct ArrowDeviceCudaArrayPrivate {
+  struct ArrowArray parent;
+  cudaEvent_t sync_event;
+};
+
+static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
+  struct ArrowDeviceCudaArrayPrivate* private_data =
+      (struct ArrowDeviceCudaArrayPrivate*)array->private_data;
+  cudaEventDestroy(private_data->sync_event);
+  private_data->parent.release(&private_data->parent);
+  ArrowFree(private_data);
+  array->release = NULL;
+}
+
+static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
+                                               struct ArrowDeviceArray* device_array,
+                                               struct ArrowArray* array) {
+  struct ArrowDeviceCudaArrayPrivate* private_data =
+      (struct ArrowDeviceCudaArrayPrivate*)ArrowMalloc(
+          sizeof(struct ArrowDeviceCudaArrayPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  // TODO: Set device
+  cudaError_t error = cudaEventCreate(&private_data->sync_event);
+  if (error != cudaSuccess) {
+    ArrowFree(private_data);
+    return EINVAL;
+  }
+
+  memset(device_array, 0, sizeof(struct ArrowDeviceArray));
+  device_array->array = *array;
+  device_array->array.private_data = private_data;
+  device_array->array.release = &ArrowDeviceCudaArrayRelease;
+  ArrowArrayMove(array, &private_data->parent);
+
+  device_array->device_id = device->device_id;
+  device_array->device_type = device->device_type;
+  device_array->sync_event = &private_data->sync_event;
+
   return NANOARROW_OK;
 }
 
@@ -309,6 +355,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
 
   device->device_type = device_type;
   device->device_id = device_id;
+  device->array_init = &ArrowDeviceCudaArrayInit;
   device->buffer_init = &ArrowDeviceCudaBufferInit;
   device->buffer_move = NULL;
   device->buffer_copy = &ArrowDeviceCudaBufferCopy;
@@ -316,6 +363,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   device->synchronize_event = &ArrowDeviceCudaSynchronize;
   device->release = &ArrowDeviceCudaRelease;
   device->private_data = NULL;
+
   return NANOARROW_OK;
 }
 

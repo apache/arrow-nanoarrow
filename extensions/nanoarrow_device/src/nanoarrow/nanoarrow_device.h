@@ -168,6 +168,17 @@ struct ArrowDevice {
   /// \brief The device identifier (see ArrowDeviceArray)
   int64_t device_id;
 
+  /// \brief Initialize an ArrowDeviceArray from a previously allocated ArrowArray
+  ///
+  /// Given a device and an uninitialized device_array, populate the fields of the
+  /// device_array (including sync_event) appropriately. If NANOARROW_OK is returned,
+  /// ownership of array is transferred to device_array. This function must allocate
+  /// the appropriate sync_event and make its address available as
+  /// device_array->sync_event (if sync_event applies to this device type).
+  ArrowErrorCode (*array_init)(struct ArrowDevice* device,
+                               struct ArrowDeviceArray* device_array,
+                               struct ArrowArray* array);
+
   /// \brief Initialize an owning buffer from existing content
   ///
   /// Creates a new buffer whose data member can be accessed by the GPU by
@@ -224,9 +235,11 @@ struct ArrowDeviceArrayView {
 
 /// \brief Initialize an ArrowDeviceArray
 ///
-/// Zeroes the memory of device_array and initializes it for a given device.
-void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
-                          struct ArrowDevice* device);
+/// Given an ArrowArray whose buffers/release callback has been set appropriately,
+/// initialize an ArrowDeviceArray.
+ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
+                                    struct ArrowDeviceArray* device_array,
+                                    struct ArrowArray* array);
 
 /// \brief Initialize an ArrowDeviceArrayView
 ///

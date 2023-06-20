@@ -34,11 +34,13 @@ ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-void ArrowDeviceArrayInit(struct ArrowDeviceArray* device_array,
-                          struct ArrowDevice* device) {
+static void ArrowDeviceArrayInitDefault(struct ArrowDevice* device,
+                                        struct ArrowDeviceArray* device_array,
+                                        struct ArrowArray* array) {
   memset(device_array, 0, sizeof(struct ArrowDeviceArray));
   device_array->device_type = device->device_type;
   device_array->device_id = device->device_id;
+  ArrowArrayMove(array, &device_array->array);
 }
 
 static ArrowErrorCode ArrowDeviceCpuBufferInit(struct ArrowDevice* device_src,
@@ -78,7 +80,7 @@ static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
     return ENOTSUP;
   }
 
-  memcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
+  memcpy((uint8_t*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
   return NANOARROW_OK;
 }
 
@@ -165,6 +167,17 @@ struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t devi
   return NULL;
 }
 
+ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
+                                    struct ArrowDeviceArray* device_array,
+                                    struct ArrowArray* array) {
+  if (device->array_init != NULL) {
+    return device->array_init(device, device_array, array);
+  } else {
+    ArrowDeviceArrayInitDefault(device, device_array, array);
+    return NANOARROW_OK;
+  }
+}
+
 ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
                                      struct ArrowBufferView src,
                                      struct ArrowDevice* device_dst,
@@ -221,8 +234,12 @@ static int ArrowDeviceBasicArrayStreamGetNext(struct ArrowDeviceArrayStream* arr
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(
       private_data->naive_stream.get_next(&private_data->naive_stream, &tmp));
-  ArrowDeviceArrayInit(device_array, private_data->device);
-  ArrowArrayMove(&tmp, &device_array->array);
+  int result = ArrowDeviceArrayInit(private_data->device, device_array, &tmp);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
   return NANOARROW_OK;
 }
 
@@ -444,10 +461,12 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
     return result;
   }
 
-  ArrowDeviceArrayInit(dst, device_dst);
-  ArrowArrayMove(&tmp, &dst->array);
-  dst->device_type = device_dst->device_type;
-  dst->device_id = device_dst->device_id;
+  result = ArrowDeviceArrayInit(device_dst, dst, &tmp);
+  if (result != NANOARROW_OK) {
+    tmp.release(&tmp);
+    return result;
+  }
+
   return result;
 }
 

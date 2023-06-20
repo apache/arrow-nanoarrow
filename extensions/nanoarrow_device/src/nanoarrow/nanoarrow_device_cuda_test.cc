@@ -168,8 +168,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
-  ArrowDeviceArrayInit(&device_array, cpu);
-  ArrowArrayMove(&array, &device_array.array);
+  ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array), NANOARROW_OK);
 
   ArrowDeviceArrayViewInit(&device_array_view);
   ArrowArrayViewInitFromType(&device_array_view.array_view, string_type);
@@ -263,8 +262,7 @@ TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewList) {
 
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
-  ArrowDeviceArrayInit(&device_array, cpu);
-  ArrowArrayMove(&array, &device_array.array);
+  ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array), NANOARROW_OK);
 
   ArrowDeviceArrayViewInit(&device_array_view);
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&device_array_view.array_view, &schema, nullptr),
