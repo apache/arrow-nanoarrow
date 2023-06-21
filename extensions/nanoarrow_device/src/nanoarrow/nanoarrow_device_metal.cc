@@ -32,16 +32,21 @@
 // release the underlying memory (which must be managed separately).
 static MTL::Buffer* ArrowDeviceMetalWrapBufferNonOwning(MTL::Device* mtl_device,
                                                         const void* arbitrary_addr,
-                                                        int64_t size_bytes) {
-  // We can wrap any zero-size buffer
-  if (size_bytes == 0) {
-    return mtl_device->newBuffer(0, MTL::ResourceStorageModeShared);
-  }
-
+                                                        int64_t size_bytes = -1) {
   // Cache the page size from the system call
   static int pagesize = 0;
   if (pagesize == 0) {
     pagesize = getpagesize();
+  }
+
+  // If we don't know the size of the buffer yet, try pagesize
+  if (size_bytes == -1) {
+    size_bytes = pagesize;
+  }
+
+  // We can wrap any zero-size buffer
+  if (size_bytes == 0) {
+    return mtl_device->newBuffer(0, MTL::ResourceStorageModeShared);
   }
 
   int64_t allocation_size;
@@ -140,9 +145,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
       device_dst->device_type == ARROW_DEVICE_METAL) {
     struct ArrowBuffer tmp;
     ArrowDeviceMetalInitBuffer(&tmp);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-        &tmp, src.data.as_uint8,
-        src.size_bytes));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.data.as_uint8, src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
 
@@ -150,9 +153,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
              device_dst->device_type == ARROW_DEVICE_METAL) {
     struct ArrowBuffer tmp;
     ArrowDeviceMetalInitBuffer(&tmp);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-        &tmp, src.data.as_uint8,
-        src.size_bytes));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.data.as_uint8, src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
 
@@ -160,9 +161,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
              device_dst->device_type == ARROW_DEVICE_CPU) {
     struct ArrowBuffer tmp;
     ArrowDeviceMetalInitBuffer(&tmp);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
-        &tmp, src.data.as_uint8,
-        src.size_bytes));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.data.as_uint8, src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
 
@@ -216,72 +215,79 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
   // This is all just memcpy since it's all living in the same address space
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
-    memcpy((void*)dst.data.as_uint8,
-           src.data.as_uint8, dst.size_bytes);
+    memcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
-    memcpy((void*)dst.data.as_uint8,
-           src.data.as_uint8, dst.size_bytes);
+    memcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    memcpy((void*)dst.data.as_uint8,
-           src.data.as_uint8, dst.size_bytes);
+    memcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else {
     return ENOTSUP;
   }
 }
 
-static int ArrowDeviceMetalCopyRequired(struct ArrowDevice* device_src,
-                                        struct ArrowArrayView* src,
-                                        struct ArrowDevice* device_dst) {
-  if (device_src->device_type == ARROW_DEVICE_CPU &&
-      device_dst->device_type == ARROW_DEVICE_METAL) {
-    // Only if all buffers in src can be wrapped as an MTL::Buffer
-    auto mtl_device = reinterpret_cast<MTL::Device*>(device_dst->private_data);
-    for (int i = 0; i < 3; i++) {
-      if (src->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
-        break;
-      }
-
-      MTL::Buffer* maybe_buffer = ArrowDeviceMetalWrapBufferNonOwning(
-          mtl_device, src->buffer_views[i].data.data, src->buffer_views[i].size_bytes);
-      if (maybe_buffer == nullptr) {
-        return true;
-      }
-
-      maybe_buffer->release();
+static int ArrowDeviceMetalCopyRequiredCpuToMetal(MTL::Device* mtl_device,
+                                                  struct ArrowArray* src) {
+  // Only if all buffers in src can be wrapped as an MTL::Buffer
+  for (int i = 0; i < src->n_buffers; i++) {
+    MTL::Buffer* maybe_buffer =
+        ArrowDeviceMetalWrapBufferNonOwning(mtl_device, src->buffers[i]);
+    if (maybe_buffer == nullptr) {
+      return true;
     }
 
-    for (int64_t i = 0; i < src->n_children; i++) {
-      int result = ArrowDeviceMetalCopyRequired(device_src, src->children[i], device_dst);
-      if (result != 0) {
-        return result;
-      }
-    }
-
-    return false;
-
-  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
-             device_dst->device_type == ARROW_DEVICE_METAL) {
-    // Metal -> Metal is always a move
-    return 0;
-  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
-             device_dst->device_type == ARROW_DEVICE_CPU) {
-    // We can always go from super-aligned metal land to CPU land
-    return 0;
-  } else {
-    // Fall back to the other device's implementation
-    return -1;
+    maybe_buffer->release();
   }
+
+  for (int64_t i = 0; i < src->n_children; i++) {
+    int result = ArrowDeviceMetalCopyRequiredCpuToMetal(mtl_device, src->children[i]);
+    if (result != 0) {
+      return result;
+    }
+  }
+
+  return false;
 }
 
 static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
                                                   void* sync_event,
                                                   struct ArrowError* error) {
   if (sync_event == nullptr) {
+    return NANOARROW_OK;
+  }
+
+  return ENOTSUP;
+}
+
+static ArrowErrorCode ArrowDeviceMetalArrayMove(struct ArrowDevice* device_src,
+                                                struct ArrowDeviceArray* src,
+                                                struct ArrowDevice* device_dst,
+                                                struct ArrowDeviceArray* dst) {
+  // Note that the case where the devices are the same is handled before this
+
+  if (device_src->device_type == ARROW_DEVICE_CPU &&
+      device_dst->device_type == ARROW_DEVICE_METAL) {
+    // Check if we can do the move (i.e., if all buffers are page-aligned)
+    auto mtl_device = reinterpret_cast<MTL::Device*>(device_dst->private_data);
+    if (ArrowDeviceMetalCopyRequiredCpuToMetal(mtl_device, &src->array)) {
+      return ENOTSUP;
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayInit(device_dst, dst, &src->array));
+    return NANOARROW_OK;
+
+  } else if (device_src->device_type == ARROW_DEVICE_METAL &&
+             device_dst->device_type == ARROW_DEVICE_CPU) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceMetalSynchronize(device_src, src->sync_event, nullptr));
+    ArrowDeviceArrayMove(src, dst);
+    dst->device_type = device_dst->device_type;
+    dst->device_id = device_dst->device_id;
+    dst->sync_event = NULL;
     return NANOARROW_OK;
   }
 
@@ -320,11 +326,10 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
   device->device_type = ARROW_DEVICE_METAL;
   device->device_id = static_cast<int64_t>(default_device->registryID());
   device->array_init = nullptr;
-  device->array_move = nullptr;
+  device->array_move = &ArrowDeviceMetalArrayMove;
   device->buffer_init = &ArrowDeviceMetalBufferInit;
   device->buffer_move = &ArrowDeviceMetalBufferMove;
   device->buffer_copy = &ArrowDeviceMetalBufferCopy;
-  device->copy_required = &ArrowDeviceMetalCopyRequired;
   device->synchronize_event = &ArrowDeviceMetalSynchronize;
   device->release = &ArrowDeviceMetalRelease;
   device->private_data = default_device;

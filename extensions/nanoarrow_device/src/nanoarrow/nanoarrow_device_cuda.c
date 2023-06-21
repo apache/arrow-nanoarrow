@@ -266,50 +266,6 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
   }
 }
 
-static int ArrowDeviceCudaCopyRequired(struct ArrowDevice* device_src,
-                                       struct ArrowArrayView* src,
-                                       struct ArrowDevice* device_dst) {
-  if (device_src->device_type == ARROW_DEVICE_CPU &&
-      device_dst->device_type == ARROW_DEVICE_CUDA) {
-    // Copy
-    return 1;
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
-             device_dst->device_type == ARROW_DEVICE_CUDA &&
-             device_src->device_id == device_dst->device_id) {
-    // Move
-    return 0;
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
-             device_dst->device_type == ARROW_DEVICE_CPU) {
-    // Copy
-    return 1;
-
-  } else if (device_src->device_type == ARROW_DEVICE_CPU &&
-             device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    // Copy: we can't assume the memory has been registered. A user can force
-    // this by registering the memory and setting device->device_type manually.
-    // A copy will ensure all buffers are allocated with cudaMallocHost().
-    return 1;
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
-             device_dst->device_type == ARROW_DEVICE_CUDA_HOST &&
-             device_src->device_id == device_dst->device_id) {
-    // Move
-    return 0;
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
-             device_dst->device_type == ARROW_DEVICE_CPU) {
-    // Move: the array's release callback is responsible for cudaFreeHost or
-    // deregistration (or perhaps this has been handled at a higher level)
-    return 0;
-
-  } else {
-    // Fall back to the other device's implementation
-    return -1;
-  }
-}
-
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
                                                  void* sync_event,
                                                  struct ArrowError* error) {
@@ -397,7 +353,6 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   device->buffer_init = &ArrowDeviceCudaBufferInit;
   device->buffer_move = NULL;
   device->buffer_copy = &ArrowDeviceCudaBufferCopy;
-  device->copy_required = &ArrowDeviceCudaCopyRequired;
   device->synchronize_event = &ArrowDeviceCudaSynchronize;
   device->release = &ArrowDeviceCudaRelease;
   device->private_data = NULL;

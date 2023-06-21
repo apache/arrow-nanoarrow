@@ -240,7 +240,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
   // Copy required to Metal
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, metal));
+  ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, metal, &device_array2), ENOTSUP);
   ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, metal, &device_array2),
             NANOARROW_OK);
   device_array.array.release(&device_array.array);
@@ -253,13 +253,15 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
   EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
             0);
 
-  // Copy shouldn't be required to the same device
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, metal));
+  // Copy shouldn't be required to the CPU
+  ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array2, cpu, &device_array),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
+            0);
 
-  // Copy shouldn't be required to the CPU either
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
-
-  device_array2.array.release(&device_array2.array);
+  device_array.array.release(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 

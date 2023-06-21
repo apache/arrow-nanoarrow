@@ -84,17 +84,6 @@ static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
   return NANOARROW_OK;
 }
 
-static int ArrowDeviceCpuCopyRequired(struct ArrowDevice* device_src,
-                                      struct ArrowArrayView* src,
-                                      struct ArrowDevice* device_dst) {
-  if (device_src->device_type == ARROW_DEVICE_CPU &&
-      device_dst->device_type == ARROW_DEVICE_CPU) {
-    return 0;
-  } else {
-    return -1;
-  }
-}
-
 static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
                                                 void* sync_event,
                                                 struct ArrowError* error) {
@@ -128,10 +117,10 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->device_type = ARROW_DEVICE_CPU;
   device->device_id = 0;
   device->array_init = NULL;
+  device->array_move = NULL;
   device->buffer_init = &ArrowDeviceCpuBufferInit;
   device->buffer_move = &ArrowDeviceCpuBufferMove;
   device->buffer_copy = &ArrowDeviceCpuBufferCopy;
-  device->copy_required = &ArrowDeviceCpuCopyRequired;
   device->synchronize_event = &ArrowDeviceCpuSynchronize;
   device->release = &ArrowDeviceCpuRelease;
   device->private_data = NULL;
@@ -465,25 +454,6 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
   return result;
 }
 
-int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
-                                     struct ArrowDevice* device_dst) {
-  // Can always move if device type and ID match
-  if (src->device->device_type == device_dst->device_type &&
-      src->device->device_id == device_dst->device_id) {
-    return 0;
-  }
-
-  // Otherwise, see if the source device knows
-  int result = src->device->copy_required(src->device, &src->array_view, device_dst);
-  if (result == -1) {
-    // Otherwise, see if the destination device knows
-    result = device_dst->copy_required(src->device, &src->array_view, device_dst);
-  }
-
-  // If nobody knows, we have to copy
-  return result != 0;
-}
-
 ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
                                             struct ArrowDevice* device_dst,
                                             struct ArrowDeviceArray* dst) {
@@ -514,19 +484,4 @@ ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
   }
 
   return ENOTSUP;
-}
-
-ArrowErrorCode ArrowDeviceArrayViewMove(struct ArrowDeviceArray* src,
-                                        struct ArrowDeviceArrayView* src_view,
-                                        struct ArrowDevice* device_dst,
-                                        struct ArrowDeviceArray* dst) {
-  // TODO: Handle move with sync event?
-  if (ArrowDeviceArrayViewCopyRequired(src_view, device_dst) || src->sync_event != NULL) {
-    return ENOTSUP;
-  } else {
-    ArrowDeviceArrayMove(src, dst);
-    dst->device_type = device_dst->device_type;
-    dst->device_id = device_dst->device_id;
-    return NANOARROW_OK;
-  }
 }

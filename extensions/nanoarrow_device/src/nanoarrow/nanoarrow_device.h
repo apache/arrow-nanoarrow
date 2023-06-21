@@ -221,12 +221,6 @@ struct ArrowDevice {
                                 struct ArrowDevice* device_dst,
                                 struct ArrowBufferView dst);
 
-  /// \brief Check if a copy is required to move between devices
-  ///
-  /// Returns 1 (copy is required), 0 (copy not required; move is OK), or -1 (don't know)
-  int (*copy_required)(struct ArrowDevice* device_src, struct ArrowArrayView* src,
-                       struct ArrowDevice* device_dst);
-
   /// \brief Wait for an event on the CPU host
   ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device, void* sync_event,
                                       struct ArrowError* error);
@@ -285,26 +279,12 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
 
 /// \brief Move an ArrowDeviceArray to a device if possible
 ///
-/// Will attempt to zero-copy move a device array to the given device, falling back
-/// to a copy otherwise.
+/// Will attempt to move a device array to a device without copying buffers.
+/// This may result in a device array with different performance charateristics
+/// than an array that was copied.
 ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
                                             struct ArrowDevice* device_dst,
                                             struct ArrowDeviceArray* dst);
-
-/// \brief Calculate if a copy is required to move an ArrowDeviceArrayView to a device
-///
-/// Returns 1 if a copy is required or 0 if the source array can be moved.
-int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
-                                     struct ArrowDevice* device_dst);
-
-/// \brief Move an ArrowDeviceArrayView to a device if possible
-///
-/// Will attempt to zero-copy move a device array to the given device, falling back
-/// to a copy otherwise.
-ArrowErrorCode ArrowDeviceArrayViewMove(struct ArrowDeviceArray* src,
-                                        struct ArrowDeviceArrayView* src_view,
-                                        struct ArrowDevice* device_dst,
-                                        struct ArrowDeviceArray* dst);
 
 /// \brief Pointer to a statically-allocated CPU device singleton
 struct ArrowDevice* ArrowDeviceCpu(void);
