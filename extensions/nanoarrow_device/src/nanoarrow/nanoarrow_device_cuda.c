@@ -37,7 +37,6 @@ static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
   cudaGetDevice(&prev_device);
   cudaSetDevice((int)allocator_private->device_id);
 
-  // TODO: Set device ID
   switch (allocator_private->device_type) {
     case ARROW_DEVICE_CUDA:
       cudaFree(allocator_private->allocated_ptr);
@@ -222,6 +221,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
                                                 struct ArrowDevice* device_dst,
                                                 struct ArrowBufferView dst) {
   // This is all just cudaMemcpy or memcpy
+  // TODO: These all actually have to be cudaMemcpy like above
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_CUDA) {
     cudaError_t result = cudaMemcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes,

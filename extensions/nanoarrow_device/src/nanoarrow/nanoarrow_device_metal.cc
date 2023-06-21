@@ -137,6 +137,46 @@ ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array) {
   return NANOARROW_OK;
 }
 
+struct ArrowDeviceMetalArrayPrivate {
+  struct ArrowArray parent;
+  MTL::SharedEvent* event;
+};
+
+static void ArrowDeviceMetalArrayRelease(struct ArrowArray* array) {
+  struct ArrowDeviceMetalArrayPrivate* private_data =
+      (struct ArrowDeviceMetalArrayPrivate*)array->private_data;
+  private_data->event->release();
+  private_data->parent.release(&private_data->parent);
+  ArrowFree(private_data);
+  array->release = NULL;
+}
+
+static ArrowErrorCode ArrowDeviceMetalArrayInit(struct ArrowDevice* device,
+                                                struct ArrowDeviceArray* device_array,
+                                                struct ArrowArray* array) {
+  struct ArrowDeviceMetalArrayPrivate* private_data =
+      (struct ArrowDeviceMetalArrayPrivate*)ArrowMalloc(
+          sizeof(struct ArrowDeviceMetalArrayPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  auto mtl_device = reinterpret_cast<MTL::Device*>(device->private_data);
+  private_data->event = mtl_device->newSharedEvent();
+
+  memset(device_array, 0, sizeof(struct ArrowDeviceArray));
+  device_array->array = *array;
+  device_array->array.private_data = private_data;
+  device_array->array.release = &ArrowDeviceMetalArrayRelease;
+  ArrowArrayMove(array, &private_data->parent);
+
+  device_array->device_id = device->device_id;
+  device_array->device_type = device->device_type;
+  device_array->sync_event = private_data->event;
+
+  return NANOARROW_OK;
+}
+
 static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
                                                  struct ArrowBufferView src,
                                                  struct ArrowDevice* device_dst,
@@ -256,11 +296,23 @@ static int ArrowDeviceMetalCopyRequiredCpuToMetal(MTL::Device* mtl_device,
 static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
                                                   void* sync_event,
                                                   struct ArrowError* error) {
-  if (sync_event == nullptr) {
-    return NANOARROW_OK;
-  }
+  // TODO: sync events for Metal are harder than for CUDA
+  // https://developer.apple.com/documentation/metal/resource_synchronization/synchronizing_events_between_a_gpu_and_the_cpu?language=objc
+  // It would be much easier if sync_event were a command buffer
 
-  return ENOTSUP;
+  // Something like:
+  // auto listener = MTL::SharedEventListener::alloc();
+  // listener->init();
+
+  // auto event = reinterpret_cast<MTL::SharedEvent*>(sync_event);
+  // event->notifyListener(
+  //   listener, event->signaledValue(), ^(MTL::SharedEvent* pEvent, uint64_t value) {
+  //     pEvent->signaledValue = value + 1;
+  //   });
+
+  // listener->release();
+
+  return NANOARROW_OK;
 }
 
 static ArrowErrorCode ArrowDeviceMetalArrayMove(struct ArrowDevice* device_src,
@@ -325,7 +377,7 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
 
   device->device_type = ARROW_DEVICE_METAL;
   device->device_id = static_cast<int64_t>(default_device->registryID());
-  device->array_init = nullptr;
+  device->array_init = &ArrowDeviceMetalArrayInit;
   device->array_move = &ArrowDeviceMetalArrayMove;
   device->buffer_init = &ArrowDeviceMetalBufferInit;
   device->buffer_move = &ArrowDeviceMetalBufferMove;
