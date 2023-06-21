@@ -31,6 +31,12 @@ static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
                                        uint8_t* ptr, int64_t old_size) {
   struct ArrowDeviceCudaAllocatorPrivate* allocator_private =
       (struct ArrowDeviceCudaAllocatorPrivate*)allocator->private_data;
+
+  int prev_device = 0;
+  // Not ideal: we have no place to communicate any errors here
+  cudaGetDevice(&prev_device);
+  cudaSetDevice((int)allocator_private->device_id);
+
   // TODO: Set device ID
   switch (allocator_private->device_type) {
     case ARROW_DEVICE_CUDA:
@@ -43,21 +49,34 @@ static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
       break;
   }
 
+  cudaSetDevice(prev_device);
   ArrowFree(allocator_private);
 }
 
 static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
                                                     struct ArrowBuffer* buffer,
                                                     int64_t size_bytes) {
+  int prev_device = 0;
+  cudaError_t result = cudaGetDevice(&prev_device);
+  if (result != cudaSuccess) {
+    return EINVAL;
+  }
+
+  result = cudaSetDevice((int)device->device_id);
+  if (result != cudaSuccess) {
+    cudaSetDevice(prev_device);
+    return EINVAL;
+  }
+
   struct ArrowDeviceCudaAllocatorPrivate* allocator_private =
       (struct ArrowDeviceCudaAllocatorPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceCudaAllocatorPrivate));
   if (allocator_private == NULL) {
+    cudaSetDevice(prev_device);
     return ENOMEM;
   }
 
   void* ptr = NULL;
-  cudaError_t result;
   switch (device->device_type) {
     case ARROW_DEVICE_CUDA:
       result = cudaMalloc(&ptr, (int64_t)size_bytes);
@@ -67,16 +86,18 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
       break;
     default:
       ArrowFree(allocator_private);
+      cudaSetDevice(prev_device);
       return EINVAL;
   }
 
   if (result != cudaSuccess) {
     ArrowFree(allocator_private);
+    cudaSetDevice(prev_device);
     return ENOMEM;
   }
 
-  allocator_private->device_id = 0;
-  allocator_private->device_type = ARROW_DEVICE_CUDA;
+  allocator_private->device_id = device->device_id;
+  allocator_private->device_type = device->device_type;
   allocator_private->allocated_ptr = ptr;
 
   buffer->data = (uint8_t*)ptr;
@@ -85,6 +106,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
   buffer->allocator =
       ArrowBufferDeallocator(&ArrowDeviceCudaDeallocator, allocator_private);
 
+  cudaSetDevice(prev_device);
   return NANOARROW_OK;
 }
 
