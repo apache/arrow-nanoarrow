@@ -19,69 +19,72 @@
 
 #include "nanoarrow_device.h"
 
-static void ArrowDeviceCudaAllocatorFree(struct ArrowBufferAllocator* allocator,
-                                         uint8_t* ptr, int64_t old_size) {
-  if (ptr != NULL) {
-    // TODO: We need the device_id here
-    cudaFree(ptr);
+struct ArrowDeviceCudaAllocatorPrivate {
+  ArrowDeviceType device_type;
+  int64_t device_id;
+  // When moving a buffer from CUDA_HOST to CUDA, the pointer used to access
+  // the data changes but the pointer needed to pass to cudaFreeHost does not
+  void* allocated_ptr;
+};
+
+static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
+                                       uint8_t* ptr, int64_t old_size) {
+  struct ArrowDeviceCudaAllocatorPrivate* allocator_private =
+      (struct ArrowDeviceCudaAllocatorPrivate*)allocator->private_data;
+  // TODO: Set device ID
+  switch (allocator_private->device_type) {
+    case ARROW_DEVICE_CUDA:
+      cudaFree(allocator_private->allocated_ptr);
+      break;
+    case ARROW_DEVICE_CUDA_HOST:
+      cudaFreeHost(allocator_private->allocated_ptr);
+      break;
+    default:
+      break;
   }
+
+  ArrowFree(allocator_private);
 }
 
-static uint8_t* ArrowDeviceCudaAllocatorReallocate(struct ArrowBufferAllocator* allocator,
-                                                   uint8_t* ptr, int64_t old_size,
-                                                   int64_t new_size) {
-  ArrowDeviceCudaAllocatorFree(allocator, ptr, old_size);
-  return NULL;
-}
-
-static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowBuffer* buffer,
+static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
+                                                    struct ArrowBuffer* buffer,
                                                     int64_t size_bytes) {
-  void* ptr = NULL;
-  cudaError_t result = cudaMalloc(&ptr, (int64_t)size_bytes);
-  if (result != cudaSuccess) {
-    return EINVAL;
+  struct ArrowDeviceCudaAllocatorPrivate* allocator_private =
+      (struct ArrowDeviceCudaAllocatorPrivate*)ArrowMalloc(
+          sizeof(struct ArrowDeviceCudaAllocatorPrivate));
+  if (allocator_private == NULL) {
+    return ENOMEM;
   }
+
+  void* ptr = NULL;
+  cudaError_t result;
+  switch (device->device_type) {
+    case ARROW_DEVICE_CUDA:
+      result = cudaMalloc(&ptr, (int64_t)size_bytes);
+      break;
+    case ARROW_DEVICE_CUDA_HOST:
+      result = cudaMallocHost(&ptr, (int64_t)size_bytes);
+      break;
+    default:
+      ArrowFree(allocator_private);
+      return EINVAL;
+  }
+
+  if (result != cudaSuccess) {
+    ArrowFree(allocator_private);
+    return ENOMEM;
+  }
+
+  allocator_private->device_id = 0;
+  allocator_private->device_type = ARROW_DEVICE_CUDA;
+  allocator_private->allocated_ptr = ptr;
 
   buffer->data = (uint8_t*)ptr;
   buffer->size_bytes = size_bytes;
   buffer->capacity_bytes = size_bytes;
-  buffer->allocator.reallocate = &ArrowDeviceCudaAllocatorReallocate;
-  buffer->allocator.free = &ArrowDeviceCudaAllocatorFree;
-  // TODO: We need the device_id here
-  buffer->allocator.private_data = NULL;
-  return NANOARROW_OK;
-}
+  buffer->allocator =
+      ArrowBufferDeallocator(&ArrowDeviceCudaDeallocator, allocator_private);
 
-static void ArrowDeviceCudaHostAllocatorFree(struct ArrowBufferAllocator* allocator,
-                                             uint8_t* ptr, int64_t old_size) {
-  if (ptr != NULL) {
-    // TODO: We need the device_id here
-    cudaFreeHost(ptr);
-  }
-}
-
-static uint8_t* ArrowDeviceCudaHostAllocatorReallocate(
-    struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
-    int64_t new_size) {
-  ArrowDeviceCudaHostAllocatorFree(allocator, ptr, old_size);
-  return NULL;
-}
-
-static ArrowErrorCode ArrowDeviceCudaHostAllocateBuffer(struct ArrowBuffer* buffer,
-                                                        int64_t size_bytes) {
-  void* ptr = NULL;
-  cudaError_t result = cudaMallocHost(&ptr, (int64_t)size_bytes);
-  if (result != cudaSuccess) {
-    return EINVAL;
-  }
-
-  buffer->data = (uint8_t*)ptr;
-  buffer->size_bytes = size_bytes;
-  buffer->capacity_bytes = size_bytes;
-  buffer->allocator.reallocate = &ArrowDeviceCudaHostAllocatorReallocate;
-  buffer->allocator.free = &ArrowDeviceCudaHostAllocatorFree;
-  // TODO: We need the device_id here
-  buffer->allocator.private_data = NULL;
   return NANOARROW_OK;
 }
 
@@ -141,12 +144,14 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
 
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_CUDA) {
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaAllocateBuffer(&tmp, src.size_bytes));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceCudaAllocateBuffer(device_dst, &tmp, src.size_bytes));
     memcpy_kind = cudaMemcpyHostToDevice;
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CUDA) {
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaAllocateBuffer(&tmp, src.size_bytes));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceCudaAllocateBuffer(device_dst, &tmp, src.size_bytes));
     memcpy_kind = cudaMemcpyDeviceToDevice;
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
@@ -158,12 +163,14 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
 
   } else if (device_src->device_type == ARROW_DEVICE_CPU &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaHostAllocateBuffer(&tmp, src.size_bytes));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceCudaAllocateBuffer(device_dst, &tmp, src.size_bytes));
     memcpy_kind = cudaMemcpyHostToHost;
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaHostAllocateBuffer(&tmp, src.size_bytes));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceCudaAllocateBuffer(device_dst, &tmp, src.size_bytes));
     memcpy_kind = cudaMemcpyHostToHost;
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
