@@ -307,7 +307,7 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
     return NANOARROW_OK;
   }
 
-  if (device->device_type != ARROW_DEVICE_CUDA ||
+  if (device->device_type != ARROW_DEVICE_CUDA &&
       device->device_type != ARROW_DEVICE_CUDA_HOST) {
     return ENOTSUP;
   }

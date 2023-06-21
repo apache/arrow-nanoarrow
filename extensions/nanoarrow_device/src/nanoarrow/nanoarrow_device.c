@@ -127,6 +127,7 @@ struct ArrowDevice* ArrowDeviceCpu(void) {
 void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->device_type = ARROW_DEVICE_CPU;
   device->device_id = 0;
+  device->array_init = NULL;
   device->buffer_init = &ArrowDeviceCpuBufferInit;
   device->buffer_move = &ArrowDeviceCpuBufferMove;
   device->buffer_copy = &ArrowDeviceCpuBufferCopy;
@@ -493,7 +494,8 @@ ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArray* src,
                                        struct ArrowDeviceArrayView* src_view,
                                        struct ArrowDevice* device_dst,
                                        struct ArrowDeviceArray* dst) {
-  if (ArrowDeviceArrayViewCopyRequired(src_view, device_dst)) {
+  // TODO: Handle move with sync event
+  if (ArrowDeviceArrayViewCopyRequired(src_view, device_dst) || src->sync_event != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCopy(src_view, device_dst, dst));
     src->array.release(&src->array);
     return NANOARROW_OK;
