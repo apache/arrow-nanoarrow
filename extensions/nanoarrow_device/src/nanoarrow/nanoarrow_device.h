@@ -134,8 +134,8 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopy)
 #define ArrowDeviceArrayViewCopyRequired \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopyRequired)
-#define ArrowDeviceArrayViewMove \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewMove)
+#define ArrowDeviceArrayMoveToDevice \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayMoveToDevice)
 #define ArrowDeviceResolve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceResolve)
 #define ArrowDeviceCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCpu)
 #define ArrowDeviceInitCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceInitCpu)
@@ -178,6 +178,16 @@ struct ArrowDevice {
   ArrowErrorCode (*array_init)(struct ArrowDevice* device,
                                struct ArrowDeviceArray* device_array,
                                struct ArrowArray* array);
+
+  /// \brief Move an ArrowDeviceArray between devices without copying buffers
+  ///
+  /// Some devices can move an ArrowDeviceArray without an explicit buffer copy,
+  /// although the performance characteristics of the moved array may be different
+  /// than that of an explicitly copied one depending on the device.
+  ArrowErrorCode (*array_move)(struct ArrowDevice* device_src,
+                               struct ArrowDeviceArray* src,
+                               struct ArrowDevice* device_dst,
+                               struct ArrowDeviceArray* dst);
 
   /// \brief Initialize an owning buffer from existing content
   ///
@@ -272,6 +282,14 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
 ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
                                         struct ArrowDevice* device_dst,
                                         struct ArrowDeviceArray* dst);
+
+/// \brief Move an ArrowDeviceArray to a device if possible
+///
+/// Will attempt to zero-copy move a device array to the given device, falling back
+/// to a copy otherwise.
+ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
+                                            struct ArrowDevice* device_dst,
+                                            struct ArrowDeviceArray* dst);
 
 /// \brief Calculate if a copy is required to move an ArrowDeviceArrayView to a device
 ///

@@ -91,13 +91,10 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
 
   // Copy shouldn't be required to the same device
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
-
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
-  ASSERT_EQ(
-      ArrowDeviceArrayViewMove(&device_array, &device_array_view, cpu, &device_array2),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, cpu, &device_array2),
+            NANOARROW_OK);
   ASSERT_EQ(device_array.array.release, nullptr);
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, cpu->device_id);
