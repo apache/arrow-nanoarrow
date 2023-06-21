@@ -510,7 +510,7 @@ ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
 
   // See if the destination knows how to move
   if (device_dst->array_move != NULL) {
-    NANOARROW_RETURN_NOT_OK(device_src->array_move(device_src, src, device_dst, dst));
+    NANOARROW_RETURN_NOT_OK(device_dst->array_move(device_src, src, device_dst, dst));
   }
 
   return ENOTSUP;

@@ -181,11 +181,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   // Copy required to Cuda
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
-  ASSERT_EQ(
-      ArrowDeviceArrayViewMove(&device_array, &device_array_view, gpu, &device_array2),
-      ENOTSUP);
-
+  ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, gpu, &device_array2), ENOTSUP);
   ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, gpu, &device_array2),
             NANOARROW_OK);
   device_array.array.release(&device_array.array);
@@ -198,17 +194,15 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   EXPECT_EQ(device_array_view.array_view.length, 3);
   EXPECT_EQ(device_array2.array.length, 3);
 
-  // Copy shouldn't be required to the same device
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
-
   // Copy required back to Cpu for Cuda; not for CudaHost
-  ASSERT_EQ(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu),
-            gpu->device_type == ARROW_DEVICE_CUDA);
-
-  // TODO: we still have to copy because we don't know how to move a sync event
-  ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, cpu, &device_array),
+  if (gpu->device_type == ARROW_DEVICE_CUDA_HOST) {
+    ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array2, cpu, &device_array),
               NANOARROW_OK);
-  device_array2.array.release(&device_array2.array);
+  } else {
+    ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, cpu, &device_array),
+              NANOARROW_OK);
+    device_array2.array.release(&device_array2.array);
+  }
 
   ASSERT_NE(device_array.array.release, nullptr);
   ASSERT_EQ(device_array.device_type, ARROW_DEVICE_CPU);
