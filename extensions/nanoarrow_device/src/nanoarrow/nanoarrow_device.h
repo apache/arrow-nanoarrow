@@ -134,8 +134,8 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopy)
 #define ArrowDeviceArrayViewCopyRequired \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopyRequired)
-#define ArrowDeviceArrayTryMove \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayTryMove)
+#define ArrowDeviceArrayViewMove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewMove)
 #define ArrowDeviceResolve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceResolve)
 #define ArrowDeviceCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCpu)
 #define ArrowDeviceInitCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceInitCpu)
@@ -283,10 +283,10 @@ int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
 ///
 /// Will attempt to zero-copy move a device array to the given device, falling back
 /// to a copy otherwise.
-ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArray* src,
-                                       struct ArrowDeviceArrayView* src_view,
-                                       struct ArrowDevice* device_dst,
-                                       struct ArrowDeviceArray* dst);
+ArrowErrorCode ArrowDeviceArrayViewMove(struct ArrowDeviceArray* src,
+                                        struct ArrowDeviceArrayView* src_view,
+                                        struct ArrowDevice* device_dst,
+                                        struct ArrowDeviceArray* dst);
 
 /// \brief Pointer to a statically-allocated CPU device singleton
 struct ArrowDevice* ArrowDeviceCpu(void);

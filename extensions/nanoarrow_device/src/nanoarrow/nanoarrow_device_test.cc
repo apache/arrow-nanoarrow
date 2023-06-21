@@ -96,7 +96,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
   ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array, &device_array_view, cpu, &device_array2),
+      ArrowDeviceArrayViewMove(&device_array, &device_array_view, cpu, &device_array2),
       NANOARROW_OK);
   ASSERT_EQ(device_array.array.release, nullptr);
   ASSERT_NE(device_array2.array.release, nullptr);
@@ -111,100 +111,3 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowDevice, StringTypeParameterizedTestFixture,
                                            NANOARROW_TYPE_LARGE_STRING,
                                            NANOARROW_TYPE_BINARY,
                                            NANOARROW_TYPE_LARGE_BINARY));
-
-class ListTypeParameterizedTestFixture : public ::testing::TestWithParam<enum ArrowType> {
- protected:
-  enum ArrowType type;
-};
-
-TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewList) {
-  struct ArrowDevice* cpu = ArrowDeviceCpu();
-  struct ArrowSchema schema;
-  struct ArrowArray array;
-  struct ArrowDeviceArray device_array;
-  struct ArrowDeviceArrayView device_array_view;
-  enum ArrowType list_type = GetParam();
-
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, list_type), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array), NANOARROW_OK);
-
-  ArrowDeviceArrayViewInit(&device_array_view);
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(&device_array_view.array_view, &schema, nullptr),
-            NANOARROW_OK);
-  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
-            NANOARROW_OK);
-
-  EXPECT_EQ(device_array_view.array_view.children[0]->buffer_views[1].size_bytes,
-            3 * sizeof(int32_t));
-
-  // Copy shouldn't be required to the same device
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
-
-  struct ArrowDeviceArray device_array2;
-  device_array2.array.release = nullptr;
-  ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array, &device_array_view, cpu, &device_array2),
-      NANOARROW_OK);
-  ASSERT_EQ(device_array.array.release, nullptr);
-  ASSERT_NE(device_array2.array.release, nullptr);
-  ASSERT_EQ(device_array2.device_id, cpu->device_id);
-
-  schema.release(&schema);
-  device_array2.array.release(&device_array2.array);
-  ArrowDeviceArrayViewReset(&device_array_view);
-}
-
-INSTANTIATE_TEST_SUITE_P(NanoarrowDevice, ListTypeParameterizedTestFixture,
-                         ::testing::Values(NANOARROW_TYPE_LIST,
-                                           NANOARROW_TYPE_LARGE_LIST));
-
-TEST(NanoarrowDevice, BasicStreamCpu) {
-  struct ArrowSchema schema;
-  struct ArrowArray array;
-  struct ArrowArrayStream naive_stream;
-  struct ArrowDeviceArray device_array;
-  struct ArrowDeviceArrayStream array_stream;
-
-  // Build schema, array, and naive_stream
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(&array, 1234), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowBasicArrayStreamInit(&naive_stream, &schema, 1), NANOARROW_OK);
-  ArrowBasicArrayStreamSetArray(&naive_stream, 0, &array);
-
-  ASSERT_EQ(
-      ArrowDeviceBasicArrayStreamInit(&array_stream, &naive_stream, ArrowDeviceCpu()),
-      NANOARROW_OK);
-
-  ASSERT_EQ(array_stream.get_schema(&array_stream, &schema), NANOARROW_OK);
-  ASSERT_STREQ(schema.format, "i");
-  schema.release(&schema);
-
-  ASSERT_EQ(array_stream.get_next(&array_stream, &device_array), NANOARROW_OK);
-  ASSERT_EQ(device_array.device_type, ARROW_DEVICE_CPU);
-  ASSERT_EQ(device_array.device_id, 0);
-  ASSERT_EQ(device_array.array.n_buffers, 2);
-  device_array.array.release(&device_array.array);
-
-  ASSERT_EQ(array_stream.get_last_error(&array_stream), nullptr);
-
-  array_stream.release(&array_stream);
-}

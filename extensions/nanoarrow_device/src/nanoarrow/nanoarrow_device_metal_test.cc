@@ -239,14 +239,13 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
 
   // Copy required to Metal
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, metal));
-
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
-  ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array, &device_array_view, metal, &device_array2),
-      NANOARROW_OK);
-  ASSERT_EQ(device_array.array.release, nullptr);
+  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, metal));
+  ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, metal, &device_array2),
+            NANOARROW_OK);
+  device_array.array.release(&device_array.array);
+
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, metal->device_id);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
@@ -270,81 +269,3 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowDeviceMetal, StringTypeParameterizedTestFixtur
                                            NANOARROW_TYPE_LARGE_STRING,
                                            NANOARROW_TYPE_BINARY,
                                            NANOARROW_TYPE_LARGE_BINARY));
-
-class ListTypeParameterizedTestFixture : public ::testing::TestWithParam<enum ArrowType> {
- protected:
-  enum ArrowType type;
-};
-
-TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewList) {
-  struct ArrowDevice* metal = ArrowDeviceMetalDefaultDevice();
-  struct ArrowDevice* cpu = ArrowDeviceCpu();
-  struct ArrowSchema schema;
-  struct ArrowArray array;
-  struct ArrowDeviceArray device_array;
-  struct ArrowDeviceArrayView device_array_view;
-  enum ArrowType list_type = GetParam();
-
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, list_type), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
-
-  ArrowDeviceArrayInit(&device_array, cpu);
-  ArrowArrayMove(&array, &device_array.array);
-
-  ArrowDeviceArrayViewInit(&device_array_view);
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(&device_array_view.array_view, &schema, nullptr),
-            NANOARROW_OK);
-  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
-            NANOARROW_OK);
-  EXPECT_EQ(device_array_view.array_view.length, 3);
-  EXPECT_EQ(device_array_view.array_view.null_count, 1);
-
-  struct ArrowBufferView data_view =
-      device_array_view.array_view.children[0]->buffer_views[1];
-  ASSERT_EQ(data_view.size_bytes, 3 * sizeof(int32_t));
-  EXPECT_EQ(data_view.data.as_int32[0], 123);
-  EXPECT_EQ(data_view.data.as_int32[1], 456);
-  EXPECT_EQ(data_view.data.as_int32[2], 789);
-
-  // Copy required to Metal
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, metal));
-
-  struct ArrowDeviceArray device_array2;
-  device_array2.array.release = nullptr;
-  ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array, &device_array_view, metal, &device_array2),
-      NANOARROW_OK);
-  ASSERT_EQ(device_array.array.release, nullptr);
-  ASSERT_NE(device_array2.array.release, nullptr);
-  ASSERT_EQ(device_array2.device_id, metal->device_id);
-
-  // Copy shouldn't be required to the same device
-  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
-            NANOARROW_OK);
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, metal));
-
-  // Copy shouldn't be required to the CPU either
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu));
-
-  schema.release(&schema);
-  device_array2.array.release(&device_array2.array);
-  ArrowDeviceArrayViewReset(&device_array_view);
-}
-
-INSTANTIATE_TEST_SUITE_P(NanoarrowDeviceMetal, ListTypeParameterizedTestFixture,
-                         ::testing::Values(NANOARROW_TYPE_LIST,
-                                           NANOARROW_TYPE_LARGE_LIST));

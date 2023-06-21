@@ -484,15 +484,13 @@ int ArrowDeviceArrayViewCopyRequired(struct ArrowDeviceArrayView* src,
   return result != 0;
 }
 
-ArrowErrorCode ArrowDeviceArrayTryMove(struct ArrowDeviceArray* src,
-                                       struct ArrowDeviceArrayView* src_view,
-                                       struct ArrowDevice* device_dst,
-                                       struct ArrowDeviceArray* dst) {
-  // TODO: Handle move with sync event
+ArrowErrorCode ArrowDeviceArrayViewMove(struct ArrowDeviceArray* src,
+                                        struct ArrowDeviceArrayView* src_view,
+                                        struct ArrowDevice* device_dst,
+                                        struct ArrowDeviceArray* dst) {
+  // TODO: Handle move with sync event?
   if (ArrowDeviceArrayViewCopyRequired(src_view, device_dst) || src->sync_event != NULL) {
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCopy(src_view, device_dst, dst));
-    src->array.release(&src->array);
-    return NANOARROW_OK;
+    return ENOTSUP;
   } else {
     ArrowDeviceArrayMove(src, dst);
     dst->device_type = device_dst->device_type;

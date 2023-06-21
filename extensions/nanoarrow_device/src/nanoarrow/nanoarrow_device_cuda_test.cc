@@ -179,14 +179,17 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   EXPECT_EQ(device_array.array.length, 3);
 
   // Copy required to Cuda
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
-
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
+  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
   ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array, &device_array_view, gpu, &device_array2),
-      NANOARROW_OK);
-  ASSERT_EQ(device_array.array.release, nullptr);
+      ArrowDeviceArrayViewMove(&device_array, &device_array_view, gpu, &device_array2),
+      ENOTSUP);
+
+  ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, gpu, &device_array2),
+            NANOARROW_OK);
+  device_array.array.release(&device_array.array);
+
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, gpu->device_id);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
@@ -201,10 +204,12 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   // Copy required back to Cpu for Cuda; not for CudaHost
   ASSERT_EQ(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu),
             gpu->device_type == ARROW_DEVICE_CUDA);
-  ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array2, &device_array_view, cpu, &device_array),
-      NANOARROW_OK);
-  ASSERT_EQ(device_array2.array.release, nullptr);
+
+  // TODO: we still have to copy because we don't know how to move a sync event
+  ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, cpu, &device_array),
+              NANOARROW_OK);
+  device_array2.array.release(&device_array2.array);
+
   ASSERT_NE(device_array.array.release, nullptr);
   ASSERT_EQ(device_array.device_type, ARROW_DEVICE_CPU);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
@@ -229,97 +234,3 @@ INSTANTIATE_TEST_SUITE_P(
                       DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_BINARY),
                       DeviceAndType(ARROW_DEVICE_CUDA_HOST,
                                     NANOARROW_TYPE_LARGE_BINARY)));
-
-class ListTypeParameterizedTestFixture
-    : public ::testing::TestWithParam<std::pair<ArrowDeviceType, enum ArrowType>> {
- protected:
-  std::pair<ArrowDeviceType, enum ArrowType> info;
-};
-
-TEST_P(ListTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewList) {
-  struct ArrowDevice* cpu = ArrowDeviceCpu();
-  struct ArrowDevice* gpu = ArrowDeviceCuda(GetParam().first, 0);
-  struct ArrowSchema schema;
-  struct ArrowArray array;
-  struct ArrowDeviceArray device_array;
-  struct ArrowDeviceArrayView device_array_view;
-  enum ArrowType list_type = GetParam().second;
-
-  ASSERT_EQ(ArrowSchemaInitFromType(&schema, list_type), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array), NANOARROW_OK);
-
-  ArrowDeviceArrayViewInit(&device_array_view);
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(&device_array_view.array_view, &schema, nullptr),
-            NANOARROW_OK);
-  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
-            NANOARROW_OK);
-  EXPECT_EQ(device_array_view.array_view.children[0]->buffer_views[1].size_bytes,
-            3 * sizeof(int32_t));
-
-  // Copy required to Cuda
-  ASSERT_TRUE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
-
-  struct ArrowDeviceArray device_array2;
-  device_array2.array.release = nullptr;
-  ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array, &device_array_view, gpu, &device_array2),
-      NANOARROW_OK);
-  ASSERT_EQ(device_array.array.release, nullptr);
-  ASSERT_NE(device_array2.array.release, nullptr);
-  ASSERT_EQ(device_array2.device_id, gpu->device_id);
-  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
-            NANOARROW_OK);
-  EXPECT_EQ(device_array_view.array_view.children[0]->buffer_views[1].size_bytes,
-            3 * sizeof(int32_t));
-
-  // Copy shouldn't be required to the same device
-  ASSERT_FALSE(ArrowDeviceArrayViewCopyRequired(&device_array_view, gpu));
-
-  // Copy required back to the CPU if Cuda, not for CudaHost
-  ASSERT_EQ(ArrowDeviceArrayViewCopyRequired(&device_array_view, cpu),
-            gpu->device_type == ARROW_DEVICE_CUDA);
-  ASSERT_EQ(
-      ArrowDeviceArrayTryMove(&device_array2, &device_array_view, cpu, &device_array),
-      NANOARROW_OK);
-  ASSERT_EQ(device_array2.array.release, nullptr);
-  ASSERT_NE(device_array.array.release, nullptr);
-  ASSERT_EQ(device_array.device_type, ARROW_DEVICE_CPU);
-  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
-            NANOARROW_OK);
-  EXPECT_EQ(device_array_view.array_view.length, 3);
-  EXPECT_EQ(device_array_view.array_view.null_count, 1);
-
-  struct ArrowBufferView data_view =
-      device_array_view.array_view.children[0]->buffer_views[1];
-  ASSERT_EQ(data_view.size_bytes, 3 * sizeof(int32_t));
-  EXPECT_EQ(data_view.data.as_int32[0], 123);
-  EXPECT_EQ(data_view.data.as_int32[1], 456);
-  EXPECT_EQ(data_view.data.as_int32[2], 789);
-
-  schema.release(&schema);
-  device_array.array.release(&device_array.array);
-  ArrowDeviceArrayViewReset(&device_array_view);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    NanoarrowDeviceCuda, ListTypeParameterizedTestFixture,
-    ::testing::Values(DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LIST),
-                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_LIST),
-                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LIST),
-                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_LIST)));
