@@ -409,7 +409,7 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
                                                        struct ArrowArrayView* src,
                                                        struct ArrowDevice* device_dst,
                                                        struct ArrowArray* dst) {
-  // Currently no attempt to minimize the amount of meory copied (i.e.,
+  // Currently no attempt to minimize the amount of memory copied (i.e.,
   // by applying offset + length and copying potentially fewer bytes)
   dst->length = src->length;
   dst->offset = src->offset;
