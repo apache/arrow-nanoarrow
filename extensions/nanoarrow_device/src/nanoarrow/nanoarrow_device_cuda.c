@@ -224,7 +224,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
   // This is all just cudaMemcpy or memcpy
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_CUDA) {
-    cudaError_t result = cudaMemcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes,
+    cudaError_t result = cudaMemcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes,
                                     cudaMemcpyHostToDevice);
     if (result != cudaSuccess) {
       return EINVAL;
@@ -233,7 +233,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CUDA) {
-    cudaError_t result = cudaMemcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes,
+    cudaError_t result = cudaMemcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes,
                                     cudaMemcpyDeviceToDevice);
     if (result != cudaSuccess) {
       return EINVAL;
@@ -242,7 +242,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    cudaError_t result = cudaMemcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes,
+    cudaError_t result = cudaMemcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes,
                                     cudaMemcpyDeviceToHost);
     if (result != cudaSuccess) {
       return EINVAL;
@@ -251,15 +251,15 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
 
   } else if (device_src->device_type == ARROW_DEVICE_CPU &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    memcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
+    memcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    memcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
+    memcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    memcpy(dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
+    memcpy((void*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else {
     return ENOTSUP;
@@ -334,6 +334,33 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowDeviceCudaArrayMove(struct ArrowDevice* device_src,
+                                               struct ArrowDeviceArray* src,
+                                               struct ArrowDevice* device_dst,
+                                               struct ArrowDeviceArray* dst) {
+  // Note that the case where the devices are the same is handled before this
+
+  if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
+      device_dst->device_type == ARROW_DEVICE_CPU) {
+    // Move: the array's release callback is responsible for cudaFreeHost or
+    // deregistration (or perhaps this has been handled at a higher level).
+    // We do have to wait on the sync event, though, because this has to be NULL
+    // for a CPU device array.
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceCudaSynchronize(device_src, src->sync_event, NULL));
+    ArrowDeviceArrayMove(src, dst);
+    dst->device_type = device_dst->device_type;
+    dst->device_id = device_dst->device_id;
+    dst->sync_event = NULL;
+
+    return NANOARROW_OK;
+  }
+
+  // TODO: We can theoretically also do a move from CUDA_HOST to CUDA
+
+  return ENOTSUP;
+}
+
 static void ArrowDeviceCudaRelease(struct ArrowDevice* device) {
   // No private_data to release
 }
@@ -366,6 +393,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   device->device_type = device_type;
   device->device_id = device_id;
   device->array_init = &ArrowDeviceCudaArrayInit;
+  device->array_move = &ArrowDeviceCudaArrayMove;
   device->buffer_init = &ArrowDeviceCudaBufferInit;
   device->buffer_move = NULL;
   device->buffer_copy = &ArrowDeviceCudaBufferCopy;
