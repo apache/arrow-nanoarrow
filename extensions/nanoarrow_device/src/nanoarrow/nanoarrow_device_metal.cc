@@ -216,17 +216,17 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopy(struct ArrowDevice* device_src,
   // This is all just memcpy since it's all living in the same address space
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
-    memcpy(dst.data.as_uint8,
+    memcpy((void*)dst.data.as_uint8,
            src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
-    memcpy(dst.data.as_uint8,
+    memcpy((void*)dst.data.as_uint8,
            src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    memcpy(dst.data.as_uint8,
+    memcpy((void*)dst.data.as_uint8,
            src.data.as_uint8, dst.size_bytes);
     return NANOARROW_OK;
   } else {
@@ -319,6 +319,8 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
 
   device->device_type = ARROW_DEVICE_METAL;
   device->device_id = static_cast<int64_t>(default_device->registryID());
+  device->array_init = nullptr;
+  device->array_move = nullptr;
   device->buffer_init = &ArrowDeviceMetalBufferInit;
   device->buffer_move = &ArrowDeviceMetalBufferMove;
   device->buffer_copy = &ArrowDeviceMetalBufferCopy;

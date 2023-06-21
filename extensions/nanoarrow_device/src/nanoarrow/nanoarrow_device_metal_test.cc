@@ -39,12 +39,12 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   struct ArrowDevice* gpu = ArrowDeviceMetalDefaultDevice();
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowBufferView cpu_view = {data, 0, sizeof(data)};
+  struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
   struct ArrowBuffer buffer_aligned;
   ArrowDeviceMetalInitBuffer(&buffer_aligned);
   ASSERT_EQ(ArrowBufferAppend(&buffer_aligned, data, sizeof(data)), NANOARROW_OK);
-  struct ArrowBufferView gpu_view = {buffer_aligned.data, 0, sizeof(data)};
+  struct ArrowBufferView gpu_view = {buffer_aligned.data, sizeof(data)};
 
   // CPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer), NANOARROW_OK);
@@ -74,7 +74,7 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
   struct ArrowBuffer buffer2;
 
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowBufferView view = {data, 0, sizeof(data)};
+  struct ArrowBufferView view = {data, sizeof(data)};
 
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, gpu, &buffer), NANOARROW_OK);
   auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
@@ -117,19 +117,19 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferCopy) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceMetalDefaultDevice();
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowBufferView cpu_view = {data, 0, sizeof(data)};
+  struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
   struct ArrowBuffer buffer;
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer), NANOARROW_OK);
-  struct ArrowBufferView gpu_view = {buffer.data, 0, sizeof(data)};
+  struct ArrowBufferView gpu_view = {buffer.data, sizeof(data)};
 
   struct ArrowBuffer buffer_dest;
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, cpu_view, gpu, &buffer_dest), NANOARROW_OK);
-  struct ArrowBufferView gpu_dest_view = {buffer_dest.data, 0, sizeof(data)};
+  struct ArrowBufferView gpu_dest_view = {buffer_dest.data, sizeof(data)};
   void* gpu_dest = buffer_dest.data;
 
   uint8_t cpu_dest[5];
-  struct ArrowBufferView cpu_dest_view = {cpu_dest, 0, sizeof(data)};
+  struct ArrowBufferView cpu_dest_view = {cpu_dest, sizeof(data)};
 
   // GPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferCopy(gpu, gpu_view, gpu, gpu_dest_view), NANOARROW_OK);
@@ -228,8 +228,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
-  ArrowDeviceArrayInit(&device_array, cpu);
-  ArrowArrayMove(&array, &device_array.array);
+  ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array), NANOARROW_OK);
 
   ArrowDeviceArrayViewInit(&device_array_view);
   ArrowArrayViewInitFromType(&device_array_view.array_view, string_type);
