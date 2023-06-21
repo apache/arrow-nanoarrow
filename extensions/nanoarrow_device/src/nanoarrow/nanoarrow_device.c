@@ -323,10 +323,8 @@ static ArrowErrorCode ArrowDeviceBufferGetInt64(struct ArrowDevice* device,
 
 static ArrowErrorCode ArrowDeviceArrayViewResolveBufferSizes(
     struct ArrowDevice* device, struct ArrowArrayView* array_view) {
-  // Calculate buffer sizes or child lengths that require accessing the offsets
-  // buffer. Unlike the nanoarrow core default validation, this just checks the
-  // last buffer and doesn't set a nice error message (could implement those, too
-  // later on).
+  // Calculate buffer sizes that require accessing the offset buffer
+  // (at this point all other sizes have been resolved).
   int64_t offset_plus_length = array_view->offset + array_view->length;
   int32_t last_offset32;
   int64_t last_offset64;
@@ -334,27 +332,23 @@ static ArrowErrorCode ArrowDeviceArrayViewResolveBufferSizes(
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      if (array_view->buffer_views[1].size_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes == 0) {
+        array_view->buffer_views[2].size_bytes = 0;
+      } else if (array_view->buffer_views[2].size_bytes == -1) {
         NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferGetInt32(
             device, array_view->buffer_views[1], offset_plus_length, &last_offset32));
-
-        // If the data buffer size is unknown, assign it; otherwise, check it
-        if (array_view->buffer_views[2].size_bytes == -1) {
-          array_view->buffer_views[2].size_bytes = last_offset32;
-        }
+        array_view->buffer_views[2].size_bytes = last_offset32;
       }
       break;
 
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      if (array_view->buffer_views[1].size_bytes != 0) {
+      if (array_view->buffer_views[1].size_bytes == 0) {
+        array_view->buffer_views[2].size_bytes = 0;
+      } else if (array_view->buffer_views[2].size_bytes == -1) {
         NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferGetInt64(
             device, array_view->buffer_views[1], offset_plus_length, &last_offset64));
-
-        // If the data buffer size is unknown, assign it; otherwise, check it
-        if (array_view->buffer_views[2].size_bytes == -1) {
-          array_view->buffer_views[2].size_bytes = last_offset64;
-        }
+        array_view->buffer_views[2].size_bytes = last_offset64;
       }
       break;
     default:
