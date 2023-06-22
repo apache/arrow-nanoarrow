@@ -382,6 +382,10 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
       ArrowDeviceArrayViewSetArrayMinimal(device_array_view, device_array, error));
 
   // Wait on device_array to synchronize with the CPU
+  // TODO: This is not actually sufficient for CUDA, where the synchronization
+  // should happen after the cudaMemcpy, not before it. The ordering of
+  // these operations should be explicit and asynchronous (and is probably outside
+  // the scope of what can be done with a generic callback).
   NANOARROW_RETURN_NOT_OK(device_array_view->device->synchronize_event(
       device_array_view->device, device_array->sync_event, error));
 
