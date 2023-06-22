@@ -15,13 +15,14 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-.. include:: README_generated.rst
-
-Contents
---------
+API Reference
+=============
 
 .. toctree::
    :maxdepth: 2
 
-   Getting Started <getting-started>
-   API Reference <reference/index>
+   R API Reference <r>
+   C API Reference <c>
+   C++ API Reference <cpp>
+   IPC Extension Reference <ipc>
+   Device Extension Reference <device>

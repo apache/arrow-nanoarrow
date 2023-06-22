@@ -52,7 +52,8 @@ extensions = [
 # Breathe configuration
 breathe_projects = {
     "nanoarrow_c": "../../src/apidoc/xml",
-    "nanoarrow_ipc": "../../extensions/nanoarrow_ipc/src/apidoc/xml"
+    "nanoarrow_ipc": "../../extensions/nanoarrow_ipc/src/apidoc/xml",
+    "nanoarrow_device": "../../extensions/nanoarrow_device/src/apidoc/xml"
 }
 breathe_default_project = "nanoarrow_c"
 
@@ -75,9 +76,7 @@ html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
     "show_toc_level": 2,
     "use_edit_page_button": True,
-    "external_links": [
-      {"name": "R Package", "url": "r/index.html"},
-  ],
+    "external_links": [],
 }
 
 html_context = {

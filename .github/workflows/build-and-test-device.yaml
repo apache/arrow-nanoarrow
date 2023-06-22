@@ -1,0 +1,127 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: test-c-device
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'CMakeLists.txt'
+      - '.github/workflows/build-and-test-device.yaml'
+      - 'src/nanoarrow/**'
+      - 'extensions/nanoarrow_device/**'
+
+jobs:
+  test-c-device:
+
+    runs-on: ubuntu-latest
+
+    name: ${{ matrix.config.label }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {label: default-build}
+          - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
+          - {label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
+
+    env:
+      SUBDIR: 'extensions/nanoarrow_device'
+      NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Checkout arrow-testing
+        uses: actions/checkout@v3
+        with:
+          repository: apache/arrow-testing
+          fetch-depth: 0
+          path: arrow-testing
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt install -y -V ca-certificates lsb-release wget cmake valgrind
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-dev
+          rm apache-arrow-apt-*.deb
+
+      - name: Build
+        run: |
+          cd $SUBDIR
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_DEVICE_BUILD_TESTS=ON ${{ matrix.config.cmake_args }}
+          cmake --build .
+
+      - name: Check for non-namespaced symbols in namespaced build
+        if: matrix.config.label == 'namespaced-build'
+        run: |
+          cd $SUBDIR
+
+          # Dump all symbols
+          nm --extern-only build/libnanoarrow_device.a
+
+          # Check for non-namespaced ones
+          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_device.a | grep "T Arrow" || true`
+          if [ -z "$ARROW_SYMBOLS" ]; then
+            exit 0
+          fi
+
+          echo "Found the following non-namespaced extern symbols:"
+          echo $ARROW_SYMBOLS
+          exit 1
+
+      - name: Run tests
+        run: |
+          cd $SUBDIR
+
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          cd build
+          ctest -T test --output-on-failure .
+
+      - name: Run tests with valgrind
+        if: matrix.config.label == 'default-build' || matrix.config.label == 'default-noatomics'
+        run: |
+          cd $SUBDIR
+
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
+          sudo ldconfig
+          cd build
+          ctest -T memcheck .
+
+      - name: Upload memcheck results
+        if: failure() && matrix.config.label == 'default-build'
+        uses: actions/upload-artifact@main
+        with:
+          name: nanoarrow-device-memcheck
+          path: extensions/nanoarrow_device/build/Testing/Temporary/MemoryChecker.*.log
