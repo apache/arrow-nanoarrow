@@ -19,9 +19,9 @@
 #define NANOARROW_BUILD_ID_H_INCLUDED
 
 #define NANOARROW_VERSION_MAJOR 0
-#define NANOARROW_VERSION_MINOR 2
+#define NANOARROW_VERSION_MINOR 3
 #define NANOARROW_VERSION_PATCH 0
-#define NANOARROW_VERSION "0.2.0-SNAPSHOT"
+#define NANOARROW_VERSION "0.3.0-SNAPSHOT"
 
 #define NANOARROW_VERSION_INT                                        \
   (NANOARROW_VERSION_MAJOR * 10000 + NANOARROW_VERSION_MINOR * 100 + \
@@ -873,6 +873,8 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromSchema)
 #define ArrowArrayInitFromArrayView \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromArrayView)
+#define ArrowArrayInitFromArrayView \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromArrayView)
 #define ArrowArrayAllocateChildren \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayAllocateChildren)
 #define ArrowArrayAllocateDictionary \
@@ -897,6 +899,8 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetLength)
 #define ArrowArrayViewSetArray \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArray)
+#define ArrowArrayViewSetArrayMinimal \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArrayMinimal)
 #define ArrowArrayViewValidate \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewValidate)
 #define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
@@ -1735,6 +1739,12 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 /// \brief Set buffer sizes and data pointers from an ArrowArray
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
                                       struct ArrowArray* array, struct ArrowError* error);
+
+/// \brief Set buffer sizes and data pointers from an ArrowArray except for those
+/// that require dereferencing buffer content.
+ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
+                                             struct ArrowArray* array,
+                                             struct ArrowError* error);
 
 /// \brief Performs checks on the content of an ArrowArrayView
 ///
@@ -2873,6 +2883,8 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
       return ArrowArrayAppendBytes(array, buffer_view);
     default:
       return EINVAL;
