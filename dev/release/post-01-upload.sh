@@ -51,7 +51,7 @@ main() {
 
     echo "Success! The release is available here:"
     echo "  https://dist.apache.org/repos/dist/release/arrow/${release_id}"
-    echo "Please push the tag apache-arrow-nanoarrow-${version}!"
+    echo "git push upstream apache-arrow-nanoarrow-${version} before continuing!"
 }
 
 main "$@"

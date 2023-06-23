@@ -257,7 +257,12 @@ One can verify a nanoarrow release candidate on big endian by setting
 ## Creating a release candidate
 
 The first step to creating a nanoarrow release is to create a `maint-VERSION` branch
-and run
+(e.g., `usethis::pr_init("maint-0.2.0")`) and push the branch to `upstream`. This is
+a good opportunity to run though the above instructions to make sure the verification
+script and instructions are up-to-date. You may also wish to start a manual dispatch
+of the [Verification workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/verify.yaml)
+targeting the maint-XX branch that was just pushed.
+When this is complete, run
 [01-prepare.R](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/01-prepare.sh):
 
 ```bash
@@ -287,7 +292,7 @@ the script but *does* need the
 [dev/release/.env](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/.env.example)
 file to exist setting the appropriate `GPG_KEY_ID` environment variable.
 
-```
+```bash
 # 02-sign.sh <version> <rc-num>
 dev/release/02-sign.sh 0.2.0 0
 ```
@@ -298,6 +303,15 @@ This step can be done by any Arrow comitter. The caller of this script does not 
 be on any particular branch but *does* need the
 [dev/release/.env](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/.env.example)
 file to exist setting the appropriate `APACHE_USERNAME` environment variable.
+
+```
+# 03-source.sh $0 <version> <rc-num>
+dev/release/03-source.sh 0.2.0 0
+```
+
+You should check locally that the release verification runs once locally and/or
+start a
+[Verification workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/verify.yaml) and wait for it to complete.
 
 At this point the release candidate is suitable for a vote on the Apache Arrow developer mailing list.
 
@@ -333,17 +347,74 @@ After a passing release vote, the following tasks must be completed:
 
 ```
 [ ] Closed GitHub milestone
-[ ] Added release to Apache Reporter System
+[ ] Added release to the Apache Reporter System
 [ ] Uploaded artifacts to Subversion
 [ ] Created GitHub release
 [ ] Submit R package to CRAN
-[ ] Sent announcement to announce@apache.org
 [ ] Release blog post at https://github.com/apache/arrow-site/pull/288
+[ ] Sent announcement to announce@apache.org
 [ ] Removed old artifacts from SVN
 [ ] Bumped versions on main
 ```
 
-Template for the email to announce@apache.org:
+### Close GitHub milestone
+
+Find the appropriate entry in https://github.com/apache/arrow-nanoarrow/milestone/
+and mark it as closed.
+
+### Add release to the Apache Reporter System
+
+The reporter system for Arrow can be found at
+<https://reporter.apache.org/addrelease.html?arrow>. To add a release, a
+PMC member must log in with their Apache username/password. The release
+names are in the form `NANOARROW-0.2.0`.
+
+### Upload artifacts to Subversion / Create GitHub Release
+
+These are both handled by
+[post-01-upload.sh](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/post-01-upload.sh).
+This script must be run by a PMC member whose `APACHE_USERNAME` environment variable
+has been set in `.env`.
+
+```bash
+dev/release/post-01-upload.sh 0.2.0 0
+```
+
+### Submit R package to CRAN
+
+The R package submission occurs from a separate branch to facilitate including
+any small changes requested by a member of the CRAN team; however, these
+updates are usually automatic and do not require additional changes.
+Before a release candidate is created, the first section of
+`usethis::use_release_issue()` should all be completed (i.e., any changes
+after release should be minor tweaks). The steps are:
+
+- Run `usethis::pr_init("r-cran-maint-0.2.0")` and push the branch to your
+  fork.
+- Ensure `cran_comments.md` is up-to-date.
+- Run `devtools::check()` locally and verify that the package version is correct
+- Run `urlchecker::url_check()`
+- Run `devtools::check_win_devel()` and wait for the response
+- Run `devtools::submit_cran()`
+- Confirm submission email
+
+Any changes required at this stage should be made as a PR into `main` and
+cherry-picked into the `r-cran-maint-XXX` packaging branch. If any changes
+to the source are required, bump the "tweak" version (e.g., `Version: 0.2.0.1`
+in `DESCRIPTION`).
+
+### Release blog post
+
+Final review + merge of the blog post that was drafted prior to preparation of
+the release candidate.
+
+### Send announcement
+
+This email should be sent to announce@apache.org and dev@arrow.apache.org. It
+**must** be sent from your Apache email address and **must** be sent through
+the `mail-relay.apache.org` outgoing server.
+
+Email template:
 
 ```
 [ANNOUNCE] Apache Arrow nanoarrow 0.2.0 Released
@@ -374,4 +445,26 @@ The Apache Arrow Community
 [3]: https://github.com/apache/arrow-nanoarrow
 [4]: https://lists.apache.org/list.html?user@arrow.apache.org
 [5]: https://lists.apache.org/list.html?dev@arrow.apache.org
+```
+
+### Remove old artifacts from SVN
+
+These artifacts include any release candidates that were uploaded to
+<https://dist.apache.org/repos/dist/dev/arrow/>. You can remove them
+using:
+
+```
+# Once
+export APACHE_USERNAME=xxx
+# Once for every release candidate
+svn rm --username=$APACHE_USERNAME -m "Clean up svn artifacts" https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.2.0-rc0/
+```
+
+### Bumped versions on main
+
+This is handled by
+[post-02-bump-versions.sh](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/post-02-bump-versions.sh):
+
+```bash
+dev/release/post-02-bump-versions.sh . 0.2.0 0.3.0
 ```
