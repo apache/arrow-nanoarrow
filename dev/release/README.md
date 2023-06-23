@@ -309,7 +309,7 @@ file to exist setting the appropriate `APACHE_USERNAME` environment variable.
 dev/release/03-source.sh 0.2.0 0
 ```
 
-You should check locally that the release verification runs once locally and/or
+You should check that the release verification runs locally and/or
 start a
 [Verification workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/verify.yaml) and wait for it to complete.
 
@@ -359,7 +359,7 @@ After a passing release vote, the following tasks must be completed:
 
 ### Close GitHub milestone
 
-Find the appropriate entry in https://github.com/apache/arrow-nanoarrow/milestone/
+Find the appropriate entry in https://github.com/apache/arrow-nanoarrow/milestones/
 and mark it as closed.
 
 ### Add release to the Apache Reporter System
