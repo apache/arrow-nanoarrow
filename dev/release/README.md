@@ -389,6 +389,7 @@ Before a release candidate is created, the first section of
 `usethis::use_release_issue()` should all be completed (i.e., any changes
 after release should be minor tweaks). The steps are:
 
+- Ensure you are on the release branch (i.e., `git switch maint-0.2.0`)
 - Run `usethis::pr_init("r-cran-maint-0.2.0")` and push the branch to your
   fork.
 - Ensure `cran_comments.md` is up-to-date.
@@ -399,7 +400,8 @@ after release should be minor tweaks). The steps are:
 - Confirm submission email
 
 Any changes required at this stage should be made as a PR into `main` and
-cherry-picked into the `r-cran-maint-XXX` packaging branch. If any changes
+cherry-picked into the `r-cran-maint-XXX` packaging branch. (i.e.,
+`git cherry-pick 01234abcdef`). If any changes
 to the source are required, bump the "tweak" version (e.g., `Version: 0.2.0.1`
 in `DESCRIPTION`).
 
