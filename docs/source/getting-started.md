@@ -29,7 +29,7 @@ In general, nanoarrow can help you write a library or application that:
   in the form of Arrow arrays, and/or
 - exposes an extension type implementation.
 
-Becauase Arrow has bindings in many languages, it means that you or others can easily
+Because Arrow has bindings in many languages, it means that you or others can easily
 bind or use your tool in higher-level runtimes like R, Java, C++, Python, Rust, Julia,
 Go, or Ruby, among others.
 
