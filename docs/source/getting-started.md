@@ -223,7 +223,7 @@ This works as long as your internal functions that use nanoarrow also return
 an outer function that presents a more idiomatic interface (e.g., returning
 `std::optional<>` or throwing an exception) and an inner function that uses
 nanoarrow-style error handling. Embracing `NANOARROW_RETURN_NOT_OK()` is key
-to hapiness when using the nanoarrow library.
+to happiness when using the nanoarrow library.
 
 Third, let's discuss memory management. Because nanoarrow is implemented in C
 and provides a C interface, the library by default uses C-style memory management
