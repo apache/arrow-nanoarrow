@@ -364,7 +364,7 @@ static int linesplitter_read_internal(const std::string& src, ArrowArray* out,
     src_view.size_bytes -= next_newline + 1;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(tmp.get(), error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuilding(tmp.get(), error));
 
   ArrowArrayMove(tmp.get(), out);
   return NANOARROW_OK;
