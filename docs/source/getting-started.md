@@ -327,9 +327,9 @@ see a few lines of output indicating progress towards building and linking `line
 
 ## Building an ArrowArray
 
-over and add each detected line as its own element. First, some core logic to detect
-the number of characters until the next `\n` or end-of-string.
 The input for our `linesplitter_read()` function is an `std::string`, which we'll iterate
+over and add each detected line as its own element. First, we'll define a function for 
+the core logic of detecting the number of characters until the next `\n` or end-of-string.
 
 ```cpp
 static int64_t find_newline(const ArrowStringView& src) {
