@@ -471,9 +471,10 @@ gtest_discover_tests(linesplitter_test)
 ```
 
 After you're done, build the project again using the **CMake: Build** command from
-the command palette. If all goes well, choose **Test: Run All Tests** from the command
-pallete to run them! You should see some output indiciating that tests ran successfully,
-or you can use VSCode's "Testing" panel to visually inspect which tests passed.
+the command palette. If all goes well, choose **CMake: Refresh Tests** and then  
+**Test: Run All Tests** from the command pallete to run them! You should see some 
+output indiciating that tests ran successfully, or you can use VSCode's "Testing" 
+panel to visually inspect which tests passed.
 
 ```{=rst}
 .. note::
