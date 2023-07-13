@@ -223,7 +223,7 @@ This works as long as your internal functions that use nanoarrow also return
 an outer function that presents a more idiomatic interface (e.g., returning
 `std::optional<>` or throwing an exception) and an inner function that uses
 nanoarrow-style error handling. Embracing `NANOARROW_RETURN_NOT_OK()` is key
-to hapiness when using the nanoarrow library.
+to happiness when using the nanoarrow library.
 
 Third, let's discuss memory management. Because nanoarrow is implemented in C
 and provides a C interface, the library by default uses C-style memory management
@@ -298,8 +298,8 @@ include(FetchContent)
 
 FetchContent_Declare(
   nanoarrow
-  URL https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.1.0/apache-arrow-nanoarrow-0.1.0.tar.gz
-  URL_HASH SHA512=dc62480b986ee76aaad8e38c6fbc602f8cef2cc35a5f5ede7da2a93b4db2b63839bdca3eefe8a44ae1cb6895a2fd3f090e3f6ea1020cf93cfe86437304dfee17)
+  URL https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.2.0/apache-arrow-nanoarrow-0.2.0.tar.gz
+  URL_HASH SHA512=38a100ae5c36a33aa330010eb27b051cff98671e9c82fff22b1692bb77ae61bd6dc2a52ac6922c6c8657bd4c79a059ab26e8413de8169eeed3c9b7fdb216c817)
 FetchContent_MakeAvailable(nanoarrow)
 
 add_library(linesplitter linesplitter.cc)
@@ -327,9 +327,9 @@ see a few lines of output indicating progress towards building and linking `line
 
 ## Building an ArrowArray
 
-The input for our `linesplitter_read()` function in an `std::string`, which we'll iterate
-over and add each detected line as its own element. First, some core logic to detect
-the number of characters until the next `\n` or end-of-string.
+The input for our `linesplitter_read()` function is an `std::string`, which we'll iterate
+over and add each detected line as its own element. First, we'll define a function for 
+the core logic of detecting the number of characters until the next `\n` or end-of-string.
 
 ```cpp
 static int64_t find_newline(const ArrowStringView& src) {
@@ -471,9 +471,10 @@ gtest_discover_tests(linesplitter_test)
 ```
 
 After you're done, build the project again using the **CMake: Build** command from
-the command palette. If all goes well, choose **Test: Run All Tests** from the command
-pallete to run them! You should see some output indiciating that tests ran successfully,
-or you can use VSCode's "Testing" panel to visually inspect which tests passed.
+the command palette. If all goes well, choose **CMake: Refresh Tests** and then  
+**Test: Run All Tests** from the command pallete to run them! You should see some 
+output indiciating that tests ran successfully, or you can use VSCode's "Testing" 
+panel to visually inspect which tests passed.
 
 ```{=rst}
 .. note::
