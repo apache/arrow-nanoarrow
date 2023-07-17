@@ -29,6 +29,7 @@
 #include <arrow/util/decimal.h>
 
 #include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow_types.h"
 
 using namespace arrow;
 
@@ -875,6 +876,24 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
+  struct ArrowArray array;
+
+  int32_t months = 42;
+  struct ArrowInterval interval;
+  interval.data = &months;
+  interval.unit = ArrowIntervalUnit::YEAR_MONTH;
+  
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_MONTHS), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInterval(&array, &interval), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);  
 }
 
 TEST(ArrayTest, ArrayTestAppendToDecimal128Array) {
