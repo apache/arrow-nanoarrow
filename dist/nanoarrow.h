@@ -2969,6 +2969,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
     return EINVAL;
   }
 
+  array->length++;
   return NANOARROW_OK;
 }
 
