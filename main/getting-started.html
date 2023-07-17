@@ -1,0 +1,961 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Getting started with nanoarrow &#8212; nanoarrow  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'getting-started';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="reference/index.html" />
+    <link rel="prev" title="nanoarrow" href="index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    <p class="title logo__title">nanoarrow  documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="reference/index.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="reference/index.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+  </button>
+`);
+</script></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Getting started with nanoarrow</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <!---
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+--><section id="getting-started-with-nanoarrow">
+<h1>Getting started with nanoarrow<a class="headerlink" href="#getting-started-with-nanoarrow" title="Permalink to this heading">#</a></h1>
+<p>This tutorial provides a short example of writing a C++ library that
+exposes an Arrow-based API and uses nanoarrow to implement a simple text
+file reader/writer. In general, nanoarrow can help you write a library
+or application that:</p>
+<ul class="simple">
+<li><p>exposes an Arrow-based API to read from a data source or format,</p></li>
+<li><p>exposes an Arrow-based API to write to a data source or format,</p></li>
+<li><p>exposes one or more compute functions that operates on and produces
+data in the form of Arrow arrays, and/or</p></li>
+<li><p>exposes an extension type implementation.</p></li>
+</ul>
+<p>Because Arrow has bindings in many languages, it means that you or
+others can easily bind or use your tool in higher-level runtimes like R,
+Java, C++, Python, Rust, Julia, Go, or Ruby, among others.</p>
+<p>The nanoarrow library is not the only way that an Arrow-based API can be
+implemented: Arrow C++, Rust, and Go are all excellent choices and can
+compile into static libraries that are C-linkable from other languages;
+however, existing Arrow implementations produce relatively large static
+libraries and can present complex build-time or run-time linking
+requirements depending on the implementation and features used. If the
+set of libraries you’re working with already provide the conveniences
+you require, nanoarrow may provide all the functionality you need.</p>
+<p>Now that we’ve talked about why you might want to build a library with
+nanoarrow…let’s build one!</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This tutorial also goes over some of the basic structure of writing a C++ library.
+If you already know how to do this, feel free to scroll to the code examples provided
+below or take a look at the
+<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter">final example project</a>.</p>
+</div>
+<section id="the-library">
+<h2>The library<a class="headerlink" href="#the-library" title="Permalink to this heading">#</a></h2>
+<p>The library we’ll write in this tutorial is a simple text processing
+library that splits and reassembles lines of text. It will be able to:</p>
+<ul class="simple">
+<li><p>Read text from a buffer into an <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> as one element per
+line, and</p></li>
+<li><p>Write elements of an <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> into a buffer, inserting line
+breaks after every element.</p></li>
+</ul>
+<p>For the sake of argument, we’ll call it <code class="docutils literal notranslate"><span class="pre">linesplitter</span></code>.</p>
+</section>
+<section id="the-development-environment">
+<h2>The development environment<a class="headerlink" href="#the-development-environment" title="Permalink to this heading">#</a></h2>
+<p>There are many excellent IDEs that can be used to develop C and C++
+libraries. For this tutorial, we will use
+<a class="reference external" href="https://code.visualstudio.com/">VSCode</a> and
+<a class="reference external" href="https://cmake.org/">CMake</a>. You’ll need both installed to follow
+along: VSCode can be downloaded from the official site for most
+platforms; CMake is typically installed via your favourite package
+manager (e.g., <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">cmake</span></code>, <code class="docutils literal notranslate"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">cmake</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">cmake</span></code>, etc.). You will also need a C and C++ compiler:
+on MacOS these can be installed using <code class="docutils literal notranslate"><span class="pre">xcode-select</span> <span class="pre">--install</span></code>; on
+Linux you will need the packages that provide <code class="docutils literal notranslate"><span class="pre">gcc</span></code>, <code class="docutils literal notranslate"><span class="pre">g++</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">make</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">build-essential</span></code>); on Windows you
+will need to install <a class="reference external" href="https://visualstudio.microsoft.com/downloads/">Visual
+Studio</a> and CMake from
+the official download pages.</p>
+<p>Once you have VSCode installed, ensure you have the <strong>CMake Tools</strong> and
+<strong>C/C++</strong> extensions installed. Once your environment is set up, create
+a folder called <code class="docutils literal notranslate"><span class="pre">linesplitter</span></code> and open it using <strong>File -&gt; Open
+Folder</strong>.</p>
+</section>
+<section id="the-interface">
+<h2>The interface<a class="headerlink" href="#the-interface" title="Permalink to this heading">#</a></h2>
+<p>We’ll expose the interface to our library as a header called
+<code class="docutils literal notranslate"><span class="pre">linesplitter.h</span></code>. To ensure the definitions are only included once in
+any given source file, we’ll add the following line at the top:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#pragma once</span>
+</pre></div>
+</div>
+<p>Then, we need the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html#structure-definitions">Arrow C Data
+interface</a>
+itself, since it provides the type definitions that are recognized by
+other Arrow implementations on which our API will be built. It’s
+designed to be copy and pasted in this way - there’s no need to put it
+in another file include something from another project.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdint.h&gt;</span>
+
+<span class="cp">#ifndef ARROW_C_DATA_INTERFACE</span>
+<span class="cp">#define ARROW_C_DATA_INTERFACE</span>
+
+<span class="cp">#define ARROW_FLAG_DICTIONARY_ORDERED 1</span>
+<span class="cp">#define ARROW_FLAG_NULLABLE 2</span>
+<span class="cp">#define ARROW_FLAG_MAP_KEYS_SORTED 4</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Array type description</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">format</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">metadata</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">flags</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">n_children</span><span class="p">;</span>
+<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="o">**</span><span class="w"> </span><span class="n">children</span><span class="p">;</span>
+<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="o">*</span><span class="w"> </span><span class="n">dictionary</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// Release callback</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">release</span><span class="p">)(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="o">*</span><span class="p">);</span>
+<span class="w">  </span><span class="c1">// Opaque producer-specific data</span>
+<span class="w">  </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">private_data</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Array data description</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">length</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">null_count</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">offset</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">n_buffers</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">n_children</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">**</span><span class="w"> </span><span class="n">buffers</span><span class="p">;</span>
+<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">**</span><span class="w"> </span><span class="n">children</span><span class="p">;</span>
+<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">dictionary</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// Release callback</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">release</span><span class="p">)(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="p">);</span>
+<span class="w">  </span><span class="c1">// Opaque producer-specific data</span>
+<span class="w">  </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">private_data</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="cp">#endif  </span><span class="c1">// ARROW_C_DATA_INTERFACE</span>
+</pre></div>
+</div>
+<p>Next, we’ll provide definitions for the functions we’ll implement below:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Builds an ArrowArray of type string that will contain one element for each line</span>
+<span class="c1">// in src and places it into out.</span>
+<span class="c1">//</span>
+<span class="c1">// On success, returns {0, &quot;&quot;}; on error, returns {&lt;errno code&gt;, &lt;error message&gt;}</span>
+<span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">linesplitter_read</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">,</span>
+<span class="w">                                              </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">out</span><span class="p">);</span>
+
+<span class="c1">// Concatenates all elements of a string ArrowArray inserting a newline between</span>
+<span class="c1">// elements.</span>
+<span class="c1">//</span>
+<span class="c1">// On success, returns {0, &lt;result&gt;}; on error, returns {&lt;errno code&gt;, &lt;error message&gt;}</span>
+<span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">linesplitter_write</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">input</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You may notice that we don’t include or mention nanoarrow in any way in the header
+that is exposed to users. Because nanoarrow is designed to be vendored and is not
+distributed as a system library, it is not safe for users of your library to
+<code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&quot;nanoarrow.h&quot;</span></code> because it might conflict with another library that does
+the same (with possibly a different version of nanoarrow).</p>
+</div>
+</section>
+<section id="arrow-c-data-nanoarrow-interface-basics">
+<h2>Arrow C data/nanoarrow interface basics<a class="headerlink" href="#arrow-c-data-nanoarrow-interface-basics" title="Permalink to this heading">#</a></h2>
+<p>Now that we’ve seen the functions we need to implement and the Arrow
+types exposed in the C data interface, let’s unpack a few basics about
+using the Arrow C data interface and a few conventions used in the
+nanoarrow implementation.</p>
+<p>First, let’s discuss the <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> and the <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code>. You can
+think of an <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> as an expression of a data type, whereas an
+<code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> is the data itself. These structures accomodate nested
+types: columns are encoded in the <code class="docutils literal notranslate"><span class="pre">children</span></code> member of each. You
+always need to know the data type of an <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> before accessing
+its contents. In our case we only operate on arrays of one type
+(“string”) and document that in our interface; for functions that
+operate on more than one type of array you will need to accept an
+<code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> and inspect it (e.g., using nanoarrow’s helper
+functions).</p>
+<p>Second, let’s discuss error handling. You may have noticed in the
+function definitions above that we return <code class="docutils literal notranslate"><span class="pre">int</span></code>, which is an
+errno-compatible error code or <code class="docutils literal notranslate"><span class="pre">0</span></code> to indicate success. Functions in
+nanoarrow that need to communicate more detailed error information
+accept an <code class="docutils literal notranslate"><span class="pre">ArrowError*</span></code> argument (which can be <code class="docutils literal notranslate"><span class="pre">NULL</span></code> if the caller
+does care about the extra information). Any nanoarrow function that
+might fail communicates errors in this way. To avoid verbose code like
+the following:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span><span class="w"> </span><span class="nf">init_string_non_null</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="o">*</span><span class="w"> </span><span class="n">schema</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowSchemaInitFromType</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="n">NANOARROW_TYPE_STRING</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">code</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="n">schema</span><span class="o">-&gt;</span><span class="n">flags</span><span class="w"> </span><span class="o">&amp;=</span><span class="w"> </span><span class="o">~</span><span class="n">ARROW_FLAG_NULLABLE</span><span class="p">;</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>…you can use the <code class="docutils literal notranslate"><span class="pre">NANOARROW_RETURN_NOT_OK()</span></code> macro:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span><span class="w"> </span><span class="nf">init_string_non_null</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="o">*</span><span class="w"> </span><span class="n">schema</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowSchemaInitFromType</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="n">NANOARROW_TYPE_STRING</span><span class="p">));</span>
+<span class="w">  </span><span class="n">schema</span><span class="o">-&gt;</span><span class="n">flags</span><span class="w"> </span><span class="o">&amp;=</span><span class="w"> </span><span class="o">~</span><span class="n">ARROW_FLAG_NULLABLE</span><span class="p">;</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This works as long as your internal functions that use nanoarrow also
+return <code class="docutils literal notranslate"><span class="pre">int</span></code> and/or an <code class="docutils literal notranslate"><span class="pre">ArrowError*</span></code> argument. This usually means
+that there is an outer function that presents a more idiomatic interface
+(e.g., returning <code class="docutils literal notranslate"><span class="pre">std::optional&lt;&gt;</span></code> or throwing an exception) and an
+inner function that uses nanoarrow-style error handling. Embracing
+<code class="docutils literal notranslate"><span class="pre">NANOARROW_RETURN_NOT_OK()</span></code> is key to happiness when using the
+nanoarrow library.</p>
+<p>Third, let’s discuss memory management. Because nanoarrow is implemented
+in C and provides a C interface, the library by default uses C-style
+memory management (i.e., if you allocate it, you clean it up). This is
+unnecessary when you have C++ at your disposal, so nanoarrow also
+provides a C++ header (<code class="docutils literal notranslate"><span class="pre">nanoarrow.hpp</span></code>) with
+<code class="docutils literal notranslate"><span class="pre">std::unique_ptr&lt;&gt;</span></code>-like wrappers around anything that requires
+explicit clean up. Whereas in C you might have to write code like this:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="w"> </span><span class="n">schema</span><span class="p">;</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="w"> </span><span class="n">array</span><span class="p">;</span>
+
+<span class="c1">// Ok: if this returns, array was not initialized</span>
+<span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowSchemaInitFromType</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="n">NANOARROW_TYPE_STRING</span><span class="p">));</span>
+
+<span class="c1">// Verbose: if this fails, we need to release schema before returning</span>
+<span class="c1">// or it will leak.</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowArrayInitFromSchema</span><span class="p">(</span><span class="o">&amp;</span><span class="n">array</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">schema</span><span class="p">.</span><span class="n">release</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">);</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">code</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>…using the <code class="docutils literal notranslate"><span class="pre">nanoarrow.hpp</span></code> types we can do:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">::</span><span class="n">UniqueSchema</span><span class="w"> </span><span class="n">schema</span><span class="p">;</span>
+<span class="n">nanoarrow</span><span class="o">::</span><span class="n">UniqueArray</span><span class="w"> </span><span class="n">array</span><span class="p">;</span>
+
+<span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowSchemaInitFromType</span><span class="p">(</span><span class="n">schema</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">NANOARROW_TYPE_STRING</span><span class="p">));</span>
+<span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayInitFromSchema</span><span class="p">(</span><span class="n">array</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">schema</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="nb">NULL</span><span class="p">));</span>
+</pre></div>
+</div>
+</section>
+<section id="building-the-library">
+<h2>Building the library<a class="headerlink" href="#building-the-library" title="Permalink to this heading">#</a></h2>
+<p>Our library implementation will live in <code class="docutils literal notranslate"><span class="pre">linesplitter.cc</span></code>. Before
+writing the actual implementations, let’s add just enough to our project
+that we can build it using VSCode’s C/C++/CMake integration:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cerrno&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cstdint&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;sstream&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;utility&gt;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;nanoarrow/nanoarrow.hpp&quot;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;linesplitter.h&quot;</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">linesplitter_read</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">,</span>
+<span class="w">                                              </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">out</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">ENOTSUP</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">};</span>
+<span class="p">}</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">linesplitter_write</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">input</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">ENOTSUP</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">};</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>We also need a <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code> file that tells CMake and VSCode what
+to build. CMake has a lot of options and can scale to coordinate very
+large projects; however we only need a few lines to leverage VSCode’s
+integration.</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">project</span><span class="p">(</span><span class="s">linesplitter</span><span class="p">)</span>
+
+<span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CXX_STANDARD</span><span class="w"> </span><span class="s">11</span><span class="p">)</span>
+
+<span class="nb">include</span><span class="p">(</span><span class="s">FetchContent</span><span class="p">)</span>
+
+<span class="nb">FetchContent_Declare</span><span class="p">(</span>
+<span class="w">  </span><span class="s">nanoarrow</span>
+<span class="w">  </span><span class="s">URL</span><span class="w"> </span><span class="s">https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.2.0/apache-arrow-nanoarrow-0.2.0.tar.gz</span>
+<span class="w">  </span><span class="s">URL_HASH</span><span class="w"> </span><span class="s">SHA512=38a100ae5c36a33aa330010eb27b051cff98671e9c82fff22b1692bb77ae61bd6dc2a52ac6922c6c8657bd4c79a059ab26e8413de8169eeed3c9b7fdb216c817</span><span class="p">)</span>
+<span class="nb">FetchContent_MakeAvailable</span><span class="p">(</span><span class="s">nanoarrow</span><span class="p">)</span>
+
+<span class="nb">add_library</span><span class="p">(</span><span class="s">linesplitter</span><span class="w"> </span><span class="s">linesplitter.cc</span><span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">linesplitter</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">nanoarrow</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After saving <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code>, you may have to close and re-open the
+<code class="docutils literal notranslate"><span class="pre">linesplitter</span></code> directory in VSCode to activate the CMake integration.
+From the command pallete (i.e., Control/Command-Shift-P), choose
+<strong>CMake: Build</strong>. If all went well, you should see a few lines of output
+indicating progress towards building and linking <code class="docutils literal notranslate"><span class="pre">linesplitter</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Depending on your version of CMake you might also see a few warnings. This CMakeLists.txt
+is intentionally minimal and as such does not attempt to silence them.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you’re not using VSCode, you can accomplish the equivalent task in in a terminal
+with <code class="docutils literal notranslate"><span class="pre">mkdir</span> <span class="pre">build</span> <span class="pre">&amp;&amp;</span> <span class="pre">cd</span> <span class="pre">build</span> <span class="pre">&amp;&amp;</span> <span class="pre">cmake</span> <span class="pre">..</span> <span class="pre">&amp;&amp;</span> <span class="pre">cmake</span> <span class="pre">--build</span> <span class="pre">.</span></code>.</p>
+</div>
+</section>
+<section id="building-an-arrowarray">
+<h2>Building an ArrowArray<a class="headerlink" href="#building-an-arrowarray" title="Permalink to this heading">#</a></h2>
+<p>The input for our <code class="docutils literal notranslate"><span class="pre">linesplitter_read()</span></code> function is an
+<code class="docutils literal notranslate"><span class="pre">std::string</span></code>, which we’ll iterate over and add each detected line as
+its own element. First, we’ll define a function for the core logic of
+detecting the number of characters until the next <code class="docutils literal notranslate"><span class="pre">\n</span></code> or
+end-of-string.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kt">int64_t</span><span class="w"> </span><span class="nf">find_newline</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ArrowStringView</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int64_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">src</span><span class="p">.</span><span class="n">size_bytes</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">src</span><span class="p">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">&#39;\n&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">src</span><span class="p">.</span><span class="n">size_bytes</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The next function we’ll define is an internal function that uses
+nanoarrow-style error handling. This uses the <code class="docutils literal notranslate"><span class="pre">ArrowArrayAppend*()</span></code>
+family of functions provided by nanoarrow to build the array:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">linesplitter_read_internal</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="n">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">out</span><span class="p">,</span>
+<span class="w">                                      </span><span class="n">ArrowError</span><span class="o">*</span><span class="w"> </span><span class="n">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">nanoarrow</span><span class="o">::</span><span class="n">UniqueArray</span><span class="w"> </span><span class="n">tmp</span><span class="p">;</span>
+<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayInitFromType</span><span class="p">(</span><span class="n">tmp</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">NANOARROW_TYPE_STRING</span><span class="p">));</span>
+<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayStartAppending</span><span class="p">(</span><span class="n">tmp</span><span class="p">.</span><span class="n">get</span><span class="p">()));</span>
+
+<span class="w">  </span><span class="n">ArrowStringView</span><span class="w"> </span><span class="n">src_view</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="n">src</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int64_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">src</span><span class="p">.</span><span class="n">size</span><span class="p">())};</span>
+<span class="w">  </span><span class="n">ArrowStringView</span><span class="w"> </span><span class="n">line_view</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">next_newline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span>
+<span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">((</span><span class="n">next_newline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">find_newline</span><span class="p">(</span><span class="n">src_view</span><span class="p">))</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">line_view</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="n">src_view</span><span class="p">.</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">next_newline</span><span class="p">};</span>
+<span class="w">    </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayAppendString</span><span class="p">(</span><span class="n">tmp</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">line_view</span><span class="p">));</span>
+<span class="w">    </span><span class="n">src_view</span><span class="p">.</span><span class="n">data</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">next_newline</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="n">src_view</span><span class="p">.</span><span class="n">size_bytes</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="n">next_newline</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayFinishBuildingDefault</span><span class="p">(</span><span class="n">tmp</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">error</span><span class="p">));</span>
+
+<span class="w">  </span><span class="n">ArrowArrayMove</span><span class="p">(</span><span class="n">tmp</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">out</span><span class="p">);</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Finally, we define a wrapper that corresponds to the outer function
+definition.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">linesplitter_read</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="n">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">out</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">ArrowError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">linesplitter_read_internal</span><span class="p">(</span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="n">out</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">code</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">ArrowErrorMessage</span><span class="p">(</span><span class="o">&amp;</span><span class="n">error</span><span class="p">))};</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">NANOARROW_OK</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">};</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="reading-an-arrowarray">
+<h2>Reading an ArrowArray<a class="headerlink" href="#reading-an-arrowarray" title="Permalink to this heading">#</a></h2>
+<p>The input for our <code class="docutils literal notranslate"><span class="pre">linesplitter_write()</span></code> function is an
+<code class="docutils literal notranslate"><span class="pre">ArrowArray*</span></code> like the one we create in <code class="docutils literal notranslate"><span class="pre">linesplitter_read()</span></code>. Just
+as nanoarrow provides helpers to build arrays, it also provides helpers
+to read them via the <code class="docutils literal notranslate"><span class="pre">ArrowArrayView*()</span></code> family of functions. Again,
+we first define an internal function that uses nanoarrow-style error
+handling:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">linesplitter_write_internal</span><span class="p">(</span><span class="n">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">stringstream</span><span class="o">&amp;</span><span class="w"> </span><span class="n">out</span><span class="p">,</span>
+<span class="w">                                       </span><span class="n">ArrowError</span><span class="o">*</span><span class="w"> </span><span class="n">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">nanoarrow</span><span class="o">::</span><span class="n">UniqueArrayView</span><span class="w"> </span><span class="n">input_view</span><span class="p">;</span>
+<span class="w">  </span><span class="n">ArrowArrayViewInitFromType</span><span class="p">(</span><span class="n">input_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">NANOARROW_TYPE_STRING</span><span class="p">);</span>
+<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayViewSetArray</span><span class="p">(</span><span class="n">input_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">));</span>
+
+<span class="w">  </span><span class="n">ArrowStringView</span><span class="w"> </span><span class="n">item</span><span class="p">;</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int64_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">input</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ArrowArrayViewIsNull</span><span class="p">(</span><span class="n">input_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">i</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">out</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowArrayViewGetStringUnsafe</span><span class="p">(</span><span class="n">input_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">i</span><span class="p">);</span>
+<span class="w">      </span><span class="n">out</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">.</span><span class="n">size_bytes</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then, provide an outer wrapper that corresponds to the outer function
+definition.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">linesplitter_write</span><span class="p">(</span><span class="n">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">input</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">stringstream</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+<span class="w">  </span><span class="n">ArrowError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">linesplitter_write_internal</span><span class="p">(</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">out</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">code</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">ArrowErrorMessage</span><span class="p">(</span><span class="o">&amp;</span><span class="n">error</span><span class="p">))};</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">NANOARROW_OK</span><span class="p">,</span><span class="w"> </span><span class="n">out</span><span class="p">.</span><span class="n">str</span><span class="p">()};</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this heading">#</a></h2>
+<p>We have an implementation, but does it work? Unlike higher-level
+runtimes like R and Python, we can’t just open a prompt and type some
+code to find out. For C and C++ libraries, the
+<a class="reference external" href="https://google.github.io/googletest/quickstart-cmake.html">googletest</a>
+framework provides a quick and easy way to do this that scales nicely as
+the complexity of your project grows.</p>
+<p>First, we’ll add a stub test and some CMake to get going. In
+<code class="docutils literal notranslate"><span class="pre">linesplitter_test.cc</span></code>, add the following:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;gtest/gtest.h&gt;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;nanoarrow/nanoarrow.hpp&quot;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;linesplitter.h&quot;</span>
+
+<span class="n">TEST</span><span class="p">(</span><span class="n">Linesplitter</span><span class="p">,</span><span class="w"> </span><span class="n">LinesplitterRoundtrip</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">EXPECT_EQ</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then, add the following to your <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code>:</p>
+<div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">FetchContent_Declare</span><span class="p">(</span>
+<span class="w">  </span><span class="s">googletest</span>
+<span class="w">  </span><span class="s">URL</span><span class="w"> </span><span class="s">https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip</span>
+<span class="p">)</span>
+<span class="nb">FetchContent_MakeAvailable</span><span class="p">(</span><span class="s">googletest</span><span class="p">)</span>
+
+<span class="nb">enable_testing</span><span class="p">()</span>
+
+<span class="nb">add_executable</span><span class="p">(</span><span class="s">linesplitter_test</span><span class="w"> </span><span class="s">linesplitter_test.cc</span><span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">linesplitter_test</span><span class="w"> </span><span class="s">linesplitter</span><span class="w"> </span><span class="s">GTest::gtest_main</span><span class="p">)</span>
+
+<span class="nb">include</span><span class="p">(</span><span class="s">GoogleTest</span><span class="p">)</span>
+<span class="nb">gtest_discover_tests</span><span class="p">(</span><span class="s">linesplitter_test</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">After you’re done, build the project again using the <strong>CMake: Build</strong>
+command from the command palette. If all goes well, choose <strong>CMake:
+Refresh Tests</strong> and then</div>
+<div class="line"><strong>Test: Run All Tests</strong> from the command pallete to run them! You
+should see some output indiciating that tests ran successfully, or you
+can use VSCode’s “Testing” panel to visually inspect which tests
+passed.</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you’re not using VSCode, you can accomplish the equivalent task in in a terminal
+with <code class="docutils literal notranslate"><span class="pre">cd</span> <span class="pre">build</span> <span class="pre">&amp;&amp;</span> <span class="pre">ctest</span> <span class="pre">.</span></code>.</p>
+</div>
+<p>Now we’re ready to fill in the test! Our two functions happen to round
+trip, so a useful first test might be to check.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">TEST</span><span class="p">(</span><span class="n">Linesplitter</span><span class="p">,</span><span class="w"> </span><span class="n">LinesplitterRoundtrip</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">nanoarrow</span><span class="o">::</span><span class="n">UniqueArray</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">linesplitter_read</span><span class="p">(</span><span class="s">&quot;line1</span><span class="se">\n</span><span class="s">line2</span><span class="se">\n</span><span class="s">line3&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">out</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">first</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">second</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">out</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">nanoarrow</span><span class="o">::</span><span class="n">UniqueArrayView</span><span class="w"> </span><span class="n">out_view</span><span class="p">;</span>
+<span class="w">  </span><span class="n">ArrowArrayViewInitFromType</span><span class="p">(</span><span class="n">out_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">NANOARROW_TYPE_STRING</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">ArrowArrayViewSetArray</span><span class="p">(</span><span class="n">out_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="n">out</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="k">nullptr</span><span class="p">),</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ArrowStringView</span><span class="w"> </span><span class="n">item</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowArrayViewGetStringUnsafe</span><span class="p">(</span><span class="n">out_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">.</span><span class="n">size_bytes</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;line1&quot;</span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowArrayViewGetStringUnsafe</span><span class="p">(</span><span class="n">out_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">.</span><span class="n">size_bytes</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;line2&quot;</span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowArrayViewGetStringUnsafe</span><span class="p">(</span><span class="n">out_view</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">.</span><span class="n">size_bytes</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;line3&quot;</span><span class="p">);</span>
+
+
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">result2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">linesplitter_write</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">result2</span><span class="p">.</span><span class="n">first</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ASSERT_EQ</span><span class="p">(</span><span class="n">result2</span><span class="p">.</span><span class="n">second</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;line1</span><span class="se">\n</span><span class="s">line2</span><span class="se">\n</span><span class="s">line3</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Writing tests in this way also opens up a relatively straightforward
+debug path via the <strong>CMake: Set Debug target</strong> and <strong>CMake: Debug</strong>
+commands. If the first thing that happens when you write run your test
+is a crash, running the tests with the debugger turned on will
+automatically pause at the line of code that caused the crash. For more
+fine-tuned debugging, you can set breakpoints and step through code.</p>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this heading">#</a></h2>
+<p>This tutorial covered the basics of writing and testing a C++ library
+exposing an Arrow-based API implemented using the nanoarrow C library.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+                <footer class="bd-footer-article">
+                  
+<div class="footer-article-items footer-article__inner">
+  
+    <div class="footer-article-item"><!-- Previous / next buttons -->
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">nanoarrow</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="reference/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">API Reference</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div></div>
+  
+</div>
+
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-library">The library</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-development-environment">The development environment</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-interface">The interface</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrow-c-data-nanoarrow-interface-basics">Arrow C data/nanoarrow interface basics</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-the-library">Building the library</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-an-arrowarray">Building an ArrowArray</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reading-an-arrowarray">Reading an ArrowArray</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing">Testing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#summary">Summary</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/apache/arrow-nanoarrow/edit/main/docs/source/getting-started.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+  <div class="tocsection sourcelink">
+    <a href="_sources/getting-started.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright 2016-2023 Apache Software Foundation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
