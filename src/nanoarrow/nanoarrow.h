@@ -876,7 +876,7 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
 /// the underlying storage type or EINVAL otherwise (e.g., value
 /// is outside the valid array range).
 static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
-                                                      struct ArrowInterval* value); 
+                                                      struct ArrowInterval* value);
 
 /// \brief Append a decimal value to an array
 ///

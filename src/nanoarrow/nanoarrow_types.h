@@ -450,24 +450,20 @@ enum ArrowBufferType {
 };
 
 /// \brief Types of intervals that can be represented in the Arrow Format
-enum ArrowIntervalUnit {
-  YEAR_MONTH,
-  DAY_TIME,
-  MONTH_DAY_NANO
-};
+enum ArrowIntervalUnit { YEAR_MONTH, DAY_TIME, MONTH_DAY_NANO };
 
 /// \brief Representation of a DAY_TIME type interval
 struct ArrowIntervalDayTime {
   int32_t days;
   int32_t ms;
 };
-  
+
 /// \brief Representation of a MONTH_DAY_NANO type interval
 struct ArrowIntervalMonthDayNano {
   int32_t months;
   int32_t days;
   int64_t ns;
-};  
+};
 
 /// \brief An non-owning view of a string
 /// \ingroup nanoarrow-utils
@@ -678,12 +674,11 @@ struct ArrowArrayPrivateData {
 
 /// \brief A representation of an interval.
 struct ArrowInterval {
-
   /// \brief The type of interval being used
   enum ArrowIntervalUnit unit;
 
   /// \brief Pointer containing the underlying data for the interval
-  void *data;
+  void* data;
 };
 
 /// \brief A representation of a fixed-precision decimal number
