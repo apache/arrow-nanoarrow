@@ -29,7 +29,6 @@
 #include <arrow/util/decimal.h>
 
 #include "nanoarrow/nanoarrow.h"
-#include "nanoarrow/nanoarrow_types.h"
 
 using namespace arrow;
 

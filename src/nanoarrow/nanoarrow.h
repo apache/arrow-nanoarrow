@@ -873,8 +873,7 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
 /// \brief Append a Interval to an array
 ///
 /// Returns NANOARROW_OK if value can be exactly represented by
-/// the underlying storage type or EINVAL otherwise (e.g., value
-/// is outside the valid array range).
+/// the underlying storage type or EINVAL otherwise.
 static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
                                                       struct ArrowInterval* value);
 
