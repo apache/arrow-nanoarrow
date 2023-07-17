@@ -678,7 +678,11 @@ struct ArrowInterval {
   enum ArrowIntervalUnit unit;
 
   /// \brief Pointer containing the underlying data for the interval
-  void* data;
+  union {
+    int32_t year_month;
+    struct ArrowIntervalDayTime day_time;
+    struct ArrowIntervalMonthDayNano month_day_nano;
+  } data;
 };
 
 /// \brief A representation of a fixed-precision decimal number

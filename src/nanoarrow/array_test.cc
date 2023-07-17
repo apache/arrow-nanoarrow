@@ -881,9 +881,9 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   struct ArrowArray array;
 
-  int32_t months = 42;
+  const int32_t months = 42;
   struct ArrowInterval interval;
-  interval.data = &months;
+  interval.data.year_month = months;
   interval.unit = ArrowIntervalUnit::YEAR_MONTH;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_MONTHS), NANOARROW_OK);
@@ -902,9 +902,9 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {
   struct ArrowArray array;
 
-  struct ArrowIntervalDayTime dts = {.days = 42, .ms = 42};
+  const struct ArrowIntervalDayTime dts = {.days = 42, .ms = 42};
   struct ArrowInterval interval;
-  interval.data = &dts;
+  interval.data.day_time = dts;
   interval.unit = ArrowIntervalUnit::DAY_TIME;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_DAY_TIME),
@@ -927,9 +927,9 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
   struct ArrowArray array;
 
-  struct ArrowIntervalMonthDayNano mdn = {.months = 2, .days = 12, .ns = 42};
+  const struct ArrowIntervalMonthDayNano mdn = {.months = 2, .days = 12, .ns = 42};
   struct ArrowInterval interval;
-  interval.data = &mdn;
+  interval.data.month_day_nano = mdn;
   interval.unit = ArrowIntervalUnit::MONTH_DAY_NANO;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO),
