@@ -452,19 +452,6 @@ enum ArrowBufferType {
 /// \brief Types of intervals that can be represented in the Arrow Format
 enum ArrowIntervalUnit { YEAR_MONTH, DAY_TIME, MONTH_DAY_NANO };
 
-/// \brief Representation of a DAY_TIME type interval
-struct ArrowIntervalDayTime {
-  int32_t days;
-  int32_t ms;
-};
-
-/// \brief Representation of a MONTH_DAY_NANO type interval
-struct ArrowIntervalMonthDayNano {
-  int32_t months;
-  int32_t days;
-  int64_t ns;
-};
-
 /// \brief An non-owning view of a string
 /// \ingroup nanoarrow-utils
 struct ArrowStringView {
@@ -676,14 +663,23 @@ struct ArrowArrayPrivateData {
 struct ArrowInterval {
   /// \brief The type of interval being used
   enum ArrowIntervalUnit unit;
-
-  /// \brief Pointer containing the underlying data for the interval
-  union {
-    int32_t year_month;
-    struct ArrowIntervalDayTime day_time;
-    struct ArrowIntervalMonthDayNano month_day_nano;
-  } data;
+  int32_t months;
+  int32_t days;
+  int32_t ms;
+  int64_t ns;
 };
+
+/// \brief Initialize an Interval with a given set of values
+/// \ingroup nanoarrow-utils
+static inline void ArrowIntervalInit(struct ArrowInterval* interval,
+                                     enum ArrowIntervalUnit unit, int32_t months,
+                                     int32_t days, int32_t ms, int64_t ns) {
+  interval->unit = unit;
+  interval->months = months;
+  interval->days = days;
+  interval->ms = ms;
+  interval->ns = ns;
+}
 
 /// \brief A representation of a fixed-precision decimal number
 /// \ingroup nanoarrow-utils

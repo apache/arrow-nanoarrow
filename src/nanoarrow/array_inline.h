@@ -542,8 +542,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
         return EINVAL;
       }
 
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppendInt32(data_buffer, value->data.year_month));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->months));
       break;
     }
     case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
@@ -551,9 +550,8 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
         return EINVAL;
       }
 
-      struct ArrowIntervalDayTime dt = value->data.day_time;
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, dt.days));
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, dt.ms));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->days));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->ms));
       break;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
@@ -561,10 +559,9 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
         return EINVAL;
       }
 
-      struct ArrowIntervalMonthDayNano mdn = value->data.month_day_nano;
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, mdn.months));
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, mdn.days));
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(data_buffer, mdn.ns));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->months));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(data_buffer, value->days));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(data_buffer, value->ns));
       break;
     }
     default:
