@@ -29,18 +29,16 @@ project(NanoArrowExampleCMakeMinimal)
 # available in many text editors.
 set(NANOARROW_NAMESPACE "ExampleCmakeMinimal")
 
-FetchContent_Declare(
-  nanoarrow_example_cmake_minimal
+fetchcontent_declare(nanoarrow_example_cmake_minimal
+                     # We use SOURCE_DIR here to point to the version of nanoarrow represented
+                     # by this checkout of the repo; however, you can use any of the methods
+                     # supported by FetchContent_Declare, e.g.:
+                     # GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
+                     # GIT_TAG some_commit_hash
+                     # GIT_SHALLOW TRUE
+                     SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 
-  # We use SOURCE_DIR here to point to the version of nanoarrow represented
-  # by this checkout of the repo; however, you can use any of the methods
-  # supported by FetchContent_Declare, e.g.:
-  # GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
-  # GIT_TAG some_commit_hash
-  # GIT_SHALLOW TRUE
-  SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
-
-FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
+fetchcontent_makeavailable(nanoarrow_example_cmake_minimal)
 
 # Add the library and link it against nanoarrow
 include_directories(src)

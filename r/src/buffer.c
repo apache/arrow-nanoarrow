@@ -195,7 +195,8 @@ SEXP nanoarrow_c_buffer_head_bytes(SEXP buffer_xptr, SEXP max_bytes_sexp) {
     return buffer_xptr;
   }
 
-  SEXP buffer_clone_xptr = PROTECT(buffer_borrowed_xptr(buffer->data, max_bytes, buffer_xptr));
+  SEXP buffer_clone_xptr =
+      PROTECT(buffer_borrowed_xptr(buffer->data, max_bytes, buffer_xptr));
   R_SetExternalPtrTag(buffer_clone_xptr, Rf_duplicate(R_ExternalPtrTag(buffer_xptr)));
   UNPROTECT(1);
   return buffer_clone_xptr;

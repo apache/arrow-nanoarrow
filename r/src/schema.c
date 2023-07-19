@@ -119,7 +119,8 @@ SEXP nanoarrow_c_schema_init_decimal(SEXP type_id_sexp, SEXP precision_sexp,
   return schema_xptr;
 }
 
-SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp, SEXP nullable_sexp) {
+SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp,
+                                        SEXP nullable_sexp) {
   int type_id = INTEGER(type_id_sexp)[0];
   int fixed_size = INTEGER(fixed_size_sexp)[0];
 

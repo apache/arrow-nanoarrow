@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import sys
 import re
+import sys
+
 import numpy as np
 import pyarrow as pa
 import pytest

@@ -35,6 +35,6 @@ int main(int argc, char* argv[]) {
   result = print_simple_array(&array, &schema);
   if (array.release) array.release(&array);
   if (schema.release) schema.release(&schema);
-  
+
   return result;
 }

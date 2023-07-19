@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import Schema, Array, ArrayStream
+from ._lib import Array, ArrayStream, Schema
 
 
 def schema(obj):

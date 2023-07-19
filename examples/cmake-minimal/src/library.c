@@ -48,7 +48,8 @@ int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_o
 
 int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema) {
   struct ArrowArrayView array_view;
-  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, &global_error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayViewInitFromSchema(&array_view, schema, &global_error));
 
   if (array_view.storage_type != NANOARROW_TYPE_INT32) {
     printf("Array has storage that is not int32\n");

@@ -453,7 +453,7 @@ SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursi
 
     if (recursive) {
       SEXP dictionary_view_xptr =
-        PROTECT(borrow_array_view_dictionary(array_view, array_view_xptr));
+          PROTECT(borrow_array_view_dictionary(array_view, array_view_xptr));
       SEXP dictionary_proxy = PROTECT(
           nanoarrow_c_array_proxy(dictionary_xptr, dictionary_view_xptr, recursive_sexp));
       SET_VECTOR_ELT(array_proxy, 5, dictionary_proxy);
