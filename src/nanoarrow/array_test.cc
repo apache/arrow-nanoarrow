@@ -923,7 +923,7 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {
   auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
 
   EXPECT_EQ(memcmp(data_buffer, &interval.days, 4), 0);
-  EXPECT_EQ(memcmp(data_buffer + 4, &interval.ms, 4), 0);
+  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.days), &interval.ms, 4), 0);
 
   auto arrow_array = ImportArray(&array, day_time_interval());
   ARROW_EXPECT_OK(arrow_array);
@@ -957,8 +957,10 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
   auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
 
   EXPECT_EQ(memcmp(data_buffer, &interval.months, 4), 0);
-  EXPECT_EQ(memcmp(data_buffer + 4, &interval.days, 4), 0);
-  EXPECT_EQ(memcmp(data_buffer + 8, &interval.ns, 8), 0);
+  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.months), &interval.days, 4), 0);
+  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.months) + sizeof(interval.days),
+                   &interval.ns, 8),
+            0);
 
   auto arrow_array = ImportArray(&array, month_day_nano_interval());
   ARROW_EXPECT_OK(arrow_array);
