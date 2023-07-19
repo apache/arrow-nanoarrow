@@ -65,5 +65,6 @@ def array_stream(obj):
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.ArrowArrayStream"
+            f"Can't convert object of type {type(obj).__name__} "
+            "to nanoarrow.ArrowArrayStream"
         )

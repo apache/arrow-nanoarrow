@@ -24,7 +24,6 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
-    - id: check-xml
     - id: check-yaml
     - id: end-of-file-fixer
       exclude: "^r/.*?/_snaps/.*?.md$"
@@ -56,5 +55,6 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
+      exclude: "__init__.py$"
 
 exclude: "(^dist/flatcc.*$)|(^extensions/nanoarrow_ipc/thirdparty/.*$)"

@@ -75,7 +75,9 @@ class NanoarrowPxdGenerator:
             r"(?P<type>struct|union|enum) (?P<name>Arrow[^ ]+) {(?P<body>[^}]*)}"
         )
         self.re_func_def = re.compile(
-            r"\n(static inline )?(?P<const>const )?(struct|enum )?(?P<return_type>[A-Za-z0-9_*]+) (?P<name>Arrow[A-Za-z]+)\((?P<args>[^\)]*)\);"
+            r"\n(static inline )?(?P<const>const )?(struct|enum )?"
+            r"(?P<return_type>[A-Za-z0-9_*]+) "
+            r"(?P<name>Arrow[A-Za-z]+)\((?P<args>[^\)]*)\);"
         )
         self.re_tagged_type = re.compile(
             r"(?P<type>struct|union|enum) (?P<name>Arrow[A-Za-z]+)"
@@ -141,7 +143,8 @@ class NanoarrowPxdGenerator:
 
         # cython: language_level = 3
 
-        from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t
+        from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t
+        from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t
         """
 
 
@@ -172,9 +175,9 @@ def copy_or_generate_nanoarrow_c():
             os.mkdir(build_dir)
             os.chdir(build_dir)
             os.system(
-                f"cmake ../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=PythonPkg"
+                "cmake ../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=PythonPkg"
             )
-            os.system(f"cmake --install . --prefix=../src/nanoarrow")
+            os.system("cmake --install . --prefix=../src/nanoarrow")
         finally:
             if os.path.exists(build_dir):
                 # Can fail on Windows with permission issues

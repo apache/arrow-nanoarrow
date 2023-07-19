@@ -1788,9 +1788,7 @@ typedef flatbuffers_ref_t flatbuffers_root_t;
 
 /* depends on N ## _add which differs for union member fields and ordinary fields */
 #define __flatbuffers_build_string_field_ops(NS, N) static inline int N
-    ##_start(NS##builder_t* B) {
-  return flatcc_builder_start_string(B);
-}
+##_start(NS##builder_t* B) { return flatcc_builder_start_string(B); }
 static inline int N##_end(NS##builder_t* B) {
   return N##_add(B, flatcc_builder_end_string(B));
 }
@@ -12485,16 +12483,19 @@ static int org_apache_arrow_flatbuf_SparseTensorIndex_union_verifier(
   switch (ud->type) {
     case 1:
       return flatcc_verify_union_table(
-          ud, org_apache_arrow_flatbuf_SparseTensorIndexCOO_verify_table); /* SparseTensorIndexCOO
-                                                                            */
+          ud,
+          org_apache_arrow_flatbuf_SparseTensorIndexCOO_verify_table); /* SparseTensorIndexCOO
+                                                                        */
     case 2:
       return flatcc_verify_union_table(
-          ud, org_apache_arrow_flatbuf_SparseMatrixIndexCSX_verify_table); /* SparseMatrixIndexCSX
-                                                                            */
+          ud,
+          org_apache_arrow_flatbuf_SparseMatrixIndexCSX_verify_table); /* SparseMatrixIndexCSX
+                                                                        */
     case 3:
       return flatcc_verify_union_table(
-          ud, org_apache_arrow_flatbuf_SparseTensorIndexCSF_verify_table); /* SparseTensorIndexCSF
-                                                                            */
+          ud,
+          org_apache_arrow_flatbuf_SparseTensorIndexCSF_verify_table); /* SparseTensorIndexCSF
+                                                                        */
     default:
       return flatcc_verify_ok;
   }
@@ -23922,16 +23923,19 @@ static int org_apache_arrow_flatbuf_SparseTensorIndex_union_verifier(
   switch (ud->type) {
     case 1:
       return flatcc_verify_union_table(
-          ud, org_apache_arrow_flatbuf_SparseTensorIndexCOO_verify_table); /* SparseTensorIndexCOO
-                                                                            */
+          ud,
+          org_apache_arrow_flatbuf_SparseTensorIndexCOO_verify_table); /* SparseTensorIndexCOO
+                                                                        */
     case 2:
       return flatcc_verify_union_table(
-          ud, org_apache_arrow_flatbuf_SparseMatrixIndexCSX_verify_table); /* SparseMatrixIndexCSX
-                                                                            */
+          ud,
+          org_apache_arrow_flatbuf_SparseMatrixIndexCSX_verify_table); /* SparseMatrixIndexCSX
+                                                                        */
     case 3:
       return flatcc_verify_union_table(
-          ud, org_apache_arrow_flatbuf_SparseTensorIndexCSF_verify_table); /* SparseTensorIndexCSF
-                                                                            */
+          ud,
+          org_apache_arrow_flatbuf_SparseTensorIndexCSF_verify_table); /* SparseTensorIndexCSF
+                                                                        */
     default:
       return flatcc_verify_ok;
   }
