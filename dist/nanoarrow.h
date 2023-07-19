@@ -479,9 +479,6 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_DATA
 };
 
-/// \brief Types of intervals that can be represented in the Arrow Format
-enum ArrowIntervalUnit { YEAR_MONTH, DAY_TIME, MONTH_DAY_NANO };
-
 /// \brief An non-owning view of a string
 /// \ingroup nanoarrow-utils
 struct ArrowStringView {
@@ -692,7 +689,7 @@ struct ArrowArrayPrivateData {
 /// \brief A representation of an interval.
 struct ArrowInterval {
   /// \brief The type of interval being used
-  enum ArrowIntervalUnit unit;
+  enum ArrowType unit;
 
   int32_t months;
   int32_t days;
@@ -702,9 +699,9 @@ struct ArrowInterval {
 
 /// \brief Initialize an Interval with a given set of values
 /// \ingroup nanoarrow-utils
-static inline void ArrowIntervalInit(struct ArrowInterval* interval,
-                                     enum ArrowIntervalUnit unit, int32_t months,
-                                     int32_t days, int32_t ms, int64_t ns) {
+static inline void ArrowIntervalInit(struct ArrowInterval* interval, enum ArrowType unit,
+                                     int32_t months, int32_t days, int32_t ms,
+                                     int64_t ns) {
   interval->unit = unit;
   interval->months = months;
   interval->days = days;
@@ -2920,7 +2917,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_INTERVAL_MONTHS: {
-      if (value->unit != YEAR_MONTH) {
+      if (value->unit != NANOARROW_TYPE_INTERVAL_MONTHS) {
         return EINVAL;
       }
 
@@ -2928,7 +2925,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
       break;
     }
     case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
-      if (value->unit != DAY_TIME) {
+      if (value->unit != NANOARROW_TYPE_INTERVAL_DAY_TIME) {
         return EINVAL;
       }
 
@@ -2937,7 +2934,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
       break;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-      if (value->unit != MONTH_DAY_NANO) {
+      if (value->unit != NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
         return EINVAL;
       }
 
