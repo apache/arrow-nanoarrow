@@ -54,4 +54,3 @@ repos:
     hooks:
     - id: isort
       types_or: [python]
-
