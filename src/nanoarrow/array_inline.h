@@ -538,7 +538,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
 
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_INTERVAL_MONTHS: {
-      if (value->unit != NANOARROW_TYPE_INTERVAL_MONTHS) {
+      if (value->type != NANOARROW_TYPE_INTERVAL_MONTHS) {
         return EINVAL;
       }
 
@@ -546,7 +546,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
       break;
     }
     case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
-      if (value->unit != NANOARROW_TYPE_INTERVAL_DAY_TIME) {
+      if (value->type != NANOARROW_TYPE_INTERVAL_DAY_TIME) {
         return EINVAL;
       }
 
@@ -555,7 +555,7 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
       break;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-      if (value->unit != NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
+      if (value->type != NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO) {
         return EINVAL;
       }
 

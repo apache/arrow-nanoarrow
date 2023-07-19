@@ -657,25 +657,26 @@ struct ArrowArrayPrivateData {
 };
 
 /// \brief A representation of an interval.
+/// \ingroup nanoarrow-utils
 struct ArrowInterval {
   /// \brief The type of interval being used
-  enum ArrowType unit;
+  enum ArrowType type;
+  /// \brief The number of months represented by the interval
   int32_t months;
+  /// \brief The number of days represented by the interval
   int32_t days;
+  /// \brief The number of ms represented by the interval
   int32_t ms;
+  /// \brief The number of ns represented by the interval
   int64_t ns;
 };
 
-/// \brief Initialize an Interval with a given set of values
+/// \brief Zero initialize an Interval with a given unit
 /// \ingroup nanoarrow-utils
-static inline void ArrowIntervalInit(struct ArrowInterval* interval, enum ArrowType unit,
-                                     int32_t months, int32_t days, int32_t ms,
-                                     int64_t ns) {
-  interval->unit = unit;
-  interval->months = months;
-  interval->days = days;
-  interval->ms = ms;
-  interval->ns = ns;
+static inline void ArrowIntervalInit(struct ArrowInterval* interval,
+                                     enum ArrowType type) {
+  memset(interval, 0, sizeof(struct ArrowInterval));
+  interval->type = type;
 }
 
 /// \brief A representation of a fixed-precision decimal number
