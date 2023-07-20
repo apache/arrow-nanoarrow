@@ -894,11 +894,10 @@ cdef class ArrayStream:
             return array
 
     def __iter__(self):
-        try:
-            while True:
-                yield self.get_next()
-        except StopIteration:
-            return
+        return self
+
+    def __next__(self):
+        return self.get_next()
 
     @staticmethod
     def allocate():
