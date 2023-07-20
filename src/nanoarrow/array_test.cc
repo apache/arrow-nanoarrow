@@ -23,6 +23,7 @@
 #include <arrow/array/builder_decimal.h>
 #include <arrow/array/builder_nested.h>
 #include <arrow/array/builder_primitive.h>
+#include <arrow/array/builder_time.h>
 #include <arrow/array/builder_union.h>
 #include <arrow/c/bridge.h>
 #include <arrow/compare.h>
@@ -873,6 +874,107 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   ARROW_EXPECT_OK(builder.AppendEmptyValue());
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
+  struct ArrowArray array;
+
+  const int32_t months = 42;
+  struct ArrowInterval interval;
+  ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_MONTHS);
+  interval.months = 42;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_MONTHS), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInterval(&array, &interval), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 2);
+  EXPECT_EQ(array.null_count, 1);
+
+  auto data_buffer = reinterpret_cast<const int32_t*>(array.buffers[1]);
+  EXPECT_EQ(data_buffer[0], months);
+
+  auto arrow_array = ImportArray(&array, month_interval());
+  ARROW_EXPECT_OK(arrow_array);
+
+  // TODO: arrow does not have a builder for MonthIntervals
+  // so no comparison is done after creating the array
+}
+
+TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {
+  struct ArrowArray array;
+
+  struct ArrowInterval interval;
+  ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_DAY_TIME);
+  interval.days = 42;
+  interval.ms = 42;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_DAY_TIME),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInterval(&array, &interval), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 2);
+  EXPECT_EQ(array.null_count, 1);
+
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+
+  EXPECT_EQ(memcmp(data_buffer, &interval.days, 4), 0);
+  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.days), &interval.ms, 4), 0);
+
+  auto arrow_array = ImportArray(&array, day_time_interval());
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto builder = DayTimeIntervalBuilder();
+  DayTimeIntervalType::DayMilliseconds dm = {42, 42};
+  ARROW_EXPECT_OK(builder.Append(dm));
+  ARROW_EXPECT_OK(builder.AppendNulls(1));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
+  struct ArrowArray array;
+
+  struct ArrowInterval interval;
+  ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+  interval.months = 2;
+  interval.days = 12;
+  interval.ns = 42;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInterval(&array, &interval), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 2);
+  EXPECT_EQ(array.null_count, 1);
+
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+
+  EXPECT_EQ(memcmp(data_buffer, &interval.months, 4), 0);
+  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.months), &interval.days, 4), 0);
+  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.months) + sizeof(interval.days),
+                   &interval.ns, 8),
+            0);
+
+  auto arrow_array = ImportArray(&array, month_day_nano_interval());
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto builder = MonthDayNanoIntervalBuilder();
+  MonthDayNanoIntervalType::MonthDayNanos mdn = {2, 12, 42};
+  ARROW_EXPECT_OK(builder.Append(mdn));
+  ARROW_EXPECT_OK(builder.AppendNulls(1));
+  auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
