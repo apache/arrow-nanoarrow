@@ -328,7 +328,7 @@ see a few lines of output indicating progress towards building and linking `line
 ## Building an ArrowArray
 
 The input for our `linesplitter_read()` function is an `std::string`, which we'll iterate
-over and add each detected line as its own element. First, we'll define a function for 
+over and add each detected line as its own element. First, we'll define a function for
 the core logic of detecting the number of characters until the next `\n` or end-of-string.
 
 ```cpp
@@ -471,9 +471,9 @@ gtest_discover_tests(linesplitter_test)
 ```
 
 After you're done, build the project again using the **CMake: Build** command from
-the command palette. If all goes well, choose **CMake: Refresh Tests** and then  
-**Test: Run All Tests** from the command pallete to run them! You should see some 
-output indiciating that tests ran successfully, or you can use VSCode's "Testing" 
+the command palette. If all goes well, choose **CMake: Refresh Tests** and then
+**Test: Run All Tests** from the command pallete to run them! You should see some
+output indiciating that tests ran successfully, or you can use VSCode's "Testing"
 panel to visually inspect which tests passed.
 
 ```{=rst}

@@ -17,9 +17,9 @@
 
 #include "library.h"
 
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char* argv[]) {
   int64_t in_size = 0;

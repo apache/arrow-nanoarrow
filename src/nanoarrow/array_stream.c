@@ -88,8 +88,9 @@ static void ArrowBasicArrayStreamRelease(struct ArrowArrayStream* array_stream) 
 
 ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
                                          struct ArrowSchema* schema, int64_t n_arrays) {
-  struct BasicArrayStreamPrivate* private_data = (struct BasicArrayStreamPrivate*)ArrowMalloc(
-      sizeof(struct BasicArrayStreamPrivate));
+  struct BasicArrayStreamPrivate* private_data =
+      (struct BasicArrayStreamPrivate*)ArrowMalloc(
+          sizeof(struct BasicArrayStreamPrivate));
   if (private_data == NULL) {
     return ENOMEM;
   }

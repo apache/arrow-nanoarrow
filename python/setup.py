@@ -18,8 +18,9 @@
 # under the License.
 
 import os
-import sys
 import subprocess
+import sys
+
 from setuptools import Extension, setup
 
 # Run bootstrap.py to run cmake generating a fresh bundle based on this

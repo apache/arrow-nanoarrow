@@ -43,7 +43,6 @@ TEST(Linesplitter, LinesplitterRoundtrip) {
   item = ArrowArrayViewGetStringUnsafe(out_view.get(), 2);
   ASSERT_EQ(std::string(item.data, item.size_bytes), "line3");
 
-
   auto result2 = linesplitter_write(out.get());
   ASSERT_EQ(result2.first, 0);
   ASSERT_EQ(result2.second, "line1\nline2\nline3\n");

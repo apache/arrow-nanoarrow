@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import Schema, Array, ArrayStream
+from ._lib import Array, ArrayStream, Schema
 
 
 def schema(obj):
@@ -65,5 +65,6 @@ def array_stream(obj):
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.ArrowArrayStream"
+            f"Can't convert object of type {type(obj).__name__} "
+            "to nanoarrow.ArrowArrayStream"
         )

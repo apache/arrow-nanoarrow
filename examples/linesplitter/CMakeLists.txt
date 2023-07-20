@@ -21,24 +21,23 @@ set(CMAKE_CXX_STANDARD 11)
 
 include(FetchContent)
 
-FetchContent_Declare(
-  nanoarrow
-  SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..
-  # We use SOURCE_DIR to simplify testing this example on CI; however,
-  # you should use a released version of nanoarrow like so:
-  # URL https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.1.0/apache-arrow-nanoarrow-0.1.0.tar.gz
-  # URL_HASH SHA512=dc62480b986ee76aaad8e38c6fbc602f8cef2cc35a5f5ede7da2a93b4db2b63839bdca3eefe8a44ae1cb6895a2fd3f090e3f6ea1020cf93cfe86437304dfee17)
+fetchcontent_declare(nanoarrow
+                     SOURCE_DIR
+                     ${CMAKE_CURRENT_LIST_DIR}/../..
+                     # We use SOURCE_DIR to simplify testing this example on CI; however,
+                     # you should use a released version of nanoarrow like so:
+                     # URL https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.1.0/apache-arrow-nanoarrow-0.1.0.tar.gz
+                     # URL_HASH SHA512=dc62480b986ee76aaad8e38c6fbc602f8cef2cc35a5f5ede7da2a93b4db2b63839bdca3eefe8a44ae1cb6895a2fd3f090e3f6ea1020cf93cfe86437304dfee17)
 )
-FetchContent_MakeAvailable(nanoarrow)
+fetchcontent_makeavailable(nanoarrow)
 
 add_library(linesplitter linesplitter.cc)
 target_link_libraries(linesplitter PRIVATE nanoarrow)
 
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip
+fetchcontent_declare(googletest
+                     URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip
 )
-FetchContent_MakeAvailable(googletest)
+fetchcontent_makeavailable(googletest)
 
 enable_testing()
 add_executable(linesplitter_test linesplitter_test.cc)
