@@ -105,7 +105,7 @@ jobs:
         if: matrix.config.label != 'windows'
         shell: bash
         run: |
-          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow" >> $GITHUB_ENV
+          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow" >> $GITHUB_ENV
 
       - name: Run dev/release/verify-release-candidate.sh
         shell: bash
