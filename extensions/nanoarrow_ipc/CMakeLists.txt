@@ -216,12 +216,11 @@ if(NANOARROW_IPC_BUILD_TESTS)
     target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
   endif()
 
-  # On Windows, dynamically linking Arrow is difficult to get right,
-  # so use static linking by default.
-  if(MSVC)
-    set(NANOARROW_IPC_ARROW_TARGET arrow_static)
+  # Give caller the option to link a static version of Arrow C++
+  if(NANOARROW_ARROW_STATIC)
+    set(NANOARROW_ARROW_TARGET arrow_static)
   else()
-    set(NANOARROW_IPC_ARROW_TARGET arrow_shared)
+    set(NANOARROW_ARROW_TARGET arrow_shared)
   endif()
 
   target_link_libraries(nanoarrow_ipc_decoder_test

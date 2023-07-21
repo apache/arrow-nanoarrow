@@ -35,6 +35,8 @@ option(NANOARROW_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
 option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OFF)
 option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
+option(NANOARROW_ARROW_STATIC
+       "Use a statically-linked Arrow C++ build when linking tests" OFF)
 
 if(NANOARROW_NAMESPACE)
   set(NANOARROW_NAMESPACE_DEFINE "#define NANOARROW_NAMESPACE ${NANOARROW_NAMESPACE}")
@@ -172,11 +174,8 @@ if(NANOARROW_BUILD_TESTS)
     cmake_policy(SET CMP0135 NEW)
   endif()
 
-  # On Windows, dynamically linking Arrow is difficult to get right,
-  # so use static linking by default. GTest needs to use shared C runtime
-  # when using MSVC.
-  if(MSVC)
-    set(gtest_force_shared_crt on)
+  # Give caller the option to link a static version of Arrow C++
+  if(NANOARROW_ARROW_STATIC)
     set(NANOARROW_ARROW_TARGET arrow_static)
   else()
     set(NANOARROW_ARROW_TARGET arrow_shared)
