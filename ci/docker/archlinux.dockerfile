@@ -17,9 +17,8 @@
 
 FROM archlinux:latest
 
-RUN pacman -Syu --noconfirm git gcc make cmake r-base gnupg curl arrow python-pip
-
-RUN pip3 install build Cython numpy pytest pyarrow
+RUN pacman -Syu --noconfirm git gcc make cmake r-base gnupg curl arrow \
+    python-pip python-build cython python-numpy python-pytest python-pyarrow
 
 # For R
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
