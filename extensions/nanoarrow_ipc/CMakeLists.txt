@@ -32,6 +32,8 @@ option(NANOARROW_IPC_FLATCC_ROOT_DIR
        "Root directory for flatcc include and lib directories" OFF)
 option(NANOARROW_IPC_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_IPC_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
+option(NANOARROW_ARROW_STATIC
+       "Use a statically-linked Arrow C++ build when linking tests" OFF)
 
 option(NANOARROW_IPC_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(ipc_coverage_config INTERFACE)
