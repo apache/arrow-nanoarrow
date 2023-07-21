@@ -220,9 +220,9 @@ if(NANOARROW_IPC_BUILD_TESTS)
 
   # Give caller the option to link a static version of Arrow C++
   if(NANOARROW_ARROW_STATIC)
-    set(NANOARROW_ARROW_TARGET arrow_static)
+    set(NANOARROW_IPC_ARROW_TARGET arrow_static)
   else()
-    set(NANOARROW_ARROW_TARGET arrow_shared)
+    set(NANOARROW_IPC_ARROW_TARGET arrow_shared)
   endif()
 
   target_link_libraries(nanoarrow_ipc_decoder_test
