@@ -53,7 +53,7 @@ jobs:
       matrix:
         config:
           - {os: macOS-latest, label: macos}
-          - {os: windows-latest, label: windows}
+          - {os: windows-latest, label: windows, extra_cmake_install: "--config=Debug"}
           - {os: ubuntu-latest, label: ubuntu}
 
     steps:
@@ -81,7 +81,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: arrow
-          key: arrow-${{ runner.os }}-4
+          key: arrow-${{ runner.os }}-5
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
@@ -92,14 +92,14 @@ jobs:
           mkdir arrow-build && cd arrow-build
           cmake ../apache-arrow-12.0.1/cpp -DCMAKE_INSTALL_PREFIX=../arrow
           cmake --build .
-          cmake --install . --prefix=../arrow
+          cmake --install . --prefix=../arrow ${{ matrix.config.extra_cmake_install }}
           cd ..
 
       - name: Set CMake options (Windows)
         if: matrix.config.label == 'windows'
         shell: bash
         run: |
-          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
+          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DNANOARROW_ARROW_STATIC=ON -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
 
       - name: Set CMake options (POSIX)
         if: matrix.config.label != 'windows'

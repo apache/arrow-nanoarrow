@@ -32,6 +32,8 @@ option(NANOARROW_IPC_FLATCC_ROOT_DIR
        "Root directory for flatcc include and lib directories" OFF)
 option(NANOARROW_IPC_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_IPC_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
+option(NANOARROW_ARROW_STATIC
+       "Use a statically-linked Arrow C++ build when linking tests" OFF)
 
 option(NANOARROW_IPC_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(ipc_coverage_config INTERFACE)
@@ -216,9 +218,8 @@ if(NANOARROW_IPC_BUILD_TESTS)
     target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
   endif()
 
-  # On Windows, dynamically linking Arrow is difficult to get right,
-  # so use static linking by default.
-  if(MSVC)
+  # Give caller the option to link a static version of Arrow C++
+  if(NANOARROW_ARROW_STATIC)
     set(NANOARROW_IPC_ARROW_TARGET arrow_static)
   else()
     set(NANOARROW_IPC_ARROW_TARGET arrow_shared)
