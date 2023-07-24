@@ -21,7 +21,8 @@ FROM --platform=linux/${NANOARROW_ARCH} centos:7
 
 RUN yum install -y epel-release
 RUN yum install -y git gnupg curl R gcc-c++ cmake3 python3-devel
-RUN pip3 install build Cython numpy pytest
+# On centos7/arm64, cythonize/build is required and fails with cython >= 3
+RUN pip3 install build "Cython < 3.0.0" numpy pytest
 
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
