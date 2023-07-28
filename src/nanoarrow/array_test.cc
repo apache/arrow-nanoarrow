@@ -2453,6 +2453,84 @@ TEST(ArrayViewTest, ArrayViewTestGetString) {
   TestGetFromBinary<FixedSizeBinaryBuilder>(fixed_size_builder);
 }
 
+TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
+  GTEST_SKIP() << "MonthIntervalBuilder not implemented in Arrow";
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetIntervalDayTime) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto builder = DayTimeIntervalBuilder();
+  ARROW_EXPECT_OK(builder.Append(DayTimeIntervalType::DayMilliseconds{42, 42}));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(DayTimeIntervalType::DayMilliseconds{-42, -42}));
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  ArrowInterval interval;
+  ArrowIntervalInit(&interval, NANOARROW_TYPE_INTERVAL_DAY_TIME);
+
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 0, &interval);
+  EXPECT_EQ(interval.days, 42);
+  EXPECT_EQ(interval.ms, 42);
+
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 3, &interval);
+  EXPECT_EQ(interval.days, -42);
+  EXPECT_EQ(interval.ms, -42);
+
+  ArrowArrayViewReset(&array_view);
+  schema.release(&schema);
+  array.release(&array);
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetIntervalMonthDayNano) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto builder = MonthDayNanoIntervalBuilder();
+  ARROW_EXPECT_OK(builder.Append(MonthDayNanoIntervalType::MonthDayNanos{5, 12, 42}));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(MonthDayNanoIntervalType::MonthDayNanos{-5, -12, -42}));
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  ArrowInterval interval;
+  ArrowIntervalInit(&interval, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 0, &interval);
+  EXPECT_EQ(interval.months, 5);
+  EXPECT_EQ(interval.days, 12);
+  EXPECT_EQ(interval.ns, 42);
+
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 3, &interval);
+  EXPECT_EQ(interval.months, -5);
+  EXPECT_EQ(interval.days, -12);
+  EXPECT_EQ(interval.ns, -42);
+
+  ArrowArrayViewReset(&array_view);
+  schema.release(&schema);
+  array.release(&array);
+}
+
 TEST(ArrayViewTest, ArrayViewTestGetDecimal128) {
   struct ArrowArray array;
   struct ArrowSchema schema;
