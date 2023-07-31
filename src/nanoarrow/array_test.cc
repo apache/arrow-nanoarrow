@@ -2454,7 +2454,40 @@ TEST(ArrayViewTest, ArrayViewTestGetString) {
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
-  GTEST_SKIP() << "MonthIntervalBuilder not implemented in Arrow";
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+  struct ArrowInterval interval;
+
+  ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_MONTHS);
+  interval.months = 42;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_MONTHS), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInterval(&array, &interval), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+
+  interval.months = -42;
+  EXPECT_EQ(ArrowArrayAppendInterval(&array, &interval), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INTERVAL_MONTHS),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 0, &interval);
+  EXPECT_EQ(interval.months, 42);
+
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 3, &interval);
+  EXPECT_EQ(interval.months, -42);
+
+  ArrowArrayViewReset(&array_view);
+  schema.release(&schema);
+  array.release(&array);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalDayTime) {
