@@ -951,7 +951,6 @@ static inline void ArrowArrayViewGetIntervalUnsafe(struct ArrowArrayView* array_
       break;
     }
     default:
-      out = NULL;
       break;
   }
 }
