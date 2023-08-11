@@ -17,3 +17,5 @@
 
 _build/
 *_generated.rst
+source/getting-started.rst
+source/roadmap.rst
