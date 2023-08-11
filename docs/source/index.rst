@@ -24,4 +24,5 @@ Contents
    :maxdepth: 2
 
    Getting Started <getting-started>
+   Roadmap <roadmap>
    API Reference <reference/index>

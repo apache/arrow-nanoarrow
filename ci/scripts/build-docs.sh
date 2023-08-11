@@ -82,7 +82,10 @@ main() {
    pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
 
    # Do some Markdown -> reST conversion
-   pandoc source/getting-started.md --from markdown --to rst -s -o source/getting-started_generated.rst
+   for f in source/*.md; do
+     fout=$(echo $f | sed -e s/.md/.rst/)
+     pandoc $f --from markdown --to rst -s -o $fout
+   done
 
    # Build sphinx project
    sphinx-build source _build/html
