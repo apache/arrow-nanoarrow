@@ -57,5 +57,14 @@ repos:
     - id: isort
       types_or: [python]
       exclude: "__init__.py$"
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.5
+    hooks:
+    -   id: codespell
+        types_or: [rst, markdown, c, c++]
+        additional_dependencies: [tomli]
+        exclude: |
+            ^pandas/_libs/include/pandas/vendored/nanoarrow.h
+            |pandas/_libs/src/vendored/nanoarrow.c
 
 exclude: "^dist"
