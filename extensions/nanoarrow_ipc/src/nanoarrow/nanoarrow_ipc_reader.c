@@ -212,7 +212,7 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   if (bytes_read == 0) {
     // The caller might not use this error message (e.g., if the end of the stream
     // is one of the valid outcomes) but we set the error anyway in case it gets
-    // propagated higher (e.g., if the stream is emtpy and there's no schema message)
+    // propagated higher (e.g., if the stream is empty and there's no schema message)
     ArrowErrorSet(&private_data->error, "No data available on stream");
     return ENODATA;
   } else if (bytes_read != 8) {

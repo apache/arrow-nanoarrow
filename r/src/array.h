@@ -140,7 +140,7 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
     UNPROTECT(1);
   }
 
-  // Swap out any children for independently releasable chilren and export them
+  // Swap out any children for independently releasable children and export them
   // into array_copy->children
   result = ArrowArrayAllocateChildren(array_copy, array->n_children);
   if (result != NANOARROW_OK) {

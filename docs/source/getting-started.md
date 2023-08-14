@@ -181,7 +181,7 @@ interface and a few conventions used in the nanoarrow implementation.
 
 First, let's discuss the `ArrowSchema` and the `ArrowArray`. You can think of an
 `ArrowSchema` as an expression of a data type, whereas an `ArrowArray` is the
-data itself. These structures accomodate nested types: columns are encoded in
+data itself. These structures accommodate nested types: columns are encoded in
 the `children` member of each. You always need to know the data type of an
 `ArrowArray` before accessing its contents. In our case we only operate on arrays
 of one type ("string") and document that in our interface; for functions that
@@ -307,7 +307,7 @@ target_link_libraries(linesplitter PRIVATE nanoarrow)
 ```
 
 After saving `CMakeLists.txt`, you may have to close and re-open the `linesplitter`
-directory in VSCode to activate the CMake integration. From the command pallete
+directory in VSCode to activate the CMake integration. From the command palette
 (i.e., Control/Command-Shift-P), choose **CMake: Build**. If all went well, you should
 see a few lines of output indicating progress towards building and linking `linesplitter`.
 
@@ -472,8 +472,8 @@ gtest_discover_tests(linesplitter_test)
 
 After you're done, build the project again using the **CMake: Build** command from
 the command palette. If all goes well, choose **CMake: Refresh Tests** and then
-**Test: Run All Tests** from the command pallete to run them! You should see some
-output indiciating that tests ran successfully, or you can use VSCode's "Testing"
+**Test: Run All Tests** from the command palette to run them! You should see some
+output indicating that tests ran successfully, or you can use VSCode's "Testing"
 panel to visually inspect which tests passed.
 
 ```{=rst}

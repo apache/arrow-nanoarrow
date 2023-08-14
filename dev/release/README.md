@@ -102,7 +102,7 @@ You can install R using the instructions provided on the
 ### Conda (Linux and MacOS)
 
 Using `conda`, one can install all requirements needed for verification on Linux
-or MacOS. Users are reccomended to install `gnupg` using
+or MacOS. Users are recommended to install `gnupg` using
 a system installer because of interactions with other installations that
 may cause a crash.
 
@@ -281,7 +281,7 @@ is release-candidate worthy, `git push` the tag to the `upstream` repository
 This will kick off a
 [packaging workflow](https://github.com/apache/arrow-nanoarrow/blob/main/.github/workflows/packaging.yaml)
 that will create a GitHub release and upload assets that are required for
-later steps. This step can be done by any Arrow comitter.
+later steps. This step can be done by any Arrow committer.
 
 Next, all assets need to be signed by somebody whose GPG key is listed in the
 [Arrow developers KEYS file](https://dist.apache.org/repos/dist/dev/arrow/KEYS)
@@ -299,7 +299,7 @@ dev/release/02-sign.sh 0.2.0 0
 
 Finally, run
 [03-source.sh](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/03-source.sh).
-This step can be done by any Arrow comitter. The caller of this script does not need to
+This step can be done by any Arrow committer. The caller of this script does not need to
 be on any particular branch but *does* need the
 [dev/release/.env](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/.env.example)
 file to exist setting the appropriate `APACHE_USERNAME` environment variable.

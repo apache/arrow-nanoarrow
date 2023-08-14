@@ -64,7 +64,7 @@ repos:
         types_or: [rst, markdown, c, c++]
         additional_dependencies: [tomli]
         exclude: |
-            ^pandas/_libs/include/pandas/vendored/nanoarrow.h
-            |pandas/_libs/src/vendored/nanoarrow.c
+            "^extensions/nanoarrow_ipc/thirdparty"
+            "|extensions/nanoarrow_ipc/src/nanoarrow/nanoarrow_ipc_flatcc_generated.h"
 
 exclude: "^dist"

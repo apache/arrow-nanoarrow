@@ -25,7 +25,7 @@
 
 // Creates an external pointer to a struct ArrowArrayView, erroring
 // if the validation inherent in its creation fails (i.e., calling
-// this will aslo validate the array). This requires that array_xptr
+// this will also validate the array). This requires that array_xptr
 // has a schema attached. The ArrowArrayView is an augmented structure
 // provided by the nanoarrow C library that makes it easier to access
 // elements and buffers. This is not currently exposed at the R
