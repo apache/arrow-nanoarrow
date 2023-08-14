@@ -64,7 +64,9 @@ repos:
         types_or: [rst, markdown, c, c++]
         additional_dependencies: [tomli]
         exclude: |
-            "^extensions/nanoarrow_ipc/thirdparty"
-            "|extensions/nanoarrow_ipc/src/nanoarrow/nanoarrow_ipc_flatcc_generated.h"
+            (?x)
+            ^extensions/nanoarrow_ipc/thirdparty
+            |nanoarrow_ipc_flatcc_generated.h
+            |nanoarrow_device_metal.cc
 
 exclude: "^dist"
