@@ -32,14 +32,7 @@ services:
     command: "/bin/bash /nanoarrow/dev/release/verify-release-candidate.sh $NANOARROW_VERIFY_ARGS"
 
   coverage:
-    image: ${REPO}:ubuntu-${NANOARROW_ARCH}
-    build:
-      context: .
-      cache_from:
-        - ${REPO}:ubuntu-${NANOARROW_ARCH}
-      dockerfile: ci/docker/ubuntu.dockerfile
-      args:
-        NANOARROW_ARCH: ${NANOARROW_ARCH}
+    image: ${REPO}:ubuntu
     volumes:
       # Don't mix the "dev tools" and "source" checkouts
       - ./ci/scripts/coverage.sh:/coverage.sh
@@ -47,14 +40,7 @@ services:
     command: "/bin/bash /coverage.sh /nanoarrow"
 
   docs:
-    image: ${REPO}:ubuntu-${NANOARROW_ARCH}
-    build:
-      context: .
-      cache_from:
-        - ${REPO}:ubuntu-${NANOARROW_ARCH}
-      dockerfile: ci/docker/ubuntu.dockerfile
-      args:
-        NANOARROW_ARCH: ${NANOARROW_ARCH}
+    image: ${REPO}:ubuntu
     volumes:
       # Don't mix the "dev tools" and "source" checkouts
       - ./ci/scripts/build-docs.sh:/build-docs.sh
