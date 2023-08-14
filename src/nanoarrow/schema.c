@@ -1211,7 +1211,7 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
   }
 }
 
-// Helper for bookeeping to emulate sprintf()-like behaviour spread
+// Helper for bookkeeping to emulate sprintf()-like behaviour spread
 // among multiple sprintf calls.
 static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
                                          int64_t* n_remaining, int64_t* n_chars) {
