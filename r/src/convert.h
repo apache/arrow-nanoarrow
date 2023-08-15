@@ -45,7 +45,7 @@ int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr);
 int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size);
 
 // Materialize the next n elements into the output. Returns the number of elements
-// that were actualy materialized which may be less than n.
+// that were actually materialized which may be less than n.
 R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n);
 
 // Materialize the entire array into the output. Returns an errno code.

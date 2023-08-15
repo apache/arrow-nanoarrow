@@ -1744,7 +1744,7 @@ TEST(ArrayTest, ArrayViewTestStruct) {
   EXPECT_EQ(array_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
   EXPECT_EQ(array_view.layout.element_size_bits[0], 1);
 
-  // Exepct error for out-of-memory
+  // Expect error for out-of-memory
   EXPECT_EQ(ArrowArrayViewAllocateChildren(
                 &array_view, std::numeric_limits<int64_t>::max() / sizeof(void*)),
             ENOMEM);
@@ -1760,7 +1760,7 @@ TEST(ArrayTest, ArrayViewTestStruct) {
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.children[0]->buffer_views[1].size_bytes, 5 * sizeof(int32_t));
 
-  // Exepct error for attempting to allocate a children array that already exists
+  // Except error for attempting to allocate a children array that already exists
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), EINVAL);
 
   ArrowArrayViewReset(&array_view);

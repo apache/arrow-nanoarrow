@@ -340,7 +340,7 @@ TEST(SchemaTest, SchemaInitUnion) {
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+us:");
   EXPECT_EQ(schema.n_children, 0);
-  // The zero-case union isn't supported by Arrow C++'s C data inferface implementation
+  // The zero-case union isn't supported by Arrow C++'s C data interface implementation
   schema.release(&schema);
 
   ArrowSchemaInit(&schema);

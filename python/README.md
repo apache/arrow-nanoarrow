@@ -157,7 +157,7 @@ reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
 array_stream = na.array_stream(reader)
 ```
 
-You can pull the next array from the stream using `.get_next()` or use it like an interator. The `.get_next()` method will return `None` when there are no more arrays in the stream.
+You can pull the next array from the stream using `.get_next()` or use it like an iterator. The `.get_next()` method will return `None` when there are no more arrays in the stream.
 
 
 ```python

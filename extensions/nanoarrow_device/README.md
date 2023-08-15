@@ -24,7 +24,7 @@ extended to the
 [Arrow C Device](https://arrow.apache.org/docs/dev/format/CDeviceDataInterface.html)
 interfaces in the Arrow specification.
 
-Currently, this extension provides an implementation fof CUDA devices
+Currently, this extension provides an implementation of CUDA devices
 and an implementation for the default Apple Metal device on MacOS/M1.
 These implementation are preliminary/experimental and are under active
 development.

@@ -57,5 +57,16 @@ repos:
     - id: isort
       types_or: [python]
       exclude: "__init__.py$"
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.5
+    hooks:
+    -   id: codespell
+        types_or: [rst, markdown, c, c++]
+        additional_dependencies: [tomli]
+        exclude: |
+            (?x)
+            ^extensions/nanoarrow_ipc/thirdparty
+            |nanoarrow_ipc_flatcc_generated.h
+            |nanoarrow_device_metal.cc
 
 exclude: "^dist"
