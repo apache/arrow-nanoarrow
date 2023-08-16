@@ -20327,7 +20327,7 @@ struct ArrowIpcField {
   // array is scratch space for any intermediary allocations (i.e., it is never moved
   // to the user).
   struct ArrowArray* array;
-  // The cumulative number of buffers preceeding this node.
+  // The cumulative number of buffers preceding this node.
   int64_t buffer_offset;
 };
 
@@ -21339,7 +21339,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
                     ns(MessageHeader_type_name(decoder->message_type)));
       return ENOTSUP;
     default:
-      ArrowErrorSet(error, "Unnown message type: %d", (int)(decoder->message_type));
+      ArrowErrorSet(error, "Unknown message type: %d", (int)(decoder->message_type));
       return EINVAL;
   }
 
@@ -21841,7 +21841,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
 
   // If validation is going to happen it has already occurred; however, the part of
   // ArrowArrayFinishBuilding() that allocates a data buffer if the data buffer is
-  // NULL (required for compatability with Arrow <= 9.0.0) assumes CPU data access
+  // NULL (required for compatibility with Arrow <= 9.0.0) assumes CPU data access
   // and thus needs a validation level >= default.
   if (validation_level >= NANOARROW_VALIDATION_LEVEL_DEFAULT) {
     NANOARROW_RETURN_NOT_OK(
@@ -22172,7 +22172,7 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   if (bytes_read == 0) {
     // The caller might not use this error message (e.g., if the end of the stream
     // is one of the valid outcomes) but we set the error anyway in case it gets
-    // propagated higher (e.g., if the stream is emtpy and there's no schema message)
+    // propagated higher (e.g., if the stream is empty and there's no schema message)
     ArrowErrorSet(&private_data->error, "No data available on stream");
     return ENODATA;
   } else if (bytes_read != 8) {
