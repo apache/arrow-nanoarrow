@@ -264,7 +264,7 @@ static inline void ArrowBitUnpackInt8(const uint8_t* bits, int64_t start_offset,
   if (bytes_begin == bytes_last_valid) {
     // count bits within a single byte
     for (int i = 0; i < length; i++) {
-      out[i] = ArrowBitGet(&bits[bytes_begin], i);
+      out[i] = ArrowBitGet(&bits[bytes_begin], i + i_begin % 8);
     }
 
     return;
@@ -272,7 +272,7 @@ static inline void ArrowBitUnpackInt8(const uint8_t* bits, int64_t start_offset,
 
   // first byte
   for (int i = 0; i < 8 - (i_begin % 8); i++) {
-    *out++ = ArrowBitGet(&bits[bytes_begin], i);
+    *out++ = ArrowBitGet(&bits[bytes_begin], i + i_begin % 8);
   }
 
   // middle bytes

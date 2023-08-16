@@ -271,8 +271,17 @@ TEST(BitmapTest, BitmapTestElement) {
   EXPECT_EQ(ArrowBitGet(bitmap, 16 + 7), 0);
 }
 
+template <int offset, int length>
+void TestArrowBitUnpackInt8(const uint8_t* bitmap, int8_t* out,
+                            std::vector<uint8_t> expected) {
+  ArrowBitUnpackInt8(bitmap, offset, length, out);
+  for (int i = 0; i < expected.size(); i++) {
+    EXPECT_EQ(out[i], expected[i]);
+  }
+}
+
 TEST(BitmapTest, BitmapTestBitsGet) {
-  uint8_t bitmap[10];
+  uint8_t bitmap[3];
   int8_t result[sizeof(bitmap) * 8];
 
   memset(bitmap, 0xff, sizeof(bitmap));
@@ -303,31 +312,59 @@ TEST(BitmapTest, BitmapTestBitsGet) {
   EXPECT_EQ(result[16 + 6], 0);
   EXPECT_EQ(result[16 + 7], 0);
 
-  bitmap[2] = 0xaa;
-  int8_t result2[16 + 5];
-  ArrowBitUnpackInt8(bitmap, 0, sizeof(result2), result2);
-  EXPECT_EQ(result2[16 + 0], 0);
-  EXPECT_EQ(result2[16 + 1], 1);
-  EXPECT_EQ(result2[16 + 2], 0);
-  EXPECT_EQ(result2[16 + 3], 1);
-  EXPECT_EQ(result2[16 + 4], 0);
+  bitmap[0] = 0x93;  // 10010011
+  bitmap[1] = 0x55;  // 01010101
+  bitmap[2] = 0xaa;  // 10101010
 
-  bitmap[2] = 0xaa;
-  int8_t result3[3];
-  ArrowBitUnpackInt8(bitmap, 16, 3, result3);
-  EXPECT_EQ(result3[0], 0);
-  EXPECT_EQ(result3[1], 1);
-  EXPECT_EQ(result3[2], 0);
+  // offset 0, length boundary, one byte
+  TestArrowBitUnpackInt8<0, 8>(bitmap, result, {1, 1, 0, 0, 1, 0, 0, 1});
 
-  bitmap[1] = 0x55;
-  bitmap[2] = 0xaa;
-  int8_t result4[5];
-  ArrowBitUnpackInt8(bitmap, 14, 5, result4);
-  EXPECT_EQ(result4[0], 1);
-  EXPECT_EQ(result4[1], 0);
-  EXPECT_EQ(result4[2], 0);
-  EXPECT_EQ(result4[3], 1);
-  EXPECT_EQ(result4[4], 0);
+  // offset 0, length boundary, different bytes
+  TestArrowBitUnpackInt8<0, 16>(bitmap, result,
+                                {1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0});
+
+  // offset 0, length non-boundary, one byte
+  TestArrowBitUnpackInt8<0, 5>(bitmap, result, {1, 1, 0, 0, 1});
+
+  // offset boundary, length boundary, one byte
+  TestArrowBitUnpackInt8<8, 8>(bitmap, result, {1, 0, 1, 0, 1, 0, 1, 0});
+
+  // offset boundary, length boundary, different bytes
+  TestArrowBitUnpackInt8<8, 16>(bitmap, result,
+                                {1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1});
+
+  // offset boundary, length non-boundary, one byte
+  TestArrowBitUnpackInt8<8, 5>(bitmap, result, {1, 0, 1, 0, 1});
+
+  // offset boundary, length non-boundary, different bytes
+  TestArrowBitUnpackInt8<8, 13>(bitmap, result, {1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0});
+
+  // offset non-boundary, length boundary, one byte
+  TestArrowBitUnpackInt8<3, 5>(bitmap, result, {0, 1, 0, 0, 1});
+
+  // offset non-boundary, length boundary, different bytes
+  TestArrowBitUnpackInt8<3, 13>(bitmap, result, {0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0});
+
+  // offset non-boundary, length non-boundary, one byte
+  TestArrowBitUnpackInt8<3, 3>(bitmap, result, {0, 1, 0});
+
+  // offset non-boundary, length non-boundary, different bytes
+  TestArrowBitUnpackInt8<3, 11>(bitmap, result, {0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0});
+
+  // offset non-boundary non-first byte, length boundary, one byte
+  TestArrowBitUnpackInt8<11, 5>(bitmap, result, {0, 1, 0, 1, 0});
+
+  // offset non-boundary non-first byte, length boundary, different bytes
+  TestArrowBitUnpackInt8<11, 13>(bitmap, result, {0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1});
+
+  // offset non-boundary non-first byte, length non-boundary, one byte
+  TestArrowBitUnpackInt8<11, 3>(bitmap, result, {0, 1, 0});
+
+  // offset non-boundary non-first byte, length non-boundary, different bytes
+  TestArrowBitUnpackInt8<11, 11>(bitmap, result, {0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1});
+
+  // non-boundary, three byte span
+  TestArrowBitUnpackInt8<7, 11>(bitmap, result, {1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1});
 }
 
 TEST(BitmapTest, BitmapTestSetTo) {
