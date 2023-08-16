@@ -18,13 +18,11 @@
 
 github:
   description: "Helpers for Arrow C Data & Arrow C Stream interfaces"
-  homepage: https://arrow.apache.org/
+  homepage: https://arrow.apache.org/nanoarrow
   enabled_merge_buttons:
     squash:  true
   features:
     issues: true
-  ghp_branch: gh-pages
-  ghp_path: ~
 
 notifications:
   commits:      commits@arrow.apache.org

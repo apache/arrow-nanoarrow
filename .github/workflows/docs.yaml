@@ -53,17 +53,17 @@ jobs:
           name: nanarrow-docs
           path: docs/_build/html
 
-      - name: Clone gh-pages branch
+      - name: Clone asf-site branch
         if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         uses: actions/checkout@v2
         with:
-          ref: gh-pages
+          ref: asf-site
           path: pages-clone
 
       - name: Update development documentation
         if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         env:
-          DOC_TAG: "dev"
+          DOC_TAG: "main"
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
@@ -73,8 +73,6 @@ jobs:
           fi
           mkdir "$DOC_TAG"
           cp -R ../docs/_build/html/* "$DOC_TAG"
-          touch .nojekyll
-          git add .nojekyll
           git add *
           git commit --allow-empty -m"update documentation for tag $DOC_TAG"
           git push

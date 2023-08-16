@@ -20,7 +20,7 @@
 # nanoarrow
 
 [![Codecov test coverage](https://codecov.io/gh/apache/arrow-nanoarrow/branch/main/graph/badge.svg)](https://app.codecov.io/gh/apache/arrow-nanoarrow?branch=main)
-[![Documentation](https://img.shields.io/badge/Documentation-dev-yellow)](https://apache.github.io/arrow-nanoarrow/dev)
+[![Documentation](https://img.shields.io/badge/Documentation-main-yellow)](https://arrow.apache.org/nanoarrow/main)
 [![nanoarrow on GitHub](https://img.shields.io/badge/GitHub-apache%2Farrow--nanoarrow-blue)](https://github.com/apache/arrow-nanoarrow)
 
 The nanoarrow library is a set of helper functions to interpret and generate
