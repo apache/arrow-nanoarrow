@@ -242,8 +242,6 @@ static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i) {
   return (bits[i >> 3] >> (i & 0x07)) & 1;
 }
 
-// TODO: for ease of implementation / review this implicitly requires the bits
-// and all arguments to be equivally divisible into bytes
 static inline void ArrowBitsGet(const uint8_t* bits, int64_t start_offset, int64_t length,
                                 int8_t* out) {
   if (length == 0) {
