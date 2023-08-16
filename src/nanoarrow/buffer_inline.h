@@ -223,9 +223,15 @@ static inline int64_t _ArrowBytesForBits(int64_t bits) {
 }
 
 static inline void _ArrowBitmapUnpackInt8(const uint8_t* bits, int8_t* out) {
-  for (int i = 0; i < 8; i++) {
-    out[i] = (*bits >> i) & 1;
-  }
+  const uint8_t word = *bits;
+  out[0] = (word >> 0) & 1;
+  out[1] = (word >> 1) & 1;
+  out[2] = (word >> 2) & 1;
+  out[3] = (word >> 3) & 1;
+  out[4] = (word >> 4) & 1;
+  out[5] = (word >> 5) & 1;
+  out[6] = (word >> 6) & 1;
+  out[7] = (word >> 7) & 1;
 }
 
 static inline void _ArrowBitmapPackInt8(const int8_t* values, uint8_t* out) {
@@ -242,38 +248,43 @@ static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i) {
   return (bits[i >> 3] >> (i & 0x07)) & 1;
 }
 
-static inline void ArrowBitsGet(const uint8_t* bits, int64_t start_offset, int64_t length,
-                                int8_t* out) {
+static inline void ArrowBitUnpackInt8(const uint8_t* bits, int64_t start_offset,
+                                      int64_t length, int8_t* out) {
   if (length == 0) {
     return;
   }
 
-  const uint8_t* bits_cursor = bits;
-  int64_t n_remaining = length;
-  int8_t* out_cursor = out;
+  const int64_t i_begin = start_offset;
+  const int64_t i_end = start_offset + length;
+  const int64_t i_last_valid = i_end - 1;
 
-  // First byte
-  bits_cursor += (start_offset / 8);
-  if ((start_offset % 8) != 0) {
-    int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(start_offset) - start_offset;
-    for (int i = 0; i < n_partial_bits; i++) {
-      *out_cursor++ = ArrowBitGet(bits, i + start_offset);
+  const int64_t bytes_begin = i_begin / 8;
+  const int64_t bytes_last_valid = i_last_valid / 8;
+
+  if (bytes_begin == bytes_last_valid) {
+    // count bits within a single byte
+    for (int i = 0; i < length; i++) {
+      out[i] = ArrowBitGet(&bits[bytes_begin], i);
     }
-    bits_cursor++;
-    n_remaining -= n_partial_bits;
+
+    return;
   }
 
-  // Middle bytes
-  int64_t n_full_bytes = n_remaining / 8;
-  for (int64_t i = 0; i < n_full_bytes; i++) {
-    _ArrowBitmapUnpackInt8(bits_cursor++, out_cursor);
-    out_cursor += 8;
+  // first byte
+  for (int i = 0; i < 8 - (i_begin % 8); i++) {
+    *out++ = ArrowBitGet(&bits[bytes_begin], i);
   }
 
-  // Last byte
-  n_remaining -= n_full_bytes * 8;
-  for (int i = 0; i < n_remaining; i++) {
-    *out_cursor++ = ArrowBitGet(bits_cursor, i);
+  // middle bytes
+  for (int64_t i = bytes_begin + 1; i < bytes_last_valid; i++) {
+    _ArrowBitmapUnpackInt8(&bits[i], out);
+    out += 8;
+  }
+
+  // last byte
+  const int bits_remaining = i_end % 8 == 0 ? 8 : i_end % 8;
+  for (int i = 0; i < bits_remaining; i++) {
+    *out++ = ArrowBitGet(&bits[bytes_last_valid], i);
   }
 }
 

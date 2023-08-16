@@ -664,10 +664,6 @@ static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buf
 /// \brief Extract a boolean value from a bitmap
 static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i);
 
-/// \brief Extract boolean values from a range in a bitmap
-static inline void ArrowBitsGet(const uint8_t* bits, int64_t start_offset, int64_t length,
-                                int8_t* out);
-
 /// \brief Set a boolean value to a bitmap to true
 static inline void ArrowBitSet(uint8_t* bits, int64_t i);
 
@@ -719,6 +715,10 @@ static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
 /// \brief Append zero or more of the same boolean value to a bitmap
 static inline void ArrowBitmapAppendUnsafe(struct ArrowBitmap* bitmap,
                                            uint8_t bits_are_set, int64_t length);
+
+/// \brief Extract boolean values from a range in a bitmap
+static inline void ArrowBitUnpackInt8(const uint8_t* bits, int64_t start_offset,
+                                      int64_t length, int8_t* out);
 
 /// \brief Append boolean values encoded as int8_t to a bitmap
 ///

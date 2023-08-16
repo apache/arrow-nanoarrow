@@ -276,13 +276,13 @@ TEST(BitmapTest, BitmapTestBitsGet) {
   int8_t result[sizeof(bitmap) * 8];
 
   memset(bitmap, 0xff, sizeof(bitmap));
-  ArrowBitsGet(bitmap, 0, sizeof(result), result);
+  ArrowBitUnpackInt8(bitmap, 0, sizeof(result), result);
   for (int i = 0; i < sizeof(result); i++) {
     EXPECT_EQ(result[i], 1);
   }
 
   bitmap[2] = 0xfd;
-  ArrowBitsGet(bitmap, 0, sizeof(result), result);
+  ArrowBitUnpackInt8(bitmap, 0, sizeof(result), result);
   EXPECT_EQ(result[16 + 0], 1);
   EXPECT_EQ(result[16 + 1], 0);
   EXPECT_EQ(result[16 + 2], 1);
@@ -293,7 +293,7 @@ TEST(BitmapTest, BitmapTestBitsGet) {
   EXPECT_EQ(result[16 + 7], 1);
 
   bitmap[2] = 0x02;
-  ArrowBitsGet(bitmap, 0, sizeof(result), result);
+  ArrowBitUnpackInt8(bitmap, 0, sizeof(result), result);
   EXPECT_EQ(result[16 + 0], 0);
   EXPECT_EQ(result[16 + 1], 1);
   EXPECT_EQ(result[16 + 2], 0);
@@ -305,7 +305,7 @@ TEST(BitmapTest, BitmapTestBitsGet) {
 
   bitmap[2] = 0xaa;
   int8_t result2[16 + 5];
-  ArrowBitsGet(bitmap, 0, sizeof(result2), result2);
+  ArrowBitUnpackInt8(bitmap, 0, sizeof(result2), result2);
   EXPECT_EQ(result2[16 + 0], 0);
   EXPECT_EQ(result2[16 + 1], 1);
   EXPECT_EQ(result2[16 + 2], 0);
@@ -314,7 +314,7 @@ TEST(BitmapTest, BitmapTestBitsGet) {
 
   bitmap[2] = 0xaa;
   int8_t result3[3];
-  ArrowBitsGet(bitmap, 16, 3, result3);
+  ArrowBitUnpackInt8(bitmap, 16, 3, result3);
   EXPECT_EQ(result3[0], 0);
   EXPECT_EQ(result3[1], 1);
   EXPECT_EQ(result3[2], 0);
@@ -322,7 +322,7 @@ TEST(BitmapTest, BitmapTestBitsGet) {
   bitmap[1] = 0x55;
   bitmap[2] = 0xaa;
   int8_t result4[5];
-  ArrowBitsGet(bitmap, 14, 5, result4);
+  ArrowBitUnpackInt8(bitmap, 14, 5, result4);
   EXPECT_EQ(result4[0], 1);
   EXPECT_EQ(result4[1], 0);
   EXPECT_EQ(result4[2], 0);
