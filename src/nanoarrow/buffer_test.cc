@@ -302,6 +302,32 @@ TEST(BitmapTest, BitmapTestBitsGet) {
   EXPECT_EQ(result[16 + 5], 0);
   EXPECT_EQ(result[16 + 6], 0);
   EXPECT_EQ(result[16 + 7], 0);
+
+  bitmap[2] = 0xaa;
+  int8_t result2[16 + 5];
+  ArrowBitsGet(bitmap, 0, sizeof(result2), result2);
+  EXPECT_EQ(result2[16 + 0], 0);
+  EXPECT_EQ(result2[16 + 1], 1);
+  EXPECT_EQ(result2[16 + 2], 0);
+  EXPECT_EQ(result2[16 + 3], 1);
+  EXPECT_EQ(result2[16 + 4], 0);
+
+  bitmap[2] = 0xaa;
+  int8_t result3[3];
+  ArrowBitsGet(bitmap, 16, 3, result3);
+  EXPECT_EQ(result3[0], 0);
+  EXPECT_EQ(result3[1], 1);
+  EXPECT_EQ(result3[2], 0);
+
+  bitmap[1] = 0x55;
+  bitmap[2] = 0xaa;
+  int8_t result4[5];
+  ArrowBitsGet(bitmap, 14, 5, result4);
+  EXPECT_EQ(result4[0], 1);
+  EXPECT_EQ(result4[1], 0);
+  EXPECT_EQ(result4[2], 0);
+  EXPECT_EQ(result4[3], 1);
+  EXPECT_EQ(result4[4], 0);
 }
 
 TEST(BitmapTest, BitmapTestSetTo) {
