@@ -252,8 +252,8 @@ static inline void ArrowBitsGet(const uint8_t* bits, int64_t start_offset, int64
   const int64_t bytes_begin = i_begin / 8;
   const int64_t bytes_end = i_end / 8 + 1;
 
-  for (int i = bytes_begin; i < bytes_end; i++) {
-    _ArrowBitmapUnpackInt8(bits, &out[i]);
+  for (int64_t i = bytes_begin; i < bytes_end; i++) {
+    _ArrowBitmapUnpackInt8(bits++, out + i * 8);
   }
 }
 
