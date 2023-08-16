@@ -6,7 +6,9 @@
 
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Search - nanoarrow  documentation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Roadmap &#8212; nanoarrow  documentation</title>
   
   
   
@@ -35,12 +37,11 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=ccbe24c1"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=4825356b"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'search';</script>
-  <script src="_static/searchtools.js"></script>
-  <script src="_static/language_data.js"></script>
-  <script src="searchindex.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'roadmap';</script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="#" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="reference/index.html" />
+    <link rel="prev" title="Getting started with nanoarrow" href="getting-started.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -68,7 +69,7 @@
     <div class="search-button__overlay"></div>
     <div class="search-button__search-container">
 <form class="bd-search d-flex align-items-center"
-      action="#"
+      action="search.html"
       method="get">
   <i class="fa-solid fa-magnifying-glass"></i>
   <input type="search"
@@ -129,8 +130,8 @@
                     </li>
                 
 
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="roadmap.html">
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
                         Roadmap
                       </a>
                     </li>
@@ -190,6 +191,10 @@ document.write(`
   
 
   
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
 </div>
 
     </nav>
@@ -222,8 +227,8 @@ document.write(`
                     </li>
                 
 
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="roadmap.html">
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
                         Roadmap
                       </a>
                     </li>
@@ -262,7 +267,7 @@ document.write(`
     <div class="sidebar-primary-items__start sidebar-primary__section">
         <div class="sidebar-primary-item">
 <form class="bd-search d-flex align-items-center"
-      action="#"
+      action="search.html"
       method="get">
   <i class="fa-solid fa-magnifying-glass"></i>
   <input type="search"
@@ -294,46 +299,147 @@ document.write(`
           <div class="bd-content">
             <div class="bd-article-container">
               
-              <div class="bd-header-article"></div>
-              
-              
-  <div class="bd-search-container">
-    <h1>Search</h1>
-    <noscript>
-      <div class="admonition error">
-        <p class="admonition-title">Error</p>
-        <p>Please activate JavaScript to enable the search functionality.</p>
-      </div>
-    </noscript>
-    
-<form class="bd-search d-flex align-items-center"
-      action="#"
-      method="get">
-  <i class="fa-solid fa-magnifying-glass"></i>
-  <input type="search"
-         class="form-control"
-         name="q"
-         id="search-input"
-         placeholder="Search the docs ..."
-         aria-label="Search the docs ..."
-         autocomplete="off"
-         autocorrect="off"
-         autocapitalize="off"
-         spellcheck="false"/>
-  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
-</form>
-    <div id="search-results"></div>
-  </div>
-  <script>
-    // Activate the search field on page load
-    let searchInput = document.querySelector("form.bd-search input");
-    if (searchInput) {
-        searchInput.focus();
-        searchInput.select();
-        console.log("[PST]: Set focus on search field.");
-    }
-  </script>
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
 
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Roadmap</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <!---
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+--><section id="roadmap">
+<h1>Roadmap<a class="headerlink" href="#roadmap" title="Permalink to this heading">#</a></h1>
+<p>Apache Arrow nanoarrow is a relatively new library and is under active
+development. Maintaining the balance between useful and minimal is
+difficult to do; however, there are a number of features that fit
+comforably within the scope of nanoarrow that have not yet been
+scheduled for implementation.</p>
+<section id="c-library">
+<h2>C library<a class="headerlink" href="#c-library" title="Permalink to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Type coverage</strong>: The C library currently provides support for all
+types that are available via the Arrow C Data interface. When the
+recently-added run-end encoded (REE) types and potentially
+forthcoming string view/list view types are available via the Arrow C
+Data interface, support should be added in nanoarrow as well.</p></li>
+<li><p><strong>Array append</strong>: The <code class="docutils literal notranslate"><span class="pre">ArrowArrayAppend*()</span></code> family of functions
+provide a means by which to incrementally build arrays; however,
+there is no built-in way to append an <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code>, potentially
+more efficiently appending multiple values at once. Among other
+things, this would provide a route to an unoptimized filter/take
+implementation.</p></li>
+<li><p><strong>Remove Arrow C++ dependency for tests</strong>: The C library and IPC
+extension rely on Arrow C++ for some test code that was written early
+in the library’s development. These tests are valuable to ensure
+compatibility between nanoarrow and Arrow C++; however, including
+them in the default test suite complicates release verification for
+some users and prevents testing in environments where Arrow C++ does
+not currently build (e.g., WASM, compilers without C++17 support).</p></li>
+<li><p><strong>C++ integration</strong>: The existing C++ integration is intentionally
+minimal; however, there are likely improvements that could be made to
+better integrate nanoarrow into existing C++ projects.</p></li>
+<li><p><strong>Documentation</strong>: As the C library and its user base evolves,
+documentation needs to be refined and expanded to support the current
+set of use cases.</p></li>
+</ul>
+</section>
+<section id="ipc-extension">
+<h2>IPC extension<a class="headerlink" href="#ipc-extension" title="Permalink to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Write support</strong>: The IPC extension currently provides support for
+reading IPC streams but not writing them.</p></li>
+<li><p><strong>Dictionary support</strong>: The IPC extension does not currently support
+reading dictionary messages an IPC stream.</p></li>
+<li><p><strong>Compression</strong>: The IPC extension does not currently support
+compressed streams.</p></li>
+</ul>
+</section>
+<section id="device-extension">
+<h2>Device extension<a class="headerlink" href="#device-extension" title="Permalink to this heading">#</a></h2>
+<p>This entire extension is currently experimental and awaiting use-cases
+that will drive future development.</p>
+</section>
+<section id="r-bindings">
+<h2>R bindings<a class="headerlink" href="#r-bindings" title="Permalink to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Type support</strong>: The R bindings currently do not provide support for
+extension types and relies on Arrow C++ for some dictionary-encoded
+types.</p></li>
+<li><p><strong>ALTREP support</strong>: A recent R release added enhanced ALTREP support
+such that types that convert to <code class="docutils literal notranslate"><span class="pre">list()</span></code> can defer materialization
+cost/allocation. Arrow sources that arrive in chunks (e.g., from a
+<code class="docutils literal notranslate"><span class="pre">Table</span></code> or <code class="docutils literal notranslate"><span class="pre">ChunkedArray</span></code>) currently can’t be converted via any
+ALTREP mechanism and support could be added.</p></li>
+<li><p><strong>IPC support</strong>: The IPC reader is not currently exposed in the R
+bindings.</p></li>
+</ul>
+</section>
+<section id="python-bindings">
+<h2>Python bindings<a class="headerlink" href="#python-bindings" title="Permalink to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Packaging</strong>: The Python bindings are currently unpublished (pypi or
+conda) and are not included in release verification.</p></li>
+<li><p><strong>Element conversion</strong>: There is currently no mechanism to extract an
+element of an <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code> as a Python object (e.g., an <code class="docutils literal notranslate"><span class="pre">int</span></code>
+or <code class="docutils literal notranslate"><span class="pre">str</span></code>).</p></li>
+<li><p><strong>numpy/Pandas conversion</strong>: The Python bindings currently expose the
+<code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code> but do not provide a means by which to convert to
+popular packages such as numpy or Pandas.</p></li>
+<li><p><strong>Creating arrays</strong>: The Python bindings do not currently provide a
+means by which to create an <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> from buffers or
+incrementally.</p></li>
+<li><p><strong>IPC support</strong>: The IPC reader is not currently exposed in the
+Python bindings.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
               
               
                 <footer class="bd-footer-article">
@@ -342,6 +448,24 @@ document.write(`
   
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
+    <a class="left-prev"
+       href="getting-started.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Getting started with nanoarrow</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="reference/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">API Reference</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
 </div></div>
   
 </div>
@@ -351,6 +475,47 @@ document.write(`
             </div>
             
             
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-library">C library</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ipc-extension">IPC extension</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#device-extension">Device extension</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#r-bindings">R bindings</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-bindings">Python bindings</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/apache/arrow-nanoarrow/edit/main/docs/source/roadmap.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+  <div class="tocsection sourcelink">
+    <a href="_sources/roadmap.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
               
             
           </div>

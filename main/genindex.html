@@ -27,15 +27,15 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'genindex';</script>
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" />
@@ -128,6 +128,13 @@
                 
 
                     <li class="nav-item">
+                      <a class="nav-link nav-internal" href="roadmap.html">
+                        Roadmap
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
                       <a class="nav-link nav-internal" href="reference/index.html">
                         API Reference
                       </a>
@@ -209,6 +216,13 @@ document.write(`
                     <li class="nav-item">
                       <a class="nav-link nav-internal" href="getting-started.html">
                         Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="roadmap.html">
+                        Roadmap
                       </a>
                     </li>
                 
@@ -387,6 +401,8 @@ document.write(`
       <li><a href="reference/c.html#_CPPv421ArrowArrayAppendEmptyP10ArrowArray7int64_t">ArrowArrayAppendEmpty (C++ function)</a>
 </li>
       <li><a href="reference/c.html#_CPPv419ArrowArrayAppendIntP10ArrowArray7int64_t">ArrowArrayAppendInt (C++ function)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv424ArrowArrayAppendIntervalP10ArrowArrayP13ArrowInterval">ArrowArrayAppendInterval (C++ function)</a>
 </li>
       <li><a href="reference/c.html#_CPPv420ArrowArrayAppendNullP10ArrowArray7int64_t">ArrowArrayAppendNull (C++ function)</a>
 </li>
@@ -704,14 +720,14 @@ document.write(`
 </li>
       <li><a href="reference/device.html#_CPPv420ArrowDeviceArrayView">ArrowDeviceArrayView (C++ struct)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/device.html#_CPPv424ArrowDeviceArrayViewCopyP20ArrowDeviceArrayViewP11ArrowDeviceP16ArrowDeviceArray">ArrowDeviceArrayViewCopy (C++ function)</a>
 </li>
       <li><a href="reference/device.html#_CPPv424ArrowDeviceArrayViewInitP20ArrowDeviceArrayView">ArrowDeviceArrayViewInit (C++ function)</a>
 </li>
       <li><a href="reference/device.html#_CPPv425ArrowDeviceArrayViewResetP20ArrowDeviceArrayView">ArrowDeviceArrayViewReset (C++ function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/device.html#_CPPv428ArrowDeviceArrayViewSetArrayP20ArrowDeviceArrayViewP16ArrowDeviceArrayP10ArrowError">ArrowDeviceArrayViewSetArray (C++ function)</a>
 </li>
       <li><a href="reference/device.html#_CPPv435ArrowDeviceArrayViewSetArrayMinimalP20ArrowDeviceArrayViewP16ArrowDeviceArrayP10ArrowError">ArrowDeviceArrayViewSetArrayMinimal (C++ function)</a>
@@ -747,6 +763,20 @@ document.write(`
       <li><a href="reference/c.html#_CPPv413ArrowErrorSetP10ArrowErrorPKcz">ArrowErrorSet (C++ function)</a>
 </li>
       <li><a href="reference/c.html#_CPPv49ArrowFreePv">ArrowFree (C++ function)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv413ArrowInterval">ArrowInterval (C++ struct)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv4N13ArrowInterval4daysE">ArrowInterval::days (C++ member)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv4N13ArrowInterval6monthsE">ArrowInterval::months (C++ member)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv4N13ArrowInterval2msE">ArrowInterval::ms (C++ member)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv4N13ArrowInterval2nsE">ArrowInterval::ns (C++ member)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv4N13ArrowInterval4typeE">ArrowInterval::type (C++ member)</a>
+</li>
+      <li><a href="reference/c.html#_CPPv417ArrowIntervalInitP13ArrowInterval9ArrowType">ArrowIntervalInit (C++ function)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv429ArrowIpcArrayStreamReaderInitP16ArrowArrayStreamP19ArrowIpcInputStreamP32ArrowIpcArrayStreamReaderOptions">ArrowIpcArrayStreamReaderInit (C++ function)</a>
 </li>
@@ -1253,7 +1283,7 @@ document.write(`
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
     <br/>
   </p>
 </div>

@@ -28,15 +28,15 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/doctools.js"></script>
-    <script src="../_static/sphinx_highlight.js"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/c';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -130,6 +130,13 @@
                     </li>
                 
 
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../roadmap.html">
+                        Roadmap
+                      </a>
+                    </li>
+                
+
                     <li class="nav-item current active">
                       <a class="nav-link nav-internal" href="index.html">
                         API Reference
@@ -216,6 +223,13 @@ document.write(`
                     <li class="nav-item">
                       <a class="nav-link nav-internal" href="../getting-started.html">
                         Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../roadmap.html">
+                        Roadmap
                       </a>
                     </li>
                 
@@ -480,7 +494,7 @@ document.write(`
 <dd><div class="docutils container">
 <em>#include &lt;nanoarrow.h&gt;</em></div>
 <p>A non-owning view of a parsed <a class="reference internal" href="#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. </p>
-<p>Contains more readily extractable values than a raw <a class="reference internal" href="#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. Clients can stack or statically allocate this structure but are encouraged to use the provided getters to ensure forward compatiblity. </p>
+<p>Contains more readily extractable values than a raw <a class="reference internal" href="#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. Clients can stack or statically allocate this structure but are encouraged to use the provided getters to ensure forward compatibility. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
@@ -745,6 +759,13 @@ document.write(`
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424ArrowArrayAppendIntervalP10ArrowArrayP13ArrowInterval">
+<span id="_CPPv324ArrowArrayAppendIntervalP10ArrowArrayP13ArrowInterval"></span><span id="_CPPv224ArrowArrayAppendIntervalP10ArrowArrayP13ArrowInterval"></span><span id="ArrowArrayAppendInterval__ArrowArrayP.ArrowIntervalP"></span><span class="target" id="group__nanoarrow-array_1gaaed70f1ac0c6ed1402dafb4157eed4f7"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowArrayAppendInterval</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv413ArrowInterval" title="ArrowInterval"><span class="n"><span class="pre">ArrowInterval</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">value</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424ArrowArrayAppendIntervalP10ArrowArrayP13ArrowInterval" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Append a Interval to an array. </p>
+<p>Returns NANOARROW_OK if value can be exactly represented by the underlying storage type or EINVAL otherwise. </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv423ArrowArrayAppendDecimalP10ArrowArrayP12ArrowDecimal">
 <span id="_CPPv323ArrowArrayAppendDecimalP10ArrowArrayP12ArrowDecimal"></span><span id="_CPPv223ArrowArrayAppendDecimalP10ArrowArrayP12ArrowDecimal"></span><span id="ArrowArrayAppendDecimal__ArrowArrayP.ArrowDecimalP"></span><span class="target" id="group__nanoarrow-array_1gaa224decd739a8941991588cb94860386"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowArrayAppendDecimal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv412ArrowDecimal" title="ArrowDecimal"><span class="n"><span class="pre">ArrowDecimal</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">value</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv423ArrowArrayAppendDecimalP10ArrowArrayP12ArrowDecimal" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Append a decimal value to an array. </p>
@@ -783,7 +804,7 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv424ArrowArrayFinishBuildingP10ArrowArray20ArrowValidationLevelP10ArrowError">
 <span id="_CPPv324ArrowArrayFinishBuildingP10ArrowArray20ArrowValidationLevelP10ArrowError"></span><span id="_CPPv224ArrowArrayFinishBuildingP10ArrowArray20ArrowValidationLevelP10ArrowError"></span><span id="ArrowArrayFinishBuilding__ArrowArrayP.ArrowValidationLevel.ArrowErrorP"></span><span class="target" id="group__nanoarrow-array_1ga4b943650875e4d3c44731d98059e9238"></span><a class="reference internal" href="#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowArrayFinishBuilding</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array</span></span>, <span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowValidationLevel" title="ArrowValidationLevel"><span class="n"><span class="pre">ArrowValidationLevel</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">validation_level</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424ArrowArrayFinishBuildingP10ArrowArray20ArrowValidationLevelP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Finish building an <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> with explicit validation. </p>
-<p>Finish building with an explicit validation level. This could perform less validation (i.e. NANOARROW_VALIDATION_LEVEL_NONE or NANOARROW_VALIDATION_LEVEL_MINIMAL) if CPU buffer data access is not possible or more validation (i.e., NANOARROW_VALIDATION_LEVEL_FULL) if buffer content was obtained from an untrusted or corruptable source. </p>
+<p>Finish building with an explicit validation level. This could perform less validation (i.e. NANOARROW_VALIDATION_LEVEL_NONE or NANOARROW_VALIDATION_LEVEL_MINIMAL) if CPU buffer data access is not possible or more validation (i.e., NANOARROW_VALIDATION_LEVEL_FULL) if buffer content was obtained from an untrusted or corruptible source. </p>
 </dd></dl>
 
 </div>
@@ -1898,6 +1919,12 @@ document.write(`
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv417ArrowIntervalInitP13ArrowInterval9ArrowType">
+<span id="_CPPv317ArrowIntervalInitP13ArrowInterval9ArrowType"></span><span id="_CPPv217ArrowIntervalInitP13ArrowInterval9ArrowType"></span><span id="ArrowIntervalInit__ArrowIntervalP.ArrowType"></span><span class="target" id="group__nanoarrow-utils_1ga0442d4f415da195b9548f687bbe785c1"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIntervalInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv413ArrowInterval" title="ArrowInterval"><span class="n"><span class="pre">ArrowInterval</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">interval</span></span>, <span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49ArrowType" title="ArrowType"><span class="n"><span class="pre">ArrowType</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv417ArrowIntervalInitP13ArrowInterval9ArrowType" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Zero initialize an Interval with a given unit. </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv416ArrowDecimalInitP12ArrowDecimal7int32_t7int32_t7int32_t">
 <span id="_CPPv316ArrowDecimalInitP12ArrowDecimal7int32_t7int32_t7int32_t"></span><span id="_CPPv216ArrowDecimalInitP12ArrowDecimal7int32_t7int32_t7int32_t"></span><span id="ArrowDecimalInit__ArrowDecimalP.int32_t.int32_t.int32_t"></span><span class="target" id="group__nanoarrow-utils_1ga07178a7a7ccc9339d129d717bcec88c9"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowDecimalInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv412ArrowDecimal" title="ArrowDecimal"><span class="n"><span class="pre">ArrowDecimal</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decimal</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">bitwidth</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">precision</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">scale</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv416ArrowDecimalInitP12ArrowDecimal7int32_t7int32_t7int32_t" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>Initialize a decimal with a given set of type parameters. </p>
@@ -2008,6 +2035,47 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv4N11ArrowLayout19child_size_elementsE">
 <span id="_CPPv3N11ArrowLayout19child_size_elementsE"></span><span id="_CPPv2N11ArrowLayout19child_size_elementsE"></span><span id="ArrowLayout::child_size_elements__int64_t"></span><span class="target" id="struct_arrow_layout_1a3029a338b3c716c3f7ddadada280c880"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">child_size_elements</span></span></span><a class="headerlink" href="#_CPPv4N11ArrowLayout19child_size_elementsE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>The number of elements in the child array per element in this array for a fixed-size list. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv413ArrowInterval">
+<span id="_CPPv313ArrowInterval"></span><span id="_CPPv213ArrowInterval"></span><span id="ArrowInterval"></span><span class="target" id="struct_arrow_interval"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowInterval</span></span></span><a class="headerlink" href="#_CPPv413ArrowInterval" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_types.h&gt;</em></div>
+<p>A representation of an interval. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N13ArrowInterval4typeE">
+<span id="_CPPv3N13ArrowInterval4typeE"></span><span id="_CPPv2N13ArrowInterval4typeE"></span><span id="ArrowInterval::type__ArrowType"></span><span class="target" id="struct_arrow_interval_1a7dc9d4034864c2c9f3f42b27a3281af2"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49ArrowType" title="ArrowType"><span class="n"><span class="pre">ArrowType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">type</span></span></span><a class="headerlink" href="#_CPPv4N13ArrowInterval4typeE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The type of interval being used. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N13ArrowInterval6monthsE">
+<span id="_CPPv3N13ArrowInterval6monthsE"></span><span id="_CPPv2N13ArrowInterval6monthsE"></span><span id="ArrowInterval::months__int32_t"></span><span class="target" id="struct_arrow_interval_1a6bfd62f1ede83b0c53f4a34b849d134d"></span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">months</span></span></span><a class="headerlink" href="#_CPPv4N13ArrowInterval6monthsE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The number of months represented by the interval. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N13ArrowInterval4daysE">
+<span id="_CPPv3N13ArrowInterval4daysE"></span><span id="_CPPv2N13ArrowInterval4daysE"></span><span id="ArrowInterval::days__int32_t"></span><span class="target" id="struct_arrow_interval_1abb6d828b58ad73f1d3e32322027229e1"></span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">days</span></span></span><a class="headerlink" href="#_CPPv4N13ArrowInterval4daysE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The number of days represented by the interval. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N13ArrowInterval2msE">
+<span id="_CPPv3N13ArrowInterval2msE"></span><span id="_CPPv2N13ArrowInterval2msE"></span><span id="ArrowInterval::ms__int32_t"></span><span class="target" id="struct_arrow_interval_1a190895b648291795b90a00d56d8b6e6e"></span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ms</span></span></span><a class="headerlink" href="#_CPPv4N13ArrowInterval2msE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The number of ms represented by the interval. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N13ArrowInterval2nsE">
+<span id="_CPPv3N13ArrowInterval2nsE"></span><span id="_CPPv2N13ArrowInterval2nsE"></span><span id="ArrowInterval::ns__int64_t"></span><span class="target" id="struct_arrow_interval_1ae407e759217c83fb611af7d3c2237bb0"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ns</span></span></span><a class="headerlink" href="#_CPPv4N13ArrowInterval2nsE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The number of ns represented by the interval. </p>
 </dd></dl>
 
 </div>
@@ -2384,7 +2452,7 @@ document.write(`
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
     <br/>
   </p>
 </div>

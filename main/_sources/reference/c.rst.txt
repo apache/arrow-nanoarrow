@@ -55,12 +55,12 @@ Create, read, and modify schema metadata
 .. doxygengroup:: nanoarrow-metadata
    :members:
 
-Memory management 
+Memory management
 ------------------
 .. doxygengroup:: nanoarrow-malloc
    :members:
 
-Error handling 
+Error handling
 ------------------
 .. doxygengroup:: nanoarrow-errors
    :members:

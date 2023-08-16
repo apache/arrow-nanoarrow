@@ -28,19 +28,19 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'getting-started';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API Reference" href="reference/index.html" />
+    <link rel="next" title="Roadmap" href="roadmap.html" />
     <link rel="prev" title="nanoarrow" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -131,6 +131,13 @@
                 
 
                     <li class="nav-item">
+                      <a class="nav-link nav-internal" href="roadmap.html">
+                        Roadmap
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
                       <a class="nav-link nav-internal" href="reference/index.html">
                         API Reference
                       </a>
@@ -216,6 +223,13 @@ document.write(`
                     <li class="nav-item current active">
                       <a class="nav-link nav-internal" href="#">
                         Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="roadmap.html">
+                        Roadmap
                       </a>
                     </li>
                 
@@ -493,7 +507,7 @@ using the Arrow C data interface and a few conventions used in the
 nanoarrow implementation.</p>
 <p>First, let’s discuss the <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> and the <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code>. You can
 think of an <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> as an expression of a data type, whereas an
-<code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> is the data itself. These structures accomodate nested
+<code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> is the data itself. These structures accommodate nested
 types: columns are encoded in the <code class="docutils literal notranslate"><span class="pre">children</span></code> member of each. You
 always need to know the data type of an <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> before accessing
 its contents. In our case we only operate on arrays of one type
@@ -613,7 +627,7 @@ integration.</p>
 </div>
 <p>After saving <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code>, you may have to close and re-open the
 <code class="docutils literal notranslate"><span class="pre">linesplitter</span></code> directory in VSCode to activate the CMake integration.
-From the command pallete (i.e., Control/Command-Shift-P), choose
+From the command palette (i.e., Control/Command-Shift-P), choose
 <strong>CMake: Build</strong>. If all went well, you should see a few lines of output
 indicating progress towards building and linking <code class="docutils literal notranslate"><span class="pre">linesplitter</span></code>.</p>
 <div class="admonition note">
@@ -765,15 +779,12 @@ the complexity of your project grows.</p>
 <span class="nb">gtest_discover_tests</span><span class="p">(</span><span class="s">linesplitter_test</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="line-block">
-<div class="line">After you’re done, build the project again using the <strong>CMake: Build</strong>
+<p>After you’re done, build the project again using the <strong>CMake: Build</strong>
 command from the command palette. If all goes well, choose <strong>CMake:
-Refresh Tests</strong> and then</div>
-<div class="line"><strong>Test: Run All Tests</strong> from the command pallete to run them! You
-should see some output indiciating that tests ran successfully, or you
-can use VSCode’s “Testing” panel to visually inspect which tests
-passed.</div>
-</div>
+Refresh Tests</strong> and then <strong>Test: Run All Tests</strong> from the command
+palette to run them! You should see some output indicating that tests
+ran successfully, or you can use VSCode’s “Testing” panel to visually
+inspect which tests passed.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If you’re not using VSCode, you can accomplish the equivalent task in in a terminal
@@ -845,11 +856,11 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
       </div>
     </a>
     <a class="right-next"
-       href="reference/index.html"
+       href="roadmap.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">API Reference</p>
+        <p class="prev-next-title">Roadmap</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -938,7 +949,7 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
     <br/>
   </p>
 </div>
