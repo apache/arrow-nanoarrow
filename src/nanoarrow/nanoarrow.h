@@ -664,6 +664,10 @@ static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buf
 /// \brief Extract a boolean value from a bitmap
 static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i);
 
+/// \brief Extract boolean values from a range in a bitmap
+static inline void ArrowBitsGet(const uint8_t* bits, int64_t start_offset, int64_t length,
+                                int8_t* out);
+
 /// \brief Set a boolean value to a bitmap to true
 static inline void ArrowBitSet(uint8_t* bits, int64_t i);
 

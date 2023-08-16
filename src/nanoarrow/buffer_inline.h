@@ -222,6 +222,12 @@ static inline int64_t _ArrowBytesForBits(int64_t bits) {
   return (bits >> 3) + ((bits & 7) != 0);
 }
 
+static inline void _ArrowBitmapUnpackInt8(const uint8_t* bits, int8_t* out) {
+  for (int i = 0; i < 8; i++) {
+    out[i] = (*bits >> i) & 1;
+  }
+}
+
 static inline void _ArrowBitmapPackInt8(const int8_t* values, uint8_t* out) {
   *out = (values[0] | values[1] << 1 | values[2] << 2 | values[3] << 3 | values[4] << 4 |
           values[5] << 5 | values[6] << 6 | values[7] << 7);
@@ -234,6 +240,21 @@ static inline void _ArrowBitmapPackInt32(const int32_t* values, uint8_t* out) {
 
 static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i) {
   return (bits[i >> 3] >> (i & 0x07)) & 1;
+}
+
+// TODO: for ease of implementation / review this implicitly requires the bits
+// and all arguments to be equivally divisible into bytes
+static inline void ArrowBitsGet(const uint8_t* bits, int64_t start_offset, int64_t length,
+                                int8_t* out) {
+  const int64_t i_begin = start_offset;
+  const int64_t i_end = start_offset + length;
+
+  const int64_t bytes_begin = i_begin / 8;
+  const int64_t bytes_end = i_end / 8 + 1;
+
+  for (int i = bytes_begin; i < bytes_end; i++) {
+    _ArrowBitmapUnpackInt8(bits, &out[i]);
+  }
 }
 
 static inline void ArrowBitSet(uint8_t* bits, int64_t i) {

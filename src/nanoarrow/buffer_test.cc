@@ -271,6 +271,39 @@ TEST(BitmapTest, BitmapTestElement) {
   EXPECT_EQ(ArrowBitGet(bitmap, 16 + 7), 0);
 }
 
+TEST(BitmapTest, BitmapTestBitsGet) {
+  uint8_t bitmap[10];
+  int8_t result[sizeof(bitmap) * 8];
+
+  memset(bitmap, 0xff, sizeof(bitmap));
+  ArrowBitsGet(bitmap, 0, sizeof(result), result);
+  for (int i = 0; i < sizeof(result); i++) {
+    EXPECT_EQ(result[i], 1);
+  }
+
+  bitmap[2] = 0xfd;
+  ArrowBitsGet(bitmap, 0, sizeof(result), result);
+  EXPECT_EQ(result[16 + 0], 1);
+  EXPECT_EQ(result[16 + 1], 0);
+  EXPECT_EQ(result[16 + 2], 1);
+  EXPECT_EQ(result[16 + 3], 1);
+  EXPECT_EQ(result[16 + 4], 1);
+  EXPECT_EQ(result[16 + 5], 1);
+  EXPECT_EQ(result[16 + 6], 1);
+  EXPECT_EQ(result[16 + 7], 1);
+
+  bitmap[2] = 0x02;
+  ArrowBitsGet(bitmap, 0, sizeof(result), result);
+  EXPECT_EQ(result[16 + 0], 0);
+  EXPECT_EQ(result[16 + 1], 1);
+  EXPECT_EQ(result[16 + 2], 0);
+  EXPECT_EQ(result[16 + 3], 0);
+  EXPECT_EQ(result[16 + 4], 0);
+  EXPECT_EQ(result[16 + 5], 0);
+  EXPECT_EQ(result[16 + 6], 0);
+  EXPECT_EQ(result[16 + 7], 0);
+}
+
 TEST(BitmapTest, BitmapTestSetTo) {
   uint8_t bitmap[10];
 
