@@ -717,8 +717,8 @@ static inline void ArrowBitmapAppendUnsafe(struct ArrowBitmap* bitmap,
                                            uint8_t bits_are_set, int64_t length);
 
 /// \brief Extract boolean values from a range in a bitmap
-static inline void ArrowBitUnpackInt8(const uint8_t* bits, int64_t start_offset,
-                                      int64_t length, int8_t* out);
+static inline void ArrowBitmapUnpackInt8Unsafe(const uint8_t* bits, int64_t start_offset,
+                                               int64_t length, int8_t* out);
 
 /// \brief Append boolean values encoded as int8_t to a bitmap
 ///
