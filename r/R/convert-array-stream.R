@@ -24,11 +24,11 @@
 #' default inferences of `to`.
 #'
 #' @param array_stream A [nanoarrow_array_stream][as_nanoarrow_array_stream].
-#' @param schema A [nanoarrow_schema][as_nanoarrow_schema], if already known.
 #' @param size The exact size of the output, if known. If specified,
 #'   slightly more efficient implementation may be used to collect the output.
 #' @param n The maximum number of batches to pull from the array stream.
 #' @inheritParams convert_array
+#' @inheritParams basic_array_stream
 #'
 #' @return
 #'   - `convert_array_stream()`: An R vector of type `to`.
@@ -68,7 +68,12 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
     )
   }
 
-  batches <- collect_array_stream(array_stream, n, schema = schema)
+  batches <- collect_array_stream(
+    array_stream,
+    n,
+    schema = schema,
+    validate = FALSE
+  )
   n_batches <- length(batches)
 
   if (n_batches == 0L) {
@@ -97,7 +102,8 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
 
 #' @rdname convert_array_stream
 #' @export
-collect_array_stream <- function(array_stream, n = Inf, schema = NULL) {
+collect_array_stream <- function(array_stream, n = Inf, schema = NULL,
+                                 validate = TRUE) {
   stopifnot(
     inherits(array_stream, "nanoarrow_array_stream")
   )
@@ -109,7 +115,7 @@ collect_array_stream <- function(array_stream, n = Inf, schema = NULL) {
   batches <- vector("list", 1024L)
   n_batches <- 0L
   get_next <- array_stream$get_next
-  while (!is.null(array <- get_next(schema, validate = FALSE)) && (n_batches < n)) {
+  while (!is.null(array <- get_next(schema, validate = validate)) && (n_batches < n)) {
     n_batches <- n_batches + 1L
     batches[[n_batches]] <- array
   }

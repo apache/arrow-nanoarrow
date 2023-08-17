@@ -7,7 +7,7 @@
 \usage{
 convert_array_stream(array_stream, to = NULL, size = NULL, n = Inf)
 
-collect_array_stream(array_stream, n = Inf, schema = NULL)
+collect_array_stream(array_stream, n = Inf, schema = NULL, validate = TRUE)
 }
 \arguments{
 \item{array_stream}{A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}.}
@@ -23,7 +23,11 @@ slightly more efficient implementation may be used to collect the output.}
 
 \item{n}{The maximum number of batches to pull from the array stream.}
 
-\item{schema}{A \link[=as_nanoarrow_schema]{nanoarrow_schema}, if already known.}
+\item{schema}{A \link[=as_nanoarrow_schema]{nanoarrow_schema} or \code{NULL} to guess
+based on the first schema.}
+
+\item{validate}{Use \code{FALSE} to skip the validation step (i.e., if you
+know that the arrays are valid).}
 }
 \value{
 \itemize{
