@@ -280,12 +280,12 @@ void TestArrowBitmapUnpackUnsafe(const uint8_t* bitmap, std::vector<int8_t> expe
 
   ASSERT_EQ(length, expected.size());
 
-  ArrowBitmapUnpackInt8Unsafe(bitmap, offset, length, out);
+  ArrowBitsUnpackInt8(bitmap, offset, length, out);
   for (int i = 0; i < length; i++) {
     EXPECT_EQ(out[i], expected[i]);
   }
 
-  ArrowBitmapUnpackInt32Unsafe(bitmap, offset, length, out32);
+  ArrowBitsUnpackInt32(bitmap, offset, length, out32);
   for (int i = 0; i < length; i++) {
     EXPECT_EQ(out32[i], expected[i]);
   }
@@ -302,12 +302,12 @@ TEST(BitmapTest, BitmapTestBitmapUnpack) {
   memset(result, 0, sizeof(result));
   memset(result32, 0, sizeof(result32));
 
-  ArrowBitmapUnpackInt8Unsafe(bitmap, 0, sizeof(result), result);
+  ArrowBitsUnpackInt8(bitmap, 0, sizeof(result), result);
   for (int i = 0; i < n_values; i++) {
     EXPECT_EQ(result[i], 1);
   }
 
-  ArrowBitmapUnpackInt32Unsafe(bitmap, 0, sizeof(result), result32);
+  ArrowBitsUnpackInt32(bitmap, 0, sizeof(result), result32);
   for (int i = 0; i < n_values; i++) {
     EXPECT_EQ(result32[i], 1);
   }

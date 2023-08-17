@@ -680,6 +680,14 @@ static inline void ArrowBitsSetTo(uint8_t* bits, int64_t start_offset, int64_t l
 /// \brief Count true values in a bitmap
 static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t i_from, int64_t i_to);
 
+/// \brief Extract int8 boolean values from a range in a bitmap
+static inline void ArrowBitsUnpackInt8(const uint8_t* bits, int64_t start_offset,
+                                       int64_t length, int8_t* out);
+
+/// \brief Extract int32 boolean values from a range in a bitmap
+static inline void ArrowBitsUnpackInt32(const uint8_t* bits, int64_t start_offset,
+                                        int64_t length, int32_t* out);
+
 /// \brief Initialize an ArrowBitmap
 ///
 /// Initialize the builder's buffer, empty its cache, and reset the size to zero
@@ -715,14 +723,6 @@ static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
 /// \brief Append zero or more of the same boolean value to a bitmap
 static inline void ArrowBitmapAppendUnsafe(struct ArrowBitmap* bitmap,
                                            uint8_t bits_are_set, int64_t length);
-
-/// \brief Extract int8 boolean values from a range in a bitmap
-static inline void ArrowBitmapUnpackInt8Unsafe(const uint8_t* bits, int64_t start_offset,
-                                               int64_t length, int8_t* out);
-
-/// \brief Extract int32 boolean values from a range in a bitmap
-static inline void ArrowBitmapUnpackInt32Unsafe(const uint8_t* bits, int64_t start_offset,
-                                                int64_t length, int32_t* out);
 
 /// \brief Append boolean values encoded as int8_t to a bitmap
 ///

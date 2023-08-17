@@ -222,7 +222,7 @@ static inline int64_t _ArrowBytesForBits(int64_t bits) {
   return (bits >> 3) + ((bits & 7) != 0);
 }
 
-static inline void _ArrowBitmapUnpackInt8(const uint8_t word, int8_t* out) {
+static inline void _ArrowBitsUnpackInt8(const uint8_t word, int8_t* out) {
   out[0] = (word >> 0) & 1;
   out[1] = (word >> 1) & 1;
   out[2] = (word >> 2) & 1;
@@ -233,7 +233,7 @@ static inline void _ArrowBitmapUnpackInt8(const uint8_t word, int8_t* out) {
   out[7] = (word >> 7) & 1;
 }
 
-static inline void _ArrowBitmapUnpackInt32(const uint8_t word, int32_t* out) {
+static inline void _ArrowBitsUnpackInt32(const uint8_t word, int32_t* out) {
   out[0] = (word >> 0) & 1;
   out[1] = (word >> 1) & 1;
   out[2] = (word >> 2) & 1;
@@ -258,8 +258,8 @@ static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i) {
   return (bits[i >> 3] >> (i & 0x07)) & 1;
 }
 
-static inline void ArrowBitmapUnpackInt8Unsafe(const uint8_t* bits, int64_t start_offset,
-                                               int64_t length, int8_t* out) {
+static inline void ArrowBitsUnpackInt8(const uint8_t* bits, int64_t start_offset,
+                                       int64_t length, int8_t* out) {
   if (length == 0) {
     return;
   }
@@ -286,7 +286,7 @@ static inline void ArrowBitmapUnpackInt8Unsafe(const uint8_t* bits, int64_t star
 
   // middle bytes
   for (int64_t i = bytes_begin + 1; i < bytes_last_valid; i++) {
-    _ArrowBitmapUnpackInt8(bits[i], out);
+    _ArrowBitsUnpackInt8(bits[i], out);
     out += 8;
   }
 
@@ -297,8 +297,8 @@ static inline void ArrowBitmapUnpackInt8Unsafe(const uint8_t* bits, int64_t star
   }
 }
 
-static inline void ArrowBitmapUnpackInt32Unsafe(const uint8_t* bits, int64_t start_offset,
-                                                int64_t length, int32_t* out) {
+static inline void ArrowBitsUnpackInt32(const uint8_t* bits, int64_t start_offset,
+                                        int64_t length, int32_t* out) {
   if (length == 0) {
     return;
   }
@@ -325,7 +325,7 @@ static inline void ArrowBitmapUnpackInt32Unsafe(const uint8_t* bits, int64_t sta
 
   // middle bytes
   for (int64_t i = bytes_begin + 1; i < bytes_last_valid; i++) {
-    _ArrowBitmapUnpackInt32(bits[i], out);
+    _ArrowBitsUnpackInt32(bits[i], out);
     out += 8;
   }
 
