@@ -24,18 +24,24 @@
 #' default inferences of `to`.
 #'
 #' @param array_stream A [nanoarrow_array_stream][as_nanoarrow_array_stream].
+#' @param schema A [nanoarrow_schema][as_nanoarrow_schema], if already known.
 #' @param size The exact size of the output, if known. If specified,
 #'   slightly more efficient implementation may be used to collect the output.
 #' @param n The maximum number of batches to pull from the array stream.
 #' @inheritParams convert_array
 #'
-#' @return An R vector of type `to`.
+#' @return
+#'   - `convert_array_stream()`: An R vector of type `to`.
+#'   - `collect_array_stream()`: A `list()` of [nanoarrow_array][as_nanoarrow_array]
 #' @export
 #'
 #' @examples
 #' stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
 #' str(convert_array_stream(stream))
 #' str(convert_array_stream(stream, to = data.frame(x = double())))
+#'
+#' stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+#' collect_array_stream(stream)
 #'
 convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) {
   stopifnot(
@@ -62,13 +68,8 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
     )
   }
 
-  batches <- vector("list", 1024L)
-  n_batches <- 0L
-  get_next <- array_stream$get_next
-  while (!is.null(array <- get_next(schema, validate = FALSE)) && (n_batches < n)) {
-    n_batches <- n_batches + 1L
-    batches[[n_batches]] <- .Call(nanoarrow_c_convert_array, array, to)
-  }
+  batches <- collect_array_stream(array_stream, n, schema = schema)
+  n_batches <- length(batches)
 
   if (n_batches == 0L) {
     # vec_slice(to, 0)
@@ -78,10 +79,40 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
       to[integer(0)]
     }
   } else if (n_batches == 1L) {
-    batches[[1]]
+    .Call(nanoarrow_c_convert_array, batches[[1]], to)
   } else if (inherits(to, "data.frame")) {
+    batches <- lapply(
+      batches,
+      function(x) .Call(nanoarrow_c_convert_array, x, to)
+    )
     do.call(rbind, batches[seq_len(n_batches)])
   } else {
+    batches <- lapply(
+      batches,
+      function(x) .Call(nanoarrow_c_convert_array, x, to)
+    )
     do.call(c, batches[seq_len(n_batches)])
   }
+}
+
+#' @rdname convert_array_stream
+#' @export
+collect_array_stream <- function(array_stream, n = Inf, schema = NULL) {
+  stopifnot(
+    inherits(array_stream, "nanoarrow_array_stream")
+  )
+
+  if (is.null(schema)) {
+    schema <- .Call(nanoarrow_c_array_stream_get_schema, array_stream)
+  }
+
+  batches <- vector("list", 1024L)
+  n_batches <- 0L
+  get_next <- array_stream$get_next
+  while (!is.null(array <- get_next(schema, validate = FALSE)) && (n_batches < n)) {
+    n_batches <- n_batches + 1L
+    batches[[n_batches]] <- array
+  }
+
+  batches[seq_len(n_batches)]
 }
