@@ -68,36 +68,24 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
     )
   }
 
+  # Collect all batches into a list()
   batches <- collect_array_stream(
     array_stream,
     n,
     schema = schema,
     validate = FALSE
   )
-  n_batches <- length(batches)
 
-  if (n_batches == 0L) {
-    # vec_slice(to, 0)
-    if (is.data.frame(to)) {
-      to[integer(0), , drop = FALSE]
-    } else {
-      to[integer(0)]
-    }
-  } else if (n_batches == 1L) {
-    .Call(nanoarrow_c_convert_array, batches[[1]], to)
-  } else if (inherits(to, "data.frame")) {
-    batches <- lapply(
-      batches,
-      function(x) .Call(nanoarrow_c_convert_array, x, to)
-    )
-    do.call(rbind, batches[seq_len(n_batches)])
-  } else {
-    batches <- lapply(
-      batches,
-      function(x) .Call(nanoarrow_c_convert_array, x, to)
-    )
-    do.call(c, batches[seq_len(n_batches)])
+  # If there is exactly one batch, use convert_array()
+  if (length(batches) == 1L) {
+    return(.Call(nanoarrow_c_convert_array, batches[[1]], to))
   }
+
+  # Otherwise, compute the final size, create another array stream,
+  # and call convert_array_stream() with a known size.
+  lengths <- vapply(batches, function(x) as.double(x$length), double(1))
+  basic_stream <- .Call(nanoarrow_c_basic_array_stream, batches, schema, FALSE)
+  convert_array_stream(basic_stream, to = to, size = sum(lengths))
 }
 
 #' @rdname convert_array_stream
