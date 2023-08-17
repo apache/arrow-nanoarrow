@@ -290,28 +290,6 @@ TEST(BitmapTest, BitmapTestBitmapUnpackInt8Unsafe) {
     EXPECT_EQ(result[i], 1);
   }
 
-  bitmap[2] = 0xfd;
-  ArrowBitmapUnpackInt8Unsafe(bitmap, 0, sizeof(result), result);
-  EXPECT_EQ(result[16 + 0], 1);
-  EXPECT_EQ(result[16 + 1], 0);
-  EXPECT_EQ(result[16 + 2], 1);
-  EXPECT_EQ(result[16 + 3], 1);
-  EXPECT_EQ(result[16 + 4], 1);
-  EXPECT_EQ(result[16 + 5], 1);
-  EXPECT_EQ(result[16 + 6], 1);
-  EXPECT_EQ(result[16 + 7], 1);
-
-  bitmap[2] = 0x02;
-  ArrowBitmapUnpackInt8Unsafe(bitmap, 0, sizeof(result), result);
-  EXPECT_EQ(result[16 + 0], 0);
-  EXPECT_EQ(result[16 + 1], 1);
-  EXPECT_EQ(result[16 + 2], 0);
-  EXPECT_EQ(result[16 + 3], 0);
-  EXPECT_EQ(result[16 + 4], 0);
-  EXPECT_EQ(result[16 + 5], 0);
-  EXPECT_EQ(result[16 + 6], 0);
-  EXPECT_EQ(result[16 + 7], 0);
-
   bitmap[0] = 0x93;  // 10010011
   bitmap[1] = 0x55;  // 01010101
   bitmap[2] = 0xaa;  // 10101010

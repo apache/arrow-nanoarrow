@@ -222,8 +222,7 @@ static inline int64_t _ArrowBytesForBits(int64_t bits) {
   return (bits >> 3) + ((bits & 7) != 0);
 }
 
-static inline void _ArrowBitmapUnpackInt8(const uint8_t* bits, int8_t* out) {
-  const uint8_t word = *bits;
+static inline void _ArrowBitmapUnpackInt8(const uint8_t word, int8_t* out) {
   out[0] = (word >> 0) & 1;
   out[1] = (word >> 1) & 1;
   out[2] = (word >> 2) & 1;
@@ -277,7 +276,7 @@ static inline void ArrowBitmapUnpackInt8Unsafe(const uint8_t* bits, int64_t star
 
   // middle bytes
   for (int64_t i = bytes_begin + 1; i < bytes_last_valid; i++) {
-    _ArrowBitmapUnpackInt8(&bits[i], out);
+    _ArrowBitmapUnpackInt8(bits[i], out);
     out += 8;
   }
 
