@@ -56,7 +56,7 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
       }
       break;
     case NANOARROW_TYPE_BOOL:
-      ArrowBitmapUnpackInt32Unsafe(
+      ArrowBitsUnpackInt32(
           src->array_view->buffer_views[1].data.as_uint8 + raw_src_offset, raw_src_offset,
           dst->length, result + dst->offset);
 
