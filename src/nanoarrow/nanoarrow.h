@@ -716,9 +716,13 @@ static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
 static inline void ArrowBitmapAppendUnsafe(struct ArrowBitmap* bitmap,
                                            uint8_t bits_are_set, int64_t length);
 
-/// \brief Extract boolean values from a range in a bitmap
+/// \brief Extract int8 boolean values from a range in a bitmap
 static inline void ArrowBitmapUnpackInt8Unsafe(const uint8_t* bits, int64_t start_offset,
                                                int64_t length, int8_t* out);
+
+/// \brief Extract int32 boolean values from a range in a bitmap
+static inline void ArrowBitmapUnpackInt32Unsafe(const uint8_t* bits, int64_t start_offset,
+                                                int64_t length, int32_t* out);
 
 /// \brief Append boolean values encoded as int8_t to a bitmap
 ///
