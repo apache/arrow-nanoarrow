@@ -56,6 +56,19 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
       }
       break;
     case NANOARROW_TYPE_BOOL:
+      ArrowBitmapUnpackInt32Unsafe(
+          src->array_view->buffer_views[1].data.as_uint8 + raw_src_offset, raw_src_offset,
+          dst->length, result + dst->offset);
+
+      // Set any nulls to NA_LOGICAL
+      if (is_valid != NULL && src->array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < dst->length; i++) {
+          if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
+            result[dst->offset + i] = NA_LOGICAL;
+          }
+        }
+      }
+      break;
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT16:
