@@ -91,6 +91,7 @@ infer_ptype_other <- function(schema) {
         tzone = parsed$timezone
       )
     },
+    "map" = ,
     "large_list" = ,
     "list" = ,
     "fixed_size_list" = {
