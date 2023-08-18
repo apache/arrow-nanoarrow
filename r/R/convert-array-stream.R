@@ -83,7 +83,14 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
 
   # Otherwise, compute the final size, create another array stream,
   # and call convert_array_stream() with a known size.
-  lengths <- vapply(batches, function(x) as.double(x$length), double(1))
+  lengths <- vapply(
+    batches,
+    # Use custom accessor because array$length in a loop is slow
+    function(array) {
+      .Call(nanoarrow_c_array_proxy, array, NULL, FALSE)$length
+    },
+    double(1)
+  )
   basic_stream <- .Call(nanoarrow_c_basic_array_stream, batches, schema, FALSE)
   convert_array_stream(basic_stream, to = to, size = sum(lengths))
 }
