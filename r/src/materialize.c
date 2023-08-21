@@ -324,7 +324,7 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
     case VECTOR_TYPE_DBL:
       return nanoarrow_materialize_dbl(converter);
     case VECTOR_TYPE_CHR:
-      return nanoarrow_materialize_chr(src, dst, options);
+      return nanoarrow_materialize_chr(converter);
     case VECTOR_TYPE_POSIXCT:
       return nanoarrow_materialize_posixct(converter);
     case VECTOR_TYPE_DATE:

@@ -143,7 +143,7 @@ stop_cant_convert_schema <- function(schema, to, n = 0) {
 }
 
 # Called from C for decimal types
-convert_decimal_to_double <- function(array, schema, offset, length) {
+convert_fallback_arrow <- function(array, schema, offset, length) {
   assert_arrow_installed(
     sprintf(
       "convert %s array to object of type double",
@@ -151,10 +151,20 @@ convert_decimal_to_double <- function(array, schema, offset, length) {
     )
   )
 
+  # Because we are passing to arrow and arrow will release the C structure,
+  # we need to export it.
   array2 <- nanoarrow_allocate_array()
   schema2 <- nanoarrow_allocate_schema()
   nanoarrow_pointer_export(array, array2)
   nanoarrow_pointer_export(schema, schema2)
   arrow_array <- arrow::Array$import_from_c(array2, schema2)
   arrow_array$Slice(offset, length)$as_vector()
+}
+
+# Called from C for dictionary types that we know will go through an
+# internal nanoarrow conversion
+convert_fallback_dictionary_chr <- function(array, schema, offset, length) {
+  indices <- .Call(nanoarrow_c_convert_array, array, integer())
+  values <- .Call(nanoarrow_c_convert_array, array$dictionary, character())
+  values[indices + 1L]
 }

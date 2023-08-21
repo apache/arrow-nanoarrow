@@ -100,12 +100,17 @@ static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,
 }
 
 static SEXP convert_array_chr(SEXP array_xptr) {
-  SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_xptr));
-  if (result == R_NilValue) {
-    call_stop_cant_convert_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  if (array->dictionary == NULL) {
+    SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_xptr));
+    if (result == R_NilValue) {
+      call_stop_cant_convert_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
+    }
+    UNPROTECT(1);
+    return result;
+  } else {
+    return convert_array_default(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
   }
-  UNPROTECT(1);
-  return result;
 }
 
 SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
