@@ -111,6 +111,36 @@ convert_array.vctrs_partial_frame <- function(array, to, ...) {
   .Call(nanoarrow_c_convert_array, array, ptype)
 }
 
+#' @export
+convert_array.factor <- function(array, to, ...) {
+  levels_final <- levels(to)
+  levels <- convert_array(array$dictionary, character())
+  array$dictionary <- NULL
+  indices <- convert_array(array, integer()) + 1L
+
+  if (identical(levels, levels_final)) {
+    structure(indices, levels = levels_final, class = "factor")
+  } else if (all(levels %in% levels_final)) {
+    level_map <- match(levels, levels_final)
+    structure(level_map[indices], levels = levels_final, class = "factor")
+  } else {
+    stop("Error converting to factor: some levels in data do not exist in levels")
+  }
+}
+
+#' @export
+convert_array.vctrs_partial_factor <- function(array, to, ...) {
+  if (!identical(to$partial, factor())) {
+    stop_cant_convert_array(array, to)
+  }
+
+  levels <- convert_array(array$dictionary, character())
+  array$dictionary <- NULL
+  indices <- convert_array(array, integer()) + 1L
+  structure(indices, levels = levels, class = "factor")
+}
+
+
 stop_cant_convert_array <- function(array, to, n = 0) {
   stop_cant_convert_schema(infer_nanoarrow_schema(array), to, n - 1)
 }

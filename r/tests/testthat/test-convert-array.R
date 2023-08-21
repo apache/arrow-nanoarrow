@@ -463,11 +463,39 @@ test_that("convert to vector works for null -> character()", {
   )
 })
 
-test_that("convert to vector works for dictionary -> character()", {
-  array <- as_nanoarrow_array(factor(letters))
+test_that("convert to vector works for dictionary<chr> -> character()", {
+  array <- as_nanoarrow_array(factor(letters[5:1]))
+
+  # With identical levels
   expect_identical(
-    convert_array(array, character()),
-    letters
+    convert_array(array, factor(levels = c("a", "b", "c", "d", "e"))),
+    factor(letters[5:1])
+  )
+
+  # With mismatched levels
+  expect_identical(
+    convert_array(array, factor(levels = c("b", "a", "c", "e", "d"))),
+    factor(letters[5:1], levels = c("b", "a", "c", "e", "d"))
+  )
+
+  expect_error(
+    convert_array(array, factor(levels = c("f", "g", "h"))),
+    "some levels in data do not exist"
+  )
+})
+
+test_that("convert to vector works for dictionary<chr> -> partial_factor()", {
+  skip_if_not_installed("vctrs")
+
+  array <- as_nanoarrow_array(factor(letters[5:1]))
+  expect_identical(
+    convert_array(array, vctrs::partial_factor()),
+    factor(letters[5:1])
+  )
+
+  expect_error(
+    convert_array(array, vctrs::partial_factor("not empty")),
+    "Can't convert array"
   )
 })
 
