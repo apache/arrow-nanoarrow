@@ -172,7 +172,12 @@ stop_cant_convert_schema <- function(schema, to, n = 0) {
   stop(cnd)
 }
 
-# Called from C for decimal types
+# These are conversions that are called from low-level materializer
+# C functions. They have to be called in this way because the destination
+# (i.e. `to`) is handled mostly in C (i.e., we can't use an S3 generic
+# since that would apply to *all* conversions of that type and we
+# definitely don't want S3 dispatch overhead for things like double() and
+# character())
 convert_fallback_arrow <- function(array, schema, offset, length) {
   assert_arrow_installed(
     sprintf(
@@ -191,8 +196,6 @@ convert_fallback_arrow <- function(array, schema, offset, length) {
   arrow_array$Slice(offset, length)$as_vector()
 }
 
-# Called from C for dictionary types that we know will go through an
-# internal nanoarrow conversion
 convert_fallback_dictionary_chr <- function(array, schema, offset, length) {
   values <- .Call(nanoarrow_c_convert_array, array$dictionary, character())
   array$dictionary <- NULL
