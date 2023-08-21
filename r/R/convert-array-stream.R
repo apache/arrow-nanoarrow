@@ -56,37 +56,50 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
   }
 
   n <- as.double(n)[1]
+
+
   if (!is.null(size)) {
-    return(
-      .Call(
-        nanoarrow_c_convert_array_stream,
-        array_stream,
-        to,
-        as.double(size)[1],
-        n
-      )
+    # The underlying nanoarrow_c_convert_array_stream() currently requires that
+    # the total length of all batches is known in advance. If the caller
+    # provided this we can save a bit of work.
+    .Call(
+      nanoarrow_c_convert_array_stream,
+      array_stream,
+      to,
+      as.double(size)[1],
+      n
+    )
+  } else {
+    # Otherwise, we need to collect all batches and calculate the total length
+    # before calling nanoarrow_c_convert_array_stream().
+    batches <- collect_array_stream(
+      array_stream,
+      n,
+      schema = schema,
+      validate = FALSE
+    )
+
+    # If there is exactly one batch, use convert_array(). Converting a single
+    # array currently takes a more efficient code path for types that can be
+    # converted as ALTREP (e.g., strings).
+    if (length(batches) == 1L) {
+      return(.Call(nanoarrow_c_convert_array, batches[[1]], to))
+    }
+
+    # Otherwise, compute the final size, create another array stream,
+    # and call convert_array_stream() with a known size. Using .Call()
+    # directly because we have already type checked the inputs.
+    size <- .Call(nanoarrow_c_array_list_total_length, batches)
+    basic_stream <- .Call(nanoarrow_c_basic_array_stream, batches, schema, FALSE)
+
+    .Call(
+      nanoarrow_c_convert_array_stream,
+      basic_stream,
+      to,
+      as.double(size),
+      Inf
     )
   }
-
-  # Collect all batches into a list()
-  batches <- collect_array_stream(
-    array_stream,
-    n,
-    schema = schema,
-    validate = FALSE
-  )
-
-  # If there is exactly one batch, use convert_array()
-  if (length(batches) == 1L) {
-    return(.Call(nanoarrow_c_convert_array, batches[[1]], to))
-  }
-
-  # Otherwise, compute the final size, create another array stream,
-  # and call convert_array_stream() with a known size. Using .Call()
-  # directly because we have already type checked the inputs.
-  total_length <- .Call(nanoarrow_c_array_list_total_length, batches)
-  basic_stream <- .Call(nanoarrow_c_basic_array_stream, batches, schema, FALSE)
-  convert_array_stream(basic_stream, to = to, size = total_length)
 }
 
 #' @rdname convert_array_stream
