@@ -56,7 +56,7 @@ test_that("convert_array() errors for unsupported array", {
   unsupported_array <- nanoarrow_array_init(na_interval_day_time())
   expect_error(
     convert_array(as_nanoarrow_array(unsupported_array)),
-    "Can't infer R vector type for array <interval_day_time>"
+    "Can't infer R vector type for <interval_day_time>"
   )
 })
 

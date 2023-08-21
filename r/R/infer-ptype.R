@@ -108,7 +108,7 @@ stop_cant_infer_ptype <- function(schema, n = 0) {
   if (is.null(schema$name) || identical(schema$name, "")) {
     cnd <- simpleError(
       sprintf(
-        "Can't infer R vector type for array <%s>",
+        "Can't infer R vector type for <%s>",
         schema_label
       ),
       call = sys.call(n - 1)
