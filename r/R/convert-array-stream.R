@@ -108,10 +108,21 @@ collect_array_stream <- function(array_stream, n = Inf, schema = NULL,
   }
 
   batches <- vector("list", 1024L)
-  n_batches <- 0L
+  n_batches <- 0
   get_next <- array_stream$get_next
-  while (!is.null(array <- get_next(schema, validate = validate)) && (n_batches < n)) {
-    n_batches <- n_batches + 1L
+  while (n_batches < n) {
+    array <- get_next(schema, validate = validate)
+    if (is.null(array)) {
+      break
+    }
+
+    n_batches <- n_batches + 1
+
+    # This assignment has reasonable (but not great) performance when
+    # n_batches > 1024 in recent versions of R because R overallocates vectors
+    # slightly to support this pattern. It may be worth moving this
+    # implementation to C or C++ in the future if the collect step becomes a
+    # bottleneck.
     batches[[n_batches]] <- array
   }
 
