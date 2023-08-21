@@ -215,7 +215,7 @@ SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
                Rf_inherits(ptype_sexp, "Date") || Rf_inherits(ptype_sexp, "hms") ||
                Rf_inherits(ptype_sexp, "POSIXct") ||
                Rf_inherits(ptype_sexp, "difftime")) {
-      return convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
+      return convert_array_default(array_xptr, VECTOR_TYPE_UNINITIALIZED, ptype_sexp);
     } else {
       return call_convert_array(array_xptr, ptype_sexp);
     }

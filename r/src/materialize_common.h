@@ -28,6 +28,7 @@
 // or looping at the R level. Some of these types also need an SEXP ptype to communicate
 // additional information.
 enum VectorType {
+  VECTOR_TYPE_UNINITIALIZED,
   VECTOR_TYPE_NULL,
   VECTOR_TYPE_UNSPECIFIED,
   VECTOR_TYPE_LGL,
