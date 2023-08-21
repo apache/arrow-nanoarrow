@@ -463,6 +463,14 @@ test_that("convert to vector works for null -> character()", {
   )
 })
 
+test_that("convert to vector works for dictionary -> character()", {
+  array <- as_nanoarrow_array(factor(letters))
+  expect_identical(
+    convert_array(array, character()),
+    letters
+  )
+})
+
 test_that("convert to vector works for blob::blob()", {
   skip_if_not_installed("blob")
 
@@ -800,9 +808,10 @@ test_that("convert to vector warns for stripped extension type", {
 })
 
 test_that("convert to vector errors for dictionary types", {
-  dict_array <- as_nanoarrow_array(factor(letters[1:5]))
+  unsupported_dict_array <- as_nanoarrow_array(4:0)
+  unsupported_dict_array$dictionary <- 1:5
   expect_error(
-    convert_array(dict_array, character()),
-    "Conversion to dictionary-encoded array is not supported"
+    convert_array(unsupported_dict_array),
+    "Can't convert array"
   )
 })

@@ -164,7 +164,8 @@ convert_fallback_arrow <- function(array, schema, offset, length) {
 # Called from C for dictionary types that we know will go through an
 # internal nanoarrow conversion
 convert_fallback_dictionary_chr <- function(array, schema, offset, length) {
-  indices <- .Call(nanoarrow_c_convert_array, array, integer())
   values <- .Call(nanoarrow_c_convert_array, array$dictionary, character())
+  array$dictionary <- NULL
+  indices <- .Call(nanoarrow_c_convert_array, array, integer())
   values[indices + 1L]
 }

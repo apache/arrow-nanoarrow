@@ -27,6 +27,10 @@
 static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
                                             struct VectorSlice* dst,
                                             struct MaterializeOptions* options) {
+  if (src->array_view->array->dictionary != NULL) {
+    return EINVAL;
+  }
+
   int* result = INTEGER(dst->vec_sexp);
   int64_t n_bad_values = 0;
 

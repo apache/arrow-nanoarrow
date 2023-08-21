@@ -25,6 +25,10 @@
 #include "nanoarrow.h"
 
 static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
+  if (converter->src.array_view->array->dictionary != NULL) {
+    return EINVAL;
+  }
+
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
   double* result = REAL(dst->vec_sexp);

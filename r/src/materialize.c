@@ -184,6 +184,11 @@ static int nanoarrow_materialize_data_frame(struct RConverter* converter,
     return EINVAL;
   }
 
+  // Make sure we error for dictionary types
+  if (converter->src.array_view->array->dictionary != NULL) {
+    return EINVAL;
+  }
+
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
 
@@ -255,6 +260,11 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
 
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
+
+  // Make sure we error for dictionary types
+  if (src->array_view->array->dictionary != NULL) {
+    return EINVAL;
+  }
 
   const int32_t* offsets = src->array_view->buffer_views[1].data.as_int32;
   const int64_t* large_offsets = src->array_view->buffer_views[1].data.as_int64;
