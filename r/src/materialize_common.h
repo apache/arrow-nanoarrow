@@ -107,7 +107,8 @@ struct RConverter {
 
 // Helper for materializers that need to fall back to calling an R function
 static inline void materialize_call_into_r(struct RConverter* converter,
-                                           const char* nanoarrow_fun) {
+                                           const char* nanoarrow_fun,
+                                           SEXP args) {
   // A unique situation where we don't want owning external pointers because we know
   // these are protected for the duration of our call into R and because we don't want
   // them to be garbage collected and invalidate the converter.
@@ -122,7 +123,7 @@ static inline void materialize_call_into_r(struct RConverter* converter,
   SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
 
   SEXP fun = PROTECT(Rf_install(nanoarrow_fun));
-  SEXP call = PROTECT(Rf_lang5(fun, array_xptr, schema_xptr, offset_sexp, length_sexp));
+  SEXP call = PROTECT(Rf_lang6(fun, array_xptr, schema_xptr, offset_sexp, length_sexp, args));
   SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
 
   // Currently this method can only the case where result_src and dst have the same
@@ -140,11 +141,19 @@ static inline void materialize_call_into_r(struct RConverter* converter,
       memcpy(REAL(converter->dst.vec_sexp) + converter->dst.offset, REAL(result_src),
              converter->dst.length * sizeof(double));
       break;
+    case INTSXP:
+    case LGLSXP:
+      memcpy(INTEGER(converter->dst.vec_sexp) + converter->dst.offset, INTEGER(result_src),
+             converter->dst.length * sizeof(int));
+      break;
     case STRSXP:
       for (R_xlen_t i = 0; i < converter->dst.length; i++) {
         SET_STRING_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
                        STRING_ELT(result_src, i));
       }
+      break;
+    case NILSXP:
+      // Do nothing if the function returned NULL
       break;
     default:
       Rf_error("Unhandled SEXP type in conversion of nanoarrow:::%s", nanoarrow_fun);

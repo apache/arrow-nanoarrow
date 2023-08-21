@@ -87,7 +87,7 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
       break;
 
     case NANOARROW_TYPE_DECIMAL128:
-      materialize_call_into_r(converter, "convert_fallback_arrow");
+      materialize_call_into_r(converter, "convert_fallback_arrow", R_NilValue);
       break;
 
     default:

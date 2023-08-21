@@ -178,7 +178,7 @@ stop_cant_convert_schema <- function(schema, to, n = 0) {
 # since that would apply to *all* conversions of that type and we
 # definitely don't want S3 dispatch overhead for things like double() and
 # character())
-convert_fallback_arrow <- function(array, schema, offset, length) {
+convert_fallback_arrow <- function(array, schema, offset, length, args) {
   assert_arrow_installed(
     sprintf(
       "convert %s array to object of type double",
@@ -196,9 +196,33 @@ convert_fallback_arrow <- function(array, schema, offset, length) {
   arrow_array$Slice(offset, length)$as_vector()
 }
 
-convert_fallback_dictionary_chr <- function(array, schema, offset, length) {
+convert_fallback_dictionary_chr <- function(array, schema, offset, length, args) {
   values <- .Call(nanoarrow_c_convert_array, array$dictionary, character())
   array$dictionary <- NULL
   indices <- .Call(nanoarrow_c_convert_array, array, integer())
   values[indices + 1L]
+}
+
+convert_fallback_other <- function(array, schema, offset, length, args) {
+  to <- args[[1]]
+  dst <- args[[2]]
+  dst_offset <- args[[3]]
+  dst_length <- args[[4]]
+
+  # Make sure we have a modifiable copy on hand
+  schema2 <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(schema, schema2)
+  array <- array_shallow_copy(array, schema = schema2, validate = FALSE)
+  nanoarrow_array_set_schema(array, schema2)
+
+  # Call convert_array() on a single value
+  result <- convert_array(array, to)
+
+  # Perhaps there is a more reliable check that the result aligns with the
+  # ptype since the C function we're about to return to just blindly copies memory
+  if (!identical(attributes(result), attributes(to))) {
+    stop("Incompatible ptype returned from convert_array()")
+  }
+
+  result
 }

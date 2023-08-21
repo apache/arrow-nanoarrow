@@ -41,7 +41,7 @@ static inline int nanoarrow_materialize_chr(struct RConverter* converter) {
 
     default:
       if (src->array_view->dictionary != NULL) {
-        materialize_call_into_r(converter, "convert_fallback_dictionary_chr");
+        materialize_call_into_r(converter, "convert_fallback_dictionary_chr", R_NilValue);
         return NANOARROW_OK;
       } else {
         return EINVAL;

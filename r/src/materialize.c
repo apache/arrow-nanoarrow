@@ -178,6 +178,18 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
   }
 }
 
+static int nanoarrow_materialize_other(struct RConverter* converter,
+                                            SEXP converter_xptr) {
+  SEXP args = PROTECT(Rf_allocVector(VECSXP, 4));
+  SET_VECTOR_ELT(args, 0, converter->ptype_view.ptype);
+  SET_VECTOR_ELT(args, 1, converter->dst.vec_sexp);
+  SET_VECTOR_ELT(args, 2, Rf_ScalarReal(converter->dst.offset));
+  SET_VECTOR_ELT(args, 3, Rf_ScalarReal(converter->dst.length));
+  materialize_call_into_r(converter, "convert_fallback_other", args);
+  UNPROTECT(1);
+  return NANOARROW_OK;
+}
+
 static int nanoarrow_materialize_data_frame(struct RConverter* converter,
                                             SEXP converter_xptr) {
   if (converter->ptype_view.vector_type != VECTOR_TYPE_DATA_FRAME) {
@@ -348,6 +360,6 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
     case VECTOR_TYPE_DATA_FRAME:
       return nanoarrow_materialize_data_frame(converter, converter_xptr);
     default:
-      return ENOTSUP;
+      return nanoarrow_materialize_other(converter, converter_xptr);
   }
 }
