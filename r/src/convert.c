@@ -309,13 +309,6 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
     UNPROTECT(1);
   }
 
-  // Sub-par error for dictionary types until we have a way to deal with them
-  if (converter->schema_view.type == NANOARROW_TYPE_DICTIONARY) {
-    ArrowErrorSet(&converter->error,
-                  "Conversion to dictionary-encoded array is not supported");
-    return ENOTSUP;
-  }
-
   SET_VECTOR_ELT(converter_shelter, 1, schema_xptr);
 
   ArrowArrayViewReset(&converter->array_view);
