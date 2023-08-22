@@ -111,7 +111,12 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   SEXP result;
 
   if (Rf_isObject(ptype)) {
-    if (nanoarrow_ptype_is_data_frame(ptype)) {
+    if (Rf_inherits(ptype, "vctrs_partial")) {
+      // There may be a more accurate test that more precisely captures the case
+      // where a user has specified a valid ptype that doesn't work in a preallocate
+      // + fill conversion.
+      Rf_error("Can't allocate ptype of class 'vctrs_partial'");
+    } else if (nanoarrow_ptype_is_data_frame(ptype)) {
       R_xlen_t num_cols = Rf_xlength(ptype);
       result = PROTECT(Rf_allocVector(VECSXP, num_cols));
       for (R_xlen_t i = 0; i < num_cols; i++) {

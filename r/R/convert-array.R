@@ -184,8 +184,6 @@ convert_array.vctrs_partial_factor <- function(array, to, ...) {
     stop_cant_convert_array(array, to)
   }
 
-  browser()
-
   levels <- convert_array(array$dictionary, character())
   array$dictionary <- NULL
   indices <- convert_array(array, integer()) + 1L

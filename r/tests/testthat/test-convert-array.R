@@ -567,19 +567,19 @@ test_that("convert to vector works for dictionary<string> -> partial_factor()", 
   )
 })
 
-test_that("batched convert to vector works for dictionary<string> -> partial_factor()", {
+test_that("batched convert to vector errors for dictionary<string> -> partial_factor()", {
   skip_if_not_installed("vctrs")
 
-  # A slightly different path: convert_array.factor() called from C multiple
-  # times with different dictionaries each time.
+  # We can't currently handle a preallocate + fill style conversion where the
+  # result is partial_factor().
   array1 <- as_nanoarrow_array(factor(letters[1:5]))
   array2 <- as_nanoarrow_array(factor(letters[6:10]))
   array3 <- as_nanoarrow_array(factor(letters[11:15]))
 
   stream <- basic_array_stream(list(array1, array2, array3))
-  expect_identical(
+  expect_error(
     convert_array_stream(stream, vctrs::partial_factor()),
-    factor(letters[1:15], levels = letters)
+    "Can't allocate ptype of class 'vctrs_partial'"
   )
 })
 
