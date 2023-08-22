@@ -409,8 +409,16 @@ test_that("convert to vector works for decimal128 -> double()", {
   skip_if_not_installed("arrow")
 
   array <- as_nanoarrow_array(arrow::Array$create(1:10)$cast(arrow::decimal128(20, 10)))
+
+  # Check via S3 dispatch
   expect_equal(
     convert_array(array, double()),
+    as.double(1:10)
+  )
+
+  # ...and via C -> S3 dispatch
+  expect_equal(
+    convert_array.default(array, double()),
     as.double(1:10)
   )
 })
@@ -463,7 +471,23 @@ test_that("convert to vector works for null -> character()", {
   )
 })
 
-test_that("convert to vector works for dictionary<chr> -> character()", {
+test_that("convert to vector works for dictionary<string> -> character()", {
+  array <- as_nanoarrow_array(factor(letters[5:1]))
+
+  # Via S3 dispatch
+  expect_identical(
+    convert_array(array, character()),
+    c("e", "d", "c", "b", "a")
+  )
+
+  # Via C -> S3 dispatch
+  expect_identical(
+    convert_array.default(array, character()),
+    c("e", "d", "c", "b", "a")
+  )
+})
+
+test_that("convert to vector works for dictionary<string> -> factor()", {
   array <- as_nanoarrow_array(factor(letters[5:1]))
 
   # With identical levels
@@ -484,7 +508,7 @@ test_that("convert to vector works for dictionary<chr> -> character()", {
   )
 })
 
-test_that("convert to vector works for dictionary<chr> -> partial_factor()", {
+test_that("convert to vector works for dictionary<string> -> partial_factor()", {
   skip_if_not_installed("vctrs")
 
   array <- as_nanoarrow_array(factor(letters[5:1]))
@@ -551,7 +575,7 @@ test_that("convert to vector works for list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 
   # With malformed ptype
@@ -588,7 +612,7 @@ test_that("convert to vector works for large_list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 })
 
@@ -617,7 +641,7 @@ test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 })
 
@@ -832,14 +856,5 @@ test_that("convert to vector warns for stripped extension type", {
   expect_warning(
     expect_identical(convert_array(nested_ext_array), data.frame(x = 1:5)),
     "x: Converting unknown extension some_ext"
-  )
-})
-
-test_that("convert to vector errors for dictionary types", {
-  unsupported_dict_array <- as_nanoarrow_array(4:0)
-  unsupported_dict_array$dictionary <- 1:5
-  expect_error(
-    convert_array(unsupported_dict_array),
-    "Can't convert array"
   )
 })

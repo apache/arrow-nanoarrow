@@ -27,7 +27,7 @@
 static int nanoarrow_materialize_lgl(struct ArrayViewSlice* src, struct VectorSlice* dst,
                                      struct MaterializeOptions* options) {
   if (src->array_view->array->dictionary != NULL) {
-    return EINVAL;
+    return ENOTSUP;
   }
 
   // True for all the types supported here

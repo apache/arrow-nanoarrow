@@ -180,6 +180,14 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
 
 static int nanoarrow_materialize_other(struct RConverter* converter,
                                        SEXP converter_xptr) {
+  // Ensure that we have a ptype SEXP to send in the call back to R
+  if (converter->ptype_view.ptype == R_NilValue) {
+    SEXP ptype = PROTECT(nanoarrow_alloc_type(converter->ptype_view.vector_type, 0));
+    converter->ptype_view.ptype = ptype;
+    SET_VECTOR_ELT(R_ExternalPtrProtected(converter_xptr), 0, ptype);
+    UNPROTECT(1);
+  }
+
   SEXP args = PROTECT(Rf_allocVector(VECSXP, 4));
   SET_VECTOR_ELT(args, 0, converter->ptype_view.ptype);
   SET_VECTOR_ELT(args, 1, converter->dst.vec_sexp);
@@ -331,7 +339,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
   return NANOARROW_OK;
 }
 
-int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
+static int nanoarrow_materialize_base(struct RConverter* converter, SEXP converter_xptr) {
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
   struct MaterializeOptions* options = converter->options;
@@ -363,3 +371,15 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
       return nanoarrow_materialize_other(converter, converter_xptr);
   }
 }
+
+int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
+  int result = nanoarrow_materialize_base(converter, converter_xptr);
+
+  if (result != NANOARROW_OK) {
+    return nanoarrow_materialize_other(converter, converter_xptr);
+  } else {
+    return NANOARROW_OK;
+  }
+}
+
+

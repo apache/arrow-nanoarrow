@@ -80,6 +80,16 @@ convert_array <- function(array, to = NULL, ...) {
 #' @export
 convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
   if (.from_c) {
+    # Handle default dictionary conversion since it's the same for all types
+    dictionary <- array$dictionary
+
+    if (!is.null(dictionary)) {
+      values <- .Call(nanoarrow_c_convert_array, dictionary, to)
+      array$dictionary <- NULL
+      indices <- .Call(nanoarrow_c_convert_array, array, integer())
+      return(values[indices + 1L])
+    }
+
     stop_cant_convert_array(array, to)
   }
 
@@ -98,6 +108,26 @@ convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
 # tried the internal C conversions.
 convert_array_from_c <- function(array, to) {
   convert_array(array, to, .from_c = TRUE)
+}
+
+#' @export
+convert_array.double <- function(array, to, ...) {
+  # Handle conversion from decimal128 via arrow
+  schema <- infer_nanoarrow_schema(array)
+  parsed <- nanoarrow_schema_parse(schema)
+  if (parsed$type == "decimal128") {
+    assert_arrow_installed(
+      sprintf(
+        "convert %s array to object of type double",
+        nanoarrow_schema_formatted(schema)
+      )
+    )
+
+    arrow_array <- as_arrow_array.nanoarrow_array(array)
+    arrow_array$as_vector()
+  } else {
+    NextMethod()
+  }
 }
 
 #' @export
@@ -172,42 +202,9 @@ stop_cant_convert_schema <- function(schema, to, n = 0) {
   stop(cnd)
 }
 
-# These are conversions that are called from low-level materializer
-# C functions. They have to be called in this way because the destination
-# (i.e. `to`) is handled mostly in C (i.e., we can't use an S3 generic
-# since that would apply to *all* conversions of that type and we
-# definitely don't want S3 dispatch overhead for things like double() and
-# character())
-
-# Used for decimal128 -> double conversion
-convert_fallback_arrow <- function(array, schema, offset, length, args) {
-  assert_arrow_installed(
-    sprintf(
-      "convert %s array to object of type double",
-      nanoarrow_schema_formatted(schema)
-    )
-  )
-
-  # Because we are passing to arrow and arrow will release the C structure,
-  # we need to export it. Doing this by hand to minimize overhead.
-  array2 <- nanoarrow_allocate_array()
-  schema2 <- nanoarrow_allocate_schema()
-  nanoarrow_pointer_export(array, array2)
-  nanoarrow_pointer_export(schema, schema2)
-  arrow_array <- arrow::Array$import_from_c(array2, schema2)
-  arrow_array$Slice(offset, length)$as_vector()
-}
-
-# Used for dictionary<string> -> character()
-convert_fallback_dictionary_chr <- function(array, schema, offset, length, args) {
-  values <- .Call(nanoarrow_c_convert_array, array$dictionary, character())
-  array$dictionary <- NULL
-  indices <- .Call(nanoarrow_c_convert_array, array, integer())
-  values[indices + 1L]
-}
-
 # Called from C for conversions that are not handled there (e.g.,
-# decimal, dictionary, extension)
+# decimal, dictionary, extension). This gives the opportunity to write
+# less common conversions/error messages in R.
 convert_fallback_other <- function(array, schema, offset, length, args) {
   to <- args[[1]]
 
@@ -223,6 +220,7 @@ convert_fallback_other <- function(array, schema, offset, length, args) {
   # methods do not attempt to pass the same array back to the C conversions.
   # When the result is passed back to C it is checked enough to avoid segfault
   # but not necessarily for correctness (e.g., factors with levels that don't
-  # correspond to 'to').
+  # correspond to 'to'). This result may be used as-is or may be copied into
+  # a slice of another vector.
   convert_array(array, to, .from_c = TRUE)
 }

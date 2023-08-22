@@ -26,7 +26,7 @@
 
 static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
   if (converter->src.array_view->array->dictionary != NULL) {
-    return EINVAL;
+    return ENOTSUP;
   }
 
   struct ArrayViewSlice* src = &converter->src;
@@ -84,10 +84,6 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
           }
         }
       }
-      break;
-
-    case NANOARROW_TYPE_DECIMAL128:
-      materialize_call_into_r(converter, "convert_fallback_arrow", R_NilValue);
       break;
 
     default:
