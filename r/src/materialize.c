@@ -188,13 +188,69 @@ static int nanoarrow_materialize_other(struct RConverter* converter,
     UNPROTECT(1);
   }
 
-  SEXP args = PROTECT(Rf_allocVector(VECSXP, 4));
-  SET_VECTOR_ELT(args, 0, converter->ptype_view.ptype);
-  SET_VECTOR_ELT(args, 1, converter->dst.vec_sexp);
-  SET_VECTOR_ELT(args, 2, Rf_ScalarReal(converter->dst.offset));
-  SET_VECTOR_ELT(args, 3, Rf_ScalarReal(converter->dst.length));
-  materialize_call_into_r(converter, "convert_fallback_other", args);
-  UNPROTECT(1);
+  // A unique situation where we don't want owning external pointers because we know
+  // these are protected for the duration of our call into R and because we don't want
+  // them to be garbage collected and invalidate the converter. The R code in
+  // convert_fallback_other() takes care of ensuring an independent copy with the correct
+  // offset/length.
+  SEXP schema_xptr =
+      PROTECT(R_MakeExternalPtr(converter->schema_view.schema, R_NilValue, R_NilValue));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
+  SEXP array_xptr =
+      PROTECT(R_MakeExternalPtr(converter->array_view.array, schema_xptr, R_NilValue));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
+
+  SEXP offset_sexp =
+      PROTECT(Rf_ScalarReal(converter->src.array_view->offset + converter->src.offset));
+  SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
+
+  SEXP fun = PROTECT(Rf_install("convert_fallback_other"));
+  SEXP call = PROTECT(
+      Rf_lang5(fun, array_xptr, offset_sexp, length_sexp, converter->ptype_view.ptype));
+  SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
+
+  // Currently this method can only handle the case where result_src and dst have the same
+  // SEXP type and length. This won't work for a data frame/record array-like result.
+  if (Rf_xlength(result_src) != converter->dst.length) {
+    Rf_error("Unexpected length in result of nanoarrow:::convert_fallback_other()");
+  }
+
+  if (TYPEOF(result_src) != TYPEOF(converter->dst.vec_sexp)) {
+    Rf_error("Unexpected SEXP type in result of nanoarrow:::convert_fallback_other()");
+  }
+
+  switch (TYPEOF(result_src)) {
+    case REALSXP:
+      memcpy(REAL(converter->dst.vec_sexp) + converter->dst.offset, REAL(result_src),
+             converter->dst.length * sizeof(double));
+      break;
+    case INTSXP:
+    case LGLSXP:
+      memcpy(INTEGER(converter->dst.vec_sexp) + converter->dst.offset,
+             INTEGER(result_src), converter->dst.length * sizeof(int));
+      break;
+    case STRSXP:
+      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
+        SET_STRING_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
+                       STRING_ELT(result_src, i));
+      }
+      break;
+    case VECSXP:
+      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
+        SET_VECTOR_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
+                       VECTOR_ELT(result_src, i));
+      }
+      break;
+    case NILSXP:
+      // Do nothing if the function returned NULL
+      break;
+    default:
+      Rf_error(
+          "Unhandled SEXP type in conversion of nanoarrow:::convert_fallback_other()");
+      break;
+  }
+
+  UNPROTECT(7);
   return NANOARROW_OK;
 }
 
@@ -381,5 +437,3 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
     return NANOARROW_OK;
   }
 }
-
-

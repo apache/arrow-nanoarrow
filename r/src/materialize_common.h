@@ -22,7 +22,6 @@
 #include <Rinternals.h>
 
 #include "nanoarrow.h"
-#include "util.h"
 
 // Vector types that have some special casing internally to avoid unnecessary allocations
 // or looping at the R level. Some of these types also need an SEXP ptype to communicate
@@ -104,63 +103,5 @@ struct RConverter {
   R_xlen_t n_children;
   struct RConverter** children;
 };
-
-// Helper for materializers that need to fall back to calling an R function
-static inline void materialize_call_into_r(struct RConverter* converter,
-                                           const char* nanoarrow_fun, SEXP args) {
-  // A unique situation where we don't want owning external pointers because we know
-  // these are protected for the duration of our call into R and because we don't want
-  // them to be garbage collected and invalidate the converter.
-  SEXP schema_xptr =
-      PROTECT(R_MakeExternalPtr(converter->schema_view.schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
-  SEXP array_xptr =
-      PROTECT(R_MakeExternalPtr(converter->array_view.array, schema_xptr, R_NilValue));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
-
-  SEXP offset_sexp = PROTECT(Rf_ScalarReal(converter->src.offset));
-  SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
-
-  SEXP fun = PROTECT(Rf_install(nanoarrow_fun));
-  SEXP call =
-      PROTECT(Rf_lang6(fun, array_xptr, schema_xptr, offset_sexp, length_sexp, args));
-  SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
-
-  // Currently this method can only the case where result_src and dst have the same
-  // SEXP type and length. This won't work for a data frame/record array-like result.
-  if (Rf_xlength(result_src) != converter->dst.length) {
-    Rf_error("Unexpected length in result of nanoarrow:::%s", nanoarrow_fun);
-  }
-
-  if (TYPEOF(result_src) != TYPEOF(converter->dst.vec_sexp)) {
-    Rf_error("Unexpected SEXP type in result of nanoarrow:::%s", nanoarrow_fun);
-  }
-
-  switch (TYPEOF(result_src)) {
-    case REALSXP:
-      memcpy(REAL(converter->dst.vec_sexp) + converter->dst.offset, REAL(result_src),
-             converter->dst.length * sizeof(double));
-      break;
-    case INTSXP:
-    case LGLSXP:
-      memcpy(INTEGER(converter->dst.vec_sexp) + converter->dst.offset,
-             INTEGER(result_src), converter->dst.length * sizeof(int));
-      break;
-    case STRSXP:
-      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
-        SET_STRING_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
-                       STRING_ELT(result_src, i));
-      }
-      break;
-    case NILSXP:
-      // Do nothing if the function returned NULL
-      break;
-    default:
-      Rf_error("Unhandled SEXP type in conversion of nanoarrow:::%s", nanoarrow_fun);
-      break;
-  }
-
-  UNPROTECT(7);
-}
 
 #endif

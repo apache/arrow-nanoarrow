@@ -205,9 +205,7 @@ stop_cant_convert_schema <- function(schema, to, n = 0) {
 # Called from C for conversions that are not handled there (e.g.,
 # decimal, dictionary, extension). This gives the opportunity to write
 # less common conversions/error messages in R.
-convert_fallback_other <- function(array, schema, offset, length, args) {
-  to <- args[[1]]
-
+convert_fallback_other <- function(array, offset, length, to) {
   # Ensures we have a modifiable shallow copy on hand with the correct
   # offset/length.
   array <- nanoarrow_array_modify(
