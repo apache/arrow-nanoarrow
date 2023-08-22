@@ -106,7 +106,22 @@ convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
 # we call convert_array() to dispatch to conversions defined via S3
 # dispatch, making sure to let the default method know that we've already
 # tried the internal C conversions.
-convert_array_from_c <- function(array, to) {
+convert_fallback_other <- function(array, offset, length, to) {
+  # If we need to modify offset/length, do it using a shallow copy.
+  if (!is.null(offset)) {
+    array <- nanoarrow_array_modify(
+      array,
+      list(offset = offset, length = length),
+      validate = FALSE
+    )
+  }
+
+  # Call convert_array() on a single chunk. Use .from_c = TRUE to ensure that
+  # methods do not attempt to pass the same array back to the C conversions.
+  # When the result is passed back to C it is checked enough to avoid segfault
+  # but not necessarily for correctness (e.g., factors with levels that don't
+  # correspond to 'to'). This result may be used as-is or may be copied into
+  # a slice of another vector.
   convert_array(array, to, .from_c = TRUE)
 }
 
@@ -200,25 +215,4 @@ stop_cant_convert_schema <- function(schema, to, n = 0) {
   }
 
   stop(cnd)
-}
-
-# Called from C for conversions that are not handled there (e.g.,
-# decimal, dictionary, extension). This gives the opportunity to write
-# less common conversions/error messages in R.
-convert_fallback_other <- function(array, offset, length, to) {
-  # Ensures we have a modifiable shallow copy on hand with the correct
-  # offset/length.
-  array <- nanoarrow_array_modify(
-    array,
-    list(offset = offset, length = length),
-    validate = FALSE
-  )
-
-  # Call convert_array() on a single chunk. Use .from_c = TRUE to ensure that
-  # methods do not attempt to pass the same array back to the C conversions.
-  # When the result is passed back to C it is checked enough to avoid segfault
-  # but not necessarily for correctness (e.g., factors with levels that don't
-  # correspond to 'to'). This result may be used as-is or may be copied into
-  # a slice of another vector.
-  convert_array(array, to, .from_c = TRUE)
 }

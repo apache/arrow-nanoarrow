@@ -41,8 +41,9 @@ enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr);
 // dispatch to find a convert_array() method (or error if there
 // isn't one)
 static SEXP call_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
-  SEXP fun = PROTECT(Rf_install("convert_array_from_c"));
-  SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));
+  SEXP fun = PROTECT(Rf_install("convert_fallback_other"));
+  // offset/length don't need to be modified in this case
+  SEXP call = PROTECT(Rf_lang5(fun, array_xptr, R_NilValue, R_NilValue, ptype_sexp));
   SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
   UNPROTECT(3);
   return result;
