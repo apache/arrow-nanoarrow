@@ -200,8 +200,8 @@ static int nanoarrow_materialize_other(struct RConverter* converter,
   Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
   // We do need to set the protected member of the array external pointer to signal that
   // it is not an independent array (i.e., force a shallow copy).
-  SEXP array_xptr =
-      PROTECT(R_MakeExternalPtr(converter->array_view.array, schema_xptr, converter_xptr));
+  SEXP array_xptr = PROTECT(
+      R_MakeExternalPtr(converter->array_view.array, schema_xptr, converter_xptr));
   Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
 
   SEXP offset_sexp =
