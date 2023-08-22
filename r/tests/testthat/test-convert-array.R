@@ -254,6 +254,16 @@ test_that("convert to vector works for null -> logical()", {
   )
 })
 
+test_that("convert to vector works for dictionary<boolean> -> logical()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(TRUE, FALSE, NA))
+
+  expect_identical(
+    convert_array(array, logical()),
+    c(TRUE, FALSE, NA, FALSE, TRUE)
+  )
+})
+
 test_that("convert to vector errors for bad array to logical()", {
   expect_error(
     convert_array(as_nanoarrow_array(letters), logical()),
@@ -325,6 +335,16 @@ test_that("convert to vector works for null -> logical()", {
   expect_identical(
     convert_array(array, integer()),
     rep(NA_integer_, 10)
+  )
+})
+
+test_that("convert to vector works for dictionary<integer> -> integer()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(123L, 0L,  NA_integer_))
+
+  expect_identical(
+    convert_array(array, integer()),
+    c(123L, 0L, NA_integer_, 0L, 123L)
   )
 })
 
@@ -434,6 +454,16 @@ test_that("convert to vector works for null -> double()", {
   )
 })
 
+test_that("convert to vector works for dictionary<double> -> double()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(123, 0,  NA_real_))
+
+  expect_identical(
+    convert_array(array, double()),
+    c(123, 0, NA_real_, 0, 123)
+  )
+})
+
 test_that("convert to vector errors for bad array to double()", {
   expect_error(
     convert_array(as_nanoarrow_array(letters), double()),
@@ -508,6 +538,20 @@ test_that("convert to vector works for dictionary<string> -> factor()", {
   )
 })
 
+test_that("batched convert to vector works for dictionary<string> -> factor()", {
+  # A slightly different path: convert_array.factor() called from C multiple
+  # times with different dictionaries each time.
+  array1 <- as_nanoarrow_array(factor(letters[1:5]))
+  array2 <- as_nanoarrow_array(factor(letters[6:10]))
+  array3 <- as_nanoarrow_array(factor(letters[11:15]))
+
+  stream <- basic_array_stream(list(array1, array2, array3))
+  expect_identical(
+    convert_array_stream(stream, factor(levels = letters)),
+    factor(letters[1:15], levels = letters)
+  )
+})
+
 test_that("convert to vector works for dictionary<string> -> partial_factor()", {
   skip_if_not_installed("vctrs")
 
@@ -520,6 +564,22 @@ test_that("convert to vector works for dictionary<string> -> partial_factor()", 
   expect_error(
     convert_array(array, vctrs::partial_factor("not empty")),
     "Can't convert array"
+  )
+})
+
+test_that("batched convert to vector works for dictionary<string> -> partial_factor()", {
+  skip_if_not_installed("vctrs")
+
+  # A slightly different path: convert_array.factor() called from C multiple
+  # times with different dictionaries each time.
+  array1 <- as_nanoarrow_array(factor(letters[1:5]))
+  array2 <- as_nanoarrow_array(factor(letters[6:10]))
+  array3 <- as_nanoarrow_array(factor(letters[11:15]))
+
+  stream <- basic_array_stream(list(array1, array2, array3))
+  expect_identical(
+    convert_array_stream(stream, vctrs::partial_factor()),
+    factor(letters[1:15], levels = letters)
   )
 })
 
