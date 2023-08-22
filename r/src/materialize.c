@@ -21,6 +21,8 @@
 
 #include "nanoarrow.h"
 
+#include "util.h"
+
 // Needed for the list_of materializer
 #include "convert.h"
 
