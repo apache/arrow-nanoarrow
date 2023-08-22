@@ -179,7 +179,7 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
 }
 
 static int nanoarrow_materialize_other(struct RConverter* converter,
-                                            SEXP converter_xptr) {
+                                       SEXP converter_xptr) {
   SEXP args = PROTECT(Rf_allocVector(VECSXP, 4));
   SET_VECTOR_ELT(args, 0, converter->ptype_view.ptype);
   SET_VECTOR_ELT(args, 1, converter->dst.vec_sexp);
