@@ -49,6 +49,12 @@
 #' - [character()]: String and large string types can be converted to
 #'   [character()]. The conversion does not check for valid UTF-8: if you need
 #'   finer-grained control over encodings, use `to = blob::blob()`.
+#' - [factor()]: Dictionary-encoded arrays of strings can be converted to
+#'   [factor()]; however, this must be specified explicitly (i.e.,
+#'   `convert_array(array, vctrs::partial_factor())`) because arrays arriving
+#'   in chunks can have dictionaries that contain different levels. Use
+#'   `convert_array(array, factor(levels = c(...)))` to materialize an array
+#'   into a vector with known levels.
 #' - [Date][as.Date]: Only the date32 type can be converted to an R Date vector.
 #' - [hms::hms()]: Time32 and time64 types can be converted to [hms::hms()].
 #' - [difftime()]: Time32, time64, and duration types can be converted to
@@ -64,8 +70,7 @@
 #'
 #' In addition to the above conversions, a null array may be converted to any
 #' target prototype except [data.frame()]. Extension arrays are currently
-#' converted as their storage type; dictionary-encoded arrays are not
-#' currently supported.
+#' converted as their storage type.
 #'
 #' @examples
 #' array <- as_nanoarrow_array(data.frame(x = 1:5))
