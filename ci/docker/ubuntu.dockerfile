@@ -34,7 +34,9 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
     apt-get install -y -V libarrow-dev
 
 # For documentation build + Python build
-RUN pip3 install pydata-sphinx-theme sphinx breathe build Cython numpy pytest pyarrow
+# Note: sphinx can be unpinned when the interaction between sphinx and breathe
+# has been sorted: https://github.com/sphinx-doc/sphinx/issues/11605
+RUN pip3 install pydata-sphinx-theme "sphinx<7.2.0" breathe build Cython numpy pytest pyarrow
 
 # For R. Note that we install arrow here so that the integration tests for R run
 # in at least one test image.
