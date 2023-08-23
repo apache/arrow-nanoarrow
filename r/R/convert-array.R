@@ -55,7 +55,7 @@
 #'   in chunks can have dictionaries that contain different levels. Use
 #'   `convert_array(array, factor(levels = c(...)))` to materialize an array
 #'   into a vector with known levels.
-#' - [Date][as.Date]: Only the date32 type can be converted to an R Date vector.
+#' - [Date][as.Date()]: Only the date32 type can be converted to an R Date vector.
 #' - [hms::hms()]: Time32 and time64 types can be converted to [hms::hms()].
 #' - [difftime()]: Time32, time64, and duration types can be converted to
 #'   R [difftime()] vectors. The value is converted to match the [units()]
