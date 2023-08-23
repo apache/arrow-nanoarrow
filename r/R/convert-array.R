@@ -51,7 +51,7 @@
 #'   finer-grained control over encodings, use `to = blob::blob()`.
 #' - [factor()]: Dictionary-encoded arrays of strings can be converted to
 #'   [factor()]; however, this must be specified explicitly (i.e.,
-#'   `convert_array(array, vctrs::partial_factor())`) because arrays arriving
+#'   `convert_array(array, factor())`) because arrays arriving
 #'   in chunks can have dictionaries that contain different levels. Use
 #'   `convert_array(array, factor(levels = c(...)))` to materialize an array
 #'   into a vector with known levels.
@@ -168,6 +168,11 @@ convert_array.factor <- function(array, to, ...) {
   array$dictionary <- NULL
   indices <- convert_array(array, integer()) + 1L
 
+  # Handle empty factor() as the sentinel for "auto levels"
+  if (identical(levels_final, character())) {
+    levels_final <- levels
+  }
+
   if (identical(levels, levels_final)) {
     structure(indices, levels = levels_final, class = "factor")
   } else if (all(levels %in% levels_final)) {
@@ -176,18 +181,6 @@ convert_array.factor <- function(array, to, ...) {
   } else {
     stop("Error converting to factor: some levels in data do not exist in levels")
   }
-}
-
-#' @export
-convert_array.vctrs_partial_factor <- function(array, to, ...) {
-  if (!identical(to$partial, factor())) {
-    stop_cant_convert_array(array, to)
-  }
-
-  levels <- convert_array(array$dictionary, character())
-  array$dictionary <- NULL
-  indices <- convert_array(array, integer()) + 1L
-  structure(indices, levels = levels, class = "factor")
 }
 
 
