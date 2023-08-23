@@ -42,7 +42,7 @@ through a floating-point double (e.g., very large uint64 and int64 values).
 \code{\link[=character]{character()}}. The conversion does not check for valid UTF-8: if you need
 finer-grained control over encodings, use \code{to = blob::blob()}.
 \item \code{\link[=factor]{factor()}}: Dictionary-encoded arrays of strings can be converted to
-\code{\link[=factor]{factor()}}; however, this must be specified explicitly (i.e.,
+\code{factor()}; however, this must be specified explicitly (i.e.,
 \code{convert_array(array, factor())}) because arrays arriving
 in chunks can have dictionaries that contain different levels. Use
 \code{convert_array(array, factor(levels = c(...)))} to materialize an array
