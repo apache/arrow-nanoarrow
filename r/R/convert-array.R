@@ -163,24 +163,40 @@ convert_array.vctrs_partial_frame <- function(array, to, ...) {
 
 #' @export
 convert_array.factor <- function(array, to, ...) {
-  levels_final <- levels(to)
-  levels <- convert_array(array$dictionary, character())
-  array$dictionary <- NULL
-  indices <- convert_array(array, integer()) + 1L
+  if (!is.null(array$dictionary)) {
+    levels_final <- levels(to)
+    levels <- convert_array(array$dictionary, character())
+    array$dictionary <- NULL
+    indices <- convert_array(array, integer()) + 1L
 
-  # Handle empty factor() as the sentinel for "auto levels"
-  if (identical(levels_final, character())) {
-    levels_final <- levels
-  }
+    # Handle empty factor() as the sentinel for "auto levels"
+    if (identical(levels(to), character())) {
+      levels(to) <- levels
+    }
 
-  if (identical(levels, levels_final)) {
-    structure(indices, levels = levels_final, class = "factor")
-  } else if (all(levels %in% levels_final)) {
-    level_map <- match(levels, levels_final)
-    structure(level_map[indices], levels = levels_final, class = "factor")
+    if (identical(levels, levels(to))) {
+      fct_data <- indices
+    } else if (all(levels %in% levels(to))) {
+      level_map <- match(levels, levels(to))
+      fct_data <- level_map[indices]
+    } else {
+      stop("Error converting to factor: some levels in data do not exist in levels")
+    }
   } else {
-    stop("Error converting to factor: some levels in data do not exist in levels")
+    strings <- convert_array(array, character())
+
+    # Handle empty factor() as the sentinel for "auto levels"
+    if (identical(levels(to), character())) {
+      fct_data <- factor(strings, levels)
+      levels(to) <- levels(fct_data)
+    } else {
+      fct_data <- factor(strings, levels = levels(to))
+    }
   }
+
+  # Restore other attributes (e.g., ordered, labels)
+  attributes(fct_data) <- attributes(to)
+  fct_data
 }
 
 
