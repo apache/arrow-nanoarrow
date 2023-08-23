@@ -539,7 +539,7 @@ test_that("convert to vector works for dictionary<string> -> factor()", {
   )
 
   expect_error(
-    convert_array(array, factor(levels = c("f", "g", "h"))),
+    convert_array(array, factor(levels = letters[-4])),
     "some levels in data do not exist"
   )
 })
