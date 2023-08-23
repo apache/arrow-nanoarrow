@@ -50,7 +50,7 @@
 #'   [character()]. The conversion does not check for valid UTF-8: if you need
 #'   finer-grained control over encodings, use `to = blob::blob()`.
 #' - [factor()]: Dictionary-encoded arrays of strings can be converted to
-#'   [factor()]; however, this must be specified explicitly (i.e.,
+#'   `factor()`; however, this must be specified explicitly (i.e.,
 #'   `convert_array(array, factor())`) because arrays arriving
 #'   in chunks can have dictionaries that contain different levels. Use
 #'   `convert_array(array, factor(levels = c(...)))` to materialize an array
