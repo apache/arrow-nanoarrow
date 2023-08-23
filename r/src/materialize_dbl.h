@@ -23,36 +23,12 @@
 
 #include "materialize_common.h"
 #include "nanoarrow.h"
-#include "util.h"
-
-// Fall back to arrow for decimal conversion via a package helper
-static inline void nanoarrow_materialize_decimal_to_dbl(struct RConverter* converter) {
-  // A unique situation where we don't want owning external pointers because we know
-  // these are protected for the duration of our call into R and because we don't want
-  // then to be garbage collected and invalidate the converter
-  SEXP array_xptr =
-      PROTECT(R_MakeExternalPtr(converter->array_view.array, R_NilValue, R_NilValue));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
-  SEXP schema_xptr =
-      PROTECT(R_MakeExternalPtr(converter->schema_view.schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
-
-  SEXP offset_sexp = PROTECT(Rf_ScalarReal(converter->src.offset));
-  SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
-
-  SEXP fun = PROTECT(Rf_install("convert_decimal_to_double"));
-  SEXP call = PROTECT(Rf_lang5(fun, array_xptr, schema_xptr, offset_sexp, length_sexp));
-  SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
-  if (Rf_xlength(result_src) != converter->dst.length) {
-    Rf_error("Unexpected result in call to Arrow for decimal conversion");
-  }
-
-  memcpy(REAL(converter->dst.vec_sexp) + converter->dst.offset, REAL(result_src),
-         converter->dst.length * sizeof(double));
-  UNPROTECT(7);
-}
 
 static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
+  if (converter->src.array_view->array->dictionary != NULL) {
+    return ENOTSUP;
+  }
+
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
   double* result = REAL(dst->vec_sexp);
@@ -108,10 +84,6 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
           }
         }
       }
-      break;
-
-    case NANOARROW_TYPE_DECIMAL128:
-      nanoarrow_materialize_decimal_to_dbl(converter);
       break;
 
     default:

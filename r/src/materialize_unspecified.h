@@ -27,6 +27,10 @@
 static inline int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
                                                     struct VectorSlice* dst,
                                                     struct MaterializeOptions* options) {
+  if (src->array_view->array->dictionary != NULL) {
+    return ENOTSUP;
+  }
+
   int* result = LOGICAL(dst->vec_sexp);
 
   int64_t total_offset = src->array_view->array->offset + src->offset;

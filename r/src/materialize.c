@@ -21,6 +21,8 @@
 
 #include "nanoarrow.h"
 
+#include "util.h"
+
 // Needed for the list_of materializer
 #include "convert.h"
 
@@ -109,6 +111,16 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   SEXP result;
 
   if (Rf_isObject(ptype)) {
+    // There may be a more accurate test that more precisely captures the case
+    // where a user has specified a valid ptype that doesn't work in a preallocate
+    // + fill conversion.
+    if (Rf_inherits(ptype, "factor")) {
+      SEXP levels = Rf_getAttrib(ptype, R_LevelsSymbol);
+      if (Rf_length(levels) == 0) {
+        Rf_error("Can't allocate ptype of class 'factor' with empty levels");
+      }
+    }
+
     if (nanoarrow_ptype_is_data_frame(ptype)) {
       R_xlen_t num_cols = Rf_xlength(ptype);
       result = PROTECT(Rf_allocVector(VECSXP, num_cols));
@@ -178,9 +190,92 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
   }
 }
 
+static int nanoarrow_materialize_other(struct RConverter* converter,
+                                       SEXP converter_xptr) {
+  // Ensure that we have a ptype SEXP to send in the call back to R
+  if (converter->ptype_view.ptype == R_NilValue) {
+    SEXP ptype = PROTECT(nanoarrow_alloc_type(converter->ptype_view.vector_type, 0));
+    converter->ptype_view.ptype = ptype;
+    SET_VECTOR_ELT(R_ExternalPtrProtected(converter_xptr), 0, ptype);
+    UNPROTECT(1);
+  }
+
+  // A unique situation where we don't want owning external pointers because we know
+  // these are protected for the duration of our call into R and because we don't want
+  // the underlying array to be released and invalidate the converter. The R code in
+  // convert_fallback_other() takes care of ensuring an independent copy with the correct
+  // offset/length.
+  SEXP schema_xptr =
+      PROTECT(R_MakeExternalPtr(converter->schema_view.schema, R_NilValue, R_NilValue));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
+  // We do need to set the protected member of the array external pointer to signal that
+  // it is not an independent array (i.e., force a shallow copy).
+  SEXP array_xptr = PROTECT(
+      R_MakeExternalPtr(converter->array_view.array, schema_xptr, converter_xptr));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
+
+  SEXP offset_sexp =
+      PROTECT(Rf_ScalarReal(converter->src.array_view->offset + converter->src.offset));
+  SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
+
+  SEXP fun = PROTECT(Rf_install("convert_fallback_other"));
+  SEXP call = PROTECT(
+      Rf_lang5(fun, array_xptr, offset_sexp, length_sexp, converter->ptype_view.ptype));
+  SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
+
+  // Currently this method can only handle the case where result_src and dst have the same
+  // SEXP type and length. This won't work for a data frame/record array-like result.
+  if (Rf_xlength(result_src) != converter->dst.length) {
+    Rf_error("Unexpected length in result of nanoarrow:::convert_fallback_other()");
+  }
+
+  if (TYPEOF(result_src) != TYPEOF(converter->dst.vec_sexp)) {
+    Rf_error("Unexpected SEXP type in result of nanoarrow:::convert_fallback_other()");
+  }
+
+  switch (TYPEOF(result_src)) {
+    case REALSXP:
+      memcpy(REAL(converter->dst.vec_sexp) + converter->dst.offset, REAL(result_src),
+             converter->dst.length * sizeof(double));
+      break;
+    case INTSXP:
+    case LGLSXP:
+      memcpy(INTEGER(converter->dst.vec_sexp) + converter->dst.offset,
+             INTEGER(result_src), converter->dst.length * sizeof(int));
+      break;
+    case STRSXP:
+      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
+        SET_STRING_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
+                       STRING_ELT(result_src, i));
+      }
+      break;
+    case VECSXP:
+      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
+        SET_VECTOR_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
+                       VECTOR_ELT(result_src, i));
+      }
+      break;
+    case NILSXP:
+      // Do nothing if the function returned NULL
+      break;
+    default:
+      Rf_error(
+          "Unhandled SEXP type in conversion of nanoarrow:::convert_fallback_other()");
+      break;
+  }
+
+  UNPROTECT(7);
+  return NANOARROW_OK;
+}
+
 static int nanoarrow_materialize_data_frame(struct RConverter* converter,
                                             SEXP converter_xptr) {
   if (converter->ptype_view.vector_type != VECTOR_TYPE_DATA_FRAME) {
+    return EINVAL;
+  }
+
+  // Make sure we error for dictionary types
+  if (converter->src.array_view->array->dictionary != NULL) {
     return EINVAL;
   }
 
@@ -256,6 +351,11 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
 
+  // Make sure we error for dictionary types
+  if (src->array_view->array->dictionary != NULL) {
+    return EINVAL;
+  }
+
   const int32_t* offsets = src->array_view->buffer_views[1].data.as_int32;
   const int64_t* large_offsets = src->array_view->buffer_views[1].data.as_int64;
   int64_t raw_src_offset = src->array_view->array->offset + src->offset;
@@ -309,7 +409,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
   return NANOARROW_OK;
 }
 
-int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
+static int nanoarrow_materialize_base(struct RConverter* converter, SEXP converter_xptr) {
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
   struct MaterializeOptions* options = converter->options;
@@ -324,7 +424,7 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
     case VECTOR_TYPE_DBL:
       return nanoarrow_materialize_dbl(converter);
     case VECTOR_TYPE_CHR:
-      return nanoarrow_materialize_chr(src, dst, options);
+      return nanoarrow_materialize_chr(converter);
     case VECTOR_TYPE_POSIXCT:
       return nanoarrow_materialize_posixct(converter);
     case VECTOR_TYPE_DATE:
@@ -338,6 +438,16 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
     case VECTOR_TYPE_DATA_FRAME:
       return nanoarrow_materialize_data_frame(converter, converter_xptr);
     default:
-      return ENOTSUP;
+      return nanoarrow_materialize_other(converter, converter_xptr);
+  }
+}
+
+int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr) {
+  int result = nanoarrow_materialize_base(converter, converter_xptr);
+
+  if (result != NANOARROW_OK) {
+    return nanoarrow_materialize_other(converter, converter_xptr);
+  } else {
+    return NANOARROW_OK;
   }
 }

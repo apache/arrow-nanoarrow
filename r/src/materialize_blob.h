@@ -35,7 +35,7 @@ static inline int nanoarrow_materialize_blob(struct ArrayViewSlice* src,
     case NANOARROW_TYPE_LARGE_BINARY:
       break;
     default:
-      return EINVAL;
+      return ENOTSUP;
   }
 
   if (src->array_view->storage_type == NANOARROW_TYPE_NA) {

@@ -41,8 +41,9 @@ enum VectorType nanoarrow_infer_vector_type_array(SEXP array_xptr);
 // dispatch to find a convert_array() method (or error if there
 // isn't one)
 static SEXP call_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
-  SEXP fun = PROTECT(Rf_install("convert_array_from_c"));
-  SEXP call = PROTECT(Rf_lang3(fun, array_xptr, ptype_sexp));
+  SEXP fun = PROTECT(Rf_install("convert_fallback_other"));
+  // offset/length don't need to be modified in this case
+  SEXP call = PROTECT(Rf_lang5(fun, array_xptr, R_NilValue, R_NilValue, ptype_sexp));
   SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
   UNPROTECT(3);
   return result;
@@ -100,12 +101,17 @@ static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,
 }
 
 static SEXP convert_array_chr(SEXP array_xptr) {
-  SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_xptr));
-  if (result == R_NilValue) {
-    call_stop_cant_convert_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  if (array->dictionary == NULL) {
+    SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_xptr));
+    if (result == R_NilValue) {
+      call_stop_cant_convert_array(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
+    }
+    UNPROTECT(1);
+    return result;
+  } else {
+    return convert_array_default(array_xptr, VECTOR_TYPE_CHR, R_NilValue);
   }
-  UNPROTECT(1);
-  return result;
 }
 
 SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
@@ -210,7 +216,7 @@ SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
                Rf_inherits(ptype_sexp, "Date") || Rf_inherits(ptype_sexp, "hms") ||
                Rf_inherits(ptype_sexp, "POSIXct") ||
                Rf_inherits(ptype_sexp, "difftime")) {
-      return convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
+      return convert_array_default(array_xptr, VECTOR_TYPE_UNINITIALIZED, ptype_sexp);
     } else {
       return call_convert_array(array_xptr, ptype_sexp);
     }

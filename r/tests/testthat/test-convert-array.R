@@ -56,7 +56,7 @@ test_that("convert_array() errors for unsupported array", {
   unsupported_array <- nanoarrow_array_init(na_interval_day_time())
   expect_error(
     convert_array(as_nanoarrow_array(unsupported_array)),
-    "Can't infer R vector type for array <interval_day_time>"
+    "Can't infer R vector type for <interval_day_time>"
   )
 })
 
@@ -254,6 +254,16 @@ test_that("convert to vector works for null -> logical()", {
   )
 })
 
+test_that("convert to vector works for dictionary<boolean> -> logical()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(TRUE, FALSE, NA))
+
+  expect_identical(
+    convert_array(array, logical()),
+    c(TRUE, FALSE, NA, FALSE, TRUE)
+  )
+})
+
 test_that("convert to vector errors for bad array to logical()", {
   expect_error(
     convert_array(as_nanoarrow_array(letters), logical()),
@@ -325,6 +335,16 @@ test_that("convert to vector works for null -> logical()", {
   expect_identical(
     convert_array(array, integer()),
     rep(NA_integer_, 10)
+  )
+})
+
+test_that("convert to vector works for dictionary<integer> -> integer()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(123L, 0L,  NA_integer_))
+
+  expect_identical(
+    convert_array(array, integer()),
+    c(123L, 0L, NA_integer_, 0L, 123L)
   )
 })
 
@@ -409,8 +429,16 @@ test_that("convert to vector works for decimal128 -> double()", {
   skip_if_not_installed("arrow")
 
   array <- as_nanoarrow_array(arrow::Array$create(1:10)$cast(arrow::decimal128(20, 10)))
+
+  # Check via S3 dispatch
   expect_equal(
     convert_array(array, double()),
+    as.double(1:10)
+  )
+
+  # ...and via C -> S3 dispatch
+  expect_equal(
+    convert_array.default(array, double()),
     as.double(1:10)
   )
 })
@@ -423,6 +451,16 @@ test_that("convert to vector works for null -> double()", {
   expect_identical(
     convert_array(array, double()),
     rep(NA_real_, 10)
+  )
+})
+
+test_that("convert to vector works for dictionary<double> -> double()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(123, 0,  NA_real_))
+
+  expect_identical(
+    convert_array(array, double()),
+    c(123, 0, NA_real_, 0, 123)
   )
 })
 
@@ -460,6 +498,77 @@ test_that("convert to vector works for null -> character()", {
   expect_identical(
     all_nulls,
     rep(NA_character_, 10)
+  )
+})
+
+test_that("convert to vector works for dictionary<string> -> character()", {
+  array <- as_nanoarrow_array(factor(letters[5:1]))
+
+  # Via S3 dispatch
+  expect_identical(
+    convert_array(array, character()),
+    c("e", "d", "c", "b", "a")
+  )
+
+  # Via C -> S3 dispatch
+  expect_identical(
+    convert_array.default(array, character()),
+    c("e", "d", "c", "b", "a")
+  )
+})
+
+test_that("convert to vector works for dictionary<string> -> factor()", {
+  array <- as_nanoarrow_array(factor(letters[5:1]))
+
+  # With empty levels
+  expect_identical(
+    convert_array(array, factor()),
+    factor(letters[5:1])
+  )
+
+  # With identical levels
+  expect_identical(
+    convert_array(array, factor(levels = c("a", "b", "c", "d", "e"))),
+    factor(letters[5:1])
+  )
+
+  # With mismatched levels
+  expect_identical(
+    convert_array(array, factor(levels = c("b", "a", "c", "e", "d"))),
+    factor(letters[5:1], levels = c("b", "a", "c", "e", "d"))
+  )
+
+  expect_error(
+    convert_array(array, factor(levels = letters[-4])),
+    "some levels in data do not exist"
+  )
+})
+
+test_that("batched convert to vector works for dictionary<string> -> factor()", {
+  # A slightly different path: convert_array.factor() called from C multiple
+  # times with different dictionaries each time.
+  array1 <- as_nanoarrow_array(factor(letters[1:5]))
+  array2 <- as_nanoarrow_array(factor(letters[6:10]))
+  array3 <- as_nanoarrow_array(factor(letters[11:15]))
+
+  stream <- basic_array_stream(list(array1, array2, array3))
+  expect_identical(
+    convert_array_stream(stream, factor(levels = letters)),
+    factor(letters[1:15], levels = letters)
+  )
+})
+
+test_that("batched convert to vector errors for dictionary<string> -> factor()", {
+  # We can't currently handle a preallocate + fill style conversion where the
+  # result is partial_factor().
+  array1 <- as_nanoarrow_array(factor(letters[1:5]))
+  array2 <- as_nanoarrow_array(factor(letters[6:10]))
+  array3 <- as_nanoarrow_array(factor(letters[11:15]))
+
+  stream <- basic_array_stream(list(array1, array2, array3))
+  expect_error(
+    convert_array_stream(stream, factor()),
+    "Can't allocate ptype of class 'factor'"
   )
 })
 
@@ -515,7 +624,7 @@ test_that("convert to vector works for list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 
   # With malformed ptype
@@ -552,7 +661,7 @@ test_that("convert to vector works for large_list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 })
 
@@ -581,7 +690,7 @@ test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 })
 
@@ -796,13 +905,5 @@ test_that("convert to vector warns for stripped extension type", {
   expect_warning(
     expect_identical(convert_array(nested_ext_array), data.frame(x = 1:5)),
     "x: Converting unknown extension some_ext"
-  )
-})
-
-test_that("convert to vector errors for dictionary types", {
-  dict_array <- as_nanoarrow_array(factor(letters[1:5]))
-  expect_error(
-    convert_array(dict_array, character()),
-    "Conversion to dictionary-encoded array is not supported"
   )
 })

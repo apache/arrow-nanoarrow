@@ -123,7 +123,7 @@ test_that("infer_nanoarrow_ptype() errors for types it can't infer",  {
   unsupported_array <- nanoarrow_array_init(na_decimal256(3, 4))
   expect_error(
     infer_nanoarrow_ptype(as_nanoarrow_array(unsupported_array)),
-    "Can't infer R vector type for array <decimal256\\(3, 4\\)>"
+    "Can't infer R vector type for <decimal256\\(3, 4\\)>"
   )
 
   unsupported_struct <- nanoarrow_array_init(

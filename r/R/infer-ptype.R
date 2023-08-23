@@ -98,6 +98,13 @@ infer_ptype_other <- function(schema) {
       ptype <- infer_nanoarrow_ptype(schema$children[[1]])
       vctrs::list_of(.ptype = ptype)
     },
+    "dictionary" = {
+      # Even though R's 'factor' can handle a dictionary of strings
+      # (perhaps the most common case), an array arriving in chunks may have
+      # different dictionary arrays. Thus, the best type-stable default we can
+      # achieve is to expand dictionaries.
+      infer_nanoarrow_ptype(schema$dictionary)
+    },
     stop_cant_infer_ptype(schema, n = -1)
   )
 }
@@ -108,7 +115,7 @@ stop_cant_infer_ptype <- function(schema, n = 0) {
   if (is.null(schema$name) || identical(schema$name, "")) {
     cnd <- simpleError(
       sprintf(
-        "Can't infer R vector type for array <%s>",
+        "Can't infer R vector type for <%s>",
         schema_label
       ),
       call = sys.call(n - 1)
