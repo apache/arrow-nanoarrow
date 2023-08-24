@@ -544,6 +544,19 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
 
 static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                              struct ArrowError* error) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchemaView schema_view;
+  int result = ArrowSchemaViewInit(&schema_view, schema, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaViewInit(): %s", error->message);
+  }
+
+  // Ensure that extension types dispatch from R regardless of source
+  if (schema_view.extension_name.size_bytes > 0) {
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
+    return;
+  }
+
   if (Rf_isObject(x_sexp)) {
     if (Rf_inherits(x_sexp, "data.frame")) {
       as_array_data_frame(x_sexp, array, schema_xptr, error);

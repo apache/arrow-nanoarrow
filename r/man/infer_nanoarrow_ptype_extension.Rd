@@ -6,9 +6,20 @@
 \alias{as_nanoarrow_array_extension}
 \title{Implement Arrow extension types}
 \usage{
-infer_nanoarrow_ptype_extension(extension_spec, x)
+infer_nanoarrow_ptype_extension(
+  extension_spec,
+  x,
+  ...,
+  warn_unregistered = TRUE
+)
 
-convert_array_extension(extension_spec, array, to, ...)
+convert_array_extension(
+  extension_spec,
+  array,
+  to,
+  ...,
+  warn_unregistered = TRUE
+)
 
 as_nanoarrow_array_extension(extension_spec, x, ..., schema = NULL)
 }
@@ -19,6 +30,9 @@ as_nanoarrow_array_extension(extension_spec, x, ..., schema = NULL)
 \item{x, array, to, schema, ...}{Passed from \code{\link[=infer_nanoarrow_ptype]{infer_nanoarrow_ptype()}},
 \code{\link[=convert_array]{convert_array()}}, \code{\link[=as_nanoarrow_array]{as_nanoarrow_array()}}, and/or
 \code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}.}
+
+\item{warn_unregistered}{Use \code{FALSE} to infer/convert based on the storage
+type without a warning.}
 }
 \value{
 \itemize{

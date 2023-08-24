@@ -25,7 +25,7 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL, .from_c = FALSE) {
     parsed <- .Call(nanoarrow_c_schema_parse, schema)
     if (!is.null(parsed$extension_name)) {
       spec <- resolve_nanoarrow_extension(parsed$extension_name)
-      return(as_nanoarrow_array_extension(spec, ..., schema = schema))
+      return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
     }
 
     assert_arrow_installed(

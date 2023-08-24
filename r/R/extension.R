@@ -67,6 +67,8 @@ resolve_nanoarrow_extension <- function(extension_name) {
 #' Implement Arrow extension types
 #'
 #' @inheritParams nanoarrow_extension_spec
+#' @param warn_unregistered Use `FALSE` to infer/convert based on the storage
+#'   type without a warning.
 #' @param x,array,to,schema,... Passed from [infer_nanoarrow_ptype()],
 #'   [convert_array()], [as_nanoarrow_array()], and/or
 #'   [as_nanoarrow_array_stream()].
@@ -79,13 +81,17 @@ resolve_nanoarrow_extension <- function(extension_name) {
 #'     of type `schema`.
 #' @export
 #'
-infer_nanoarrow_ptype_extension <- function(extension_spec, x) {
+infer_nanoarrow_ptype_extension <- function(extension_spec, x, ...,
+                                            warn_unregistered = TRUE) {
   UseMethod("infer_nanoarrow_ptype_extension")
 }
 
 #' @export
-infer_nanoarrow_ptype_extension.default <- function(extension_spec, x) {
-  warn_unregistered_extension_type(x)
+infer_nanoarrow_ptype_extension.default <- function(extension_spec, x, ...,
+                                                    warn_unregistered = TRUE) {
+  if (warn_unregistered) {
+    warn_unregistered_extension_type(x)
+  }
 
   x$metadata[["ARROW:extension:name"]] <- NULL
   infer_nanoarrow_ptype(x)
@@ -93,14 +99,20 @@ infer_nanoarrow_ptype_extension.default <- function(extension_spec, x) {
 
 #' @rdname infer_nanoarrow_ptype_extension
 #' @export
-convert_array_extension <- function(extension_spec, array, to, ...) {
+convert_array_extension <- function(extension_spec, array, to, ...,
+                                    warn_unregistered = TRUE) {
   UseMethod("convert_array_extension")
 }
 
 #' @export
-convert_array_extension.default <- function(extension_spec, array, to, ...) {
+convert_array_extension.default <- function(extension_spec, array, to,
+                                            ...,
+                                            warn_unregistered = TRUE) {
   storage <- .Call(nanoarrow_c_infer_schema_array, array)
-  warn_unregistered_extension_type(storage)
+
+  if (warn_unregistered) {
+    warn_unregistered_extension_type(storage)
+  }
 
   storage$metadata[["ARROW:extension:name"]] <- NULL
 
@@ -116,7 +128,8 @@ as_nanoarrow_array_extension <- function(extension_spec, x, ..., schema = NULL) 
 }
 
 #' @export
-as_nanoarrow_array_extension.default <- function(extension_spec, x, ..., schema = NULL) {
+as_nanoarrow_array_extension.default <- function(extension_spec, x, ...,
+                                                 schema = NULL) {
   stop(
     sprintf(
       "as_nanoarrow_array_extension() not implemented for extension %s",
