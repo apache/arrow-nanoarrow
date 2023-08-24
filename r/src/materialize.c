@@ -414,6 +414,11 @@ static int nanoarrow_materialize_base(struct RConverter* converter, SEXP convert
   struct VectorSlice* dst = &converter->dst;
   struct MaterializeOptions* options = converter->options;
 
+  // Make sure extension conversion calls into R
+  if (converter->schema_view.extension_name.size_bytes > 0) {
+    return(nanoarrow_materialize_other(converter, converter_xptr));
+  }
+
   switch (converter->ptype_view.vector_type) {
     case VECTOR_TYPE_UNSPECIFIED:
       return nanoarrow_materialize_unspecified(src, dst, options);

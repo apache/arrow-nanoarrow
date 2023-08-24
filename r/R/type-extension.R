@@ -86,12 +86,24 @@ infer_nanoarrow_ptype_extension <- function(extension_spec, x) {
 
 #' @export
 infer_nanoarrow_ptype_extension.default <- function(extension_spec, x) {
-  warning(
-    sprintf(
-      "Converting extension type %s as storage type",
-      nanoarrow_schema_formatted(x)
+  # Warn that we're about to ignore an extension type
+  if (!is.null(x$name) && !identical(x$name, "")) {
+    warning(
+      sprintf(
+        "%s: Converting unknown extension %s as storage type",
+        x$name,
+        nanoarrow_schema_formatted(x)
+      )
     )
-  )
+  } else {
+    warning(
+      sprintf(
+        "Converting unknown extension %s as storage type",
+        nanoarrow_schema_formatted(x)
+      )
+    )
+  }
+
 
   x$metadata[["ARROW:extension:name"]] <- NULL
   infer_nanoarrow_ptype(x)
@@ -105,7 +117,13 @@ convert_array_extension <- function(extension_spec, array, to, ...) {
 
 #' @export
 convert_array_extension.default <- function(extension_spec, array, to, ...) {
-  stop_cant_convert_array(array, to)
+  message("Fish")
+  storage <- .Call(nanoarrow_c_infer_schema_array, array)
+  storage$metadata[["ARROW:extension:name"]] <- NULL
+
+  array <- array_shallow_copy(array, validate = FALSE)
+  nanoarrow_array_set_schema(array, storage)
+  convert_array(array, to, ...)
 }
 
 #' @rdname infer_nanoarrow_ptype_extension

@@ -100,7 +100,26 @@ static SEXP convert_array_default(SEXP array_xptr, enum VectorType vector_type,
   return result;
 }
 
-static SEXP convert_array_chr(SEXP array_xptr) {
+static SEXP convert_array_chr(SEXP array_xptr, SEXP ptype_sexp) {
+  struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
+  struct ArrowSchemaView schema_view;
+  if (ArrowSchemaViewInit(&schema_view, schema, NULL) != NANOARROW_OK) {
+    Rf_error("Invalid schema");
+  }
+
+  // If array_xptr is an extension, use default conversion
+  if (schema_view.extension_name.size_bytes > 0) {
+    if (ptype_sexp == R_NilValue) {
+      ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
+      SEXP default_result =
+          PROTECT(convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp));
+      UNPROTECT(2);
+      return default_result;
+    } else {
+      return convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
+    }
+  }
+
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
   if (array->dictionary == NULL) {
     SEXP result = PROTECT(nanoarrow_c_make_altrep_chr(array_xptr));
@@ -117,19 +136,24 @@ static SEXP convert_array_chr(SEXP array_xptr) {
 SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
 
 static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
-  // If array_xptr is a union, use default convert behaviour
   struct ArrowSchema* schema = schema_from_array_xptr(array_xptr);
   struct ArrowSchemaView schema_view;
   if (ArrowSchemaViewInit(&schema_view, schema, NULL) != NANOARROW_OK) {
     Rf_error("Invalid schema");
   }
 
-  if (schema_view.storage_type != NANOARROW_TYPE_STRUCT) {
-    ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
-    SEXP default_result =
-        convert_array_default(array_xptr, VECTOR_TYPE_DATA_FRAME, ptype_sexp);
-    UNPROTECT(1);
-    return default_result;
+  // If array_xptr is an extension or union, use default convert behaviour
+  if (schema_view.storage_type != NANOARROW_TYPE_STRUCT ||
+      schema_view.extension_name.size_bytes > 0) {
+    if (ptype_sexp == R_NilValue) {
+      ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
+      SEXP default_result =
+          PROTECT(convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp));
+      UNPROTECT(2);
+      return default_result;
+    } else {
+      return convert_array_default(array_xptr, VECTOR_TYPE_DATA_FRAME, ptype_sexp);
+    }
   }
 
   struct ArrowArray* array = array_from_xptr(array_xptr);
@@ -190,7 +214,7 @@ SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
       case VECTOR_TYPE_DBL:
         return convert_array_default(array_xptr, vector_type, R_NilValue);
       case VECTOR_TYPE_CHR:
-        return convert_array_chr(array_xptr);
+        return convert_array_chr(array_xptr, ptype_sexp);
       case VECTOR_TYPE_DATA_FRAME:
         return convert_array_data_frame(array_xptr, R_NilValue);
       default:
@@ -231,7 +255,7 @@ SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
     case REALSXP:
       return convert_array_default(array_xptr, VECTOR_TYPE_DBL, ptype_sexp);
     case STRSXP:
-      return convert_array_chr(array_xptr);
+      return convert_array_chr(array_xptr, ptype_sexp);
     default:
       return call_convert_array(array_xptr, ptype_sexp);
   }
