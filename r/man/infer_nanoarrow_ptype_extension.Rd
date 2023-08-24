@@ -4,7 +4,6 @@
 \alias{infer_nanoarrow_ptype_extension}
 \alias{convert_array_extension}
 \alias{as_nanoarrow_array_extension}
-\alias{as_nanoarrow_array_stream_extension}
 \title{Implement Arrow extension types}
 \usage{
 infer_nanoarrow_ptype_extension(extension_spec, x)
@@ -12,8 +11,6 @@ infer_nanoarrow_ptype_extension(extension_spec, x)
 convert_array_extension(extension_spec, array, to, ...)
 
 as_nanoarrow_array_extension(extension_spec, x, ..., schema = NULL)
-
-as_nanoarrow_array_stream_extension(extension_spec, x, ..., schema = NULL)
 }
 \arguments{
 \item{extension_spec}{An extension specification inheriting from
@@ -28,7 +25,8 @@ as_nanoarrow_array_stream_extension(extension_spec, x, ..., schema = NULL)
 \item \code{infer_nanoarrow_ptype_extension()}: The R vector prototype to be used
 as the default conversion target.
 \item \code{convert_array_extension()}: An R vector of type \code{to}.
-\item \code{as_nanoarrow_array_extension()}: A \link[=as_nanoarrow_array]{nanoarrow_array}.
+\item \code{as_nanoarrow_array_extension()}: A \link[=as_nanoarrow_array]{nanoarrow_array}
+of type \code{schema}.
 }
 }
 \description{

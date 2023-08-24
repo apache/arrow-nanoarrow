@@ -76,7 +76,8 @@ resolve_nanoarrow_extension <- function(extension_name) {
 #'   - `infer_nanoarrow_ptype_extension()`: The R vector prototype to be used
 #'     as the default conversion target.
 #'   - `convert_array_extension()`: An R vector of type `to`.
-#'   - `as_nanoarrow_array_extension()`: A [nanoarrow_array][as_nanoarrow_array].
+#'   - `as_nanoarrow_array_extension()`: A [nanoarrow_array][as_nanoarrow_array]
+#'     of type `schema`.
 #' @export
 #'
 infer_nanoarrow_ptype_extension <- function(extension_spec, x) {
@@ -85,7 +86,15 @@ infer_nanoarrow_ptype_extension <- function(extension_spec, x) {
 
 #' @export
 infer_nanoarrow_ptype_extension.default <- function(extension_spec, x) {
-  stop("not implemented")
+  warning(
+    sprintf(
+      "Converting extension type %s as storage type",
+      nanoarrow_schema_formatted(x)
+    )
+  )
+
+  x$metadata[["ARROW:extension:name"]] <- NULL
+  infer_nanoarrow_ptype(x)
 }
 
 #' @rdname infer_nanoarrow_ptype_extension
@@ -108,17 +117,6 @@ as_nanoarrow_array_extension <- function(extension_spec, x, ..., schema = NULL) 
 #' @export
 as_nanoarrow_array_extension.default <- function(extension_spec, x, ..., schema = NULL) {
   stop("Not implemented")
-}
-
-#' @rdname infer_nanoarrow_ptype_extension
-#' @export
-as_nanoarrow_array_stream_extension <- function(extension_spec, x, ..., schema = NULL) {
-  UseMethod("as_nanoarrow_array_stream_extension")
-}
-
-#' @export
-as_nanoarrow_array_stream_extension.default <- function(extension_spec, x, ..., schema = NULL) {
-  stop("not implemented")
 }
 
 # Mutable registry to look up extension specifications
