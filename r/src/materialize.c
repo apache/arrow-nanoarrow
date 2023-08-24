@@ -201,7 +201,7 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
       Rf_error("Unexpected data.frame row count in copy_vec_into()");
     }
 
-    // This does not currently consider column names (i.e., it blindy copies
+    // This does not currently consider column names (i.e., it blindly copies
     // by index).
     if (Rf_xlength(x) != Rf_xlength(dst)) {
       Rf_error("Unexpected data.frame column count in copy_vec_into()");
