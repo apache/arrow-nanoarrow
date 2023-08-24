@@ -86,24 +86,7 @@ infer_nanoarrow_ptype_extension <- function(extension_spec, x) {
 
 #' @export
 infer_nanoarrow_ptype_extension.default <- function(extension_spec, x) {
-  # Warn that we're about to ignore an extension type
-  if (!is.null(x$name) && !identical(x$name, "")) {
-    warning(
-      sprintf(
-        "%s: Converting unknown extension %s as storage type",
-        x$name,
-        nanoarrow_schema_formatted(x)
-      )
-    )
-  } else {
-    warning(
-      sprintf(
-        "Converting unknown extension %s as storage type",
-        nanoarrow_schema_formatted(x)
-      )
-    )
-  }
-
+  warn_unregistered_extension_type(x)
 
   x$metadata[["ARROW:extension:name"]] <- NULL
   infer_nanoarrow_ptype(x)
@@ -118,6 +101,8 @@ convert_array_extension <- function(extension_spec, array, to, ...) {
 #' @export
 convert_array_extension.default <- function(extension_spec, array, to, ...) {
   storage <- .Call(nanoarrow_c_infer_schema_array, array)
+  warn_unregistered_extension_type(storage)
+
   storage$metadata[["ARROW:extension:name"]] <- NULL
 
   array <- array_shallow_copy(array, validate = FALSE)
@@ -139,6 +124,52 @@ as_nanoarrow_array_extension.default <- function(extension_spec, x, ..., schema 
       nanoarrow_schema_formatted(schema)
     )
   )
+}
+
+
+#' Create Arrow extension arrays
+#'
+#' @param storage_array A [nanoarrow_array][as_nanoarrow_array].
+#' @inheritParams na_type
+#'
+#' @return A [nanoarrow_array][as_nanoarrow_array] with attached extension
+#'   schema.
+#' @export
+#'
+#' @examples
+#' nanoarrow_extension_array(1:10, "some_ext", '{"key": "value"}')
+#'
+nanoarrow_extension_array <- function(storage_array, extension_name,
+                                      extension_metadata = NULL) {
+  storage_array <- as_nanoarrow_array(storage_array)
+
+  schema <- .Call(nanoarrow_c_infer_schema_array, storage_array)
+  schema$metadata[["ARROW:extension:name"]] <- extension_name
+  schema$metadata[["ARROW:extension:metadata"]] <- extension_metadata
+
+  shallow_copy <- array_shallow_copy(storage_array)
+  nanoarrow_array_set_schema(shallow_copy, schema)
+  shallow_copy
+}
+
+warn_unregistered_extension_type <- function(x) {
+  # Warn that we're about to ignore an extension type
+  if (!is.null(x$name) && !identical(x$name, "")) {
+    warning(
+      sprintf(
+        "%s: Converting unknown extension %s as storage type",
+        x$name,
+        nanoarrow_schema_formatted(x)
+      )
+    )
+  } else {
+    warning(
+      sprintf(
+        "Converting unknown extension %s as storage type",
+        nanoarrow_schema_formatted(x)
+      )
+    )
+  }
 }
 
 # Mutable registry to look up extension specifications

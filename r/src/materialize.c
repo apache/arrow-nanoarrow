@@ -190,6 +190,67 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
   }
 }
 
+static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
+  if (nanoarrow_ptype_is_data_frame(dst)) {
+    if (!nanoarrow_ptype_is_data_frame(x)) {
+      Rf_error("Expected record-style vctr result but got non-record-style result");
+    }
+
+    R_xlen_t x_len = nanoarrow_data_frame_size(dst);
+    if (len != x_len) {
+      Rf_error("Unexpected data.frame row count in copy_vec_into()");
+    }
+
+    // This does not currently consider column names (i.e., it blindy copies
+    // by index).
+    if (Rf_xlength(x) != Rf_xlength(dst)) {
+      Rf_error("Unexpected data.frame column count in copy_vec_into()");
+    }
+
+    for (R_xlen_t i = 0; i < Rf_xlength(x); i++) {
+      copy_vec_into(VECTOR_ELT(x, i), VECTOR_ELT(dst, i), offset, len);
+    }
+
+    return;
+  } else if (nanoarrow_ptype_is_data_frame(x)) {
+    Rf_error("Expected non-record-style vctr result but got record-style result");
+  }
+
+  if (TYPEOF(dst) != TYPEOF(x)) {
+    Rf_error("Unexpected SEXP type in result copy_vec_into()");
+  }
+
+  if (Rf_length(x) != len) {
+    Rf_error("Unexpected length of result in copy_vec_into()");
+  }
+
+  switch (TYPEOF(dst)) {
+    case RAWSXP:
+      memcpy(RAW(dst) + offset, RAW(x), len * sizeof(double));
+      break;
+    case REALSXP:
+      memcpy(REAL(dst) + offset, REAL(x), len * sizeof(double));
+      break;
+    case INTSXP:
+    case LGLSXP:
+      memcpy(INTEGER(dst) + offset, INTEGER(x), len * sizeof(int));
+      break;
+    case STRSXP:
+      for (R_xlen_t i = 0; i < len; i++) {
+        SET_STRING_ELT(dst, offset + i, STRING_ELT(x, i));
+      }
+      break;
+    case VECSXP:
+      for (R_xlen_t i = 0; i < len; i++) {
+        SET_VECTOR_ELT(dst, offset + i, VECTOR_ELT(x, i));
+      }
+      break;
+    default:
+      Rf_error("Unhandled SEXP type in copy_vec_into()");
+      break;
+  }
+}
+
 static int nanoarrow_materialize_other(struct RConverter* converter,
                                        SEXP converter_xptr) {
   // Ensure that we have a ptype SEXP to send in the call back to R
@@ -223,46 +284,9 @@ static int nanoarrow_materialize_other(struct RConverter* converter,
       Rf_lang5(fun, array_xptr, offset_sexp, length_sexp, converter->ptype_view.ptype));
   SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
 
-  // Currently this method can only handle the case where result_src and dst have the same
-  // SEXP type and length. This won't work for a data frame/record array-like result.
-  if (Rf_xlength(result_src) != converter->dst.length) {
-    Rf_error("Unexpected length in result of nanoarrow:::convert_fallback_other()");
-  }
-
-  if (TYPEOF(result_src) != TYPEOF(converter->dst.vec_sexp)) {
-    Rf_error("Unexpected SEXP type in result of nanoarrow:::convert_fallback_other()");
-  }
-
-  switch (TYPEOF(result_src)) {
-    case REALSXP:
-      memcpy(REAL(converter->dst.vec_sexp) + converter->dst.offset, REAL(result_src),
-             converter->dst.length * sizeof(double));
-      break;
-    case INTSXP:
-    case LGLSXP:
-      memcpy(INTEGER(converter->dst.vec_sexp) + converter->dst.offset,
-             INTEGER(result_src), converter->dst.length * sizeof(int));
-      break;
-    case STRSXP:
-      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
-        SET_STRING_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
-                       STRING_ELT(result_src, i));
-      }
-      break;
-    case VECSXP:
-      for (R_xlen_t i = 0; i < converter->dst.length; i++) {
-        SET_VECTOR_ELT(converter->dst.vec_sexp, converter->dst.offset + i,
-                       VECTOR_ELT(result_src, i));
-      }
-      break;
-    case NILSXP:
-      // Do nothing if the function returned NULL
-      break;
-    default:
-      Rf_error(
-          "Unhandled SEXP type in conversion of nanoarrow:::convert_fallback_other()");
-      break;
-  }
+  // Copy the result into a slice of dst
+  copy_vec_into(result_src, converter->dst.vec_sexp, converter->dst.offset,
+                converter->dst.length);
 
   UNPROTECT(7);
   return NANOARROW_OK;
