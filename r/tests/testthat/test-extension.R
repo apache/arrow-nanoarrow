@@ -15,6 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("multiplication works", {
-  expect_equal(2 * 2, 4)
+test_that("extension types can be registered and unregistered", {
+  spec <- nanoarrow_extension_spec()
+  register_nanoarrow_extension("some_ext", spec)
+  expect_identical(resolve_nanoarrow_extension("some_ext"), spec)
+  unregister_nanoarrow_extension("some_ext")
+  expect_identical(resolve_nanoarrow_extension("some_ext"), NULL)
 })

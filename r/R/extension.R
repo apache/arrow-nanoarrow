@@ -36,19 +36,18 @@
 #'
 #' @examples
 #' nanoarrow_extension_spec("mynamespace.mytype", subclass = "mypackage_mytype_spec")
-nanoarrow_extension_spec <- function(extension_name, data = NULL,
-                                     subclass = character()) {
+nanoarrow_extension_spec <- function(data = list(), subclass = character()) {
   structure(
-    list(extension_name = extension_name, data = data),
+    data,
     class = union(subclass, "nanoarrow_extension_spec")
   )
 }
 
 #' @rdname nanoarrow_extension_spec
 #' @export
-register_nanoarrow_extension <- function(extension_spec) {
-  extension_registry[[extension_spec$extension_name]] <- extension_spec
-  invisible(extension_spec)
+register_nanoarrow_extension <- function(extension_name, extension_spec) {
+  extension_registry[[extension_name]] <- extension_spec
+  invisible(extension_name)
 }
 
 #' @rdname nanoarrow_extension_spec
