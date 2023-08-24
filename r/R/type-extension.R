@@ -117,7 +117,6 @@ convert_array_extension <- function(extension_spec, array, to, ...) {
 
 #' @export
 convert_array_extension.default <- function(extension_spec, array, to, ...) {
-  message("Fish")
   storage <- .Call(nanoarrow_c_infer_schema_array, array)
   storage$metadata[["ARROW:extension:name"]] <- NULL
 
