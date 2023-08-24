@@ -416,7 +416,7 @@ static int nanoarrow_materialize_base(struct RConverter* converter, SEXP convert
 
   // Make sure extension conversion calls into R
   if (converter->schema_view.extension_name.size_bytes > 0) {
-    return(nanoarrow_materialize_other(converter, converter_xptr));
+    return nanoarrow_materialize_other(converter, converter_xptr);
   }
 
   switch (converter->ptype_view.vector_type) {
