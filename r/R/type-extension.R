@@ -134,7 +134,12 @@ as_nanoarrow_array_extension <- function(extension_spec, x, ..., schema = NULL) 
 
 #' @export
 as_nanoarrow_array_extension.default <- function(extension_spec, x, ..., schema = NULL) {
-  stop("Not implemented")
+  stop(
+    sprintf(
+      "as_nanoarrow_array_extension() not implemented for extension %s",
+      nanoarrow_schema_formatted(schema)
+    )
+  )
 }
 
 # Mutable registry to look up extension specifications

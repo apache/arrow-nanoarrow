@@ -21,6 +21,13 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL, .from_c = FALSE) {
   # and no suitable S3 method was found or the x--schema combination is not
   # implemented in nanoarrow. Try arrow::as_arrow_array().
   if (.from_c) {
+    # Give extension types a chance to handle conversion
+    parsed <- .Call(nanoarrow_c_schema_parse, schema)
+    if (!is.null(parsed$extension_name)) {
+      spec <- resolve_nanoarrow_extension(parsed$extension_name)
+      return(as_nanoarrow_array_extension(spec, ..., schema = schema))
+    }
+
     assert_arrow_installed(
       sprintf(
         "create %s array from object of type %s",
