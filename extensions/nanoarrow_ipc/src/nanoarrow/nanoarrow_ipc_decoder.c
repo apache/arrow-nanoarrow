@@ -46,6 +46,10 @@
 #include "nanoarrow_ipc.h"
 #include "nanoarrow_ipc_flatcc_generated.h"
 
+// A more readable expression way to refer to the fact that there are 8 bytes
+// at the beginning of every message header.
+const static int64_t kMessageHeaderPrefixSize = 8;
+
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
 // children.
@@ -929,9 +933,9 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
   private_data->last_message = NULL;
 }
 
-// Returns NANOARROW_OK if data is large enough to read the message header,
-// ESPIPE if reading more data might help, or EINVAL if the content is not valid.
-// Advances the input ArrowBufferView by 8 bytes.
+// Returns NANOARROW_OK if data is large enough to read the first 8 bytes
+// of the message header, ESPIPE if reading more data might help, or EINVAL if the content
+// is not valid. Advances the input ArrowBufferView by 8 bytes.
 static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
                                              struct ArrowBufferView* data_mut,
                                              int32_t* message_size_bytes,
@@ -939,7 +943,7 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  if (data_mut->size_bytes < 8) {
+  if (data_mut->size_bytes < kMessageHeaderPrefixSize) {
     ArrowErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
                   (long)data_mut->size_bytes);
     return ESPIPE;
@@ -954,7 +958,7 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
 
   int swap_endian = private_data->system_endianness == NANOARROW_IPC_ENDIANNESS_BIG;
   int32_t header_body_size_bytes = ArrowIpcReadInt32LE(data_mut, swap_endian);
-  *message_size_bytes = header_body_size_bytes + (2 * sizeof(int32_t));
+  *message_size_bytes = header_body_size_bytes + kMessageHeaderPrefixSize;
   if (header_body_size_bytes < 0) {
     ArrowErrorSet(
         error, "Expected message body size > 0 but found message body size of %ld bytes",
@@ -994,11 +998,12 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
 
   // Check that data contains at least the entire header (return ESPIPE to signal
   // that reading more data may help).
-  int64_t message_body_size = decoder->header_size_bytes - 8;
+  int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
   if (data.size_bytes < message_body_size) {
     ArrowErrorSet(error,
                   "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
-                  (long)message_body_size + 8, (long)data.size_bytes + 8);
+                  (long)message_body_size + kMessageHeaderPrefixSize,
+                  (long)data.size_bytes + kMessageHeaderPrefixSize);
     return ESPIPE;
   }
 
@@ -1031,11 +1036,12 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 
   // Check that data contains at least the entire header (return ESPIPE to signal
   // that reading more data may help).
-  int64_t message_body_size = decoder->header_size_bytes - 8;
+  int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
   if (data.size_bytes < message_body_size) {
     ArrowErrorSet(error,
                   "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
-                  (long)message_body_size + 8, (long)data.size_bytes + 8);
+                  (long)message_body_size + kMessageHeaderPrefixSize,
+                  (long)data.size_bytes + kMessageHeaderPrefixSize);
     return ESPIPE;
   }
 

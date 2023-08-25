@@ -249,13 +249,14 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifyInvalid) {
   // a null-terminated error. After byte 265 this passes because the values being modified
   // are parts of the flatbuffer that won't cause overrun.
   for (int64_t i = 1; i < 265; i++) {
+    SCOPED_TRACE(i);
+
     memcpy(simple_schema_invalid, kSimpleSchema, i);
     memcpy(simple_schema_invalid + i, kSimpleSchema + (i + 1),
            (sizeof(simple_schema_invalid) - i));
 
     ArrowErrorInit(&error);
-    ASSERT_NE(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK)
-        << "After removing byte " << i;
+    ASSERT_NE(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
     ASSERT_GT(strlen(error.message), 0);
   }
 
