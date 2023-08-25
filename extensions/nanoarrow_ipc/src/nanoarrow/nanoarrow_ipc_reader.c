@@ -345,7 +345,7 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
                                             struct ArrowArray* out) {
   struct ArrowIpcArrayStreamReaderPrivate* private_data =
       (struct ArrowIpcArrayStreamReaderPrivate*)stream->private_data;
-  private_data->error.message[0] = '\0';
+  ArrowErrorInit(&private_data->error);
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderReadSchemaIfNeeded(private_data));
 
   // Read + decode the next header
@@ -356,6 +356,9 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     // end of stream bytes were read.
     out->release = NULL;
     return NANOARROW_OK;
+  } else if (result != NANOARROW_OK) {
+    // Other error
+    return result;
   }
 
   // Make sure we have a RecordBatch message

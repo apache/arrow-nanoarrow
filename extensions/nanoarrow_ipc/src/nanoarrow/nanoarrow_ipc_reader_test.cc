@@ -296,19 +296,20 @@ TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
   struct ArrowIpcInputStream input;
   struct ArrowArrayStream stream;
   struct ArrowSchema schema;
+  struct ArrowArray array;
 
-  uint8_t simple_schema_invalid[sizeof(kSimpleSchema)];
+  uint8_t simple_stream_invalid[sizeof(kSimpleSchema) + sizeof(kSimpleRecordBatch)];
   struct ArrowBufferView data;
-  data.data.as_uint8 = simple_schema_invalid;
-  data.size_bytes = sizeof(simple_schema_invalid);
+  data.data.as_uint8 = simple_stream_invalid;
 
   // Create invalid data by removing bytes one at a time and ensuring an error code and
   // a null-terminated error. After byte 273/280 this passes because the bytes are just
   // padding.
+  data.size_bytes = sizeof(kSimpleSchema);
   for (int64_t i = 1; i < 273; i++) {
-    memcpy(simple_schema_invalid, kSimpleSchema, i);
-    memcpy(simple_schema_invalid + i, kSimpleSchema + (i + 1),
-           (sizeof(simple_schema_invalid) - i));
+    memcpy(simple_stream_invalid, kSimpleSchema, i);
+    memcpy(simple_stream_invalid + i, kSimpleSchema + (i + 1),
+           (sizeof(kSimpleSchema) - i));
 
     ArrowBufferInit(&input_buffer);
     ASSERT_EQ(ArrowBufferAppendBufferView(&input_buffer, data), NANOARROW_OK);
@@ -316,7 +317,30 @@ TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
     ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
 
     ASSERT_NE(stream.get_schema(&stream, &schema), NANOARROW_OK)
-        << "After removing byte " << i;
+        << "After removing Schema message byte " << i;
+    ASSERT_GT(strlen(stream.get_last_error(&stream)), 0);
+
+    stream.release(&stream);
+  }
+
+  // Do the same exercise removing bytes of the record batch message.
+  // Similarly, this succeeds if the byte removed is part of the padding at the end.
+  memcpy(simple_stream_invalid, kSimpleSchema, sizeof(kSimpleSchema));
+  data.size_bytes = sizeof(simple_stream_invalid);
+  for (int64_t i = 1; i < 144; i++) {
+    memcpy(simple_stream_invalid + sizeof(kSimpleSchema), kSimpleRecordBatch, i);
+    memcpy(simple_stream_invalid + sizeof(kSimpleSchema) + i,
+           kSimpleRecordBatch + (i + 1), (sizeof(kSimpleRecordBatch) - i));
+
+    ArrowBufferInit(&input_buffer);
+    ASSERT_EQ(ArrowBufferAppendBufferView(&input_buffer, data), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+    ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
+    schema.release(&schema);
+    ASSERT_NE(stream.get_next(&stream, &array), NANOARROW_OK)
+        << "After removing RecordBatch message byte " << i;
     ASSERT_GT(strlen(stream.get_last_error(&stream)), 0);
 
     stream.release(&stream);
