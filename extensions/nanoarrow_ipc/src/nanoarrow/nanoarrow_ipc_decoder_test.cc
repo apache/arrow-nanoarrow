@@ -133,10 +133,20 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   EXPECT_STREQ(error.message,
                "Expected data of at least 8 bytes but only 1 bytes remain");
 
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ESPIPE);
+  EXPECT_STREQ(error.message,
+               "Expected data of at least 8 bytes but only 1 bytes remain");
+
   uint32_t eight_bad_bytes[] = {0, 0};
   data.data.as_uint8 = reinterpret_cast<uint8_t*>(eight_bad_bytes);
   data.size_bytes = 8;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected 0xFFFFFFFF at start of message but found 0x00000000");
+
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0xFFFFFFFF at start of message but found 0x00000000");
 
@@ -146,15 +156,26 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   EXPECT_STREQ(error.message,
                "Expected message body size > 0 but found message body size of -1 bytes");
 
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected message body size > 0 but found message body size of -1 bytes");
+
   eight_bad_bytes[1] = one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
-
+  EXPECT_STREQ(error.message,
+               "Expected >= 9 bytes of remaining data but found 8 bytes in buffer");
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected >= 9 bytes of remaining data but found 8 bytes in buffer");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = 0;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ENODATA);
+  EXPECT_STREQ(error.message, "End of Arrow stream");
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ENODATA);
   EXPECT_STREQ(error.message, "End of Arrow stream");
 
   ArrowIpcDecoderReset(&decoder);
