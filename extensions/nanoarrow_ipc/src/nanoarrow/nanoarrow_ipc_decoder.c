@@ -930,7 +930,8 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
 }
 
 // Returns NANOARROW_OK if data is large enough to read the message header,
-// ESPIPE if reading more data might help, or EINVAL if the content is not valid
+// ESPIPE if reading more data might help, or EINVAL if the content is not valid.
+// Advances the input ArrowBufferView by 8 bytes.
 static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
                                              struct ArrowBufferView* data_mut,
                                              int32_t* message_size_bytes,
@@ -959,12 +960,6 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
         error, "Expected message body size > 0 but found message body size of %ld bytes",
         (long)header_body_size_bytes);
     return EINVAL;
-  } else if (header_body_size_bytes > data_mut->size_bytes) {
-    ArrowErrorSet(error,
-                  "Expected 0 <= message body size <= %ld bytes but found message "
-                  "body size of %ld bytes",
-                  (long)data_mut->size_bytes, (long)header_body_size_bytes);
-    return ESPIPE;
   }
 
   if (header_body_size_bytes == 0) {
@@ -997,10 +992,19 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
 
+  // Check that data contains at least the entire header (return ESPIPE to signal
+  // that reading more data may help).
+  int64_t message_body_size = decoder->header_size_bytes - 8;
+  if (data.size_bytes < message_body_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
+                  (long)message_body_size + 8, (long)data.size_bytes + 8);
+    return ESPIPE;
+  }
+
   // Run flatbuffers verification
-  if (ns(Message_verify_as_root(data.data.as_uint8,
-                                decoder->header_size_bytes - (2 * sizeof(int32_t)))) !=
-      flatcc_verify_ok) {
+  if (ns(Message_verify_as_root(data.data.as_uint8, message_body_size) !=
+         flatcc_verify_ok)) {
     ArrowErrorSet(error, "Message flatbuffer verification failed");
     return EINVAL;
   }
@@ -1024,6 +1028,16 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+
+  // Check that data contains at least the entire header (return ESPIPE to signal
+  // that reading more data may help).
+  int64_t message_body_size = decoder->header_size_bytes - 8;
+  if (data.size_bytes < message_body_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
+                  (long)message_body_size + 8, (long)data.size_bytes + 8);
+    return ESPIPE;
+  }
 
   ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
   if (!message) {

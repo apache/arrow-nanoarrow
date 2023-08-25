@@ -226,11 +226,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
 
   // Use PeekHeader to fill in decoder.header_size_bytes
-  int result =
-      ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view, &private_data->error);
-  if (result == ENODATA) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
+                                                    &private_data->error));
 
   // Read the header bytes
   int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;

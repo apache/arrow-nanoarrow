@@ -150,8 +150,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
 
   EXPECT_STREQ(error.message,
-               "Expected 0 <= message body size <= 0 bytes but found message body size "
-               "of 1 bytes");
+               "Expected >= 9 bytes of remaining data but found 8 bytes in buffer");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = 0;
