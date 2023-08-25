@@ -291,6 +291,38 @@ TEST(NanoarrowIpcReader, StreamReaderExpectedSchema) {
   stream.release(&stream);
 }
 
+TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
+  struct ArrowBuffer input_buffer;
+  struct ArrowIpcInputStream input;
+  struct ArrowArrayStream stream;
+  struct ArrowSchema schema;
+
+  uint8_t simple_schema_invalid[sizeof(kSimpleSchema)];
+  struct ArrowBufferView data;
+  data.data.as_uint8 = simple_schema_invalid;
+  data.size_bytes = sizeof(simple_schema_invalid);
+
+  // Create invalid data by removing bytes one at a time and ensuring an error code and
+  // a null-terminated error. After byte 273/280 this passes because the bytes are just
+  // padding.
+  for (int64_t i = 1; i < 273; i++) {
+    memcpy(simple_schema_invalid, kSimpleSchema, i);
+    memcpy(simple_schema_invalid + i, kSimpleSchema + (i + 1),
+           (sizeof(simple_schema_invalid) - i));
+
+    ArrowBufferInit(&input_buffer);
+    ASSERT_EQ(ArrowBufferAppendBufferView(&input_buffer, data), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+    ASSERT_NE(stream.get_schema(&stream, &schema), NANOARROW_OK)
+        << "After removing byte " << i;
+    ASSERT_GT(strlen(stream.get_last_error(&stream)), 0);
+
+    stream.release(&stream);
+  }
+}
+
 TEST(NanoarrowIpcReader, StreamReaderUnsupportedFieldIndex) {
   struct ArrowBuffer input_buffer;
   ArrowBufferInit(&input_buffer);

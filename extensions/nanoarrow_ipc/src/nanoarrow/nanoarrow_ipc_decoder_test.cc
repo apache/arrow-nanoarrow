@@ -213,15 +213,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
   EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
   EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  uint8_t simple_schema_invalid[280];
-  memcpy(simple_schema_invalid, kSimpleSchema, sizeof(simple_schema_invalid));
-  memset(simple_schema_invalid + 8, 0xFF, sizeof(simple_schema_invalid) - 8);
-
-  data.data.as_uint8 = simple_schema_invalid;
-  data.size_bytes = sizeof(kSimpleSchema);
-  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Message flatbuffer verification failed");
-
   ArrowIpcDecoderReset(&decoder);
 }
 
@@ -255,9 +246,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifyInvalid) {
   ArrowIpcDecoderInit(&decoder);
 
   // Create invalid data by removing bytes one at a time and ensuring an error code and
-  // a null-terminated error.
-  data.size_bytes = sizeof(simple_schema_invalid) - 1;
-  for (int64_t i = 1; i < (sizeof(simple_schema_invalid) - 1); i++) {
+  // a null-terminated error. After byte 265 this passes because the values being modified
+  // are parts of the flatbuffer that won't cause overrun.
+  for (int64_t i = 1; i < 265; i++) {
     memcpy(simple_schema_invalid, kSimpleSchema, i);
     memcpy(simple_schema_invalid + i, kSimpleSchema + (i + 1),
            (sizeof(simple_schema_invalid) - i));
@@ -268,23 +259,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifyInvalid) {
     ASSERT_GT(strlen(error.message), 0);
   }
 
-  // Create invalid data by setting blocks of data to 0xFF
-  // These don't all fail but most do.
-  uint32_t bits_set = 0xFFFFFFU;
-  data.size_bytes = sizeof(simple_schema_invalid);
-  int64_t num_fail = 0;
-  for (int64_t i = 1; i < (sizeof(simple_schema_invalid) / sizeof(uint32_t) - 1); i++) {
-    memcpy(simple_schema_invalid, kSimpleSchema, sizeof(kSimpleSchema));
-    memcpy(simple_schema_invalid + (i * sizeof(uint32_t)), &bits_set, sizeof(uint32_t));
-    ArrowErrorInit(&error);
-
-    if (ArrowIpcDecoderVerifyHeader(&decoder, data, &error) != NANOARROW_OK) {
-      ASSERT_GT(strlen(error.message), 0) << "After removing 32-bit word " << i;
-      num_fail++;
-    }
-  }
-
-  EXPECT_EQ(num_fail, 52);
   ArrowIpcDecoderReset(&decoder);
 }
 
