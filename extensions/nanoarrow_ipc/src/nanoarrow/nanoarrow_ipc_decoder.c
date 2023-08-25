@@ -936,10 +936,10 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
 // Returns NANOARROW_OK if data is large enough to read the first 8 bytes
 // of the message header, ESPIPE if reading more data might help, or EINVAL if the content
 // is not valid. Advances the input ArrowBufferView by 8 bytes.
-static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
-                                             struct ArrowBufferView* data_mut,
-                                             int32_t* message_size_bytes,
-                                             struct ArrowError* error) {
+static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decoder,
+                                                  struct ArrowBufferView* data_mut,
+                                                  int32_t* message_size_bytes,
+                                                  struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -981,8 +981,8 @@ ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ArrowIpcDecoderResetHeaderInfo(decoder);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
+      decoder, &data, &decoder->header_size_bytes, error));
   return NANOARROW_OK;
 }
 
@@ -993,8 +993,8 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ArrowIpcDecoderResetHeaderInfo(decoder);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
+      decoder, &data, &decoder->header_size_bytes, error));
 
   // Check that data contains at least the entire header (return ESPIPE to signal
   // that reading more data may help).
@@ -1031,8 +1031,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ArrowIpcDecoderResetHeaderInfo(decoder);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
+      decoder, &data, &decoder->header_size_bytes, error));
 
   // Check that data contains at least the entire header (return ESPIPE to signal
   // that reading more data may help).
