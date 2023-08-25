@@ -86,6 +86,19 @@ infer_nanoarrow_ptype_extension <- function(extension_spec, x, ...,
   UseMethod("infer_nanoarrow_ptype_extension")
 }
 
+#' @rdname infer_nanoarrow_ptype_extension
+#' @export
+convert_array_extension <- function(extension_spec, array, to, ...,
+                                    warn_unregistered = TRUE) {
+  UseMethod("convert_array_extension")
+}
+
+#' @rdname infer_nanoarrow_ptype_extension
+#' @export
+as_nanoarrow_array_extension <- function(extension_spec, x, ..., schema = NULL) {
+  UseMethod("as_nanoarrow_array_extension")
+}
+
 #' @export
 infer_nanoarrow_ptype_extension.default <- function(extension_spec, x, ...,
                                                     warn_unregistered = TRUE) {
@@ -95,13 +108,6 @@ infer_nanoarrow_ptype_extension.default <- function(extension_spec, x, ...,
 
   x$metadata[["ARROW:extension:name"]] <- NULL
   infer_nanoarrow_ptype(x)
-}
-
-#' @rdname infer_nanoarrow_ptype_extension
-#' @export
-convert_array_extension <- function(extension_spec, array, to, ...,
-                                    warn_unregistered = TRUE) {
-  UseMethod("convert_array_extension")
 }
 
 #' @export
@@ -121,12 +127,6 @@ convert_array_extension.default <- function(extension_spec, array, to,
   convert_array(array, to, ...)
 }
 
-#' @rdname infer_nanoarrow_ptype_extension
-#' @export
-as_nanoarrow_array_extension <- function(extension_spec, x, ..., schema = NULL) {
-  UseMethod("as_nanoarrow_array_extension")
-}
-
 #' @export
 as_nanoarrow_array_extension.default <- function(extension_spec, x, ...,
                                                  schema = NULL) {
@@ -137,7 +137,6 @@ as_nanoarrow_array_extension.default <- function(extension_spec, x, ...,
     )
   )
 }
-
 
 #' Create Arrow extension arrays
 #'

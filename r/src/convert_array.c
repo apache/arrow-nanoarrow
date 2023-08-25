@@ -142,9 +142,11 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
     Rf_error("Invalid schema");
   }
 
-  // If array_xptr is an extension or union, use default convert behaviour
+  // If array_xptr is an extension, union, or the ptype isn't a data.frame
+  // use convert/materialize convert behaviour.
   if (schema_view.storage_type != NANOARROW_TYPE_STRUCT ||
-      schema_view.extension_name.size_bytes > 0) {
+      schema_view.extension_name.size_bytes > 0 ||
+      (ptype_sexp != R_NilValue && !Rf_inherits(ptype_sexp, "data.frame"))) {
     if (ptype_sexp == R_NilValue) {
       ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
       SEXP default_result =

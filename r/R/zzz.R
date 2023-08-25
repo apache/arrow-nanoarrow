@@ -17,6 +17,8 @@
 
 # nocov start
 .onLoad <- function(...) {
+  register_vctrs_extension()
+
   s3_register("arrow::infer_type", "nanoarrow_array")
   s3_register("arrow::as_data_type", "nanoarrow_schema")
   s3_register("arrow::as_schema", "nanoarrow_schema")
