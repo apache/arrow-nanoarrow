@@ -196,7 +196,7 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
       Rf_error("Expected record-style vctr result but got non-record-style result");
     }
 
-    R_xlen_t x_len = nanoarrow_data_frame_size(dst);
+    R_xlen_t x_len = nanoarrow_data_frame_size(x);
     if (len != x_len) {
       Rf_error("Unexpected data.frame row count in copy_vec_into()");
     }

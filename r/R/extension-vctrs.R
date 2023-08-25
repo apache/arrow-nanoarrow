@@ -1,3 +1,19 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
 #' Vctrs extension type
 #'
@@ -50,7 +66,8 @@ infer_nanoarrow_ptype_extension.nanoarrow_extension_spec_vctrs <- function(exten
 #' @export
 convert_array_extension.nanoarrow_extension_spec_vctrs <- function(extension_spec, array, to,
                                                                    ...) {
-  data <- convert_array_extension(NULL, array, to, warn_unregistered = FALSE)
+  to_data <- vctrs::vec_data(to)
+  data <- convert_array_extension(NULL, array, to_data, warn_unregistered = FALSE)
   vctrs::vec_restore(data, to)
 }
 
@@ -62,7 +79,10 @@ as_nanoarrow_array_extension.nanoarrow_extension_spec_vctrs <- function(
   storage_schema$metadata[["ARROW:extension:name"]] <- NULL
   storage_schema$metadata[["ARROW:extension:metadata"]] <- NULL
 
-  storage_array <- as_nanoarrow_array(x, schema = storage_schema)
+  storage_array <- as_nanoarrow_array(
+    vctrs::vec_data(x),
+    schema = storage_schema
+  )
 
   nanoarrow_extension_array(
     storage_array,
