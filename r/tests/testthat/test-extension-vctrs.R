@@ -18,7 +18,9 @@
 test_that("vctrs extension type can roundtrip built-in vector types", {
   skip_if_not_installed("tibble")
 
-  # list()s aren't implemented here yet
+  # Arrow tibbleifies everything, so we do here too
+  # Lists aren't automatically handled in nanoarrow conversion, so they
+  # aren't listed here yet.
   vectors <- list(
     lgl = c(FALSE, TRUE, NA),
     int = c(0L, 1L, NA_integer_),
@@ -28,8 +30,8 @@ test_that("vctrs extension type can roundtrip built-in vector types", {
     posixlt = as.POSIXlt("2000-01-01 12:23", tz = "UTC"),
     date = as.Date("2000-01-01"),
     difftime = as.difftime(123, units = "secs"),
-    data_frame_simple = data.frame(x = 1:5),
-    data_frame_nested = tibble::tibble(x = 1:5, y = data.frame(z = letters[1:5]))
+    data_frame_simple = tibble::tibble(x = 1:5),
+    data_frame_nested = tibble::tibble(x = 1:5, y = tibble::tibble(z = letters[1:5]))
   )
 
   for (nm in names(vectors)) {
@@ -52,5 +54,19 @@ test_that("vctrs extension type can roundtrip built-in vector types", {
     # Roundtrip with multiple chunks
     stream <- basic_array_stream(list(array, array))
     expect_identical(convert_array_stream(stream), vctrs::vec_rep(vctr, 2))
+
+    if (requireNamespace("arrow", quietly = TRUE)) {
+      # Roundtrip from nanoarrow -> arrow -> R
+      arrow_array <- arrow::as_arrow_array(array)
+      expect_s3_class(arrow_array, "ExtensionArray")
+      expect_identical(arrow_array$type$ptype(), ptype)
+      expect_identical(arrow_array$as_vector(), vctr)
+
+      # Roundtrip from arrow -> nanoarrow -> R
+      arrow_array <- arrow::vctrs_extension_array(vctr)
+      array <- as_nanoarrow_array(vctr, schema = schema)
+      expect_identical(infer_nanoarrow_ptype(array), ptype)
+      expect_identical(convert_array(array), vctr)
+    }
   }
 })
