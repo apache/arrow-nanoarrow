@@ -226,11 +226,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
 
   // Use PeekHeader to fill in decoder.header_size_bytes
-  int result =
-      ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view, &private_data->error);
-  if (result == ENODATA) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
+                                                    &private_data->error));
 
   // Read the header bytes
   int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;
@@ -348,7 +345,7 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
                                             struct ArrowArray* out) {
   struct ArrowIpcArrayStreamReaderPrivate* private_data =
       (struct ArrowIpcArrayStreamReaderPrivate*)stream->private_data;
-  private_data->error.message[0] = '\0';
+  ArrowErrorInit(&private_data->error);
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderReadSchemaIfNeeded(private_data));
 
   // Read + decode the next header
@@ -359,6 +356,9 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     // end of stream bytes were read.
     out->release = NULL;
     return NANOARROW_OK;
+  } else if (result != NANOARROW_OK) {
+    // Other error
+    return result;
   }
 
   // Make sure we have a RecordBatch message
@@ -376,10 +376,11 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     struct ArrowIpcSharedBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
+    result = ArrowIpcDecoderDecodeArrayFromShared(
         &private_data->decoder, &shared, private_data->field_index, &tmp,
-        NANOARROW_VALIDATION_LEVEL_FULL, &private_data->error));
+        NANOARROW_VALIDATION_LEVEL_FULL, &private_data->error);
     ArrowIpcSharedBufferReset(&shared);
+    NANOARROW_RETURN_NOT_OK(result);
   } else {
     struct ArrowBufferView body_view;
     body_view.data.data = private_data->body.data;
