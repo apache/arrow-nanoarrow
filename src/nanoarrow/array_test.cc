@@ -265,7 +265,7 @@ TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
   offsets[1] = 4;
 
   // Valid at validation_level < NANOARROW_VALIDATION_LEVEL_DEFAULT
@@ -1658,7 +1658,7 @@ TEST(ArrayTest, ArrayViewTestString) {
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1729,7 +1729,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1815,7 +1815,7 @@ TEST(ArrayTest, ArrayViewTestList) {
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
@@ -1936,7 +1936,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0 but found element size -1");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
