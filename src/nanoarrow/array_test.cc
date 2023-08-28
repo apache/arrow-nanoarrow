@@ -1630,20 +1630,23 @@ TEST(ArrayTest, ArrayViewTestString) {
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
 
-  // Build non-zero length (the array ["abcd"])
+  // Build non-zero length (the array ["abcd", "efg"])
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 0), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 4), NANOARROW_OK);
-  ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 4), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 7), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 7), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "abcd", 4);
-  array.length = 1;
+  ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "efg", 3);
+  array.length = 2;
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
-  EXPECT_EQ(array_view.buffer_views[1].size_bytes, (1 + 1) * sizeof(int32_t));
-  EXPECT_EQ(array_view.buffer_views[2].size_bytes, 4);
+  EXPECT_EQ(array_view.buffer_views[1].size_bytes, (1 + array.length) * sizeof(int32_t));
+  EXPECT_EQ(array_view.buffer_views[2].size_bytes, 7);
 
   // Expect error for offsets that will cause bad access
   int32_t* offsets =
@@ -1659,6 +1662,14 @@ TEST(ArrayTest, ArrayViewTestString) {
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+
+  // Check sequential offsets whose diff causes overflow
+  offsets[1] = 2080374784;
+  offsets[2] = -2147483648;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[2] Expected element size >= 0");
 
   array.release(&array);
   ArrowArrayViewReset(&array_view);
