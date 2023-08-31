@@ -31,7 +31,7 @@
 #'
 #' @examples
 #' vctr <- as.POSIXlt("2000-01-02 03:45", tz = "UTC")
-#' array <- as_nanoarrow_array(vctr, schema = na_vctrs(vctrs::vec_ptype(vctr)))
+#' array <- as_nanoarrow_array(vctr, schema = na_vctrs(vctr))
 #' infer_nanoarrow_ptype(array)
 #' convert_array(array)
 #'
