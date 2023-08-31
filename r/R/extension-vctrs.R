@@ -24,6 +24,8 @@
 #' [as_nanoarrow_array()] and [convert_array()] to ensure roundtrip fidelity.
 #'
 #' @param ptype A vctrs prototype as returned by [vctrs::vec_ptype()].
+#'   The prototype can be of arbitrary size, but a zero-size vector
+#'   is sufficient here.
 #' @inheritParams na_type
 #'
 #' @return A [nanoarrow_schema][as_nanoarrow_schema].
