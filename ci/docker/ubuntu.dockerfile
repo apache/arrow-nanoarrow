@@ -41,7 +41,7 @@ RUN pip3 install pydata-sphinx-theme "sphinx<7.2.0" breathe build Cython numpy p
 # For R. Note that we install arrow here so that the integration tests for R run
 # in at least one test image.
 RUN mkdir ~/.R && echo "MAKEFLAGS += -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "pkgdown", "covr", "pkgbuild"), repos = "https://cloud.r-project.org")'
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "bit64", "withr", "pkgdown", "covr", "pkgbuild"), repos = "https://cloud.r-project.org")'
 
 # Required for this to work on MacOS/arm64
 RUN echo "CXX17FLAGS += -fPIC" >> ~/.R/Makevars
