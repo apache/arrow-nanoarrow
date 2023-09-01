@@ -101,12 +101,7 @@ convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
       values <- .Call(nanoarrow_c_convert_array, dictionary, to)
       array$dictionary <- NULL
       indices <- .Call(nanoarrow_c_convert_array, array, integer())
-
-      if (is.data.frame(values)) {
-        return(values[indices + 1L, , drop = FALSE])
-      } else {
-        return(values[indices + 1L])
-      }
+      return(vec_slice2(values, indices + 1L))
     }
 
     stop_cant_convert_array(array, to)

@@ -72,6 +72,15 @@ current_stack_trace_chr <- function() {
   paste0(utils::capture.output(print(tb)), collapse = "\n")
 }
 
+# Consolidate places we should call vctrs::vec_slice()
+# if/when a vctrs dependency is added
+vec_slice2 <- function(x, i) {
+  if (is.data.frame(x)) {
+    x[i, , drop = FALSE]
+  } else {
+    x[i]
+  }
+}
 
 `%||%` <- function(rhs, lhs) {
   if (is.null(rhs)) lhs else rhs
@@ -113,8 +122,10 @@ vec_gen <- function(ptype, n = 1e3, prop_true = 0.5,  prop_na = 0,
 
 vec_shuffle <- function(x) {
   if (is.data.frame(x)) {
-    x[sample(seq_len(nrow(x)), replace = FALSE), , drop = FALSE]
+    i <- sample(seq_len(nrow(x)), replace = FALSE)
   } else {
-    x[sample(seq_along(x), replace = FALSE)]
+    i <- sample(seq_along(x), replace = FALSE)
   }
+
+  vec_slice2(x, i)
 }

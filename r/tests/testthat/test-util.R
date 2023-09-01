@@ -48,6 +48,14 @@ test_that("preserve/release works when release happens on another thread", {
   expect_identical(preserved_empty(), 0)
 })
 
+test_that("vector slicer works", {
+  expect_identical(vec_slice2(letters, 1), "a")
+  expect_identical(
+    vec_slice2(data.frame(letters = letters, stringsAsFactors = FALSE), 1),
+    data.frame(letters = "a", stringsAsFactors = FALSE)
+  )
+})
+
 test_that("new_data_frame() works", {
   expect_identical(
     new_data_frame(list(x = 1, y = 2), nrow = 1),
