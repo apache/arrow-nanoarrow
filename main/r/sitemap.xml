@@ -46,7 +46,13 @@
     <loc>/reference/infer_nanoarrow_ptype.html</loc>
   </url>
   <url>
+    <loc>/reference/infer_nanoarrow_ptype_extension.html</loc>
+  </url>
+  <url>
     <loc>/reference/na_type.html</loc>
+  </url>
+  <url>
+    <loc>/reference/na_vctrs.html</loc>
   </url>
   <url>
     <loc>/reference/nanoarrow-package.html</loc>
@@ -56,6 +62,12 @@
   </url>
   <url>
     <loc>/reference/nanoarrow_buffer_init.html</loc>
+  </url>
+  <url>
+    <loc>/reference/nanoarrow_extension_array.html</loc>
+  </url>
+  <url>
+    <loc>/reference/nanoarrow_extension_spec.html</loc>
   </url>
   <url>
     <loc>/reference/nanoarrow_pointer_is_valid.html</loc>
