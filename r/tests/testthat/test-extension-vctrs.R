@@ -79,7 +79,7 @@ test_that("vctrs extension type respects `to` in convert_array()", {
 
   expect_identical(convert_array(array), vctr)
   expect_identical(
-    convert_array(array, to = as.POSIXct(character(), tz = "UTC")),
-    as.POSIXct(vctr, tz = "UTC")
+    convert_array(array, to = as.POSIXct(character())),
+    vctrs::vec_cast(vctr, as.POSIXct(character()))
   )
 })
