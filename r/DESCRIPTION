@@ -24,6 +24,7 @@ URL: https://github.com/apache/arrow-nanoarrow
 BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests:
     arrow (>= 9.0.0),
+    bit64,
     blob,
     hms,
     rlang,
