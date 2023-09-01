@@ -160,6 +160,10 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
   }
 
   switch (TYPEOF(x)) {
+    case RAWSXP:
+      // Not perfect: raw() doesn't really support NA in R
+      memset(RAW(x), 0, len * sizeof(char));
+      break;
     case LGLSXP:
     case INTSXP: {
       int* values = INTEGER(x);
@@ -172,6 +176,17 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
       double* values = REAL(x);
       for (R_xlen_t i = 0; i < len; i++) {
         values[offset + i] = NA_REAL;
+      }
+      return;
+    }
+    case CPLXSXP: {
+      Rcomplex* values = COMPLEX(x);
+      Rcomplex na_value;
+      na_value.r = NA_REAL;
+      na_value.i = NA_REAL;
+
+      for (R_xlen_t i = 0; i < len; i++) {
+        values[offset + i] = na_value;
       }
       return;
     }
@@ -226,7 +241,7 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
 
   switch (TYPEOF(dst)) {
     case RAWSXP:
-      memcpy(RAW(dst) + offset, RAW(x), len * sizeof(double));
+      memcpy(RAW(dst) + offset, RAW(x), len * sizeof(uint8_t));
       break;
     case REALSXP:
       memcpy(REAL(dst) + offset, REAL(x), len * sizeof(double));
@@ -234,6 +249,9 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
     case INTSXP:
     case LGLSXP:
       memcpy(INTEGER(dst) + offset, INTEGER(x), len * sizeof(int));
+      break;
+    case CPLXSXP:
+      memcpy(COMPLEX(dst) + offset, COMPLEX(x), len * sizeof(Rcomplex));
       break;
     case STRSXP:
       for (R_xlen_t i = 0; i < len; i++) {
