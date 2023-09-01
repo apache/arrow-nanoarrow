@@ -109,6 +109,7 @@ static SEXP convert_array_chr(SEXP array_xptr, SEXP ptype_sexp) {
 
   // If array_xptr is an extension, use default conversion
   if (schema_view.extension_name.size_bytes > 0) {
+    // Default conversion requires a ptype: resolve it if not already specified
     if (ptype_sexp == R_NilValue) {
       ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
       SEXP default_result =
@@ -144,6 +145,7 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
 
   // If array_xptr is an extension, union, or the ptype isn't a data.frame
   // use convert/materialize convert behaviour.
+  // Default conversion requires a ptype: resolve it if not already specified
   if (schema_view.storage_type != NANOARROW_TYPE_STRUCT ||
       schema_view.extension_name.size_bytes > 0 ||
       (ptype_sexp != R_NilValue && !Rf_inherits(ptype_sexp, "data.frame"))) {
