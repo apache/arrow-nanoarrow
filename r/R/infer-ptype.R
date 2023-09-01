@@ -63,8 +63,14 @@ infer_nanoarrow_ptype <- function(x) {
 # have been tried. Some of these inferences could be moved to C to be faster
 # (but are much less verbose to create here)
 infer_ptype_other <- function(schema) {
-  # we don't need the user-friendly versions and this is performance-sensitive
+  # We don't need the user-friendly versions and this is performance-sensitive
   parsed <- .Call(nanoarrow_c_schema_parse, schema)
+
+  # Give registered extension types a chance to resolve the ptype
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(infer_nanoarrow_ptype_extension(spec, schema))
+  }
 
   switch(
     parsed$type,

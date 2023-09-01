@@ -85,6 +85,15 @@ convert_array <- function(array, to = NULL, ...) {
 #' @export
 convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
   if (.from_c) {
+    # Handle extension conversion
+    # We don't need the user-friendly versions and this is performance-sensitive
+    schema <- .Call(nanoarrow_c_infer_schema_array, array)
+    parsed <- .Call(nanoarrow_c_schema_parse, schema)
+    if (!is.null(parsed$extension_name)) {
+      spec <- resolve_nanoarrow_extension(parsed$extension_name)
+      return(convert_array_extension(spec, array, to, ...))
+    }
+
     # Handle default dictionary conversion since it's the same for all types
     dictionary <- array$dictionary
 
@@ -92,7 +101,7 @@ convert_array.default <- function(array, to = NULL, ..., .from_c = FALSE) {
       values <- .Call(nanoarrow_c_convert_array, dictionary, to)
       array$dictionary <- NULL
       indices <- .Call(nanoarrow_c_convert_array, array, integer())
-      return(values[indices + 1L])
+      return(vec_slice2(values, indices + 1L))
     }
 
     stop_cant_convert_array(array, to)

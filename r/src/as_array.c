@@ -47,16 +47,9 @@ static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array,
 }
 
 static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
-                         struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  struct ArrowSchemaView schema_view;
-  int result = ArrowSchemaViewInit(&schema_view, schema, error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowSchemaViewInit(): %s", error->message);
-  }
-
+                         struct ArrowSchemaView* schema_view, struct ArrowError* error) {
   // Only consider the default create for now
-  if (schema_view.type != NANOARROW_TYPE_INT32) {
+  if (schema_view->type != NANOARROW_TYPE_INT32) {
     call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
     return;
   }
@@ -67,7 +60,7 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   int* x_data = INTEGER(x_sexp);
   int64_t len = Rf_xlength(x_sexp);
 
-  result = ArrowArrayInitFromType(array, NANOARROW_TYPE_INT32);
+  int result = ArrowArrayInitFromType(array, NANOARROW_TYPE_INT32);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
@@ -116,22 +109,15 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 }
 
 static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
-                         struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  struct ArrowSchemaView schema_view;
-  int result = ArrowSchemaViewInit(&schema_view, schema, error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowSchemaViewInit(): %s", error->message);
-  }
-
+                         struct ArrowSchemaView* schema_view, struct ArrowError* error) {
   // We can zero-copy convert to int32
-  if (schema_view.type == NANOARROW_TYPE_INT32) {
-    as_array_int(x_sexp, array, schema_xptr, error);
+  if (schema_view->type == NANOARROW_TYPE_INT32) {
+    as_array_int(x_sexp, array, schema_xptr, schema_view, error);
     return;
   }
 
   // Only consider bool for now
-  if (schema_view.type != NANOARROW_TYPE_BOOL) {
+  if (schema_view->type != NANOARROW_TYPE_BOOL) {
     call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
     return;
   }
@@ -139,7 +125,7 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   int* x_data = INTEGER(x_sexp);
   int64_t len = Rf_xlength(x_sexp);
 
-  result = ArrowArrayInitFromType(array, NANOARROW_TYPE_BOOL);
+  int result = ArrowArrayInitFromType(array, NANOARROW_TYPE_BOOL);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
@@ -194,17 +180,10 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 }
 
 static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
-                         struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  struct ArrowSchemaView schema_view;
-  int result = ArrowSchemaViewInit(&schema_view, schema, error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowSchemaViewInit(): %s", error->message);
-  }
-
+                         struct ArrowSchemaView* schema_view, struct ArrowError* error) {
   // Consider double -> na_double() and double -> na_int64()/na_int32()
   // (mostly so that we can support date/time types with various units)
-  switch (schema_view.type) {
+  switch (schema_view->type) {
     case NANOARROW_TYPE_DOUBLE:
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_INT32:
@@ -217,16 +196,16 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   double* x_data = REAL(x_sexp);
   int64_t len = Rf_xlength(x_sexp);
 
-  result = ArrowArrayInitFromType(array, schema_view.type);
+  int result = ArrowArrayInitFromType(array, schema_view->type);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
 
-  if (schema_view.type == NANOARROW_TYPE_DOUBLE) {
+  if (schema_view->type == NANOARROW_TYPE_DOUBLE) {
     // Just borrow the data buffer (zero-copy)
     buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(double), x_sexp);
 
-  } else if (schema_view.type == NANOARROW_TYPE_INT64) {
+  } else if (schema_view->type == NANOARROW_TYPE_INT64) {
     // double -> int64_t
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, 1);
     result = ArrowBufferReserve(buffer, len * sizeof(int64_t));
@@ -319,23 +298,16 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 }
 
 static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
-                         struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  struct ArrowSchemaView schema_view;
-  int result = ArrowSchemaViewInit(&schema_view, schema, error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowSchemaViewInit(): %s", error->message);
-  }
-
+                         struct ArrowSchemaView* schema_view, struct ArrowError* error) {
   // Only consider the default create for now
-  if (schema_view.type != NANOARROW_TYPE_STRING) {
+  if (schema_view->type != NANOARROW_TYPE_STRING) {
     call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
     return;
   }
 
   int64_t len = Rf_xlength(x_sexp);
 
-  result = ArrowArrayInitFromType(array, NANOARROW_TYPE_STRING);
+  int result = ArrowArrayInitFromType(array, NANOARROW_TYPE_STRING);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
@@ -407,15 +379,11 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
                              struct ArrowError* error);
 
 static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
+                                struct ArrowSchemaView* schema_view,
                                 struct ArrowError* error) {
   struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  struct ArrowSchemaView schema_view;
-  int result = ArrowSchemaViewInit(&schema_view, schema, error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowSchemaViewInit(): %s", error->message);
-  }
 
-  switch (schema_view.type) {
+  switch (schema_view->type) {
     case NANOARROW_TYPE_SPARSE_UNION:
     case NANOARROW_TYPE_DENSE_UNION:
       call_as_nanoarrow_array(x_sexp, array, schema_xptr, "union_array_from_data_frame");
@@ -432,7 +400,7 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
              (long)schema->n_children);
   }
 
-  result = ArrowArrayInitFromType(array, NANOARROW_TYPE_STRUCT);
+  int result = ArrowArrayInitFromType(array, NANOARROW_TYPE_STRUCT);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
@@ -454,23 +422,16 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
 }
 
 static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
-                          struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  struct ArrowSchemaView schema_view;
-  int result = ArrowSchemaViewInit(&schema_view, schema, error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowSchemaViewInit(): %s", error->message);
-  }
-
+                          struct ArrowSchemaView* schema_view, struct ArrowError* error) {
   // We handle list(raw()) for now but fall back to arrow for vctrs::list_of()
   // Arbitrary nested list support is complicated without some concept of a
   // "builder", which we don't use.
-  if (schema_view.type != NANOARROW_TYPE_BINARY) {
+  if (schema_view->type != NANOARROW_TYPE_BINARY) {
     call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
     return;
   }
 
-  result = ArrowArrayInitFromType(array, schema_view.type);
+  int result = ArrowArrayInitFromType(array, schema_view->type);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
@@ -544,9 +505,23 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
 
 static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                              struct ArrowError* error) {
+  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+
+  struct ArrowSchemaView schema_view;
+  int result = ArrowSchemaViewInit(&schema_view, schema, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowSchemaViewInit(): %s", error->message);
+  }
+
+  // Ensure that extension types dispatch from R regardless of source
+  if (schema_view.extension_name.size_bytes > 0) {
+    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
+    return;
+  }
+
   if (Rf_isObject(x_sexp)) {
     if (Rf_inherits(x_sexp, "data.frame")) {
-      as_array_data_frame(x_sexp, array, schema_xptr, error);
+      as_array_data_frame(x_sexp, array, schema_xptr, &schema_view, error);
       return;
     } else {
       call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
@@ -556,19 +531,19 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
 
   switch (TYPEOF(x_sexp)) {
     case LGLSXP:
-      as_array_lgl(x_sexp, array, schema_xptr, error);
+      as_array_lgl(x_sexp, array, schema_xptr, &schema_view, error);
       return;
     case INTSXP:
-      as_array_int(x_sexp, array, schema_xptr, error);
+      as_array_int(x_sexp, array, schema_xptr, &schema_view, error);
       return;
     case REALSXP:
-      as_array_dbl(x_sexp, array, schema_xptr, error);
+      as_array_dbl(x_sexp, array, schema_xptr, &schema_view, error);
       return;
     case STRSXP:
-      as_array_chr(x_sexp, array, schema_xptr, error);
+      as_array_chr(x_sexp, array, schema_xptr, &schema_view, error);
       return;
     case VECSXP:
-      as_array_list(x_sexp, array, schema_xptr, error);
+      as_array_list(x_sexp, array, schema_xptr, &schema_view, error);
       return;
     default:
       call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
@@ -576,12 +551,13 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
   }
 }
 
-SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_sexp) {
+SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_xptr) {
   SEXP array_xptr = PROTECT(array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
   struct ArrowError error;
-  as_array_default(x_sexp, array, schema_sexp, &error);
-  array_xptr_set_schema(array_xptr, schema_sexp);
+
+  as_array_default(x_sexp, array, schema_xptr, &error);
+  array_xptr_set_schema(array_xptr, schema_xptr);
   UNPROTECT(1);
   return array_xptr;
 }

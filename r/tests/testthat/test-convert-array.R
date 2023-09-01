@@ -89,6 +89,31 @@ test_that("convert to vector works for partial_frame", {
   )
 })
 
+test_that("convert to vector works for extension<struct> -> data.frame()", {
+  array <- nanoarrow_extension_array(
+    data.frame(x = c(TRUE, FALSE, NA, FALSE, TRUE)),
+    "some_ext"
+  )
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, data.frame(x = logical())),
+      data.frame(x = c(TRUE, FALSE, NA, FALSE, TRUE))
+    ),
+    "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector works for dictionary<struct> -> data.frame()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(data.frame(x = c(TRUE, FALSE, NA)))
+
+  expect_identical(
+    convert_array(array, data.frame(x = logical())),
+    data.frame(x = c(TRUE, FALSE, NA, FALSE, TRUE))
+  )
+})
+
 test_that("convert to vector works for function()", {
   tibble_or_bust <- function(array, ptype) {
     if (is.data.frame(ptype)) {
@@ -254,6 +279,18 @@ test_that("convert to vector works for null -> logical()", {
   )
 })
 
+test_that("convert to vector works for extension<boolean> -> logical()", {
+  array <- nanoarrow_extension_array(c(TRUE, FALSE, NA), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, logical()),
+      c(TRUE, FALSE, NA)
+    ),
+  "Converting unknown extension"
+  )
+})
+
 test_that("convert to vector works for dictionary<boolean> -> logical()", {
   array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
   array$dictionary <- as_nanoarrow_array(c(TRUE, FALSE, NA))
@@ -338,13 +375,15 @@ test_that("convert to vector works for null -> logical()", {
   )
 })
 
-test_that("convert to vector works for dictionary<integer> -> integer()", {
-  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
-  array$dictionary <- as_nanoarrow_array(c(123L, 0L,  NA_integer_))
+test_that("convert to vector works for extension<integer> -> integer()", {
+  array <- nanoarrow_extension_array(c(0L, 1L, NA_integer_), "some_ext")
 
-  expect_identical(
-    convert_array(array, integer()),
-    c(123L, 0L, NA_integer_, 0L, 123L)
+  expect_warning(
+    expect_identical(
+      convert_array(array, integer()),
+      c(0L, 1L, NA_integer_)
+    ),
+    "Converting unknown extension"
   )
 })
 
@@ -454,6 +493,18 @@ test_that("convert to vector works for null -> double()", {
   )
 })
 
+test_that("convert to vector works for extension<double> -> double()", {
+  array <- nanoarrow_extension_array(c(0, 1, NA_real_), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, double()),
+      c(0, 1, NA_real_)
+    ),
+    "Converting unknown extension"
+  )
+})
+
 test_that("convert to vector works for dictionary<double> -> double()", {
   array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
   array$dictionary <- as_nanoarrow_array(c(123, 0,  NA_real_))
@@ -498,6 +549,18 @@ test_that("convert to vector works for null -> character()", {
   expect_identical(
     all_nulls,
     rep(NA_character_, 10)
+  )
+})
+
+test_that("convert to vector works for extension<string> -> character()", {
+  array <- nanoarrow_extension_array(c("a", "b", NA_character_), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, character()),
+      c("a", "b", NA_character_)
+    ),
+    "Converting unknown extension"
   )
 })
 
@@ -885,25 +948,5 @@ test_that("convert to vector works for lists nested in data frames", {
   expect_identical(
     convert_array(nested_array),
     df_in_list_in_df
-  )
-})
-
-test_that("convert to vector warns for stripped extension type", {
-  ext_arr <- as_nanoarrow_array(1:5)
-  nanoarrow_array_set_schema(ext_arr, na_extension(na_int32(), "some_ext"))
-  expect_warning(
-    expect_identical(convert_array(ext_arr), 1:5),
-    "Converting unknown extension some_ext"
-  )
-
-  nested_ext_array <- as_nanoarrow_array(data.frame(x = 1:5))
-  nanoarrow_array_set_schema(
-    nested_ext_array,
-    na_struct(list(x = na_extension(na_int32(), "some_ext")))
-  )
-
-  expect_warning(
-    expect_identical(convert_array(nested_ext_array), data.frame(x = 1:5)),
-    "x: Converting unknown extension some_ext"
   )
 })
