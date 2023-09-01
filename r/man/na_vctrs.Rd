@@ -7,7 +7,9 @@
 na_vctrs(ptype, storage_type = NULL)
 }
 \arguments{
-\item{ptype}{A vctrs prototype as returned by \code{\link[vctrs:vec_ptype]{vctrs::vec_ptype()}}.}
+\item{ptype}{A vctrs prototype as returned by \code{\link[vctrs:vec_ptype]{vctrs::vec_ptype()}}.
+The prototype can be of arbitrary size, but a zero-size vector
+is sufficient here.}
 
 \item{storage_type}{For \code{\link[=na_extension]{na_extension()}}, the underlying value type.}
 }
@@ -23,7 +25,7 @@ through Arrow memory. The vctrs extension type uses \code{\link[vctrs:vec_data]{
 }
 \examples{
 vctr <- as.POSIXlt("2000-01-02 03:45", tz = "UTC")
-array <- as_nanoarrow_array(vctr, schema = na_vctrs(vctrs::vec_ptype(vctr)))
+array <- as_nanoarrow_array(vctr, schema = na_vctrs(vctr))
 infer_nanoarrow_ptype(array)
 convert_array(array)
 
