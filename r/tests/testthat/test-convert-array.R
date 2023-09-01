@@ -493,6 +493,35 @@ test_that("convert to vector works for null -> double()", {
   )
 })
 
+test_that("convert to vector works for extension<double> -> double()", {
+  array <- nanoarrow_extension_array(c(0, 1, NA_real_), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, double()),
+      c(0, 1, NA_real_)
+    ),
+    "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector works for dictionary<double> -> double()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(123, 0,  NA_real_))
+
+  expect_identical(
+    convert_array(array, double()),
+    c(123, 0, NA_real_, 0, 123)
+  )
+})
+
+test_that("convert to vector errors for bad array to double()", {
+  expect_error(
+    convert_array(as_nanoarrow_array(letters), double()),
+    "Can't convert array <string> to R vector of type numeric"
+  )
+})
+
 test_that("convert to vector works for valid integer64()", {
   skip_if_not_installed("bit64")
   skip_if_not_installed("arrow")
@@ -550,32 +579,40 @@ test_that("convert to vector works for valid integer64()", {
   )
 })
 
-test_that("convert to vector works for extension<double> -> double()", {
-  array <- nanoarrow_extension_array(c(0, 1, NA_real_), "some_ext")
+test_that("convert to vector works for null -> integer64()", {
+  skip_if_not_installed("bit64")
+
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
+  expect_identical(
+    convert_array(array, bit64::integer64()),
+    rep(bit64::NA_integer64_, 10)
+  )
+})
+
+test_that("convert to vector works for extension<int64> -> integer64()", {
+  skip_if_not_installed("bit64")
+
+  vec <- bit64::as.integer64(c(0, 1, NA))
+  array <- nanoarrow_extension_array(vec, "some_ext")
 
   expect_warning(
     expect_identical(
-      convert_array(array, double()),
-      c(0, 1, NA_real_)
+      convert_array(array, bit64::integer64()),
+      vec
     ),
     "Converting unknown extension"
   )
 })
 
-test_that("convert to vector works for dictionary<double> -> double()", {
-  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
-  array$dictionary <- as_nanoarrow_array(c(123, 0,  NA_real_))
+test_that("convert to vector errors for bad array to integer64()", {
+  skip_if_not_installed("bit64")
 
-  expect_identical(
-    convert_array(array, double()),
-    c(123, 0, NA_real_, 0, 123)
-  )
-})
-
-test_that("convert to vector errors for bad array to double()", {
   expect_error(
-    convert_array(as_nanoarrow_array(letters), double()),
-    "Can't convert array <string> to R vector of type numeric"
+    convert_array(as_nanoarrow_array(letters), bit64::integer64()),
+    "Can't convert array <string> to R vector of type integer64"
   )
 })
 
