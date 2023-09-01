@@ -70,3 +70,16 @@ test_that("vctrs extension type can roundtrip built-in vector types", {
     }
   }
 })
+
+test_that("vctrs extension type respects `to` in convert_array()", {
+  skip_if_not_installed("vctrs")
+
+  vctr <- as.Date("2000-01-01")
+  array <- as_nanoarrow_array(vctr, schema = na_vctrs(vctr))
+
+  expect_identical(convert_array(array), vctr)
+  expect_identical(
+    convert_array(array, to = as.POSIXct(character(), tz = "UTC")),
+    as.POSIXct(vctr, tz = "UTC")
+  )
+})

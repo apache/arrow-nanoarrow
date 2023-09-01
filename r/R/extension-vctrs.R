@@ -66,11 +66,21 @@ infer_nanoarrow_ptype_extension.nanoarrow_extension_spec_vctrs <- function(exten
 }
 
 #' @export
-convert_array_extension.nanoarrow_extension_spec_vctrs <- function(extension_spec, array, to,
+convert_array_extension.nanoarrow_extension_spec_vctrs <- function(extension_spec,
+                                                                   array, to,
                                                                    ...) {
-  to_data <- vctrs::vec_data(to)
+  # Restore the vector data to the ptype that is serialized in the type metadata
+  to_r_data <- infer_nanoarrow_ptype(array)
+  to_data <- vctrs::vec_data(to_r_data)
   data <- convert_array_extension(NULL, array, to_data, warn_unregistered = FALSE)
-  vctrs::vec_restore(data, to)
+  vctr <- vctrs::vec_restore(data, to_r_data)
+
+  # Cast to `to` if a different ptype was requested
+  if (!is.null(to)) {
+    vctrs::vec_cast(vctr, to)
+  } else {
+    vctr
+  }
 }
 
 #' @export
