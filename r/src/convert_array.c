@@ -243,7 +243,8 @@ SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp) {
                Rf_inherits(ptype_sexp, "vctrs_list_of") ||
                Rf_inherits(ptype_sexp, "Date") || Rf_inherits(ptype_sexp, "hms") ||
                Rf_inherits(ptype_sexp, "POSIXct") ||
-               Rf_inherits(ptype_sexp, "difftime")) {
+               Rf_inherits(ptype_sexp, "difftime") ||
+               Rf_inherits(ptype_sexp, "integer64")) {
       return convert_array_default(array_xptr, VECTOR_TYPE_UNINITIALIZED, ptype_sexp);
     } else {
       return call_convert_array(array_xptr, ptype_sexp);

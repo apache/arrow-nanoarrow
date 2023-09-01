@@ -208,7 +208,6 @@ convert_array.factor <- function(array, to, ...) {
   fct_data
 }
 
-
 stop_cant_convert_array <- function(array, to, n = 0) {
   stop_cant_convert_schema(infer_nanoarrow_schema(array), to, n - 1)
 }

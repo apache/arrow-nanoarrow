@@ -80,6 +80,7 @@ as_nanoarrow_array.integer64 <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
   if (!is.null(parsed$extension_name)) {
     spec <- resolve_nanoarrow_extension(parsed$extension_name)
@@ -120,6 +121,7 @@ as_nanoarrow_array.POSIXct <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
   if (!is.null(parsed$extension_name)) {
     spec <- resolve_nanoarrow_extension(parsed$extension_name)
@@ -149,6 +151,7 @@ as_nanoarrow_array.difftime <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
   if (!is.null(parsed$extension_name)) {
     spec <- resolve_nanoarrow_extension(parsed$extension_name)
@@ -198,6 +201,7 @@ as_nanoarrow_array.Date <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
   if (!is.null(parsed$extension_name)) {
     spec <- resolve_nanoarrow_extension(parsed$extension_name)
@@ -232,6 +236,7 @@ as_nanoarrow_array.POSIXlt <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
   if (!is.null(parsed$extension_name)) {
     spec <- resolve_nanoarrow_extension(parsed$extension_name)
@@ -247,6 +252,7 @@ as_nanoarrow_array.factor <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
   if (!is.null(parsed$extension_name)) {
     spec <- resolve_nanoarrow_extension(parsed$extension_name)
@@ -273,6 +279,7 @@ as_nanoarrow_array.vctrs_unspecified <- function(x, ..., schema = NULL) {
     schema <- as_nanoarrow_schema(schema)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
   if (!is.null(parsed$extension_name)) {
     spec <- resolve_nanoarrow_extension(parsed$extension_name)

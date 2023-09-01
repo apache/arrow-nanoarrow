@@ -493,6 +493,63 @@ test_that("convert to vector works for null -> double()", {
   )
 })
 
+test_that("convert to vector works for valid integer64()", {
+  skip_if_not_installed("bit64")
+  skip_if_not_installed("arrow")
+
+  arrow_numeric_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    float32 = arrow::float32(),
+    float64 = arrow::float64()
+  )
+
+  vals <- bit64::as.integer64(c(NA, 0:10))
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      convert_array(
+        as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
+        bit64::integer64()
+      ),
+      vals
+    )
+  }
+
+  vals_no_na <- bit64::as.integer64(0:10)
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      convert_array(
+        as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
+        bit64::integer64()
+      ),
+      vals_no_na
+    )
+  }
+
+  # Boolean array to double
+  expect_identical(
+    convert_array(
+      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
+      bit64::integer64()
+    ),
+    bit64::as.integer64(c(NA, 1L, 0L))
+  )
+
+  expect_identical(
+    convert_array(
+      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
+      bit64::integer64()
+    ),
+    bit64::as.integer64(c(1L, 0L))
+  )
+})
+
 test_that("convert to vector works for extension<double> -> double()", {
   array <- nanoarrow_extension_array(c(0, 1, NA_real_), "some_ext")
 

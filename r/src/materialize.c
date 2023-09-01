@@ -33,6 +33,7 @@
 #include "materialize_dbl.h"
 #include "materialize_difftime.h"
 #include "materialize_int.h"
+#include "materialize_int64.h"
 #include "materialize_lgl.h"
 #include "materialize_posixct.h"
 #include "materialize_unspecified.h"
@@ -478,6 +479,8 @@ static int nanoarrow_materialize_base(struct RConverter* converter, SEXP convert
       return nanoarrow_materialize_date(converter);
     case VECTOR_TYPE_DIFFTIME:
       return nanoarrow_materialize_difftime(converter);
+    case VECTOR_TYPE_INTEGER64:
+      return nanoarrow_materialize_int64(src, dst, options);
     case VECTOR_TYPE_BLOB:
       return nanoarrow_materialize_blob(src, dst, options);
     case VECTOR_TYPE_LIST_OF:
