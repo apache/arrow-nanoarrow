@@ -24,6 +24,9 @@
 #include "materialize_common.h"
 #include "nanoarrow.h"
 
+// bit64::as.integer64(2^53)
+#define MAX_DBL_AS_INTEGER 9007199254740992
+
 static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
   if (converter->src.array_view->array->dictionary != NULL) {
     return ENOTSUP;
@@ -32,6 +35,7 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
   double* result = REAL(dst->vec_sexp);
+  int64_t n_bad_values = 0;
 
   // True for all the types supported here
   const uint8_t* is_valid = src->array_view->buffer_views[0].data.as_uint8;
@@ -65,12 +69,8 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT32:
     case NANOARROW_TYPE_UINT32:
-    case NANOARROW_TYPE_INT64:
-    case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_FLOAT:
-      // TODO: implement bounds check for int64 and uint64, but instead
-      // of setting to NA, just warn (because sequential values might not
-      // roundtrip above 2^51 ish)
+      // No need to bounds check these types
       for (R_xlen_t i = 0; i < dst->length; i++) {
         result[dst->offset + i] =
             ArrowArrayViewGetDoubleUnsafe(src->array_view, src->offset + i);
@@ -86,8 +86,35 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
       }
       break;
 
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        double value = ArrowArrayViewGetDoubleUnsafe(src->array_view, src->offset + i);
+        if (value > MAX_DBL_AS_INTEGER || value < -MAX_DBL_AS_INTEGER) {
+          n_bad_values++;
+        }
+
+        result[dst->offset + i] = value;
+      }
+
+      // Set any nulls to NA_REAL
+      if (is_valid != NULL && src->array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < dst->length; i++) {
+          if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
+            result[dst->offset + i] = NA_REAL;
+          }
+        }
+      }
+      break;
+
     default:
       return EINVAL;
+  }
+
+  if (n_bad_values > 0) {
+    Rf_warning(
+        "%ld value(s) may have incurred loss of precision in conversion to double()",
+        (long)n_bad_values);
   }
 
   return NANOARROW_OK;
