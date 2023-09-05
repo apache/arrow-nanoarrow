@@ -271,7 +271,8 @@ static int ArrowIpcArrayStreamReaderNextBody(
   private_data->body.size_bytes += bytes_read;
 
   if (bytes_read != bytes_to_read) {
-    ArrowErrorSet(&private_data->error, "Expected to read %ld bytes but read %ld bytes",
+    ArrowErrorSet(&private_data->error,
+                  "Expected to be able to read %ld bytes for message body but got %ld",
                   (long)bytes_to_read, bytes_read);
     return EIO;
   } else {
