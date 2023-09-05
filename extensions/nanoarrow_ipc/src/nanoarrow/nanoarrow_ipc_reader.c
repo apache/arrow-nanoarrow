@@ -270,7 +270,12 @@ static int ArrowIpcArrayStreamReaderNextBody(
                                                    &bytes_read, &private_data->error));
   private_data->body.size_bytes += bytes_read;
 
-  return NANOARROW_OK;
+  if (bytes_read != bytes_to_read) {
+    ArrowErrorSet(&private_data->error, "Expected to read %ld bytes but read %ld bytes", (long)bytes_to_read, bytes_read);
+    return EIO;
+  } else {
+    return NANOARROW_OK;
+  }
 }
 
 static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
