@@ -244,6 +244,50 @@ TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
   stream.release(&stream);
 }
 
+TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageHeader) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema) - 1),
+            NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), ESPIPE);
+  EXPECT_STREQ(stream.get_last_error(&stream),
+               "Expected >= 280 bytes of remaining data but found 279 bytes in buffer");
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageBody) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  // Truncate the record batch at the very end of the body
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch,
+                              sizeof(kSimpleRecordBatch) - 1),
+            NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowArray array;
+  ASSERT_EQ(stream.get_next(&stream, &array), ESPIPE);
+  EXPECT_STREQ(stream.get_last_error(&stream),
+               "Expected to be able to read 16 bytes for message body but got 15");
+
+  stream.release(&stream);
+}
+
 TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
   struct ArrowBuffer input_buffer;
   ArrowBufferInit(&input_buffer);
