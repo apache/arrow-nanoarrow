@@ -515,6 +515,14 @@ test_that("convert to vector works for dictionary<double> -> double()", {
   )
 })
 
+test_that("convert to vector warns for possibly invalid double()", {
+  array <- as_nanoarrow_array(2^54, schema = na_int64())
+  expect_warning(
+    convert_array(array, double()),
+    "1 value\\(s\\) may have incurred loss of precision in conversion to double()"
+  )
+})
+
 test_that("convert to vector errors for bad array to double()", {
   expect_error(
     convert_array(as_nanoarrow_array(letters), double()),
