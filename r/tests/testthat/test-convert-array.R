@@ -530,6 +530,100 @@ test_that("convert to vector errors for bad array to double()", {
   )
 })
 
+test_that("convert to vector works for valid integer64()", {
+  skip_if_not_installed("bit64")
+  skip_if_not_installed("arrow")
+
+  arrow_numeric_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    float32 = arrow::float32(),
+    float64 = arrow::float64()
+  )
+
+  vals <- bit64::as.integer64(c(NA, 0:10))
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      convert_array(
+        as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
+        bit64::integer64()
+      ),
+      vals
+    )
+  }
+
+  vals_no_na <- bit64::as.integer64(0:10)
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      convert_array(
+        as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
+        bit64::integer64()
+      ),
+      vals_no_na
+    )
+  }
+
+  # Boolean array to double
+  expect_identical(
+    convert_array(
+      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
+      bit64::integer64()
+    ),
+    bit64::as.integer64(c(NA, 1L, 0L))
+  )
+
+  expect_identical(
+    convert_array(
+      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
+      bit64::integer64()
+    ),
+    bit64::as.integer64(c(1L, 0L))
+  )
+})
+
+test_that("convert to vector works for null -> integer64()", {
+  skip_if_not_installed("bit64")
+
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
+  expect_identical(
+    convert_array(array, bit64::integer64()),
+    rep(bit64::NA_integer64_, 10)
+  )
+})
+
+test_that("convert to vector works for extension<int64> -> integer64()", {
+  skip_if_not_installed("bit64")
+
+  vec <- bit64::as.integer64(c(0, 1, NA))
+  array <- nanoarrow_extension_array(vec, "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, bit64::integer64()),
+      vec
+    ),
+    "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector errors for bad array to integer64()", {
+  skip_if_not_installed("bit64")
+
+  expect_error(
+    convert_array(as_nanoarrow_array(letters), bit64::integer64()),
+    "Can't convert array <string> to R vector of type integer64"
+  )
+})
+
 test_that("convert to vector works for character()", {
   array <- as_nanoarrow_array(letters)
   expect_identical(

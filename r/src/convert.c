@@ -250,6 +250,8 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
     } else if (Rf_inherits(ptype, "difftime")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_DIFFTIME;
       converter->ptype_view.r_time_units = time_units_from_difftime(ptype);
+    } else if (Rf_inherits(ptype, "integer64")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_INTEGER64;
     } else {
       converter->ptype_view.vector_type = VECTOR_TYPE_OTHER;
     }

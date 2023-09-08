@@ -95,6 +95,11 @@ test_that("infer_nanoarrow_schema() methods work for vctrs types", {
   expect_identical(list_schema$children[[1]]$format, "i")
 })
 
+test_that("infer_nanoarrow_schema() method works for integer64()", {
+  skip_if_not_installed("bit64")
+  expect_identical(infer_nanoarrow_schema(bit64::integer64())$format, "l")
+})
+
 test_that("nanoarrow_schema_parse() works", {
   simple_info <- nanoarrow_schema_parse(na_int32())
   expect_identical(simple_info$type, "int32")
