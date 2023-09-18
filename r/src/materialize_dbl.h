@@ -91,7 +91,8 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
       for (R_xlen_t i = 0; i < dst->length; i++) {
         double value = ArrowArrayViewGetDoubleUnsafe(src->array_view, src->offset + i);
         if (value > MAX_DBL_AS_INTEGER || value < -MAX_DBL_AS_INTEGER) {
-          n_bad_values++;
+          // Content of null slot is undefined
+          n_bad_values += is_valid == NULL || ArrowBitGet(is_valid, raw_src_offset + i);
         }
 
         result[dst->offset + i] = value;
@@ -112,9 +113,8 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
   }
 
   if (n_bad_values > 0) {
-    Rf_warning(
-        "%ld value(s) may have incurred loss of precision in conversion to double()",
-        (long)n_bad_values);
+    warn_lossy_conversion(
+        n_bad_values, "may have incurred loss of precision in conversion to double()");
   }
 
   return NANOARROW_OK;
