@@ -250,8 +250,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     }
 
     if (n_overflow > 0) {
-      Rf_warning("%ld value(s) overflowed in double -> na_int32() creation",
-                 (long)n_overflow);
+      warn_lossy_conversion(n_overflow, "overflowed in double -> na_int32() creation");
     }
 
     buffer->size_bytes = len * sizeof(int32_t);

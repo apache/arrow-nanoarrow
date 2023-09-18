@@ -208,7 +208,7 @@ test_that("convert to vector works for unspecified()", {
       convert_array(array, vctrs::unspecified()),
       vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
     ),
-    "1 non-null value\\(s\\) set to NA"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 })
 
@@ -391,13 +391,13 @@ test_that("convert to vector warns for invalid integer()", {
   array <- as_nanoarrow_array(.Machine$integer.max + 1)
   expect_warning(
     expect_identical(convert_array(array, integer()), NA_integer_),
-    "1 value\\(s\\) outside integer range set to NA"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 
   array <- as_nanoarrow_array(c(NA, .Machine$integer.max + 1))
   expect_warning(
     expect_identical(convert_array(array, integer()), c(NA_integer_, NA_integer_)),
-    "1 value\\(s\\) outside integer range set to NA"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 })
 
