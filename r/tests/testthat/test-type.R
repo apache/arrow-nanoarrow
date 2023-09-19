@@ -136,9 +136,16 @@ test_that("map constructor assigns the correct key and value types", {
 })
 
 test_that("dictionary types can be created", {
-  schema <- na_dictionary(na_string())
+  schema <- na_dictionary(na_string(), ordered = FALSE)
   expect_identical(schema$format, "i")
   expect_identical(schema$dictionary$format, "u")
+  expect_identical(schema$flags, ARROW_FLAG$NULLABLE)
+
+  schema <- na_dictionary(na_string(), ordered = TRUE)
+  expect_identical(
+    schema$flags,
+    bitwOr(ARROW_FLAG$NULLABLE, ARROW_FLAG$DICTIONARY_ORDERED)
+  )
 })
 
 test_that("extension types can be created", {
