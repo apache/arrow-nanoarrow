@@ -172,7 +172,7 @@ test_that("as_nanoarrow_array() works for double() -> na_int32()", {
   # With overflow
   expect_warning(
     as_nanoarrow_array(.Machine$integer.max + as.double(1:5), schema = na_int32()),
-    "5 value\\(s\\) overflowed"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 })
 

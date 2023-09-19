@@ -120,7 +120,7 @@ static inline int nanoarrow_materialize_int64(struct ArrayViewSlice* src,
   }
 
   if (n_bad_values > 0) {
-    Rf_warning("%ld value(s) outside integer64 range set to NA", (long)n_bad_values);
+    warn_lossy_conversion(n_bad_values, "outside integer64 range set to NA");
   }
 
   return NANOARROW_OK;

@@ -52,7 +52,7 @@ static inline int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
     }
 
     if (n_bad_values > 0) {
-      Rf_warning("%ld non-null value(s) set to NA", (long)n_bad_values);
+      warn_lossy_conversion(n_bad_values, "that were non-null set to NA");
     }
   }
 

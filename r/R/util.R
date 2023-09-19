@@ -38,6 +38,15 @@ assert_arrow_installed <- function(reason) {
   }
 }
 
+warn_lossy_conversion <- function(count, msg) {
+  cnd <- simpleWarning(
+    sprintf("%d value(s) %s", count, msg),
+    call = sys.call(-1)
+  )
+  class(cnd) <- union("nanoarrow_warning_lossy_conversion", class(cnd))
+
+  warning(cnd)
+}
 
 # Internally we use R_PreserveObject() and R_ReleaseObject() to manage R objects
 # that must be kept alive for ArrowArray buffers to stay valid. This count
