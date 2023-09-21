@@ -19,7 +19,7 @@
       {
           "name": "user-test-preset",
           "description": "",
-          "displayName": "(user) test preset)",
+          "displayName": "(user) test preset",
           "configurePreset": "user-local",
           "environment": {
             "CTEST_OUTPUT_ON_FAILURE": "1"
