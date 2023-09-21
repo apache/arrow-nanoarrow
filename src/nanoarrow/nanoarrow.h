@@ -863,18 +863,21 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
 /// \brief Append a string of bytes to an array
 ///
 /// Returns NANOARROW_OK if value can be exactly represented by
-/// the underlying storage type or EINVAL otherwise (e.g.,
-/// the underlying array is not a binary, string, large binary, large string,
-/// or fixed-size binary array, or value is the wrong size for a fixed-size
-/// binary array).
+/// the underlying storage type, EOVERFLOW if appending value would overflow
+/// the offset type (e.g., if the data buffer would be larger than 2 GB for a
+/// non-large string type), or EINVAL otherwise (e.g., the underlying array is not a
+/// binary, string, large binary, large string, or fixed-size binary array, or value is
+/// the wrong size for a fixed-size binary array).
 static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
                                                    struct ArrowBufferView value);
 
 /// \brief Append a string value to an array
 ///
 /// Returns NANOARROW_OK if value can be exactly represented by
-/// the underlying storage type or EINVAL otherwise (e.g.,
-/// the underlying array is not a string or large string array).
+/// the underlying storage type, EOVERFLOW if appending value would overflow
+/// the offset type (e.g., if the data buffer would be larger than 2 GB for a
+/// non-large string type), or EINVAL otherwise (e.g., the underlying array is not a
+/// string or large string array).
 static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
                                                     struct ArrowStringView value);
 
