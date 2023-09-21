@@ -878,6 +878,19 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
+TEST(ArrayTest, ArrayTestAppendToBinaryArrayErrors) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_BINARY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  struct ArrowBufferView item;
+  item.data.as_char = "";
+  item.size_bytes = static_cast<int64_t>(INT_MAX) + 1;
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, item), EOVERFLOW);
+
+  array.release(&array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   struct ArrowArray array;
 
@@ -1315,6 +1328,23 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToListArrayErrors) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  array.children[0]->length = static_cast<int64_t>(INT32_MAX) + 1;
+  EXPECT_EQ(ArrowArrayFinishElement(&array), EOVERFLOW);
+
+  array.release(&array);
+  schema.release(&schema);
 }
 
 TEST(ArrayTest, ArrayTestAppendToStructArray) {
