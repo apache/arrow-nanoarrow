@@ -469,7 +469,7 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       offset = ((int32_t*)offset_buffer->data)[array->length];
-      if ((offset + value.size_bytes) > INT32_MAX) {
+      if ((((int64_t)offset) + value.size_bytes) > INT32_MAX) {
         return EOVERFLOW;
       }
 

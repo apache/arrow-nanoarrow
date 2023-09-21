@@ -878,6 +878,19 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
+TEST(ArrayTest, ArrayTestAppendToBinaryArrayErrors) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_BINARY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  struct ArrowBufferView item;
+  item.data.as_char = "";
+  item.size_bytes = static_cast<int64_t>(INT_MAX) + 1;
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, item), EOVERFLOW);
+
+  array.release(&array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   struct ArrowArray array;
 
