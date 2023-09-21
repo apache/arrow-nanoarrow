@@ -1330,6 +1330,23 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
 
+TEST(ArrayTest, ArrayTestAppendToListArrayErrors) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  array.children[0]->length = static_cast<int64_t>(INT32_MAX) + 1;
+  EXPECT_EQ(ArrowArrayFinishElement(&array), EOVERFLOW);
+
+  array.release(&array);
+  schema.release(&schema);
+}
+
 TEST(ArrayTest, ArrayTestAppendToStructArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;

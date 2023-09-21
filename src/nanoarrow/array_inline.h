@@ -618,7 +618,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
     case NANOARROW_TYPE_MAP:
       child_length = array->children[0]->length;
       if (child_length > INT32_MAX) {
-        return EINVAL;
+        return EOVERFLOW;
       }
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), (int32_t)child_length));

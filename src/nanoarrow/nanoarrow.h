@@ -898,7 +898,8 @@ static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
 /// \brief Finish a nested array element
 ///
 /// Appends a non-null element to the array based on the first child's current
-/// length. Returns NANOARROW_OK if the item was successfully added or EINVAL
+/// length. Returns NANOARROW_OK if the item was successfully added, EOVERFLOW
+/// if the child of a list or map array would exceed INT_MAX elements, or EINVAL
 /// if the underlying storage type is not a struct, list, large list, or fixed-size
 /// list, or if there was an attempt to add a struct or fixed-size list element where the
 /// length of the child array(s) did not match the expected length.
