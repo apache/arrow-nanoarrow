@@ -1333,7 +1333,6 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
 TEST(ArrayTest, ArrayTestAppendToListArrayErrors) {
   struct ArrowArray array;
   struct ArrowSchema schema;
-  struct ArrowError error;
 
   ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
@@ -1695,7 +1694,7 @@ TEST(ArrayTest, ArrayViewTestString) {
 
   // Check sequential offsets whose diff causes overflow
   offsets[1] = 2080374784;
-  offsets[2] = -2147483648;
+  offsets[2] = -static_cast<int64_t>(2147483648);
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
