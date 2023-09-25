@@ -1694,7 +1694,7 @@ TEST(ArrayTest, ArrayViewTestString) {
 
   // Check sequential offsets whose diff causes overflow
   offsets[1] = 2080374784;
-  offsets[2] = -static_cast<int64_t>(2147483648);
+  offsets[2] = INT_MIN;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
