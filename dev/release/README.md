@@ -25,12 +25,12 @@ Release candidates for nanoarrow are uploaded to https://dist.apache.org/repos/d
 prior to a release vote being called on the
 [Apache Arrow developer mailing list](https://lists.apache.org/list.html?dev@arrow.apache.org).
 A script (`verify-release-candidate.sh`) is provided to verify such a release candidate.
-For example, to verify nanoarrow 0.2.0-rc0, one could run:
+For example, to verify nanoarrow 0.3.0-rc0, one could run:
 
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git arrow-nanoarrow
 cd arrow-nanoarrow/dev/release
-./verify-release-candidate.sh 0.2.0 0
+./verify-release-candidate.sh 0.3.0 0
 ```
 
 Full verification requires [CMake](https://cmake.org/download/) to build and run the test
@@ -56,13 +56,13 @@ manager except on Windows (see below).
 To run only C library verification (requires CMake and Arrow C++ but not R):
 
 ```bash
-TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.2.0 0
+TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.3.0 0
 ```
 
 To run only R package verification (requires R but not CMake or Arrow C++):
 
 ```bash
-TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.2.0 0
+TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.3.0 0
 ```
 
 ### MacOS
@@ -257,7 +257,7 @@ One can verify a nanoarrow release candidate on big endian by setting
 ## Creating a release candidate
 
 The first step to creating a nanoarrow release is to create a `maint-VERSION` branch
-(e.g., `usethis::pr_init("maint-0.2.0")`) and push the branch to `upstream`. This is
+(e.g., `usethis::pr_init("maint-0.3.0")`) and push the branch to `upstream`. This is
 a good opportunity to run though the above instructions to make sure the verification
 script and instructions are up-to-date. You may also wish to start a manual dispatch
 of the [Verification workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/verify.yaml)
@@ -268,11 +268,11 @@ When this is complete, run
 ```bash
 # from the repository root
 # 01-prepare.sh <nanoarrow-dir> <prev_veresion> <version> <next_version> <rc-num>
-dev/release/01-prepare.sh . 0.0.0 0.2.0 0.3.0 0
+dev/release/01-prepare.sh . 0.0.0 0.3.0 0.4.0 0
 ```
 
 This will update version numbers, the changelong, and create the git tag
-`apache-arrow-nanoarrow-0.2.0-rc0`. Check to make sure that the changelog
+`apache-arrow-nanoarrow-0.3.0-rc0`. Check to make sure that the changelog
 and versions are what you expect them to be before pushing the tag (you
 may wish to do this by opening a dummy PR to run CI and look at the diff
 from the main branch). When you are satisfied that the code at this tag
@@ -294,7 +294,7 @@ file to exist setting the appropriate `GPG_KEY_ID` environment variable.
 
 ```bash
 # 02-sign.sh <version> <rc-num>
-dev/release/02-sign.sh 0.2.0 0
+dev/release/02-sign.sh 0.3.0 0
 ```
 
 Finally, run
@@ -306,7 +306,7 @@ file to exist setting the appropriate `APACHE_USERNAME` environment variable.
 
 ```
 # 03-source.sh $0 <version> <rc-num>
-dev/release/03-source.sh 0.2.0 0
+dev/release/03-source.sh 0.3.0 0
 ```
 
 You should check that the release verification runs locally and/or
@@ -367,7 +367,7 @@ and mark it as closed.
 The reporter system for Arrow can be found at
 <https://reporter.apache.org/addrelease.html?arrow>. To add a release, a
 PMC member must log in with their Apache username/password. The release
-names are in the form `NANOARROW-0.2.0`.
+names are in the form `NANOARROW-0.3.0`.
 
 ### Upload artifacts to Subversion / Create GitHub Release
 
@@ -377,7 +377,7 @@ This script must be run by a PMC member whose `APACHE_USERNAME` environment vari
 has been set in `.env`.
 
 ```bash
-dev/release/post-01-upload.sh 0.2.0 0
+dev/release/post-01-upload.sh 0.3.0 0
 ```
 
 ### Submit R package to CRAN
@@ -389,8 +389,8 @@ Before a release candidate is created, the first section of
 `usethis::use_release_issue()` should all be completed (i.e., any changes
 after release should be minor tweaks). The steps are:
 
-- Ensure you are on the release branch (i.e., `git switch maint-0.2.0`)
-- Run `usethis::pr_init("r-cran-maint-0.2.0")` and push the branch to your
+- Ensure you are on the release branch (i.e., `git switch maint-0.3.0`)
+- Run `usethis::pr_init("r-cran-maint-0.3.0")` and push the branch to your
   fork.
 - Ensure `cran_comments.md` is up-to-date.
 - Run `devtools::check()` locally and verify that the package version is correct
@@ -402,7 +402,7 @@ after release should be minor tweaks). The steps are:
 Any changes required at this stage should be made as a PR into `main` and
 cherry-picked into the `r-cran-maint-XXX` packaging branch. (i.e.,
 `git cherry-pick 01234abcdef`). If any changes
-to the source are required, bump the "tweak" version (e.g., `Version: 0.2.0.1`
+to the source are required, bump the "tweak" version (e.g., `Version: 0.3.0.1`
 in `DESCRIPTION`).
 
 ### Release blog post
@@ -419,14 +419,14 @@ the `mail-relay.apache.org` outgoing server.
 Email template:
 
 ```
-[ANNOUNCE] Apache Arrow nanoarrow 0.2.0 Released
+[ANNOUNCE] Apache Arrow nanoarrow 0.3.0 Released
 
-The Apache Arrow community is pleased to announce the 0.2.0 release of Apache Arrow nanoarrow. This initial release covers 31 resolved issues from 6 contributors[1].
+The Apache Arrow community is pleased to announce the 0.3.0 release of Apache Arrow nanoarrow. This initial release covers 31 resolved issues from 6 contributors[1].
 
 The release is available now from [2].
 
 Release notes are available at:
-https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.2.0/CHANGELOG.md
+https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.3.0/CHANGELOG.md
 
 What is Apache Arrow?
 ---------------------
@@ -442,8 +442,8 @@ Please report any feedback to the mailing lists ([4], [5]).
 Regards,
 The Apache Arrow Community
 
-[1]: https://github.com/apache/arrow-nanoarrow/issues?q=is%3Aissue+milestone%3A%22nanoarrow+0.2.0%22+is%3Aclosed
-[2]: https://www.apache.org/dyn/closer.cgi/arrow/apache-arrow-nanoarrow-0.2.0
+[1]: https://github.com/apache/arrow-nanoarrow/issues?q=is%3Aissue+milestone%3A%22nanoarrow+0.3.0%22+is%3Aclosed
+[2]: https://www.apache.org/dyn/closer.cgi/arrow/apache-arrow-nanoarrow-0.3.0
 [3]: https://github.com/apache/arrow-nanoarrow
 [4]: https://lists.apache.org/list.html?user@arrow.apache.org
 [5]: https://lists.apache.org/list.html?dev@arrow.apache.org
@@ -459,7 +459,7 @@ using:
 # Once
 export APACHE_USERNAME=xxx
 # Once for every release candidate
-svn rm --username=$APACHE_USERNAME -m "Clean up svn artifacts" https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.2.0-rc0/
+svn rm --username=$APACHE_USERNAME -m "Clean up svn artifacts" https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.3.0-rc0/
 ```
 
 ### Bumped versions on main
@@ -468,5 +468,5 @@ This is handled by
 [post-02-bump-versions.sh](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/post-02-bump-versions.sh):
 
 ```bash
-dev/release/post-02-bump-versions.sh . 0.2.0 0.3.0
+dev/release/post-02-bump-versions.sh . 0.3.0 0.4.0
 ```
