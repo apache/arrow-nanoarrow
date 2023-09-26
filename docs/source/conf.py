@@ -17,8 +17,8 @@
 
 import datetime
 import os
-import sys
 import re
+import sys
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -89,10 +89,10 @@ html_theme_options = {
     "use_edit_page_button": True,
     "external_links": [],
     "switcher": {
-      "json_url": "https://arrow.apache.org/nanoarrow/switcher.json",
-      "version_match": get_version()
+        "json_url": "https://arrow.apache.org/nanoarrow/switcher.json",
+        "version_match": get_version(),
     },
-    "navbar_start": ["navbar-logo", "version-switcher"]
+    "navbar_start": ["navbar-logo", "version-switcher"],
 }
 
 html_context = {
