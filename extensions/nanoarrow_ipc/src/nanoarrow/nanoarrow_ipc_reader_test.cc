@@ -318,7 +318,7 @@ TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
 TEST(NanoarrowIpcReader, StreamReaderExpectedSchema) {
   struct ArrowBuffer input_buffer;
   ArrowBufferInit(&input_buffer);
-  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleSchema)),
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleRecordBatch)),
             NANOARROW_OK);
 
   struct ArrowIpcInputStream input;
