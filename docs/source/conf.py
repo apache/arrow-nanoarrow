@@ -39,6 +39,7 @@ project = "nanoarrow"
 copyright = f"2016-{datetime.datetime.now().year} Apache Software Foundation"
 author = "Apache Software Foundation"
 
+
 def get_version():
     cmakelists = os.path.join("..", "..", "CMakeLists.txt")
     with open(cmakelists, "r") as f:
