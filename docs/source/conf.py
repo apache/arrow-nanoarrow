@@ -17,6 +17,7 @@
 
 import datetime
 import os
+import re
 import sys
 
 # Configuration file for the Sphinx documentation builder.
@@ -37,6 +38,17 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "nanoarrow"
 copyright = f"2016-{datetime.datetime.now().year} Apache Software Foundation"
 author = "Apache Software Foundation"
+
+
+def get_version():
+    cmakelists = os.path.join("..", "..", "CMakeLists.txt")
+    with open(cmakelists, "r") as f:
+        for line in f:
+            if "NANOARROW_VERSION" in line:
+                if "SNAPSHOT" in line:
+                    return "dev"
+                else:
+                    return re.findall(r"[0-9]+\.[0-9]+\.[0-9]+", line)[0]
 
 
 # -- General configuration ---------------------------------------------------
@@ -77,6 +89,11 @@ html_theme_options = {
     "show_toc_level": 2,
     "use_edit_page_button": True,
     "external_links": [],
+    "switcher": {
+        "json_url": "https://arrow.apache.org/nanoarrow/switcher.json",
+        "version_match": get_version(),
+    },
+    "navbar_start": ["navbar-logo", "version-switcher"],
 }
 
 html_context = {
