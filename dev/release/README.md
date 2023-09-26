@@ -318,26 +318,26 @@ At this point the release candidate is suitable for a vote on the Apache Arrow d
 ```
 Hello,
 
-I would like to propose the following release candidate (RC{rc_num}) of Apache Arrow nanoarrow [0] version {version}. This is an initial release consisting of {num_resolved_issues} resolved GitHub issues [1].
+I would like to propose the following release candidate (rc0) of Apache Arrow nanoarrow [0] version 0.3.0. This is an initial release consisting of 42 resolved GitHub issues from 4 contributors [1].
 
 This release candidate is based on commit: {rc_commit} [2]
 
-The source release rc{rc_num} is hosted at [3].
+The source release rc0 is hosted at [3].
 The changelog is located at [4].
 
 Please download, verify checksums and signatures, run the unit tests, and vote on the release. See [5] for how to validate a release candidate.
 
 The vote will be open for at least 72 hours.
 
-[ ] +1 Release this as Apache Arrow nanoarrow {version}
+[ ] +1 Release this as Apache Arrow nanoarrow 0.3.0
 [ ] +0
-[ ] -1 Do not release this as Apache Arrow nanoarrow {version} because...
+[ ] -1 Do not release this as Apache Arrow nanoarrow 0.3.0 because...
 
 [0] https://github.com/apache/arrow-nanoarrow
-[1] https://github.com/apache/arrow-nanoarrow/milestone/{milestone}?closed=1
-[2] https://github.com/apache/arrow-nanoarrow/tree/apache-arrow-nanoarrow-{version}-rc{rc_num}
-[3] https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-{version}-rc{rc_num}/
-[4] https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-{version}-rc{rc_num}/CHANGELOG.md
+[1] https://github.com/apache/arrow-nanoarrow/milestone/3?closed=1
+[2] https://github.com/apache/arrow-nanoarrow/tree/apache-arrow-nanoarrow-0.3.0-rc0
+[3] https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.3.0-rc0/
+[4] https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.3.0-rc0/CHANGELOG.md
 [5] https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/README.md
 ```
 
@@ -421,7 +421,7 @@ Email template:
 ```
 [ANNOUNCE] Apache Arrow nanoarrow 0.3.0 Released
 
-The Apache Arrow community is pleased to announce the 0.3.0 release of Apache Arrow nanoarrow. This initial release covers 31 resolved issues from 6 contributors[1].
+The Apache Arrow community is pleased to announce the 0.3.0 release of Apache Arrow nanoarrow. This initial release covers 42 resolved issues from 4 contributors[1].
 
 The release is available now from [2].
 
