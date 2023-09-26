@@ -1,0 +1,15 @@
+[
+    {
+        "version": "dev",
+        "url": "https://arrow.apache.org/nanoarrow/main/"
+    },
+    {
+        "version": "0.3.0",
+        "url": "https://arrow.apache.org/nanoarrow/0.3.0/"
+    },
+    {
+        "version": "0.2.0",
+        "url": "https://arrow.apache.org/nanoarrow/0.2.0/"
+    }
+]
+
