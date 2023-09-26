@@ -114,7 +114,7 @@ conda config --set channel_priority strict
 conda install -c conda-forge compilers git cmake arrow-cpp
 # For R (see below about potential interactions with system R
 # before installing via conda on MacOS)
-conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild
+conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild r-bit64
 ```
 
 Note that using conda-provided R when there is also a system install of R
@@ -148,7 +148,7 @@ cmake --install . --prefix=../arrow --config=Debug
 cd ..
 
 # Pass location of Arrow and R to the verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow gtest_force_shared_crt=ON"
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON -DNANOARROW_ARROW_STATIC=ON"
 export R_HOME="/c/Program Files/R/R-4.2.2"
 ```
 
