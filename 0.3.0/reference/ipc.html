@@ -1,0 +1,943 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>IPC Extension Reference &#8212; nanoarrow  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=ac02cc09edc035673794" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=ac02cc09edc035673794" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=ac02cc09edc035673794"></script>
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=ccbe24c1"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/ipc';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.14.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://arrow.apache.org/nanoarrow/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.3.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Device Extension Reference" href="device.html" />
+    <link rel="prev" title="C++ API Reference" href="cpp.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    <p class="title logo__title">nanoarrow  documentation</p>
+  
+</a></div>
+    
+      <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="versionswitcherbutton" type="button" role="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="listbox" aria-controls="versionswitcherlist" aria-label="Version switcher list">
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="versionswitcherlist" class="version-switcher__menu dropdown-menu list-group-flush py-0" role="listbox" aria-labelledby="versionswitcherbutton">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting-started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../roadmap.html">
+                        Roadmap
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting-started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../roadmap.html">
+                        Roadmap
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="r.html">R API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c.html">C API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp.html">C++ API Reference</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">IPC Extension Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="device.html">Device Extension Reference</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">IPC...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="ipc-extension-reference">
+<h1>IPC Extension Reference<a class="headerlink" href="#ipc-extension-reference" title="Permalink to this heading">#</a></h1>
+<section id="c-api">
+<h2>C API<a class="headerlink" href="#c-api" title="Permalink to this heading">#</a></h2>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_ipc</span></span></dt>
+<dd><p>Except where noted, objects are not thread-safe and clients should take care to serialize accesses to methods.</p>
+<p>Because this library is intended to be vendored, it provides full type definitions and encourages clients to stack or statically allocate where convenient. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT">
+<span class="target" id="group__nanoarrow__ipc_1ga41f4d1a0c7c57547d44b7f5bb904757d"></span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT</span></span></span><a class="headerlink" href="#c.NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Feature flag for a stream that uses dictionary replacement. </p>
+</dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.NANOARROW_IPC_FEATURE_COMPRESSED_BODY">
+<span class="target" id="group__nanoarrow__ipc_1ga83f4b5032cac3fcd4b7b83fe68a7af7d"></span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_FEATURE_COMPRESSED_BODY</span></span></span><a class="headerlink" href="#c.NANOARROW_IPC_FEATURE_COMPRESSED_BODY" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Feature flag for a stream that uses compression. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-enums">Enums</p>
+<dl class="cpp enum">
+<dt class="sig sig-object cpp" id="_CPPv423ArrowIpcMetadataVersion">
+<span id="_CPPv323ArrowIpcMetadataVersion"></span><span id="_CPPv223ArrowIpcMetadataVersion"></span><span class="target" id="group__nanoarrow__ipc_1ga455a3ecd9a26f7bae6434d43a48a7cab"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcMetadataVersion</span></span></span><a class="headerlink" href="#_CPPv423ArrowIpcMetadataVersion" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Metadata version enumerator. </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V1E">
+<span id="_CPPv3N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V1E"></span><span id="_CPPv2N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V1E"></span><span class="target" id="group__nanoarrow__ipc_1gga455a3ecd9a26f7bae6434d43a48a7caba43115da114ccee834fbd62203c701db2"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V1</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V1E" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V2E">
+<span id="_CPPv3N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V2E"></span><span id="_CPPv2N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V2E"></span><span class="target" id="group__nanoarrow__ipc_1gga455a3ecd9a26f7bae6434d43a48a7caba9dbb5707e79fba252dedfdfe76a9ecda"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V2</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V2E" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V3E">
+<span id="_CPPv3N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V3E"></span><span id="_CPPv2N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V3E"></span><span class="target" id="group__nanoarrow__ipc_1gga455a3ecd9a26f7bae6434d43a48a7cabab42c486bc1a66bb0a387104e1aab63e1"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V3</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V3E" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V4E">
+<span id="_CPPv3N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V4E"></span><span id="_CPPv2N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V4E"></span><span class="target" id="group__nanoarrow__ipc_1gga455a3ecd9a26f7bae6434d43a48a7cabaae04e760519c11d2dee948a18c40552b"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V4</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V4E" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V5E">
+<span id="_CPPv3N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V5E"></span><span id="_CPPv2N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V5E"></span><span class="target" id="group__nanoarrow__ipc_1gga455a3ecd9a26f7bae6434d43a48a7caba24704d53c946a411d60682e0af8dde56"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V5</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V5E" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="cpp enum">
+<dt class="sig sig-object cpp" id="_CPPv419ArrowIpcMessageType">
+<span id="_CPPv319ArrowIpcMessageType"></span><span id="_CPPv219ArrowIpcMessageType"></span><span class="target" id="group__nanoarrow__ipc_1ga1f8ab8cd75a6d060f75e52cccc593226"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcMessageType</span></span></span><a class="headerlink" href="#_CPPv419ArrowIpcMessageType" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Message type enumerator. </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZEDE">
+<span id="_CPPv3N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZEDE"></span><span id="_CPPv2N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZEDE"></span><span class="target" id="group__nanoarrow__ipc_1gga1f8ab8cd75a6d060f75e52cccc593226a0b13e7490424f660c8f693e0037f8cd8"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED</span></span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZEDE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_SCHEMAE">
+<span id="_CPPv3N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_SCHEMAE"></span><span id="_CPPv2N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_SCHEMAE"></span><span class="target" id="group__nanoarrow__ipc_1gga1f8ab8cd75a6d060f75e52cccc593226ad4be209718ef598834cc90d86f43c774"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_SCHEMA</span></span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_SCHEMAE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcMessageType43NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCHE">
+<span id="_CPPv3N19ArrowIpcMessageType43NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCHE"></span><span id="_CPPv2N19ArrowIpcMessageType43NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCHE"></span><span class="target" id="group__nanoarrow__ipc_1gga1f8ab8cd75a6d060f75e52cccc593226ac6eabad4b08ea879536c2034dd439c45"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH</span></span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcMessageType43NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCHE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcMessageType39NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCHE">
+<span id="_CPPv3N19ArrowIpcMessageType39NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCHE"></span><span id="_CPPv2N19ArrowIpcMessageType39NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCHE"></span><span class="target" id="group__nanoarrow__ipc_1gga1f8ab8cd75a6d060f75e52cccc593226a39db028e7d33077cd8d7f0a5dfbbb88b"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH</span></span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcMessageType39NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCHE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_TENSORE">
+<span id="_CPPv3N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_TENSORE"></span><span id="_CPPv2N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_TENSORE"></span><span class="target" id="group__nanoarrow__ipc_1gga1f8ab8cd75a6d060f75e52cccc593226ab12dc67effb5019fe18093e771e92efd"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_TENSOR</span></span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_TENSORE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSORE">
+<span id="_CPPv3N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSORE"></span><span id="_CPPv2N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSORE"></span><span class="target" id="group__nanoarrow__ipc_1gga1f8ab8cd75a6d060f75e52cccc593226ab196004ecbe280a05e72d42892b881db"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSOR</span></span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSORE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="cpp enum">
+<dt class="sig sig-object cpp" id="_CPPv418ArrowIpcEndianness">
+<span id="_CPPv318ArrowIpcEndianness"></span><span id="_CPPv218ArrowIpcEndianness"></span><span class="target" id="group__nanoarrow__ipc_1ga67fe7b1ec726dbd6258e359da43951b2"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcEndianness</span></span></span><a class="headerlink" href="#_CPPv418ArrowIpcEndianness" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Endianness enumerator. </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcEndianness38NANOARROW_IPC_ENDIANNESS_UNINITIALIZEDE">
+<span id="_CPPv3N18ArrowIpcEndianness38NANOARROW_IPC_ENDIANNESS_UNINITIALIZEDE"></span><span id="_CPPv2N18ArrowIpcEndianness38NANOARROW_IPC_ENDIANNESS_UNINITIALIZEDE"></span><span class="target" id="group__nanoarrow__ipc_1gga67fe7b1ec726dbd6258e359da43951b2a9473f53fa21d8e5ae59b21f123046498"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_ENDIANNESS_UNINITIALIZED</span></span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcEndianness38NANOARROW_IPC_ENDIANNESS_UNINITIALIZEDE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcEndianness31NANOARROW_IPC_ENDIANNESS_LITTLEE">
+<span id="_CPPv3N18ArrowIpcEndianness31NANOARROW_IPC_ENDIANNESS_LITTLEE"></span><span id="_CPPv2N18ArrowIpcEndianness31NANOARROW_IPC_ENDIANNESS_LITTLEE"></span><span class="target" id="group__nanoarrow__ipc_1gga67fe7b1ec726dbd6258e359da43951b2ad9a01f7d56d07930003f17232f639a77"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_ENDIANNESS_LITTLE</span></span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcEndianness31NANOARROW_IPC_ENDIANNESS_LITTLEE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcEndianness28NANOARROW_IPC_ENDIANNESS_BIGE">
+<span id="_CPPv3N18ArrowIpcEndianness28NANOARROW_IPC_ENDIANNESS_BIGE"></span><span id="_CPPv2N18ArrowIpcEndianness28NANOARROW_IPC_ENDIANNESS_BIGE"></span><span class="target" id="group__nanoarrow__ipc_1gga67fe7b1ec726dbd6258e359da43951b2aff5abf2e0c065514febbc5beeb09a28e"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_ENDIANNESS_BIG</span></span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcEndianness28NANOARROW_IPC_ENDIANNESS_BIGE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="cpp enum">
+<dt class="sig sig-object cpp" id="_CPPv423ArrowIpcCompressionType">
+<span id="_CPPv323ArrowIpcCompressionType"></span><span id="_CPPv223ArrowIpcCompressionType"></span><span class="target" id="group__nanoarrow__ipc_1gad7618ff0b7eaebe315248fc317877d85"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcCompressionType</span></span></span><a class="headerlink" href="#_CPPv423ArrowIpcCompressionType" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Compression type enumerator. </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_NONEE">
+<span id="_CPPv3N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_NONEE"></span><span id="_CPPv2N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_NONEE"></span><span class="target" id="group__nanoarrow__ipc_1ggad7618ff0b7eaebe315248fc317877d85a340305efc456cce48aa03e41a65e5035"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_COMPRESSION_TYPE_NONE</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_NONEE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcCompressionType40NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAMEE">
+<span id="_CPPv3N23ArrowIpcCompressionType40NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAMEE"></span><span id="_CPPv2N23ArrowIpcCompressionType40NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAMEE"></span><span class="target" id="group__nanoarrow__ipc_1ggad7618ff0b7eaebe315248fc317877d85ab12e42ff16edebcee4a007d56f1a2a0e"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcCompressionType40NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAMEE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_ZSTDE">
+<span id="_CPPv3N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_ZSTDE"></span><span id="_CPPv2N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_ZSTDE"></span><span class="target" id="group__nanoarrow__ipc_1ggad7618ff0b7eaebe315248fc317877d85adba37a865ab148a2a2b2edcedfff88e4"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_COMPRESSION_TYPE_ZSTD</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_ZSTDE" title="Permalink to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcCheckRuntimeP10ArrowError">
+<span id="_CPPv320ArrowIpcCheckRuntimeP10ArrowError"></span><span id="_CPPv220ArrowIpcCheckRuntimeP10ArrowError"></span><span id="ArrowIpcCheckRuntime__ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga15c2f5e02a100fdc951083a47c70f2be"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcCheckRuntime</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv420ArrowIpcCheckRuntimeP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Checks the nanoarrow runtime to make sure the run/build versions match. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer">
+<span id="_CPPv324ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer"></span><span id="_CPPv224ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer"></span><span id="ArrowIpcSharedBufferInit__ArrowIpcSharedBufferP.ArrowBufferP"></span><span class="target" id="group__nanoarrow__ipc_1ga9ee9e1dc573c951f2523883297f8e0b6"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSharedBufferInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcSharedBuffer" title="ArrowIpcSharedBuffer"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">shared</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Initialize the contents of a <a class="reference internal" href="#struct_arrow_ipc_shared_buffer"><span class="std std-ref">ArrowIpcSharedBuffer</span></a> struct. </p>
+<p>If NANOARROW_OK is returned, the <a class="reference internal" href="#struct_arrow_ipc_shared_buffer"><span class="std std-ref">ArrowIpcSharedBuffer</span></a> takes ownership of src. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425ArrowIpcSharedBufferResetP20ArrowIpcSharedBuffer">
+<span id="_CPPv325ArrowIpcSharedBufferResetP20ArrowIpcSharedBuffer"></span><span id="_CPPv225ArrowIpcSharedBufferResetP20ArrowIpcSharedBuffer"></span><span id="ArrowIpcSharedBufferReset__ArrowIpcSharedBufferP"></span><span class="target" id="group__nanoarrow__ipc_1ga126d5828e975d2de0ef5dc1162a7085f"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSharedBufferReset</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcSharedBuffer" title="ArrowIpcSharedBuffer"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">shared</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425ArrowIpcSharedBufferResetP20ArrowIpcSharedBuffer" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Release the caller’s copy of the shared buffer. </p>
+<p>When finished, the caller must relinquish its own copy of the shared data using this function. The original buffer will continue to exist until all ArrowArray objects that refer to it have also been released. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv432ArrowIpcSharedBufferIsThreadSafev">
+<span id="_CPPv332ArrowIpcSharedBufferIsThreadSafev"></span><span id="_CPPv232ArrowIpcSharedBufferIsThreadSafev"></span><span id="ArrowIpcSharedBufferIsThreadSafe__void"></span><span class="target" id="group__nanoarrow__ipc_1ga931c1a3bac83960532864a1e9f280239"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSharedBufferIsThreadSafe</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv432ArrowIpcSharedBufferIsThreadSafev" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Check for shared buffer thread safety. </p>
+<p>Thread-safe shared buffers require C11 and the stdatomic.h header. If either are unavailable, shared buffers are still possible but the resulting arrays must not be passed to other threads to be released. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv419ArrowIpcDecoderInitP15ArrowIpcDecoder">
+<span id="_CPPv319ArrowIpcDecoderInitP15ArrowIpcDecoder"></span><span id="_CPPv219ArrowIpcDecoderInitP15ArrowIpcDecoder"></span><span id="ArrowIpcDecoderInit__ArrowIpcDecoderP"></span><span class="target" id="group__nanoarrow__ipc_1ga0a0b859bb7e01fc0a0828233f959492e"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv419ArrowIpcDecoderInitP15ArrowIpcDecoder" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Initialize a decoder. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcDecoderResetP15ArrowIpcDecoder">
+<span id="_CPPv320ArrowIpcDecoderResetP15ArrowIpcDecoder"></span><span id="_CPPv220ArrowIpcDecoderResetP15ArrowIpcDecoder"></span><span id="ArrowIpcDecoderReset__ArrowIpcDecoderP"></span><span class="target" id="group__nanoarrow__ipc_1gad74005e3b4915f5354874d8d84b4303f"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderReset</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv420ArrowIpcDecoderResetP15ArrowIpcDecoder" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Release all resources attached to a decoder. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425ArrowIpcDecoderPeekHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError">
+<span id="_CPPv325ArrowIpcDecoderPeekHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError"></span><span id="_CPPv225ArrowIpcDecoderPeekHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError"></span><span id="ArrowIpcDecoderPeekHeader__ArrowIpcDecoderP.ArrowBufferView.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga02b0a558c785e952737182e04eba936d"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderPeekHeader</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">data</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425ArrowIpcDecoderPeekHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Peek at a message header. </p>
+<p>The first 8 bytes of an Arrow IPC message are 0xFFFFFF followed by the size of the header as a little-endian 32-bit integer. <a class="reference internal" href="#group__nanoarrow__ipc_1ga02b0a558c785e952737182e04eba936d"><span class="std std-ref">ArrowIpcDecoderPeekHeader()</span></a> reads these bytes and returns ESPIPE if there are not enough remaining bytes in data to read the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the Arrow end-of-stream indicator has been reached, or NANOARROW_OK otherwise. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv427ArrowIpcDecoderVerifyHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError">
+<span id="_CPPv327ArrowIpcDecoderVerifyHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError"></span><span id="_CPPv227ArrowIpcDecoderVerifyHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError"></span><span id="ArrowIpcDecoderVerifyHeader__ArrowIpcDecoderP.ArrowBufferView.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga5d19acbf708ca5b4b7cbe32fa81378a6"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderVerifyHeader</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">data</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427ArrowIpcDecoderVerifyHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Verify a message header. </p>
+<p>Runs <a class="reference internal" href="#group__nanoarrow__ipc_1ga02b0a558c785e952737182e04eba936d"><span class="std std-ref">ArrowIpcDecoderPeekHeader()</span></a> to ensure data is sufficiently large but additionally runs flatbuffer verification to ensure that decoding the data will not access memory outside of the buffer specified by data. <a class="reference internal" href="#group__nanoarrow__ipc_1ga5d19acbf708ca5b4b7cbe32fa81378a6"><span class="std std-ref">ArrowIpcDecoderVerifyHeader()</span></a> will also set decoder.header_size_bytes, decoder.body_size_bytes, decoder.metadata_version, and decoder.message_type.</p>
+<p>Returns as <a class="reference internal" href="#group__nanoarrow__ipc_1ga02b0a558c785e952737182e04eba936d"><span class="std std-ref">ArrowIpcDecoderPeekHeader()</span></a> and additionally will return EINVAL if flatbuffer verification fails. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv427ArrowIpcDecoderDecodeHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError">
+<span id="_CPPv327ArrowIpcDecoderDecodeHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError"></span><span id="_CPPv227ArrowIpcDecoderDecodeHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError"></span><span id="ArrowIpcDecoderDecodeHeader__ArrowIpcDecoderP.ArrowBufferView.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gaa4ea4cae2cca86081b9279e481e4dab0"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderDecodeHeader</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">data</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427ArrowIpcDecoderDecodeHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Decode a message header. </p>
+<p>Runs <a class="reference internal" href="#group__nanoarrow__ipc_1ga02b0a558c785e952737182e04eba936d"><span class="std std-ref">ArrowIpcDecoderPeekHeader()</span></a> to ensure data is sufficiently large and decodes the content of the message header. If data contains a schema message, decoder.endianness and decoder.feature_flags is set and <a class="reference internal" href="#group__nanoarrow__ipc_1gab56730acfeaad71f0b31e0616c3cac02"><span class="std std-ref">ArrowIpcDecoderDecodeSchema()</span></a> can be used to obtain the decoded schema. If data contains a record batch message, decoder.codec is set and a successful call can be followed by a call to <a class="reference internal" href="#group__nanoarrow__ipc_1gaeea86e5a170f0b713edba7e44d5f41bb"><span class="std std-ref">ArrowIpcDecoderDecodeArray()</span></a>.</p>
+<p>In almost all cases this should be preceded by a call to <a class="reference internal" href="#group__nanoarrow__ipc_1ga5d19acbf708ca5b4b7cbe32fa81378a6"><span class="std std-ref">ArrowIpcDecoderVerifyHeader()</span></a> to ensure decoding does not access data outside of the specified buffer.</p>
+<p>Returns EINVAL if the content of the message cannot be decoded or ENOTSUP if the content of the message uses features not supported by this library. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv427ArrowIpcDecoderDecodeSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError">
+<span id="_CPPv327ArrowIpcDecoderDecodeSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError"></span><span id="_CPPv227ArrowIpcDecoderDecodeSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError"></span><span id="ArrowIpcDecoderDecodeSchema__ArrowIpcDecoderP.ArrowSchemaP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gab56730acfeaad71f0b31e0616c3cac02"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderDecodeSchema</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427ArrowIpcDecoderDecodeSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Decode an ArrowSchema. </p>
+<p>After a successful call to <a class="reference internal" href="#group__nanoarrow__ipc_1gaa4ea4cae2cca86081b9279e481e4dab0"><span class="std std-ref">ArrowIpcDecoderDecodeHeader()</span></a>, retrieve an ArrowSchema. The caller is responsible for releasing the schema if NANOARROW_OK is returned.</p>
+<p>Returns EINVAL if the decoder did not just decode a schema message or NANOARROW_OK otherwise. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424ArrowIpcDecoderSetSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError">
+<span id="_CPPv324ArrowIpcDecoderSetSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError"></span><span id="_CPPv224ArrowIpcDecoderSetSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError"></span><span id="ArrowIpcDecoderSetSchema__ArrowIpcDecoderP.ArrowSchemaP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga91e04e3442fdf80c7097693d27b41d2f"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderSetSchema</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424ArrowIpcDecoderSetSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Set the ArrowSchema used to decode future record batch messages. </p>
+<p>Prepares the decoder for future record batch messages of this type. The decoder takes ownership of schema if NANOARROW_OK is returned. Note that you must call this explicitly after decoding a Schema message (i.e., the decoder does not assume that the last-decoded schema message applies to future record batch messages).</p>
+<p>Returns EINVAL if schema validation fails or NANOARROW_OK otherwise. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv428ArrowIpcDecoderSetEndiannessP15ArrowIpcDecoder18ArrowIpcEndianness">
+<span id="_CPPv328ArrowIpcDecoderSetEndiannessP15ArrowIpcDecoder18ArrowIpcEndianness"></span><span id="_CPPv228ArrowIpcDecoderSetEndiannessP15ArrowIpcDecoder18ArrowIpcEndianness"></span><span id="ArrowIpcDecoderSetEndianness__ArrowIpcDecoderP.ArrowIpcEndianness"></span><span class="target" id="group__nanoarrow__ipc_1gadc1b73928cdbbb07a6287b4847004c3b"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderSetEndianness</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv418ArrowIpcEndianness" title="ArrowIpcEndianness"><span class="n"><span class="pre">ArrowIpcEndianness</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">endianness</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv428ArrowIpcDecoderSetEndiannessP15ArrowIpcDecoder18ArrowIpcEndianness" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Set the endianness used to decode future record batch messages. </p>
+<p>Prepares the decoder for future record batch messages with the specified endianness. Note that you must call this explicitly after decoding a Schema message (i.e., the decoder does not assume that the last-decoded schema message applies to future record batch messages).</p>
+<p>Returns NANOARROW_OK on success. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv430ArrowIpcDecoderDecodeArrayViewP15ArrowIpcDecoder15ArrowBufferView7int64_tPP14ArrowArrayViewP10ArrowError">
+<span id="_CPPv330ArrowIpcDecoderDecodeArrayViewP15ArrowIpcDecoder15ArrowBufferView7int64_tPP14ArrowArrayViewP10ArrowError"></span><span id="_CPPv230ArrowIpcDecoderDecodeArrayViewP15ArrowIpcDecoder15ArrowBufferView7int64_tPP14ArrowArrayViewP10ArrowError"></span><span id="ArrowIpcDecoderDecodeArrayView__ArrowIpcDecoderP.ArrowBufferView.int64_t.ArrowArrayViewPP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga44c0bdce39d396d80203ff3996892eed"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderDecodeArrayView</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">body</span></span>, <span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowArrayView" title="ArrowArrayView"><span class="n"><span class="pre">ArrowArrayView</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv430ArrowIpcDecoderDecodeArrayViewP15ArrowIpcDecoder15ArrowBufferView7int64_tPP14ArrowArrayViewP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Decode an ArrowArrayView. </p>
+<p>After a successful call to <a class="reference internal" href="#group__nanoarrow__ipc_1gaa4ea4cae2cca86081b9279e481e4dab0"><span class="std std-ref">ArrowIpcDecoderDecodeHeader()</span></a>, deserialize the content of body into an internally-managed ArrowArrayView and return it. Note that field index does not equate to column index if any columns contain nested types. Use a value of -1 to decode the entire array into a struct. The pointed-to ArrowArrayView is owned by the <a class="reference internal" href="#struct_arrow_ipc_decoder"><span class="std std-ref">ArrowIpcDecoder</span></a> and must not be released.</p>
+<p>For streams that match system endianness and do not use compression, this operation will not perform any heap allocations; however, the buffers referred to by the returned ArrowArrayView are only valid as long as the buffer referred to by body stays valid. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv426ArrowIpcDecoderDecodeArrayP15ArrowIpcDecoder15ArrowBufferView7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError">
+<span id="_CPPv326ArrowIpcDecoderDecodeArrayP15ArrowIpcDecoder15ArrowBufferView7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError"></span><span id="_CPPv226ArrowIpcDecoderDecodeArrayP15ArrowIpcDecoder15ArrowBufferView7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError"></span><span id="ArrowIpcDecoderDecodeArray__ArrowIpcDecoderP.ArrowBufferView.int64_t.ArrowArrayP.ArrowValidationLevel.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gaeea86e5a170f0b713edba7e44d5f41bb"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderDecodeArray</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">body</span></span>, <span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv420ArrowValidationLevel" title="ArrowValidationLevel"><span class="n"><span class="pre">ArrowValidationLevel</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">validation_level</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv426ArrowIpcDecoderDecodeArrayP15ArrowIpcDecoder15ArrowBufferView7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Decode an ArrowArray. </p>
+<p>After a successful call to <a class="reference internal" href="#group__nanoarrow__ipc_1gaa4ea4cae2cca86081b9279e481e4dab0"><span class="std std-ref">ArrowIpcDecoderDecodeHeader()</span></a>, assemble an ArrowArray given a message body and a field index. Note that field index does not equate to column index if any columns contain nested types. Use a value of -1 to decode the entire array into a struct. The caller is responsible for releasing the array if NANOARROW_OK is returned.</p>
+<p>Returns EINVAL if the decoder did not just decode a record batch message, ENOTSUP if the message uses features not supported by this library, or or NANOARROW_OK otherwise. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv436ArrowIpcDecoderDecodeArrayFromSharedP15ArrowIpcDecoderP20ArrowIpcSharedBuffer7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError">
+<span id="_CPPv336ArrowIpcDecoderDecodeArrayFromSharedP15ArrowIpcDecoderP20ArrowIpcSharedBuffer7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError"></span><span id="_CPPv236ArrowIpcDecoderDecodeArrayFromSharedP15ArrowIpcDecoderP20ArrowIpcSharedBuffer7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError"></span><span id="ArrowIpcDecoderDecodeArrayFromShared__ArrowIpcDecoderP.ArrowIpcSharedBufferP.int64_t.ArrowArrayP.ArrowValidationLevel.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gaec39d82c6e5b112457e5adf42d0fd9d7"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoderDecodeArrayFromShared</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">decoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcSharedBuffer" title="ArrowIpcSharedBuffer"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">shared</span></span>, <span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv420ArrowValidationLevel" title="ArrowValidationLevel"><span class="n"><span class="pre">ArrowValidationLevel</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">validation_level</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv436ArrowIpcDecoderDecodeArrayFromSharedP15ArrowIpcDecoderP20ArrowIpcSharedBuffer7int64_tP10ArrowArray20ArrowValidationLevelP10ArrowError" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Decode an ArrowArray from an owned buffer. </p>
+<p>This implementation takes advantage of the fact that it can avoid copying individual buffers. In all cases the caller must <a class="reference internal" href="#group__nanoarrow__ipc_1ga126d5828e975d2de0ef5dc1162a7085f"><span class="std std-ref">ArrowIpcSharedBufferReset()</span></a> body after one or more calls to <a class="reference internal" href="#group__nanoarrow__ipc_1gaec39d82c6e5b112457e5adf42d0fd9d7"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. If <a class="reference internal" href="#group__nanoarrow__ipc_1ga931c1a3bac83960532864a1e9f280239"><span class="std std-ref">ArrowIpcSharedBufferIsThreadSafe()</span></a> returns 0, out must not be released by another thread. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv423ArrowIpcInputStreamMoveP19ArrowIpcInputStreamP19ArrowIpcInputStream">
+<span id="_CPPv323ArrowIpcInputStreamMoveP19ArrowIpcInputStreamP19ArrowIpcInputStream"></span><span id="_CPPv223ArrowIpcInputStreamMoveP19ArrowIpcInputStreamP19ArrowIpcInputStream"></span><span id="ArrowIpcInputStreamMove__ArrowIpcInputStreamP.ArrowIpcInputStreamP"></span><span class="target" id="group__nanoarrow__ipc_1ga301d58fd1a77941ff9ca05f712b30e28"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcInputStreamMove</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv423ArrowIpcInputStreamMoveP19ArrowIpcInputStreamP19ArrowIpcInputStream" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Transfer ownership of an <a class="reference internal" href="#struct_arrow_ipc_input_stream"><span class="std std-ref">ArrowIpcInputStream</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv429ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer">
+<span id="_CPPv329ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer"></span><span id="_CPPv229ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer"></span><span id="ArrowIpcInputStreamInitBuffer__ArrowIpcInputStreamP.ArrowBufferP"></span><span class="target" id="group__nanoarrow__ipc_1gaaaa9c7ecbbf422341880881287f821ea"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcInputStreamInitBuffer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">stream</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">input</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv429ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Create an input stream from an ArrowBuffer. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv427ArrowIpcInputStreamInitFileP19ArrowIpcInputStreamPvi">
+<span id="_CPPv327ArrowIpcInputStreamInitFileP19ArrowIpcInputStreamPvi"></span><span id="_CPPv227ArrowIpcInputStreamInitFileP19ArrowIpcInputStreamPvi"></span><span id="ArrowIpcInputStreamInitFile__ArrowIpcInputStreamP.voidP.i"></span><span class="target" id="group__nanoarrow__ipc_1ga13229dfcf006367b5efe7ada3232f0e1"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcInputStreamInitFile</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">stream</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">file_ptr</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">close_on_release</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427ArrowIpcInputStreamInitFileP19ArrowIpcInputStreamPvi" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Create an input stream from a C FILE* pointer. </p>
+<p>Note that the <a class="reference internal" href="#struct_arrow_ipc_input_stream"><span class="std std-ref">ArrowIpcInputStream</span></a> has no mechanism to communicate an error if file_ptr fails to close. If this behaviour is needed, pass false to close_on_release and handle closing the file independently from stream. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv429ArrowIpcArrayStreamReaderInitP16ArrowArrayStreamP19ArrowIpcInputStreamP32ArrowIpcArrayStreamReaderOptions">
+<span id="_CPPv329ArrowIpcArrayStreamReaderInitP16ArrowArrayStreamP19ArrowIpcInputStreamP32ArrowIpcArrayStreamReaderOptions"></span><span id="_CPPv229ArrowIpcArrayStreamReaderInitP16ArrowArrayStreamP19ArrowIpcInputStreamP32ArrowIpcArrayStreamReaderOptions"></span><span id="ArrowIpcArrayStreamReaderInit__ArrowArrayStreamP.ArrowIpcInputStreamP.ArrowIpcArrayStreamReaderOptionsP"></span><span class="target" id="group__nanoarrow__ipc_1ga0afe677c571f9bc37449178940392496"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcArrayStreamReaderInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">input_stream</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv432ArrowIpcArrayStreamReaderOptions" title="ArrowIpcArrayStreamReaderOptions"><span class="n"><span class="pre">ArrowIpcArrayStreamReaderOptions</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">options</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv429ArrowIpcArrayStreamReaderInitP16ArrowArrayStreamP19ArrowIpcInputStreamP32ArrowIpcArrayStreamReaderOptions" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Initialize an ArrowArrayStream from an input stream of bytes. </p>
+<p>The stream of bytes must begin with a Schema message and be followed by zero or more RecordBatch messages as described in the Arrow IPC stream format specification. Returns NANOARROW_OK on success. If NANOARROW_OK is returned, the ArrowArrayStream takes ownership of input_stream and the caller is responsible for releasing out. </p>
+</dd></dl>
+
+</div>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcSharedBuffer">
+<span id="_CPPv320ArrowIpcSharedBuffer"></span><span id="_CPPv220ArrowIpcSharedBuffer"></span><span id="ArrowIpcSharedBuffer"></span><span class="target" id="struct_arrow_ipc_shared_buffer"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></span><a class="headerlink" href="#_CPPv420ArrowIpcSharedBuffer" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>A structure representing a reference-counted buffer that may be passed to <a class="reference internal" href="#group__nanoarrow__ipc_1gaec39d82c6e5b112457e5adf42d0fd9d7"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv415ArrowIpcDecoder">
+<span id="_CPPv315ArrowIpcDecoder"></span><span id="_CPPv215ArrowIpcDecoder"></span><span id="ArrowIpcDecoder"></span><span class="target" id="struct_arrow_ipc_decoder"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></span><a class="headerlink" href="#_CPPv415ArrowIpcDecoder" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>Decoder for Arrow IPC messages. </p>
+<p>This structure is intended to be allocated by the caller, initialized using <a class="reference internal" href="#group__nanoarrow__ipc_1ga0a0b859bb7e01fc0a0828233f959492e"><span class="std std-ref">ArrowIpcDecoderInit()</span></a>, and released with <a class="reference internal" href="#group__nanoarrow__ipc_1gad74005e3b4915f5354874d8d84b4303f"><span class="std std-ref">ArrowIpcDecoderReset()</span></a>. These fields should not be modified by the caller but can be read following a call to <a class="reference internal" href="#group__nanoarrow__ipc_1ga02b0a558c785e952737182e04eba936d"><span class="std std-ref">ArrowIpcDecoderPeekHeader()</span></a>, <a class="reference internal" href="#group__nanoarrow__ipc_1ga5d19acbf708ca5b4b7cbe32fa81378a6"><span class="std std-ref">ArrowIpcDecoderVerifyHeader()</span></a>, or <a class="reference internal" href="#group__nanoarrow__ipc_1gaa4ea4cae2cca86081b9279e481e4dab0"><span class="std std-ref">ArrowIpcDecoderDecodeHeader()</span></a>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder12message_typeE">
+<span id="_CPPv3N15ArrowIpcDecoder12message_typeE"></span><span id="_CPPv2N15ArrowIpcDecoder12message_typeE"></span><span id="ArrowIpcDecoder::message_type__ArrowIpcMessageType"></span><span class="target" id="struct_arrow_ipc_decoder_1ab2a1137feb52299e34393045656079c9"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcMessageType" title="ArrowIpcMessageType"><span class="n"><span class="pre">ArrowIpcMessageType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">message_type</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder12message_typeE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The last verified or decoded message type. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder16metadata_versionE">
+<span id="_CPPv3N15ArrowIpcDecoder16metadata_versionE"></span><span id="_CPPv2N15ArrowIpcDecoder16metadata_versionE"></span><span id="ArrowIpcDecoder::metadata_version__ArrowIpcMetadataVersion"></span><span class="target" id="struct_arrow_ipc_decoder_1a8aba38b46c54b94d154cdbc030f1d72a"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423ArrowIpcMetadataVersion" title="ArrowIpcMetadataVersion"><span class="n"><span class="pre">ArrowIpcMetadataVersion</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">metadata_version</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder16metadata_versionE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The metadata version as indicated by the current schema message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder10endiannessE">
+<span id="_CPPv3N15ArrowIpcDecoder10endiannessE"></span><span id="_CPPv2N15ArrowIpcDecoder10endiannessE"></span><span id="ArrowIpcDecoder::endianness__ArrowIpcEndianness"></span><span class="target" id="struct_arrow_ipc_decoder_1a87ef9dfb9fea7a382307dcf2974b30fa"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv418ArrowIpcEndianness" title="ArrowIpcEndianness"><span class="n"><span class="pre">ArrowIpcEndianness</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">endianness</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder10endiannessE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Buffer endianness as indicated by the current schema message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder13feature_flagsE">
+<span id="_CPPv3N15ArrowIpcDecoder13feature_flagsE"></span><span id="_CPPv2N15ArrowIpcDecoder13feature_flagsE"></span><span id="ArrowIpcDecoder::feature_flags__int32_t"></span><span class="target" id="struct_arrow_ipc_decoder_1a3662565f65066b61291a3e9f6e88bafc"></span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">feature_flags</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder13feature_flagsE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Arrow IPC Features used as indicated by the current Schema message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder5codecE">
+<span id="_CPPv3N15ArrowIpcDecoder5codecE"></span><span id="_CPPv2N15ArrowIpcDecoder5codecE"></span><span id="ArrowIpcDecoder::codec__ArrowIpcCompressionType"></span><span class="target" id="struct_arrow_ipc_decoder_1a0f3a256c90815aa501b87d94116bc389"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423ArrowIpcCompressionType" title="ArrowIpcCompressionType"><span class="n"><span class="pre">ArrowIpcCompressionType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">codec</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder5codecE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Compression used by the current RecordBatch message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder17header_size_bytesE">
+<span id="_CPPv3N15ArrowIpcDecoder17header_size_bytesE"></span><span id="_CPPv2N15ArrowIpcDecoder17header_size_bytesE"></span><span id="ArrowIpcDecoder::header_size_bytes__int32_t"></span><span class="target" id="struct_arrow_ipc_decoder_1ad1d226e845192d8af9ff9225a364a9ba"></span><span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">header_size_bytes</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder17header_size_bytesE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The number of bytes in the current header message. </p>
+<p>This value includes the 8 bytes before the start of the header message content and any padding bytes required to make the header message size be a multiple of 8 bytes. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder15body_size_bytesE">
+<span id="_CPPv3N15ArrowIpcDecoder15body_size_bytesE"></span><span id="_CPPv2N15ArrowIpcDecoder15body_size_bytesE"></span><span id="ArrowIpcDecoder::body_size_bytes__int64_t"></span><span class="target" id="struct_arrow_ipc_decoder_1a69d8c83f127711e7a757936d90c1245e"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">body_size_bytes</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder15body_size_bytesE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The number of bytes in the forthcoming body message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder12private_dataE">
+<span id="_CPPv3N15ArrowIpcDecoder12private_dataE"></span><span id="_CPPv2N15ArrowIpcDecoder12private_dataE"></span><span id="ArrowIpcDecoder::private_data__voidP"></span><span class="target" id="struct_arrow_ipc_decoder_1a9f4ddcdfde8249f3597fa0347189d399"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder12private_dataE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Private resources managed by this library. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv419ArrowIpcInputStream">
+<span id="_CPPv319ArrowIpcInputStream"></span><span id="_CPPv219ArrowIpcInputStream"></span><span id="ArrowIpcInputStream"></span><span class="target" id="struct_arrow_ipc_input_stream"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></span><a class="headerlink" href="#_CPPv419ArrowIpcInputStream" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>An user-extensible input data source. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcInputStream4readE">
+<span id="_CPPv3N19ArrowIpcInputStream4readE"></span><span id="_CPPv2N19ArrowIpcInputStream4readE"></span><span class="target" id="struct_arrow_ipc_input_stream_1a0b30cfac7de35d503c2b8260cd179f8f"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">read</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">buf</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n"><span class="pre">buf_size_bytes</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">size_read_out</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcInputStream4readE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Read up to buf_size_bytes from stream into buf. </p>
+<p>The actual number of bytes read is placed in the value pointed to by size_read_out. Returns NANOARROW_OK on success. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcInputStream7releaseE">
+<span id="_CPPv3N19ArrowIpcInputStream7releaseE"></span><span id="_CPPv2N19ArrowIpcInputStream7releaseE"></span><span class="target" id="struct_arrow_ipc_input_stream_1a4a63194b3044296768d9e54dee9c2a71"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">release</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcInputStream7releaseE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Release the stream and any resources it may be holding. </p>
+<p>Release callback implementations must set the release member to NULL. Callers must check that the release callback is not NULL before calling <a class="reference internal" href="#struct_arrow_ipc_input_stream_1a0b30cfac7de35d503c2b8260cd179f8f"><span class="std std-ref">read()</span></a> or <a class="reference internal" href="#struct_arrow_ipc_input_stream_1a4a63194b3044296768d9e54dee9c2a71"><span class="std std-ref">release()</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N19ArrowIpcInputStream12private_dataE">
+<span id="_CPPv3N19ArrowIpcInputStream12private_dataE"></span><span id="_CPPv2N19ArrowIpcInputStream12private_dataE"></span><span id="ArrowIpcInputStream::private_data__voidP"></span><span class="target" id="struct_arrow_ipc_input_stream_1a5510bd133113f69efc020d3513c8175f"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N19ArrowIpcInputStream12private_dataE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Private implementation-defined data. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv432ArrowIpcArrayStreamReaderOptions">
+<span id="_CPPv332ArrowIpcArrayStreamReaderOptions"></span><span id="_CPPv232ArrowIpcArrayStreamReaderOptions"></span><span id="ArrowIpcArrayStreamReaderOptions"></span><span class="target" id="struct_arrow_ipc_array_stream_reader_options"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcArrayStreamReaderOptions</span></span></span><a class="headerlink" href="#_CPPv432ArrowIpcArrayStreamReaderOptions" title="Permalink to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>Options for <a class="reference internal" href="#group__nanoarrow__ipc_1ga0afe677c571f9bc37449178940392496"><span class="std std-ref">ArrowIpcArrayStreamReaderInit()</span></a></p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N32ArrowIpcArrayStreamReaderOptions11field_indexE">
+<span id="_CPPv3N32ArrowIpcArrayStreamReaderOptions11field_indexE"></span><span id="_CPPv2N32ArrowIpcArrayStreamReaderOptions11field_indexE"></span><span id="ArrowIpcArrayStreamReaderOptions::field_index__int64_t"></span><span class="target" id="struct_arrow_ipc_array_stream_reader_options_1a544ff267e0aaead4319b49110efebe3d"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">field_index</span></span></span><a class="headerlink" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions11field_indexE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The field index to extract. </p>
+<p>Defaults to -1 (i.e., read all fields). Note that this field index refers to the flattened tree of children and not necessarily the column index. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE">
+<span id="_CPPv3N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"></span><span id="_CPPv2N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"></span><span id="ArrowIpcArrayStreamReaderOptions::use_shared_buffers__i"></span><span class="target" id="struct_arrow_ipc_array_stream_reader_options_1a415145f089d7244dbc92c2dadea9988b"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">use_shared_buffers</span></span></span><a class="headerlink" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Set to a non-zero value to share the message body buffer among decoded arrays. </p>
+<p>Sharing buffers is a good choice when (1) using memory-mapped IO (since unreferenced portions of the file are often not loaded into memory) or (2) if all data from all columns are about to be referenced anyway. When loading a single field there is probably no advantage to using shared buffers. Defaults to the value of <a class="reference internal" href="#group__nanoarrow__ipc_1ga931c1a3bac83960532864a1e9f280239"><span class="std std-ref">ArrowIpcSharedBufferIsThreadSafe()</span></a>. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="c-helpers">
+<h2>C++ Helpers<a class="headerlink" href="#c-helpers" title="Permalink to this heading">#</a></h2>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_ipc_hpp-unique</span></span></dt>
+<dd><p>Extends the unique object wrappers in nanoarrow.hpp to include C structs defined in the nanoarrow_ipc.h header. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv413UniqueDecoder">
+<span id="_CPPv313UniqueDecoder"></span><span id="_CPPv213UniqueDecoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga8e49ccb04c056f739bb40de41a7f3537"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDecoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueDecoder" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_decoder"><span class="std std-ref">ArrowIpcDecoder</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv417UniqueInputStream">
+<span id="_CPPv317UniqueInputStream"></span><span id="_CPPv217UniqueInputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga01cded4704dc447650624c061d1fe5db"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueInputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv417UniqueInputStream" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_input_stream"><span class="std std-ref">ArrowIpcInputStream</span></a>. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  <!-- Previous / next buttons -->
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="cpp.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">C++ API Reference</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="device.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Device Extension Reference</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-api">C API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-helpers">C++ Helpers</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/apache/arrow-nanoarrow/edit/main/docs/source/reference/ipc.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+  <div class="tocsection sourcelink">
+    <a href="../_sources/reference/ipc.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=ac02cc09edc035673794"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=ac02cc09edc035673794"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright 2016-2023 Apache Software Foundation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
