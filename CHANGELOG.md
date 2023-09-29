@@ -116,7 +116,7 @@
 ### Fix
 
 - Resolve build warnings on Windows (#304)
-- Return `EOVERFLOW` when appending to a string or binary type would exeed 2 GB (#302)
+- Return `EOVERFLOW` when appending to a string or binary type would exceed 2 GB (#302)
 - **dev/release**: Increase test discovery timeout value (#300)
 - Fix declaration of an array with an ambiguously constexpr size (#301)
 - **r**: Ensure `ordered` is reflected in `na_dictionary()` (#299)
