@@ -293,9 +293,9 @@ void TestArrowBitmapUnpackUnsafe(const uint8_t* bitmap, std::vector<int8_t> expe
 
 TEST(BitmapTest, BitmapTestBitmapUnpack) {
   uint8_t bitmap[3];
-  int64_t n_values = sizeof(bitmap) * 8;
-  int8_t result[n_values];
-  int32_t result32[n_values];
+  int8_t result[sizeof(bitmap) * 8];
+  int32_t result32[sizeof(result)];
+  int64_t n_values = sizeof(result);
 
   // Basic test of a validity buffer that is all true
   memset(bitmap, 0xff, sizeof(bitmap));

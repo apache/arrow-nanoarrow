@@ -23,10 +23,13 @@
 
 #include "nanoarrow.h"
 
+#include "util.h"
+
 // Vector types that have some special casing internally to avoid unnecessary allocations
 // or looping at the R level. Some of these types also need an SEXP ptype to communicate
 // additional information.
 enum VectorType {
+  VECTOR_TYPE_UNINITIALIZED,
   VECTOR_TYPE_NULL,
   VECTOR_TYPE_UNSPECIFIED,
   VECTOR_TYPE_LGL,
@@ -37,6 +40,7 @@ enum VectorType {
   VECTOR_TYPE_POSIXCT,
   VECTOR_TYPE_DATE,
   VECTOR_TYPE_DIFFTIME,
+  VECTOR_TYPE_INTEGER64,
   VECTOR_TYPE_BLOB,
   VECTOR_TYPE_LIST_OF,
   VECTOR_TYPE_DATA_FRAME,
@@ -102,5 +106,14 @@ struct RConverter {
   R_xlen_t n_children;
   struct RConverter** children;
 };
+
+static inline void warn_lossy_conversion(int64_t count, const char* msg) {
+  SEXP fun = PROTECT(Rf_install("warn_lossy_conversion"));
+  SEXP count_sexp = PROTECT(Rf_ScalarReal(count));
+  SEXP msg_sexp = PROTECT(Rf_mkString(msg));
+  SEXP call = PROTECT(Rf_lang3(fun, count_sexp, msg_sexp));
+  Rf_eval(call, nanoarrow_ns_pkg);
+  UNPROTECT(4);
+}
 
 #endif

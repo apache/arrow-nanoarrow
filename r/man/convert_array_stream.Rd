@@ -2,9 +2,12 @@
 % Please edit documentation in R/convert-array-stream.R
 \name{convert_array_stream}
 \alias{convert_array_stream}
+\alias{collect_array_stream}
 \title{Convert an Array Stream into an R vector}
 \usage{
 convert_array_stream(array_stream, to = NULL, size = NULL, n = Inf)
+
+collect_array_stream(array_stream, n = Inf, schema = NULL, validate = TRUE)
 }
 \arguments{
 \item{array_stream}{A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}.}
@@ -19,9 +22,18 @@ a function of \code{array} and the default inference of the prototype.}
 slightly more efficient implementation may be used to collect the output.}
 
 \item{n}{The maximum number of batches to pull from the array stream.}
+
+\item{schema}{A \link[=as_nanoarrow_schema]{nanoarrow_schema} or \code{NULL} to guess
+based on the first schema.}
+
+\item{validate}{Use \code{FALSE} to skip the validation step (i.e., if you
+know that the arrays are valid).}
 }
 \value{
-An R vector of type \code{to}.
+\itemize{
+\item \code{convert_array_stream()}: An R vector of type \code{to}.
+\item \code{collect_array_stream()}: A \code{list()} of \link[=as_nanoarrow_array]{nanoarrow_array}
+}
 }
 \description{
 Converts \code{array_stream} to the type specified by \code{to}. This is a low-level
@@ -34,5 +46,8 @@ default inferences of \code{to}.
 stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
 str(convert_array_stream(stream))
 str(convert_array_stream(stream, to = data.frame(x = double())))
+
+stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+collect_array_stream(stream)
 
 }

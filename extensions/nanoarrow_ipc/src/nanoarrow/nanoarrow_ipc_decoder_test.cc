@@ -127,9 +127,16 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   data.data.as_uint8 = kSimpleSchema;
   data.size_bytes = 1;
 
+  // For each error, check both Verify and Decode
+
   ArrowIpcDecoderInit(&decoder);
 
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
+  EXPECT_STREQ(error.message,
+               "Expected data of at least 8 bytes but only 1 bytes remain");
+
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ESPIPE);
   EXPECT_STREQ(error.message,
                "Expected data of at least 8 bytes but only 1 bytes remain");
 
@@ -140,22 +147,37 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   EXPECT_STREQ(error.message,
                "Expected 0xFFFFFFFF at start of message but found 0x00000000");
 
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected 0xFFFFFFFF at start of message but found 0x00000000");
+
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = negative_one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected message body size > 0 but found message body size of -1 bytes");
 
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected message body size > 0 but found message body size of -1 bytes");
+
   eight_bad_bytes[1] = one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
-
   EXPECT_STREQ(error.message,
-               "Expected 0 <= message body size <= 0 bytes but found message body size "
-               "of 1 bytes");
+               "Expected >= 9 bytes of remaining data but found 8 bytes in buffer");
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ESPIPE);
+  EXPECT_STREQ(error.message,
+               "Expected >= 9 bytes of remaining data but found 8 bytes in buffer");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = 0;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ENODATA);
+  EXPECT_STREQ(error.message, "End of Arrow stream");
+  ArrowErrorInit(&error);
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ENODATA);
   EXPECT_STREQ(error.message, "End of Arrow stream");
 
   ArrowIpcDecoderReset(&decoder);
@@ -191,15 +213,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleSchema) {
   EXPECT_EQ(decoder.header_size_bytes, sizeof(kSimpleSchema));
   EXPECT_EQ(decoder.body_size_bytes, 0);
 
-  uint8_t simple_schema_invalid[280];
-  memcpy(simple_schema_invalid, kSimpleSchema, sizeof(simple_schema_invalid));
-  memset(simple_schema_invalid + 8, 0xFF, sizeof(simple_schema_invalid) - 8);
-
-  data.data.as_uint8 = simple_schema_invalid;
-  data.size_bytes = sizeof(kSimpleSchema);
-  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Message flatbuffer verification failed");
-
   ArrowIpcDecoderReset(&decoder);
 }
 
@@ -217,6 +230,35 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
   EXPECT_EQ(decoder.header_size_bytes,
             sizeof(kSimpleRecordBatch) - decoder.body_size_bytes);
   EXPECT_EQ(decoder.body_size_bytes, 16);
+
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcVerifyInvalid) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+
+  uint8_t simple_schema_invalid[sizeof(kSimpleSchema)];
+  struct ArrowBufferView data;
+  data.data.as_uint8 = simple_schema_invalid;
+  data.size_bytes = sizeof(simple_schema_invalid);
+
+  ArrowIpcDecoderInit(&decoder);
+
+  // Create invalid data by removing bytes one at a time and ensuring an error code and
+  // a null-terminated error. After byte 265 this passes because the values being modified
+  // are parts of the flatbuffer that won't cause overrun.
+  for (int64_t i = 1; i < 265; i++) {
+    SCOPED_TRACE(i);
+
+    memcpy(simple_schema_invalid, kSimpleSchema, i);
+    memcpy(simple_schema_invalid + i, kSimpleSchema + (i + 1),
+           (sizeof(simple_schema_invalid) - i));
+
+    ArrowErrorInit(&error);
+    ASSERT_NE(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
+    ASSERT_GT(strlen(error.message), 0);
+  }
 
   ArrowIpcDecoderReset(&decoder);
 }

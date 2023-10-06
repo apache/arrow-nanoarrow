@@ -24,24 +24,23 @@
 #include "materialize_common.h"
 #include "nanoarrow.h"
 
-static inline int nanoarrow_materialize_chr(struct ArrayViewSlice* src,
-                                            struct VectorSlice* dst,
-                                            struct MaterializeOptions* options) {
+static inline int nanoarrow_materialize_chr(struct RConverter* converter) {
+  struct ArrayViewSlice* src = &converter->src;
+  struct VectorSlice* dst = &converter->dst;
+
   switch (src->array_view->storage_type) {
     case NANOARROW_TYPE_NA:
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
+      }
+      return NANOARROW_OK;
+
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
       break;
+
     default:
-      return EINVAL;
-  }
-
-  if (src->array_view->storage_type == NANOARROW_TYPE_NA) {
-    for (R_xlen_t i = 0; i < dst->length; i++) {
-      SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
-    }
-
-    return NANOARROW_OK;
+      return ENOTSUP;
   }
 
   struct ArrowStringView item;

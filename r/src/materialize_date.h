@@ -37,7 +37,7 @@ static int nanoarrow_materialize_date(struct RConverter* converter) {
     }
   }
 
-  return EINVAL;
+  return ENOTSUP;
 }
 
 #endif

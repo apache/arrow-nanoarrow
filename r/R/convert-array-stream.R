@@ -28,14 +28,20 @@
 #'   slightly more efficient implementation may be used to collect the output.
 #' @param n The maximum number of batches to pull from the array stream.
 #' @inheritParams convert_array
+#' @inheritParams basic_array_stream
 #'
-#' @return An R vector of type `to`.
+#' @return
+#'   - `convert_array_stream()`: An R vector of type `to`.
+#'   - `collect_array_stream()`: A `list()` of [nanoarrow_array][as_nanoarrow_array]
 #' @export
 #'
 #' @examples
 #' stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
 #' str(convert_array_stream(stream))
 #' str(convert_array_stream(stream, to = data.frame(x = double())))
+#'
+#' stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
+#' collect_array_stream(stream)
 #'
 convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) {
   stopifnot(
@@ -50,38 +56,82 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
   }
 
   n <- as.double(n)[1]
+
+
   if (!is.null(size)) {
-    return(
-      .Call(
-        nanoarrow_c_convert_array_stream,
-        array_stream,
-        to,
-        as.double(size)[1],
-        n
-      )
+    # The underlying nanoarrow_c_convert_array_stream() currently requires that
+    # the total length of all batches is known in advance. If the caller
+    # provided this we can save a bit of work.
+    .Call(
+      nanoarrow_c_convert_array_stream,
+      array_stream,
+      to,
+      as.double(size)[1],
+      n
     )
+  } else {
+    # Otherwise, we need to collect all batches and calculate the total length
+    # before calling nanoarrow_c_convert_array_stream().
+    batches <- collect_array_stream(
+      array_stream,
+      n,
+      schema = schema,
+      validate = FALSE
+    )
+
+    # If there is exactly one batch, use convert_array(). Converting a single
+    # array currently takes a more efficient code path for types that can be
+    # converted as ALTREP (e.g., strings).
+    if (length(batches) == 1L) {
+      return(.Call(nanoarrow_c_convert_array, batches[[1]], to))
+    }
+
+    # Otherwise, compute the final size, create another array stream,
+    # and call convert_array_stream() with a known size. Using .Call()
+    # directly because we have already type checked the inputs.
+    size <- .Call(nanoarrow_c_array_list_total_length, batches)
+    basic_stream <- .Call(nanoarrow_c_basic_array_stream, batches, schema, FALSE)
+
+    .Call(
+      nanoarrow_c_convert_array_stream,
+      basic_stream,
+      to,
+      as.double(size),
+      Inf
+    )
+  }
+}
+
+#' @rdname convert_array_stream
+#' @export
+collect_array_stream <- function(array_stream, n = Inf, schema = NULL,
+                                 validate = TRUE) {
+  stopifnot(
+    inherits(array_stream, "nanoarrow_array_stream")
+  )
+
+  if (is.null(schema)) {
+    schema <- .Call(nanoarrow_c_array_stream_get_schema, array_stream)
   }
 
   batches <- vector("list", 1024L)
-  n_batches <- 0L
+  n_batches <- 0
   get_next <- array_stream$get_next
-  while (!is.null(array <- get_next(schema, validate = FALSE)) && (n_batches < n)) {
-    n_batches <- n_batches + 1L
-    batches[[n_batches]] <- .Call(nanoarrow_c_convert_array, array, to)
+  while (n_batches < n) {
+    array <- get_next(schema, validate = validate)
+    if (is.null(array)) {
+      break
+    }
+
+    n_batches <- n_batches + 1
+
+    # This assignment has reasonable (but not great) performance when
+    # n_batches > 1024 in recent versions of R because R overallocates vectors
+    # slightly to support this pattern. It may be worth moving this
+    # implementation to C or C++ in the future if the collect step becomes a
+    # bottleneck.
+    batches[[n_batches]] <- array
   }
 
-  if (n_batches == 0L) {
-    # vec_slice(to, 0)
-    if (is.data.frame(to)) {
-      to[integer(0), , drop = FALSE]
-    } else {
-      to[integer(0)]
-    }
-  } else if (n_batches == 1L) {
-    batches[[1]]
-  } else if (inherits(to, "data.frame")) {
-    do.call(rbind, batches[seq_len(n_batches)])
-  } else {
-    do.call(c, batches[seq_len(n_batches)])
-  }
+  batches[seq_len(n_batches)]
 }

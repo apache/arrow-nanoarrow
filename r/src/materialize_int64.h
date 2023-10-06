@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_MATERIALIZE_INT_H_INCLUDED
-#define R_MATERIALIZE_INT_H_INCLUDED
+#ifndef R_MATERIALIZE_INT64_H_INCLUDED
+#define R_MATERIALIZE_INT64_H_INCLUDED
 
 #include <R.h>
 #include <Rinternals.h>
@@ -24,14 +24,16 @@
 #include "materialize_common.h"
 #include "nanoarrow.h"
 
-static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
-                                            struct VectorSlice* dst,
-                                            struct MaterializeOptions* options) {
+#define NA_INTEGER64 INT64_MIN
+
+static inline int nanoarrow_materialize_int64(struct ArrayViewSlice* src,
+                                              struct VectorSlice* dst,
+                                              struct MaterializeOptions* options) {
   if (src->array_view->array->dictionary != NULL) {
     return ENOTSUP;
   }
 
-  int* result = INTEGER(dst->vec_sexp);
+  int64_t* result = (int64_t*)REAL(dst->vec_sexp);
   int64_t n_bad_values = 0;
 
   // True for all the types supported here
@@ -42,41 +44,30 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
   switch (src->array_view->storage_type) {
     case NANOARROW_TYPE_NA:
       for (R_xlen_t i = 0; i < dst->length; i++) {
-        result[dst->offset + i] = NA_INTEGER;
+        result[dst->offset + i] = NA_INTEGER64;
       }
       break;
-    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_INT64:
       memcpy(result + dst->offset,
              src->array_view->buffer_views[1].data.as_int32 + raw_src_offset,
-             dst->length * sizeof(int32_t));
+             dst->length * sizeof(int64_t));
 
-      // Set any nulls to NA_INTEGER
+      // Set any nulls to NA_INTEGER64
       if (is_valid != NULL && src->array_view->array->null_count != 0) {
         for (R_xlen_t i = 0; i < dst->length; i++) {
           if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
-            result[dst->offset + i] = NA_INTEGER;
+            result[dst->offset + i] = NA_INTEGER64;
           }
         }
       }
       break;
     case NANOARROW_TYPE_BOOL:
-      ArrowBitsUnpackInt32(
-          src->array_view->buffer_views[1].data.as_uint8 + raw_src_offset, raw_src_offset,
-          dst->length, result + dst->offset);
-
-      // Set any nulls to NA_LOGICAL
-      if (is_valid != NULL && src->array_view->array->null_count != 0) {
-        for (R_xlen_t i = 0; i < dst->length; i++) {
-          if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
-            result[dst->offset + i] = NA_LOGICAL;
-          }
-        }
-      }
-      break;
     case NANOARROW_TYPE_INT8:
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT16:
     case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT32:
       // No need to bounds check for these types
       for (R_xlen_t i = 0; i < dst->length; i++) {
         result[dst->offset + i] =
@@ -87,13 +78,11 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
       if (is_valid != NULL && src->array_view->array->null_count != 0) {
         for (R_xlen_t i = 0; i < dst->length; i++) {
           if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
-            result[dst->offset + i] = NA_INTEGER;
+            result[dst->offset + i] = NA_INTEGER64;
           }
         }
       }
       break;
-    case NANOARROW_TYPE_UINT32:
-    case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
@@ -103,21 +92,21 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
         for (R_xlen_t i = 0; i < dst->length; i++) {
           if (ArrowBitGet(is_valid, raw_src_offset + i)) {
             int64_t value = ArrowArrayViewGetIntUnsafe(src->array_view, src->offset + i);
-            if (value > INT_MAX || value <= NA_INTEGER) {
-              result[dst->offset + i] = NA_INTEGER;
+            if (value > INT64_MAX || value <= NA_INTEGER64) {
+              result[dst->offset + i] = NA_INTEGER64;
               n_bad_values++;
             } else {
               result[dst->offset + i] = value;
             }
           } else {
-            result[dst->offset + i] = NA_INTEGER;
+            result[dst->offset + i] = NA_INTEGER64;
           }
         }
       } else {
         for (R_xlen_t i = 0; i < dst->length; i++) {
           int64_t value = ArrowArrayViewGetIntUnsafe(src->array_view, src->offset + i);
-          if (value > INT_MAX || value <= NA_INTEGER) {
-            result[dst->offset + i] = NA_INTEGER;
+          if (value > INT64_MAX || value <= NA_INTEGER64) {
+            result[dst->offset + i] = NA_INTEGER64;
             n_bad_values++;
           } else {
             result[dst->offset + i] = value;
@@ -131,7 +120,7 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
   }
 
   if (n_bad_values > 0) {
-    warn_lossy_conversion(n_bad_values, "outside integer range set to NA");
+    warn_lossy_conversion(n_bad_values, "outside integer64 range set to NA");
   }
 
   return NANOARROW_OK;

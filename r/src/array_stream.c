@@ -141,6 +141,18 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
   return array_stream_xptr;
 }
 
+SEXP nanoarrow_c_array_list_total_length(SEXP list_of_array_xptr) {
+  int64_t total_length = 0;
+  R_xlen_t num_chunks = Rf_xlength(list_of_array_xptr);
+  for (R_xlen_t i = 0; i < num_chunks; i++) {
+    struct ArrowArray* chunk =
+        (struct ArrowArray*)R_ExternalPtrAddr(VECTOR_ELT(list_of_array_xptr, i));
+    total_length += chunk->length;
+  }
+
+  return length_sexp_from_int64(total_length);
+}
+
 // Implementation of an ArrowArrayStream that keeps a dependent object valid
 struct WrapperArrayStreamData {
   SEXP parent_array_stream_xptr;

@@ -22,7 +22,7 @@ if(NOT DEFINED CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
 
-set(NANOARROW_VERSION "0.3.0-SNAPSHOT")
+set(NANOARROW_VERSION "0.4.0-SNAPSHOT")
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" NANOARROW_BASE_VERSION
              "${NANOARROW_VERSION}")
 project(nanoarrow VERSION "${NANOARROW_BASE_VERSION}")
@@ -230,10 +230,13 @@ if(NANOARROW_BUILD_TESTS)
   target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main coverage_config)
 
   include(GoogleTest)
-  gtest_discover_tests(utils_test)
-  gtest_discover_tests(buffer_test)
-  gtest_discover_tests(array_test)
-  gtest_discover_tests(schema_test)
-  gtest_discover_tests(array_stream_test)
-  gtest_discover_tests(nanoarrow_hpp_test)
+  # Some users have reported a timeout with the default value of 5
+  # Building with -DBUILD_SHARED_LIBS=ON may also help reduce the size of test
+  # executables.
+  gtest_discover_tests(utils_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(buffer_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(array_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(schema_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
 endif()

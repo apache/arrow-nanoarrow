@@ -386,6 +386,16 @@ na_map <- function(key_type, item_type, keys_sorted = FALSE, nullable = TRUE) {
 na_dictionary <- function(value_type, index_type = na_int32(), ordered = FALSE) {
   index_type <- as_nanoarrow_schema(index_type)
   index_type$dictionary <- value_type
+
+  if (ordered) {
+    index_type$flags <- bitwOr(index_type$flags, ARROW_FLAG$DICTIONARY_ORDERED)
+  } else {
+    index_type$flags <- bitwAnd(
+      index_type$flags,
+      bitwNot(ARROW_FLAG$DICTIONARY_ORDERED)
+    )
+  }
+
   index_type
 }
 
@@ -451,4 +461,10 @@ NANOARROW_TYPE <- list(
   LARGE_BINARY = 36L,
   LARGE_LIST = 37L,
   INTERVAL_MONTH_DAY_NANO = 38L
+)
+
+ARROW_FLAG <- list(
+  DICTIONARY_ORDERED = 1L,
+  NULLABLE = 2L,
+  MAP_KEYS_SORTED = 4L
 )

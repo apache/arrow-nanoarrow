@@ -63,8 +63,14 @@ infer_nanoarrow_ptype <- function(x) {
 # have been tried. Some of these inferences could be moved to C to be faster
 # (but are much less verbose to create here)
 infer_ptype_other <- function(schema) {
-  # we don't need the user-friendly versions and this is performance-sensitive
+  # We don't need the user-friendly versions and this is performance-sensitive
   parsed <- .Call(nanoarrow_c_schema_parse, schema)
+
+  # Give registered extension types a chance to resolve the ptype
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(infer_nanoarrow_ptype_extension(spec, schema))
+  }
 
   switch(
     parsed$type,
@@ -91,11 +97,19 @@ infer_ptype_other <- function(schema) {
         tzone = parsed$timezone
       )
     },
+    "map" = ,
     "large_list" = ,
     "list" = ,
     "fixed_size_list" = {
       ptype <- infer_nanoarrow_ptype(schema$children[[1]])
       vctrs::list_of(.ptype = ptype)
+    },
+    "dictionary" = {
+      # Even though R's 'factor' can handle a dictionary of strings
+      # (perhaps the most common case), an array arriving in chunks may have
+      # different dictionary arrays. Thus, the best type-stable default we can
+      # achieve is to expand dictionaries.
+      infer_nanoarrow_ptype(schema$dictionary)
     },
     stop_cant_infer_ptype(schema, n = -1)
   )
@@ -107,7 +121,7 @@ stop_cant_infer_ptype <- function(schema, n = 0) {
   if (is.null(schema$name) || identical(schema$name, "")) {
     cnd <- simpleError(
       sprintf(
-        "Can't infer R vector type for array <%s>",
+        "Can't infer R vector type for <%s>",
         schema_label
       ),
       call = sys.call(n - 1)

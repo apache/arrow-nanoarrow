@@ -41,6 +41,12 @@ through a floating-point double (e.g., very large uint64 and int64 values).
 \item \code{\link[=character]{character()}}: String and large string types can be converted to
 \code{\link[=character]{character()}}. The conversion does not check for valid UTF-8: if you need
 finer-grained control over encodings, use \code{to = blob::blob()}.
+\item \code{\link[=factor]{factor()}}: Dictionary-encoded arrays of strings can be converted to
+\code{factor()}; however, this must be specified explicitly (i.e.,
+\code{convert_array(array, factor())}) because arrays arriving
+in chunks can have dictionaries that contain different levels. Use
+\code{convert_array(array, factor(levels = c(...)))} to materialize an array
+into a vector with known levels.
 \item \link[=as.Date]{Date}: Only the date32 type can be converted to an R Date vector.
 \item \code{\link[hms:hms]{hms::hms()}}: Time32 and time64 types can be converted to \code{\link[hms:hms]{hms::hms()}}.
 \item \code{\link[=difftime]{difftime()}}: Time32, time64, and duration types can be converted to
@@ -57,8 +63,7 @@ however, a warning will be raised if any non-null values are encountered.
 
 In addition to the above conversions, a null array may be converted to any
 target prototype except \code{\link[=data.frame]{data.frame()}}. Extension arrays are currently
-converted as their storage type; dictionary-encoded arrays are not
-currently supported.
+converted as their storage type.
 }
 \examples{
 array <- as_nanoarrow_array(data.frame(x = 1:5))

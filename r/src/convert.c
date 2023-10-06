@@ -250,6 +250,8 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
     } else if (Rf_inherits(ptype, "difftime")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_DIFFTIME;
       converter->ptype_view.r_time_units = time_units_from_difftime(ptype);
+    } else if (Rf_inherits(ptype, "integer64")) {
+      converter->ptype_view.vector_type = VECTOR_TYPE_INTEGER64;
     } else {
       converter->ptype_view.vector_type = VECTOR_TYPE_OTHER;
     }
@@ -290,32 +292,6 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
 
   // TODO: Currently we error at the materialize stage if a conversion is not possible;
   // however, at this stage we have all the information we need to calculate that.
-
-  // For extension types, warn that we are about to strip the extension type, as we don't
-  // have a mechanism for dealing with them yet
-  if (converter->schema_view.extension_name.size_bytes > 0) {
-    int64_t schema_chars = ArrowSchemaToString(schema, NULL, 0, 1);
-    SEXP fmt_shelter = PROTECT(Rf_allocVector(RAWSXP, schema_chars + 1));
-    ArrowSchemaToString(schema, (char*)RAW(fmt_shelter), schema_chars + 1, 1);
-    const char* schema_name = schema->name;
-    if (schema_name == NULL || schema_name[0] == '\0') {
-      Rf_warning("Converting unknown extension %s as storage type",
-                 (const char*)RAW(fmt_shelter));
-    } else {
-      Rf_warning("%s: Converting unknown extension %s as storage type", schema_name,
-                 (const char*)RAW(fmt_shelter));
-    }
-
-    UNPROTECT(1);
-  }
-
-  // Sub-par error for dictionary types until we have a way to deal with them
-  if (converter->schema_view.type == NANOARROW_TYPE_DICTIONARY) {
-    ArrowErrorSet(&converter->error,
-                  "Conversion to dictionary-encoded array is not supported");
-    return ENOTSUP;
-  }
-
   SET_VECTOR_ELT(converter_shelter, 1, schema_xptr);
 
   ArrowArrayViewReset(&converter->array_view);

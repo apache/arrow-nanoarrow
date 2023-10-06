@@ -172,7 +172,7 @@ test_that("as_nanoarrow_array() works for double() -> na_int32()", {
   # With overflow
   expect_warning(
     as_nanoarrow_array(.Machine$integer.max + as.double(1:5), schema = na_int32()),
-    "5 value\\(s\\) overflowed"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 })
 
@@ -195,6 +195,62 @@ test_that("as_nanoarrow_array() works for double() -> na_int64()", {
     packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
   )
   expect_identical(convert_array(array), as.double(c(1:10, NA_real_)))
+})
+
+test_that("as_nanoarrow_array() works for integer64() -> na_int32()", {
+  skip_if_not_installed("bit64")
+
+  # Without nulls
+  array <- as_nanoarrow_array(bit64::as.integer64(1:10), schema = na_int32())
+  expect_identical(infer_nanoarrow_schema(array)$format, "i")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(1:10))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(bit64::as.integer64(c(1:10, NA_real_)), schema = na_int32())
+  expect_identical(infer_nanoarrow_schema(array)$format, "i")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
+  )
+  # The last element here is 0 because (int)nan is undefined behaviour
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(1:10, 0L)))
+  )
+})
+
+test_that("as_nanoarrow_array() works for integer64() -> na_int64()", {
+  skip_if_not_installed("bit64")
+
+  # Default roundtrip
+  array <- as_nanoarrow_array(bit64::as.integer64(1:10))
+  expect_identical(convert_array(array, double()), as.double(1:10))
+
+  # Without nulls
+  array <- as_nanoarrow_array(bit64::as.integer64(1:10), schema = na_int64())
+  expect_identical(infer_nanoarrow_schema(array)$format, "l")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  # This *is* how we create int64 buffers, so just check the roundtrip
+  expect_identical(convert_array(array, double()), as.double(1:10))
+
+  # With nulls
+  array <- as_nanoarrow_array(bit64::as.integer64(c(1:10, NA_real_)), schema = na_int64())
+  expect_identical(infer_nanoarrow_schema(array)$format, "l")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(convert_array(array, double()), as.double(c(1:10, NA_real_)))
 })
 
 test_that("as_nanoarrow_array() works for double -> na_int8()", {

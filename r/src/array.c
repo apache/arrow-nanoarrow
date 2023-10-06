@@ -375,14 +375,6 @@ static SEXP borrow_unknown_buffer(struct ArrowArray* array, int64_t i, SEXP shel
   return buffer_borrowed_xptr(array->buffers[i], 0, shelter);
 }
 
-static SEXP length_from_int64(int64_t value) {
-  if (value < INT_MAX) {
-    return Rf_ScalarInteger(value);
-  } else {
-    return Rf_ScalarReal(value);
-  }
-}
-
 static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP shelter) {
   SEXP buffer_class = PROTECT(Rf_allocVector(STRSXP, 2));
   SET_STRING_ELT(buffer_class, 1, Rf_mkChar("nanoarrow_buffer"));
@@ -410,9 +402,9 @@ SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursi
                          "children", "dictionary", ""};
   SEXP array_proxy = PROTECT(Rf_mkNamed(VECSXP, names));
 
-  SET_VECTOR_ELT(array_proxy, 0, length_from_int64(array->length));
-  SET_VECTOR_ELT(array_proxy, 1, length_from_int64(array->null_count));
-  SET_VECTOR_ELT(array_proxy, 2, length_from_int64(array->offset));
+  SET_VECTOR_ELT(array_proxy, 0, length_sexp_from_int64(array->length));
+  SET_VECTOR_ELT(array_proxy, 1, length_sexp_from_int64(array->null_count));
+  SET_VECTOR_ELT(array_proxy, 2, length_sexp_from_int64(array->offset));
 
   if (array->n_buffers > 0) {
     SEXP buffers = PROTECT(Rf_allocVector(VECSXP, array->n_buffers));

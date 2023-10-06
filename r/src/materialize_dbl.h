@@ -23,39 +23,19 @@
 
 #include "materialize_common.h"
 #include "nanoarrow.h"
-#include "util.h"
 
-// Fall back to arrow for decimal conversion via a package helper
-static inline void nanoarrow_materialize_decimal_to_dbl(struct RConverter* converter) {
-  // A unique situation where we don't want owning external pointers because we know
-  // these are protected for the duration of our call into R and because we don't want
-  // then to be garbage collected and invalidate the converter
-  SEXP array_xptr =
-      PROTECT(R_MakeExternalPtr(converter->array_view.array, R_NilValue, R_NilValue));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
-  SEXP schema_xptr =
-      PROTECT(R_MakeExternalPtr(converter->schema_view.schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
-
-  SEXP offset_sexp = PROTECT(Rf_ScalarReal(converter->src.offset));
-  SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
-
-  SEXP fun = PROTECT(Rf_install("convert_decimal_to_double"));
-  SEXP call = PROTECT(Rf_lang5(fun, array_xptr, schema_xptr, offset_sexp, length_sexp));
-  SEXP result_src = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
-  if (Rf_xlength(result_src) != converter->dst.length) {
-    Rf_error("Unexpected result in call to Arrow for decimal conversion");
-  }
-
-  memcpy(REAL(converter->dst.vec_sexp) + converter->dst.offset, REAL(result_src),
-         converter->dst.length * sizeof(double));
-  UNPROTECT(7);
-}
+// bit64::as.integer64(2^53)
+#define MAX_DBL_AS_INTEGER 9007199254740992
 
 static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
+  if (converter->src.array_view->array->dictionary != NULL) {
+    return ENOTSUP;
+  }
+
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
   double* result = REAL(dst->vec_sexp);
+  int64_t n_bad_values = 0;
 
   // True for all the types supported here
   const uint8_t* is_valid = src->array_view->buffer_views[0].data.as_uint8;
@@ -89,12 +69,8 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT32:
     case NANOARROW_TYPE_UINT32:
-    case NANOARROW_TYPE_INT64:
-    case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_FLOAT:
-      // TODO: implement bounds check for int64 and uint64, but instead
-      // of setting to NA, just warn (because sequential values might not
-      // roundtrip above 2^51 ish)
+      // No need to bounds check these types
       for (R_xlen_t i = 0; i < dst->length; i++) {
         result[dst->offset + i] =
             ArrowArrayViewGetDoubleUnsafe(src->array_view, src->offset + i);
@@ -110,12 +86,35 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
       }
       break;
 
-    case NANOARROW_TYPE_DECIMAL128:
-      nanoarrow_materialize_decimal_to_dbl(converter);
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        double value = ArrowArrayViewGetDoubleUnsafe(src->array_view, src->offset + i);
+        if (value > MAX_DBL_AS_INTEGER || value < -MAX_DBL_AS_INTEGER) {
+          // Content of null slot is undefined
+          n_bad_values += is_valid == NULL || ArrowBitGet(is_valid, raw_src_offset + i);
+        }
+
+        result[dst->offset + i] = value;
+      }
+
+      // Set any nulls to NA_REAL
+      if (is_valid != NULL && src->array_view->array->null_count != 0) {
+        for (R_xlen_t i = 0; i < dst->length; i++) {
+          if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
+            result[dst->offset + i] = NA_REAL;
+          }
+        }
+      }
       break;
 
     default:
       return EINVAL;
+  }
+
+  if (n_bad_values > 0) {
+    warn_lossy_conversion(
+        n_bad_values, "may have incurred loss of precision in conversion to double()");
   }
 
   return NANOARROW_OK;

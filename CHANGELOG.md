@@ -99,3 +99,39 @@
 
 - **extensions/nanoarrow_ipc**: Reconfigure assembling arrays for better validation (#209)
 - Unify `ArrowArrayView` and `ArrowArray` validation (#201)
+
+## nanoarrow 0.3.0 (2023-09-26)
+
+### Feat
+
+- **r**: Use classed warnings to signal that a lossy conversion occurred (#298)
+- **r**: Add support for `bit64::integer64()` conversions (#293)
+- **r**: Implement extension type registration/conversion  (#288)
+- **r**: Implement dictionary conversion (#285)
+- Add `ArrowBitsUnpackInt32()` (#278)
+- Add `ArrowBitmapUnpackInt8Unsafe()` (#276)
+- Add Support for Intervals (#258)
+- **extensions/nanoarrow_device**: Draft DeviceArray interface (#205)
+
+### Fix
+
+- Resolve build warnings on Windows (#304)
+- Return `EOVERFLOW` when appending to a string or binary type would exceed 2 GB (#302)
+- **dev/release**: Increase test discovery timeout value (#300)
+- Fix declaration of an array with an ambiguously constexpr size (#301)
+- **r**: Ensure `ordered` is reflected in `na_dictionary()` (#299)
+- **r**: Warn for possibly out of range int64 -> double conversions (#294)
+- **extensions/nanoarrow_ipc**: Check number of bytes read when reading buffer body (#295)
+- Ensure that test for increasing offsets is not affected by overflow (#291)
+- **extensions/nanoarrow_ipc**: Fix crash and mixleading error messages resulting from corrupted streams (#289)
+- **r**: Support map conversion to R vector (#282)
+- **examples/linesplitter**: Fix CMake Build (#271)
+- **r**: Don't link to arrow package R6 class pages (#269)
+- **python**: Ensure generator does not raise `StopIteration` (#262)
+- **docs**: Fix typo in getting started article (#250)
+- Fix bad access crash in `ArrowBitmapByteCountSet()` (#242)
+
+### Refactor
+
+- **r**: Use `basic_array_stream()` to improve array stream to data.frame conversion (#279)
+- **python**: Cleaner strategy for `__iter__()` on an `ArrowArrayStream` (#263)

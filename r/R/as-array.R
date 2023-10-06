@@ -21,6 +21,14 @@ as_nanoarrow_array.default <- function(x, ..., schema = NULL, .from_c = FALSE) {
   # and no suitable S3 method was found or the x--schema combination is not
   # implemented in nanoarrow. Try arrow::as_arrow_array().
   if (.from_c) {
+    # Give extension types a chance to handle conversion
+    parsed <- .Call(nanoarrow_c_schema_parse, schema)
+
+    if (!is.null(parsed$extension_name)) {
+      spec <- resolve_nanoarrow_extension(parsed$extension_name)
+      return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
+    }
+
     assert_arrow_installed(
       sprintf(
         "create %s array from object of type %s",
@@ -67,12 +75,59 @@ as_nanoarrow_array.nanoarrow_array <- function(x, ..., schema = NULL) {
 }
 
 #' @export
+as_nanoarrow_array.integer64 <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  }
+
+  schema <- as_nanoarrow_schema(schema)
+  parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
+  }
+
+  switch(
+    parsed$type,
+    int64 = ,
+    uint64 = {
+      if (anyNA(x)) {
+        is_valid_lgl <- is.finite(x)
+        is_valid <- as_nanoarrow_array(is_valid_lgl, schema = na_bool())$buffers[[2]]
+        na_count <- length(x) - sum(is_valid_lgl)
+      } else {
+        is_valid <- NULL
+        na_count <- 0
+      }
+
+      array <- nanoarrow_array_init(schema)
+      nanoarrow_array_modify(
+        array,
+        list(
+          length = length(x),
+          null_count = na_count,
+          buffers = list(is_valid, x)
+        )
+      )
+    },
+    as_nanoarrow_array(as.double(x), schema = schema)
+  )
+
+}
+
+#' @export
 as_nanoarrow_array.POSIXct <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
+  }
+
   switch(
     parsed$type,
     timestamp = ,
@@ -96,7 +151,13 @@ as_nanoarrow_array.difftime <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
+  }
+
   src_unit <- attr(x, "units")
   switch(
     parsed$type,
@@ -140,7 +201,13 @@ as_nanoarrow_array.Date <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
+  }
+
   switch(
     parsed$type,
     date32 = {
@@ -169,6 +236,13 @@ as_nanoarrow_array.POSIXlt <- function(x, ..., schema = NULL) {
     schema <- infer_nanoarrow_schema(x)
   }
 
+  schema <- as_nanoarrow_schema(schema)
+  parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
+  }
+
   as_nanoarrow_array(new_data_frame(x, length(x)), schema = schema)
 }
 
@@ -176,6 +250,13 @@ as_nanoarrow_array.POSIXlt <- function(x, ..., schema = NULL) {
 as_nanoarrow_array.factor <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
     schema <- infer_nanoarrow_schema(x)
+  }
+
+  schema <- as_nanoarrow_schema(schema)
+  parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
   }
 
   if (is.null(schema$dictionary)) {
@@ -198,8 +279,15 @@ as_nanoarrow_array.vctrs_unspecified <- function(x, ..., schema = NULL) {
     schema <- as_nanoarrow_schema(schema)
   }
 
+  schema <- as_nanoarrow_schema(schema)
+  parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name)) {
+    spec <- resolve_nanoarrow_extension(parsed$extension_name)
+    return(as_nanoarrow_array_extension(spec, x, ..., schema = schema))
+  }
+
   switch(
-    nanoarrow_schema_parse(schema)$storage_type,
+    parsed$storage_type,
     na = {
       array <- nanoarrow_array_init(schema)
       array$length <- length(x)

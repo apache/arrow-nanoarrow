@@ -55,4 +55,15 @@ static inline void check_trivial_alloc(const void* ptr, const char* ptr_type) {
   }
 }
 
+// So that lengths >INT_MAX do not overflow an INTSXP. Most places
+// in R return an integer length except for lengths where this is not
+// possible.
+static inline SEXP length_sexp_from_int64(int64_t value) {
+  if (value < INT_MAX) {
+    return Rf_ScalarInteger(value);
+  } else {
+    return Rf_ScalarReal(value);
+  }
+}
+
 #endif

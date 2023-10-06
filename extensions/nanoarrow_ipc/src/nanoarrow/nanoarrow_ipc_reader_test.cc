@@ -244,6 +244,50 @@ TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
   stream.release(&stream);
 }
 
+TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageHeader) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema) - 1),
+            NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowSchema schema;
+  ASSERT_EQ(stream.get_schema(&stream, &schema), ESPIPE);
+  EXPECT_STREQ(stream.get_last_error(&stream),
+               "Expected >= 280 bytes of remaining data but found 279 bytes in buffer");
+
+  stream.release(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageBody) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  // Truncate the record batch at the very end of the body
+  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch,
+                              sizeof(kSimpleRecordBatch) - 1),
+            NANOARROW_OK);
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+  struct ArrowArray array;
+  ASSERT_EQ(stream.get_next(&stream, &array), ESPIPE);
+  EXPECT_STREQ(stream.get_last_error(&stream),
+               "Expected to be able to read 16 bytes for message body but got 15");
+
+  stream.release(&stream);
+}
+
 TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
   struct ArrowBuffer input_buffer;
   ArrowBufferInit(&input_buffer);
@@ -274,8 +318,9 @@ TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
 TEST(NanoarrowIpcReader, StreamReaderExpectedSchema) {
   struct ArrowBuffer input_buffer;
   ArrowBufferInit(&input_buffer);
-  ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleSchema)),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowBufferAppend(&input_buffer, kSimpleRecordBatch, sizeof(kSimpleRecordBatch)),
+      NANOARROW_OK);
 
   struct ArrowIpcInputStream input;
   ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
@@ -289,6 +334,64 @@ TEST(NanoarrowIpcReader, StreamReaderExpectedSchema) {
                "Unexpected message type at start of input (expected Schema)");
 
   stream.release(&stream);
+}
+
+TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
+  struct ArrowBuffer input_buffer;
+  struct ArrowIpcInputStream input;
+  struct ArrowArrayStream stream;
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+
+  uint8_t simple_stream_invalid[sizeof(kSimpleSchema) + sizeof(kSimpleRecordBatch)];
+  struct ArrowBufferView data;
+  data.data.as_uint8 = simple_stream_invalid;
+
+  // Create invalid data by removing bytes one at a time and ensuring an error code and
+  // a null-terminated error. After byte 273/280 this passes because the bytes are just
+  // padding.
+  data.size_bytes = sizeof(kSimpleSchema);
+  for (int64_t i = 1; i < 273; i++) {
+    SCOPED_TRACE(i);
+
+    memcpy(simple_stream_invalid, kSimpleSchema, i);
+    memcpy(simple_stream_invalid + i, kSimpleSchema + (i + 1),
+           (sizeof(kSimpleSchema) - i));
+
+    ArrowBufferInit(&input_buffer);
+    ASSERT_EQ(ArrowBufferAppendBufferView(&input_buffer, data), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+    ASSERT_NE(stream.get_schema(&stream, &schema), NANOARROW_OK);
+    ASSERT_GT(strlen(stream.get_last_error(&stream)), 0);
+
+    stream.release(&stream);
+  }
+
+  // Do the same exercise removing bytes of the record batch message.
+  // Similarly, this succeeds if the byte removed is part of the padding at the end.
+  memcpy(simple_stream_invalid, kSimpleSchema, sizeof(kSimpleSchema));
+  data.size_bytes = sizeof(simple_stream_invalid);
+  for (int64_t i = 1; i < 144; i++) {
+    SCOPED_TRACE(i);
+
+    memcpy(simple_stream_invalid + sizeof(kSimpleSchema), kSimpleRecordBatch, i);
+    memcpy(simple_stream_invalid + sizeof(kSimpleSchema) + i,
+           kSimpleRecordBatch + (i + 1), (sizeof(kSimpleRecordBatch) - i));
+
+    ArrowBufferInit(&input_buffer);
+    ASSERT_EQ(ArrowBufferAppendBufferView(&input_buffer, data), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+
+    ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
+    schema.release(&schema);
+    ASSERT_NE(stream.get_next(&stream, &array), NANOARROW_OK);
+    ASSERT_GT(strlen(stream.get_last_error(&stream)), 0);
+
+    stream.release(&stream);
+  }
 }
 
 TEST(NanoarrowIpcReader, StreamReaderUnsupportedFieldIndex) {

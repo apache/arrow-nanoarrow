@@ -88,6 +88,11 @@ infer_nanoarrow_schema.character <- function(x, ...) {
 }
 
 #' @export
+infer_nanoarrow_schema.integer64 <- function(x, ...) {
+  na_int64()
+}
+
+#' @export
 infer_nanoarrow_schema.factor <- function(x, ...) {
   na_dictionary(
     infer_nanoarrow_schema(levels(x)),

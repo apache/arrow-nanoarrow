@@ -20317,6 +20317,10 @@ static inline int org_apache_arrow_flatbuf_Tensor_verify_as_root_with_type_hash(
 #include "nanoarrow_ipc.h"
 
 
+// A more readable expression way to refer to the fact that there are 8 bytes
+// at the beginning of every message header.
+const static int64_t kMessageHeaderPrefixSize = 8;
+
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
 // children.
@@ -21200,16 +21204,17 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
   private_data->last_message = NULL;
 }
 
-// Returns NANOARROW_OK if data is large enough to read the message header,
-// ESPIPE if reading more data might help, or EINVAL if the content is not valid
-static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
-                                             struct ArrowBufferView* data_mut,
-                                             int32_t* message_size_bytes,
-                                             struct ArrowError* error) {
+// Returns NANOARROW_OK if data is large enough to read the first 8 bytes
+// of the message header, ESPIPE if reading more data might help, or EINVAL if the content
+// is not valid. Advances the input ArrowBufferView by 8 bytes.
+static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decoder,
+                                                  struct ArrowBufferView* data_mut,
+                                                  int32_t* message_size_bytes,
+                                                  struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  if (data_mut->size_bytes < 8) {
+  if (data_mut->size_bytes < kMessageHeaderPrefixSize) {
     ArrowErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
                   (long)data_mut->size_bytes);
     return ESPIPE;
@@ -21224,18 +21229,12 @@ static inline int ArrowIpcDecoderCheckHeader(struct ArrowIpcDecoder* decoder,
 
   int swap_endian = private_data->system_endianness == NANOARROW_IPC_ENDIANNESS_BIG;
   int32_t header_body_size_bytes = ArrowIpcReadInt32LE(data_mut, swap_endian);
-  *message_size_bytes = header_body_size_bytes + (2 * sizeof(int32_t));
+  *message_size_bytes = header_body_size_bytes + kMessageHeaderPrefixSize;
   if (header_body_size_bytes < 0) {
     ArrowErrorSet(
         error, "Expected message body size > 0 but found message body size of %ld bytes",
         (long)header_body_size_bytes);
     return EINVAL;
-  } else if (header_body_size_bytes > data_mut->size_bytes) {
-    ArrowErrorSet(error,
-                  "Expected 0 <= message body size <= %ld bytes but found message "
-                  "body size of %ld bytes",
-                  (long)data_mut->size_bytes, (long)header_body_size_bytes);
-    return ESPIPE;
   }
 
   if (header_body_size_bytes == 0) {
@@ -21253,8 +21252,8 @@ ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ArrowIpcDecoderResetHeaderInfo(decoder);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
+      decoder, &data, &decoder->header_size_bytes, error));
   return NANOARROW_OK;
 }
 
@@ -21265,13 +21264,23 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ArrowIpcDecoderResetHeaderInfo(decoder);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
+      decoder, &data, &decoder->header_size_bytes, error));
+
+  // Check that data contains at least the entire header (return ESPIPE to signal
+  // that reading more data may help).
+  int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
+  if (data.size_bytes < message_body_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
+                  (long)message_body_size + kMessageHeaderPrefixSize,
+                  (long)data.size_bytes + kMessageHeaderPrefixSize);
+    return ESPIPE;
+  }
 
   // Run flatbuffers verification
-  if (ns(Message_verify_as_root(data.data.as_uint8,
-                                decoder->header_size_bytes - (2 * sizeof(int32_t)))) !=
-      flatcc_verify_ok) {
+  if (ns(Message_verify_as_root(data.data.as_uint8, message_body_size) !=
+         flatcc_verify_ok)) {
     ArrowErrorSet(error, "Message flatbuffer verification failed");
     return EINVAL;
   }
@@ -21293,8 +21302,19 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ArrowIpcDecoderResetHeaderInfo(decoder);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderCheckHeader(decoder, &data, &decoder->header_size_bytes, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
+      decoder, &data, &decoder->header_size_bytes, error));
+
+  // Check that data contains at least the entire header (return ESPIPE to signal
+  // that reading more data may help).
+  int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
+  if (data.size_bytes < message_body_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
+                  (long)message_body_size + kMessageHeaderPrefixSize,
+                  (long)data.size_bytes + kMessageHeaderPrefixSize);
+    return ESPIPE;
+  }
 
   ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
   if (!message) {
@@ -22186,11 +22206,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
 
   // Use PeekHeader to fill in decoder.header_size_bytes
-  int result =
-      ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view, &private_data->error);
-  if (result == ENODATA) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
+                                                    &private_data->error));
 
   // Read the header bytes
   int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;
@@ -22233,7 +22250,14 @@ static int ArrowIpcArrayStreamReaderNextBody(
                                                    &bytes_read, &private_data->error));
   private_data->body.size_bytes += bytes_read;
 
-  return NANOARROW_OK;
+  if (bytes_read != bytes_to_read) {
+    ArrowErrorSet(&private_data->error,
+                  "Expected to be able to read %ld bytes for message body but got %ld",
+                  (long)bytes_to_read, bytes_read);
+    return ESPIPE;
+  } else {
+    return NANOARROW_OK;
+  }
 }
 
 static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
@@ -22308,7 +22332,7 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
                                             struct ArrowArray* out) {
   struct ArrowIpcArrayStreamReaderPrivate* private_data =
       (struct ArrowIpcArrayStreamReaderPrivate*)stream->private_data;
-  private_data->error.message[0] = '\0';
+  ArrowErrorInit(&private_data->error);
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderReadSchemaIfNeeded(private_data));
 
   // Read + decode the next header
@@ -22319,6 +22343,9 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     // end of stream bytes were read.
     out->release = NULL;
     return NANOARROW_OK;
+  } else if (result != NANOARROW_OK) {
+    // Other error
+    return result;
   }
 
   // Make sure we have a RecordBatch message
@@ -22336,10 +22363,11 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     struct ArrowIpcSharedBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
+    result = ArrowIpcDecoderDecodeArrayFromShared(
         &private_data->decoder, &shared, private_data->field_index, &tmp,
-        NANOARROW_VALIDATION_LEVEL_FULL, &private_data->error));
+        NANOARROW_VALIDATION_LEVEL_FULL, &private_data->error);
     ArrowIpcSharedBufferReset(&shared);
+    NANOARROW_RETURN_NOT_OK(result);
   } else {
     struct ArrowBufferView body_view;
     body_view.data.data = private_data->body.data;

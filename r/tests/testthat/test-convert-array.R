@@ -56,7 +56,7 @@ test_that("convert_array() errors for unsupported array", {
   unsupported_array <- nanoarrow_array_init(na_interval_day_time())
   expect_error(
     convert_array(as_nanoarrow_array(unsupported_array)),
-    "Can't infer R vector type for array <interval_day_time>"
+    "Can't infer R vector type for <interval_day_time>"
   )
 })
 
@@ -86,6 +86,31 @@ test_that("convert to vector works for partial_frame", {
   expect_identical(
     convert_array(array, vctrs::partial_frame()),
     data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
+  )
+})
+
+test_that("convert to vector works for extension<struct> -> data.frame()", {
+  array <- nanoarrow_extension_array(
+    data.frame(x = c(TRUE, FALSE, NA, FALSE, TRUE)),
+    "some_ext"
+  )
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, data.frame(x = logical())),
+      data.frame(x = c(TRUE, FALSE, NA, FALSE, TRUE))
+    ),
+    "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector works for dictionary<struct> -> data.frame()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(data.frame(x = c(TRUE, FALSE, NA)))
+
+  expect_identical(
+    convert_array(array, data.frame(x = logical())),
+    data.frame(x = c(TRUE, FALSE, NA, FALSE, TRUE))
   )
 })
 
@@ -183,7 +208,7 @@ test_that("convert to vector works for unspecified()", {
       convert_array(array, vctrs::unspecified()),
       vctrs::vec_cast(rep(NA, 10), vctrs::unspecified())
     ),
-    "1 non-null value\\(s\\) set to NA"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 })
 
@@ -251,6 +276,28 @@ test_that("convert to vector works for null -> logical()", {
   expect_identical(
     convert_array(array, logical()),
     rep(NA, 10)
+  )
+})
+
+test_that("convert to vector works for extension<boolean> -> logical()", {
+  array <- nanoarrow_extension_array(c(TRUE, FALSE, NA), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, logical()),
+      c(TRUE, FALSE, NA)
+    ),
+  "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector works for dictionary<boolean> -> logical()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(TRUE, FALSE, NA))
+
+  expect_identical(
+    convert_array(array, logical()),
+    c(TRUE, FALSE, NA, FALSE, TRUE)
   )
 })
 
@@ -328,17 +375,29 @@ test_that("convert to vector works for null -> logical()", {
   )
 })
 
+test_that("convert to vector works for extension<integer> -> integer()", {
+  array <- nanoarrow_extension_array(c(0L, 1L, NA_integer_), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, integer()),
+      c(0L, 1L, NA_integer_)
+    ),
+    "Converting unknown extension"
+  )
+})
+
 test_that("convert to vector warns for invalid integer()", {
   array <- as_nanoarrow_array(.Machine$integer.max + 1)
   expect_warning(
     expect_identical(convert_array(array, integer()), NA_integer_),
-    "1 value\\(s\\) outside integer range set to NA"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 
   array <- as_nanoarrow_array(c(NA, .Machine$integer.max + 1))
   expect_warning(
     expect_identical(convert_array(array, integer()), c(NA_integer_, NA_integer_)),
-    "1 value\\(s\\) outside integer range set to NA"
+    class = "nanoarrow_warning_lossy_conversion"
   )
 })
 
@@ -409,8 +468,16 @@ test_that("convert to vector works for decimal128 -> double()", {
   skip_if_not_installed("arrow")
 
   array <- as_nanoarrow_array(arrow::Array$create(1:10)$cast(arrow::decimal128(20, 10)))
+
+  # Check via S3 dispatch
   expect_equal(
     convert_array(array, double()),
+    as.double(1:10)
+  )
+
+  # ...and via C -> S3 dispatch
+  expect_equal(
+    convert_array.default(array, double()),
     as.double(1:10)
   )
 })
@@ -426,10 +493,134 @@ test_that("convert to vector works for null -> double()", {
   )
 })
 
+test_that("convert to vector works for extension<double> -> double()", {
+  array <- nanoarrow_extension_array(c(0, 1, NA_real_), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, double()),
+      c(0, 1, NA_real_)
+    ),
+    "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector works for dictionary<double> -> double()", {
+  array <- as_nanoarrow_array(c(0L, 1L, 2L, 1L, 0L))
+  array$dictionary <- as_nanoarrow_array(c(123, 0,  NA_real_))
+
+  expect_identical(
+    convert_array(array, double()),
+    c(123, 0, NA_real_, 0, 123)
+  )
+})
+
+test_that("convert to vector warns for possibly invalid double()", {
+  array <- as_nanoarrow_array(2^54, schema = na_int64())
+  expect_warning(
+    convert_array(array, double()),
+    class = "nanoarrow_warning_lossy_conversion"
+  )
+})
+
 test_that("convert to vector errors for bad array to double()", {
   expect_error(
     convert_array(as_nanoarrow_array(letters), double()),
     "Can't convert array <string> to R vector of type numeric"
+  )
+})
+
+test_that("convert to vector works for valid integer64()", {
+  skip_if_not_installed("bit64")
+  skip_if_not_installed("arrow")
+
+  arrow_numeric_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64(),
+    uint64 = arrow::uint64(),
+    float32 = arrow::float32(),
+    float64 = arrow::float64()
+  )
+
+  vals <- bit64::as.integer64(c(NA, 0:10))
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      convert_array(
+        as_nanoarrow_array(vals, schema = arrow_numeric_types[[!!nm]]),
+        bit64::integer64()
+      ),
+      vals
+    )
+  }
+
+  vals_no_na <- bit64::as.integer64(0:10)
+  for (nm in names(arrow_numeric_types)) {
+    expect_identical(
+      convert_array(
+        as_nanoarrow_array(vals_no_na, schema = arrow_numeric_types[[!!nm]]),
+        bit64::integer64()
+      ),
+      vals_no_na
+    )
+  }
+
+  # Boolean array to double
+  expect_identical(
+    convert_array(
+      as_nanoarrow_array(c(NA, TRUE, FALSE), schema = arrow::boolean()),
+      bit64::integer64()
+    ),
+    bit64::as.integer64(c(NA, 1L, 0L))
+  )
+
+  expect_identical(
+    convert_array(
+      as_nanoarrow_array(c(TRUE, FALSE), schema = arrow::boolean()),
+      bit64::integer64()
+    ),
+    bit64::as.integer64(c(1L, 0L))
+  )
+})
+
+test_that("convert to vector works for null -> integer64()", {
+  skip_if_not_installed("bit64")
+
+  array <- nanoarrow_array_init(na_na())
+  array$length <- 10
+  array$null_count <- 10
+
+  expect_identical(
+    convert_array(array, bit64::integer64()),
+    rep(bit64::NA_integer64_, 10)
+  )
+})
+
+test_that("convert to vector works for extension<int64> -> integer64()", {
+  skip_if_not_installed("bit64")
+
+  vec <- bit64::as.integer64(c(0, 1, NA))
+  array <- nanoarrow_extension_array(vec, "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, bit64::integer64()),
+      vec
+    ),
+    "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector errors for bad array to integer64()", {
+  skip_if_not_installed("bit64")
+
+  expect_error(
+    convert_array(as_nanoarrow_array(letters), bit64::integer64()),
+    "Can't convert array <string> to R vector of type integer64"
   )
 })
 
@@ -460,6 +651,89 @@ test_that("convert to vector works for null -> character()", {
   expect_identical(
     all_nulls,
     rep(NA_character_, 10)
+  )
+})
+
+test_that("convert to vector works for extension<string> -> character()", {
+  array <- nanoarrow_extension_array(c("a", "b", NA_character_), "some_ext")
+
+  expect_warning(
+    expect_identical(
+      convert_array(array, character()),
+      c("a", "b", NA_character_)
+    ),
+    "Converting unknown extension"
+  )
+})
+
+test_that("convert to vector works for dictionary<string> -> character()", {
+  array <- as_nanoarrow_array(factor(letters[5:1]))
+
+  # Via S3 dispatch
+  expect_identical(
+    convert_array(array, character()),
+    c("e", "d", "c", "b", "a")
+  )
+
+  # Via C -> S3 dispatch
+  expect_identical(
+    convert_array.default(array, character()),
+    c("e", "d", "c", "b", "a")
+  )
+})
+
+test_that("convert to vector works for dictionary<string> -> factor()", {
+  array <- as_nanoarrow_array(factor(letters[5:1]))
+
+  # With empty levels
+  expect_identical(
+    convert_array(array, factor()),
+    factor(letters[5:1])
+  )
+
+  # With identical levels
+  expect_identical(
+    convert_array(array, factor(levels = c("a", "b", "c", "d", "e"))),
+    factor(letters[5:1])
+  )
+
+  # With mismatched levels
+  expect_identical(
+    convert_array(array, factor(levels = c("b", "a", "c", "e", "d"))),
+    factor(letters[5:1], levels = c("b", "a", "c", "e", "d"))
+  )
+
+  expect_error(
+    convert_array(array, factor(levels = letters[-4])),
+    "some levels in data do not exist"
+  )
+})
+
+test_that("batched convert to vector works for dictionary<string> -> factor()", {
+  # A slightly different path: convert_array.factor() called from C multiple
+  # times with different dictionaries each time.
+  array1 <- as_nanoarrow_array(factor(letters[1:5]))
+  array2 <- as_nanoarrow_array(factor(letters[6:10]))
+  array3 <- as_nanoarrow_array(factor(letters[11:15]))
+
+  stream <- basic_array_stream(list(array1, array2, array3))
+  expect_identical(
+    convert_array_stream(stream, factor(levels = letters)),
+    factor(letters[1:15], levels = letters)
+  )
+})
+
+test_that("batched convert to vector errors for dictionary<string> -> factor()", {
+  # We can't currently handle a preallocate + fill style conversion where the
+  # result is partial_factor().
+  array1 <- as_nanoarrow_array(factor(letters[1:5]))
+  array2 <- as_nanoarrow_array(factor(letters[6:10]))
+  array3 <- as_nanoarrow_array(factor(letters[11:15]))
+
+  stream <- basic_array_stream(list(array1, array2, array3))
+  expect_error(
+    convert_array_stream(stream, factor()),
+    "Can't allocate ptype of class 'factor'"
   )
 })
 
@@ -515,7 +789,7 @@ test_that("convert to vector works for list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 
   # With malformed ptype
@@ -552,7 +826,7 @@ test_that("convert to vector works for large_list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 })
 
@@ -581,7 +855,7 @@ test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
   # With bad ptype
   expect_error(
     convert_array(array_list, vctrs::list_of(.ptype = character())),
-    "Can't convert array"
+    "Can't convert `item`"
   )
 })
 
@@ -776,33 +1050,5 @@ test_that("convert to vector works for lists nested in data frames", {
   expect_identical(
     convert_array(nested_array),
     df_in_list_in_df
-  )
-})
-
-test_that("convert to vector warns for stripped extension type", {
-  ext_arr <- as_nanoarrow_array(1:5)
-  nanoarrow_array_set_schema(ext_arr, na_extension(na_int32(), "some_ext"))
-  expect_warning(
-    expect_identical(convert_array(ext_arr), 1:5),
-    "Converting unknown extension some_ext"
-  )
-
-  nested_ext_array <- as_nanoarrow_array(data.frame(x = 1:5))
-  nanoarrow_array_set_schema(
-    nested_ext_array,
-    na_struct(list(x = na_extension(na_int32(), "some_ext")))
-  )
-
-  expect_warning(
-    expect_identical(convert_array(nested_ext_array), data.frame(x = 1:5)),
-    "x: Converting unknown extension some_ext"
-  )
-})
-
-test_that("convert to vector errors for dictionary types", {
-  dict_array <- as_nanoarrow_array(factor(letters[1:5]))
-  expect_error(
-    convert_array(dict_array, character()),
-    "Conversion to dictionary-encoded array is not supported"
   )
 })
