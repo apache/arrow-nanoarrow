@@ -2132,35 +2132,39 @@ static inline int64_t _ArrowBytesForBits(int64_t bits) {
 }
 
 static inline void _ArrowBitsUnpackInt8(const uint8_t word, int8_t* out) {
-  out[0] = (word >> 0) & 1;
-  out[1] = (word >> 1) & 1;
-  out[2] = (word >> 2) & 1;
-  out[3] = (word >> 3) & 1;
-  out[4] = (word >> 4) & 1;
-  out[5] = (word >> 5) & 1;
-  out[6] = (word >> 6) & 1;
-  out[7] = (word >> 7) & 1;
+  out[0] = (word & 0x1) != 0;
+  out[1] = (word & 0x2) != 0;
+  out[2] = (word & 0x4) != 0;
+  out[3] = (word & 0x8) != 0;
+  out[4] = (word & 0x10) != 0;
+  out[5] = (word & 0x20) != 0;
+  out[6] = (word & 0x40) != 0;
+  out[7] = (word & 0x80) != 0;
 }
 
 static inline void _ArrowBitsUnpackInt32(const uint8_t word, int32_t* out) {
-  out[0] = (word >> 0) & 1;
-  out[1] = (word >> 1) & 1;
-  out[2] = (word >> 2) & 1;
-  out[3] = (word >> 3) & 1;
-  out[4] = (word >> 4) & 1;
-  out[5] = (word >> 5) & 1;
-  out[6] = (word >> 6) & 1;
-  out[7] = (word >> 7) & 1;
+  out[0] = (word & 0x1) != 0;
+  out[1] = (word & 0x2) != 0;
+  out[2] = (word & 0x4) != 0;
+  out[3] = (word & 0x8) != 0;
+  out[4] = (word & 0x10) != 0;
+  out[5] = (word & 0x20) != 0;
+  out[6] = (word & 0x40) != 0;
+  out[7] = (word & 0x80) != 0;
 }
 
 static inline void _ArrowBitmapPackInt8(const int8_t* values, uint8_t* out) {
-  *out = (values[0] | values[1] << 1 | values[2] << 2 | values[3] << 3 | values[4] << 4 |
-          values[5] << 5 | values[6] << 6 | values[7] << 7);
+  *out = (values[0] | ((values[1] + 0x1) & 0x2) | ((values[2] + 0x3) & 0x4) |
+          ((values[3] + 0x7) & 0x8) | ((values[4] + 0xf) & 0x10) |
+          ((values[5] + 0x1f) & 0x20) | ((values[6] + 0x3f) & 0x40) |
+          ((values[7] + 0x7f) & 0x80));
 }
 
 static inline void _ArrowBitmapPackInt32(const int32_t* values, uint8_t* out) {
-  *out = (values[0] | values[1] << 1 | values[2] << 2 | values[3] << 3 | values[4] << 4 |
-          values[5] << 5 | values[6] << 6 | values[7] << 7);
+  *out = (values[0] | ((values[1] + 0x1) & 0x2) | ((values[2] + 0x3) & 0x4) |
+          ((values[3] + 0x7) & 0x8) | ((values[4] + 0xf) & 0x10) |
+          ((values[5] + 0x1f) & 0x20) | ((values[6] + 0x3f) & 0x40) |
+          ((values[7] + 0x7f) & 0x80));
 }
 
 static inline int8_t ArrowBitGet(const uint8_t* bits, int64_t i) {
