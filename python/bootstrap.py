@@ -159,7 +159,15 @@ def copy_or_generate_nanoarrow_c():
 
     maybe_nanoarrow_h = os.path.join(this_dir, "src/nanoarrow/nanoarrow.h")
     maybe_nanoarrow_c = os.path.join(this_dir, "src/nanoarrow/nanoarrow.c")
-    for f in (maybe_nanoarrow_c, maybe_nanoarrow_h):
+    maybe_nanoarrow_device_h = os.path.join(this_dir, "src/nanoarrow/nanoarrow_device.h")
+    maybe_nanoarrow_device_c = os.path.join(this_dir, "src/nanoarrow/nanoarrow_device.c")
+
+    for f in (
+        maybe_nanoarrow_c,
+        maybe_nanoarrow_h,
+        maybe_nanoarrow_device_h,
+        maybe_nanoarrow_device_c,
+    ):
         if os.path.exists(f):
             os.unlink(f)
 
@@ -169,6 +177,15 @@ def copy_or_generate_nanoarrow_c():
     )
     has_cmake = os.system("cmake --version") == 0
     build_dir = os.path.join(this_dir, "_cmake")
+
+    if is_in_nanoarrow_repo:
+        device_ext_src = os.path.join(source_dir, "extensions/nanoarrow_device/src/nanoarrow")
+        shutil.copyfile(
+            os.path.join(device_ext_src, "nanoarrow_device.h"), maybe_nanoarrow_device_h
+        )
+        shutil.copyfile(
+            os.path.join(device_ext_src, "nanoarrow_device.c"), maybe_nanoarrow_device_c
+        )
 
     if has_cmake and is_cmake_dir and is_in_nanoarrow_repo:
         try:
