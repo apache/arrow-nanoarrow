@@ -50,7 +50,9 @@ setup(
             language="c",
             sources=[
                 "src/nanoarrow/_lib.pyx",
+                "src/nanoarrow/_device_lib.pyx",
                 "src/nanoarrow/nanoarrow.c",
+                "src/nanoarrow/nanoarrow_device.c"
             ],
             extra_compile_args=coverage_compile_args,
             extra_link_args=coverage_link_args,
