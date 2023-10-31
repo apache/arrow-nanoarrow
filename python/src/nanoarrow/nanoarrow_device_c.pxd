@@ -17,7 +17,7 @@
 
 from libc.stdint cimport int32_t, int64_t, uintptr_t
 
-from nanoarrow_c cimport ArrowArray
+from nanoarrow_c cimport *
 
 cdef extern from "nanoarrow_device.h" nogil:
 
@@ -28,3 +28,52 @@ cdef extern from "nanoarrow_device.h" nogil:
         int64_t device_id
         ArrowDeviceType device_type
         void* sync_event
+
+    struct ArrowDevice:
+        ArrowDeviceType device_type
+        ArrowErrorCode (*array_init)(ArrowDevice* device,
+                               ArrowDeviceArray* device_array,
+                               ArrowArray* array)
+        ArrowErrorCode (*array_move)(ArrowDevice* device_src,
+                                     ArrowDeviceArray* src,
+                                     ArrowDevice* device_dst,
+                                     ArrowDeviceArray* dst)
+        ArrowErrorCode (*buffer_init)(ArrowDevice* device_src,
+                                      ArrowBufferView src,
+                                      ArrowDevice* device_dst, ArrowBuffer* dst)
+        ArrowErrorCode (*buffer_move)(ArrowDevice* device_src, ArrowBuffer* src,
+                                      ArrowDevice* device_dst, ArrowBuffer* dst)
+        ArrowErrorCode (*buffer_copy)(ArrowDevice* device_src,
+                                      ArrowBufferView src,
+                                      ArrowDevice* device_dst,
+                                      ArrowBufferView dst)
+        ArrowErrorCode (*synchronize_event)(ArrowDevice* device, void* sync_event,
+                                            ArrowError* error)
+        void (*release)(ArrowDevice* device)
+        void* private_data
+
+
+    struct ArrowDeviceArrayView:
+        ArrowDevice* device
+        ArrowArrayView array_view
+
+
+    ArrowErrorCode ArrowDeviceArrayInit(ArrowDevice* device,
+                                        ArrowDeviceArray* device_array,
+                                        ArrowArray* array)
+
+    void ArrowDeviceArrayViewInit(ArrowDeviceArrayView* device_array_view)
+
+    ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(ArrowDeviceArrayView* device_array_view,
+                                                       ArrowDeviceArray* device_array,
+                                                       ArrowError* error)
+
+    ArrowErrorCode ArrowDeviceArrayViewSetArray(ArrowDeviceArrayView* device_array_view,
+                                                ArrowDeviceArray* device_array,
+                                                ArrowError* error)
+
+    ArrowErrorCode ArrowDeviceArrayViewCopy(ArrowDeviceArrayView* src,
+                                            ArrowDevice* device_dst,
+                                            ArrowDeviceArray* dst)
+
+    ArrowDevice* ArrowDeviceCpu()

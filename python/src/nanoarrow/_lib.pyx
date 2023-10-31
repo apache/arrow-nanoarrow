@@ -33,6 +33,7 @@ from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_GetPointer
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
+from nanoarrow_device_c cimport ArrowDeviceArray, ArrowDevice, ArrowDeviceCpu
 
 
 def c_version():
