@@ -159,8 +159,12 @@ def copy_or_generate_nanoarrow_c():
 
     maybe_nanoarrow_h = os.path.join(this_dir, "src/nanoarrow/nanoarrow.h")
     maybe_nanoarrow_c = os.path.join(this_dir, "src/nanoarrow/nanoarrow.c")
-    maybe_nanoarrow_device_h = os.path.join(this_dir, "src/nanoarrow/nanoarrow_device.h")
-    maybe_nanoarrow_device_c = os.path.join(this_dir, "src/nanoarrow/nanoarrow_device.c")
+    maybe_nanoarrow_device_h = os.path.join(
+        this_dir, "src/nanoarrow/nanoarrow_device.h"
+    )
+    maybe_nanoarrow_device_c = os.path.join(
+        this_dir, "src/nanoarrow/nanoarrow_device.c"
+    )
 
     for f in (
         maybe_nanoarrow_c,
@@ -179,7 +183,9 @@ def copy_or_generate_nanoarrow_c():
     build_dir = os.path.join(this_dir, "_cmake")
 
     if is_in_nanoarrow_repo:
-        device_ext_src = os.path.join(source_dir, "extensions/nanoarrow_device/src/nanoarrow")
+        device_ext_src = os.path.join(
+            source_dir, "extensions/nanoarrow_device/src/nanoarrow"
+        )
         shutil.copyfile(
             os.path.join(device_ext_src, "nanoarrow_device.h"), maybe_nanoarrow_device_h
         )
