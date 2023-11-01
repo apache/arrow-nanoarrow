@@ -33,8 +33,7 @@ from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_GetPointer
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
-from nanoarrow_device_c cimport ArrowDeviceArray, ArrowDevice, ArrowDeviceCpu
-
+from nanoarrow_device_c cimport *
 
 def c_version():
     """Return the nanoarrow C library version string
@@ -965,3 +964,71 @@ cdef class ArrayStream:
 
     def __next__(self):
         return self.get_next()
+
+    @staticmethod
+    def allocate():
+        base = ArrayStreamHolder()
+        return ArrayStream(base, base._addr())
+
+
+cdef class DeviceArrayHolder:
+    """Memory holder for an ArrowDeviceArray
+
+    This class is responsible for the lifecycle of the ArrowDeviceArray
+    whose memory it is responsible. When this object is deleted,
+    a non-NULL release callback is invoked.
+    """
+    cdef ArrowDeviceArray c_array
+
+    def __cinit__(self):
+        self.c_array.array.release = NULL
+
+    def __dealloc__(self):
+        if self.c_array.array.release != NULL:
+          self.c_array.array.release(&self.c_array.array)
+
+    def _addr(self):
+        return <uintptr_t>&self.c_array
+
+cdef class DeviceHolder:
+    """Memory holder for an ArrowDevice
+
+    This class is responsible for the lifecycle of the ArrowDevice
+    whose memory it is responsible. When this object is deleted,
+    a non-NULL release callback is invoked.
+    """
+
+    cdef ArrowDevice c_device
+
+    def __cinit__(self):
+        self.c_device.release = NULL
+
+    def __dealloc__(self):
+        if self.c_device.release != NULL:
+          self.c_device.release(&self.c_device)
+
+    def _addr(self):
+        return <uintptr_t>&self.c_device
+
+cdef class Device:
+    cdef object _base
+    cdef ArrowDevice* _ptr
+
+    def __cinit__(self, object base, uintptr_t addr):
+        self._base = base,
+        self._ptr = <ArrowDevice*>addr
+
+    @property
+    def device_type(self):
+        return self._ptr.device_type
+
+    @staticmethod
+    def resolve(ArrowDeviceType device_type, int64_t device_id):
+        if device_type == ARROW_DEVICE_CPU:
+            return Device.cpu()
+        else:
+            raise ValueError(f"Device not found for type {device_type}/{device_id}")
+
+    @staticmethod
+    def cpu():
+        return Device(None, <uintptr_t>ArrowDeviceCpu())

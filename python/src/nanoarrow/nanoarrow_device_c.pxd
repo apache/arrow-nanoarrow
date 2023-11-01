@@ -15,13 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from libc.stdint cimport int32_t, int64_t, uintptr_t
+from libc.stdint cimport int32_t, int64_t
 
 from nanoarrow_c cimport *
 
 cdef extern from "nanoarrow_device.h" nogil:
 
     ctypedef int32_t ArrowDeviceType
+
+    int32_t ARROW_DEVICE_CPU
+    int32_t ARROW_DEVICE_CUDA
+    int32_t ARROW_DEVICE_CUDA_HOST
+    int32_t ARROW_DEVICE_METAL
 
     struct ArrowDeviceArray:
         ArrowArray array
