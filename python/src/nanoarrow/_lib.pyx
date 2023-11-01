@@ -1010,6 +1010,7 @@ cdef class DeviceHolder:
     def _addr(self):
         return <uintptr_t>&self.c_device
 
+
 cdef class Device:
     cdef object _base
     cdef ArrowDevice* _ptr
@@ -1017,6 +1018,15 @@ cdef class Device:
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base,
         self._ptr = <ArrowDevice*>addr
+
+    def array_init(self, uintptr_t array_addr, Schema schema):
+        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
+        cdef DeviceArrayHolder holder = DeviceArrayHolder()
+        cdef int result = ArrowDeviceArrayInit(self._ptr, &holder.c_array, array_ptr)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowDevice::init_array", result)
+
+        return DeviceArray(holder, holder._addr(), schema)
 
     @property
     def device_type(self):
@@ -1032,3 +1042,26 @@ cdef class Device:
     @staticmethod
     def cpu():
         return Device(None, <uintptr_t>ArrowDeviceCpu())
+
+
+cdef class DeviceArray:
+    cdef object _base
+    cdef ArrowDeviceArray* _ptr
+    cdef Schema _schema
+
+    def __cinit__(self, object base, uintptr_t addr, Schema schema):
+        self._base = base
+        self._ptr = <ArrowDeviceArray*>addr
+        self._schema = schema
+
+    @property
+    def device_type(self):
+        return self._ptr.device_type
+
+    @property
+    def device_id(self):
+        return self._ptr.device_id
+
+    @property
+    def array(self):
+        return Array(self, <uintptr_t>&self._ptr.array, self._schema)

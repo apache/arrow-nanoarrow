@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pyarrow as pa
+
 import nanoarrow as na
 
 
@@ -24,3 +26,10 @@ def test_cpu_device():
 
     cpu = na._lib.Device.resolve(1, 0)
     assert cpu.device_type == 1
+
+    pa_array = pa.array([1, 2, 3])
+
+    darray = na.device_array(pa_array)
+    assert darray.device_type == 1
+    assert darray.device_id == 0
+    assert darray.array.length == 3

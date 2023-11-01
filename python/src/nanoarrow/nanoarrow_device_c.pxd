@@ -36,6 +36,7 @@ cdef extern from "nanoarrow_device.h" nogil:
 
     struct ArrowDevice:
         ArrowDeviceType device_type
+        int64_t device_id
         ArrowErrorCode (*array_init)(ArrowDevice* device,
                                      ArrowDeviceArray* device_array,
                                      ArrowArray* array)
