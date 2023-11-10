@@ -1,0 +1,95 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# The functions here are imported in _lib.pyx. They're defined here
+# instead of there to make it easier to iterate (no need to rebuild
+# after editing when working with an editable installation)
+
+
+def schema_repr(schema, indent=0):
+    indent_str = " " * indent
+    if schema._addr() == 0:
+        return f"<NULL nanoarrow.Schema>"
+    elif not schema.is_valid():
+        return f"<released nanoarrow.Schema>"
+
+    lines = [f"<nanoarrow.Schema {schema._to_string()}>"]
+
+    for attr in ("format", "name", "flags"):
+        attr_repr = repr(getattr(schema, attr))
+        lines.append(f"{indent_str}- {attr}: {attr_repr}")
+
+    metadata = schema.metadata
+    if schema.metadata is None:
+        lines.append(f"{indent_str}- metadata: NULL")
+    else:
+        lines.append(f"{indent_str}- metadata: NULL")
+        for key, value in metadata:
+            lines.append(f"{indent_str}  - {repr(key)}: {repr(value)}")
+
+    if schema.dictionary:
+        lines.append(
+            f"{indent_str}- dictionary: {schema_repr(schema.dictionary, indent=indent + 2)}"
+        )
+    else:
+        lines.append(f"{indent_str}- dictionary: NULL")
+
+    children = schema.children
+    lines.append(f"{indent_str}- children[{len(children)}]:")
+    for child in children:
+        lines.append(
+            f"{indent_str}  {repr(child.name)}: {schema_repr(child, indent=indent + 4)}"
+        )
+
+    return "\n".join(lines)
+
+
+def array_repr(array, indent=0):
+    indent_str = " " * indent
+    if array._addr() == 0:
+        return f"<NULL nanoarrow.Array>"
+    elif not array.is_valid():
+        return f"<released nanoarrow.Array>"
+
+    lines = [f"<nanoarrow.Array {array.schema._to_string()}>"]
+    for attr in ("length", "offset", "null_count", "buffers"):
+        attr_repr = repr(getattr(array, attr))
+        lines.append(f"{indent_str}- {attr}: {attr_repr}")
+
+    if array.dictionary:
+        lines.append(
+            f"{indent_str}- dictionary: {array_repr(array.dictionary, indent=indent + 2)}"
+        )
+    else:
+        lines.append(f"{indent_str}- dictionary: NULL")
+
+    children = array.children
+    lines.append(f"{indent_str}- children[{len(children)}]:")
+    for child in children:
+        lines.append(
+            f"{indent_str}  {repr(child.schema.name)}: {array_repr(child, indent=indent + 4)}"
+        )
+
+    return "\n".join(lines)
+
+
+def device_array_repr(device_array):
+    title_line = "<nanoarrow.device.DeviceArray>"
+    device_type = f"- device_type: {device_array.device_type}"
+    device_id = f"- device_id: {device_array.device_id}"
+    array = f"- array: {array_repr(device_array.array, indent=2)}"
+    return "\n".join((title_line, device_type, device_id, array))

@@ -55,7 +55,8 @@ def test_array_helper():
 def test_schema_basic():
     schema = na.Schema.allocate()
     assert schema.is_valid() is False
-    assert repr(schema) == "[invalid: schema is released]"
+    assert schema._to_string() == "[invalid: schema is released]"
+    assert repr(schema) == "<released nanoarrow.Schema>"
 
     schema = na.schema(pa.schema([pa.field("some_name", pa.int32())]))
 
@@ -65,7 +66,8 @@ def test_schema_basic():
     assert len(schema.children) == 1
     assert schema.children[0].format == "i"
     assert schema.children[0].name == "some_name"
-    assert repr(schema.children[0]) == "int32"
+    assert schema.children[0]._to_string() == "int32"
+    assert repr(schema.children[0]).startswith("<nanoarrow.Schema int32")
     assert schema.dictionary is None
 
     with pytest.raises(IndexError):
@@ -76,6 +78,7 @@ def test_schema_dictionary():
     schema = na.schema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
+    assert "dictionary: <nanoarrow.Schema string" in repr(schema)
 
 
 def test_schema_metadata():
@@ -87,6 +90,7 @@ def test_schema_metadata():
     meta2 = {k: v for k, v in schema.metadata}
     assert list(meta2.keys()) == ["key1", "key2"]
     assert list(meta2.values()) == [b"value1", b"value2"]
+    assert "'key1': b'value1'" in repr(schema)
 
 
 def test_schema_view():
@@ -160,6 +164,15 @@ def test_array():
     assert array.buffers[0] == 0
     assert len(array.children) == 0
     assert array.dictionary is None
+    assert "<nanoarrow.Array int32" in repr(array)
+
+
+def test_array_recursive():
+    array = na.array(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
+    assert len(array.children) == 1
+    assert array.children[0].length == 3
+    assert array.children[0].schema._to_string() == "int32"
+    assert "'col': <nanoarrow.Array int32" in repr(array)
 
     with pytest.raises(IndexError):
         array.children[1]

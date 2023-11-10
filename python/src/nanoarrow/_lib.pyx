@@ -35,6 +35,8 @@ from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
+from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr
+
 def c_version():
     """Return the nanoarrow C library version string
     """
@@ -230,17 +232,20 @@ cdef class Schema:
         if self._ptr.release == NULL:
             raise RuntimeError("schema is released")
 
-    def __repr__(self):
-        cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, True)
+    def _to_string(self, recursive=False):
+        cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, recursive)
         cdef char* out = <char*>PyMem_Malloc(n_chars + 1)
         if not out:
             raise MemoryError()
 
-        ArrowSchemaToString(self._ptr, out, n_chars + 1, True)
+        ArrowSchemaToString(self._ptr, out, n_chars + 1, recursive)
         out_str = out.decode("UTF-8")
         PyMem_Free(out)
 
         return out_str
+
+    def __repr__(self):
+        return schema_repr(self)
 
     @property
     def format(self):
@@ -518,6 +523,9 @@ cdef class Array:
             return Array(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
         else:
             return None
+
+    def __repr__(self):
+        return array_repr(self)
 
 
 cdef class ArrayView:
@@ -1044,6 +1052,12 @@ cdef class Device:
 
         return DeviceArray(holder, holder._addr(), schema)
 
+    def __repr__(self):
+        title_line = "<nanoarrow.device.Device>"
+        device_type = f"- device_type: {self.device_type}"
+        device_id = f"- device_id: {self.device_id}"
+        return "\n".join((title_line, device_type, device_id))
+
     @property
     def device_type(self):
         return self._ptr.device_type
@@ -1085,3 +1099,6 @@ cdef class DeviceArray:
     @property
     def array(self):
         return Array(self, <uintptr_t>&self._ptr.array, self._schema)
+
+    def __repr__(self):
+        return device_array_repr(self)
