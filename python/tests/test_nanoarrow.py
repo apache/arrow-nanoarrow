@@ -167,7 +167,7 @@ def test_array():
 
 def test_array_view():
     array = na.array(pa.array([1, 2, 3], pa.int32()))
-    view = array.view()
+    view = na.array_view(array)
 
     assert view.schema is array.schema
 
@@ -198,7 +198,7 @@ def test_array_view_recursive():
     assert array.children[0].length == 3
     assert array.children[0].schema._addr() == array.schema.children[0]._addr()
 
-    view = array.view()
+    view = na.array_view(array)
     assert len(view.buffers) == 1
     assert len(view.children) == 1
     assert view.schema._addr() == array.schema._addr()
@@ -215,7 +215,7 @@ def test_array_view_dictionary():
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"
 
-    view = array.view()
+    view = na.array_view(array)
     assert len(view.buffers) == 2
     assert len(view.dictionary.buffers) == 3
 
@@ -235,14 +235,14 @@ def test_buffers_data():
     ]
 
     for pa_type, np_type in data_types:
-        view = na.array(pa.array([0, 1, 2], pa_type)).view()
+        view = na.array_view(pa.array([0, 1, 2], pa_type))
         np.testing.assert_array_equal(
             np.array(view.buffers[1]), np.array([0, 1, 2], np_type)
         )
 
 
 def test_buffers_string():
-    view = na.array(pa.array(["a", "bc", "def"])).view()
+    view = na.array_view(pa.array(["a", "bc", "def"]))
 
     assert view.buffers[0] is None
     np.testing.assert_array_equal(
@@ -254,7 +254,7 @@ def test_buffers_string():
 
 
 def test_buffers_binary():
-    view = na.array(pa.array([b"a", b"bc", b"def"])).view()
+    view = na.array_view(pa.array([b"a", b"bc", b"def"]))
 
     assert view.buffers[0] is None
     np.testing.assert_array_equal(

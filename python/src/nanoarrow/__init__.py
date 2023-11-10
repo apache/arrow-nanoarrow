@@ -16,4 +16,4 @@
 # under the License.
 
 from ._lib import Array, ArrayStream, ArrayView, Schema, c_version  # noqa: F401
-from .lib import array, array_stream, schema  # noqa: F401
+from .lib import array, array_stream, schema, array_view  # noqa: F401

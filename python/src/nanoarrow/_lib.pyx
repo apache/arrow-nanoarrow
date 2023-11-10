@@ -519,21 +519,6 @@ cdef class Array:
         else:
             return None
 
-    def view(self):
-        cdef ArrayViewHolder holder = ArrayViewHolder()
-
-        cdef Error error = Error()
-        cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
-                                                       self._schema._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewInitFromSchema()", result)
-
-        result = ArrowArrayViewSetArray(&holder.c_array_view, self._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewSetArray()", result)
-
-        return ArrayView(holder, holder._addr(), self._schema, self)
-
 
 cdef class ArrayView:
     """ArrowArrayView wrapper
@@ -604,6 +589,22 @@ cdef class ArrayView:
     @property
     def schema(self):
         return self._schema
+
+    @staticmethod
+    def from_cpu_array(Array array):
+        cdef ArrayViewHolder holder = ArrayViewHolder()
+
+        cdef Error error = Error()
+        cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
+                                                       array._schema._ptr, &error.c_error)
+        if result != NANOARROW_OK:
+            error.raise_message("ArrowArrayViewInitFromSchema()", result)
+
+        result = ArrowArrayViewSetArray(&holder.c_array_view, array._ptr, &error.c_error)
+        if result != NANOARROW_OK:
+            error.raise_message("ArrowArrayViewSetArray()", result)
+
+        return ArrayView(holder, holder._addr(), array._schema, array)
 
 
 cdef class SchemaChildren:
