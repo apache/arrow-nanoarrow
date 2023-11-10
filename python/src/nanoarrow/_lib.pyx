@@ -545,6 +545,7 @@ cdef class ArrayView:
     """
     cdef object _base
     cdef ArrowArrayView* _ptr
+    cdef ArrowDevice* _device
     cdef Schema _schema
     cdef object _base_buffer
 
@@ -553,6 +554,7 @@ cdef class ArrayView:
         self._ptr = <ArrowArrayView*>addr
         self._schema = schema
         self._base_buffer = base_buffer
+        self._device = ArrowDeviceCpu()
 
     @property
     def length(self):
@@ -589,6 +591,10 @@ cdef class ArrayView:
     @property
     def schema(self):
         return self._schema
+
+    def _assert_cpu(self):
+        if self._device.device_type != ARROW_DEVICE_CPU:
+            raise RuntimeError("ArrayView is not representing a CPU device")
 
     @staticmethod
     def from_cpu_array(Array array):
@@ -707,12 +713,15 @@ cdef class ArrayViewChildren:
         k = int(k)
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
-        return ArrayView(
+        cdef ArrayView child = ArrayView(
             self._parent,
             self._child_addr(k),
             self._parent._schema.children[k],
             None
         )
+
+        child._device = self._parent._device
+        return child
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArrayView** children = self._parent._ptr.children
@@ -732,17 +741,19 @@ cdef class BufferView:
     cdef ArrowBufferView* _ptr
     cdef ArrowBufferType _buffer_type
     cdef ArrowType _buffer_data_type
+    cdef ArrowDevice* _device
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
 
     def __cinit__(self, object base, uintptr_t addr,
                  ArrowBufferType buffer_type, ArrowType buffer_data_type,
-                 Py_ssize_t element_size_bits):
+                 Py_ssize_t element_size_bits, uintptr_t device):
         self._base = base
         self._ptr = <ArrowBufferView*>addr
         self._buffer_type = buffer_type
         self._buffer_data_type = buffer_data_type
+        self._device = <ArrowDevice*>device
         self._element_size_bits = element_size_bits
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
@@ -785,6 +796,9 @@ cdef class BufferView:
             return "B"
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        if self._device.device_type != ARROW_DEVICE_CPU:
+            raise RuntimeError("nanoarrow.BufferView is not a CPU array")
+
         buffer.buf = <void*>self._ptr.data.data
         buffer.format = self._get_format()
         buffer.internal = NULL
@@ -831,7 +845,8 @@ cdef class ArrayViewBuffers:
             <uintptr_t>buffer_view,
             self._array_view._ptr.layout.buffer_type[k],
             self._array_view._ptr.layout.buffer_data_type[k],
-            self._array_view._ptr.layout.element_size_bits[k]
+            self._array_view._ptr.layout.element_size_bits[k],
+            <uintptr_t>self._array_view._device
         )
 
 
