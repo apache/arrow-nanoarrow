@@ -42,18 +42,16 @@ def schema_repr(schema, indent=0):
             lines.append(f"{indent_str}  - {repr(key)}: {repr(value)}")
 
     if schema.dictionary:
-        lines.append(
-            f"{indent_str}- dictionary: {schema_repr(schema.dictionary, indent=indent + 2)}"
-        )
+        dictionary_repr = schema_repr(schema.dictionary, indent=indent + 2)
+        lines.append(f"{indent_str}- dictionary: {dictionary_repr}")
     else:
         lines.append(f"{indent_str}- dictionary: NULL")
 
     children = schema.children
     lines.append(f"{indent_str}- children[{len(children)}]:")
     for child in children:
-        lines.append(
-            f"{indent_str}  {repr(child.name)}: {schema_repr(child, indent=indent + 4)}"
-        )
+        child_repr = schema_repr(child, indent=indent + 4)
+        lines.append(f"{indent_str}  {repr(child.name)}: {child_repr}")
 
     return "\n".join(lines)
 
@@ -71,18 +69,16 @@ def array_repr(array, indent=0):
         lines.append(f"{indent_str}- {attr}: {attr_repr}")
 
     if array.dictionary:
-        lines.append(
-            f"{indent_str}- dictionary: {array_repr(array.dictionary, indent=indent + 2)}"
-        )
+        dictionary_repr = array_repr(array.dictionary, indent=indent + 2)
+        lines.append(f"{indent_str}- dictionary: {dictionary_repr}")
     else:
         lines.append(f"{indent_str}- dictionary: NULL")
 
     children = array.children
     lines.append(f"{indent_str}- children[{len(children)}]:")
     for child in children:
-        lines.append(
-            f"{indent_str}  {repr(child.schema.name)}: {array_repr(child, indent=indent + 4)}"
-        )
+        child_repr = array_repr(child, indent=indent + 4)
+        lines.append(f"{indent_str}  {repr(child.schema.name)}: {child_repr}")
 
     return "\n".join(lines)
 
