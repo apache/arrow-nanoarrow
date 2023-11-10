@@ -23,9 +23,9 @@
 def schema_repr(schema, indent=0):
     indent_str = " " * indent
     if schema._addr() == 0:
-        return f"<NULL nanoarrow.Schema>"
+        return "<NULL nanoarrow.Schema>"
     elif not schema.is_valid():
-        return f"<released nanoarrow.Schema>"
+        return "<released nanoarrow.Schema>"
 
     lines = [f"<nanoarrow.Schema {schema._to_string()}>"]
 
@@ -61,9 +61,9 @@ def schema_repr(schema, indent=0):
 def array_repr(array, indent=0):
     indent_str = " " * indent
     if array._addr() == 0:
-        return f"<NULL nanoarrow.Array>"
+        return "<NULL nanoarrow.Array>"
     elif not array.is_valid():
-        return f"<released nanoarrow.Array>"
+        return "<released nanoarrow.Array>"
 
     lines = [f"<nanoarrow.Array {array.schema._to_string()}>"]
     for attr in ("length", "offset", "null_count", "buffers"):
