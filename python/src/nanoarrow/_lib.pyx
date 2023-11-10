@@ -1032,6 +1032,10 @@ cdef class Device:
     def device_type(self):
         return self._ptr.device_type
 
+    @property
+    def device_id(self):
+        return self._ptr.device_id
+
     @staticmethod
     def resolve(ArrowDeviceType device_type, int64_t device_id):
         if device_type == ARROW_DEVICE_CPU:
