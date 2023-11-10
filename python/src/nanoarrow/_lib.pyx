@@ -421,8 +421,9 @@ cdef class Array:
     optional reference to a Schema that can be used to safely deserialize
     the content. These objects are usually created using `nanoarrow.array()`.
     This Python wrapper allows access to array fields but does not
-    automatically deserialize their content: use `.view()` to validate and
-    deserialize the content into a more easily inspectable object.
+    automatically deserialize their content: use `nanoarrow.array_view()`
+    to validate and deserialize the content into a more easily inspectable
+    object.
 
     Examples
     --------
@@ -435,7 +436,7 @@ cdef class Array:
     4
     >>> array.null_count
     1
-    >>> array_view = array.view()
+    >>> array_view = na.array_view(array)
     """
     cdef object _base
     cdef ArrowArray* _ptr
@@ -544,7 +545,8 @@ cdef class ArrayView:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array_view = na.array(pa.array(["one", "two", "three", None])).view()
+    >>> array = na.array(pa.array(["one", "two", "three", None]))
+    >>> array_view = na.array_view(array)
     >>> np.array(array_view.buffers[1])
     array([ 0,  3,  6, 11, 11], dtype=int32)
     >>> np.array(array_view.buffers[2])
@@ -875,7 +877,20 @@ cdef class ArrayStream:
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
     >>> array_stream = na.array_stream(pa_reader)
     >>> array_stream.get_schema()
-    struct<col1: int32>
+    <nanoarrow.Schema struct>
+    - format: '+s'
+    - name: ''
+    - flags: 0
+    - metadata: NULL
+    - dictionary: NULL
+    - children[1]:
+      'col1': <nanoarrow.Schema int32>
+        - format: 'i'
+        - name: 'col1'
+        - flags: 2
+        - metadata: NULL
+        - dictionary: NULL
+        - children[0]:
     >>> array_stream.get_next().length
     3
     >>> array_stream.get_next() is None
