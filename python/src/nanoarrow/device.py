@@ -15,5 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import Array, ArrayStream, ArrayView, Schema, c_version  # noqa: F401
-from .lib import array, array_stream, schema  # noqa: F401
+from nanoarrow._lib import Device, DeviceArray
+from nanoarrow.lib import array
+
+
+def device_array(obj):
+    if isinstance(obj, DeviceArray):
+        return obj
+
+    # Only CPU for now
+    cpu_array = array(obj)
+
+    return Device.cpu().array_init(cpu_array._addr(), cpu_array.schema)

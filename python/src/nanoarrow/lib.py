@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import Array, ArrayStream, Device, DeviceArray, Schema
+from nanoarrow._lib import Array, ArrayStream, Schema
 
 
 def schema(obj):
@@ -73,13 +73,3 @@ def array_stream(obj):
             f"Can't convert object of type {type(obj).__name__} "
             "to nanoarrow.ArrowArrayStream"
         )
-
-
-def device_array(obj):
-    if isinstance(obj, DeviceArray):
-        return obj
-
-    # Only CPU for now
-    cpu_array = array(obj)
-
-    return Device.cpu().array_init(cpu_array._addr(), cpu_array.schema)
