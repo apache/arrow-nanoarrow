@@ -18,7 +18,7 @@
 import pyarrow as pa
 
 import nanoarrow as na
-import nanoarrow.device as na_device
+from nanoarrow import device
 
 
 def test_cpu_device():
@@ -30,7 +30,7 @@ def test_cpu_device():
 
     pa_array = pa.array([1, 2, 3])
 
-    darray = na_device.device_array(pa_array)
+    darray = device.device_array(pa_array)
     assert darray.device_type == 1
     assert darray.device_id == 0
     assert darray.array.length == 3
