@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import Array, ArrayStream, Schema, ArrayView
+from nanoarrow._lib import Array, ArrayStream, ArrayView, Schema
 
 
 def array_view(obj):

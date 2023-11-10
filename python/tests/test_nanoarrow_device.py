@@ -25,6 +25,7 @@ def test_cpu_device():
     cpu = na._lib.Device.cpu()
     assert cpu.device_type == 1
     assert cpu.device_id == 0
+    assert "device_type: 1" in repr(cpu)
 
     cpu = na._lib.Device.resolve(1, 0)
     assert cpu.device_type == 1
