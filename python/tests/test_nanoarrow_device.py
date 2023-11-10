@@ -17,8 +17,8 @@
 
 import pyarrow as pa
 
-import nanoarrow.device as na_device
 import nanoarrow as na
+import nanoarrow.device as na_device
 
 
 def test_cpu_device():
