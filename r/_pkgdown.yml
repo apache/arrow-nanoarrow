@@ -19,3 +19,10 @@ url: ~
 template:
   bootstrap: 5
 destination: ../docs/_build/html/r
+
+repo:
+  url:
+    home: https://github.com/apache/arrow-nanoarrow/
+    source: https://github.com/apache/arrow-nanoarrow/blob/main/r/
+    issue: https://github.com/apache/arrow-nanoarrow/issues/
+    user: https://github.com/
