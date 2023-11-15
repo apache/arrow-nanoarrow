@@ -19,6 +19,7 @@
 #define NANOARROW_TESTING_HPP_INCLUDED
 
 #include <iostream>
+#include <string>
 
 #include "nanoarrow/nanoarrow.hpp"
 
@@ -80,19 +81,23 @@ class TestingJSONWriter {
 
  private:
   void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
-    if (bits == nullptr) {
-      out << "null";
+    if (length == 0) {
+      out << "[]";
       return;
     }
 
     out << "[";
 
-    if (length > 0) {
-      out << ArrowBitGet(bits, 0);
-    }
-
-    for (int64_t i = 1; i < length; i++) {
-      out << ", " << ArrowBitGet(bits, i);
+    if (bits == nullptr) {
+      out << "1";
+      for (int64_t i = 1; i < length; i++) {
+        out << ", 1";
+      }
+    } else {
+      out << static_cast<int32_t>(ArrowBitGet(bits, 0));
+      for (int64_t i = 1; i < length; i++) {
+        out << ", " << static_cast<int32_t>(ArrowBitGet(bits, i));
+      }
     }
 
     out << "]";
@@ -114,16 +119,24 @@ class TestingJSONWriter {
       case NANOARROW_TYPE_UINT16:
       case NANOARROW_TYPE_INT32:
       case NANOARROW_TYPE_UINT32:
-      case NANOARROW_TYPE_INT64:
+        // Regular JSON integers
         out << ArrowArrayViewGetIntUnsafe(value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << ", ", ArrowArrayViewGetIntUnsafe(value, i);
+          out << ", " << ArrowArrayViewGetIntUnsafe(value, i);
+        }
+        break;
+      case NANOARROW_TYPE_INT64:
+        // Strings
+        out << R"(")" << ArrowArrayViewGetIntUnsafe(value, 0) << R"(")";
+        for (int64_t i = 1; i < value->length; i++) {
+          out << R"(, ")" << ArrowArrayViewGetIntUnsafe(value, i) << R"(")";
         }
         break;
       case NANOARROW_TYPE_UINT64:
-        out << ArrowArrayViewGetUIntUnsafe(value, 0);
+        // Strings
+        out << R"(")" << ArrowArrayViewGetUIntUnsafe(value, 0) << R"(")";
         for (int64_t i = 1; i < value->length; i++) {
-          out << ", ", ArrowArrayViewGetUIntUnsafe(value, i);
+          out << R"(, ")" << ArrowArrayViewGetUIntUnsafe(value, i) << R"(")";
         }
         break;
 

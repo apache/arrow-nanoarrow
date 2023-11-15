@@ -15,7 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <functional>
 #include <sstream>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -23,15 +25,22 @@
 
 using nanoarrow::testing::TestingJSONWriter;
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnNull) {
+void TestColumnPrimitive(ArrowType type, const char* field_name,
+                         std::function<ArrowErrorCode(ArrowArray*)> append_expr,
+                         const std::string& expected_json) {
   TestingJSONWriter writer;
   std::stringstream ss;
 
   nanoarrow::UniqueSchema schema;
-  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), type), NANOARROW_OK);
+  if (field_name != nullptr) {
+    ASSERT_EQ(ArrowSchemaSetName(schema.get(), field_name), NANOARROW_OK);
+  }
 
   nanoarrow::UniqueArray array;
   ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(append_expr(array.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
 
   nanoarrow::UniqueArrayView array_view;
@@ -40,5 +49,66 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnNull) {
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
 
   ASSERT_EQ(writer.WriteColumn(ss, schema.get(), array_view.get()), NANOARROW_OK);
-  ASSERT_EQ(ss.str(), R"({"name": null, "count": 0})");
+  EXPECT_EQ(ss.str(), expected_json);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnNull) {
+  TestColumnPrimitive(
+      NANOARROW_TYPE_NA, nullptr, [](ArrowArray* array) { return NANOARROW_OK; },
+      R"({"name": null, "count": 0})");
+
+  TestColumnPrimitive(
+      NANOARROW_TYPE_NA, "colname", [](ArrowArray* array) { return NANOARROW_OK; },
+      R"({"name": "colname", "count": 0})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
+  TestColumnPrimitive(
+      NANOARROW_TYPE_INT32, nullptr, [](ArrowArray* array) { return NANOARROW_OK; },
+      R"({"name": null, "count": 0, "VALIDITY": [], "DATA": []})");
+
+  // Without a null value
+  TestColumnPrimitive(
+      NANOARROW_TYPE_INT32, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": [0, 1, 0]})");
+
+  // With two null values
+  TestColumnPrimitive(
+      NANOARROW_TYPE_INT32, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 2));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 3, "VALIDITY": [0, 0, 1], "DATA": [0, 0, 1]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt64) {
+  TestColumnPrimitive(
+      NANOARROW_TYPE_INT64, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": ["0", "1", "0"]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
+  TestColumnPrimitive(
+      NANOARROW_TYPE_UINT64, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": ["0", "1", "0"]})");
 }
