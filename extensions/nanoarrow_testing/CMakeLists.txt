@@ -48,8 +48,7 @@ add_library(nanoarrow_testing INTERFACE)
 target_include_directories(nanoarrow_testing INTERFACE .)
 target_link_libraries(nanoarrow_testing INTERFACE nanoarrow)
 
-install(FILES nanoarrow_testing.h
-        DESTINATION include/nanoarrow)
+install(FILES nanoarrow_testing.h DESTINATION include/nanoarrow)
 
 if(NANOARROW_TESTING_BUILD_TESTS)
   set(MEMORYCHECK_COMMAND_OPTIONS
