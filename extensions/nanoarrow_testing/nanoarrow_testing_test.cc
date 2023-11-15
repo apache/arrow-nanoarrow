@@ -15,8 +15,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <sstream>
+
 #include <gtest/gtest.h>
 
 #include "nanoarrow_testing.hpp"
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestBasic) { EXPECT_EQ(4, 4); }
+using nanoarrow::testing::TestingJSONWriter;
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnNull) {
+  TestingJSONWriter writer;
+  std::stringstream ss;
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(writer.WriteColumn(ss, schema.get(), array_view.get()), NANOARROW_OK);
+  ASSERT_EQ(ss.str(), R"({"name": null, "count": 0})");
+}
