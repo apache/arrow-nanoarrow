@@ -23,12 +23,11 @@
 
 #include "nanoarrow_testing.hpp"
 
-using nanoarrow::testing::TestingJSONWriter;
+using nanoarrow::testing::TestingJSON;
 
 void TestColumnPrimitive(ArrowType type, const char* field_name,
                          std::function<ArrowErrorCode(ArrowArray*)> append_expr,
                          const std::string& expected_json) {
-  TestingJSONWriter writer;
   std::stringstream ss;
 
   nanoarrow::UniqueSchema schema;
@@ -48,7 +47,7 @@ void TestColumnPrimitive(ArrowType type, const char* field_name,
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
 
-  ASSERT_EQ(writer.WriteColumn(ss, schema.get(), array_view.get()), NANOARROW_OK);
+  ASSERT_EQ(TestingJSON::WriteColumn(ss, schema.get(), array_view.get()), NANOARROW_OK);
   EXPECT_EQ(ss.str(), expected_json);
 }
 
@@ -122,4 +121,16 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
         return NANOARROW_OK;
       },
       R"({"name": null, "count": 2, "VALIDITY": [1, 1], "DATA": [0.123, 1.235]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
+  TestColumnPrimitive(
+      NANOARROW_TYPE_STRING, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
+      R"("OFFSET": [0, 3, 6], "DATA": ["abc", "def"]})");
 }

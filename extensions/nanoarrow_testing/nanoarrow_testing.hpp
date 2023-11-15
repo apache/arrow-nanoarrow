@@ -27,10 +27,10 @@ namespace nanoarrow {
 
 namespace testing {
 
-class TestingJSONWriter {
+class TestingJSON {
  public:
-  ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
-                             ArrowArrayView* value) {
+  static ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
+                                    ArrowArrayView* value) {
     out << "{";
     if (field->name == nullptr) {
       out << R"("name": null)";
@@ -48,6 +48,24 @@ class TestingJSONWriter {
       default:
         out << R"(, "VALIDITY": )";
         WriteBitmap(out, value->buffer_views[0].data.as_uint8, value->length);
+        break;
+    }
+
+    switch (value->storage_type) {
+      case NANOARROW_TYPE_BINARY:
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_DENSE_UNION:
+      case NANOARROW_TYPE_LIST:
+        out << R"(, "OFFSET": )";
+        NANOARROW_RETURN_NOT_OK(WriteIntegers<int32_t>(out, value->buffer_views[1]));
+        break;
+      case NANOARROW_TYPE_LARGE_LIST:
+      case NANOARROW_TYPE_LARGE_BINARY:
+      case NANOARROW_TYPE_LARGE_STRING:
+        out << R"(, "OFFSET": )";
+        NANOARROW_RETURN_NOT_OK(WriteIntegers<int64_t>(out, value->buffer_views[1]));
+        break;
+      default:
         break;
     }
 
@@ -80,7 +98,7 @@ class TestingJSONWriter {
   }
 
  private:
-  void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
+  static void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
     if (length == 0) {
       out << "[]";
       return;
@@ -103,7 +121,28 @@ class TestingJSONWriter {
     out << "]";
   }
 
-  ArrowErrorCode WriteData(std::ostream& out, ArrowArrayView* value) {
+  template <typename T>
+  static ArrowErrorCode WriteIntegers(std::ostream& out, ArrowBufferView content) {
+    if (content.size_bytes == 0) {
+      out << "[]";
+      return NANOARROW_OK;
+    }
+
+    const T* values = reinterpret_cast<const T*>(content.data.data);
+    int64_t n_values = content.size_bytes / sizeof(T);
+
+    out << "[";
+
+    out << values[0];
+    for (int64_t i = 1; i < n_values; i++) {
+      out << ", " << values[i];
+    }
+
+    out << "]";
+    return NANOARROW_OK;
+  }
+
+  static ArrowErrorCode WriteData(std::ostream& out, ArrowArrayView* value) {
     if (value->length == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -151,6 +190,17 @@ class TestingJSONWriter {
         }
         break;
       }
+
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_LARGE_STRING:
+        NANOARROW_RETURN_NOT_OK(
+            WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0)));
+        for (int64_t i = 1; i < value->length; i++) {
+          out << ", ";
+          NANOARROW_RETURN_NOT_OK(
+              WriteString(out, ArrowArrayViewGetStringUnsafe(value, i)));
+        }
+        break;
       default:
         // Not supported
         return ENOTSUP;
@@ -160,8 +210,15 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
-                               ArrowArrayView* value) {
+  static ArrowErrorCode WriteString(std::ostream& out, ArrowStringView value) {
+    out << R"(")";
+    out << std::string(value.data, value.size_bytes);
+    out << R"(")";
+    return NANOARROW_OK;
+  }
+
+  static ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
+                                      ArrowArrayView* value) {
     if (field->n_children == 0) {
       out << "[]";
       return NANOARROW_OK;
