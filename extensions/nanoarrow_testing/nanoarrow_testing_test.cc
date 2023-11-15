@@ -133,16 +133,31 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       },
       R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
       R"("OFFSET": [0, 3, 6], "DATA": ["abc", "def"]})");
+
+  // Check a string that requires escaping
+  TestColumnPrimitive(
+      NANOARROW_TYPE_STRING, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView(R"("\)")));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 1, "VALIDITY": [1], )"
+      R"("OFFSET": [0, 2], "DATA": ["\"\\"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
   TestColumnPrimitive(
       NANOARROW_TYPE_BINARY, nullptr,
       [](ArrowArray* array) {
+        uint8_t value[] = {0x00, 0x01, 0xff};
+        ArrowBufferView value_view;
+        value_view.data.as_uint8 = value;
+        value_view.size_bytes = sizeof(value);
+
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendBytes(array, value_view));
         return NANOARROW_OK;
       },
       R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
-      R"("OFFSET": [0, 3, 6], "DATA": ["616263", "646566"]})");
+      R"("OFFSET": [0, 3, 6], "DATA": ["616263", "0001FF"]})");
 }

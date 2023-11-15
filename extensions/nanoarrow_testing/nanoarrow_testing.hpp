@@ -229,8 +229,22 @@ class TestingJSON {
 
   static ArrowErrorCode WriteString(std::ostream& out, ArrowStringView value) {
     out << R"(")";
-    // TODO: escape string
-    out << std::string(value.data, value.size_bytes);
+
+    for (int64_t i = 0; i < value.size_bytes; i++) {
+      char c = value.data[i];
+      if (c == '"') {
+        out << R"(\")";
+      } else if (c == '\\') {
+        out << R"(\\)";
+      } else if (c < 10) {
+        out << R"(\u000)" << static_cast<int>(c);
+      } else if (c <= 20) {
+        out << R"(\u00)" << static_cast<int>(c);
+      } else {
+        out << c;
+      }
+    }
+
     out << R"(")";
     return NANOARROW_OK;
   }
@@ -238,7 +252,16 @@ class TestingJSON {
   static ArrowErrorCode WriteBytes(std::ostream& out, ArrowBufferView value) {
     out << R"(")";
     for (int64_t i = 0; i < value.size_bytes; i++) {
-      out << static_cast<int>(value.data.as_int8[i]);
+      int c = static_cast<int>(value.data.as_uint8[i]);
+      // TODO: Figure out the right combination of width + fill
+      // on the ostream to get two-character hex
+      if (c == 0) {
+        out << "00";
+      } else if (c < 16) {
+        out << "0" << c;
+      } else {
+        out << c;
+      }
     }
     out << R"(")";
     return NANOARROW_OK;
@@ -270,9 +293,12 @@ class TestingJSON {
       out.setf(out.fixed);
     }
 
-    void SetFixed(int precision) { out_.precision(3); }
+    void SetFixed(int precision) { out_.precision(precision); }
 
-    void SetHex() { out_ << std::hex; }
+    void SetHex() {
+      out_ << std::hex;
+      out_.setf(out_.uppercase);
+    }
 
     ~LocalizedStream() {
       out_.flags(fmt_flags_);
