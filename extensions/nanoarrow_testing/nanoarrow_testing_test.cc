@@ -134,3 +134,15 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
       R"("OFFSET": [0, 3, 6], "DATA": ["abc", "def"]})");
 }
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
+  TestColumnPrimitive(
+      NANOARROW_TYPE_BINARY, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
+      R"("OFFSET": [0, 3, 6], "DATA": ["616263", "646566"]})");
+}

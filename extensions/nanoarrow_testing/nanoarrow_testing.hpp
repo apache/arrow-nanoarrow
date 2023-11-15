@@ -183,6 +183,7 @@ class TestingJSON {
       case NANOARROW_TYPE_DOUBLE: {
         // JSON number to 3 decimal places
         LocalizedStream local_stream_opt(out);
+        local_stream_opt.SetFixed(3);
 
         out << ArrowArrayViewGetDoubleUnsafe(value, 0);
         for (int64_t i = 1; i < value->length; i++) {
@@ -201,6 +202,22 @@ class TestingJSON {
               WriteString(out, ArrowArrayViewGetStringUnsafe(value, i)));
         }
         break;
+
+      case NANOARROW_TYPE_BINARY:
+      case NANOARROW_TYPE_LARGE_BINARY:
+      case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
+        LocalizedStream local_stream_opt(out);
+        local_stream_opt.SetHex();
+
+        NANOARROW_RETURN_NOT_OK(WriteBytes(out, ArrowArrayViewGetBytesUnsafe(value, 0)));
+        for (int64_t i = 1; i < value->length; i++) {
+          out << ", ";
+          NANOARROW_RETURN_NOT_OK(
+              WriteBytes(out, ArrowArrayViewGetBytesUnsafe(value, i)));
+        }
+        break;
+      }
+
       default:
         // Not supported
         return ENOTSUP;
@@ -212,7 +229,17 @@ class TestingJSON {
 
   static ArrowErrorCode WriteString(std::ostream& out, ArrowStringView value) {
     out << R"(")";
+    // TODO: escape string
     out << std::string(value.data, value.size_bytes);
+    out << R"(")";
+    return NANOARROW_OK;
+  }
+
+  static ArrowErrorCode WriteBytes(std::ostream& out, ArrowBufferView value) {
+    out << R"(")";
+    for (int64_t i = 0; i < value.size_bytes; i++) {
+      out << static_cast<int>(value.data.as_int8[i]);
+    }
     out << R"(")";
     return NANOARROW_OK;
   }
@@ -238,10 +265,14 @@ class TestingJSON {
    public:
     LocalizedStream(std::ostream& out) : out_(out) {
       previous_locale_ = out.imbue(std::locale::classic());
-      previous_precision_ = out.precision(3);
       fmt_flags_ = out.flags();
+      previous_precision_ = out.precision();
       out.setf(out.fixed);
     }
+
+    void SetFixed(int precision) { out_.precision(3); }
+
+    void SetHex() { out_ << std::hex; }
 
     ~LocalizedStream() {
       out_.flags(fmt_flags_);
@@ -252,8 +283,8 @@ class TestingJSON {
    private:
     std::ostream& out_;
     std::locale previous_locale_;
-    std::streamsize previous_precision_;
     std::ios::fmtflags fmt_flags_;
+    std::streamsize previous_precision_;
   };
 };
 
