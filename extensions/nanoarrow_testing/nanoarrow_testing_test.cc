@@ -112,3 +112,14 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
       },
       R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": ["0", "1", "0"]})");
 }
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
+  TestColumnPrimitive(
+      NANOARROW_TYPE_FLOAT, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 0.1234));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 1.2345));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 2, "VALIDITY": [1, 1], "DATA": [0.123, 1.235]})");
+}

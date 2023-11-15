@@ -140,6 +140,17 @@ class TestingJSONWriter {
         }
         break;
 
+      case NANOARROW_TYPE_FLOAT:
+      case NANOARROW_TYPE_DOUBLE: {
+        // JSON number to 3 decimal places
+        LocalizedStream local_stream_opt(out);
+
+        out << ArrowArrayViewGetDoubleUnsafe(value, 0);
+        for (int64_t i = 1; i < value->length; i++) {
+          out << ", " << ArrowArrayViewGetDoubleUnsafe(value, i);
+        }
+        break;
+      }
       default:
         // Not supported
         return ENOTSUP;
@@ -165,6 +176,28 @@ class TestingJSONWriter {
     out << "[";
     return NANOARROW_OK;
   }
+
+  class LocalizedStream {
+   public:
+    LocalizedStream(std::ostream& out) : out_(out) {
+      previous_locale_ = out.imbue(std::locale::classic());
+      previous_precision_ = out.precision(3);
+      fmt_flags_ = out.flags();
+      out.setf(out.fixed);
+    }
+
+    ~LocalizedStream() {
+      out_.flags(fmt_flags_);
+      out_.precision(previous_precision_);
+      out_.imbue(previous_locale_);
+    }
+
+   private:
+    std::ostream& out_;
+    std::locale previous_locale_;
+    std::streamsize previous_precision_;
+    std::ios::fmtflags fmt_flags_;
+  };
 };
 
 }  // namespace testing
