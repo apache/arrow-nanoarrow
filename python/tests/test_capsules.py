@@ -32,16 +32,16 @@ class ArrayWrapper:
     def __init__(self, array):
         self.array = array
 
-    def __arrow_c_array__(self):
-        return self.array.__arrow_c_array__()
+    def __arrow_c_array__(self, requested_schema=None):
+        return self.array.__arrow_c_array__(requested_schema=requested_schema)
 
 
 class StreamWrapper:
     def __init__(self, stream):
         self.stream = stream
 
-    def __arrow_c_stream__(self):
-        return self.stream.__arrow_c_stream__()
+    def __arrow_c_stream__(self, requested_schema=None):
+        return self.stream.__arrow_c_stream__(requested_schema=requested_schema)
 
 
 def test_schema_import():

@@ -42,30 +42,6 @@ def c_version():
     return ArrowNanoarrowVersion().decode("UTF-8")
 
 
-cdef inline void ArrowSchemaMove(ArrowSchema* src, ArrowSchema* dst):
-    """
-    Move the contents of src into dst and set src->release to NULL
-    """
-    memcpy(dst, src, sizeof(ArrowSchema))
-    src.release = NULL
-
-
-cdef inline void ArrowArrayMove(ArrowArray* src, ArrowArray* dst):
-    """
-    Move the contents of src into dst and set src->release to NULL
-    """
-    memcpy(dst, src, sizeof(ArrowArray))
-    src.release = NULL
-
-
-cdef inline void ArrowArrayStreamMove(ArrowArrayStream* src, ArrowArrayStream* dst):
-    """
-    Move the contents of src into dst and set src->release to NULL
-    """
-    memcpy(dst, src, sizeof(ArrowArrayStream))
-    src.release = NULL
-
-
 cdef class SchemaHolder:
     """Memory holder for an ArrowSchema
 
@@ -238,16 +214,10 @@ cdef class Schema:
             A valid PyCapsule with name 'arrow_schema' containing an
             ArrowSchema pointer.
         """
-        cdef:
-            ArrowSchema* c_schema
-            Schema out
-
-        c_schema = <ArrowSchema*> PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
-
-        out = Schema.allocate()
-        ArrowSchemaMove(c_schema, out._ptr)
-
-        return out
+        return Schema(
+            schema_capsule,
+            <uintptr_t>PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
+        )
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -484,23 +454,23 @@ cdef class Array:
 
         Parameters
         ----------
-        schema : PyCapsule
+        schema_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_schema' containing an
+            ArrowSchema pointer.
+        array_capsule : PyCapsule
             A valid PyCapsule with name 'arrow_array' containing an
             ArrowArray pointer.
         """
         cdef:
-            ArrowSchema* c_schema
-            ArrowArray* c_array
             Schema out_schema
             Array out
 
-        c_schema = <ArrowSchema*> PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
-        c_array = <ArrowArray*> PyCapsule_GetPointer(array_capsule, 'arrow_array')
-
-        out_schema = Schema.allocate()
-        ArrowSchemaMove(c_schema, out_schema._ptr)
-        out = Array.allocate(out_schema)
-        ArrowArrayMove(c_array, out._ptr)
+        out_schema = Schema._import_from_c_capsule(schema_capsule)
+        out = Array(
+            array_capsule,
+            <uintptr_t>PyCapsule_GetPointer(array_capsule, 'arrow_array'),
+            out_schema
+        )
 
         return out
 
@@ -915,18 +885,10 @@ cdef class ArrayStream:
             A valid PyCapsule with name 'arrow_array_stream' containing an
             ArrowArrayStream pointer.
         """
-        cdef:
-            ArrowArrayStream* c_stream
-            ArrayStream out
-
-        c_stream = <ArrowArrayStream*>PyCapsule_GetPointer(
-            stream_capsule, 'arrow_array_stream'
+        return ArrayStream(
+            stream_capsule,
+            <uintptr_t>PyCapsule_GetPointer(stream_capsule, 'arrow_array_stream')
         )
-
-        out = ArrayStream.allocate()
-        ArrowArrayStreamMove(c_stream, out._ptr)
-
-        return out
 
     def _addr(self):
         return <uintptr_t>self._ptr
