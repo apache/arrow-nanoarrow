@@ -18,7 +18,7 @@
 #ifndef NANOARROW_TESTING_HPP_INCLUDED
 #define NANOARROW_TESTING_HPP_INCLUDED
 
-#include <iostream>
+#include <iomanip>
 #include <string>
 
 #include "nanoarrow/nanoarrow.hpp"
@@ -206,9 +206,6 @@ class TestingJSON {
       case NANOARROW_TYPE_BINARY:
       case NANOARROW_TYPE_LARGE_BINARY:
       case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
-        LocalizedStream local_stream_opt(out);
-        local_stream_opt.SetHex();
-
         NANOARROW_RETURN_NOT_OK(WriteBytes(out, ArrowArrayViewGetBytesUnsafe(value, 0)));
         for (int64_t i = 1; i < value->length; i++) {
           out << ", ";
@@ -236,6 +233,9 @@ class TestingJSON {
         out << R"(\")";
       } else if (c == '\\') {
         out << R"(\\)";
+      } else if (c < 0) {
+        // Not implemented (multibyte unicode)
+        return ENOTSUP;
       } else if (c < 10) {
         out << R"(\u000)" << static_cast<int>(c);
       } else if (c <= 20) {
@@ -251,17 +251,12 @@ class TestingJSON {
 
   static ArrowErrorCode WriteBytes(std::ostream& out, ArrowBufferView value) {
     out << R"(")";
+    char hex[3];
+    hex[2] = '\0';
+
     for (int64_t i = 0; i < value.size_bytes; i++) {
-      int c = static_cast<int>(value.data.as_uint8[i]);
-      // TODO: Figure out the right combination of width + fill
-      // on the ostream to get two-character hex
-      if (c == 0) {
-        out << "00";
-      } else if (c < 16) {
-        out << "0" << c;
-      } else {
-        out << c;
-      }
+      snprintf(hex, sizeof(hex), "%02X", static_cast<int>(value.data.as_uint8[i]));
+      out << hex;
     }
     out << R"(")";
     return NANOARROW_OK;
@@ -294,11 +289,6 @@ class TestingJSON {
     }
 
     void SetFixed(int precision) { out_.precision(precision); }
-
-    void SetHex() {
-      out_ << std::hex;
-      out_.setf(out_.uppercase);
-    }
 
     ~LocalizedStream() {
       out_.flags(fmt_flags_);
