@@ -30,13 +30,40 @@ be literal and stay close to the structure definitions.
 from libc.stdint cimport uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.pycapsule cimport PyCapsule_GetPointer, PyCapsule_New
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
+from libc.string cimport memcpy
+
 
 def c_version():
     """Return the nanoarrow C library version string
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
+
+
+cdef inline void ArrowSchemaMove(ArrowSchema* src, ArrowSchema* dst):
+    """
+    Move the contents of src into dst and set src->release to NULL
+    """
+    memcpy(dst, src, sizeof(ArrowSchema))
+    src.release = NULL
+
+
+cdef inline void ArrowArrayMove(ArrowArray* src, ArrowArray* dst):
+    """
+    Move the contents of src into dst and set src->release to NULL
+    """
+    memcpy(dst, src, sizeof(ArrowArray))
+    src.release = NULL
+
+
+cdef inline void ArrowArrayStreamMove(ArrowArrayStream* src, ArrowArrayStream* dst):
+    """
+    Move the contents of src into dst and set src->release to NULL
+    """
+    memcpy(dst, src, sizeof(ArrowArrayStream))
+    src.release = NULL
 
 
 cdef class SchemaHolder:
@@ -199,6 +226,28 @@ cdef class Schema:
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base,
         self._ptr = <ArrowSchema*>addr
+
+    @staticmethod
+    def _import_from_c_capsule(schema_capsule):
+        """
+        Import from a ArrowSchema PyCapsule
+
+        Parameters
+        ----------
+        schema_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_schema' containing an
+            ArrowSchema pointer.
+        """
+        cdef:
+            ArrowSchema* c_schema
+            Schema out
+
+        c_schema = <ArrowSchema*> PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
+
+        out = Schema.allocate()
+        ArrowSchemaMove(c_schema, out._ptr)
+
+        return out
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -427,6 +476,33 @@ cdef class Array:
         self._base = base,
         self._ptr = <ArrowArray*>addr
         self._schema = schema
+
+    @staticmethod
+    def _import_from_c_capsule(schema_capsule, array_capsule):
+        """
+        Import from a ArrowSchema and ArrowArray PyCapsule tuple.
+
+        Parameters
+        ----------
+        schema : PyCapsule
+            A valid PyCapsule with name 'arrow_array' containing an
+            ArrowArray pointer.
+        """
+        cdef:
+            ArrowSchema* c_schema
+            ArrowArray* c_array
+            Schema out_schema
+            Array out
+
+        c_schema = <ArrowSchema*> PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
+        c_array = <ArrowArray*> PyCapsule_GetPointer(array_capsule, 'arrow_array')
+
+        out_schema = Schema.allocate()
+        ArrowSchemaMove(c_schema, out_schema._ptr)
+        out = Array.allocate(out_schema)
+        ArrowArrayMove(c_array, out._ptr)
+
+        return out
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -818,10 +894,39 @@ cdef class ArrayStream:
     cdef ArrowArrayStream* _ptr
     cdef object _cached_schema
 
+    @staticmethod
+    def allocate():
+        base = ArrayStreamHolder()
+        return ArrayStream(base, base._addr())
+
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayStream*>addr
         self._cached_schema = None
+
+    @staticmethod
+    def _import_from_c_capsule(stream_capsule):
+        """
+        Import from a ArrowArrayStream PyCapsule.
+
+        Parameters
+        ----------
+        stream_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_array_stream' containing an
+            ArrowArrayStream pointer.
+        """
+        cdef:
+            ArrowArrayStream* c_stream
+            ArrayStream out
+
+        c_stream = <ArrowArrayStream*>PyCapsule_GetPointer(
+            stream_capsule, 'arrow_array_stream'
+        )
+
+        out = ArrayStream.allocate()
+        ArrowArrayStreamMove(c_stream, out._ptr)
+
+        return out
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -898,8 +1003,3 @@ cdef class ArrayStream:
 
     def __next__(self):
         return self.get_next()
-
-    @staticmethod
-    def allocate():
-        base = ArrayStreamHolder()
-        return ArrayStream(base, base._addr())
