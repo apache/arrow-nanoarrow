@@ -52,6 +52,16 @@ class TestingJSON {
     }
 
     switch (value->storage_type) {
+      case NANOARROW_TYPE_SPARSE_UNION:
+      case NANOARROW_TYPE_DENSE_UNION:
+        out << R"(, "TYPE_ID": )";
+        NANOARROW_RETURN_NOT_OK(WriteIntegers<int32_t>(out, value->buffer_views[0]));
+        break;
+      default:
+        break;
+    }
+
+    switch (value->storage_type) {
       case NANOARROW_TYPE_BINARY:
       case NANOARROW_TYPE_STRING:
       case NANOARROW_TYPE_DENSE_UNION:
