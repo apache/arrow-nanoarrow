@@ -238,3 +238,16 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnStruct) {
       R"({"name": null, "count": 0, "VALIDITY": [], "children": [)"
       R"({"name": "col1", "count": 0}, {"name": "col2", "count": 0}]})");
 }
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnDenseUnion) {
+  // Empty union
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeUnion(schema, NANOARROW_TYPE_DENSE_UNION, 0));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; },
+      R"({"name": null, "count": 0, "TYPE_ID": [], "OFFSET": [], "children": []})");
+}

@@ -29,17 +29,41 @@ namespace testing {
 
 class TestingJSON {
  public:
+  static ArrowErrorCode WriteBatch(std::ostream& out, const ArrowSchema* schema,
+                                   ArrowArrayView* value) {
+    // Make sure we have a struct
+    if (std::string(schema->format) != "+s") {
+      return EINVAL;
+    }
+
+    out << "{";
+
+    // Write length
+    out << R"("count": )" << value->length;
+
+    // Write children
+    out << R"(, "children": )";
+    NANOARROW_RETURN_NOT_OK(WriteChildren(out, schema, value));
+
+    out << "}";
+    return NANOARROW_OK;
+  }
+
   static ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
                                     ArrowArrayView* value) {
     out << "{";
+
+    // Write schema->name (may be null)
     if (field->name == nullptr) {
       out << R"("name": null)";
     } else {
       out << R"("name": ")" << field->name << R"(")";
     }
 
+    // Write length
     out << R"(, "count": )" << value->length;
 
+    // Write the VALIDITY element if required
     switch (value->storage_type) {
       case NANOARROW_TYPE_NA:
       case NANOARROW_TYPE_DENSE_UNION:
@@ -51,6 +75,7 @@ class TestingJSON {
         break;
     }
 
+    // Write the TYPE_ID element if required
     switch (value->storage_type) {
       case NANOARROW_TYPE_SPARSE_UNION:
       case NANOARROW_TYPE_DENSE_UNION:
@@ -61,6 +86,7 @@ class TestingJSON {
         break;
     }
 
+    // Write the OFFSET element if required
     switch (value->storage_type) {
       case NANOARROW_TYPE_BINARY:
       case NANOARROW_TYPE_STRING:
@@ -81,9 +107,15 @@ class TestingJSON {
         break;
     }
 
+    // Write the DATA element if required
     switch (value->storage_type) {
       case NANOARROW_TYPE_NA:
       case NANOARROW_TYPE_STRUCT:
+      case NANOARROW_TYPE_LIST:
+      case NANOARROW_TYPE_LARGE_LIST:
+      case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      case NANOARROW_TYPE_DENSE_UNION:
+      case NANOARROW_TYPE_SPARSE_UNION:
         break;
       default:
         out << R"(, "DATA": )";
@@ -253,10 +285,11 @@ class TestingJSON {
       } else if (c == '\\') {
         out << R"(\\)";
       } else if (c < 0) {
+        // Not supporting multibyte unicode yet
         return ENOTSUP;
       } else if (c < 20) {
         // Data in the arrow-testing repo has a lot of content that requires escaping
-        // in this way (\uXXXX). Not supporting multibyte unicode yet.
+        // in this way (\uXXXX).
         uint16_t utf16_bytes = static_cast<uint16_t>(c);
 
         char utf16_esc[7];
@@ -306,8 +339,8 @@ class TestingJSON {
    public:
     LocalizedStream(std::ostream& out) : out_(out) {
       previous_locale_ = out.imbue(std::locale::classic());
-      fmt_flags_ = out.flags();
       previous_precision_ = out.precision();
+      fmt_flags_ = out.flags();
       out.setf(out.fixed);
     }
 
