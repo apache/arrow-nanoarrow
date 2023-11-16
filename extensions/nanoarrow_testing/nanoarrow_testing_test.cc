@@ -264,3 +264,15 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnDenseUnion) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &TestingJSON::WriteColumn,
       R"({"name": null, "count": 0, "TYPE_ID": [], "OFFSET": [], "children": []})");
 }
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestBatch) {
+  // Empty batch
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 0));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &TestingJSON::WriteBatch,
+      R"({"count": 0, "columns": []})");
+}
