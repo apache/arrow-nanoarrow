@@ -134,7 +134,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
       R"("OFFSET": [0, 3, 6], "DATA": ["abc", "def"]})");
 
-  // Check a string that requires escaping
+  // Check a string that requires escaping of characters \ and "
   TestColumnPrimitive(
       NANOARROW_TYPE_STRING, nullptr,
       [](ArrowArray* array) {
@@ -143,6 +143,16 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       },
       R"({"name": null, "count": 1, "VALIDITY": [1], )"
       R"("OFFSET": [0, 2], "DATA": ["\"\\"]})");
+
+  // Check a string that requires unicode escape
+  TestColumnPrimitive(
+      NANOARROW_TYPE_STRING, nullptr,
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("\u0001")));
+        return NANOARROW_OK;
+      },
+      R"({"name": null, "count": 1, "VALIDITY": [1], )"
+      R"("OFFSET": [0, 1], "DATA": ["\u0001"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnLargeString) {

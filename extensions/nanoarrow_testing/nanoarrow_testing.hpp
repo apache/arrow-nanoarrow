@@ -18,7 +18,7 @@
 #ifndef NANOARROW_TESTING_HPP_INCLUDED
 #define NANOARROW_TESTING_HPP_INCLUDED
 
-#include <iomanip>
+#include <iostream>
 #include <string>
 
 #include "nanoarrow/nanoarrow.hpp"
@@ -253,12 +253,16 @@ class TestingJSON {
       } else if (c == '\\') {
         out << R"(\\)";
       } else if (c < 0) {
-        // Not implemented (multibyte unicode)
         return ENOTSUP;
-      } else if (c < 10) {
-        out << R"(\u000)" << static_cast<int>(c);
-      } else if (c <= 20) {
-        out << R"(\u00)" << static_cast<int>(c);
+      } else if (c < 20) {
+        // Data in the arrow-testing repo has a lot of content that requires escaping
+        // in this way (\uXXXX). Not supporting multibyte unicode yet.
+        uint16_t utf16_bytes = static_cast<uint16_t>(c);
+
+        char utf16_esc[7];
+        utf16_esc[6] = '\0';
+        snprintf(utf16_esc, sizeof(utf16_esc), R"(\u%04x)", utf16_bytes);
+        out << utf16_esc;
       } else {
         out << c;
       }
