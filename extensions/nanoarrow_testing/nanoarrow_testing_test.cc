@@ -209,3 +209,32 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
       R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
       R"("OFFSET": [0, 3, 6], "DATA": ["616263", "0001FF"]})");
 }
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnStruct) {
+  // Empty struct
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 0));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; },
+      R"({"name": null, "count": 0, "VALIDITY": [], "children": []})");
+
+  // Non-empty struct
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 2));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "col1"));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[1], "col2"));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; },
+      R"({"name": null, "count": 0, "VALIDITY": [], "children": [)"
+      R"({"name": "col1", "count": 0}, {"name": "col2", "count": 0}]})");
+}

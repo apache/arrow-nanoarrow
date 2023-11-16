@@ -298,7 +298,7 @@ class TestingJSON {
       out << ", ";
       NANOARROW_RETURN_NOT_OK(WriteColumn(out, field->children[i], value->children[i]));
     }
-    out << "[";
+    out << "]";
     return NANOARROW_OK;
   }
 
