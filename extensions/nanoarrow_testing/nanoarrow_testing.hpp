@@ -55,7 +55,7 @@ class TestingJSON {
       case NANOARROW_TYPE_SPARSE_UNION:
       case NANOARROW_TYPE_DENSE_UNION:
         out << R"(, "TYPE_ID": )";
-        NANOARROW_RETURN_NOT_OK(WriteIntegers<int32_t>(out, value->buffer_views[0]));
+        NANOARROW_RETURN_NOT_OK(WriteOffsetOrTypeID<int8_t>(out, value->buffer_views[0]));
         break;
       default:
         break;
@@ -67,13 +67,15 @@ class TestingJSON {
       case NANOARROW_TYPE_DENSE_UNION:
       case NANOARROW_TYPE_LIST:
         out << R"(, "OFFSET": )";
-        NANOARROW_RETURN_NOT_OK(WriteIntegers<int32_t>(out, value->buffer_views[1]));
+        NANOARROW_RETURN_NOT_OK(
+            WriteOffsetOrTypeID<int32_t>(out, value->buffer_views[1]));
         break;
       case NANOARROW_TYPE_LARGE_LIST:
       case NANOARROW_TYPE_LARGE_BINARY:
       case NANOARROW_TYPE_LARGE_STRING:
         out << R"(, "OFFSET": )";
-        NANOARROW_RETURN_NOT_OK(WriteIntegers<int64_t>(out, value->buffer_views[1]));
+        NANOARROW_RETURN_NOT_OK(
+            WriteOffsetOrTypeID<int64_t>(out, value->buffer_views[1]));
         break;
       default:
         break;
@@ -132,7 +134,7 @@ class TestingJSON {
   }
 
   template <typename T>
-  static ArrowErrorCode WriteIntegers(std::ostream& out, ArrowBufferView content) {
+  static ArrowErrorCode WriteOffsetOrTypeID(std::ostream& out, ArrowBufferView content) {
     if (content.size_bytes == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -143,9 +145,16 @@ class TestingJSON {
 
     out << "[";
 
-    out << values[0];
-    for (int64_t i = 1; i < n_values; i++) {
-      out << ", " << values[i];
+    if (sizeof(T) == sizeof(int64_t)) {
+      out << R"(")" << values[0] << R"(")";
+      for (int64_t i = 1; i < n_values; i++) {
+        out << R"(, ")" << values[i] << R"(")";
+      }
+    } else {
+      out << values[0];
+      for (int64_t i = 1; i < n_values; i++) {
+        out << ", " << static_cast<int64_t>(values[i]);
+      }
     }
 
     out << "]";
