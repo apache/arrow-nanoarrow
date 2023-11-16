@@ -42,7 +42,7 @@ class TestingJSON {
     out << R"("count": )" << value->length;
 
     // Write children
-    out << R"(, "children": )";
+    out << R"(, "columns": )";
     NANOARROW_RETURN_NOT_OK(WriteChildren(out, schema, value));
 
     out << "}";
