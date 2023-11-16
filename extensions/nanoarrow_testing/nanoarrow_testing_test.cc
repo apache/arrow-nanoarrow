@@ -25,17 +25,13 @@
 
 using nanoarrow::testing::TestingJSON;
 
-void TestColumnPrimitive(ArrowType type, const char* field_name,
-                         std::function<ArrowErrorCode(ArrowArray*)> append_expr,
-                         const std::string& expected_json) {
+void TestColumn(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
+                std::function<ArrowErrorCode(ArrowArray*)> append_expr,
+                const std::string& expected_json) {
   std::stringstream ss;
 
   nanoarrow::UniqueSchema schema;
-  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), type), NANOARROW_OK);
-  if (field_name != nullptr) {
-    ASSERT_EQ(ArrowSchemaSetName(schema.get(), field_name), NANOARROW_OK);
-  }
-
+  ASSERT_EQ(type_expr(schema.get()), NANOARROW_OK);
   nanoarrow::UniqueArray array;
   ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
@@ -52,23 +48,35 @@ void TestColumnPrimitive(ArrowType type, const char* field_name,
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnNull) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_NA, nullptr, [](ArrowArray* array) { return NANOARROW_OK; },
-      R"({"name": null, "count": 0})");
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, R"({"name": null, "count": 0})");
 
-  TestColumnPrimitive(
-      NANOARROW_TYPE_NA, "colname", [](ArrowArray* array) { return NANOARROW_OK; },
+  TestColumn(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, "colname"));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; },
       R"({"name": "colname", "count": 0})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_INT32, nullptr, [](ArrowArray* array) { return NANOARROW_OK; },
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT32);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; },
       R"({"name": null, "count": 0, "VALIDITY": [], "DATA": []})");
 
   // Without a null value
-  TestColumnPrimitive(
-      NANOARROW_TYPE_INT32, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT32);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
@@ -78,8 +86,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
       R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": [0, 1, 0]})");
 
   // With two null values
-  TestColumnPrimitive(
-      NANOARROW_TYPE_INT32, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT32);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 2));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
@@ -89,8 +99,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt64) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_INT64, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT64);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
@@ -101,8 +113,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt64) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_UINT64, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_UINT64);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
@@ -113,8 +127,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_FLOAT, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_FLOAT);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 0.1234));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 1.2345));
@@ -124,8 +140,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_STRING, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
@@ -135,8 +153,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       R"("OFFSET": [0, 3, 6], "DATA": ["abc", "def"]})");
 
   // Check a string that requires escaping of characters \ and "
-  TestColumnPrimitive(
-      NANOARROW_TYPE_STRING, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView(R"("\)")));
         return NANOARROW_OK;
@@ -145,8 +165,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       R"("OFFSET": [0, 2], "DATA": ["\"\\"]})");
 
   // Check a string that requires unicode escape
-  TestColumnPrimitive(
-      NANOARROW_TYPE_STRING, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("\u0001")));
         return NANOARROW_OK;
@@ -156,8 +178,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnLargeString) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_LARGE_STRING, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_LARGE_STRING);
+      },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
@@ -168,8 +192,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnLargeString) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
-  TestColumnPrimitive(
-      NANOARROW_TYPE_BINARY, nullptr,
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_BINARY);
+      },
       [](ArrowArray* array) {
         uint8_t value[] = {0x00, 0x01, 0xff};
         ArrowBufferView value_view;
