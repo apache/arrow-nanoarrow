@@ -22,9 +22,10 @@ def schema(obj):
     if isinstance(obj, Schema):
         return obj
 
-    # Not particularly safe because _export_to_c() could be exporting an
-    # array, schema, or array_stream. The ideal
-    # solution here would be something like __arrow_c_schema__()
+    if hasattr(obj, "__arrow_c_schema__"):
+        return Schema._import_from_c_capsule(obj.__arrow_c_schema__())
+
+    # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
         out = Schema.allocate()
         obj._export_to_c(out._addr())
@@ -39,9 +40,11 @@ def array(obj):
     if isinstance(obj, Array):
         return obj
 
-    # Somewhat safe because calling _export_to_c() with two arguments will
-    # not fail with a crash (but will fail with a confusing error). The ideal
-    # solution here would be something like __arrow_c_array__()
+    if hasattr(obj, "__arrow_c_array__"):
+        # TODO support requested schema
+        return Array._import_from_c_capsule(*obj.__arrow_c_array__())
+
+    # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
         out = Array.allocate(Schema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
@@ -53,12 +56,14 @@ def array(obj):
 
 
 def array_stream(obj):
-    if isinstance(obj, Schema):
+    if isinstance(obj, ArrayStream):
         return obj
 
-    # Not particularly safe because _export_to_c() could be exporting an
-    # array, schema, or array_stream. The ideal
-    # solution here would be something like __arrow_c_array_stream__()
+    if hasattr(obj, "__arrow_c_stream__"):
+        # TODO support requested schema
+        return ArrayStream._import_from_c_capsule(obj.__arrow_c_stream__())
+
+    # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
         out = ArrayStream.allocate()
         obj._export_to_c(out._addr())

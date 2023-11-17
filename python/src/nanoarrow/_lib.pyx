@@ -30,8 +30,10 @@ be literal and stay close to the structure definitions.
 from libc.stdint cimport uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.pycapsule cimport PyCapsule_GetPointer
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
+
 
 def c_version():
     """Return the nanoarrow C library version string
@@ -199,6 +201,22 @@ cdef class Schema:
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base,
         self._ptr = <ArrowSchema*>addr
+
+    @staticmethod
+    def _import_from_c_capsule(schema_capsule):
+        """
+        Import from a ArrowSchema PyCapsule
+
+        Parameters
+        ----------
+        schema_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_schema' containing an
+            ArrowSchema pointer.
+        """
+        return Schema(
+            schema_capsule,
+            <uintptr_t>PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
+        )
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -427,6 +445,33 @@ cdef class Array:
         self._base = base,
         self._ptr = <ArrowArray*>addr
         self._schema = schema
+
+    @staticmethod
+    def _import_from_c_capsule(schema_capsule, array_capsule):
+        """
+        Import from a ArrowSchema and ArrowArray PyCapsule tuple.
+
+        Parameters
+        ----------
+        schema_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_schema' containing an
+            ArrowSchema pointer.
+        array_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_array' containing an
+            ArrowArray pointer.
+        """
+        cdef:
+            Schema out_schema
+            Array out
+
+        out_schema = Schema._import_from_c_capsule(schema_capsule)
+        out = Array(
+            array_capsule,
+            <uintptr_t>PyCapsule_GetPointer(array_capsule, 'arrow_array'),
+            out_schema
+        )
+
+        return out
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -818,10 +863,31 @@ cdef class ArrayStream:
     cdef ArrowArrayStream* _ptr
     cdef object _cached_schema
 
+    @staticmethod
+    def allocate():
+        base = ArrayStreamHolder()
+        return ArrayStream(base, base._addr())
+
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayStream*>addr
         self._cached_schema = None
+
+    @staticmethod
+    def _import_from_c_capsule(stream_capsule):
+        """
+        Import from a ArrowArrayStream PyCapsule.
+
+        Parameters
+        ----------
+        stream_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_array_stream' containing an
+            ArrowArrayStream pointer.
+        """
+        return ArrayStream(
+            stream_capsule,
+            <uintptr_t>PyCapsule_GetPointer(stream_capsule, 'arrow_array_stream')
+        )
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -898,8 +964,3 @@ cdef class ArrayStream:
 
     def __next__(self):
         return self.get_next()
-
-    @staticmethod
-    def allocate():
-        base = ArrayStreamHolder()
-        return ArrayStream(base, base._addr())
