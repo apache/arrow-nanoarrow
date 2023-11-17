@@ -89,3 +89,10 @@ def device_array_repr(device_array):
     device_id = f"- device_id: {device_array.device_id}"
     array = f"- array: {array_repr(device_array.array, indent=2)}"
     return "\n".join((title_line, device_type, device_id, array))
+
+
+def device_repr(device):
+    title_line = "<nanoarrow.device.Device>"
+    device_type = f"- device_type: {device.device_type}"
+    device_id = f"- device_id: {device.device_id}"
+    return "\n".join([title_line, device_type, device_id])

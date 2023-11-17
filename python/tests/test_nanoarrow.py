@@ -67,7 +67,7 @@ def test_schema_basic():
     assert schema.children[0].format == "i"
     assert schema.children[0].name == "some_name"
     assert schema.children[0]._to_string() == "int32"
-    assert repr(schema.children[0]).startswith("<nanoarrow.Schema int32")
+    assert "<nanoarrow.Schema int32>" in repr(schema)
     assert schema.dictionary is None
 
     with pytest.raises(IndexError):
@@ -154,6 +154,12 @@ def test_schema_view_extra_params():
     assert view.extension_metadata == b"some_metadata"
 
 
+def test_array_empty():
+    array = na.Array.allocate(na.Schema.allocate())
+    assert array.is_valid() is False
+    assert repr(array) == "<released nanoarrow.Array>"
+
+
 def test_array():
     array = na.array(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
@@ -176,6 +182,13 @@ def test_array_recursive():
 
     with pytest.raises(IndexError):
         array.children[1]
+
+
+def test_array_dictionary():
+    array = na.array(pa.array(["a", "b", "b"]).dictionary_encode())
+    assert array.length == 3
+    assert array.dictionary.length == 2
+    assert "dictionary: <nanoarrow.Array string>" in repr(array)
 
 
 def test_array_view():

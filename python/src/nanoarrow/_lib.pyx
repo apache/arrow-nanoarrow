@@ -35,7 +35,7 @@ from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
-from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr
+from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr, device_repr
 
 def c_version():
     """Return the nanoarrow C library version string
@@ -1054,10 +1054,7 @@ cdef class Device:
         return DeviceArray(holder, holder._addr(), schema)
 
     def __repr__(self):
-        title_line = "<nanoarrow.device.Device>"
-        device_type = f"- device_type: {self.device_type}"
-        device_id = f"- device_id: {self.device_id}"
-        return "\n".join((title_line, device_type, device_id))
+        return device_repr(self)
 
     @property
     def device_type(self):
