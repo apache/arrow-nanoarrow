@@ -60,6 +60,13 @@ def test_array_stream_helper():
         na.array_stream(None)
 
 
+def test_array_view_helper():
+    array = na.array(pa.array([1, 2, 3]))
+    view = na.array_view(array)
+    assert isinstance(view, na.ArrayView)
+    assert na.array_view(view) is view
+
+
 def test_schema_basic():
     schema = na.Schema.allocate()
     assert schema.is_valid() is False
