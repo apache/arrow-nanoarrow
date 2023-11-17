@@ -52,7 +52,7 @@ def test_schema_import():
         # some basic validation
         assert schema.is_valid()
         assert schema.format == "+s"
-        assert str(schema) == "struct<some_name: int32>"
+        assert schema._to_string(recursive=True) == "struct<some_name: int32>"
 
 
 def test_array_import():
@@ -63,7 +63,7 @@ def test_array_import():
         # some basic validation
         assert array.is_valid()
         assert array.length == 3
-        assert str(array.schema) == "int32"
+        assert array.schema._to_string(recursive=True) == "int32"
 
 
 def test_array_stream_import():
@@ -78,4 +78,7 @@ def test_array_stream_import():
         assert array_stream.is_valid()
         array = array_stream.get_next()
         assert array.length == 3
-        assert str(array_stream.get_schema()) == "struct<some_column: int32>"
+        assert (
+            array_stream.get_schema()._to_string(recursive=True)
+            == "struct<some_column: int32>"
+        )
