@@ -1032,6 +1032,10 @@ cdef class DeviceArrayHolder:
 cdef class DeviceHolder:
     """Memory holder for an ArrowDevice
 
+    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
+    not ABI stable) that contains callbacks for device operations
+    beyond its type and identifier.
+
     This class is responsible for the lifecycle of the ArrowDevice
     whose memory it is responsible. When this object is deleted,
     a non-NULL release callback is invoked.
