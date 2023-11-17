@@ -30,10 +30,9 @@ be literal and stay close to the structure definitions.
 from libc.stdint cimport uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_GetPointer, PyCapsule_New
+from cpython.pycapsule cimport PyCapsule_GetPointer
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
-from libc.string cimport memcpy
 
 
 def c_version():
