@@ -52,6 +52,12 @@ def test_array_helper():
         na.schema(None)
 
 
+def test_array_stream_helper():
+    array_stream = na.ArrayStream.allocate()
+    assert na.array_stream(array_stream) is array_stream
+
+    reader =
+
 def test_schema_basic():
     schema = na.Schema.allocate()
     assert schema.is_valid() is False
@@ -291,6 +297,8 @@ def test_buffers_binary():
 
 def test_array_stream():
     array_stream = na.ArrayStream.allocate()
+    assert na.array_stream(array_stream) is array_stream
+
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):
         array_stream.get_schema()
