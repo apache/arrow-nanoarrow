@@ -33,14 +33,18 @@ if os.path.exists(bootstrap_py):
 
 
 # Set some extra flags for compiling with coverage support
-if os.getenv("NANOARROW_PYTHON_COVERAGE") == "1":
-    coverage_compile_args = ["--coverage"]
-    coverage_link_args = ["--coverage"]
-    coverage_define_macros = [("CYTHON_TRACE", 1)]
+if os.getenv("NANOARROW_COVERAGE") == "1":
+    extra_compile_args = ["--coverage"]
+    extra_link_args = ["--coverage"]
+    extra_define_macros = [("CYTHON_TRACE", 1)]
+elif os.getenv("NANOARROW_DEBUG_EXTENSION") == "1":
+    extra_compile_args = ["-g", "-O0"]
+    extra_link_args = []
+    extra_define_macros = []
 else:
-    coverage_compile_args = []
-    coverage_link_args = []
-    coverage_define_macros = []
+    extra_compile_args = []
+    extra_link_args = []
+    extra_define_macros = []
 
 setup(
     ext_modules=[
@@ -51,10 +55,11 @@ setup(
             sources=[
                 "src/nanoarrow/_lib.pyx",
                 "src/nanoarrow/nanoarrow.c",
+                "src/nanoarrow/nanoarrow_device.c",
             ],
-            extra_compile_args=coverage_compile_args,
-            extra_link_args=coverage_link_args,
-            define_macros=coverage_define_macros,
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
+            define_macros=extra_define_macros,
         )
     ]
 )

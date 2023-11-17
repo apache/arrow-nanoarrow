@@ -15,5 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import Array, ArrayStream, ArrayView, Schema, c_version  # noqa: F401
-from .lib import array, array_stream, schema, array_view  # noqa: F401
+import pyarrow as pa
+
+from nanoarrow import device
+
+
+def test_cpu_device():
+    cpu = device.Device.cpu()
+    assert cpu.device_type == 1
+    assert cpu.device_id == 0
+    assert "device_type: 1" in repr(cpu)
+
+    cpu = device.Device.resolve(1, 0)
+    assert cpu.device_type == 1
+
+    pa_array = pa.array([1, 2, 3])
+
+    darray = device.device_array(pa_array)
+    assert darray.device_type == 1
+    assert darray.device_id == 0
+    assert darray.array.length == 3
+    assert "device_type: 1" in repr(darray)
+
+    assert device.device_array(darray) is darray

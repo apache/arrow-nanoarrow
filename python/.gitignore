@@ -18,6 +18,7 @@
 
 src/nanoarrow/nanoarrow.c
 src/nanoarrow/nanoarrow.h
+src/nanoarrow/nanoarrow_device.h
 src/nanoarrow/nanoarrow_c.pxd
 src/nanoarrow/*.c
 

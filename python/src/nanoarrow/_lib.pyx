@@ -33,7 +33,9 @@ from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_GetPointer
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
+from nanoarrow_device_c cimport *
 
+from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr, device_repr
 
 def c_version():
     """Return the nanoarrow C library version string
@@ -230,17 +232,20 @@ cdef class Schema:
         if self._ptr.release == NULL:
             raise RuntimeError("schema is released")
 
-    def __repr__(self):
-        cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, True)
+    def _to_string(self, recursive=False):
+        cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, recursive)
         cdef char* out = <char*>PyMem_Malloc(n_chars + 1)
         if not out:
             raise MemoryError()
 
-        ArrowSchemaToString(self._ptr, out, n_chars + 1, True)
+        ArrowSchemaToString(self._ptr, out, n_chars + 1, recursive)
         out_str = out.decode("UTF-8")
         PyMem_Free(out)
 
         return out_str
+
+    def __repr__(self):
+        return schema_repr(self)
 
     @property
     def format(self):
@@ -416,8 +421,9 @@ cdef class Array:
     optional reference to a Schema that can be used to safely deserialize
     the content. These objects are usually created using `nanoarrow.array()`.
     This Python wrapper allows access to array fields but does not
-    automatically deserialize their content: use `.view()` to validate and
-    deserialize the content into a more easily inspectable object.
+    automatically deserialize their content: use `nanoarrow.array_view()`
+    to validate and deserialize the content into a more easily inspectable
+    object.
 
     Examples
     --------
@@ -430,7 +436,7 @@ cdef class Array:
     4
     >>> array.null_count
     1
-    >>> array_view = array.view()
+    >>> array_view = na.array_view(array)
     """
     cdef object _base
     cdef ArrowArray* _ptr
@@ -519,20 +525,8 @@ cdef class Array:
         else:
             return None
 
-    def view(self):
-        cdef ArrayViewHolder holder = ArrayViewHolder()
-
-        cdef Error error = Error()
-        cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
-                                                       self._schema._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewInitFromSchema()", result)
-
-        result = ArrowArrayViewSetArray(&holder.c_array_view, self._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewSetArray()", result)
-
-        return ArrayView(holder, holder._addr(), self._schema, self)
+    def __repr__(self):
+        return array_repr(self)
 
 
 cdef class ArrayView:
@@ -551,7 +545,8 @@ cdef class ArrayView:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array_view = na.array(pa.array(["one", "two", "three", None])).view()
+    >>> array = na.array(pa.array(["one", "two", "three", None]))
+    >>> array_view = na.array_view(array)
     >>> np.array(array_view.buffers[1])
     array([ 0,  3,  6, 11, 11], dtype=int32)
     >>> np.array(array_view.buffers[2])
@@ -560,6 +555,7 @@ cdef class ArrayView:
     """
     cdef object _base
     cdef ArrowArrayView* _ptr
+    cdef ArrowDevice* _device
     cdef Schema _schema
     cdef object _base_buffer
 
@@ -568,6 +564,7 @@ cdef class ArrayView:
         self._ptr = <ArrowArrayView*>addr
         self._schema = schema
         self._base_buffer = base_buffer
+        self._device = ArrowDeviceCpu()
 
     @property
     def length(self):
@@ -604,6 +601,26 @@ cdef class ArrayView:
     @property
     def schema(self):
         return self._schema
+
+    def _assert_cpu(self):
+        if self._device.device_type != ARROW_DEVICE_CPU:
+            raise RuntimeError("ArrayView is not representing a CPU device")
+
+    @staticmethod
+    def from_cpu_array(Array array):
+        cdef ArrayViewHolder holder = ArrayViewHolder()
+
+        cdef Error error = Error()
+        cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
+                                                       array._schema._ptr, &error.c_error)
+        if result != NANOARROW_OK:
+            error.raise_message("ArrowArrayViewInitFromSchema()", result)
+
+        result = ArrowArrayViewSetArray(&holder.c_array_view, array._ptr, &error.c_error)
+        if result != NANOARROW_OK:
+            error.raise_message("ArrowArrayViewSetArray()", result)
+
+        return ArrayView(holder, holder._addr(), array._schema, array)
 
 
 cdef class SchemaChildren:
@@ -706,12 +723,15 @@ cdef class ArrayViewChildren:
         k = int(k)
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
-        return ArrayView(
+        cdef ArrayView child = ArrayView(
             self._parent,
             self._child_addr(k),
             self._parent._schema.children[k],
             None
         )
+
+        child._device = self._parent._device
+        return child
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArrayView** children = self._parent._ptr.children
@@ -731,17 +751,19 @@ cdef class BufferView:
     cdef ArrowBufferView* _ptr
     cdef ArrowBufferType _buffer_type
     cdef ArrowType _buffer_data_type
+    cdef ArrowDevice* _device
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
 
     def __cinit__(self, object base, uintptr_t addr,
                  ArrowBufferType buffer_type, ArrowType buffer_data_type,
-                 Py_ssize_t element_size_bits):
+                 Py_ssize_t element_size_bits, uintptr_t device):
         self._base = base
         self._ptr = <ArrowBufferView*>addr
         self._buffer_type = buffer_type
         self._buffer_data_type = buffer_data_type
+        self._device = <ArrowDevice*>device
         self._element_size_bits = element_size_bits
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
@@ -784,6 +806,9 @@ cdef class BufferView:
             return "B"
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        if self._device.device_type != ARROW_DEVICE_CPU:
+            raise RuntimeError("nanoarrow.BufferView is not a CPU array")
+
         buffer.buf = <void*>self._ptr.data.data
         buffer.format = self._get_format()
         buffer.internal = NULL
@@ -830,7 +855,8 @@ cdef class ArrayViewBuffers:
             <uintptr_t>buffer_view,
             self._array_view._ptr.layout.buffer_type[k],
             self._array_view._ptr.layout.buffer_data_type[k],
-            self._array_view._ptr.layout.element_size_bits[k]
+            self._array_view._ptr.layout.element_size_bits[k],
+            <uintptr_t>self._array_view._device
         )
 
 
@@ -851,7 +877,20 @@ cdef class ArrayStream:
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
     >>> array_stream = na.array_stream(pa_reader)
     >>> array_stream.get_schema()
-    struct<col1: int32>
+    <nanoarrow.Schema struct>
+    - format: '+s'
+    - name: ''
+    - flags: 0
+    - metadata: NULL
+    - dictionary: NULL
+    - children[1]:
+      'col1': <nanoarrow.Schema int32>
+        - format: 'i'
+        - name: 'col1'
+        - flags: 2
+        - metadata: NULL
+        - dictionary: NULL
+        - children[0]:
     >>> array_stream.get_next().length
     3
     >>> array_stream.get_next() is None
@@ -964,3 +1003,101 @@ cdef class ArrayStream:
 
     def __next__(self):
         return self.get_next()
+
+    @staticmethod
+    def allocate():
+        base = ArrayStreamHolder()
+        return ArrayStream(base, base._addr())
+
+
+cdef class DeviceArrayHolder:
+    """Memory holder for an ArrowDeviceArray
+
+    This class is responsible for the lifecycle of the ArrowDeviceArray
+    whose memory it is responsible. When this object is deleted,
+    a non-NULL release callback is invoked.
+    """
+    cdef ArrowDeviceArray c_array
+
+    def __cinit__(self):
+        self.c_array.array.release = NULL
+
+    def __dealloc__(self):
+        if self.c_array.array.release != NULL:
+          self.c_array.array.release(&self.c_array.array)
+
+    def _addr(self):
+        return <uintptr_t>&self.c_array
+
+cdef class Device:
+    """ArrowDevice wrapper
+
+    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
+    not ABI stable) that contains callbacks for device operations
+    beyond its type and identifier (e.g., copy buffers to or from
+    a device).
+    """
+    cdef object _base
+    cdef ArrowDevice* _ptr
+
+    def __cinit__(self, object base, uintptr_t addr):
+        self._base = base,
+        self._ptr = <ArrowDevice*>addr
+
+    def _array_init(self, uintptr_t array_addr, Schema schema):
+        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
+        cdef DeviceArrayHolder holder = DeviceArrayHolder()
+        cdef int result = ArrowDeviceArrayInit(self._ptr, &holder.c_array, array_ptr)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowDevice::init_array", result)
+
+        return DeviceArray(holder, holder._addr(), schema)
+
+    def __repr__(self):
+        return device_repr(self)
+
+    @property
+    def device_type(self):
+        return self._ptr.device_type
+
+    @property
+    def device_id(self):
+        return self._ptr.device_id
+
+    @staticmethod
+    def resolve(ArrowDeviceType device_type, int64_t device_id):
+        if device_type == ARROW_DEVICE_CPU:
+            return Device.cpu()
+        else:
+            raise ValueError(f"Device not found for type {device_type}/{device_id}")
+
+    @staticmethod
+    def cpu():
+        # The CPU device is statically allocated (so base is None)
+        return Device(None, <uintptr_t>ArrowDeviceCpu())
+
+
+cdef class DeviceArray:
+    cdef object _base
+    cdef ArrowDeviceArray* _ptr
+    cdef Schema _schema
+
+    def __cinit__(self, object base, uintptr_t addr, Schema schema):
+        self._base = base
+        self._ptr = <ArrowDeviceArray*>addr
+        self._schema = schema
+
+    @property
+    def device_type(self):
+        return self._ptr.device_type
+
+    @property
+    def device_id(self):
+        return self._ptr.device_id
+
+    @property
+    def array(self):
+        return Array(self, <uintptr_t>&self._ptr.array, self._schema)
+
+    def __repr__(self):
+        return device_array_repr(self)

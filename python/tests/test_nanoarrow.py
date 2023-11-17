@@ -49,13 +49,29 @@ def test_array_helper():
     assert isinstance(array, na.Array)
 
     with pytest.raises(TypeError):
-        na.schema(None)
+        na.array(None)
+
+
+def test_array_stream_helper():
+    array_stream = na.ArrayStream.allocate()
+    assert na.array_stream(array_stream) is array_stream
+
+    with pytest.raises(TypeError):
+        na.array_stream(None)
+
+
+def test_array_view_helper():
+    array = na.array(pa.array([1, 2, 3]))
+    view = na.array_view(array)
+    assert isinstance(view, na.ArrayView)
+    assert na.array_view(view) is view
 
 
 def test_schema_basic():
     schema = na.Schema.allocate()
     assert schema.is_valid() is False
-    assert repr(schema) == "[invalid: schema is released]"
+    assert schema._to_string() == "[invalid: schema is released]"
+    assert repr(schema) == "<released nanoarrow.Schema>"
 
     schema = na.schema(pa.schema([pa.field("some_name", pa.int32())]))
 
@@ -65,7 +81,8 @@ def test_schema_basic():
     assert len(schema.children) == 1
     assert schema.children[0].format == "i"
     assert schema.children[0].name == "some_name"
-    assert repr(schema.children[0]) == "int32"
+    assert schema.children[0]._to_string() == "int32"
+    assert "<nanoarrow.Schema int32>" in repr(schema)
     assert schema.dictionary is None
 
     with pytest.raises(IndexError):
@@ -76,6 +93,7 @@ def test_schema_dictionary():
     schema = na.schema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
+    assert "dictionary: <nanoarrow.Schema string" in repr(schema)
 
 
 def test_schema_metadata():
@@ -87,6 +105,7 @@ def test_schema_metadata():
     meta2 = {k: v for k, v in schema.metadata}
     assert list(meta2.keys()) == ["key1", "key2"]
     assert list(meta2.values()) == [b"value1", b"value2"]
+    assert "'key1': b'value1'" in repr(schema)
 
 
 def test_schema_view():
@@ -150,6 +169,12 @@ def test_schema_view_extra_params():
     assert view.extension_metadata == b"some_metadata"
 
 
+def test_array_empty():
+    array = na.Array.allocate(na.Schema.allocate())
+    assert array.is_valid() is False
+    assert repr(array) == "<released nanoarrow.Array>"
+
+
 def test_array():
     array = na.array(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
@@ -160,14 +185,30 @@ def test_array():
     assert array.buffers[0] == 0
     assert len(array.children) == 0
     assert array.dictionary is None
+    assert "<nanoarrow.Array int32" in repr(array)
+
+
+def test_array_recursive():
+    array = na.array(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
+    assert len(array.children) == 1
+    assert array.children[0].length == 3
+    assert array.children[0].schema._to_string() == "int32"
+    assert "'col': <nanoarrow.Array int32" in repr(array)
 
     with pytest.raises(IndexError):
         array.children[1]
 
 
+def test_array_dictionary():
+    array = na.array(pa.array(["a", "b", "b"]).dictionary_encode())
+    assert array.length == 3
+    assert array.dictionary.length == 2
+    assert "dictionary: <nanoarrow.Array string>" in repr(array)
+
+
 def test_array_view():
     array = na.array(pa.array([1, 2, 3], pa.int32()))
-    view = array.view()
+    view = na.array_view(array)
 
     assert view.schema is array.schema
 
@@ -198,7 +239,7 @@ def test_array_view_recursive():
     assert array.children[0].length == 3
     assert array.children[0].schema._addr() == array.schema.children[0]._addr()
 
-    view = array.view()
+    view = na.array_view(array)
     assert len(view.buffers) == 1
     assert len(view.children) == 1
     assert view.schema._addr() == array.schema._addr()
@@ -215,7 +256,7 @@ def test_array_view_dictionary():
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"
 
-    view = array.view()
+    view = na.array_view(array)
     assert len(view.buffers) == 2
     assert len(view.dictionary.buffers) == 3
 
@@ -235,14 +276,14 @@ def test_buffers_data():
     ]
 
     for pa_type, np_type in data_types:
-        view = na.array(pa.array([0, 1, 2], pa_type)).view()
+        view = na.array_view(pa.array([0, 1, 2], pa_type))
         np.testing.assert_array_equal(
             np.array(view.buffers[1]), np.array([0, 1, 2], np_type)
         )
 
 
 def test_buffers_string():
-    view = na.array(pa.array(["a", "bc", "def"])).view()
+    view = na.array_view(pa.array(["a", "bc", "def"]))
 
     assert view.buffers[0] is None
     np.testing.assert_array_equal(
@@ -254,7 +295,7 @@ def test_buffers_string():
 
 
 def test_buffers_binary():
-    view = na.array(pa.array([b"a", b"bc", b"def"])).view()
+    view = na.array_view(pa.array([b"a", b"bc", b"def"]))
 
     assert view.buffers[0] is None
     np.testing.assert_array_equal(
@@ -265,6 +306,8 @@ def test_buffers_binary():
 
 def test_array_stream():
     array_stream = na.ArrayStream.allocate()
+    assert na.array_stream(array_stream) is array_stream
+
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):
         array_stream.get_schema()
