@@ -1062,7 +1062,7 @@ cdef class Device:
         self._base = base,
         self._ptr = <ArrowDevice*>addr
 
-    def array_init(self, uintptr_t array_addr, Schema schema):
+    def _array_init(self, uintptr_t array_addr, Schema schema):
         cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
         cdef DeviceArrayHolder holder = DeviceArrayHolder()
         cdef int result = ArrowDeviceArrayInit(self._ptr, &holder.c_array, array_ptr)
