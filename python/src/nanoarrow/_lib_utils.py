@@ -37,7 +37,7 @@ def schema_repr(schema, indent=0):
     if schema.metadata is None:
         lines.append(f"{indent_str}- metadata: NULL")
     else:
-        lines.append(f"{indent_str}- metadata: NULL")
+        lines.append(f"{indent_str}- metadata:")
         for key, value in metadata:
             lines.append(f"{indent_str}  - {repr(key)}: {repr(value)}")
 
