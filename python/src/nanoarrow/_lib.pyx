@@ -1029,32 +1029,14 @@ cdef class DeviceArrayHolder:
     def _addr(self):
         return <uintptr_t>&self.c_array
 
-cdef class DeviceHolder:
-    """Memory holder for an ArrowDevice
+cdef class Device:
+    """ArrowDevice wrapper
 
     The ArrowDevice structure is a nanoarrow internal struct (i.e.,
     not ABI stable) that contains callbacks for device operations
-    beyond its type and identifier.
-
-    This class is responsible for the lifecycle of the ArrowDevice
-    whose memory it is responsible. When this object is deleted,
-    a non-NULL release callback is invoked.
+    beyond its type and identifier (e.g., copy buffers to or from
+    a device).
     """
-
-    cdef ArrowDevice c_device
-
-    def __cinit__(self):
-        self.c_device.release = NULL
-
-    def __dealloc__(self):
-        if self.c_device.release != NULL:
-          self.c_device.release(&self.c_device)
-
-    def _addr(self):
-        return <uintptr_t>&self.c_device
-
-
-cdef class Device:
     cdef object _base
     cdef ArrowDevice* _ptr
 
@@ -1094,6 +1076,7 @@ cdef class Device:
 
     @staticmethod
     def cpu():
+        # The CPU device is statically allocated (so base is None)
         return Device(None, <uintptr_t>ArrowDeviceCpu())
 
 

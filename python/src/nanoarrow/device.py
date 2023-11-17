@@ -26,4 +26,4 @@ def device_array(obj):
     # Only CPU for now
     cpu_array = array(obj)
 
-    return Device.cpu().array_init(cpu_array._addr(), cpu_array.schema)
+    return Device.cpu()._array_init(cpu_array._addr(), cpu_array.schema)
