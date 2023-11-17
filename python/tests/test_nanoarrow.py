@@ -49,14 +49,16 @@ def test_array_helper():
     assert isinstance(array, na.Array)
 
     with pytest.raises(TypeError):
-        na.schema(None)
+        na.array(None)
 
 
 def test_array_stream_helper():
     array_stream = na.ArrayStream.allocate()
     assert na.array_stream(array_stream) is array_stream
 
-    reader =
+    with pytest.raises(TypeError):
+        na.array_stream(None)
+
 
 def test_schema_basic():
     schema = na.Schema.allocate()
