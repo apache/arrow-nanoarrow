@@ -21,7 +21,7 @@
 #include <iostream>
 #include <string>
 
-#include "nanoarrow/nanoarrow.hpp"
+#include "nanoarrow.hpp"
 
 namespace nanoarrow {
 
