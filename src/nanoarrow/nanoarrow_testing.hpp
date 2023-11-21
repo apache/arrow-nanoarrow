@@ -27,10 +27,10 @@ namespace nanoarrow {
 
 namespace testing {
 
-class TestingJSON {
+class TestingJSONWriter {
  public:
-  static ArrowErrorCode WriteBatch(std::ostream& out, const ArrowSchema* schema,
-                                   ArrowArrayView* value) {
+  ArrowErrorCode WriteBatch(std::ostream& out, const ArrowSchema* schema,
+                            ArrowArrayView* value) {
     // Make sure we have a struct
     if (std::string(schema->format) != "+s") {
       return EINVAL;
@@ -49,8 +49,8 @@ class TestingJSON {
     return NANOARROW_OK;
   }
 
-  static ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
-                                    ArrowArrayView* value) {
+  ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
+                             ArrowArrayView* value) {
     out << "{";
 
     // Write schema->name (may be null)
@@ -142,7 +142,7 @@ class TestingJSON {
   }
 
  private:
-  static void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
+  void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
     if (length == 0) {
       out << "[]";
       return;
@@ -166,7 +166,7 @@ class TestingJSON {
   }
 
   template <typename T>
-  static ArrowErrorCode WriteOffsetOrTypeID(std::ostream& out, ArrowBufferView content) {
+  ArrowErrorCode WriteOffsetOrTypeID(std::ostream& out, ArrowBufferView content) {
     if (content.size_bytes == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -195,7 +195,7 @@ class TestingJSON {
     return NANOARROW_OK;
   }
 
-  static ArrowErrorCode WriteData(std::ostream& out, ArrowArrayView* value) {
+  ArrowErrorCode WriteData(std::ostream& out, ArrowArrayView* value) {
     if (value->length == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -277,7 +277,7 @@ class TestingJSON {
     return NANOARROW_OK;
   }
 
-  static ArrowErrorCode WriteString(std::ostream& out, ArrowStringView value) {
+  ArrowErrorCode WriteString(std::ostream& out, ArrowStringView value) {
     out << R"(")";
 
     for (int64_t i = 0; i < value.size_bytes; i++) {
@@ -307,7 +307,7 @@ class TestingJSON {
     return NANOARROW_OK;
   }
 
-  static ArrowErrorCode WriteBytes(std::ostream& out, ArrowBufferView value) {
+  ArrowErrorCode WriteBytes(std::ostream& out, ArrowBufferView value) {
     out << R"(")";
     char hex[3];
     hex[2] = '\0';
@@ -320,8 +320,8 @@ class TestingJSON {
     return NANOARROW_OK;
   }
 
-  static ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
-                                      ArrowArrayView* value) {
+  ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
+                               ArrowArrayView* value) {
     if (field->n_children == 0) {
       out << "[]";
       return NANOARROW_OK;
