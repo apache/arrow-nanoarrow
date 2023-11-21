@@ -71,10 +71,16 @@ if(NANOARROW_BUNDLE)
                        "${SRC_FILE_CONTENTS}")
   file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
 
-  # Copy nanoarrow.hpp too
+  # Copy nanoarrow.hpp
   set(NANOARROW_HPP_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.hpp)
   file(READ src/nanoarrow/nanoarrow.hpp SRC_FILE_CONTENTS)
   file(WRITE ${NANOARROW_HPP_TEMP} "${SRC_FILE_CONTENTS}")
+
+  # Copy nanoarrow_testing.hpp
+  set(NANOARROW_TESTING_HPP_TEMP
+      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_testing.hpp)
+  file(READ src/nanoarrow/nanoarrow_testing.hpp SRC_FILE_CONTENTS)
+  file(WRITE ${NANOARROW_TESTING_HPP_TEMP} "${SRC_FILE_CONTENTS}")
 
   # Combine all source files into amalgamation/nanoarrow.c in the build directory
   if(NANOARROW_BUNDLE_AS_CPP)
