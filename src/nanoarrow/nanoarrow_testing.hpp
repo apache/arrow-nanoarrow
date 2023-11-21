@@ -178,11 +178,13 @@ class TestingJSON {
     out << "[";
 
     if (sizeof(T) == sizeof(int64_t)) {
+      // Ensure int64s are quoted (i.e, "123456")
       out << R"(")" << values[0] << R"(")";
       for (int64_t i = 1; i < n_values; i++) {
         out << R"(, ")" << values[i] << R"(")";
       }
     } else {
+      // No need to quote smaller ints (i.e., 123456)
       out << values[0];
       for (int64_t i = 1; i < n_values; i++) {
         out << ", " << static_cast<int64_t>(values[i]);
@@ -209,21 +211,21 @@ class TestingJSON {
       case NANOARROW_TYPE_UINT16:
       case NANOARROW_TYPE_INT32:
       case NANOARROW_TYPE_UINT32:
-        // Regular JSON integers
+        // Regular JSON integers (i.e., 123456)
         out << ArrowArrayViewGetIntUnsafe(value, 0);
         for (int64_t i = 1; i < value->length; i++) {
           out << ", " << ArrowArrayViewGetIntUnsafe(value, i);
         }
         break;
       case NANOARROW_TYPE_INT64:
-        // Strings
+        // Quoted integers to avoid overflow (i.e., "123456")
         out << R"(")" << ArrowArrayViewGetIntUnsafe(value, 0) << R"(")";
         for (int64_t i = 1; i < value->length; i++) {
           out << R"(, ")" << ArrowArrayViewGetIntUnsafe(value, i) << R"(")";
         }
         break;
       case NANOARROW_TYPE_UINT64:
-        // Strings
+        // Quoted integers to avoid overflow (i.e., "123456")
         out << R"(")" << ArrowArrayViewGetUIntUnsafe(value, 0) << R"(")";
         for (int64_t i = 1; i < value->length; i++) {
           out << R"(, ")" << ArrowArrayViewGetUIntUnsafe(value, i) << R"(")";
