@@ -106,7 +106,7 @@ if(NANOARROW_BUNDLE)
 
   # Install the amalgamated header and source
   install(FILES ${NANOARROW_H_TEMP} ${NANOARROW_C_TEMP} ${NANOARROW_HPP_TEMP}
-          DESTINATION ".")
+                ${NANOARROW_TESTING_HPP_TEMP} DESTINATION ".")
 else()
   add_library(nanoarrow src/nanoarrow/array.c src/nanoarrow/schema.c
                         src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
