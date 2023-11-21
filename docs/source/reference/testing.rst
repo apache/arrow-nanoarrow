@@ -15,15 +15,13 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-API Reference
-=============
+Teseting API Reference
+======================
 
-.. toctree::
-   :maxdepth: 2
+.. doxygengroup:: nanoarrow_testing
 
-   R API Reference <r>
-   C API Reference <c>
-   C++ API Reference <cpp>
-   Testing API Reference <testing>
-   IPC Extension Reference <ipc>
-   Device Extension Reference <device>
+Integration testing JSON
+------------------------
+
+.. doxygengroup:: nanoarrow_testing-json
+    :members:

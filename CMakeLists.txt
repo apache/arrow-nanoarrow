@@ -71,10 +71,16 @@ if(NANOARROW_BUNDLE)
                        "${SRC_FILE_CONTENTS}")
   file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
 
-  # Copy nanoarrow.hpp too
+  # Copy nanoarrow.hpp
   set(NANOARROW_HPP_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.hpp)
   file(READ src/nanoarrow/nanoarrow.hpp SRC_FILE_CONTENTS)
   file(WRITE ${NANOARROW_HPP_TEMP} "${SRC_FILE_CONTENTS}")
+
+  # Copy nanoarrow_testing.hpp
+  set(NANOARROW_TESTING_HPP_TEMP
+      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_testing.hpp)
+  file(READ src/nanoarrow/nanoarrow_testing.hpp SRC_FILE_CONTENTS)
+  file(WRITE ${NANOARROW_TESTING_HPP_TEMP} "${SRC_FILE_CONTENTS}")
 
   # Combine all source files into amalgamation/nanoarrow.c in the build directory
   if(NANOARROW_BUNDLE_AS_CPP)
@@ -100,7 +106,7 @@ if(NANOARROW_BUNDLE)
 
   # Install the amalgamated header and source
   install(FILES ${NANOARROW_H_TEMP} ${NANOARROW_C_TEMP} ${NANOARROW_HPP_TEMP}
-          DESTINATION ".")
+                ${NANOARROW_TESTING_HPP_TEMP} DESTINATION ".")
 else()
   add_library(nanoarrow src/nanoarrow/array.c src/nanoarrow/schema.c
                         src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
@@ -203,6 +209,7 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(schema_test src/nanoarrow/schema_test.cc)
   add_executable(array_stream_test src/nanoarrow/array_stream_test.cc)
   add_executable(nanoarrow_hpp_test src/nanoarrow/nanoarrow_hpp_test.cc)
+  add_executable(nanoarrow_testing_test src/nanoarrow/nanoarrow_testing_test.cc)
 
   if(NANOARROW_CODE_COVERAGE)
     target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
@@ -228,6 +235,7 @@ if(NANOARROW_BUILD_TESTS)
                         coverage_config)
   target_link_libraries(array_stream_test nanoarrow gtest_main coverage_config)
   target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main coverage_config)
+  target_link_libraries(nanoarrow_testing_test nanoarrow gtest_main coverage_config)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5
@@ -239,4 +247,5 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(schema_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
 endif()
