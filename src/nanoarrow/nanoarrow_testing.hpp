@@ -23,12 +23,28 @@
 
 #include "nanoarrow.hpp"
 
+/// \defgroup nanoarrow_testing Nanoarrow Testing Helpers
+///
+/// Utilities for testing nanoarrow structures and functions.
+
 namespace nanoarrow {
 
 namespace testing {
 
+/// \defgroup nanoarrow_testing-json Integration test helpers
+///
+/// See testing format documentation for details of the JSON representation. This
+/// representation is not canonical but can be used to implement integration tests with
+/// other implementations.
+///
+/// @{
+
+/// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
+  /// \brief Write a "batch" to out
+  ///
+  /// Creates output like `{"count": 123, "columns": [...]}`.
   ArrowErrorCode WriteBatch(std::ostream& out, const ArrowSchema* schema,
                             ArrowArrayView* value) {
     // Make sure we have a struct
@@ -49,6 +65,9 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
+  /// \brief Write a column to out
+  ///
+  /// Creates output like `{"name": "col", "count": 123, "VALIDITY": [...], ...}`.
   ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
                              ArrowArrayView* value) {
     out << "{";
@@ -361,6 +380,8 @@ class TestingJSONWriter {
     std::streamsize previous_precision_;
   };
 };
+
+/// @}
 
 }  // namespace testing
 }  // namespace nanoarrow
