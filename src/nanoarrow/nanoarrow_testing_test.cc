@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nanoarrow_testing.hpp"
+#include "nanoarrow/nanoarrow_testing.hpp"
 
 using nanoarrow::testing::TestingJSONWriter;
 

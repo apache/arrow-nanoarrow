@@ -15,13 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef NANOARROW_TESTING_HPP_INCLUDED
-#define NANOARROW_TESTING_HPP_INCLUDED
-
 #include <iostream>
 #include <string>
 
 #include "nanoarrow.hpp"
+
+#ifndef NANOARROW_TESTING_HPP_INCLUDED
+#define NANOARROW_TESTING_HPP_INCLUDED
 
 /// \defgroup nanoarrow_testing Nanoarrow Testing Helpers
 ///
