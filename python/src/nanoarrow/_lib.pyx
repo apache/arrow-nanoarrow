@@ -28,9 +28,10 @@ be literal and stay close to the structure definitions.
 """
 
 from libc.stdint cimport uintptr_t, int64_t
+from libc.stdlib cimport malloc, free
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_GetPointer, PyCapsule_CheckExact
+from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_CheckExact
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
@@ -41,6 +42,16 @@ def c_version():
     """Return the nanoarrow C library version string
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
+
+
+cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
+    cdef ArrowSchema* schema = <ArrowSchema*>PyCapsule_GetPointer(
+        schema_capsule, 'arrow_schema'
+    )
+    if schema.release != NULL:
+        schema.release(schema)
+
+    free(schema)
 
 
 cdef class SchemaHolder:
@@ -219,6 +230,16 @@ cdef class Schema:
             schema_capsule,
             <uintptr_t>PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
         )
+
+    def __arrow_c_schema__(self):
+        """
+        Export to a ArrowSchema PyCapsule
+        """
+        cdef ArrowSchema* c_schema_out = <ArrowSchema*> malloc(sizeof(ArrowSchema))
+        c_schema_out.release = NULL
+        ArrowSchemaDeepCopy(self._ptr, c_schema_out)
+
+        return PyCapsule_New(c_schema_out, 'arrow_schema', &pycapsule_schema_deleter)
 
     def _addr(self):
         return <uintptr_t>self._ptr

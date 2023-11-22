@@ -54,6 +54,13 @@ def test_schema_import():
         assert schema.format == "+s"
         assert schema._to_string(recursive=True) == "struct<some_name: int32>"
 
+        # roundtrip
+        pa_schema2 = pa.schema(schema)
+        pa_schema2.equals(pa_schema)
+        # schemas stay valid because it exports a deep copy
+        del pa_schema2
+        assert schema.is_valid()
+
 
 def test_array_import():
     pa_arr = pa.array([1, 2, 3], pa.int32())
