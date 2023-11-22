@@ -37,6 +37,12 @@ ArrowErrorCode WriteColumnJSON(std::ostream& out, const ArrowSchema* schema,
   return writer.WriteColumn(out, schema, array_view);
 }
 
+ArrowErrorCode WriteSchemaJSON(std::ostream& out, const ArrowSchema* schema,
+                               ArrowArrayView* array_view) {
+  TestingJSONWriter writer;
+  return writer.WriteSchema(out, schema);
+}
+
 ArrowErrorCode WriteFieldJSON(std::ostream& out, const ArrowSchema* schema,
                               ArrowArrayView* array_view) {
   TestingJSONWriter writer;
@@ -330,13 +336,48 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
+  // Non-null but zero-size metadata
   TestColumn(
       [](ArrowSchema* schema) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, "\0\0\0\0"));
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": []})");
+
+  // Non-zero size metadata
+  TestColumn(
+      [](ArrowSchema* schema) {
+        nanoarrow::UniqueBuffer buffer;
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+            buffer.get(), ArrowCharView("k1"), ArrowCharView("v1")));
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+            buffer.get(), ArrowCharView("k2"), ArrowCharView("v2")));
+
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetMetadata(schema, reinterpret_cast<const char*>(buffer->data)));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": [{"key": "k1", "value": "v1"}, {"key": "k2", "value": "v2"}]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNested) {
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 2));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_STRING));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [{"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, {"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], "metadata": null})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestTypePrimitive) {

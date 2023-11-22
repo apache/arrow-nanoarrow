@@ -51,7 +51,25 @@ class TestingJSONWriter {
       return EINVAL;
     }
 
-    return ENOTSUP;
+    // Write fields
+    out << R"("fields": )";
+    if (schema->n_children == 0) {
+      out << "[]";
+    } else {
+      out << "[";
+      NANOARROW_RETURN_NOT_OK(WriteField(out, schema->children[0]));
+      for (int64_t i = 1; i < schema->n_children; i++) {
+        out << ", ";
+        NANOARROW_RETURN_NOT_OK(WriteField(out, schema->children[i]));
+      }
+      out << "]";
+    }
+
+    // Write metadata
+    out << R"(, "metadata": )";
+    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
+
+    return NANOARROW_OK;
   }
 
   /// \brief Write a field to out
@@ -88,7 +106,7 @@ class TestingJSONWriter {
     } else {
       out << "[";
       NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[0]));
-      for (int64_t i = 0; i < field->n_children; i++) {
+      for (int64_t i = 1; i < field->n_children; i++) {
         out << ", ";
         NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[i]));
       }
