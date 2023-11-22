@@ -65,6 +65,12 @@ def test_array_import():
         assert array.length == 3
         assert array.schema._to_string(recursive=True) == "int32"
 
+        # roundtrip
+        pa_arr2 = pa.array(array)
+        assert pa_arr2.equals(pa_arr)
+        del pa_arr2
+        assert not array.is_valid()
+
 
 def test_array_stream_import():
     def make_reader():
@@ -82,3 +88,11 @@ def test_array_stream_import():
             array_stream.get_schema()._to_string(recursive=True)
             == "struct<some_column: int32>"
         )
+
+    for stream_obj in [make_reader(), StreamWrapper(make_reader())]:
+        array_stream = na.array_stream(stream_obj)
+        # roundtrip
+        pa_table = pa.table(array_stream)
+        assert pa_table.equals(make_reader().read_all())
+        del pa_table
+        assert not array_stream.is_valid()

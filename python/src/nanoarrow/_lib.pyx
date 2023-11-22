@@ -30,7 +30,7 @@ be literal and stay close to the structure definitions.
 from libc.stdint cimport uintptr_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_GetPointer
+from cpython.pycapsule cimport PyCapsule_GetPointer, PyCapsule_CheckExact
 from cpython cimport Py_buffer
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
@@ -478,6 +478,32 @@ cdef class Array:
         )
 
         return out
+
+    def __arrow_c_array__(self, requested_schema=None):
+        """
+        Get a pair of PyCapsules containing a C ArrowArray representation of the object.
+
+        Parameters
+        ----------
+        requested_schema : PyCapsule | None
+            A PyCapsule containing a C ArrowSchema representation of a requested
+            schema. Not supported.
+
+        Returns
+        -------
+        Tuple[PyCapsule, PyCapsule]
+            A pair of PyCapsules containing a C ArrowSchema and ArrowArray,
+            respectively.
+        """
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+        if PyCapsule_CheckExact(self._base[0]):
+            return (self._schema._base[0], self._base[0])
+        else:
+            raise NotImplementedError(
+                "Array object was not created through the capsule protocol, "
+                "and exporting such arrays is not yet supported"
+            )
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -927,6 +953,30 @@ cdef class ArrayStream:
             stream_capsule,
             <uintptr_t>PyCapsule_GetPointer(stream_capsule, 'arrow_array_stream')
         )
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        """
+        Export the stream as an Arrow C stream PyCapsule.
+
+        Parameters
+        ----------
+        requested_schema : PyCapsule | None
+            A PyCapsule containing a C ArrowSchema representation of a requested
+            schema. Not supported.
+
+        Returns
+        -------
+        PyCapsule
+        """
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+        if PyCapsule_CheckExact(self._base):
+            return self._base
+        else:
+            raise NotImplementedError(
+                "Stream object was not created through the capsule protocol, "
+                "and exporting such arrays is not yet supported"
+            )
 
     def _addr(self):
         return <uintptr_t>self._ptr
