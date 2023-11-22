@@ -309,6 +309,34 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        schema->flags = 0;
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": false, "type": {"name": "null"}, "children": [], "metadata": null})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, "colname"));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
+  TestColumn(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestTypePrimitive) {
