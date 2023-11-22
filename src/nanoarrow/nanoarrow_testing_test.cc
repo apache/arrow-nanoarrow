@@ -43,6 +43,12 @@ ArrowErrorCode WriteFieldJSON(std::ostream& out, const ArrowSchema* schema,
   return writer.WriteField(out, schema);
 }
 
+ArrowErrorCode WriteTypeJSON(std::ostream& out, const ArrowSchema* schema,
+                             ArrowArrayView* array_view) {
+  TestingJSONWriter writer;
+  return writer.WriteType(out, schema);
+}
+
 void TestColumn(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
                 std::function<ArrowErrorCode(ArrowArray*)> append_expr,
                 ArrowErrorCode (*test_expr)(std::ostream&, const ArrowSchema*,
@@ -295,7 +301,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestBatch) {
       R"({"count": 0, "columns": []})");
 }
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNull) {
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
   TestColumn(
       [](ArrowSchema* schema) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
@@ -303,4 +309,95 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNull) {
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestTypePrimitive) {
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "null"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_BOOL);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "bool"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT8);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "int", "bitWidth": 8, "isSigned": true})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_UINT8);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "int", "bitWidth": 8, "isSigned": false})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_HALF_FLOAT);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "floatingpoint", "precision": "HALF"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_FLOAT);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "floatingpoint", "precision": "SINGLE"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_DOUBLE);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "floatingpoint", "precision": "DOUBLE"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "utf8"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_LARGE_STRING);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "largeutf8"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_BINARY);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "binary"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_LARGE_BINARY);
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "largebinary"})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, 123));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "fixedsizebinary", "byteWidth": 123})");
 }

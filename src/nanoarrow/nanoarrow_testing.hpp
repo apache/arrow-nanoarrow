@@ -105,6 +105,16 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
+  /// \brief Write the type portion of a field
+  ///
+  /// Creates output like `{"name": "int", ...}`
+  ArrowErrorCode WriteType(std::ostream& out, const ArrowSchema* field) {
+    ArrowSchemaView view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, (ArrowSchema*)field, nullptr));
+    NANOARROW_RETURN_NOT_OK(WriteType(out, &view));
+    return NANOARROW_OK;
+  }
+
   /// \brief Write a "batch" to out
   ///
   /// Creates output like `{"count": 123, "columns": [...]}`.
@@ -245,15 +255,15 @@ class TestingJSONWriter {
       case NANOARROW_TYPE_INT16:
       case NANOARROW_TYPE_INT32:
       case NANOARROW_TYPE_INT64:
-        out << R"("name": "int", "bitWidth": )" << field->layout.element_size_bits[2]
+        out << R"("name": "int", "bitWidth": )" << field->layout.element_size_bits[1]
             << R"(, "isSigned": true)";
         break;
       case NANOARROW_TYPE_UINT8:
       case NANOARROW_TYPE_UINT16:
       case NANOARROW_TYPE_UINT64:
       case NANOARROW_TYPE_UINT32:
-        out << R"("name": "int", "bitWidth": )" << field->layout.element_size_bits[2]
-            << R"(" "isSigned": false)";
+        out << R"("name": "int", "bitWidth": )" << field->layout.element_size_bits[1]
+            << R"(, "isSigned": false)";
         break;
       case NANOARROW_TYPE_HALF_FLOAT:
         out << R"("name": "floatingpoint", "precision": "HALF")";
