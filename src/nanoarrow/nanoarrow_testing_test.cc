@@ -295,4 +295,12 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestBatch) {
       R"({"count": 0, "columns": []})");
 }
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNull) { ASSERT_EQ(4, 4); }
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNull) {
+  TestColumn(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+}

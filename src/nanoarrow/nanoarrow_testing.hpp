@@ -58,7 +58,51 @@ class TestingJSONWriter {
   ///
   /// Creates output like `{"name" : "col", "type": {...}, ...}`
   ArrowErrorCode WriteField(std::ostream& out, const ArrowSchema* field) {
-    return ENOTSUP;
+    ArrowSchemaView view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, (ArrowSchema*)field, nullptr));
+
+    out << "{";
+
+    // Write schema->name (may be null)
+    if (field->name == nullptr) {
+      out << R"("name": null)";
+    } else {
+      out << R"("name": ")" << field->name << R"(")";
+    }
+
+    // Write nullability
+    if (field->flags & ARROW_FLAG_NULLABLE) {
+      out << R"(, "nullable": true)";
+    } else {
+      out << R"(, "nullable": false)";
+    }
+
+    // Write type
+    out << R"(, "type": )";
+    NANOARROW_RETURN_NOT_OK(WriteType(out, &view));
+
+    // Write children
+    out << R"(, "children": )";
+    if (field->n_children == 0) {
+      out << "[]";
+    } else {
+      out << "[";
+      NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[0]));
+      for (int64_t i = 0; i < field->n_children; i++) {
+        out << ", ";
+        NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[i]));
+      }
+      out << "]";
+    }
+
+    // TODO: Dictionary (currently fails at WriteType)
+
+    // Write metadata
+    out << R"(, "metadata": )";
+    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
+
+    out << "}";
+    return NANOARROW_OK;
   }
 
   /// \brief Write a "batch" to out
