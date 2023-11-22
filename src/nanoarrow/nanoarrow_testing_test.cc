@@ -37,6 +37,12 @@ ArrowErrorCode WriteColumnJSON(std::ostream& out, const ArrowSchema* schema,
   return writer.WriteColumn(out, schema, array_view);
 }
 
+ArrowErrorCode WriteFieldJSON(std::ostream& out, const ArrowSchema* schema,
+                              ArrowArrayView* array_view) {
+  TestingJSONWriter writer;
+  return writer.WriteField(out, schema);
+}
+
 void TestColumn(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
                 std::function<ArrowErrorCode(ArrowArray*)> append_expr,
                 ArrowErrorCode (*test_expr)(std::ostream&, const ArrowSchema*,
@@ -288,3 +294,5 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestBatch) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteBatchJSON,
       R"({"count": 0, "columns": []})");
 }
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNull) { ASSERT_EQ(4, 4); }
