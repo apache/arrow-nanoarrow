@@ -291,7 +291,7 @@ class TestingJSONWriter {
         break;
       case NANOARROW_TYPE_DECIMAL128:
       case NANOARROW_TYPE_DECIMAL256:
-        out << R"("name": "struct", "bitWidth": )" << field->decimal_bitwidth
+        out << R"("name": "decimal", "bitWidth": )" << field->decimal_bitwidth
             << R"(, "precision": )" << field->decimal_precision << R"(, "scale": )"
             << field->decimal_scale;
         break;

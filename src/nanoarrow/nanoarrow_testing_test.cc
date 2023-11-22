@@ -400,4 +400,104 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "fixedsizebinary", "byteWidth": 123})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL128, 10, 3));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "decimal", "bitWidth": 128, "precision": 10, "scale": 3})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 0));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "struct"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "list"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_MAP));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0]->children[0], NANOARROW_TYPE_STRING));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0]->children[1], NANOARROW_TYPE_INT32));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "map", "keysSorted": false})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_MAP));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0]->children[0], NANOARROW_TYPE_STRING));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0]->children[1], NANOARROW_TYPE_INT32));
+        schema->flags = ARROW_FLAG_MAP_KEYS_SORTED;
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "map", "keysSorted": true})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_LIST));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "largelist"})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_LIST, 12));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "fixedsizelist", "listSize": 12})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeUnion(schema, NANOARROW_TYPE_SPARSE_UNION, 0));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "union", "mode": "SPARSE", "typeIds": []})");
+
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeUnion(schema, NANOARROW_TYPE_DENSE_UNION, 0));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "union", "mode": "DENSE", "typeIds": []})");
 }
