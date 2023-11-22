@@ -307,6 +307,21 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestBatch) {
       R"({"count": 0, "columns": []})");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestSchema) {
+  TestColumn(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 2));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_STRING));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteSchemaJSON,
+      R"({"fields": [{"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, {"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], "metadata": null})");
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
   TestColumn(
       [](ArrowSchema* schema) {

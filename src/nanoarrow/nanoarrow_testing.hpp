@@ -51,6 +51,8 @@ class TestingJSONWriter {
       return EINVAL;
     }
 
+    out << "{";
+
     // Write fields
     out << R"("fields": )";
     if (schema->n_children == 0) {
@@ -69,6 +71,7 @@ class TestingJSONWriter {
     out << R"(, "metadata": )";
     NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
 
+    out << "}";
     return NANOARROW_OK;
   }
 
