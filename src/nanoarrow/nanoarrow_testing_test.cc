@@ -319,7 +319,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchema) {
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteSchemaJSON,
-      R"({"fields": [{"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, {"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], "metadata": null})");
+      R"({"fields": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
+      R"("metadata": null})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
@@ -377,7 +380,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": [{"key": "k1", "value": "v1"}, {"key": "k2", "value": "v2"}]})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], )"
+      R"("metadata": [{"key": "k1", "value": "v1"}, {"key": "k2", "value": "v2"}]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNested) {
@@ -392,7 +396,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNested) {
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
-      R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [{"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, {"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
+      R"("metadata": null})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestTypePrimitive) {
