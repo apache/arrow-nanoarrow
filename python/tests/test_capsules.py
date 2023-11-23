@@ -120,3 +120,28 @@ def test_export_invalid():
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError, match="array stream is released"):
         pa.table(array_stream)
+
+
+def test_import_from_c_errors():
+    # ensure proper error is raised in case of wrong object or wrong capsule
+    pa_arr = pa.array([1, 2, 3], pa.int32())
+
+    with pytest.raises(ValueError):
+        na.Schema._import_from_c_capsule("wrong")
+
+    with pytest.raises(ValueError):
+        na.Schema._import_from_c_capsule(pa_arr.__arrow_c_array__())
+
+    with pytest.raises(ValueError):
+        na.Array._import_from_c_capsule("wrong", "wrong")
+
+    with pytest.raises(ValueError):
+        na.Array._import_from_c_capsule(
+            pa_arr.__arrow_c_array__(), pa_arr.type.__arrow_c_schema__()
+        )
+
+    with pytest.raises(ValueError):
+        na.ArrayStream._import_from_c_capsule("wrong")
+
+    with pytest.raises(ValueError):
+        na.ArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())
