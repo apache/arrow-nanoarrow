@@ -582,7 +582,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "fixedsizelist", "listSize": 12})");
+}
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeUnion) {
   TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
@@ -597,9 +599,37 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeUnion(schema, NANOARROW_TYPE_SPARSE_UNION, 2));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_STRING));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_INT32));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "union", "mode": "SPARSE", "typeIds": [0,1]})");
+
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
             ArrowSchemaSetTypeUnion(schema, NANOARROW_TYPE_DENSE_UNION, 0));
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "union", "mode": "DENSE", "typeIds": []})");
+
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeUnion(schema, NANOARROW_TYPE_DENSE_UNION, 2));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_STRING));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_INT32));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
+      R"({"name": "union", "mode": "DENSE", "typeIds": [0,1]})");
 }

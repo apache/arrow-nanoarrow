@@ -88,7 +88,8 @@ class TestingJSONWriter {
     if (field->name == nullptr) {
       out << R"("name": null)";
     } else {
-      out << R"("name": ")" << field->name << R"(")";
+      out << R"("name": )";
+      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->format)));
     }
 
     // Write nullability
@@ -170,7 +171,8 @@ class TestingJSONWriter {
     if (field->name == nullptr) {
       out << R"("name": null)";
     } else {
-      out << R"("name": ")" << field->name << R"(")";
+      out << R"("name": )";
+      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->format)));
     }
 
     // Write length
