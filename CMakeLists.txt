@@ -203,6 +203,13 @@ if(NANOARROW_BUILD_TESTS)
 
   fetchcontent_makeavailable(googletest)
 
+  # JSON for integration testing
+  fetchcontent_declare(nlohmann_json
+                       URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
+                       URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
+  )
+  fetchcontent_makeavailable(nlohmann_json)
+
   add_executable(utils_test src/nanoarrow/utils_test.cc)
   add_executable(buffer_test src/nanoarrow/buffer_test.cc)
   add_executable(array_test src/nanoarrow/array_test.cc)
@@ -235,7 +242,12 @@ if(NANOARROW_BUILD_TESTS)
                         coverage_config)
   target_link_libraries(array_stream_test nanoarrow gtest_main coverage_config)
   target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main coverage_config)
-  target_link_libraries(nanoarrow_testing_test nanoarrow gtest_main coverage_config)
+  target_link_libraries(nanoarrow_testing_test
+                        nanoarrow
+                        gtest_main
+                        nlohmann_json::nlohmann_json
+                        coverage_config)
+  target_compile_definitions(nanoarrow_testing_test PUBLIC NANOARROW_TESTING_WITH_NLOHMANN_JSON)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5

@@ -20,6 +20,11 @@
 
 #include "nanoarrow.hpp"
 
+#if defined(NANOARROW_TESTING_WITH_NLOHMANN_JSON)
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+#endif
+
 #ifndef NANOARROW_TESTING_HPP_INCLUDED
 #define NANOARROW_TESTING_HPP_INCLUDED
 
@@ -612,6 +617,16 @@ class TestingJSONWriter {
     std::streamsize previous_precision_;
   };
 };
+
+#if defined(NANOARROW_TESTING_WITH_NLOHMANN_JSON)
+
+/// \brief Writer for the Arrow integration testing JSON format
+class TestingJSONReader {
+ public:
+  ArrowErrorCode ReadField(const std::string& value) { return ENOTSUP; }
+};
+
+#endif
 
 /// @}
 
