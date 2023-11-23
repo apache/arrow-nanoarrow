@@ -29,10 +29,12 @@ be literal and stay close to the structure definitions.
 
 from libc.stdint cimport uintptr_t, int64_t
 from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_CheckExact
 from cpython cimport Py_buffer
+from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
@@ -44,6 +46,11 @@ def c_version():
     return ArrowNanoarrowVersion().decode("UTF-8")
 
 
+#
+# PyCapsule export utilities
+#
+
+
 cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
     cdef ArrowSchema* schema = <ArrowSchema*>PyCapsule_GetPointer(
         schema_capsule, 'arrow_schema'
@@ -52,6 +59,23 @@ cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
         schema.release(schema)
 
     free(schema)
+
+
+cdef void pycapsule_array_deleter(object array_capsule) noexcept:
+    cdef ArrowArray* array = <ArrowArray*>PyCapsule_GetPointer(
+        array_capsule, 'arrow_array'
+    )
+    # Do not invoke the deleter on a used/moved capsule
+    if array.release != NULL:
+        array.release(array)
+
+    free(array)
+
+
+cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
+    Py_DECREF(<object>array.private_data)
+    array.private_data = NULL
+    array.release = NULL
 
 
 cdef class SchemaHolder:
@@ -469,7 +493,7 @@ cdef class Array:
         return Array(base, base._addr(), schema)
 
     def __cinit__(self, object base, uintptr_t addr, Schema schema):
-        self._base = base,
+        self._base = base
         self._ptr = <ArrowArray*>addr
         self._schema = schema
 
@@ -518,13 +542,25 @@ cdef class Array:
         """
         if requested_schema is not None:
             raise NotImplementedError("requested_schema")
-        if PyCapsule_CheckExact(self._base[0]):
-            return (self._schema._base[0], self._base[0])
-        else:
-            raise NotImplementedError(
-                "Array object was not created through the capsule protocol, "
-                "and exporting such arrays is not yet supported"
-            )
+
+        # TODO optimize this to export a version where children are reference
+        # counted and can be released separately
+
+        # shallow copy
+        cdef ArrowArray* c_array_out = <ArrowArray*> malloc(sizeof(ArrowArray))
+        memcpy(c_array_out, self._ptr, sizeof(ArrowArray))
+        c_array_out.release = NULL
+        c_array_out.private_data = NULL
+
+        # track original base
+        c_array_out.private_data = <void*>self._base
+        Py_INCREF(self._base)
+        c_array_out.release = arrow_array_release
+
+        array_capsule = PyCapsule_New(
+            c_array_out, 'arrow_array', &pycapsule_array_deleter
+        )
+        return self._schema.__arrow_c_schema__(), array_capsule
 
     def _addr(self):
         return <uintptr_t>self._ptr

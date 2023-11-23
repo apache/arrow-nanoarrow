@@ -76,7 +76,7 @@ def test_array_import():
         pa_arr2 = pa.array(array)
         assert pa_arr2.equals(pa_arr)
         del pa_arr2
-        assert not array.is_valid()
+        assert array.is_valid()
 
 
 def test_array_stream_import():
