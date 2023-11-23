@@ -23,6 +23,7 @@
 
 #include "nanoarrow/nanoarrow_testing.hpp"
 
+using nanoarrow::testing::TestingJSONReader;
 using nanoarrow::testing::TestingJSONWriter;
 
 ArrowErrorCode WriteBatchJSON(std::ostream& out, const ArrowSchema* schema,
@@ -632,4 +633,81 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeUnion) {
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "union", "mode": "DENSE", "typeIds": [0,1]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "n");
+  EXPECT_EQ(schema->name, nullptr);
+  EXPECT_TRUE(schema->flags & ARROW_FLAG_NULLABLE);
+  EXPECT_EQ(schema->n_children, 0);
+  EXPECT_EQ(schema->metadata, nullptr);
+
+  // Check non-nullable
+  schema.reset();
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": false, "type": {"name": "null"}, "children": [], "metadata": null})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_FALSE(schema->flags & ARROW_FLAG_NULLABLE);
+
+  // Check with name
+  schema.reset();
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_STREQ(schema->name, "colname");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldMetadata) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], )"
+          R"("metadata": [{"key": "k1", "value": "v1"}, {"key": "k2", "value": "v2"}]})",
+          schema.get()),
+      NANOARROW_OK);
+
+  ArrowMetadataReader metadata;
+  ArrowStringView key;
+  ArrowStringView value;
+
+  ASSERT_EQ(ArrowMetadataReaderInit(&metadata, schema->metadata), NANOARROW_OK);
+  ASSERT_EQ(metadata.remaining_keys, 2);
+
+  ASSERT_EQ(ArrowMetadataReaderRead(&metadata, &key, &value), NANOARROW_OK);
+  ASSERT_EQ(std::string(key.data, key.size_bytes), "k1");
+  ASSERT_EQ(std::string(value.data, value.size_bytes), "v1");
+
+  ASSERT_EQ(ArrowMetadataReaderRead(&metadata, &key, &value), NANOARROW_OK);
+  ASSERT_EQ(std::string(key.data, key.size_bytes), "k2");
+  ASSERT_EQ(std::string(value.data, value.size_bytes), "v2");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}], )"
+          R"("metadata": null})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "+s");
+  ASSERT_EQ(schema->n_children, 1);
+  EXPECT_STREQ(schema->children[0]->format, "n");
 }

@@ -22,7 +22,6 @@
 
 #if defined(NANOARROW_TESTING_WITH_NLOHMANN_JSON)
 #include <nlohmann/json.hpp>
-using json = nlohmann::json;
 #endif
 
 #ifndef NANOARROW_TESTING_HPP_INCLUDED
@@ -622,8 +621,144 @@ class TestingJSONWriter {
 
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONReader {
+  using json = nlohmann::json;
+
  public:
-  ArrowErrorCode ReadField(const std::string& value) { return ENOTSUP; }
+  ArrowErrorCode ReadField(const std::string& value, ArrowSchema* out,
+                           ArrowError* error = nullptr) {
+    try {
+      auto obj = json::parse(value);
+      nanoarrow::UniqueSchema schema;
+
+      NANOARROW_RETURN_NOT_OK(SetField(schema.get(), obj, error));
+      ArrowSchemaMove(schema.get(), out);
+      return NANOARROW_OK;
+    } catch (std::exception& e) {
+      ArrowErrorSet(error, "%s", "Exception in TestingJSONReader::ReadField(): %s",
+                    e.what());
+      return EINVAL;
+    }
+  }
+
+ private:
+  ArrowErrorCode SetField(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_object(), error, "Expected Field to be a JSON object"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("name"), error, "Field missing key 'name'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("nullable"), error, "Field missing key 'nullable'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("type"), error, "Field missing key 'type'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("children"), error, "Field missing key 'children'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("metadata"), error, "Field missing key 'metadata'"));
+
+    ArrowSchemaInit(schema);
+
+    const auto& name = value["name"];
+    NANOARROW_RETURN_NOT_OK(Check(name.is_string() || name.is_null(), error,
+                                  "Field name must be string or null"));
+    if (name.is_string()) {
+      auto name_str = name.get<std::string>();
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema, name_str.c_str()),
+                                         error);
+    }
+
+    const auto& nullable = value["nullable"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(nullable.is_boolean(), error, "Field nullable must be boolean"));
+    if (nullable.get<bool>()) {
+      schema->flags |= ARROW_FLAG_NULLABLE;
+    } else {
+      schema->flags &= ~ARROW_FLAG_NULLABLE;
+    }
+
+    NANOARROW_RETURN_NOT_OK(SetType(schema, value["type"], error));
+
+    const auto& children = value["children"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(children.is_array(), error, "Field children must be array"));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaAllocateChildren(schema, children.size()), error);
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(SetField(schema->children[i], children[i], error));
+    }
+
+    NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetType(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.is_object(), error, "Type must be object"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("name"), error, "Type missing key 'name'"));
+
+    const auto& name = value["name"];
+    NANOARROW_RETURN_NOT_OK(Check(name.is_string(), error, "Type name must be string"));
+    auto name_str = name.get<std::string>();
+
+    if (name_str == "null") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, NANOARROW_TYPE_NA),
+                                         error);
+    } else if (name_str == "struct") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
+    } else {
+      ArrowErrorSet(error, "Unsupported Type name: '%s'", name_str.c_str());
+      return ENOTSUP;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetMetadata(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.is_null() || value.is_array(), error,
+                                  "Field or Schema metadata must be null or array"));
+    if (value.is_null()) {
+      return NANOARROW_OK;
+    }
+
+    nanoarrow::UniqueBuffer metadata;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataBuilderInit(metadata.get(), nullptr),
+                                       error);
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.is_object(), error, "metadata item must be object"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.contains("key"), error, "metadata item missing key 'key'"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.contains("value"), error, "metadata item missing key 'value'"));
+
+      const auto& key = item["key"];
+      const auto& value = item["value"];
+      NANOARROW_RETURN_NOT_OK(
+          Check(key.is_string(), error, "metadata item key must be string"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.is_string(), error, "metadata item value must be string"));
+
+      auto key_str = key.get<std::string>();
+      auto value_str = value.get<std::string>();
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowMetadataBuilderAppend(metadata.get(), ArrowCharView(key_str.c_str()),
+                                     ArrowCharView(value_str.c_str())),
+          error);
+    }
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(metadata->data)), error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode Check(bool value, ArrowError* error, const std::string& err) {
+    if (value) {
+      return NANOARROW_OK;
+    } else {
+      ArrowErrorSet(error, "%s", err.c_str());
+      return EINVAL;
+    }
+  }
 };
 
 #endif
