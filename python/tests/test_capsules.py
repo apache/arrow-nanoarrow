@@ -14,8 +14,8 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
 import pyarrow as pa
+import pytest
 
 import nanoarrow as na
 
@@ -44,7 +44,7 @@ class StreamWrapper:
         return self.stream.__arrow_c_stream__(requested_schema=requested_schema)
 
 
-def test_schema_import():
+def test_schema():
     pa_schema = pa.schema([pa.field("some_name", pa.int32())])
 
     for schema_obj in [pa_schema, SchemaWrapper(pa_schema)]:
@@ -56,13 +56,13 @@ def test_schema_import():
 
         # roundtrip
         pa_schema2 = pa.schema(schema)
-        pa_schema2.equals(pa_schema)
+        assert pa_schema2.equals(pa_schema)
         # schemas stay valid because it exports a deep copy
         del pa_schema2
         assert schema.is_valid()
 
 
-def test_array_import():
+def test_array():
     pa_arr = pa.array([1, 2, 3], pa.int32())
 
     for arr_obj in [pa_arr, ArrayWrapper(pa_arr)]:
@@ -79,7 +79,7 @@ def test_array_import():
         assert array.is_valid()
 
 
-def test_array_stream_import():
+def test_array_stream():
     pa_table = pa.table({"some_column": pa.array([1, 2, 3], pa.int32())})
 
     for stream_obj in [pa_table, StreamWrapper(pa_table)]:
@@ -99,3 +99,24 @@ def test_array_stream_import():
         assert pa_table2.equals(pa_table)
         # exporting a stream marks the original object as released (it is moved)
         assert not array_stream.is_valid()
+        # and thus exporting a second time doesn't work
+        with pytest.raises(RuntimeError):
+            pa.table(array_stream)
+
+
+def test_export_invalid():
+    schema = na.Schema.allocate()
+    assert schema.is_valid() is False
+
+    with pytest.raises(RuntimeError, match="schema is released"):
+        pa.schema(schema)
+
+    array = na.Array.allocate(na.Schema.allocate())
+    assert array.is_valid() is False
+    with pytest.raises(RuntimeError, match="Array is released"):
+        pa.array(array)
+
+    array_stream = na.ArrayStream.allocate()
+    assert array_stream.is_valid() is False
+    with pytest.raises(RuntimeError, match="array stream is released"):
+        pa.table(array_stream)
