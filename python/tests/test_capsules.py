@@ -80,12 +80,9 @@ def test_array_import():
 
 
 def test_array_stream_import():
-    def make_reader():
-        pa_array_child = pa.array([1, 2, 3], pa.int32())
-        pa_array = pa.record_batch([pa_array_child], names=["some_column"])
-        return pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
+    pa_table = pa.table({"some_column": pa.array([1, 2, 3], pa.int32())})
 
-    for stream_obj in [make_reader(), StreamWrapper(make_reader())]:
+    for stream_obj in [pa_table, StreamWrapper(pa_table)]:
         array_stream = na.array_stream(stream_obj)
         # some basic validation
         assert array_stream.is_valid()
@@ -96,10 +93,9 @@ def test_array_stream_import():
             == "struct<some_column: int32>"
         )
 
-    for stream_obj in [make_reader(), StreamWrapper(make_reader())]:
-        array_stream = na.array_stream(stream_obj)
         # roundtrip
-        pa_table = pa.table(array_stream)
-        assert pa_table.equals(make_reader().read_all())
-        del pa_table
+        array_stream = na.array_stream(stream_obj)
+        pa_table2 = pa.table(array_stream)
+        assert pa_table2.equals(pa_table)
+        # exporting a stream marks the original object as released (it is moved)
         assert not array_stream.is_valid()

@@ -72,6 +72,17 @@ cdef void pycapsule_array_deleter(object array_capsule) noexcept:
     free(array)
 
 
+cdef void pycapsule_stream_deleter(object stream_capsule) noexcept:
+    cdef ArrowArrayStream* stream = <ArrowArrayStream*>PyCapsule_GetPointer(
+        stream_capsule, 'arrow_array_stream'
+    )
+    # Do not invoke the deleter on a used/moved capsule
+    if stream.release != NULL:
+        stream.release(stream)
+
+    free(stream)
+
+
 cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
     Py_DECREF(<object>array.private_data)
     array.private_data = NULL
@@ -1027,13 +1038,17 @@ cdef class ArrayStream:
         """
         if requested_schema is not None:
             raise NotImplementedError("requested_schema")
-        if PyCapsule_CheckExact(self._base):
-            return self._base
-        else:
-            raise NotImplementedError(
-                "Stream object was not created through the capsule protocol, "
-                "and exporting such arrays is not yet supported"
-            )
+
+        # move the stream
+        cdef ArrowArrayStream* c_stream_out = <ArrowArrayStream*> malloc(
+            sizeof(ArrowArrayStream)
+        )
+        memcpy(c_stream_out, self._ptr, sizeof(ArrowArrayStream))
+        self._ptr.release = NULL
+
+        return PyCapsule_New(
+            c_stream_out, 'arrow_array_stream', &pycapsule_stream_deleter
+        )
 
     def _addr(self):
         return <uintptr_t>self._ptr
