@@ -55,11 +55,11 @@ ArrowErrorCode WriteTypeJSON(std::ostream& out, const ArrowSchema* schema,
   return writer.WriteType(out, schema);
 }
 
-void TestColumn(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
-                std::function<ArrowErrorCode(ArrowArray*)> append_expr,
-                ArrowErrorCode (*test_expr)(std::ostream&, const ArrowSchema*,
-                                            ArrowArrayView*),
-                const std::string& expected_json) {
+void TestWriteJSON(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
+                   std::function<ArrowErrorCode(ArrowArray*)> append_expr,
+                   ArrowErrorCode (*test_expr)(std::ostream&, const ArrowSchema*,
+                                               ArrowArrayView*),
+                   const std::string& expected_json) {
   std::stringstream ss;
 
   nanoarrow::UniqueSchema schema;
@@ -80,14 +80,14 @@ void TestColumn(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnNull) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteColumnJSON,
       R"({"name": null, "count": 0})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, "colname"));
@@ -98,7 +98,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnNull) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT32);
       },
@@ -106,7 +106,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
       R"({"name": null, "count": 0, "VALIDITY": [], "DATA": []})");
 
   // Without a null value
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT32);
       },
@@ -120,7 +120,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
       R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": [0, 1, 0]})");
 
   // With two null values
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT32);
       },
@@ -134,7 +134,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt64) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT64);
       },
@@ -149,7 +149,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt64) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_UINT64);
       },
@@ -164,7 +164,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_FLOAT);
       },
@@ -178,7 +178,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
       },
@@ -192,7 +192,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       R"("OFFSET": [0, 3, 6], "DATA": ["abc", "def"]})");
 
   // Check a string that requires escaping of characters \ and "
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
       },
@@ -205,7 +205,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       R"("OFFSET": [0, 2], "DATA": ["\"\\"]})");
 
   // Check a string that requires unicode escape
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
       },
@@ -219,7 +219,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnLargeString) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_LARGE_STRING);
       },
@@ -234,7 +234,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnLargeString) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_BINARY);
       },
@@ -255,7 +255,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnStruct) {
   // Empty struct
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 0));
@@ -265,7 +265,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnStruct) {
       R"({"name": null, "count": 0, "VALIDITY": [], "children": []})");
 
   // Non-empty struct
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 2));
@@ -284,7 +284,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnStruct) {
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnDenseUnion) {
   // Empty union
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(
@@ -297,7 +297,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnDenseUnion) {
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestBatch) {
   // Empty batch
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 0));
@@ -308,7 +308,18 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestBatch) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestSchema) {
-  TestColumn(
+  // Zero fields
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 0));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteSchemaJSON,
+      R"({"fields": [], "metadata": null})");
+
+  // More than zero fields
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 2));
@@ -326,7 +337,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchema) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
         return NANOARROW_OK;
@@ -334,7 +345,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
         schema->flags = 0;
@@ -343,7 +354,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
       R"({"name": null, "nullable": false, "type": {"name": "null"}, "children": [], "metadata": null})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, "colname"));
@@ -355,7 +366,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
   // Non-null but zero-size metadata
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, "\0\0\0\0"));
@@ -365,7 +376,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": []})");
 
   // Non-zero size metadata
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         nanoarrow::UniqueBuffer buffer;
         NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
@@ -385,7 +396,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNested) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 2));
@@ -403,77 +414,77 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNested) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestTypePrimitive) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "null"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_BOOL);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "bool"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT8);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "int", "bitWidth": 8, "isSigned": true})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_UINT8);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "int", "bitWidth": 8, "isSigned": false})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_HALF_FLOAT);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "floatingpoint", "precision": "HALF"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_FLOAT);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "floatingpoint", "precision": "SINGLE"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_DOUBLE);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "floatingpoint", "precision": "DOUBLE"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "utf8"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_LARGE_STRING);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "largeutf8"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_BINARY);
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "binary"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_LARGE_BINARY);
       },
@@ -482,7 +493,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypePrimitive) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(
@@ -492,7 +503,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "fixedsizebinary", "byteWidth": 123})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(
@@ -502,7 +513,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "decimal", "bitWidth": 128, "precision": 10, "scale": 3})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, 0));
@@ -511,7 +522,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "struct"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST));
@@ -522,7 +533,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "list"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_MAP));
@@ -535,7 +546,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "map", "keysSorted": false})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_MAP));
@@ -549,7 +560,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "map", "keysSorted": true})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_LIST));
@@ -560,7 +571,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "largelist"})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(
@@ -572,7 +583,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "fixedsizelist", "listSize": 12})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(
@@ -582,7 +593,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeParameterized) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteTypeJSON,
       R"({"name": "union", "mode": "SPARSE", "typeIds": []})");
 
-  TestColumn(
+  TestWriteJSON(
       [](ArrowSchema* schema) {
         ArrowSchemaInit(schema);
         NANOARROW_RETURN_NOT_OK(
