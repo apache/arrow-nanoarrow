@@ -793,7 +793,7 @@ class TestingJSONReader {
                                   "Type[name=='int'] bitWidth must be integer"));
 
     const auto& issigned = value["isSigned"];
-    NANOARROW_RETURN_NOT_OK(Check(bitwidth.is_boolean(), error,
+    NANOARROW_RETURN_NOT_OK(Check(issigned.is_boolean(), error,
                                   "Type[name=='int'] isSigned must be boolean"));
 
     ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
