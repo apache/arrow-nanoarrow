@@ -28,10 +28,13 @@ be literal and stay close to the structure definitions.
 """
 
 from libc.stdint cimport uintptr_t, int64_t
+from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_GetPointer
+from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_CheckExact
 from cpython cimport Py_buffer
+from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
@@ -41,6 +44,70 @@ def c_version():
     """Return the nanoarrow C library version string
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
+
+
+#
+# PyCapsule export utilities
+#
+
+
+cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
+    cdef ArrowSchema* schema = <ArrowSchema*>PyCapsule_GetPointer(
+        schema_capsule, 'arrow_schema'
+    )
+    if schema.release != NULL:
+        schema.release(schema)
+
+    free(schema)
+
+
+cdef object alloc_c_schema(ArrowSchema** c_schema) noexcept:
+    c_schema[0] = <ArrowSchema*> malloc(sizeof(ArrowSchema))
+    # Ensure the capsule destructor doesn't call a random release pointer
+    c_schema[0].release = NULL
+    return PyCapsule_New(c_schema[0], 'arrow_schema', &pycapsule_schema_deleter)
+
+
+cdef void pycapsule_array_deleter(object array_capsule) noexcept:
+    cdef ArrowArray* array = <ArrowArray*>PyCapsule_GetPointer(
+        array_capsule, 'arrow_array'
+    )
+    # Do not invoke the deleter on a used/moved capsule
+    if array.release != NULL:
+        array.release(array)
+
+    free(array)
+
+
+cdef object alloc_c_array(ArrowArray** c_array) noexcept:
+    c_array[0] = <ArrowArray*> malloc(sizeof(ArrowArray))
+    # Ensure the capsule destructor doesn't call a random release pointer
+    c_array[0].release = NULL
+    return PyCapsule_New(c_array[0], 'arrow_array', &pycapsule_array_deleter)
+
+
+cdef void pycapsule_stream_deleter(object stream_capsule) noexcept:
+    cdef ArrowArrayStream* stream = <ArrowArrayStream*>PyCapsule_GetPointer(
+        stream_capsule, 'arrow_array_stream'
+    )
+    # Do not invoke the deleter on a used/moved capsule
+    if stream.release != NULL:
+        stream.release(stream)
+
+    free(stream)
+
+
+cdef object alloc_c_stream(ArrowArrayStream** c_stream) noexcept:
+    c_stream[0] = <ArrowArrayStream*> malloc(sizeof(ArrowArrayStream))
+    # Ensure the capsule destructor doesn't call a random release pointer
+    c_stream[0].release = NULL
+    return PyCapsule_New(c_stream[0], 'arrow_array_stream', &pycapsule_stream_deleter)
+
+
+cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
+    Py_DECREF(<object>array.private_data)
+    array.private_data = NULL
+    array.release = NULL
 
 
 cdef class SchemaHolder:
@@ -219,6 +286,22 @@ cdef class Schema:
             schema_capsule,
             <uintptr_t>PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
         )
+
+    def __arrow_c_schema__(self):
+        """
+        Export to a ArrowSchema PyCapsule
+        """
+        self._assert_valid()
+
+        cdef:
+            ArrowSchema* c_schema_out
+            int result
+
+        schema_capsule = alloc_c_schema(&c_schema_out)
+        result = ArrowSchemaDeepCopy(self._ptr, c_schema_out)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaDeepCopy", result)
+        return schema_capsule
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -448,7 +531,7 @@ cdef class Array:
         return Array(base, base._addr(), schema)
 
     def __cinit__(self, object base, uintptr_t addr, Schema schema):
-        self._base = base,
+        self._base = base
         self._ptr = <ArrowArray*>addr
         self._schema = schema
 
@@ -478,6 +561,46 @@ cdef class Array:
         )
 
         return out
+
+    def __arrow_c_array__(self, requested_schema=None):
+        """
+        Get a pair of PyCapsules containing a C ArrowArray representation of the object.
+
+        Parameters
+        ----------
+        requested_schema : PyCapsule | None
+            A PyCapsule containing a C ArrowSchema representation of a requested
+            schema. Not supported.
+
+        Returns
+        -------
+        Tuple[PyCapsule, PyCapsule]
+            A pair of PyCapsules containing a C ArrowSchema and ArrowArray,
+            respectively.
+        """
+        self._assert_valid()
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        # TODO optimize this to export a version where children are reference
+        # counted and can be released separately
+
+        cdef:
+            ArrowArray* c_array_out
+
+        array_capsule = alloc_c_array(&c_array_out)
+
+        # shallow copy
+        memcpy(c_array_out, self._ptr, sizeof(ArrowArray))
+        c_array_out.release = NULL
+        c_array_out.private_data = NULL
+
+        # track original base
+        c_array_out.private_data = <void*>self._base
+        Py_INCREF(self._base)
+        c_array_out.release = arrow_array_release
+
+        return self._schema.__arrow_c_schema__(), array_capsule
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -927,6 +1050,35 @@ cdef class ArrayStream:
             stream_capsule,
             <uintptr_t>PyCapsule_GetPointer(stream_capsule, 'arrow_array_stream')
         )
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        """
+        Export the stream as an Arrow C stream PyCapsule.
+
+        Parameters
+        ----------
+        requested_schema : PyCapsule | None
+            A PyCapsule containing a C ArrowSchema representation of a requested
+            schema. Not supported.
+
+        Returns
+        -------
+        PyCapsule
+        """
+        self._assert_valid()
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        cdef:
+            ArrowArrayStream* c_stream_out
+
+        stream_capsule = alloc_c_stream(&c_stream_out)
+
+        # move the stream
+        memcpy(c_stream_out, self._ptr, sizeof(ArrowArrayStream))
+        self._ptr.release = NULL
+
+        return stream_capsule
 
     def _addr(self):
         return <uintptr_t>self._ptr
