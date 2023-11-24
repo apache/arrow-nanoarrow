@@ -742,6 +742,27 @@ class TestingJSONReader {
     if (name_str == "null") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, NANOARROW_TYPE_NA),
                                          error);
+    } else if (name_str == "bool") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL),
+                                         error);
+    } else if (name_str == "utf8") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING), error);
+    } else if (name_str == "largeutf8") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_STRING), error);
+    } else if (name_str == "binary") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY), error);
+    } else if (name_str == "largebinary") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_BINARY), error);
+    } else if (name_str == "list") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST),
+                                         error);
+    } else if (name_str == "largelist") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_LIST), error);
     } else if (name_str == "struct") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
@@ -749,6 +770,232 @@ class TestingJSONReader {
       ArrowErrorSet(error, "Unsupported Type name: '%s'", name_str.c_str());
       return ENOTSUP;
     }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeInt(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("bitWidth"), error,
+                                  "Type[name=='int'] missing key 'bitWidth'"));
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("isSigned"), error,
+                                  "Type[name=='int'] missing key 'isSigned'"));
+
+    const auto& bitwidth = value["bitWidth"];
+    NANOARROW_RETURN_NOT_OK(Check(bitwidth.is_number_integer(), error,
+                                  "Type[name=='int'] bitWidth must be integer"));
+
+    const auto& issigned = value["isSigned"];
+    NANOARROW_RETURN_NOT_OK(Check(bitwidth.is_boolean(), error,
+                                  "Type[name=='int'] isSigned must be boolean"));
+
+    ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
+    if (issigned.get<bool>()) {
+      switch (bitwidth.get<int>()) {
+        case 8:
+          type = NANOARROW_TYPE_INT8;
+          break;
+        case 16:
+          type = NANOARROW_TYPE_INT16;
+          break;
+        case 32:
+          type = NANOARROW_TYPE_INT32;
+          break;
+        case 64:
+          type = NANOARROW_TYPE_INT64;
+          break;
+        default:
+          ArrowErrorSet(error, "Type[name=='int'] bitWidth must be 8, 16, 32, or 64");
+          return EINVAL;
+      }
+    } else {
+      switch (bitwidth.get<int>()) {
+        case 8:
+          type = NANOARROW_TYPE_UINT8;
+          break;
+        case 16:
+          type = NANOARROW_TYPE_UINT16;
+          break;
+        case 32:
+          type = NANOARROW_TYPE_UINT32;
+          break;
+        case 64:
+          type = NANOARROW_TYPE_UINT64;
+          break;
+        default:
+          ArrowErrorSet(error, "Type[name=='int'] bitWidth must be 8, 16, 32, or 64");
+          return EINVAL;
+      }
+    }
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, type), error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeFloatingPoint(ArrowSchema* schema, const json& value,
+                                      ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("precision"), error,
+                                  "Type[name=='floatingpoint'] missing key 'precision'"));
+
+    const auto& precision = value["precision"];
+    NANOARROW_RETURN_NOT_OK(Check(precision.is_string(), error,
+                                  "Type[name=='floatingpoint'] bitWidth must be string"));
+
+    ArrowType type = NANOARROW_TYPE_UNINITIALIZED;
+    auto precision_str = precision.get<std::string>();
+    if (precision_str == "HALF") {
+      type = NANOARROW_TYPE_HALF_FLOAT;
+    } else if (precision_str == "SINGLE") {
+      type = NANOARROW_TYPE_FLOAT;
+    } else if (precision_str == "DOUBLE") {
+      type = NANOARROW_TYPE_DOUBLE;
+    } else {
+      ArrowErrorSet(
+          error,
+          "Type[name=='floatingpoint'] precision must be 'HALF', 'SINGLE', or 'DOUBLE'");
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, type), error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeFixedSizeBinary(ArrowSchema* schema, const json& value,
+                                        ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("byteWidth"), error,
+              "Type[name=='fixedsizebinary'] missing key 'byteWidth'"));
+
+    const auto& byteWidth = value["byteWidth"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(byteWidth.is_number_integer(), error,
+              "Type[name=='fixedsizebinary'] byteWidth must be integer"));
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY,
+                                    byteWidth.get<int>()),
+        error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value,
+                                ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("bitWidth"), error,
+                                  "Type[name=='decimal'] missing key 'bitWidth'"));
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("precision"), error,
+                                  "Type[name=='decimal'] missing key 'precision'"));
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("scale"), error,
+                                  "Type[name=='decimal'] missing key 'scale'"));
+
+    const auto& bitWidth = value["bitWidth"];
+    NANOARROW_RETURN_NOT_OK(Check(bitWidth.is_number_integer(), error,
+                                  "Type[name=='decimal'] bitWidth must be integer"));
+
+    ArrowType type;
+    switch (bitWidth.get<int>()) {
+      case 128:
+        type = NANOARROW_TYPE_DECIMAL128;
+        break;
+      case 256:
+        type = NANOARROW_TYPE_DECIMAL256;
+        break;
+      default:
+        ArrowErrorSet(error, "Type[name=='decimal'] bitWidth must be 128 or 256");
+        return EINVAL;
+    }
+
+    const auto& precision = value["precision"];
+    NANOARROW_RETURN_NOT_OK(Check(precision.is_number_integer(), error,
+                                  "Type[name=='decimal'] precision must be integer"));
+
+    const auto& scale = value["scale"];
+    NANOARROW_RETURN_NOT_OK(Check(scale.is_number_integer(), error,
+                                  "Type[name=='decimal'] scale must be integer"));
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetTypeDecimal(schema, type, precision.get<int>(), scale.get<int>()),
+        error);
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeMap(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("keysSorted"), error,
+                                  "Type[name=='map'] missing key 'keysSorted'"));
+
+    const auto& keys_sorted = value["keysSorted"];
+    NANOARROW_RETURN_NOT_OK(Check(keys_sorted.is_boolean(), error,
+                                  "Type[name=='map'] keysSorted must be boolean"));
+
+    if (keys_sorted.get<bool>()) {
+      schema->flags |= ARROW_FLAG_MAP_KEYS_SORTED;
+    } else {
+      schema->flags &= ~ARROW_FLAG_MAP_KEYS_SORTED;
+    }
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, "+m"), error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeFixedSizeList(ArrowSchema* schema, const json& value,
+                                      ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("listSize"), error,
+                                  "Type[name=='fixedsizelist'] missing key 'listSize'"));
+
+    const auto& list_size = value["listSize"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(list_size.is_number_integer(), error,
+              "Type[name=='fixedsizelist'] listSize must be integer"));
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_LIST,
+                                    list_size.get<int>()),
+        error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeUnion(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("mode"), error, "Type[name=='union'] missing key 'mode'"));
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("typeIds"), error,
+                                  "Type[name=='union'] missing key 'typeIds'"));
+
+    const auto& mode = value["mode"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(mode.is_string(), error, "Type[name=='union'] mode must be string"));
+
+    auto mode_str = mode.get<std::string>();
+    std::stringstream type_ids_format;
+
+    if (mode_str == "DENSE") {
+      type_ids_format << "+ud:";
+    } else if (mode_str == "SPARSE") {
+      type_ids_format << "+us:";
+    } else {
+      ArrowErrorSet(error, "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
+      return EINVAL;
+    }
+
+    const auto& type_ids = value["typeIds"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(type_ids.is_array(), error, "Type[name=='union'] typeIds must be array"));
+
+    if (type_ids.size() > 0) {
+      for (size_t i = 0; i < type_ids.size(); i++) {
+        const auto& type_id = type_ids[i];
+        NANOARROW_RETURN_NOT_OK(
+            Check(type_id.is_number_integer(), error,
+                  "Type[name=='union'] typeIds item must be integer"));
+        type_ids_format << type_ids;
+
+        if ((i + 1) < type_id.size()) {
+          type_ids_format << ",";
+        }
+      }
+    }
+
+    std::string type_ids_format_str = type_ids_format.str();
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetFormat(schema, type_ids_format_str.c_str()), error);
 
     return NANOARROW_OK;
   }
