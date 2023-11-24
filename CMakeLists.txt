@@ -187,13 +187,6 @@ if(NANOARROW_BUILD_TESTS)
     set(NANOARROW_ARROW_TARGET arrow_shared)
   endif()
 
-  # JSON for integration testing
-  fetchcontent_declare(nlohmann_json
-                       URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
-                       URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
-  )
-  fetchcontent_makeavailable(nlohmann_json)
-
   # Use an old version of googletest if we have to to support gcc 4.8
   if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION
                                                  VERSION_GREATER_EQUAL "5.0.0")
@@ -209,6 +202,16 @@ if(NANOARROW_BUILD_TESTS)
   endif()
 
   fetchcontent_makeavailable(googletest)
+
+  # JSON library for integration testing
+  # Also used by some versions of Arrow, so check if this is already available
+  if(NOT TARGET nlohmann_json::nlohmann_json)
+    fetchcontent_declare(nlohmann_json
+                         URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
+                         URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
+    )
+    fetchcontent_makeavailable(nlohmann_json)
+  endif()
 
   add_executable(utils_test src/nanoarrow/utils_test.cc)
   add_executable(buffer_test src/nanoarrow/buffer_test.cc)
