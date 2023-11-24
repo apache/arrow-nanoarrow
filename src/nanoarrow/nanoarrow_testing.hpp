@@ -745,6 +745,12 @@ class TestingJSONReader {
     } else if (name_str == "bool") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, NANOARROW_TYPE_BOOL),
                                          error);
+    } else if (name_str == "int") {
+      NANOARROW_RETURN_NOT_OK(SetTypeInt(schema, value, error));
+    } else if (name_str == "floatingpoint") {
+      NANOARROW_RETURN_NOT_OK(SetTypeFloatingPoint(schema, value, error));
+    } else if (name_str == "decimal") {
+      NANOARROW_RETURN_NOT_OK(SetTypeDecimal(schema, value, error));
     } else if (name_str == "utf8") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING), error);
@@ -757,12 +763,18 @@ class TestingJSONReader {
     } else if (name_str == "largebinary") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_BINARY), error);
+    } else if (name_str == "fixedsizebinary") {
+      NANOARROW_RETURN_NOT_OK(SetTypeFixedSizeBinary(schema, value, error));
     } else if (name_str == "list") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST),
                                          error);
     } else if (name_str == "largelist") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_LIST), error);
+    } else if (name_str == "fixedsizelist") {
+      NANOARROW_RETURN_NOT_OK(SetTypeFixedSizeList(schema, value, error));
+    } else if (name_str == "union") {
+      NANOARROW_RETURN_NOT_OK(SetTypeUnion(schema, value, error));
     } else if (name_str == "struct") {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
