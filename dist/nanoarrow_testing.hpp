@@ -42,6 +42,101 @@ namespace testing {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
+  /// \brief Write a schema to out
+  ///
+  /// Creates output like `{"fields": [...], "metadata": [...]}`.
+  ArrowErrorCode WriteSchema(std::ostream& out, const ArrowSchema* schema) {
+    // Make sure we have a struct
+    if (std::string(schema->format) != "+s") {
+      return EINVAL;
+    }
+
+    out << "{";
+
+    // Write fields
+    out << R"("fields": )";
+    if (schema->n_children == 0) {
+      out << "[]";
+    } else {
+      out << "[";
+      NANOARROW_RETURN_NOT_OK(WriteField(out, schema->children[0]));
+      for (int64_t i = 1; i < schema->n_children; i++) {
+        out << ", ";
+        NANOARROW_RETURN_NOT_OK(WriteField(out, schema->children[i]));
+      }
+      out << "]";
+    }
+
+    // Write metadata
+    out << R"(, "metadata": )";
+    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
+
+    out << "}";
+    return NANOARROW_OK;
+  }
+
+  /// \brief Write a field to out
+  ///
+  /// Creates output like `{"name" : "col", "type": {...}, ...}`
+  ArrowErrorCode WriteField(std::ostream& out, const ArrowSchema* field) {
+    ArrowSchemaView view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, (ArrowSchema*)field, nullptr));
+
+    out << "{";
+
+    // Write schema->name (may be null)
+    if (field->name == nullptr) {
+      out << R"("name": null)";
+    } else {
+      out << R"("name": )";
+      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->name)));
+    }
+
+    // Write nullability
+    if (field->flags & ARROW_FLAG_NULLABLE) {
+      out << R"(, "nullable": true)";
+    } else {
+      out << R"(, "nullable": false)";
+    }
+
+    // Write type
+    out << R"(, "type": )";
+    NANOARROW_RETURN_NOT_OK(WriteType(out, &view));
+
+    // Write children
+    out << R"(, "children": )";
+    if (field->n_children == 0) {
+      out << "[]";
+    } else {
+      out << "[";
+      NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[0]));
+      for (int64_t i = 1; i < field->n_children; i++) {
+        out << ", ";
+        NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[i]));
+      }
+      out << "]";
+    }
+
+    // TODO: Dictionary (currently fails at WriteType)
+
+    // Write metadata
+    out << R"(, "metadata": )";
+    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
+
+    out << "}";
+    return NANOARROW_OK;
+  }
+
+  /// \brief Write the type portion of a field
+  ///
+  /// Creates output like `{"name": "int", ...}`
+  ArrowErrorCode WriteType(std::ostream& out, const ArrowSchema* field) {
+    ArrowSchemaView view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, (ArrowSchema*)field, nullptr));
+    NANOARROW_RETURN_NOT_OK(WriteType(out, &view));
+    return NANOARROW_OK;
+  }
+
   /// \brief Write a "batch" to out
   ///
   /// Creates output like `{"count": 123, "columns": [...]}`.
@@ -76,7 +171,8 @@ class TestingJSONWriter {
     if (field->name == nullptr) {
       out << R"("name": null)";
     } else {
-      out << R"("name": ")" << field->name << R"(")";
+      out << R"("name": )";
+      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->name)));
     }
 
     // Write length
@@ -161,6 +257,142 @@ class TestingJSONWriter {
   }
 
  private:
+  ArrowErrorCode WriteType(std::ostream& out, const ArrowSchemaView* field) {
+    ArrowType type;
+    if (field->extension_name.data != nullptr) {
+      type = field->storage_type;
+    } else {
+      type = field->type;
+    }
+
+    out << "{";
+
+    switch (field->type) {
+      case NANOARROW_TYPE_NA:
+        out << R"("name": "null")";
+        break;
+      case NANOARROW_TYPE_BOOL:
+        out << R"("name": "bool")";
+        break;
+      case NANOARROW_TYPE_INT8:
+      case NANOARROW_TYPE_INT16:
+      case NANOARROW_TYPE_INT32:
+      case NANOARROW_TYPE_INT64:
+        out << R"("name": "int", "bitWidth": )" << field->layout.element_size_bits[1]
+            << R"(, "isSigned": true)";
+        break;
+      case NANOARROW_TYPE_UINT8:
+      case NANOARROW_TYPE_UINT16:
+      case NANOARROW_TYPE_UINT64:
+      case NANOARROW_TYPE_UINT32:
+        out << R"("name": "int", "bitWidth": )" << field->layout.element_size_bits[1]
+            << R"(, "isSigned": false)";
+        break;
+      case NANOARROW_TYPE_HALF_FLOAT:
+        out << R"("name": "floatingpoint", "precision": "HALF")";
+        break;
+      case NANOARROW_TYPE_FLOAT:
+        out << R"("name": "floatingpoint", "precision": "SINGLE")";
+        break;
+      case NANOARROW_TYPE_DOUBLE:
+        out << R"("name": "floatingpoint", "precision": "DOUBLE")";
+        break;
+      case NANOARROW_TYPE_STRING:
+        out << R"("name": "utf8")";
+        break;
+      case NANOARROW_TYPE_LARGE_STRING:
+        out << R"("name": "largeutf8")";
+        break;
+      case NANOARROW_TYPE_BINARY:
+        out << R"("name": "binary")";
+        break;
+      case NANOARROW_TYPE_LARGE_BINARY:
+        out << R"("name": "largebinary")";
+        break;
+      case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+        out << R"("name": "fixedsizebinary", "byteWidth": )" << field->fixed_size;
+        break;
+      case NANOARROW_TYPE_DECIMAL128:
+      case NANOARROW_TYPE_DECIMAL256:
+        out << R"("name": "decimal", "bitWidth": )" << field->decimal_bitwidth
+            << R"(, "precision": )" << field->decimal_precision << R"(, "scale": )"
+            << field->decimal_scale;
+        break;
+      case NANOARROW_TYPE_STRUCT:
+        out << R"("name": "struct")";
+        break;
+      case NANOARROW_TYPE_LIST:
+        out << R"("name": "list")";
+        break;
+      case NANOARROW_TYPE_MAP:
+        out << R"("name": "map", "keysSorted": )";
+        if (field->schema->flags & ARROW_FLAG_MAP_KEYS_SORTED) {
+          out << "true";
+        } else {
+          out << "false";
+        }
+        break;
+      case NANOARROW_TYPE_LARGE_LIST:
+        out << R"("name": "largelist")";
+        break;
+      case NANOARROW_TYPE_FIXED_SIZE_LIST:
+        out << R"("name": "fixedsizelist", "listSize": )"
+            << field->layout.child_size_elements;
+        break;
+      case NANOARROW_TYPE_DENSE_UNION:
+        out << R"("name": "union", "mode": "DENSE", "typeIds": [)"
+            << field->union_type_ids << "]";
+        break;
+      case NANOARROW_TYPE_SPARSE_UNION:
+        out << R"("name": "union", "mode": "SPARSE", "typeIds": [)"
+            << field->union_type_ids << "]";
+        break;
+
+      default:
+        // Not supported
+        return ENOTSUP;
+    }
+
+    out << "}";
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteMetadata(std::ostream& out, const char* metadata) {
+    if (metadata == nullptr) {
+      out << "null";
+      return NANOARROW_OK;
+    }
+
+    ArrowMetadataReader reader;
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
+    if (reader.remaining_keys == 0) {
+      out << "[]";
+      return NANOARROW_OK;
+    }
+
+    out << "[";
+    NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+    while (reader.remaining_keys > 0) {
+      out << ", ";
+      NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+    }
+
+    out << "]";
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteMetadataItem(std::ostream& out, ArrowMetadataReader* reader) {
+    ArrowStringView key;
+    ArrowStringView value;
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderRead(reader, &key, &value));
+    out << R"({"key": )";
+    NANOARROW_RETURN_NOT_OK(WriteString(out, key));
+    out << R"(, "value": )";
+    NANOARROW_RETURN_NOT_OK(WriteString(out, value));
+    out << "}";
+    return NANOARROW_OK;
+  }
+
   void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
     if (length == 0) {
       out << "[]";
