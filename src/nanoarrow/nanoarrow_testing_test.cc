@@ -635,6 +635,22 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestTypeUnion) {
       R"({"name": "union", "mode": "DENSE", "typeIds": [0,1]})");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadSchema) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+
+  ASSERT_EQ(
+      reader.ReadSchema(
+          R"({"fields": [)"
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}], )"
+          R"("metadata": null})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "+s");
+  ASSERT_EQ(schema->n_children, 1);
+  EXPECT_STREQ(schema->children[0]->format, "n");
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
   nanoarrow::UniqueSchema schema;
   TestingJSONReader reader;

@@ -624,6 +624,22 @@ class TestingJSONReader {
   using json = nlohmann::json;
 
  public:
+  ArrowErrorCode ReadSchema(const std::string& value, ArrowSchema* out,
+                            ArrowError* error = nullptr) {
+    try {
+      auto obj = json::parse(value);
+      nanoarrow::UniqueSchema schema;
+
+      NANOARROW_RETURN_NOT_OK(SetSchema(schema.get(), obj, error));
+      ArrowSchemaMove(schema.get(), out);
+      return NANOARROW_OK;
+    } catch (std::exception& e) {
+      ArrowErrorSet(error, "%s", "Exception in TestingJSONReader::ReadSchema(): %s",
+                    e.what());
+      return EINVAL;
+    }
+  }
+
   ArrowErrorCode ReadField(const std::string& value, ArrowSchema* out,
                            ArrowError* error = nullptr) {
     try {
@@ -641,6 +657,30 @@ class TestingJSONReader {
   }
 
  private:
+  ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_object(), error, "Expected Schema to be a JSON object"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("fields"), error, "Schema missing key 'fields'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("metadata"), error, "Schema missing key 'metadata'"));
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), error);
+
+    const auto& fields = value["fields"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(fields.is_array(), error, "Field fields must be array"));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaAllocateChildren(schema, fields.size()),
+                                       error);
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(SetField(schema->children[i], fields[i], error));
+    }
+
+    NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    return NANOARROW_OK;
+  }
+
   ArrowErrorCode SetField(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_object(), error, "Expected Field to be a JSON object"));
