@@ -635,8 +635,7 @@ class TestingJSONReader {
       ArrowSchemaMove(schema.get(), out);
       return NANOARROW_OK;
     } catch (std::exception& e) {
-      ArrowErrorSet(error, "%s", "Exception in TestingJSONReader::ReadSchema(): %s",
-                    e.what());
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadSchema(): %s", e.what());
       return EINVAL;
     }
   }
@@ -651,8 +650,7 @@ class TestingJSONReader {
       ArrowSchemaMove(schema.get(), out);
       return NANOARROW_OK;
     } catch (std::exception& e) {
-      ArrowErrorSet(error, "%s", "Exception in TestingJSONReader::ReadField(): %s",
-                    e.what());
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadField(): %s", e.what());
       return EINVAL;
     }
   }

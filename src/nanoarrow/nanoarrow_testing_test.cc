@@ -727,3 +727,24 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   ASSERT_EQ(schema->n_children, 1);
   EXPECT_STREQ(schema->children[0]->format, "n");
 }
+
+void TestFieldRoundtrip(const std::string& field_json) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+  TestingJSONWriter writer;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  int result = reader.ReadField(field_json, schema.get(), &error);
+  EXPECT_STREQ(error.message, "");
+  ASSERT_EQ(result, NANOARROW_OK);
+
+  std::stringstream field_json_roundtrip;
+  ASSERT_EQ(writer.WriteField(field_json_roundtrip, schema.get()), NANOARROW_OK);
+  EXPECT_EQ(field_json_roundtrip.str(), field_json);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldRoundtrip) {
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+}
