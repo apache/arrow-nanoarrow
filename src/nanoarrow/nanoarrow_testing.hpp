@@ -16,6 +16,7 @@
 // under the License.
 
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "nanoarrow.hpp"
@@ -766,18 +767,15 @@ class TestingJSONReader {
     } else if (name_str == "fixedsizebinary") {
       NANOARROW_RETURN_NOT_OK(SetTypeFixedSizeBinary(schema, value, error));
     } else if (name_str == "list") {
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetType(schema, NANOARROW_TYPE_LIST),
-                                         error);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, "+l"), error);
     } else if (name_str == "largelist") {
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowSchemaSetType(schema, NANOARROW_TYPE_LARGE_LIST), error);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, "+L"), error);
     } else if (name_str == "fixedsizelist") {
       NANOARROW_RETURN_NOT_OK(SetTypeFixedSizeList(schema, value, error));
     } else if (name_str == "union") {
       NANOARROW_RETURN_NOT_OK(SetTypeUnion(schema, value, error));
     } else if (name_str == "struct") {
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowSchemaSetType(schema, NANOARROW_TYPE_STRUCT), error);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, "+s"), error);
     } else {
       ArrowErrorSet(error, "Unsupported Type name: '%s'", name_str.c_str());
       return ENOTSUP;
@@ -958,10 +956,11 @@ class TestingJSONReader {
         Check(list_size.is_number_integer(), error,
               "Type[name=='fixedsizelist'] listSize must be integer"));
 
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_LIST,
-                                    list_size.get<int>()),
-        error);
+    std::stringstream format_builder;
+    format_builder << "+w:" << list_size;
+    std::string format = format_builder.str();
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, format.c_str()),
+                                       error);
     return NANOARROW_OK;
   }
 
