@@ -649,6 +649,12 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadSchema) {
   EXPECT_STREQ(schema->format, "+s");
   ASSERT_EQ(schema->n_children, 1);
   EXPECT_STREQ(schema->children[0]->format, "n");
+
+  // Check invalid JSON
+  EXPECT_EQ(reader.ReadSchema(R"({)", schema.get()), EINVAL);
+
+  // Check at least one failed Check()
+  EXPECT_EQ(reader.ReadSchema(R"("this is not a JSON object")", schema.get()), EINVAL);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
@@ -683,6 +689,19 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
           schema.get()),
       NANOARROW_OK);
   EXPECT_STREQ(schema->name, "colname");
+
+  // Check invalid JSON
+  EXPECT_EQ(reader.ReadField(R"({)", schema.get()), EINVAL);
+
+  // Check at least one failed Check()
+  EXPECT_EQ(reader.ReadField(R"("this is not a JSON object")", schema.get()), EINVAL);
+
+  // Check that field is validated
+  EXPECT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": true, "type": {"name": "fixedsizebinary", "byteWidth": -1}, "children": [], "metadata": null})",
+          schema.get()),
+      EINVAL);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldMetadata) {
@@ -750,6 +769,25 @@ void TestTypeRoundtrip(const std::string& type_json) {
   TestFieldRoundtrip(field_json_builder.str());
 }
 
+void TestFieldError(const std::string& field_json, const std::string& msg,
+                    int code = EINVAL) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  EXPECT_EQ(reader.ReadField(field_json, schema.get(), &error), code);
+  EXPECT_EQ(std::string(error.message), msg);
+}
+
+void TestTypeError(const std::string& type_json, const std::string& msg,
+                   int code = EINVAL) {
+  std::stringstream field_json_builder;
+  field_json_builder << R"({"name": null, "nullable": true, "type": )" << type_json
+                     << R"(, "children": [], "metadata": null})";
+  TestFieldError(field_json_builder.str(), msg, code);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldPrimitive) {
   TestTypeRoundtrip(R"({"name": "null"})");
   TestTypeRoundtrip(R"({"name": "bool"})");
@@ -757,6 +795,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldPrimitive) {
   TestTypeRoundtrip(R"({"name": "largeutf8"})");
   TestTypeRoundtrip(R"({"name": "binary"})");
   TestTypeRoundtrip(R"({"name": "largebinary"})");
+
+  TestTypeError(R"({"name": "an unsupported type"})",
+                "Unsupported Type name: 'an unsupported type'", ENOTSUP);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldInt) {
@@ -764,6 +805,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldInt) {
   TestTypeRoundtrip(R"({"name": "int", "bitWidth": 16, "isSigned": true})");
   TestTypeRoundtrip(R"({"name": "int", "bitWidth": 32, "isSigned": true})");
   TestTypeRoundtrip(R"({"name": "int", "bitWidth": 64, "isSigned": true})");
+
+  TestTypeError(R"({"name": "int", "bitWidth": 1, "isSigned": true})",
+                "Type[name=='int'] bitWidth must be 8, 16, 32, or 64");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUInt) {
@@ -771,12 +815,19 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUInt) {
   TestTypeRoundtrip(R"({"name": "int", "bitWidth": 16, "isSigned": false})");
   TestTypeRoundtrip(R"({"name": "int", "bitWidth": 32, "isSigned": false})");
   TestTypeRoundtrip(R"({"name": "int", "bitWidth": 64, "isSigned": false})");
+
+  TestTypeError(R"({"name": "int", "bitWidth": 1, "isSigned": false})",
+                "Type[name=='int'] bitWidth must be 8, 16, 32, or 64");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFloatingPoint) {
   TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "HALF"})");
   TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "SINGLE"})");
   TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "DOUBLE"})");
+
+  TestTypeError(
+      R"({"name": "floatingpoint", "precision": "NOT_A_PRECISION"})",
+      "Type[name=='floatingpoint'] precision must be 'HALF', 'SINGLE', or 'DOUBLE'");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeBinary) {
@@ -788,6 +839,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
       R"({"name": "decimal", "bitWidth": 128, "precision": 10, "scale": 3})");
   TestTypeRoundtrip(
       R"({"name": "decimal", "bitWidth": 256, "precision": 10, "scale": 3})");
+
+  TestTypeError(R"({"name": "decimal", "bitWidth": 123, "precision": 10, "scale": 3})",
+                "Type[name=='decimal'] bitWidth must be 128 or 256");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {
@@ -823,4 +877,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
       R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
       R"(], "metadata": null})");
+
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "SPARSE", "typeIds": [10,20]}, "children": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})");
+
+  TestTypeError(R"({"name": "union", "mode": "NOT_A_MODE", "typeIds": []})",
+                "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
 }

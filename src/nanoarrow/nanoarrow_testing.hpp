@@ -669,7 +669,7 @@ class TestingJSONReader {
 
     const auto& fields = value["fields"];
     NANOARROW_RETURN_NOT_OK(
-        Check(fields.is_array(), error, "Field fields must be array"));
+        Check(fields.is_array(), error, "Schema fields must be array"));
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaAllocateChildren(schema, fields.size()),
                                        error);
     for (int64_t i = 0; i < schema->n_children; i++) {
@@ -677,6 +677,10 @@ class TestingJSONReader {
     }
 
     NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+
+    // Validate!
+    ArrowSchemaView schema_view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
     return NANOARROW_OK;
   }
 
