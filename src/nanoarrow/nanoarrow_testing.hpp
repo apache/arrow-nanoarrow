@@ -16,6 +16,7 @@
 // under the License.
 
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -1050,6 +1051,141 @@ class TestingJSONReader {
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(metadata->data)), error);
+    return NANOARROW_OK;
+  }
+
+  template <typename T, typename BiggerT = int64_t>
+  ArrowErrorCode SetBufferInt(const json& value, ArrowBuffer* buffer, ArrowError* error) {
+    // NANOARROW_RETURN_NOT_OK() interacts poorly with multiple template args
+    using SetItem = SetBufferIntItem<T, BiggerT>;
+    NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "int buffer must be array"));
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(SetItem(item, buffer, error));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  template <typename T, typename BiggerT = int64_t>
+  ArrowErrorCode SetBufferIntItem(const json& item, ArrowBuffer* buffer,
+                                  ArrowError* error) {
+    if (item.is_string()) {
+      try {
+        // The JSON parser here can handle up to 2^64 - 1
+        auto item_int = json::parse(item.get<std::string>());
+        return SetBufferIntItem<T, BiggerT>(item_int, buffer, error);
+      } catch (json::parse_error& e) {
+        ArrowErrorSet(error,
+                      "integer buffer item encoded as string must parse as integer: %s",
+                      item.dump().c_str());
+        return EINVAL;
+      }
+    }
+
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.is_number_integer(), error,
+              "integer buffer item must be integer number or string"));
+    auto item_int = item.get<BiggerT>();
+
+    NANOARROW_RETURN_NOT_OK(Check(item_int >= std::numeric_limits<T>::lowest() &&
+                                      item_int <= std::numeric_limits<T>::max(),
+                                  error, "integer buffer item outside type limits"))
+
+    T buffer_value = item_int;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
+
+    return NANOARROW_OK;
+  }
+
+  template <typename T>
+  ArrowErrorCode SetBuffersString(const json& value, ArrowBuffer* offsets,
+                                  ArrowBuffer* data, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "utf8 data buffer must be array"));
+    int64_t last_offset = 0;
+    T offset_buffer_value = static_cast<T>(last_offset);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.is_string(), error, "utf8 data buffer item must be string"));
+      auto item_str = item.get<std::string>();
+
+      // Append data
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(data, reinterpret_cast<const uint8_t*>(item_str.data()),
+                            item.size()),
+          error);
+
+      // Append offset
+      last_offset += item_str.size();
+      offset_buffer_value = static_cast<T>(last_offset);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
+    }
+
+    // Check if overflow occurred
+    NANOARROW_RETURN_NOT_OK(
+        Check(last_offset <= std::numeric_limits<T>::max(), error,
+              "utf8 data buffer overflowed maximum value of offset type"));
+
+    return NANOARROW_OK;
+  }
+
+  template <typename T>
+  ArrowErrorCode SetBuffersBinary(const json& value, ArrowBuffer* offsets,
+                                  ArrowBuffer* data, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "binary data buffer must be array"));
+    int64_t last_offset = 0;
+    T offset_buffer_value = static_cast<T>(last_offset);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.is_string(), error, "binary data buffer item must be string"));
+      auto item_str = item.get<std::string>();
+
+      int64_t item_size_bytes = item_str.size() / 2;
+      NANOARROW_RETURN_NOT_OK(Check((item_size_bytes * 2) == item_str.size(), error,
+                                    "binary data buffer item must have even size"));
+
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(data, item_size_bytes),
+                                         error);
+      for (int64_t i = 0; i < item_str.size(); i += 2) {
+        std::string byte_hex = item_str.substr(i, 2);
+        char* end_ptr;
+        uint8_t byte = std::strtoul(byte_hex.data(), &end_ptr, 16);
+        NANOARROW_RETURN_NOT_OK(Check(
+            end_ptr != (byte_hex.data() == 2), error,
+            "binary data buffer item must contain a valid hex-encoded byte string"));
+
+        data->data[data->size_bytes] = byte;
+        data->size_bytes++;
+      }
+
+      // Append data
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(data, reinterpret_cast<const uint8_t*>(item_str.data()),
+                            item.size()),
+          error);
+
+      // Append offset
+      last_offset += item_size_bytes;
+      offset_buffer_value = static_cast<T>(last_offset);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
+    }
+
+    // Check if overflow occurred
+    NANOARROW_RETURN_NOT_OK(
+        Check(last_offset <= std::numeric_limits<T>::max(), error,
+              "binary data buffer overflowed maximum value of offset type"));
+
     return NANOARROW_OK;
   }
 
