@@ -250,8 +250,6 @@ if(NANOARROW_BUILD_TESTS)
                         gtest_main
                         nlohmann_json::nlohmann_json
                         coverage_config)
-  target_compile_definitions(nanoarrow_testing_test
-                             PUBLIC NANOARROW_TESTING_WITH_NLOHMANN_JSON)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5

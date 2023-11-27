@@ -19,11 +19,9 @@
 #include <sstream>
 #include <string>
 
-#include "nanoarrow.hpp"
-
-#if defined(NANOARROW_TESTING_WITH_NLOHMANN_JSON)
 #include <nlohmann/json.hpp>
-#endif
+
+#include "nanoarrow.hpp"
 
 #ifndef NANOARROW_TESTING_HPP_INCLUDED
 #define NANOARROW_TESTING_HPP_INCLUDED
@@ -618,8 +616,6 @@ class TestingJSONWriter {
   };
 };
 
-#if defined(NANOARROW_TESTING_WITH_NLOHMANN_JSON)
-
 /// \brief Reader for the Arrow integration testing JSON format
 class TestingJSONReader {
   using json = nlohmann::json;
@@ -734,7 +730,6 @@ class TestingJSONReader {
     // Validate!
     ArrowSchemaView schema_view;
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
-
     return NANOARROW_OK;
   }
 
@@ -1067,8 +1062,6 @@ class TestingJSONReader {
     }
   }
 };
-
-#endif
 
 /// @}
 
