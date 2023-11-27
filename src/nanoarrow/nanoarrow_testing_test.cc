@@ -864,6 +864,31 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {
       R"(], "metadata": null})");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldStruct) {
+  // Empty
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
+      R"(], "metadata": null})");
+
+  // Non-empty
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldList) {
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "list"}, "children": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})");
+
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "largelist"}, "children": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})");
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeList) {
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "fixedsizelist", "listSize": 12}, "children": [)"
