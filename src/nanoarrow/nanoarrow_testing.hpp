@@ -1071,12 +1071,12 @@ class TestingJSONReader {
 
   template <typename T, typename BiggerT = int64_t>
   ArrowErrorCode SetBufferInt(const json& value, ArrowBuffer* buffer, ArrowError* error) {
-    // NANOARROW_RETURN_NOT_OK() interacts poorly with multiple template args
-    using SetItem = SetBufferIntItem<T, BiggerT>;
     NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "int buffer must be array"));
 
     for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(SetItem(item, buffer, error));
+      // NANOARROW_RETURN_NOT_OK() interacts poorly with multiple template args
+      ArrowErrorCode result = SetBufferIntItem<T, BiggerT>(item, buffer, error);
+      NANOARROW_RETURN_NOT_OK(result);
     }
 
     return NANOARROW_OK;
@@ -1105,7 +1105,7 @@ class TestingJSONReader {
 
     NANOARROW_RETURN_NOT_OK(Check(item_int >= std::numeric_limits<T>::lowest() &&
                                       item_int <= std::numeric_limits<T>::max(),
-                                  error, "integer buffer item outside type limits"))
+                                  error, "integer buffer item outside type limits"));
 
     T buffer_value = item_int;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
@@ -1176,7 +1176,7 @@ class TestingJSONReader {
         char* end_ptr;
         uint8_t byte = std::strtoul(byte_hex.data(), &end_ptr, 16);
         NANOARROW_RETURN_NOT_OK(Check(
-            end_ptr != (byte_hex.data() == 2), error,
+            end_ptr == (byte_hex.data() + 2), error,
             "binary data buffer item must contain a valid hex-encoded byte string"));
 
         data->data[data->size_bytes] = byte;
