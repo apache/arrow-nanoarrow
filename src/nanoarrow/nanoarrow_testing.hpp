@@ -1054,6 +1054,21 @@ class TestingJSONReader {
     return NANOARROW_OK;
   }
 
+  ArrowErrorCode SetBufferBitmap(const json& value, ArrowBitmap* bitmap,
+                                 ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "bitmap buffer must be array"));
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(Check(item.is_boolean() || item.is_number_integer(), error,
+                                    "bitmap item must be bool or integer"));
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapAppend(bitmap, item.get<int>(), 1),
+                                         error);
+    }
+
+    return NANOARROW_OK;
+  }
+
   template <typename T, typename BiggerT = int64_t>
   ArrowErrorCode SetBufferInt(const json& value, ArrowBuffer* buffer, ArrowError* error) {
     // NANOARROW_RETURN_NOT_OK() interacts poorly with multiple template args
