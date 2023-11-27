@@ -620,7 +620,7 @@ class TestingJSONWriter {
 
 #if defined(NANOARROW_TESTING_WITH_NLOHMANN_JSON)
 
-/// \brief Writer for the Arrow integration testing JSON format
+/// \brief Reader for the Arrow integration testing JSON format
 class TestingJSONReader {
   using json = nlohmann::json;
 
