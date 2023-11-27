@@ -726,6 +726,11 @@ class TestingJSONReader {
     }
 
     NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+
+    // Validate!
+    ArrowSchemaView schema_view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+
     return NANOARROW_OK;
   }
 
@@ -770,6 +775,8 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, "+L"), error);
     } else if (name_str == "fixedsizelist") {
       NANOARROW_RETURN_NOT_OK(SetTypeFixedSizeList(schema, value, error));
+    } else if (name_str == "map") {
+      NANOARROW_RETURN_NOT_OK(SetTypeMap(schema, value, error));
     } else if (name_str == "union") {
       NANOARROW_RETURN_NOT_OK(SetTypeUnion(schema, value, error));
     } else if (name_str == "struct") {
@@ -994,9 +1001,9 @@ class TestingJSONReader {
         NANOARROW_RETURN_NOT_OK(
             Check(type_id.is_number_integer(), error,
                   "Type[name=='union'] typeIds item must be integer"));
-        type_ids_format << type_ids;
+        type_ids_format << type_id;
 
-        if ((i + 1) < type_id.size()) {
+        if ((i + 1) < type_ids.size()) {
           type_ids_format << ",";
         }
       }

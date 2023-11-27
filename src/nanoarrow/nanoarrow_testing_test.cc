@@ -736,57 +736,91 @@ void TestFieldRoundtrip(const std::string& field_json) {
   error.message[0] = '\0';
 
   int result = reader.ReadField(field_json, schema.get(), &error);
-  EXPECT_STREQ(error.message, "");
-  ASSERT_EQ(result, NANOARROW_OK);
+  ASSERT_EQ(result, NANOARROW_OK) << "Error: " << error.message;
 
   std::stringstream field_json_roundtrip;
   ASSERT_EQ(writer.WriteField(field_json_roundtrip, schema.get()), NANOARROW_OK);
   EXPECT_EQ(field_json_roundtrip.str(), field_json);
 }
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldRoundtrip) {
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "bool"}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "largeutf8"}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "binary"}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "largebinary"}, "children": [], "metadata": null})");
-  // {"name": "int", "bitWidth": 8, "isSigned": true}
+void TestTypeRoundtrip(const std::string& type_json) {
+  std::stringstream field_json_builder;
+  field_json_builder << R"({"name": null, "nullable": true, "type": )" << type_json
+                     << R"(, "children": [], "metadata": null})";
+  TestFieldRoundtrip(field_json_builder.str());
 }
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldRoundtripInt) {
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 8, "isSigned": true}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 16, "isSigned": true}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 32, "isSigned": true}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 64, "isSigned": true}, "children": [], "metadata": null})");
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldPrimitive) {
+  TestTypeRoundtrip(R"({"name": "null"})");
+  TestTypeRoundtrip(R"({"name": "bool"})");
+  TestTypeRoundtrip(R"({"name": "utf8"})");
+  TestTypeRoundtrip(R"({"name": "largeutf8"})");
+  TestTypeRoundtrip(R"({"name": "binary"})");
+  TestTypeRoundtrip(R"({"name": "largebinary"})");
 }
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldRoundtripUInt) {
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 8, "isSigned": false}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 16, "isSigned": false}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 32, "isSigned": false}, "children": [], "metadata": null})");
-  TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "int", "bitWidth": 64, "isSigned": false}, "children": [], "metadata": null})");
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldInt) {
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 8, "isSigned": true})");
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 16, "isSigned": true})");
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 32, "isSigned": true})");
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 64, "isSigned": true})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUInt) {
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 8, "isSigned": false})");
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 16, "isSigned": false})");
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 32, "isSigned": false})");
+  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 64, "isSigned": false})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFloatingPoint) {
+  TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "HALF"})");
+  TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "SINGLE"})");
+  TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "DOUBLE"})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeBinary) {
+  TestTypeRoundtrip(R"({"name": "fixedsizebinary", "byteWidth": 123})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
+  TestTypeRoundtrip(
+      R"({"name": "decimal", "bitWidth": 128, "precision": 10, "scale": 3})");
+  TestTypeRoundtrip(
+      R"({"name": "decimal", "bitWidth": 256, "precision": 10, "scale": 3})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {
+  // Sorted keys
   TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "floatingpoint", "precision": "HALF"}, "children": [], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "map", "keysSorted": true}, "children": [)"
+      R"({"name": "entries", "nullable": false, "type": {"name": "struct"}, "children": [)"
+      R"({"name": null, "nullable": false, "type": {"name": "utf8"}, "children": [], "metadata": null}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "bool"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})"
+      R"(], "metadata": null})");
+
+  // Unsorted keys
   TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "floatingpoint", "precision": "SINGLE"}, "children": [], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "map", "keysSorted": false}, "children": [)"
+      R"({"name": "entries", "nullable": false, "type": {"name": "struct"}, "children": [)"
+      R"({"name": null, "nullable": false, "type": {"name": "utf8"}, "children": [], "metadata": null}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "bool"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})"
+      R"(], "metadata": null})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeList) {
   TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "floatingpoint", "precision": "DOUBLE"}, "children": [], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "fixedsizelist", "listSize": 12}, "children": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": [10,20]}, "children": [)"
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})");
 }
