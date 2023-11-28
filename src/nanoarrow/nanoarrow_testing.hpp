@@ -1234,6 +1234,10 @@ class TestingJSONReader {
           case NANOARROW_TYPE_LARGE_BINARY:
             return SetBuffersBinary<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
                                              buffer, error);
+          case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+            return SetBuffersBinary<int64_t>(
+                data, nullptr, buffer, error,
+                array_view->layout.element_size_bits[buffer_i] / 8);
 
           default:
             ArrowErrorSet(error, "storage type %s DATA buffer not supported",
@@ -1358,17 +1362,21 @@ class TestingJSONReader {
 
   template <typename T>
   ArrowErrorCode SetBuffersBinary(const json& value, ArrowBuffer* offsets,
-                                  ArrowBuffer* data, ArrowError* error) {
+                                  ArrowBuffer* data, ArrowError* error,
+                                  int64_t fixed_size = 0) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_array(), error, "binary data buffer must be array"));
 
-    // Check offsets against values
-    const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
-    NANOARROW_RETURN_NOT_OK(Check(
-        offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
-        "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(*expected_offset++ == 0, error, "first offset must be zero"));
+    // Check offsets against values if not fixed size
+    const T* expected_offset = nullptr;
+    if (fixed_size == 0) {
+      expected_offset = reinterpret_cast<const T*>(offsets->data);
+      NANOARROW_RETURN_NOT_OK(Check(
+          offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
+          "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(*expected_offset++ == 0, error, "first offset must be zero"));
+    }
 
     int64_t last_offset = 0;
 
@@ -1395,24 +1403,20 @@ class TestingJSONReader {
         data->size_bytes++;
       }
 
-      // Append data
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBufferAppend(data, reinterpret_cast<const uint8_t*>(item_str.data()),
-                            item_size_bytes),
-          error);
-
-      // Check offset
-      last_offset += item_size_bytes;
-      NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == last_offset, error,
-                                    "Expected offset value " +
-                                        std::to_string(last_offset) +
-                                        " at binary data buffer item " + item.dump()));
+      // Check offset or fixed size
+      if (fixed_size == 0) {
+        last_offset += item_size_bytes;
+        NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == last_offset, error,
+                                      "Expected offset value " +
+                                          std::to_string(last_offset) +
+                                          " at binary data buffer item " + item.dump()));
+      } else {
+        NANOARROW_RETURN_NOT_OK(Check(item_size_bytes == fixed_size, error,
+                                      "Expected fixed size binary value of size " +
+                                          std::to_string(fixed_size) +
+                                          " at binary data buffer item " + item.dump()));
+      }
     }
-
-    // Check if overflow occurred
-    NANOARROW_RETURN_NOT_OK(
-        Check(last_offset <= std::numeric_limits<T>::max(), error,
-              "binary data buffer overflowed maximum value of offset type"));
 
     return NANOARROW_OK;
   }

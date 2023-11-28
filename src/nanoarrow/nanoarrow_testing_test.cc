@@ -919,7 +919,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFloatingPoint) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeBinary) {
-  TestTypeRoundtrip(R"({"name": "fixedsizebinary", "byteWidth": 123})");
+  TestTypeRoundtrip(
+      R"({"name": "fixedsizebinary", "byteWidth": 3})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["00FFA0", "000000"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
