@@ -1589,12 +1589,12 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   // Expect error for bad offset + length
   array.length = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected array length >= 0 but found array length of -1");
+  EXPECT_STREQ(error.message, "Expected length >= 0 but found length -1");
   array.length = 3;
 
   array.offset = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected array offset >= 0 but found array offset of -1");
+  EXPECT_STREQ(error.message, "Expected offset >= 0 but found offset -1");
   array.offset = 0;
 
   // Expect error for the wrong number of buffers
