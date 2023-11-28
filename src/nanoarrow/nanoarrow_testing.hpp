@@ -1311,9 +1311,11 @@ class TestingJSONReader {
               "integer buffer item must be integer number or string"));
     auto item_int = item.get<BiggerT>();
 
-    NANOARROW_RETURN_NOT_OK(Check(item_int >= std::numeric_limits<T>::lowest() &&
-                                      item_int <= std::numeric_limits<T>::max(),
-                                  error, "integer buffer item outside type limits"));
+    NANOARROW_RETURN_NOT_OK(Check(
+        item_int >= std::numeric_limits<T>::lowest() &&
+            item_int <= std::numeric_limits<T>::max(),
+        error,
+        "integer buffer item '" + std::to_string(item_int) + "' outside type limits"));
 
     T buffer_value = item_int;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(

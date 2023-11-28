@@ -862,20 +862,36 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldPrimitive) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldInt) {
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 8, "isSigned": true})");
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 16, "isSigned": true})");
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 32, "isSigned": true})");
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 64, "isSigned": true})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 8, "isSigned": true})",
+      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": [-128, 0, 127]})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 16, "isSigned": true})",
+      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": [-129, 0, 127]})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 32, "isSigned": true})",
+      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": [-130, 0, 127]})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 64, "isSigned": true})",
+      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": ["-131", "0", "127"]})");
 
   TestTypeError(R"({"name": "int", "bitWidth": 1, "isSigned": true})",
                 "Type[name=='int'] bitWidth must be 8, 16, 32, or 64");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUInt) {
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 8, "isSigned": false})");
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 16, "isSigned": false})");
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 32, "isSigned": false})");
-  TestTypeRoundtrip(R"({"name": "int", "bitWidth": 64, "isSigned": false})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 8, "isSigned": false})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0, 0, 255]})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 16, "isSigned": false})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0, 0, 256]})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 32, "isSigned": false})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0, 0, 257]})");
+  TestTypeRoundtrip(
+      R"({"name": "int", "bitWidth": 64, "isSigned": false})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": ["0", "0", "258"]})");
 
   TestTypeError(R"({"name": "int", "bitWidth": 1, "isSigned": false})",
                 "Type[name=='int'] bitWidth must be 8, 16, 32, or 64");
@@ -929,7 +945,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldStruct) {
   // Empty
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
-      R"(], "metadata": null})");
+      R"(], "metadata": null})",
+      R"({"name": null, "count": 0, "VALIDITY": [], "children": []})");
 
   // Non-empty
   TestFieldRoundtrip(
