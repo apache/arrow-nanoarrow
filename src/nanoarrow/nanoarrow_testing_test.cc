@@ -747,26 +747,87 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   EXPECT_STREQ(schema->children[0]->format, "n");
 }
 
-void TestFieldRoundtrip(const std::string& field_json) {
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadColumnBasic) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  TestingJSONReader reader;
+
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
+          schema.get()),
+      NANOARROW_OK);
+
+  ASSERT_EQ(reader.ReadColumn(R"({"name": null, "count": 2})", schema.get(), array.get(),
+                              &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(array->length, 2);
+
+  // Check invalid JSON
+  EXPECT_EQ(reader.ReadColumn(R"({)", schema.get(), array.get()), EINVAL);
+
+  // Check at least one failed Check()
+  EXPECT_EQ(
+      reader.ReadColumn(R"("this is not a JSON object")", schema.get(), array.get()),
+      EINVAL);
+
+  // Check at least one failed PrefixError()
+  EXPECT_EQ(reader.ReadColumn(R"({"name": "colname", "count": "not an integer"})",
+                              schema.get(), array.get(), &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "-> Column 'colname' count must be integer");
+
+  // Check that field is validated
+  EXPECT_EQ(
+      reader.ReadColumn(R"({"name": null, "count": -1})", schema.get(), array.get()),
+      EINVAL);
+}
+
+void TestFieldRoundtrip(const std::string& field_json,
+                        const std::string& column_json = "") {
   nanoarrow::UniqueSchema schema;
   TestingJSONReader reader;
   TestingJSONWriter writer;
   ArrowError error;
   error.message[0] = '\0';
 
-  int result = reader.ReadField(field_json, schema.get(), &error);
-  ASSERT_EQ(result, NANOARROW_OK) << "Error: " << error.message;
+  ASSERT_EQ(reader.ReadField(field_json, schema.get(), &error), NANOARROW_OK)
+      << "Error: " << error.message;
 
-  std::stringstream field_json_roundtrip;
-  ASSERT_EQ(writer.WriteField(field_json_roundtrip, schema.get()), NANOARROW_OK);
-  EXPECT_EQ(field_json_roundtrip.str(), field_json);
+  std::stringstream json_roundtrip;
+  ASSERT_EQ(writer.WriteField(json_roundtrip, schema.get()), NANOARROW_OK);
+  EXPECT_EQ(json_roundtrip.str(), field_json);
+
+  if (column_json == "") {
+    return;
+  }
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(reader.ReadColumn(column_json, schema.get(), array.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  json_roundtrip.str("");
+  ASSERT_EQ(writer.WriteColumn(json_roundtrip, schema.get(), array_view.get()),
+            NANOARROW_OK);
+  EXPECT_EQ(json_roundtrip.str(), column_json);
 }
 
-void TestTypeRoundtrip(const std::string& type_json) {
+void TestTypeRoundtrip(const std::string& type_json,
+                       const std::string& column_json = "") {
   std::stringstream field_json_builder;
   field_json_builder << R"({"name": null, "nullable": true, "type": )" << type_json
                      << R"(, "children": [], "metadata": null})";
-  TestFieldRoundtrip(field_json_builder.str());
+  TestFieldRoundtrip(field_json_builder.str(), column_json);
 }
 
 void TestFieldError(const std::string& field_json, const std::string& msg,
@@ -789,7 +850,7 @@ void TestTypeError(const std::string& type_json, const std::string& msg,
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldPrimitive) {
-  TestTypeRoundtrip(R"({"name": "null"})");
+  TestTypeRoundtrip(R"({"name": "null"})", R"({"name": null, "count": 2})");
   TestTypeRoundtrip(R"({"name": "bool"})");
   TestTypeRoundtrip(R"({"name": "utf8"})");
   TestTypeRoundtrip(R"({"name": "largeutf8"})");
@@ -911,44 +972,4 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
 
   TestTypeError(R"({"name": "union", "mode": "NOT_A_MODE", "typeIds": []})",
                 "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
-}
-
-TEST(NanoarrowTestingTest, NanoarrowTestingTestReadColumnBasic) {
-  nanoarrow::UniqueSchema schema;
-  nanoarrow::UniqueArray array;
-  ArrowError error;
-  error.message[0] = '\0';
-
-  TestingJSONReader reader;
-
-  ASSERT_EQ(
-      reader.ReadField(
-          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
-          schema.get()),
-      NANOARROW_OK);
-
-  ASSERT_EQ(reader.ReadColumn(R"({"name": null, "count": 2})", schema.get(), array.get(),
-                              &error),
-            NANOARROW_OK)
-      << error.message;
-  EXPECT_EQ(array->length, 2);
-
-  // Check invalid JSON
-  EXPECT_EQ(reader.ReadColumn(R"({)", schema.get(), array.get()), EINVAL);
-
-  // Check at least one failed Check()
-  EXPECT_EQ(
-      reader.ReadColumn(R"("this is not a JSON object")", schema.get(), array.get()),
-      EINVAL);
-
-  // Check at least one failed PrefixError()
-  EXPECT_EQ(reader.ReadColumn(R"({"name": "colname", "count": "not an integer"})",
-                              schema.get(), array.get(), &error),
-            EINVAL);
-  EXPECT_STREQ(error.message, "-> Column 'colname' count must be integer");
-
-  // Check that field is validated
-  EXPECT_EQ(
-      reader.ReadColumn(R"({"name": null, "count": -1})", schema.get(), array.get()),
-      EINVAL);
 }
