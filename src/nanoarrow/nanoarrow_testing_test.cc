@@ -852,13 +852,24 @@ void TestTypeError(const std::string& type_json, const std::string& msg,
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldPrimitive) {
   TestTypeRoundtrip(R"({"name": "null"})", R"({"name": null, "count": 2})");
   TestTypeRoundtrip(R"({"name": "bool"})");
-  TestTypeRoundtrip(R"({"name": "utf8"})");
-  TestTypeRoundtrip(R"({"name": "largeutf8"})");
-  TestTypeRoundtrip(R"({"name": "binary"})");
-  TestTypeRoundtrip(R"({"name": "largebinary"})");
 
   TestTypeError(R"({"name": "an unsupported type"})",
                 "Unsupported Type name: 'an unsupported type'", ENOTSUP);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldString) {
+  TestTypeRoundtrip(
+      R"({"name": "utf8"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "OFFSET": [0, 3, 3], "DATA": ["abc", ""]})");
+  TestTypeRoundtrip(
+      R"({"name": "largeutf8"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "OFFSET": ["0", "3", "3"], "DATA": ["abc", ""]})");
+  TestTypeRoundtrip(
+      R"({"name": "binary"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "OFFSET": [0, 3, 3], "DATA": ["00FFA0", ""]})");
+  TestTypeRoundtrip(
+      R"({"name": "largebinary"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "OFFSET": ["0", "3", "3"], "DATA": ["00FFA0", ""]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldInt) {

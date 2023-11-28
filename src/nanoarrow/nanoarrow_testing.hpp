@@ -1187,17 +1187,6 @@ class TestingJSONReader {
         break;
       }
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET: {
-        // String/Binary just encodes values, not offset + data.
-        switch (array_view->storage_type) {
-          case NANOARROW_TYPE_STRING:
-          case NANOARROW_TYPE_LARGE_STRING:
-          case NANOARROW_TYPE_BINARY:
-          case NANOARROW_TYPE_LARGE_BINARY:
-            return NANOARROW_OK;
-          default:
-            break;
-        }
-
         NANOARROW_RETURN_NOT_OK(
             Check(value.contains("OFFSET"), error, "missing key 'OFFSET'"));
         const auto& offset = value["OFFSET"];
@@ -1334,33 +1323,35 @@ class TestingJSONReader {
                                   ArrowBuffer* data, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_array(), error, "utf8 data buffer must be array"));
+
+    // Check offsets against values
+    const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
+    NANOARROW_RETURN_NOT_OK(Check(
+        offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
+        "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(*expected_offset++ == 0, error, "first offset must be zero"));
+
     int64_t last_offset = 0;
-    T offset_buffer_value = static_cast<T>(last_offset);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
 
     for (const auto& item : value) {
       NANOARROW_RETURN_NOT_OK(
-          Check(value.is_string(), error, "utf8 data buffer item must be string"));
+          Check(item.is_string(), error, "utf8 data buffer item must be string"));
       auto item_str = item.get<std::string>();
 
       // Append data
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowBufferAppend(data, reinterpret_cast<const uint8_t*>(item_str.data()),
-                            item.size()),
+                            item_str.size()),
           error);
 
-      // Append offset
+      // Check offset
       last_offset += item_str.size();
-      offset_buffer_value = static_cast<T>(last_offset);
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
+      NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == last_offset, error,
+                                    "Expected offset value " +
+                                        std::to_string(last_offset) +
+                                        " at utf8 data buffer item " + item.dump()));
     }
-
-    // Check if overflow occurred
-    NANOARROW_RETURN_NOT_OK(
-        Check(last_offset <= std::numeric_limits<T>::max(), error,
-              "utf8 data buffer overflowed maximum value of offset type"));
 
     return NANOARROW_OK;
   }
@@ -1370,14 +1361,20 @@ class TestingJSONReader {
                                   ArrowBuffer* data, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_array(), error, "binary data buffer must be array"));
+
+    // Check offsets against values
+    const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
+    NANOARROW_RETURN_NOT_OK(Check(
+        offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
+        "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(*expected_offset++ == 0, error, "first offset must be zero"));
+
     int64_t last_offset = 0;
-    T offset_buffer_value = static_cast<T>(last_offset);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
 
     for (const auto& item : value) {
       NANOARROW_RETURN_NOT_OK(
-          Check(value.is_string(), error, "binary data buffer item must be string"));
+          Check(item.is_string(), error, "binary data buffer item must be string"));
       auto item_str = item.get<std::string>();
 
       int64_t item_size_bytes = item_str.size() / 2;
@@ -1401,14 +1398,15 @@ class TestingJSONReader {
       // Append data
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowBufferAppend(data, reinterpret_cast<const uint8_t*>(item_str.data()),
-                            item.size()),
+                            item_size_bytes),
           error);
 
-      // Append offset
+      // Check offset
       last_offset += item_size_bytes;
-      offset_buffer_value = static_cast<T>(last_offset);
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBufferAppend(offsets, &offset_buffer_value, sizeof(T)), error);
+      NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == last_offset, error,
+                                    "Expected offset value " +
+                                        std::to_string(last_offset) +
+                                        " at binary data buffer item " + item.dump()));
     }
 
     // Check if overflow occurred
