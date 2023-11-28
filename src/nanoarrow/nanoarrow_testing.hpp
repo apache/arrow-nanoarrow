@@ -1205,6 +1205,12 @@ class TestingJSONReader {
         const auto& data = value["DATA"];
 
         switch (array_view->storage_type) {
+          case NANOARROW_TYPE_BOOL: {
+            nanoarrow::UniqueBitmap bitmap;
+            NANOARROW_RETURN_NOT_OK(SetBufferBitmap(data, bitmap.get(), error));
+            ArrowBufferMove(&bitmap->buffer, buffer);
+            return NANOARROW_OK;
+          }
           case NANOARROW_TYPE_INT8:
             return SetBufferInt<int8_t>(data, buffer, error);
           case NANOARROW_TYPE_UINT8:
@@ -1221,6 +1227,11 @@ class TestingJSONReader {
             return SetBufferInt<int64_t>(data, buffer, error);
           case NANOARROW_TYPE_UINT64:
             return SetBufferInt<uint64_t, uint64_t>(data, buffer, error);
+
+          case NANOARROW_TYPE_FLOAT:
+            return SetBufferFloatingPoint<float>(data, buffer, error);
+          case NANOARROW_TYPE_DOUBLE:
+            return SetBufferFloatingPoint<double>(data, buffer, error);
 
           case NANOARROW_TYPE_STRING:
             return SetBuffersString<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
@@ -1309,15 +1320,38 @@ class TestingJSONReader {
 
     auto item_int = item.get<BiggerT>();
 
-    NANOARROW_RETURN_NOT_OK(Check(
-        item_int >= std::numeric_limits<T>::lowest() &&
-            item_int <= std::numeric_limits<T>::max(),
-        error,
-        "integer buffer item '" + std::to_string(item_int) + "' outside type limits"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(item_int >= std::numeric_limits<T>::lowest() &&
+                  item_int <= std::numeric_limits<T>::max(),
+              error, "integer buffer item '" + item.dump() + "' outside type limits"));
 
     T buffer_value = item_int;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
+
+    return NANOARROW_OK;
+  }
+
+  template <typename T>
+  ArrowErrorCode SetBufferFloatingPoint(const json& value, ArrowBuffer* buffer,
+                                        ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "floatingpoint buffer must be array"));
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.is_number(), error, "floatingpoint buffer item must be number"));
+      double item_dbl = item.get<double>();
+
+      NANOARROW_RETURN_NOT_OK(Check(
+          item_dbl >= std::numeric_limits<T>::lowest() &&
+              item_dbl <= std::numeric_limits<T>::max(),
+          error, "floatingpoint buffer item '" + item.dump() + "' outside type limits"));
+
+      T buffer_value = item_dbl;
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
+    }
 
     return NANOARROW_OK;
   }

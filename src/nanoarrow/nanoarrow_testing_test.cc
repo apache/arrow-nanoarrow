@@ -849,12 +849,17 @@ void TestTypeError(const std::string& type_json, const std::string& msg,
   TestFieldError(field_json_builder.str(), msg, code);
 }
 
-TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldPrimitive) {
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNull) {
   TestTypeRoundtrip(R"({"name": "null"})", R"({"name": null, "count": 2})");
-  TestTypeRoundtrip(R"({"name": "bool"})");
 
   TestTypeError(R"({"name": "an unsupported type"})",
                 "Unsupported Type name: 'an unsupported type'", ENOTSUP);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBool) {
+  TestTypeRoundtrip(
+      R"({"name": "bool"})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0, 1, 0]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldString) {
@@ -910,8 +915,12 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUInt) {
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFloatingPoint) {
   TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "HALF"})");
-  TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "SINGLE"})");
-  TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "DOUBLE"})");
+  TestTypeRoundtrip(
+      R"({"name": "floatingpoint", "precision": "SINGLE"})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.000, 1.230, 4.560]})");
+  TestTypeRoundtrip(
+      R"({"name": "floatingpoint", "precision": "DOUBLE"})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.000, 1.230, 4.560]})");
 
   TestTypeError(
       R"({"name": "floatingpoint", "precision": "NOT_A_PRECISION"})",
