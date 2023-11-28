@@ -652,6 +652,33 @@ class TestingJSONReader {
     }
   }
 
+  ArrowErrorCode ReadColumn(const std::string& value, const ArrowSchema* schema,
+                            ArrowArray* out, ArrowError* error = nullptr) {
+    try {
+      auto obj = json::parse(value);
+
+      // ArrowArrayView to enable validation
+      nanoarrow::UniqueArrayView array_view;
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(
+          array_view.get(), const_cast<ArrowSchema*>(schema), error));
+
+      // ArrowArray to hold memory
+      nanoarrow::UniqueArray array;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayInitFromSchema(array.get(), const_cast<ArrowSchema*>(schema), error));
+
+      // Parse the JSON into the array
+      NANOARROW_RETURN_NOT_OK(SetArrayColumn(obj, array_view.get(), array.get(), error));
+
+      // Return the result
+      ArrowArrayMove(array.get(), out);
+      return NANOARROW_OK;
+    } catch (std::exception& e) {
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadColumn(): %s", e.what());
+      return EINVAL;
+    }
+  }
+
  private:
   ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
@@ -1077,7 +1104,7 @@ class TestingJSONReader {
 
     // Check, resolve, and recurse children
     NANOARROW_RETURN_NOT_OK(
-        Check(array_view->n_children > 0 || value.contains("children"), error,
+        Check(array_view->n_children == 0 || value.contains("children"), error,
               error_prefix + "missing key children"));
 
     if (value.contains("children")) {
@@ -1121,7 +1148,7 @@ class TestingJSONReader {
     // Validate the array view
     NANOARROW_RETURN_NOT_OK(PrefixError(
         ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
-        "failed to validate: "));
+        error_prefix + "failed to validate: "));
 
     // Flush length and buffer pointers to the Array
     array->length = array_view->length;

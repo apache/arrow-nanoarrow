@@ -912,3 +912,43 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
   TestTypeError(R"({"name": "union", "mode": "NOT_A_MODE", "typeIds": []})",
                 "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
 }
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadColumnBasic) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  TestingJSONReader reader;
+
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
+          schema.get()),
+      NANOARROW_OK);
+
+  ASSERT_EQ(reader.ReadColumn(R"({"name": null, "count": 2})", schema.get(), array.get(),
+                              &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(array->length, 2);
+
+  // Check invalid JSON
+  EXPECT_EQ(reader.ReadColumn(R"({)", schema.get(), array.get()), EINVAL);
+
+  // Check at least one failed Check()
+  EXPECT_EQ(
+      reader.ReadColumn(R"("this is not a JSON object")", schema.get(), array.get()),
+      EINVAL);
+
+  // Check at least one failed PrefixError()
+  EXPECT_EQ(reader.ReadColumn(R"({"name": "colname", "count": "not an integer"})",
+                              schema.get(), array.get(), &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "-> Column 'colname' count must be integer");
+
+  // Check that field is validated
+  EXPECT_EQ(
+      reader.ReadColumn(R"({"name": null, "count": -1})", schema.get(), array.get()),
+      EINVAL);
+}
