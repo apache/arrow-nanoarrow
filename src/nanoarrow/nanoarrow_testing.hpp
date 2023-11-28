@@ -1309,6 +1309,11 @@ class TestingJSONReader {
     NANOARROW_RETURN_NOT_OK(
         Check(item.is_number_integer(), error,
               "integer buffer item must be integer number or string"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(std::numeric_limits<T>::is_signed || item.is_number_unsigned(), error,
+              "expected unsigned integer buffer item but found signed integer '" +
+                  item.dump() + "'"));
+
     auto item_int = item.get<BiggerT>();
 
     NANOARROW_RETURN_NOT_OK(Check(
