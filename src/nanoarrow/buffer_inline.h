@@ -18,6 +18,7 @@
 #ifndef NANOARROW_BUFFER_INLINE_H_INCLUDED
 #define NANOARROW_BUFFER_INLINE_H_INCLUDED
 
+#include <endian.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -223,14 +224,11 @@ static inline int64_t _ArrowBytesForBits(int64_t bits) {
 }
 
 static inline void _ArrowBitsUnpackInt8(const uint8_t word, int8_t* out) {
-  out[0] = (word & 0x1) != 0;
-  out[1] = (word & 0x2) != 0;
-  out[2] = (word & 0x4) != 0;
-  out[3] = (word & 0x8) != 0;
-  out[4] = (word & 0x10) != 0;
-  out[5] = (word & 0x20) != 0;
-  out[6] = (word & 0x40) != 0;
-  out[7] = (word & 0x80) != 0;
+  // see https://stackoverflow.com/a/51750902/621736
+  const uint64_t magic = 0x8040201008040201ULL;
+  const uint64_t mask = 0x8080808080808080ULL;
+  const uint64_t tmp = htobe64((magic * word) & mask) >> 7;
+  memcpy(out, &tmp, sizeof(tmp));
 }
 
 static inline void _ArrowBitsUnpackInt32(const uint8_t word, int32_t* out) {
@@ -245,10 +243,10 @@ static inline void _ArrowBitsUnpackInt32(const uint8_t word, int32_t* out) {
 }
 
 static inline void _ArrowBitmapPackInt8(const int8_t* values, uint8_t* out) {
-  *out = (values[0] | ((values[1] + 0x1) & 0x2) | ((values[2] + 0x3) & 0x4) |
-          ((values[3] + 0x7) & 0x8) | ((values[4] + 0xf) & 0x10) |
-          ((values[5] + 0x1f) & 0x20) | ((values[6] + 0x3f) & 0x40) |
-          ((values[7] + 0x7f) & 0x80));
+  // see https://stackoverflow.com/a/51750902/621736
+  uint64_t tmp;
+  memcpy(&tmp, values, sizeof(tmp));
+  *out = 0x0102040810204080ULL * tmp >> 56;
 }
 
 static inline void _ArrowBitmapPackInt32(const int32_t* values, uint8_t* out) {
