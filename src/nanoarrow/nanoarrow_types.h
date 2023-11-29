@@ -586,7 +586,7 @@ struct ArrowLayout {
 struct ArrowArrayView {
   /// \brief The underlying ArrowArray or NULL if it has not been set or
   /// if the buffers in this ArrowArrayView are not backed by an ArrowArray.
-  struct ArrowArray* array;
+  const struct ArrowArray* array;
 
   /// \brief The number of elements from the physical start of the buffers.
   int64_t offset;

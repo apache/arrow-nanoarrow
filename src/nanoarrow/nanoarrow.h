@@ -453,7 +453,7 @@ ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
 /// compatibility.
 struct ArrowSchemaView {
   /// \brief A pointer to the schema represented by this view
-  struct ArrowSchema* schema;
+  const struct ArrowSchema* schema;
 
   /// \brief The data type represented by the schema
   ///
