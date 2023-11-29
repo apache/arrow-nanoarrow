@@ -440,7 +440,7 @@ class TestingJSONWriter {
       }
     } else {
       // No need to quote smaller ints (i.e., 123456)
-      out << values[0];
+      out << static_cast<int64_t>(values[0]);
       for (int64_t i = 1; i < n_values; i++) {
         out << ", " << static_cast<int64_t>(values[i]);
       }
@@ -1189,7 +1189,7 @@ class TestingJSONReader {
         NANOARROW_RETURN_NOT_OK(
             Check(value.contains("TYPE_ID"), error, "missing key 'TYPE_ID'"));
         const auto& type_id = value["TYPE_ID"];
-        NANOARROW_RETURN_NOT_OK(SetBufferInt<int32_t>(type_id, buffer, error));
+        NANOARROW_RETURN_NOT_OK(SetBufferInt<int8_t>(type_id, buffer, error));
         break;
       }
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET: {

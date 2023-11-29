@@ -997,17 +997,39 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeList) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
+  // Empty unions
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": []}, "children": [], "metadata": null})",
+      R"({"name": null, "count": 0, "TYPE_ID": [], "OFFSET": [], "children": []})");
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "SPARSE", "typeIds": []}, "children": [], "metadata": null})",
+      R"({"name": null, "count": 0, "TYPE_ID": [], "children": []})");
+
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": [10,20]}, "children": [)"
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
       R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
       R"(], "metadata": null})");
 
+  // Non-empty unions (null, "abc")
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "SPARSE", "typeIds": [10,20]}, "children": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
-      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": "nulls", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": "strings", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})",
+      R"({"name": null, "count": 2, "TYPE_ID": [20, 10], "children": [)"
+      R"({"name": "nulls", "count": 2}, )"
+      R"({"name": "strings", "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 3], "DATA": ["abc", ""]})"
+      R"(]})");
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": [10,20]}, "children": [)"
+      R"({"name": "nulls", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": "strings", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
+      R"(], "metadata": null})",
+      R"({"name": null, "count": 2, "TYPE_ID": [20, 10], "OFFSET": [0, 0], "children": [)"
+      R"({"name": "nulls", "count": 1}, )"
+      R"({"name": "strings", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]})"
+      R"(]})");
 
   TestTypeError(R"({"name": "union", "mode": "NOT_A_MODE", "typeIds": []})",
                 "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
