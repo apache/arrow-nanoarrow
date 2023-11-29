@@ -437,7 +437,7 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  for (int64_t i = 0; i < 3; i++) {
+  for (int64_t i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
   }
 
@@ -621,7 +621,7 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
 }
 
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
 
     switch (array_view->layout.buffer_type[i]) {
@@ -677,7 +677,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->null_count = array->null_count;
 
   int64_t buffers_required = 0;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
@@ -1102,7 +1102,7 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
 
 static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                                       struct ArrowError* error) {
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         if (array_view->layout.element_size_bits[i] == 32) {

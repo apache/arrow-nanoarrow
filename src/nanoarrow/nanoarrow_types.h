@@ -449,6 +449,14 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_DATA
 };
 
+/// \brief The maximum number of buffers in an ArrowArrayView or ArrowLayout
+/// \ingroup nanoarrow-array-view
+///
+/// All currently supported types have 3 buffers or fewer; however, future types
+/// may involve a variable number of buffers (e.g., string view). These buffers
+/// will be represented by separate members of the ArrowArrayView or ArrowLayout.
+#define NANOARROW_MAX_FIXED_BUFFERS 3
+
 /// \brief An non-owning view of a string
 /// \ingroup nanoarrow-utils
 struct ArrowStringView {
@@ -561,13 +569,13 @@ struct ArrowBitmap {
 /// the length and offset of the array.
 struct ArrowLayout {
   /// \brief The function of each buffer
-  enum ArrowBufferType buffer_type[3];
+  enum ArrowBufferType buffer_type[NANOARROW_MAX_FIXED_BUFFERS];
 
   /// \brief The data type of each buffer
-  enum ArrowType buffer_data_type[3];
+  enum ArrowType buffer_data_type[NANOARROW_MAX_FIXED_BUFFERS];
 
   /// \brief The size of an element each buffer or 0 if this size is variable or unknown
-  int64_t element_size_bits[3];
+  int64_t element_size_bits[NANOARROW_MAX_FIXED_BUFFERS];
 
   /// \brief The number of elements in the child array per element in this array for a
   /// fixed-size list
@@ -609,7 +617,7 @@ struct ArrowArrayView {
   struct ArrowLayout layout;
 
   /// \brief This Array's buffers as ArrowBufferView objects
-  struct ArrowBufferView buffer_views[3];
+  struct ArrowBufferView buffer_views[NANOARROW_MAX_FIXED_BUFFERS];
 
   /// \brief The number of children of this view
   int64_t n_children;
@@ -637,12 +645,12 @@ struct ArrowArrayPrivateData {
   struct ArrowBitmap bitmap;
 
   // Holder for additional buffers as required
-  struct ArrowBuffer buffers[2];
+  struct ArrowBuffer buffers[NANOARROW_MAX_FIXED_BUFFERS - 1];
 
   // The array of pointers to buffers. This must be updated after a sequence
   // of appends to synchronize its values with the actual buffer addresses
   // (which may have ben reallocated uring that time)
-  const void* buffer_data[3];
+  const void* buffer_data[NANOARROW_MAX_FIXED_BUFFERS];
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;

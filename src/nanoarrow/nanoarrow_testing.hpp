@@ -622,10 +622,14 @@ class TestingJSONReader {
   using json = nlohmann::json;
 
  public:
-  ArrowErrorCode ReadSchema(const std::string& value, ArrowSchema* out,
+  /// \brief Read JSON representing a Schema
+  ///
+  /// Reads a JSON object in the form `{"fields": [...], "metadata": [...]}`,
+  /// propagating `out` on success.
+  ArrowErrorCode ReadSchema(const std::string& schema_json, ArrowSchema* out,
                             ArrowError* error = nullptr) {
     try {
-      auto obj = json::parse(value);
+      auto obj = json::parse(schema_json);
       nanoarrow::UniqueSchema schema;
 
       NANOARROW_RETURN_NOT_OK(SetSchema(schema.get(), obj, error));
@@ -637,10 +641,14 @@ class TestingJSONReader {
     }
   }
 
-  ArrowErrorCode ReadField(const std::string& value, ArrowSchema* out,
+  /// \brief Read JSON representing a Field
+  ///
+  /// Read a JSON object in the form `{"name" : "col", "type": {...}, ...}`,
+  /// propagating `out` on success.
+  ArrowErrorCode ReadField(const std::string& field_json, ArrowSchema* out,
                            ArrowError* error = nullptr) {
     try {
-      auto obj = json::parse(value);
+      auto obj = json::parse(field_json);
       nanoarrow::UniqueSchema schema;
 
       NANOARROW_RETURN_NOT_OK(SetField(schema.get(), obj, error));
@@ -652,10 +660,15 @@ class TestingJSONReader {
     }
   }
 
-  ArrowErrorCode ReadColumn(const std::string& value, const ArrowSchema* schema,
+  /// \brief Read JSON representing a Column
+  ///
+  /// Read a JSON object in the form
+  /// `{"name": "col", "count": 123, "VALIDITY": [...], ...}`, propagating
+  /// `out` on success.
+  ArrowErrorCode ReadColumn(const std::string& column_json, const ArrowSchema* schema,
                             ArrowArray* out, ArrowError* error = nullptr) {
     try {
-      auto obj = json::parse(value);
+      auto obj = json::parse(column_json);
 
       // ArrowArrayView to enable validation
       nanoarrow::UniqueArrayView array_view;
@@ -1121,7 +1134,7 @@ class TestingJSONReader {
     }
 
     // Build buffers
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
       NANOARROW_RETURN_NOT_OK(
           PrefixError(SetArrayColumnBuffers(value, array_view, array, i, error), error,
                       error_prefix));
@@ -1138,7 +1151,7 @@ class TestingJSONReader {
     // Set ArrayView buffer views. This is because ArrowArrayInitFromSchema() doesn't
     // support custom type ids for unions but the ArrayView does (otherwise
     // ArrowArrayFinishBuilding() would work).
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
       ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
       ArrowBufferView* buffer_view = array_view->buffer_views + i;
       buffer_view->data.as_uint8 = buffer->data;
