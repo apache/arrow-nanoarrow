@@ -36,6 +36,9 @@ class NanoarrowPxdGenerator:
         # Strip comments
         content = self.re_comment.sub("", content)
 
+        # Replace NANOARROW_MAX_FIXED_BUFFERS with its value
+        content = self.re_max_buffers.sub("3", content)
+
         # Find types and function definitions
         types = self._find_types(content)
         func_defs = self._find_func_defs(content)
@@ -59,6 +62,7 @@ class NanoarrowPxdGenerator:
             output.write(b"\n")
             output.write(b"    ctypedef int ArrowErrorCode\n")
             output.write(b"    cdef int NANOARROW_OK\n")
+            output.write(b"    cdef int NANOARROW_MAX_FIXED_BUFFERS\n")
             output.write(b"\n")
 
             for type in types_cython:
@@ -71,6 +75,7 @@ class NanoarrowPxdGenerator:
 
     def _define_regexes(self):
         self.re_comment = re.compile(r"\s*//[^\n]*")
+        self.re_max_buffers = re.compile(r"NANOARROW_MAX_FIXED_BUFFERS")
         self.re_type = re.compile(
             r"(?P<type>struct|union|enum) (?P<name>Arrow[^ ]+) {(?P<body>[^}]*)}"
         )
