@@ -285,13 +285,13 @@ static int nanoarrow_materialize_other(struct RConverter* converter,
   // the underlying array to be released and invalidate the converter. The R code in
   // convert_fallback_other() takes care of ensuring an independent copy with the correct
   // offset/length.
-  SEXP schema_xptr =
-      PROTECT(R_MakeExternalPtr(converter->schema_view.schema, R_NilValue, R_NilValue));
+  SEXP schema_xptr = PROTECT(R_MakeExternalPtr(
+      (struct ArrowSchema*)converter->schema_view.schema, R_NilValue, R_NilValue));
   Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
   // We do need to set the protected member of the array external pointer to signal that
   // it is not an independent array (i.e., force a shallow copy).
-  SEXP array_xptr = PROTECT(
-      R_MakeExternalPtr(converter->array_view.array, schema_xptr, converter_xptr));
+  SEXP array_xptr = PROTECT(R_MakeExternalPtr(
+      (struct ArrowArray*)converter->array_view.array, schema_xptr, converter_xptr));
   Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
 
   SEXP offset_sexp =
