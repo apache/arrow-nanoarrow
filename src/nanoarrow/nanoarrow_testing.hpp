@@ -1247,21 +1247,20 @@ class TestingJSONReader {
             return SetBufferFloatingPoint<double>(data, buffer, error);
 
           case NANOARROW_TYPE_STRING:
-            return SetBuffersString<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                             buffer, error);
+            return SetBufferString<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                            buffer, error);
           case NANOARROW_TYPE_LARGE_STRING:
-            return SetBuffersString<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                             buffer, error);
+            return SetBufferString<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                            buffer, error);
           case NANOARROW_TYPE_BINARY:
-            return SetBuffersBinary<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                             buffer, error);
+            return SetBufferBinary<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                            buffer, error);
           case NANOARROW_TYPE_LARGE_BINARY:
-            return SetBuffersBinary<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                             buffer, error);
+            return SetBufferBinary<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                            buffer, error);
           case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-            return SetBuffersBinary<int64_t>(
-                data, nullptr, buffer, error,
-                array_view->layout.element_size_bits[buffer_i] / 8);
+            return SetBufferFixedSizeBinary(
+                data, buffer, array_view->layout.element_size_bits[buffer_i] / 8, error);
 
           default:
             ArrowErrorSet(error, "storage type %s DATA buffer not supported",
@@ -1370,8 +1369,8 @@ class TestingJSONReader {
   }
 
   template <typename T>
-  ArrowErrorCode SetBuffersString(const json& value, ArrowBuffer* offsets,
-                                  ArrowBuffer* data, ArrowError* error) {
+  ArrowErrorCode SetBufferString(const json& value, ArrowBuffer* offsets,
+                                 ArrowBuffer* data, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_array(), error, "utf8 data buffer must be array"));
 
@@ -1408,61 +1407,74 @@ class TestingJSONReader {
   }
 
   template <typename T>
-  ArrowErrorCode SetBuffersBinary(const json& value, ArrowBuffer* offsets,
-                                  ArrowBuffer* data, ArrowError* error,
-                                  int64_t fixed_size = 0) {
+  ArrowErrorCode SetBufferBinary(const json& value, ArrowBuffer* offsets,
+                                 ArrowBuffer* data, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_array(), error, "binary data buffer must be array"));
 
     // Check offsets against values if not fixed size
-    const T* expected_offset = nullptr;
-    if (fixed_size == 0) {
-      expected_offset = reinterpret_cast<const T*>(offsets->data);
-      NANOARROW_RETURN_NOT_OK(Check(
-          offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
-          "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
-      NANOARROW_RETURN_NOT_OK(
-          Check(*expected_offset++ == 0, error, "first offset must be zero"));
+    const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
+    NANOARROW_RETURN_NOT_OK(Check(
+        offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
+        "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(*expected_offset++ == 0, error, "first offset must be zero"));
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(AppendBinaryElement(item, data, error));
+
+      // Check offset
+      NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == data->size_bytes, error,
+                                    "Expected offset value " +
+                                        std::to_string(data->size_bytes) +
+                                        " at binary data buffer item " + item.dump()));
     }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetBufferFixedSizeBinary(const json& value, ArrowBuffer* data,
+                                          int64_t fixed_size, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "binary data buffer must be array"));
 
     int64_t last_offset = 0;
 
     for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(AppendBinaryElement(item, data, error));
+      int64_t item_size_bytes = data->size_bytes - last_offset;
+
+      NANOARROW_RETURN_NOT_OK(Check(item_size_bytes == fixed_size, error,
+                                    "Expected fixed size binary value of size " +
+                                        std::to_string(fixed_size) +
+                                        " at binary data buffer item " + item.dump()));
+      last_offset = data->size_bytes;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode AppendBinaryElement(const json& item, ArrowBuffer* data,
+                                     ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.is_string(), error, "binary data buffer item must be string"));
+    auto item_str = item.get<std::string>();
+
+    int64_t item_size_bytes = item_str.size() / 2;
+    NANOARROW_RETURN_NOT_OK(Check((item_size_bytes * 2) == item_str.size(), error,
+                                  "binary data buffer item must have even size"));
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(data, item_size_bytes), error);
+    for (int64_t i = 0; i < item_str.size(); i += 2) {
+      std::string byte_hex = item_str.substr(i, 2);
+      char* end_ptr;
+      uint8_t byte = std::strtoul(byte_hex.data(), &end_ptr, 16);
       NANOARROW_RETURN_NOT_OK(
-          Check(item.is_string(), error, "binary data buffer item must be string"));
-      auto item_str = item.get<std::string>();
+          Check(end_ptr == (byte_hex.data() + 2), error,
+                "binary data buffer item must contain a valid hex-encoded byte string"));
 
-      int64_t item_size_bytes = item_str.size() / 2;
-      NANOARROW_RETURN_NOT_OK(Check((item_size_bytes * 2) == item_str.size(), error,
-                                    "binary data buffer item must have even size"));
-
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(data, item_size_bytes),
-                                         error);
-      for (int64_t i = 0; i < item_str.size(); i += 2) {
-        std::string byte_hex = item_str.substr(i, 2);
-        char* end_ptr;
-        uint8_t byte = std::strtoul(byte_hex.data(), &end_ptr, 16);
-        NANOARROW_RETURN_NOT_OK(Check(
-            end_ptr == (byte_hex.data() + 2), error,
-            "binary data buffer item must contain a valid hex-encoded byte string"));
-
-        data->data[data->size_bytes] = byte;
-        data->size_bytes++;
-      }
-
-      // Check offset or fixed size
-      if (fixed_size == 0) {
-        last_offset += item_size_bytes;
-        NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == last_offset, error,
-                                      "Expected offset value " +
-                                          std::to_string(last_offset) +
-                                          " at binary data buffer item " + item.dump()));
-      } else {
-        NANOARROW_RETURN_NOT_OK(Check(item_size_bytes == fixed_size, error,
-                                      "Expected fixed size binary value of size " +
-                                          std::to_string(fixed_size) +
-                                          " at binary data buffer item " + item.dump()));
-      }
+      data->data[data->size_bytes] = byte;
+      data->size_bytes++;
     }
 
     return NANOARROW_OK;
