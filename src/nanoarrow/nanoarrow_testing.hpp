@@ -622,6 +622,54 @@ class TestingJSONReader {
   using json = nlohmann::json;
 
  public:
+  /// \brief Read JSON representing a data file
+  ///
+  /// Read a JSON object in the form `{"schema": {...}, "batches": [...], ...}`,
+  /// propagating `out` on success.
+  ArrowErrorCode ReadDataFile(const std::string& data_file_json, ArrowArrayStream* out,
+                              ArrowError* error = nullptr) {
+    try {
+      auto obj = json::parse(data_file_json);
+      NANOARROW_RETURN_NOT_OK(Check(obj.is_object(), error, "data file must be object"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(obj.contains("schema"), error, "data file missing key 'schema'"));
+
+      // Read Schema
+      nanoarrow::UniqueSchema schema;
+      NANOARROW_RETURN_NOT_OK(SetSchema(schema.get(), obj["schema"], error));
+
+      NANOARROW_RETURN_NOT_OK(
+          Check(obj.contains("batches"), error, "data file missing key 'batches'"));
+      const auto& batches = obj["batches"];
+      NANOARROW_RETURN_NOT_OK(
+          Check(batches.is_array(), error, "data file batches must be array"));
+
+      // Populate ArrayView
+      nanoarrow::UniqueArrayView array_view;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
+
+      // Initialize ArrayStream with required capacity
+      nanoarrow::UniqueArrayStream stream;
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBasicArrayStreamInit(stream.get(), schema.get(), batches.size()), error);
+
+      // Populate ArrayStream batches
+      for (size_t i = 0; i < batches.size(); i++) {
+        nanoarrow::UniqueArray array;
+        NANOARROW_RETURN_NOT_OK(
+            SetArrayBatch(batches[i], array_view.get(), array.get(), error));
+        ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
+      }
+
+      ArrowArrayStreamMove(stream.get(), out);
+      return NANOARROW_OK;
+    } catch (json::exception& e) {
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadBatch(): %s", e.what());
+      return EINVAL;
+    }
+  }
+
   /// \brief Read JSON representing a Schema
   ///
   /// Reads a JSON object in the form `{"fields": [...], "metadata": [...]}`,
