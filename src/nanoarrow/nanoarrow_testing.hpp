@@ -635,7 +635,7 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(SetSchema(schema.get(), obj, error));
       ArrowSchemaMove(schema.get(), out);
       return NANOARROW_OK;
-    } catch (std::exception& e) {
+    } catch (json::exception& e) {
       ArrowErrorSet(error, "Exception in TestingJSONReader::ReadSchema(): %s", e.what());
       return EINVAL;
     }
@@ -654,7 +654,7 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(SetField(schema.get(), obj, error));
       ArrowSchemaMove(schema.get(), out);
       return NANOARROW_OK;
-    } catch (std::exception& e) {
+    } catch (json::exception& e) {
       ArrowErrorSet(error, "Exception in TestingJSONReader::ReadField(): %s", e.what());
       return EINVAL;
     }
@@ -686,7 +686,7 @@ class TestingJSONReader {
       // Return the result
       ArrowArrayMove(array.get(), out);
       return NANOARROW_OK;
-    } catch (std::exception& e) {
+    } catch (json::exception& e) {
       ArrowErrorSet(error, "Exception in TestingJSONReader::ReadColumn(): %s", e.what());
       return EINVAL;
     }
