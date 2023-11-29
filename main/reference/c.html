@@ -864,6 +864,16 @@ document.write(`
 <span class="target" id="group__nanoarrow-array-view"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-array-view</span></span></dt>
 <dd><p>These functions read and validate the contents <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> structures. </p>
 <div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.NANOARROW_MAX_FIXED_BUFFERS">
+<span class="target" id="group__nanoarrow-array-view_1ga6a59d885a8022a10fcf3887b61c68771"></span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_MAX_FIXED_BUFFERS</span></span></span><a class="headerlink" href="#c.NANOARROW_MAX_FIXED_BUFFERS" title="Permalink to this definition">#</a><br /></dt>
+<dd><p>The maximum number of buffers in an <a class="reference internal" href="#struct_arrow_array_view"><span class="std std-ref">ArrowArrayView</span></a> or <a class="reference internal" href="#struct_arrow_layout"><span class="std std-ref">ArrowLayout</span></a>. </p>
+<p>All currently supported types have 3 buffers or fewer; however, future types may involve a variable number of buffers (e.g., string view). These buffers will be represented by separate members of the <a class="reference internal" href="#struct_arrow_array_view"><span class="std std-ref">ArrowArrayView</span></a> or <a class="reference internal" href="#struct_arrow_layout"><span class="std std-ref">ArrowLayout</span></a>. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-enums">Enums</p>
 <dl class="cpp enum">
 <dt class="sig sig-object cpp" id="_CPPv415ArrowBufferType">
@@ -1083,7 +1093,7 @@ document.write(`
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N14ArrowArrayView12buffer_viewsE">
-<span id="_CPPv3N14ArrowArrayView12buffer_viewsE"></span><span id="_CPPv2N14ArrowArrayView12buffer_viewsE"></span><span id="ArrowArrayView::buffer_views__ArrowBufferViewA"></span><span class="target" id="struct_arrow_array_view_1a35e95d9913866d0c2255f5dbdec8d5bf"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buffer_views</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N14ArrowArrayView12buffer_viewsE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N14ArrowArrayView12buffer_viewsE"></span><span id="_CPPv2N14ArrowArrayView12buffer_viewsE"></span><span id="ArrowArrayView::buffer_views__ArrowBufferViewA"></span><span class="target" id="struct_arrow_array_view_1a2f9c074667659c9c4d5d133e2de53778"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buffer_views</span></span></span><span class="p"><span class="pre">[</span></span><span class="n"><span class="pre">NANOARROW_MAX_FIXED_BUFFERS</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N14ArrowArrayView12buffer_viewsE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>This Array’s buffers as <a class="reference internal" href="#struct_arrow_buffer_view"><span class="std std-ref">ArrowBufferView</span></a> objects. </p>
 </dd></dl>
 
@@ -2073,19 +2083,19 @@ document.write(`
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N11ArrowLayout11buffer_typeE">
-<span id="_CPPv3N11ArrowLayout11buffer_typeE"></span><span id="_CPPv2N11ArrowLayout11buffer_typeE"></span><span id="ArrowLayout::buffer_type__ArrowBufferTypeA"></span><span class="target" id="struct_arrow_layout_1a4b4ab80af5f99668e1a7bd169795c381"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowBufferType" title="ArrowBufferType"><span class="n"><span class="pre">ArrowBufferType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buffer_type</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N11ArrowLayout11buffer_typeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N11ArrowLayout11buffer_typeE"></span><span id="_CPPv2N11ArrowLayout11buffer_typeE"></span><span id="ArrowLayout::buffer_type__ArrowBufferTypeA"></span><span class="target" id="struct_arrow_layout_1acc379f9b6178fd8badd0fac5f522e17f"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowBufferType" title="ArrowBufferType"><span class="n"><span class="pre">ArrowBufferType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buffer_type</span></span></span><span class="p"><span class="pre">[</span></span><span class="n"><span class="pre">NANOARROW_MAX_FIXED_BUFFERS</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N11ArrowLayout11buffer_typeE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>The function of each buffer. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N11ArrowLayout16buffer_data_typeE">
-<span id="_CPPv3N11ArrowLayout16buffer_data_typeE"></span><span id="_CPPv2N11ArrowLayout16buffer_data_typeE"></span><span id="ArrowLayout::buffer_data_type__ArrowTypeA"></span><span class="target" id="struct_arrow_layout_1a3f509e3ed357c99fec7411bf2da9cecf"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49ArrowType" title="ArrowType"><span class="n"><span class="pre">ArrowType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buffer_data_type</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N11ArrowLayout16buffer_data_typeE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N11ArrowLayout16buffer_data_typeE"></span><span id="_CPPv2N11ArrowLayout16buffer_data_typeE"></span><span id="ArrowLayout::buffer_data_type__ArrowTypeA"></span><span class="target" id="struct_arrow_layout_1adfb8138b12eb00ed36157ee1d27071ff"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49ArrowType" title="ArrowType"><span class="n"><span class="pre">ArrowType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buffer_data_type</span></span></span><span class="p"><span class="pre">[</span></span><span class="n"><span class="pre">NANOARROW_MAX_FIXED_BUFFERS</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N11ArrowLayout16buffer_data_typeE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>The data type of each buffer. </p>
 </dd></dl>
 
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N11ArrowLayout17element_size_bitsE">
-<span id="_CPPv3N11ArrowLayout17element_size_bitsE"></span><span id="_CPPv2N11ArrowLayout17element_size_bitsE"></span><span id="ArrowLayout::element_size_bits__int64_tA"></span><span class="target" id="struct_arrow_layout_1aa6dec63c922194420378784419e00cd5"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">element_size_bits</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N11ArrowLayout17element_size_bitsE" title="Permalink to this definition">#</a><br /></dt>
+<span id="_CPPv3N11ArrowLayout17element_size_bitsE"></span><span id="_CPPv2N11ArrowLayout17element_size_bitsE"></span><span id="ArrowLayout::element_size_bits__int64_tA"></span><span class="target" id="struct_arrow_layout_1a3e6d41391c05d39ce4edb34567b90073"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">element_size_bits</span></span></span><span class="p"><span class="pre">[</span></span><span class="n"><span class="pre">NANOARROW_MAX_FIXED_BUFFERS</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N11ArrowLayout17element_size_bitsE" title="Permalink to this definition">#</a><br /></dt>
 <dd><p>The size of an element each buffer or 0 if this size is variable or unknown. </p>
 </dd></dl>
 
