@@ -728,19 +728,20 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
 /// This does not check if the decimal's precision sufficiently small to fit
 /// within the signed 64-bit integer range (A precision less than or equal
 /// to 18 is sufficiently small).
-static inline int64_t ArrowDecimalGetIntUnsafe(struct ArrowDecimal* decimal) {
+static inline int64_t ArrowDecimalGetIntUnsafe(const struct ArrowDecimal* decimal) {
   return (int64_t)decimal->words[decimal->low_word_index];
 }
 
 /// \brief Copy the bytes of this decimal into a sufficiently large buffer
 /// \ingroup nanoarrow-utils
-static inline void ArrowDecimalGetBytes(struct ArrowDecimal* decimal, uint8_t* out) {
+static inline void ArrowDecimalGetBytes(const struct ArrowDecimal* decimal,
+                                        uint8_t* out) {
   memcpy(out, decimal->words, decimal->n_words * sizeof(uint64_t));
 }
 
 /// \brief Returns 1 if the value represented by decimal is >= 0 or -1 otherwise
 /// \ingroup nanoarrow-utils
-static inline int64_t ArrowDecimalSign(struct ArrowDecimal* decimal) {
+static inline int64_t ArrowDecimalSign(const struct ArrowDecimal* decimal) {
   return 1 | ((int64_t)(decimal->words[decimal->high_word_index]) >> 63);
 }
 
