@@ -660,6 +660,34 @@ class TestingJSONReader {
     }
   }
 
+  /// \brief Read JSON representing a RecordBatch
+  ///
+  /// Read a JSON object in the form `{"count": 123, "columns": [...]}`, propagating `out`
+  /// on success.
+  ArrowErrorCode ReadBatch(const std::string& batch_json, const ArrowSchema* schema,
+                           ArrowArray* out, ArrowError* error = nullptr) {
+    try {
+      auto obj = json::parse(batch_json);
+
+      // ArrowArrayView to enable validation
+      nanoarrow::UniqueArrayView array_view;
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(
+          array_view.get(), const_cast<ArrowSchema*>(schema), error));
+
+      // ArrowArray to hold memory
+      nanoarrow::UniqueArray array;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayInitFromSchema(array.get(), const_cast<ArrowSchema*>(schema), error));
+
+      NANOARROW_RETURN_NOT_OK(SetArrayBatch(obj, array_view.get(), array.get(), error));
+      ArrowArrayMove(array.get(), out);
+      return NANOARROW_OK;
+    } catch (json::exception& e) {
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadBatch(): %s", e.what());
+      return EINVAL;
+    }
+  }
+
   /// \brief Read JSON representing a Column
   ///
   /// Read a JSON object in the form
@@ -1091,6 +1119,46 @@ class TestingJSONReader {
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(metadata->data)), error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetArrayBatch(const json& value, ArrowArrayView* array_view,
+                               ArrowArray* array, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_object(), error, "Expected RecordBatch to be a JSON object"));
+
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("count"), error, "RecordBatch missing key 'count'"));
+
+    const auto& count = value["count"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(count.is_number_integer(), error, "RecordBatch count must be integer"));
+    array_view->length = count.get<int64_t>();
+
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("columns"), error, "RecordBatch missing key 'columns'"));
+
+    const auto& columns = value["columns"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(columns.is_array(), error, "RecordBatch columns must be array"));
+    NANOARROW_RETURN_NOT_OK(Check(columns.size() == array_view->n_children, error,
+                                  "RecordBatch children has incorrect size"));
+
+    for (int64_t i = 0; i < array_view->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(
+          SetArrayColumn(columns[i], array_view->children[i], array->children[i], error));
+    }
+
+    // Validate the array view
+    NANOARROW_RETURN_NOT_OK(PrefixError(
+        ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
+        "RecordBatch failed to validate: "));
+
+    // Flush length and buffer pointers to the Array
+    array->length = array_view->length;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr), error);
+
     return NANOARROW_OK;
   }
 

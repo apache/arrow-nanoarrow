@@ -747,6 +747,36 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   EXPECT_STREQ(schema->children[0]->format, "n");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadBatch) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  TestingJSONReader reader;
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(reader.ReadBatch(R"({"count": 1, "columns": [{"name": null, "count": 1}]})",
+                             schema.get(), array.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_NE(array->release, nullptr);
+  EXPECT_EQ(array->length, 1);
+  ASSERT_EQ(array->n_children, 1);
+  EXPECT_EQ(array->children[0]->length, 1);
+
+  // Check invalid JSON
+  EXPECT_EQ(reader.ReadBatch(R"({)", schema.get(), array.get()), EINVAL);
+
+  // Check that field is validated
+  EXPECT_EQ(reader.ReadBatch(R"({"count": 1, "columns": [{"name": null, "count": -1}]})",
+                             schema.get(), array.get()),
+            EINVAL);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadColumnBasic) {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray array;
