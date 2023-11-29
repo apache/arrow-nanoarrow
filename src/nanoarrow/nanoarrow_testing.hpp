@@ -49,6 +49,53 @@ class TestingJSONWriter {
   /// \brief Write a schema to out
   ///
   /// Creates output like `{"fields": [...], "metadata": [...]}`.
+  ArrowErrorCode WriteDataFile(std::ostream& out, ArrowArrayStream* stream) {
+    if (stream == nullptr || stream->release == nullptr) {
+      return EINVAL;
+    }
+
+    out << R"({"schema": )";
+
+    nanoarrow::UniqueSchema schema;
+    NANOARROW_RETURN_NOT_OK(stream->get_schema(stream, schema.get()));
+    NANOARROW_RETURN_NOT_OK(WriteSchema(out, schema.get()));
+
+    nanoarrow::UniqueArrayView array_view;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr));
+
+    out << R"(, "batches": [)";
+
+    nanoarrow::UniqueArray array;
+    NANOARROW_RETURN_NOT_OK(stream->get_next(stream, array.get()));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+    NANOARROW_RETURN_NOT_OK(WriteBatch(out, schema.get(), array_view.get()));
+
+    while (true) {
+      array.reset();
+      NANOARROW_RETURN_NOT_OK(stream->get_next(stream, array.get()));
+      if (array->release == nullptr) {
+        break;
+      }
+
+      out << ", ";
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+      NANOARROW_RETURN_NOT_OK(WriteBatch(out, schema.get(), array_view.get()));
+    }
+
+    out << "]";
+
+    // Dictionaries errored at the schema stage
+    out << R"(, "dictionaries": []})";
+
+    return NANOARROW_OK;
+  }
+
+  /// \brief Write a schema to out
+  ///
+  /// Creates output like `{"fields": [...], "metadata": [...]}`.
   ArrowErrorCode WriteSchema(std::ostream& out, const ArrowSchema* schema) {
     // Make sure we have a struct
     if (std::string(schema->format) != "+s") {
