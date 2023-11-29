@@ -1155,7 +1155,7 @@ static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
   field->array = array;
   field->buffer_offset = *n_buffers;
 
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     *n_buffers += array_view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
   }
 
@@ -1524,7 +1524,7 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
   array_view->null_count = ns(FieldNode_null_count(field));
   setter->field_i += 1;
 
-  for (int64_t i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
