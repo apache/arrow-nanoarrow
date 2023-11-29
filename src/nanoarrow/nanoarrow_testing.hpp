@@ -46,9 +46,9 @@ namespace testing {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
-  /// \brief Write a schema to out
+  /// \brief Write an ArrowArrayStream as a data file to out
   ///
-  /// Creates output like `{"fields": [...], "metadata": [...]}`.
+  /// Creates output like `{"schema": {...}, "batches": [...], ...}`.
   ArrowErrorCode WriteDataFile(std::ostream& out, ArrowArrayStream* stream) {
     if (stream == nullptr || stream->release == nullptr) {
       return EINVAL;
