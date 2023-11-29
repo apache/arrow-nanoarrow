@@ -276,7 +276,7 @@ ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema, enum ArrowTyp
 /// and returns the number of characters required for the output if
 /// n were sufficiently large. If recursive is non-zero, the result will
 /// also include children.
-int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t n,
                             char recursive);
 
 /// \brief Set the format field of a schema from an ArrowType
@@ -338,7 +338,7 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
 /// \brief Make a (recursive) copy of a schema
 ///
 /// Allocates and copies fields of schema into schema_out.
-ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
+ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
                                    struct ArrowSchema* schema_out);
 
 /// \brief Copy format into schema->format
@@ -453,7 +453,7 @@ ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
 /// compatibility.
 struct ArrowSchemaView {
   /// \brief A pointer to the schema represented by this view
-  struct ArrowSchema* schema;
+  const struct ArrowSchema* schema;
 
   /// \brief The data type represented by the schema
   ///
@@ -536,7 +536,8 @@ struct ArrowSchemaView {
 
 /// \brief Initialize an ArrowSchemaView
 ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
-                                   struct ArrowSchema* schema, struct ArrowError* error);
+                                   const struct ArrowSchema* schema,
+                                   struct ArrowError* error);
 
 /// @}
 
@@ -765,7 +766,7 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
 /// Caller is responsible for calling the array->release callback if
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
-                                        struct ArrowSchema* schema,
+                                        const struct ArrowSchema* schema,
                                         struct ArrowError* error);
 
 /// \brief Initialize the contents of an ArrowArray from an ArrowArrayView
@@ -773,7 +774,7 @@ ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
 /// Caller is responsible for calling the array->release callback if
 /// NANOARROW_OK is returned.
 ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                           struct ArrowArrayView* array_view,
+                                           const struct ArrowArrayView* array_view,
                                            struct ArrowError* error);
 
 /// \brief Allocate the array->children array
@@ -886,14 +887,14 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
 /// Returns NANOARROW_OK if value can be exactly represented by
 /// the underlying storage type or EINVAL otherwise.
 static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
-                                                      struct ArrowInterval* value);
+                                                      const struct ArrowInterval* value);
 
 /// \brief Append a decimal value to an array
 ///
 /// Returns NANOARROW_OK if array is a decimal array with the appropriate
 /// bitwidth or EINVAL otherwise.
 static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
-                                                     struct ArrowDecimal* value);
+                                                     const struct ArrowDecimal* value);
 
 /// \brief Finish a nested array element
 ///
@@ -961,7 +962,7 @@ static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
 
 /// \brief Initialize the contents of an ArrowArrayView from an ArrowSchema
 ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
-                                            struct ArrowSchema* schema,
+                                            const struct ArrowSchema* schema,
                                             struct ArrowError* error);
 
 /// \brief Allocate the array_view->children array
@@ -978,12 +979,13 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length);
 
 /// \brief Set buffer sizes and data pointers from an ArrowArray
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
-                                      struct ArrowArray* array, struct ArrowError* error);
+                                      const struct ArrowArray* array,
+                                      struct ArrowError* error);
 
 /// \brief Set buffer sizes and data pointers from an ArrowArray except for those
 /// that require dereferencing buffer content.
 ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
-                                             struct ArrowArray* array,
+                                             const struct ArrowArray* array,
                                              struct ArrowError* error);
 
 /// \brief Performs checks on the content of an ArrowArrayView
@@ -1002,59 +1004,60 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
 /// \brief Check for a null element in an ArrowArrayView
-static inline int8_t ArrowArrayViewIsNull(struct ArrowArrayView* array_view, int64_t i);
+static inline int8_t ArrowArrayViewIsNull(const struct ArrowArrayView* array_view,
+                                          int64_t i);
 
 /// \brief Get the type id of a union array element
-static inline int8_t ArrowArrayViewUnionTypeId(struct ArrowArrayView* array_view,
+static inline int8_t ArrowArrayViewUnionTypeId(const struct ArrowArrayView* array_view,
                                                int64_t i);
 
 /// \brief Get the child index of a union array element
-static inline int8_t ArrowArrayViewUnionChildIndex(struct ArrowArrayView* array_view,
-                                                   int64_t i);
+static inline int8_t ArrowArrayViewUnionChildIndex(
+    const struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get the index to use into the relevant union child array
-static inline int64_t ArrowArrayViewUnionChildOffset(struct ArrowArrayView* array_view,
-                                                     int64_t i);
+static inline int64_t ArrowArrayViewUnionChildOffset(
+    const struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get an element in an ArrowArrayView as an integer
 ///
 /// This function does not check for null values, that values are actually integers, or
 /// that values are within a valid range for an int64.
-static inline int64_t ArrowArrayViewGetIntUnsafe(struct ArrowArrayView* array_view,
+static inline int64_t ArrowArrayViewGetIntUnsafe(const struct ArrowArrayView* array_view,
                                                  int64_t i);
 
 /// \brief Get an element in an ArrowArrayView as an unsigned integer
 ///
 /// This function does not check for null values, that values are actually integers, or
 /// that values are within a valid range for a uint64.
-static inline uint64_t ArrowArrayViewGetUIntUnsafe(struct ArrowArrayView* array_view,
-                                                   int64_t i);
+static inline uint64_t ArrowArrayViewGetUIntUnsafe(
+    const struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get an element in an ArrowArrayView as a double
 ///
 /// This function does not check for null values, or
 /// that values are within a valid range for a double.
-static inline double ArrowArrayViewGetDoubleUnsafe(struct ArrowArrayView* array_view,
-                                                   int64_t i);
+static inline double ArrowArrayViewGetDoubleUnsafe(
+    const struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get an element in an ArrowArrayView as an ArrowStringView
 ///
 /// This function does not check for null values.
 static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
-    struct ArrowArrayView* array_view, int64_t i);
+    const struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get an element in an ArrowArrayView as an ArrowBufferView
 ///
 /// This function does not check for null values.
 static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
-    struct ArrowArrayView* array_view, int64_t i);
+    const struct ArrowArrayView* array_view, int64_t i);
 
 /// \brief Get an element in an ArrowArrayView as an ArrowDecimal
 ///
 /// This function does not check for null values. The out parameter must
 /// be initialized with ArrowDecimalInit() with the proper parameters for this
 /// type before calling this for the first time.
-static inline void ArrowArrayViewGetDecimalUnsafe(struct ArrowArrayView* array_view,
+static inline void ArrowArrayViewGetDecimalUnsafe(const struct ArrowArrayView* array_view,
                                                   int64_t i, struct ArrowDecimal* out);
 
 /// @}
@@ -1091,7 +1094,7 @@ void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream, int64_
 /// array_stream must have been initialized with ArrowBasicArrayStreamInit().
 /// This function uses ArrowArrayStreamInitFromSchema() and ArrowArrayStreamSetArray()
 /// to validate the contents of the arrays.
-ArrowErrorCode ArrowBasicArrayStreamValidate(struct ArrowArrayStream* array_stream,
+ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* array_stream,
                                              struct ArrowError* error);
 
 /// @}

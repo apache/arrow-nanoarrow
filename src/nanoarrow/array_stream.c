@@ -129,7 +129,7 @@ void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream, int64_
   ArrowArrayMove(array, &private_data->arrays[i]);
 }
 
-ArrowErrorCode ArrowBasicArrayStreamValidate(struct ArrowArrayStream* array_stream,
+ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* array_stream,
                                              struct ArrowError* error) {
   struct BasicArrayStreamPrivate* private_data =
       (struct BasicArrayStreamPrivate*)array_stream->private_data;

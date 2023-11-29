@@ -483,7 +483,7 @@ ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema) {
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
+ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
                                    struct ArrowSchema* schema_out) {
   ArrowSchemaInit(schema_out);
 
@@ -1103,7 +1103,8 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
 }
 
 ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
-                                   struct ArrowSchema* schema, struct ArrowError* error) {
+                                   const struct ArrowSchema* schema,
+                                   struct ArrowError* error) {
   if (schema == NULL) {
     ArrowErrorSet(error, "Expected non-NULL schema");
     return EINVAL;
@@ -1229,7 +1230,7 @@ static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
   }
 }
 
-int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t n,
                             char recursive) {
   if (schema == NULL) {
     return snprintf(out, n, "[invalid: pointer is null]");

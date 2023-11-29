@@ -166,7 +166,7 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
 }
 
 ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                           struct ArrowArrayView* array_view,
+                                           const struct ArrowArrayView* array_view,
                                            struct ArrowError* error) {
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowArrayInitFromType(array, array_view->storage_type), error);
@@ -212,7 +212,7 @@ ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
 }
 
 ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
-                                        struct ArrowSchema* schema,
+                                        const struct ArrowSchema* schema,
                                         struct ArrowError* error) {
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
@@ -535,7 +535,7 @@ ArrowErrorCode ArrowArrayViewAllocateDictionary(struct ArrowArrayView* array_vie
 }
 
 ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
-                                            struct ArrowSchema* schema,
+                                            const struct ArrowSchema* schema,
                                             struct ArrowError* error) {
   struct ArrowSchemaView schema_view;
   int result = ArrowSchemaViewInit(&schema_view, schema, error);
@@ -669,7 +669,7 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
 // This version recursively extracts information from the array and stores it
 // in the array view, performing any checks that require the original array.
 static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
-                                          struct ArrowArray* array,
+                                          const struct ArrowArray* array,
                                           struct ArrowError* error) {
   array_view->array = array;
   array_view->offset = array->offset;
@@ -1008,7 +1008,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 }
 
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
-                                      struct ArrowArray* array,
+                                      const struct ArrowArray* array,
                                       struct ArrowError* error) {
   // Extract information from the array into the array view
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayInternal(array_view, array, error));
@@ -1021,7 +1021,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
 }
 
 ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
-                                             struct ArrowArray* array,
+                                             const struct ArrowArray* array,
                                              struct ArrowError* error) {
   // Extract information from the array into the array view
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayInternal(array_view, array, error));
