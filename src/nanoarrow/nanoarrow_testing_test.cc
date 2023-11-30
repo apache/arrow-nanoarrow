@@ -747,6 +747,31 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   EXPECT_STREQ(schema->children[0]->format, "n");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
+  nanoarrow::UniqueArrayStream stream;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  std::string data_file_json =
+      R"({"schema": {"fields": [)"
+      R"({"name": "col1", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": "col2", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
+      R"("metadata": null})"
+      R"(, "batches": [)"
+      R"({"count": 1, "columns": [{"name": "col1", "count": 1}, {"name": "col2", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}, )"
+      R"({"count": 1, "columns": [{"name": "col1", "count": 2}, {"name": "col2", "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 5], "DATA": ["abc", "de"]}]})"
+      R"(], "dictionaries": []})";
+
+  TestingJSONReader reader;
+  ASSERT_EQ(reader.ReadDataFile(data_file_json, stream.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  TestingJSONWriter writer;
+  std::stringstream data_file_json_roundtrip;
+  ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
+  EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadBatch) {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray array;

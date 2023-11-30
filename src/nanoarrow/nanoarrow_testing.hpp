@@ -705,6 +705,8 @@ class TestingJSONReader {
       for (size_t i = 0; i < batches.size(); i++) {
         nanoarrow::UniqueArray array;
         NANOARROW_RETURN_NOT_OK(
+            ArrowArrayInitFromArrayView(array.get(), array_view.get(), error));
+        NANOARROW_RETURN_NOT_OK(
             SetArrayBatch(batches[i], array_view.get(), array.get(), error));
         ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
       }
