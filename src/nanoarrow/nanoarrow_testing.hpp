@@ -714,7 +714,8 @@ class TestingJSONReader {
       ArrowArrayStreamMove(stream.get(), out);
       return NANOARROW_OK;
     } catch (json::exception& e) {
-      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadBatch(): %s", e.what());
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadDataFile(): %s",
+                    e.what());
       return EINVAL;
     }
   }

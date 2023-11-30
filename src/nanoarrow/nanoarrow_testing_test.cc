@@ -774,6 +774,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
   std::stringstream data_file_json_roundtrip;
   ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
   EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json);
+
+  // Also test error for invalid JSON
+  ASSERT_EQ(reader.ReadDataFile("{", stream.get()), EINVAL);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadBatch) {
