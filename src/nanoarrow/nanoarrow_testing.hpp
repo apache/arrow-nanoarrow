@@ -83,12 +83,7 @@ class TestingJSONWriter {
       array.reset();
     } while (true);
 
-    out << "]";
-
-    // This writer currently errors for any input that contains dictionary-encoded
-    // schemas. When we add dictionary support, we can write the accumulated
-    // dictionaries here.
-    out << R"(, "dictionaries": []})";
+    out << "]}";
 
     return NANOARROW_OK;
   }
