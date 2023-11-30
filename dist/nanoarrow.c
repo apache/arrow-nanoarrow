@@ -716,7 +716,7 @@ ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema) {
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowSchemaDeepCopy(struct ArrowSchema* schema,
+ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
                                    struct ArrowSchema* schema_out) {
   ArrowSchemaInit(schema_out);
 
@@ -1336,7 +1336,8 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
 }
 
 ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
-                                   struct ArrowSchema* schema, struct ArrowError* error) {
+                                   const struct ArrowSchema* schema,
+                                   struct ArrowError* error) {
   if (schema == NULL) {
     ArrowErrorSet(error, "Expected non-NULL schema");
     return EINVAL;
@@ -1462,7 +1463,7 @@ static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
   }
 }
 
-int64_t ArrowSchemaToString(struct ArrowSchema* schema, char* out, int64_t n,
+int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t n,
                             char recursive) {
   if (schema == NULL) {
     return snprintf(out, n, "[invalid: pointer is null]");
@@ -1924,7 +1925,7 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
 }
 
 ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
-                                           struct ArrowArrayView* array_view,
+                                           const struct ArrowArrayView* array_view,
                                            struct ArrowError* error) {
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowArrayInitFromType(array, array_view->storage_type), error);
@@ -1970,7 +1971,7 @@ ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
 }
 
 ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
-                                        struct ArrowSchema* schema,
+                                        const struct ArrowSchema* schema,
                                         struct ArrowError* error) {
   struct ArrowArrayView array_view;
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, error));
@@ -2195,7 +2196,7 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  for (int64_t i = 0; i < 3; i++) {
+  for (int64_t i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
   }
 
@@ -2293,7 +2294,7 @@ ArrowErrorCode ArrowArrayViewAllocateDictionary(struct ArrowArrayView* array_vie
 }
 
 ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
-                                            struct ArrowSchema* schema,
+                                            const struct ArrowSchema* schema,
                                             struct ArrowError* error) {
   struct ArrowSchemaView schema_view;
   int result = ArrowSchemaViewInit(&schema_view, schema, error);
@@ -2379,7 +2380,7 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
 }
 
 void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) {
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
 
     switch (array_view->layout.buffer_type[i]) {
@@ -2427,28 +2428,15 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
 // This version recursively extracts information from the array and stores it
 // in the array view, performing any checks that require the original array.
 static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
-                                          struct ArrowArray* array,
+                                          const struct ArrowArray* array,
                                           struct ArrowError* error) {
-  // Check length and offset
-  if (array->offset < 0) {
-    ArrowErrorSet(error, "Expected array offset >= 0 but found array offset of %ld",
-                  (long)array->offset);
-    return EINVAL;
-  }
-
-  if (array->length < 0) {
-    ArrowErrorSet(error, "Expected array length >= 0 but found array length of %ld",
-                  (long)array->length);
-    return EINVAL;
-  }
-
   array_view->array = array;
   array_view->offset = array->offset;
   array_view->length = array->length;
   array_view->null_count = array->null_count;
 
   int64_t buffers_required = 0;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
@@ -2507,6 +2495,18 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
 
 static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                                          struct ArrowError* error) {
+  if (array_view->length < 0) {
+    ArrowErrorSet(error, "Expected length >= 0 but found length %ld",
+                  (long)array_view->length);
+    return EINVAL;
+  }
+
+  if (array_view->offset < 0) {
+    ArrowErrorSet(error, "Expected offset >= 0 but found offset %ld",
+                  (long)array_view->offset);
+    return EINVAL;
+  }
+
   // Calculate buffer sizes that do not require buffer access. If marked as
   // unknown, assign the buffer size; otherwise, validate it.
   int64_t offset_plus_length = array_view->offset + array_view->length;
@@ -2767,7 +2767,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 }
 
 ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
-                                      struct ArrowArray* array,
+                                      const struct ArrowArray* array,
                                       struct ArrowError* error) {
   // Extract information from the array into the array view
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayInternal(array_view, array, error));
@@ -2780,7 +2780,7 @@ ArrowErrorCode ArrowArrayViewSetArray(struct ArrowArrayView* array_view,
 }
 
 ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
-                                             struct ArrowArray* array,
+                                             const struct ArrowArray* array,
                                              struct ArrowError* error) {
   // Extract information from the array into the array view
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayInternal(array_view, array, error));
@@ -2861,7 +2861,7 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
 
 static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                                       struct ArrowError* error) {
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         if (array_view->layout.element_size_bits[i] == 32) {
@@ -3079,7 +3079,7 @@ void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream, int64_
   ArrowArrayMove(array, &private_data->arrays[i]);
 }
 
-ArrowErrorCode ArrowBasicArrayStreamValidate(struct ArrowArrayStream* array_stream,
+ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* array_stream,
                                              struct ArrowError* error) {
   struct BasicArrayStreamPrivate* private_data =
       (struct BasicArrayStreamPrivate*)array_stream->private_data;

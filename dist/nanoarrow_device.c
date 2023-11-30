@@ -408,7 +408,7 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
   dst->offset = src->offset;
   dst->null_count = src->null_count;
 
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     if (src->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
