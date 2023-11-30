@@ -758,8 +758,12 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
       R"({"name": "col2", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
       R"("metadata": null})"
       R"(, "batches": [)"
-      R"({"count": 1, "columns": [{"name": "col1", "count": 1}, {"name": "col2", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}, )"
-      R"({"count": 1, "columns": [{"name": "col1", "count": 2}, {"name": "col2", "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 5], "DATA": ["abc", "de"]}]})"
+      R"({"count": 1, "columns": [)"
+      R"({"name": "col1", "count": 1}, )"
+      R"({"name": "col2", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}, )"
+      R"({"count": 2, "columns": [)"
+      R"({"name": "col1", "count": 2}, )"
+      R"({"name": "col2", "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 5], "DATA": ["abc", "de"]}]})"
       R"(], "dictionaries": []})";
 
   TestingJSONReader reader;
