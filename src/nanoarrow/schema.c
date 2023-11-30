@@ -1524,3 +1524,10 @@ ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
                                           struct ArrowStringView key) {
   return ArrowMetadataBuilderSetInternal(buffer, &key, NULL);
 }
+
+ArrowErrorCode ArrowSchemaCompare(const struct ArrowSchema* x,
+                                  const struct ArrowSchema* y,
+                                  enum ArrowCompareType compare_type, int* out,
+                                  struct ArrowError* error) {
+  return ENOTSUP;
+}
