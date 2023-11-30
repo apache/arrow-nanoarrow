@@ -286,18 +286,10 @@ enum ArrowCompareType {
   NANOARROW_COMPARE_TYPE_SAME,
 
   /// \brief Results in successful comparison if the content of all struct fields
-  /// are identical.
-  NANOARROW_COMPARE_TYPE_IDENTICAL,
-
-  /// \brief Results in successful comparison if the logical value or field represented by
-  /// x and y are the same. This may succeeed where comparison with
-  /// NANOARROW_COMPARE_TYPE_IDENTICAL fails if offset/length of an array or child array
-  /// is not identical but the array points to the same logical values.
-  NANOARROW_COMPARE_TYPE_EQUAL,
-
-  /// \brief Results in succcessful comparison as NANOARROW_COMPARE_TYPE_EQUAL except
-  /// ignoring name, nullability, and metadata when comparing schemas.
-  NANOARROW_COMPARE_TYPE_EQUAL_IGNORE_METADATA
+  /// are identical. This type of comparison may fail if offset/length of an array
+  /// or child array is not identical even if the array points to the same logical
+  /// values.
+  NANOARROW_COMPARE_TYPE_IDENTICAL
 };
 
 /// \brief Compare the content of two schemas
