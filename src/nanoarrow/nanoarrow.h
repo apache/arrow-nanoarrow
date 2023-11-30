@@ -279,6 +279,38 @@ ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema, enum ArrowTyp
 int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t n,
                             char recursive);
 
+enum ArrowCompareType {
+  /// \brief Results in successful comparison if x and y point to the same address
+  /// or the buffers pointed to by x and y are identical located at the same address
+  /// and the offset/length are identical.
+  NANOARROW_COMPARE_TYPE_SAME,
+
+  /// \brief Results in successful comparison if the content of all struct fields
+  /// are identical.
+  NANOARROW_COMPARE_TYPE_IDENTICAL,
+
+  /// \brief Results in successful comparison if the logical value or field represented by
+  /// x and y are the same. This may succeeed where comparison with
+  /// NANOARROW_COMPARE_TYPE_IDENTICAL fails if offset/length of an array or child array
+  /// is not identical but the array points to the same logical values.
+  NANOARROW_COMPARE_TYPE_EQUAL,
+
+  /// \brief Results in succcessful comparison as NANOARROW_COMPARE_TYPE_EQUAL except
+  /// ignoring name, nullability, and metadata when comparing schemas.
+  NANOARROW_COMPARE_TYPE_EQUAL_IGNORE_METADATA
+};
+
+/// \brief Compare the content of two schemas
+///
+/// Populates out with the result of the comparison (0 if x and y can be considered
+/// equal according to compare_type or non-zero otherwise) and error with a message,
+/// usually describing the first observed difference. Returns NANOARROW_OK
+/// if the comparison ran without error or an error code otherwise.
+ArrowErrorCode ArrowSchemaCompare(const struct ArrowSchema* x,
+                                  const struct ArrowSchema* y,
+                                  enum ArrowCompareType compare_type, int* out,
+                                  struct ArrowError* error);
+
 /// \brief Set the format field of a schema from an ArrowType
 ///
 /// Initializes the fields and release callback of schema_out. For
