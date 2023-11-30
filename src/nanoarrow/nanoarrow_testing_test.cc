@@ -775,6 +775,17 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
   ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
   EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json);
 
+  stream.reset();
+  data_file_json_roundtrip.str("");
+
+  // Check with zero batches
+  std::string data_file_json_empty =
+      R"({"schema": {"fields": [], "metadata": null}, "batches": [], "dictionaries": []})";
+  ASSERT_EQ(reader.ReadDataFile(data_file_json_empty, stream.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
+  EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json_empty);
+
   // Also test error for invalid JSON
   ASSERT_EQ(reader.ReadDataFile("{", stream.get()), EINVAL);
 }

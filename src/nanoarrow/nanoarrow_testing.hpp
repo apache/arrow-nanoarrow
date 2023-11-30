@@ -46,7 +46,7 @@ namespace testing {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
-  /// \brief Write an ArrowArrayStream as a data file to out
+  /// \brief Write an ArrowArrayStream as a data file JSON object to out
   ///
   /// Creates output like `{"schema": {...}, "batches": [...], ...}`.
   ArrowErrorCode WriteDataFile(std::ostream& out, ArrowArrayStream* stream) {
@@ -73,8 +73,10 @@ class TestingJSONWriter {
       if (array->release == nullptr) {
         break;
       }
+
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+
       out << sep;
       sep = ", ";
       NANOARROW_RETURN_NOT_OK(WriteBatch(out, schema.get(), array_view.get()));
@@ -83,7 +85,9 @@ class TestingJSONWriter {
 
     out << "]";
 
-    // Dictionaries errored at the schema stage
+    // This writer currently errors for any input that contains dictionary-encoded
+    // schemas. When we add dictionary support, we can write the accumulated
+    // dictionaries here.
     out << R"(, "dictionaries": []})";
 
     return NANOARROW_OK;
@@ -665,7 +669,7 @@ class TestingJSONReader {
   using json = nlohmann::json;
 
  public:
-  /// \brief Read JSON representing a data file
+  /// \brief Read JSON representing a data file object
   ///
   /// Read a JSON object in the form `{"schema": {...}, "batches": [...], ...}`,
   /// propagating `out` on success.
