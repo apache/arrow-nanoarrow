@@ -67,23 +67,19 @@ class TestingJSONWriter {
     out << R"(, "batches": [)";
 
     nanoarrow::UniqueArray array;
-    NANOARROW_RETURN_NOT_OK(stream->get_next(stream, array.get()));
-    NANOARROW_RETURN_NOT_OK(
-        ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
-    NANOARROW_RETURN_NOT_OK(WriteBatch(out, schema.get(), array_view.get()));
-
-    while (true) {
-      array.reset();
+    std::string sep;
+    do {
       NANOARROW_RETURN_NOT_OK(stream->get_next(stream, array.get()));
       if (array->release == nullptr) {
         break;
       }
-
-      out << ", ";
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+      out << sep;
+      sep = ", ";
       NANOARROW_RETURN_NOT_OK(WriteBatch(out, schema.get(), array_view.get()));
-    }
+      array.reset();
+    } while (true);
 
     out << "]";
 
