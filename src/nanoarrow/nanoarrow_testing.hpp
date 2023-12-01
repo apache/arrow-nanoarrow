@@ -1661,6 +1661,102 @@ class TestingJSONReader {
   }
 };
 
+class TestingJSONComparison {
+ public:
+  struct Difference {
+    std::string path;
+    std::string actual;
+    std::string expected;
+  };
+
+  size_t num_differences() const { return differences_.size(); }
+
+  ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
+                               ArrowError* error) {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, expected), error);
+    std::string expected_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, actual), error);
+    std::string actual_json = ss.str();
+
+    if (actual_json != expected_json) {
+      differences_.push_back({"", actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetSchema(ArrowSchema* schema, ArrowError* error) {
+    differences_.clear();
+    schema_.reset(schema);
+    actual_.reset();
+    expected_.reset();
+
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(actual_.get(), schema_.get(), error));
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode CompareBatch(const ArrowArray* actual, const ArrowArray* expected,
+                              ArrowError* error) {
+    if (expected_->storage_type != NANOARROW_TYPE_STRUCT) {
+      ArrowErrorSet(error, "Can't CompareBatch() for non-struct schema");
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(expected_.get(), expected, error));
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(actual_.get(), actual, error));
+
+    if (actual->offset != expected->offset) {
+      differences_.push_back({"", "offset: " + std::to_string(actual->offset),
+                              "actual: " + std::to_string(actual->offset)});
+    }
+
+    if (actual->length != expected->length) {
+      differences_.push_back({"", "length: " + std::to_string(actual->length),
+                              "length: " + std::to_string(actual->length)});
+    }
+
+    for (int64_t i = 0; i < expected_->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(CompareColumn(schema_->children[i], actual_->children[i],
+                                            expected_->children[i], error,
+                                            std::string("[") + std::to_string(i) + "]"));
+    }
+
+    return NANOARROW_OK;
+  }
+
+ private:
+  ArrowErrorCode CompareColumn(ArrowSchema* schema, ArrowArrayView* actual,
+                               ArrowArrayView* expected, ArrowError* error,
+                               const std::string& path = "") {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteColumn(ss, schema, expected), error);
+    std::string expected_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteColumn(ss, schema, actual), error);
+    std::string actual_json = ss.str();
+
+    if (actual_json != expected_json) {
+      differences_.push_back({"", actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
+ private:
+  TestingJSONWriter writer_;
+  std::vector<Difference> differences_;
+  nanoarrow::UniqueSchema schema_;
+  nanoarrow::UniqueArrayView actual_;
+  nanoarrow::UniqueArrayView expected_;
+};
+
 /// @}
 
 }  // namespace testing
