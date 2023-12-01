@@ -1688,7 +1688,7 @@ class TestingJSONComparison {
 
   void WriteDifferences(std::ostream& out) {
     for (const auto& difference : differences_) {
-      out << "Path: " << difference.path;
+      out << "Path: " << difference.path << "\n";
       out << "- " << difference.actual << "\n";
       out << "+ " << difference.expected << "\n";
       out << "\n";
@@ -1703,13 +1703,17 @@ class TestingJSONComparison {
 
     NANOARROW_RETURN_NOT_OK(
         ArrowArrayViewInitFromSchema(actual_.get(), schema_.get(), error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(expected_.get(), schema_.get(), error));
+
     return NANOARROW_OK;
   }
 
   ArrowErrorCode CompareBatch(const ArrowArray* actual, const ArrowArray* expected,
                               ArrowError* error) {
     if (expected_->storage_type != NANOARROW_TYPE_STRUCT) {
-      ArrowErrorSet(error, "Can't CompareBatch() for non-struct schema");
+      ArrowErrorSet(error, "Can't CompareBatch() for non-struct schema got %d",
+                    (int)expected_->storage_type);
       return EINVAL;
     }
 
