@@ -46,6 +46,48 @@ namespace testing {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
+  /// \brief Write an ArrowArrayStream as a data file JSON object to out
+  ///
+  /// Creates output like `{"schema": {...}, "batches": [...], ...}`.
+  ArrowErrorCode WriteDataFile(std::ostream& out, ArrowArrayStream* stream) {
+    if (stream == nullptr || stream->release == nullptr) {
+      return EINVAL;
+    }
+
+    out << R"({"schema": )";
+
+    nanoarrow::UniqueSchema schema;
+    NANOARROW_RETURN_NOT_OK(stream->get_schema(stream, schema.get()));
+    NANOARROW_RETURN_NOT_OK(WriteSchema(out, schema.get()));
+
+    nanoarrow::UniqueArrayView array_view;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr));
+
+    out << R"(, "batches": [)";
+
+    nanoarrow::UniqueArray array;
+    std::string sep;
+    do {
+      NANOARROW_RETURN_NOT_OK(stream->get_next(stream, array.get()));
+      if (array->release == nullptr) {
+        break;
+      }
+
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+
+      out << sep;
+      sep = ", ";
+      NANOARROW_RETURN_NOT_OK(WriteBatch(out, schema.get(), array_view.get()));
+      array.reset();
+    } while (true);
+
+    out << "]}";
+
+    return NANOARROW_OK;
+  }
+
   /// \brief Write a schema to out
   ///
   /// Creates output like `{"fields": [...], "metadata": [...]}`.
@@ -622,6 +664,57 @@ class TestingJSONReader {
   using json = nlohmann::json;
 
  public:
+  /// \brief Read JSON representing a data file object
+  ///
+  /// Read a JSON object in the form `{"schema": {...}, "batches": [...], ...}`,
+  /// propagating `out` on success.
+  ArrowErrorCode ReadDataFile(const std::string& data_file_json, ArrowArrayStream* out,
+                              ArrowError* error = nullptr) {
+    try {
+      auto obj = json::parse(data_file_json);
+      NANOARROW_RETURN_NOT_OK(Check(obj.is_object(), error, "data file must be object"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(obj.contains("schema"), error, "data file missing key 'schema'"));
+
+      // Read Schema
+      nanoarrow::UniqueSchema schema;
+      NANOARROW_RETURN_NOT_OK(SetSchema(schema.get(), obj["schema"], error));
+
+      NANOARROW_RETURN_NOT_OK(
+          Check(obj.contains("batches"), error, "data file missing key 'batches'"));
+      const auto& batches = obj["batches"];
+      NANOARROW_RETURN_NOT_OK(
+          Check(batches.is_array(), error, "data file batches must be array"));
+
+      // Populate ArrayView
+      nanoarrow::UniqueArrayView array_view;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
+
+      // Initialize ArrayStream with required capacity
+      nanoarrow::UniqueArrayStream stream;
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBasicArrayStreamInit(stream.get(), schema.get(), batches.size()), error);
+
+      // Populate ArrayStream batches
+      for (size_t i = 0; i < batches.size(); i++) {
+        nanoarrow::UniqueArray array;
+        NANOARROW_RETURN_NOT_OK(
+            ArrowArrayInitFromArrayView(array.get(), array_view.get(), error));
+        NANOARROW_RETURN_NOT_OK(
+            SetArrayBatch(batches[i], array_view.get(), array.get(), error));
+        ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
+      }
+
+      ArrowArrayStreamMove(stream.get(), out);
+      return NANOARROW_OK;
+    } catch (json::exception& e) {
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadDataFile(): %s",
+                    e.what());
+      return EINVAL;
+    }
+  }
+
   /// \brief Read JSON representing a Schema
   ///
   /// Reads a JSON object in the form `{"fields": [...], "metadata": [...]}`,
@@ -656,6 +749,34 @@ class TestingJSONReader {
       return NANOARROW_OK;
     } catch (json::exception& e) {
       ArrowErrorSet(error, "Exception in TestingJSONReader::ReadField(): %s", e.what());
+      return EINVAL;
+    }
+  }
+
+  /// \brief Read JSON representing a RecordBatch
+  ///
+  /// Read a JSON object in the form `{"count": 123, "columns": [...]}`, propagating `out`
+  /// on success.
+  ArrowErrorCode ReadBatch(const std::string& batch_json, const ArrowSchema* schema,
+                           ArrowArray* out, ArrowError* error = nullptr) {
+    try {
+      auto obj = json::parse(batch_json);
+
+      // ArrowArrayView to enable validation
+      nanoarrow::UniqueArrayView array_view;
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(
+          array_view.get(), const_cast<ArrowSchema*>(schema), error));
+
+      // ArrowArray to hold memory
+      nanoarrow::UniqueArray array;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayInitFromSchema(array.get(), const_cast<ArrowSchema*>(schema), error));
+
+      NANOARROW_RETURN_NOT_OK(SetArrayBatch(obj, array_view.get(), array.get(), error));
+      ArrowArrayMove(array.get(), out);
+      return NANOARROW_OK;
+    } catch (json::exception& e) {
+      ArrowErrorSet(error, "Exception in TestingJSONReader::ReadBatch(): %s", e.what());
       return EINVAL;
     }
   }
@@ -1091,6 +1212,46 @@ class TestingJSONReader {
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(metadata->data)), error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetArrayBatch(const json& value, ArrowArrayView* array_view,
+                               ArrowArray* array, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_object(), error, "Expected RecordBatch to be a JSON object"));
+
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("count"), error, "RecordBatch missing key 'count'"));
+
+    const auto& count = value["count"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(count.is_number_integer(), error, "RecordBatch count must be integer"));
+    array_view->length = count.get<int64_t>();
+
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("columns"), error, "RecordBatch missing key 'columns'"));
+
+    const auto& columns = value["columns"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(columns.is_array(), error, "RecordBatch columns must be array"));
+    NANOARROW_RETURN_NOT_OK(Check(columns.size() == array_view->n_children, error,
+                                  "RecordBatch children has incorrect size"));
+
+    for (int64_t i = 0; i < array_view->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(
+          SetArrayColumn(columns[i], array_view->children[i], array->children[i], error));
+    }
+
+    // Validate the array view
+    NANOARROW_RETURN_NOT_OK(PrefixError(
+        ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
+        "RecordBatch failed to validate: "));
+
+    // Flush length and buffer pointers to the Array
+    array->length = array_view->length;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr), error);
+
     return NANOARROW_OK;
   }
 

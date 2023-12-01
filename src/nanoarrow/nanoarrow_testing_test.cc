@@ -747,6 +747,79 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   EXPECT_STREQ(schema->children[0]->format, "n");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
+  nanoarrow::UniqueArrayStream stream;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  std::string data_file_json =
+      R"({"schema": {"fields": [)"
+      R"({"name": "col1", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
+      R"({"name": "col2", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
+      R"("metadata": null})"
+      R"(, "batches": [)"
+      R"({"count": 1, "columns": [)"
+      R"({"name": "col1", "count": 1}, )"
+      R"({"name": "col2", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}, )"
+      R"({"count": 2, "columns": [)"
+      R"({"name": "col1", "count": 2}, )"
+      R"({"name": "col2", "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 5], "DATA": ["abc", "de"]}]})"
+      R"(]})";
+
+  TestingJSONReader reader;
+  ASSERT_EQ(reader.ReadDataFile(data_file_json, stream.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  TestingJSONWriter writer;
+  std::stringstream data_file_json_roundtrip;
+  ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
+  EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json);
+
+  stream.reset();
+  data_file_json_roundtrip.str("");
+
+  // Check with zero batches
+  std::string data_file_json_empty =
+      R"({"schema": {"fields": [], "metadata": null}, "batches": []})";
+  ASSERT_EQ(reader.ReadDataFile(data_file_json_empty, stream.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
+  EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json_empty);
+
+  // Also test error for invalid JSON
+  ASSERT_EQ(reader.ReadDataFile("{", stream.get()), EINVAL);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadBatch) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  TestingJSONReader reader;
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  ASSERT_EQ(reader.ReadBatch(R"({"count": 1, "columns": [{"name": null, "count": 1}]})",
+                             schema.get(), array.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_NE(array->release, nullptr);
+  EXPECT_EQ(array->length, 1);
+  ASSERT_EQ(array->n_children, 1);
+  EXPECT_EQ(array->children[0]->length, 1);
+
+  // Check invalid JSON
+  EXPECT_EQ(reader.ReadBatch(R"({)", schema.get(), array.get()), EINVAL);
+
+  // Check that field is validated
+  EXPECT_EQ(reader.ReadBatch(R"({"count": 1, "columns": [{"name": null, "count": -1}]})",
+                             schema.get(), array.get()),
+            EINVAL);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadColumnBasic) {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray array;
