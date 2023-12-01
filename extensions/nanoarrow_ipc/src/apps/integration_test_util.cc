@@ -145,6 +145,70 @@ ArrowErrorCode WriteArrayStream(const std::string& format, ArrowArrayStream* str
   }
 }
 
+ArrowErrorCode CheckArrayStream(const std::string& format, const std::string& ref,
+                                ArrowArrayStream* actual, ArrowError* error) {
+  nanoarrow::ipc::UniqueInputStream check;
+  NANOARROW_RETURN_NOT_OK(Open(ref, check.get(), error));
+
+  nanoarrow::UniqueArrayStream expected;
+  NANOARROW_RETURN_NOT_OK(GetArrayStream(format, check.get(), expected.get(), error));
+
+  nanoarrow::UniqueSchema actual_schema;
+  nanoarrow::UniqueSchema expected_schema;
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_schema(actual, actual_schema.get()),
+                                     error);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      expected->get_schema(expected.get(), expected_schema.get()), error);
+
+  nanoarrow::testing::TestingJSONComparison comparison;
+  NANOARROW_RETURN_NOT_OK(
+      comparison.CompareSchema(expected_schema.get(), actual_schema.get(), error));
+  if (comparison.num_differences() > 0) {
+    std::cerr << comparison.num_differences()
+              << " Difference(s) found between actual Schema and expected Schema:\n";
+    comparison.WriteDifferences(std::cerr);
+    return ENOATTR;
+  }
+
+  NANOARROW_RETURN_NOT_OK(comparison.SetSchema(expected_schema.get(), error));
+
+  int64_t n_batches = -1;
+  nanoarrow::UniqueArray actual_array;
+  nanoarrow::UniqueArray expected_array;
+  do {
+    n_batches++;
+    actual_array.reset();
+    expected_array.reset();
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_next(actual, actual_array.get()),
+                                       error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        expected->get_next(expected.get(), expected_array.get()), error);
+
+    if (actual_array->release == nullptr && expected_array->release != nullptr) {
+      std::cerr << "Actual stream finished; expected stream is not finished\n";
+      return ENOATTR;
+    }
+
+    if (actual_array->release != nullptr && expected_array->release == nullptr) {
+      std::cerr << "Expected stream finished; actual stream is not finished\n";
+      return ENOATTR;
+    }
+
+    NANOARROW_RETURN_NOT_OK(
+        comparison.CompareBatch(actual_array.get(), expected_array.get(), error));
+    if (comparison.num_differences() > 0) {
+      std::cerr << comparison.num_differences()
+                << " Difference(s) found between actual Schema and expected Schema:\n";
+      comparison.WriteDifferences(std::cerr);
+      return ENOATTR;
+    }
+
+  } while (true);
+
+  return NANOARROW_OK;
+}
+
 int DoMain(int argc, char* argv[], ArrowError* error) {
   ArgumentParser args;
   NANOARROW_RETURN_NOT_OK(args.parse(argc, argv));
@@ -165,7 +229,8 @@ int DoMain(int argc, char* argv[], ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         WriteArrayStream(args.kwarg("to").first, stream.get(), error));
   } else if (args.has_kwarg("check")) {
-    return ENOTSUP;
+    NANOARROW_RETURN_NOT_OK(CheckArrayStream(
+        args.kwarg("check").first, args.kwarg("check").second, stream.get(), error));
   } else {
     std::cerr << "One of --check or --to must be specified";
     return EINVAL;

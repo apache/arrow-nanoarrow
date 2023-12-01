@@ -583,10 +583,7 @@ class TestingJSONWriter {
         out << R"(\")";
       } else if (c == '\\') {
         out << R"(\\)";
-      } else if (c < 0) {
-        // Not supporting multibyte unicode yet
-        return ENOTSUP;
-      } else if (c < 20) {
+      } else if (c > 0 && c < 20) {
         // Data in the arrow-testing repo has a lot of content that requires escaping
         // in this way (\uXXXX).
         uint16_t utf16_bytes = static_cast<uint16_t>(c);
@@ -819,8 +816,6 @@ class TestingJSONReader {
         Check(value.is_object(), error, "Expected Schema to be a JSON object"));
     NANOARROW_RETURN_NOT_OK(
         Check(value.contains("fields"), error, "Schema missing key 'fields'"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.contains("metadata"), error, "Schema missing key 'metadata'"));
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), error);
@@ -834,7 +829,9 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(SetField(schema->children[i], fields[i], error));
     }
 
-    NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    if (value.contains("metadata")) {
+      NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    }
 
     // Validate!
     ArrowSchemaView schema_view;
@@ -853,8 +850,6 @@ class TestingJSONReader {
         Check(value.contains("type"), error, "Field missing key 'type'"));
     NANOARROW_RETURN_NOT_OK(
         Check(value.contains("children"), error, "Field missing key 'children'"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.contains("metadata"), error, "Field missing key 'metadata'"));
 
     ArrowSchemaInit(schema);
 
@@ -887,7 +882,9 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(SetField(schema->children[i], children[i], error));
     }
 
-    NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    if (value.contains("metadata")) {
+      NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    }
 
     // Validate!
     ArrowSchemaView schema_view;
@@ -1669,8 +1666,6 @@ class TestingJSONComparison {
     std::string expected;
   };
 
-  size_t num_differences() const { return differences_.size(); }
-
   ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
                                ArrowError* error) {
     std::stringstream ss;
@@ -1687,6 +1682,17 @@ class TestingJSONComparison {
     }
 
     return NANOARROW_OK;
+  }
+
+  size_t num_differences() const { return differences_.size(); }
+
+  void WriteDifferences(std::ostream& out) {
+    for (const auto& difference : differences_) {
+      out << "Path: " << difference.path;
+      out << "- " << difference.actual << "\n";
+      out << "+ " << difference.expected << "\n";
+      out << "\n";
+    }
   }
 
   ArrowErrorCode SetSchema(ArrowSchema* schema, ArrowError* error) {
