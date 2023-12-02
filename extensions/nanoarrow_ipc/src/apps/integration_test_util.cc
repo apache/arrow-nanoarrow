@@ -168,7 +168,7 @@ ArrowErrorCode CheckArrayStream(const std::string& format, const std::string& re
     std::cerr << comparison.num_differences()
               << " Difference(s) found between actual Schema and expected Schema:\n";
     comparison.WriteDifferences(std::cerr);
-    return ENOATTR;
+    return EINVAL;
   }
 
   NANOARROW_RETURN_NOT_OK(comparison.SetSchema(expected_schema.get(), error));
@@ -187,12 +187,12 @@ ArrowErrorCode CheckArrayStream(const std::string& format, const std::string& re
 
     if (actual_array->release == nullptr && expected_array->release != nullptr) {
       std::cerr << "Actual stream finished; expected stream is not finished\n";
-      return ENOATTR;
+      return EINVAL;
     }
 
     if (actual_array->release != nullptr && expected_array->release == nullptr) {
       std::cerr << "Expected stream finished; actual stream is not finished\n";
-      return ENOATTR;
+      return EINVAL;
     }
 
     NANOARROW_RETURN_NOT_OK(
@@ -201,7 +201,7 @@ ArrowErrorCode CheckArrayStream(const std::string& format, const std::string& re
       std::cerr << comparison.num_differences()
                 << " Difference(s) found between actual Schema and expected Schema:\n";
       comparison.WriteDifferences(std::cerr);
-      return ENOATTR;
+      return EINVAL;
     }
 
   } while (true);
