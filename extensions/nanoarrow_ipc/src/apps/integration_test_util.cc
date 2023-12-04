@@ -130,6 +130,7 @@ ArrowErrorCode GetArrayStream(const std::string& format, ArrowIpcInputStream* in
     return NANOARROW_OK;
   } else {
     std::cerr << "Unknown or unsupported format --from " << format << "\n";
+    print_help();
     return EINVAL;
   }
 }
@@ -142,6 +143,7 @@ ArrowErrorCode WriteArrayStream(const std::string& format, ArrowArrayStream* str
     return NANOARROW_OK;
   } else {
     std::cerr << "Unknown or unsupported format --to " << format << "\n";
+    print_help();
     return EINVAL;
   }
 }
