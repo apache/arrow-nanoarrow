@@ -37,7 +37,7 @@ static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array,
   // In many cases we can skip the array_export() step (which adds some complexity
   // and an additional R object to the mix)
   if (Rf_inherits(result, "nanoarrow_array_dont_export")) {
-    struct ArrowArray* array_result = array_from_xptr(result);
+    struct ArrowArray* array_result = nanoarrow_array_from_xptr(result);
     ArrowArrayMove(array_result, array);
   } else {
     array_export(result, array);
@@ -551,7 +551,7 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
 }
 
 SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_xptr) {
-  SEXP array_xptr = PROTECT(array_owning_xptr());
+  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
   struct ArrowError error;
 

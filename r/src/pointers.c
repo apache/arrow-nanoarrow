@@ -28,7 +28,7 @@ void intptr_as_string(intptr_t ptr_int, char* buf);
 
 SEXP nanoarrow_c_allocate_schema(void) { return nanoarrow_schema_owning_xptr(); }
 
-SEXP nanoarrow_c_allocate_array(void) { return array_owning_xptr(); }
+SEXP nanoarrow_c_allocate_array(void) { return nanoarrow_array_owning_xptr(); }
 
 SEXP nanoarrow_c_allocate_array_stream(void) { return array_stream_owning_xptr(); }
 

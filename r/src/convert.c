@@ -201,7 +201,7 @@ static int set_converter_children_schema(SEXP converter_xptr, SEXP schema_xptr) 
 static int set_converter_children_array(SEXP converter_xptr, SEXP array_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
 
   if (array->n_children != converter->n_children) {
     ArrowErrorSet(&converter->error,
@@ -310,7 +310,7 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
 int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   NANOARROW_RETURN_NOT_OK(
       ArrowArrayViewSetArray(&converter->array_view, array, &converter->error));
   SET_VECTOR_ELT(converter_shelter, 2, array_xptr);

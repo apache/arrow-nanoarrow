@@ -85,7 +85,7 @@ SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
 SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
   struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
 
-  SEXP array_xptr = PROTECT(array_owning_xptr());
+  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
   int result = ArrowArrayStreamGetNext(array_stream, array, NULL);
   if (result != NANOARROW_OK) {

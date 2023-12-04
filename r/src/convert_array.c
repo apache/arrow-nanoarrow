@@ -170,7 +170,7 @@ static SEXP convert_array_data_frame(SEXP array_xptr, SEXP ptype_sexp) {
     }
   }
 
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   R_xlen_t n_col = array->n_children;
   SEXP result = PROTECT(Rf_allocVector(VECSXP, n_col));
 

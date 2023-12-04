@@ -164,6 +164,50 @@ static inline struct ArrowSchema* nanoarrow_schema_from_xptr(SEXP schema_xptr) {
   return schema;
 }
 
+static void nanoarrow_finalize_array_xptr(SEXP array_xptr) {
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  if (array != NULL && array->release != NULL) {
+    array->release(array);
+  }
+
+  if (array != NULL) {
+    free(array);
+  }
+}
+
+// Returns the underlying struct ArrowArray* from an external pointer,
+// checking and erroring for invalid objects, pointers, and arrays.
+static inline struct ArrowArray* nanoarrow_array_from_xptr(SEXP array_xptr) {
+  if (!Rf_inherits(array_xptr, "nanoarrow_array")) {
+    Rf_error("`array` argument that is not a nanoarrow_array()");
+  }
+
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  if (array == NULL) {
+    Rf_error("nanoarrow_array() is an external pointer to NULL");
+  }
+
+  if (array->release == NULL) {
+    Rf_error("nanoarrow_array() has already been released");
+  }
+
+  return array;
+}
+
+// Create an external pointer with the proper class and that will release any
+// non-null, non-released pointer when garbage collected.
+static inline SEXP nanoarrow_array_owning_xptr(void) {
+  struct ArrowArray* array = (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+  array->release = NULL;
+
+  SEXP array_xptr = PROTECT(R_MakeExternalPtr(array, R_NilValue, R_NilValue));
+  SEXP array_cls = PROTECT(Rf_mkString("nanoarrow_array"));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, array_cls);
+  R_RegisterCFinalizer(array_xptr, &nanoarrow_finalize_array_xptr);
+  UNPROTECT(2);
+  return array_xptr;
+}
+
 #ifdef __cplusplus
 }
 #endif

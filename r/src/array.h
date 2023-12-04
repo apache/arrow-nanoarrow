@@ -21,11 +21,10 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <nanoarrow/r.h>
 #include "buffer.h"
 #include "nanoarrow.h"
 #include "util.h"
-
-void finalize_array_xptr(SEXP array_xptr);
 
 // Returns an external pointer to an array child with a schema attached.
 // The returned pointer will keep its parent alive unless passed through
@@ -35,46 +34,14 @@ void finalize_array_xptr(SEXP array_xptr);
 SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i);
 
 // Returns the underlying struct ArrowArray* from an external pointer,
-// checking and erroring for invalid objects, pointers, and arrays.
-static inline struct ArrowArray* array_from_xptr(SEXP array_xptr) {
-  if (!Rf_inherits(array_xptr, "nanoarrow_array")) {
-    Rf_error("`array` argument that is not a nanoarrow_array()");
-  }
-
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
-  if (array == NULL) {
-    Rf_error("nanoarrow_array() is an external pointer to NULL");
-  }
-
-  if (array->release == NULL) {
-    Rf_error("nanoarrow_array() has already been released");
-  }
-
-  return array;
-}
-
-// Returns the underlying struct ArrowArray* from an external pointer,
 // checking and erroring for invalid objects, pointers, and arrays, but
 // allowing for R_NilValue to signify a NULL return.
-static inline struct ArrowArray* nullable_array_from_xptr(SEXP array_xptr) {
+static inline struct ArrowArray* nullable_nanoarrow_array_from_xptr(SEXP array_xptr) {
   if (array_xptr == R_NilValue) {
     return NULL;
   } else {
-    return array_from_xptr(array_xptr);
+    return nanoarrow_array_from_xptr(array_xptr);
   }
-}
-
-// Create an external pointer with the proper class and that will release any
-// non-null, non-released pointer when garbage collected.
-static inline SEXP array_owning_xptr(void) {
-  struct ArrowArray* array = (struct ArrowArray*)ArrowMalloc(sizeof(struct ArrowArray));
-  array->release = NULL;
-
-  SEXP array_xptr = PROTECT(R_MakeExternalPtr(array, R_NilValue, R_NilValue));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
-  R_RegisterCFinalizer(array_xptr, &finalize_array_xptr);
-  UNPROTECT(1);
-  return array_xptr;
 }
 
 // Attaches a schema to an array external pointer. The nanoarrow R package
@@ -115,7 +82,7 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
   // a borrowed child of a struct array), this will ensure a version that can be
   // released independently of its parent.
   SEXP independent_array_xptr = PROTECT(array_xptr_ensure_independent(array_xptr));
-  struct ArrowArray* array = array_from_xptr(independent_array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(independent_array_xptr);
 
   int result = ArrowArrayInitFromType(array_copy, NANOARROW_TYPE_UNINITIALIZED);
   if (result != NANOARROW_OK) {
@@ -180,7 +147,7 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
 // applies if the array_xptr has the external pointer 'prot' field
 // set (if it doesn't have that set, it is already independent).
 static inline SEXP array_ensure_independent(struct ArrowArray* array) {
-  SEXP original_array_xptr = PROTECT(array_owning_xptr());
+  SEXP original_array_xptr = PROTECT(nanoarrow_array_owning_xptr());
 
   // Move array to the newly created owner
   struct ArrowArray* original_array =
@@ -202,7 +169,7 @@ static inline SEXP array_ensure_independent(struct ArrowArray* array) {
 // field of the external pointer: if it that field is R_NilValue, it is already
 // independent.
 static inline SEXP array_xptr_ensure_independent(SEXP array_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   if (R_ExternalPtrProtected(array_xptr) == R_NilValue) {
     return array_xptr;
   }

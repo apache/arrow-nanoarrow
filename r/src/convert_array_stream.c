@@ -49,7 +49,7 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
     nanoarrow_converter_stop(converter_xptr);
   }
 
-  SEXP array_xptr = PROTECT(array_owning_xptr());
+  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
 
   int64_t n_batches = 0;
