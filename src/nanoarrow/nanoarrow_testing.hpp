@@ -1842,6 +1842,24 @@ class TestingJSONComparison {
  private:
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {
+    ArrowSchemaView actual_view;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaViewInit(&actual_view, actual, nullptr),
+                                       error);
+
+    ArrowSchemaView expected_view;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaViewInit(&expected_view, expected, nullptr), error);
+
+    if (actual_view.type == NANOARROW_TYPE_MAP &&
+        expected_view.type == NANOARROW_TYPE_MAP) {
+      return CompareFieldMap(actual, expected, error, path);
+    } else {
+      return CompareFieldBase(actual, expected, error, path);
+    }
+  }
+
+  ArrowErrorCode CompareFieldBase(ArrowSchema* actual, ArrowSchema* expected,
+                                  ArrowError* error, const std::string& path = "") {
     std::stringstream ss;
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, expected), error);
@@ -1856,6 +1874,33 @@ class TestingJSONComparison {
     }
 
     return NANOARROW_OK;
+  }
+
+  ArrowErrorCode CompareFieldMap(ArrowSchema* actual, ArrowSchema* expected,
+                                 ArrowError* error, const std::string& path = "") {
+    nanoarrow::UniqueSchema actual_copy;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(actual, actual_copy.get()),
+                                       error);
+
+    nanoarrow::UniqueSchema expected_copy;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(expected, expected_copy.get()),
+                                       error);
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetName(actual_copy->children[0], "entries"), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetName(actual_copy->children[0]->children[0], "key"), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetName(actual_copy->children[0]->children[1], "value"), error);
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetName(expected_copy->children[0], "entries"), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetName(expected_copy->children[0]->children[0], "key"), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetName(expected_copy->children[0]->children[1], "value"), error);
+
+    return CompareFieldBase(actual_copy.get(), expected_copy.get(), error, path);
   }
 
   ArrowErrorCode CompareColumn(ArrowSchema* schema, ArrowArrayView* actual,
