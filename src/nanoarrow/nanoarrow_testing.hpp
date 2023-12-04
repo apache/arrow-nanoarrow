@@ -135,7 +135,7 @@ class TestingJSONWriter {
       out << R"("name": null)";
     } else {
       out << R"("name": )";
-      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->name)));
+      WriteString(out, ArrowCharView(field->name));
     }
 
     // Write nullability
@@ -218,7 +218,7 @@ class TestingJSONWriter {
       out << R"("name": null)";
     } else {
       out << R"("name": )";
-      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->name)));
+      WriteString(out, ArrowCharView(field->name));
     }
 
     // Write length
@@ -432,9 +432,9 @@ class TestingJSONWriter {
     ArrowStringView value;
     NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderRead(reader, &key, &value));
     out << R"({"key": )";
-    NANOARROW_RETURN_NOT_OK(WriteString(out, key));
+    WriteString(out, key);
     out << R"(, "value": )";
-    NANOARROW_RETURN_NOT_OK(WriteString(out, value));
+    WriteString(out, value);
     out << "}";
     return NANOARROW_OK;
   }
@@ -509,23 +509,26 @@ class TestingJSONWriter {
       case NANOARROW_TYPE_INT32:
       case NANOARROW_TYPE_UINT32:
         // Regular JSON integers (i.e., 123456)
-        out << ArrowArrayViewGetIntUnsafe(value, 0);
+        WriteIntMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << ", " << ArrowArrayViewGetIntUnsafe(value, i);
+          out << ", ";
+          WriteIntMaybeNull(out, value, i);
         }
         break;
       case NANOARROW_TYPE_INT64:
         // Quoted integers to avoid overflow (i.e., "123456")
-        out << R"(")" << ArrowArrayViewGetIntUnsafe(value, 0) << R"(")";
+        WriteQuotedIntMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << R"(, ")" << ArrowArrayViewGetIntUnsafe(value, i) << R"(")";
+          out << ", ";
+          WriteQuotedIntMaybeNull(out, value, i);
         }
         break;
       case NANOARROW_TYPE_UINT64:
         // Quoted integers to avoid overflow (i.e., "123456")
-        out << R"(")" << ArrowArrayViewGetUIntUnsafe(value, 0) << R"(")";
+        WriteQuotedUIntMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << R"(, ")" << ArrowArrayViewGetUIntUnsafe(value, i) << R"(")";
+          out << ", ";
+          WriteQuotedUIntMaybeNull(out, value, i);
         }
         break;
 
@@ -535,32 +538,30 @@ class TestingJSONWriter {
         LocalizedStream local_stream_opt(out);
         local_stream_opt.SetFixed(3);
 
-        out << ArrowArrayViewGetDoubleUnsafe(value, 0);
+        WriteFloatMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << ", " << ArrowArrayViewGetDoubleUnsafe(value, i);
+          out << ", ";
+          WriteFloatMaybeNull(out, value, i);
         }
         break;
       }
 
       case NANOARROW_TYPE_STRING:
       case NANOARROW_TYPE_LARGE_STRING:
-        NANOARROW_RETURN_NOT_OK(
-            WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0)));
+        WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0));
         for (int64_t i = 1; i < value->length; i++) {
           out << ", ";
-          NANOARROW_RETURN_NOT_OK(
-              WriteString(out, ArrowArrayViewGetStringUnsafe(value, i)));
+          WriteString(out, ArrowArrayViewGetStringUnsafe(value, i));
         }
         break;
 
       case NANOARROW_TYPE_BINARY:
       case NANOARROW_TYPE_LARGE_BINARY:
       case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
-        NANOARROW_RETURN_NOT_OK(WriteBytes(out, ArrowArrayViewGetBytesUnsafe(value, 0)));
+        WriteBytesMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
           out << ", ";
-          NANOARROW_RETURN_NOT_OK(
-              WriteBytes(out, ArrowArrayViewGetBytesUnsafe(value, i)));
+          WriteBytesMaybeNull(out, value, i);
         }
         break;
       }
@@ -574,7 +575,52 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteString(std::ostream& out, ArrowStringView value) {
+  void WriteIntMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << 0;
+    } else {
+      out << ArrowArrayViewGetIntUnsafe(view, i);
+    }
+  }
+
+  void WriteQuotedIntMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"("0")";
+    } else {
+      out << R"(")" << ArrowArrayViewGetIntUnsafe(view, i) << R"(")";
+    }
+  }
+
+  void WriteQuotedUIntMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"("0")";
+    } else {
+      out << R"(")" << ArrowArrayViewGetUIntUnsafe(view, i) << R"(")";
+    }
+  }
+
+  void WriteFloatMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << static_cast<double>(0);
+    } else {
+      out << ArrowArrayViewGetDoubleUnsafe(view, i);
+    }
+  }
+
+  void WriteBytesMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+    ArrowBufferView item = ArrowArrayViewGetBytesUnsafe(view, i);
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"(")";
+      for (int64_t i = 0; i < item.size_bytes; i++) {
+        out << "00";
+      }
+      out << R"(")";
+    } else {
+      WriteBytes(out, item);
+    }
+  }
+
+  void WriteString(std::ostream& out, ArrowStringView value) {
     out << R"(")";
 
     for (int64_t i = 0; i < value.size_bytes; i++) {
@@ -598,10 +644,9 @@ class TestingJSONWriter {
     }
 
     out << R"(")";
-    return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteBytes(std::ostream& out, ArrowBufferView value) {
+  void WriteBytes(std::ostream& out, ArrowBufferView value) {
     out << R"(")";
     char hex[3];
     hex[2] = '\0';
@@ -611,7 +656,6 @@ class TestingJSONWriter {
       out << hex;
     }
     out << R"(")";
-    return NANOARROW_OK;
   }
 
   ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,

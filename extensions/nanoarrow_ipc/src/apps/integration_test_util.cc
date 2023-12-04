@@ -195,15 +195,19 @@ ArrowErrorCode CheckArrayStream(const std::string& format, const std::string& re
       return EINVAL;
     }
 
+    if (actual_array->release == nullptr) {
+      break;
+    }
+
     NANOARROW_RETURN_NOT_OK(
         comparison.CompareBatch(actual_array.get(), expected_array.get(), error));
     if (comparison.num_differences() > 0) {
       std::cerr << comparison.num_differences()
-                << " Difference(s) found between actual Schema and expected Schema:\n";
+                << " Difference(s) found between actual Batch " << n_batches
+                << " and expected Batch " << n_batches << ":\n";
       comparison.WriteDifferences(std::cerr);
       return EINVAL;
     }
-
   } while (true);
 
   return NANOARROW_OK;
