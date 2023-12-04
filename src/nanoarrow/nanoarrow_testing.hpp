@@ -637,9 +637,8 @@ class TestingJSONWriter {
         out << R"(\")";
       } else if (c == '\\') {
         out << R"(\\)";
-      } else if (c > 0 && c < 20) {
-        // Data in the arrow-testing repo has a lot of content that requires escaping
-        // in this way (\uXXXX).
+      } else if (c >= 0 && c < 32) {
+        // Control characters need to be escaped with a \uXXXX escape
         uint16_t utf16_bytes = static_cast<uint16_t>(c);
 
         char utf16_esc[7];
