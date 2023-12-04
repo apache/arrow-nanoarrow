@@ -225,6 +225,7 @@ int DoMain(const ArgumentParser& args, ArrowError* error) {
   if (args.has_kwarg("to")) {
     if (args.kwarg("to").second != "-") {
       std::cerr << "--to output is only supported to stdout ('-')\n";
+      print_help();
       return EINVAL;
     }
 
@@ -235,6 +236,7 @@ int DoMain(const ArgumentParser& args, ArrowError* error) {
         args.kwarg("check").first, args.kwarg("check").second, stream.get(), error));
   } else {
     std::cerr << "One of --check or --to must be specified";
+    print_help();
     return EINVAL;
   }
 
