@@ -21,6 +21,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <stdlib.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -113,6 +115,35 @@ struct ArrowArrayStream {
 
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
+
+static void nanoarrow_finalize_schema_xptr(SEXP schema_xptr) {
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  if (schema != NULL && schema->release != NULL) {
+    schema->release(schema);
+  }
+
+  if (schema != NULL) {
+    free(schema);
+  }
+}
+
+// Create an external pointer with the proper class and that will release any
+// non-null, non-released pointer when garbage collected.
+static inline SEXP nanoarrow_schema_owning_xptr(void) {
+  struct ArrowSchema* schema = (struct ArrowSchema*)malloc(sizeof(struct ArrowSchema));
+  if (schema == NULL) {
+    Rf_error("Failed to allocate ArrowSchema");
+  }
+
+  schema->release = NULL;
+
+  SEXP schema_xptr = PROTECT(R_MakeExternalPtr(schema, R_NilValue, R_NilValue));
+  SEXP schema_cls = PROTECT(Rf_mkString("nanoarrow_schema"));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, schema_cls);
+  R_RegisterCFinalizer(schema_xptr, &nanoarrow_finalize_schema_xptr);
+  UNPROTECT(2);
+  return schema_xptr;
+}
 
 // Returns the underlying struct ArrowSchema* from an external pointer,
 // checking and erroring for invalid objects, pointers, and arrays.

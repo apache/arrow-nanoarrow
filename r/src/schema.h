@@ -25,8 +25,6 @@
 #include "nanoarrow.h"
 #include "util.h"
 
-void finalize_schema_xptr(SEXP schema_xptr);
-
 // Returns an external pointer to a schema child. The returned pointer will keep its
 // parent alive: this is typically what you want when printing or performing a conversion,
 // where the borrowed external pointer is ephemeral.
@@ -41,24 +39,6 @@ static inline struct ArrowSchema* nullable_schema_from_xptr(SEXP schema_xptr) {
   } else {
     return nanoarrow_schema_from_xptr(schema_xptr);
   }
-}
-
-// Create an external pointer with the proper class and that will release any
-// non-null, non-released pointer when garbage collected.
-static inline SEXP schema_owning_xptr(void) {
-  struct ArrowSchema* schema =
-      (struct ArrowSchema*)ArrowMalloc(sizeof(struct ArrowSchema));
-  if (schema == NULL) {
-    Rf_error("Failed to allocate ArrowSchema");
-  }
-
-  schema->release = NULL;
-
-  SEXP schema_xptr = PROTECT(R_MakeExternalPtr(schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
-  R_RegisterCFinalizer(schema_xptr, &finalize_schema_xptr);
-  UNPROTECT(1);
-  return schema_xptr;
 }
 
 static inline void schema_export(SEXP schema_xptr, struct ArrowSchema* schema_copy) {

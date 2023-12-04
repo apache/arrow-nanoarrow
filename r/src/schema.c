@@ -23,20 +23,9 @@
 #include "schema.h"
 #include "util.h"
 
-void finalize_schema_xptr(SEXP schema_xptr) {
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
-  if (schema != NULL && schema->release != NULL) {
-    schema->release(schema);
-  }
-
-  if (schema != NULL) {
-    ArrowFree(schema);
-  }
-}
-
 SEXP nanoarrow_c_schema_init(SEXP type_id_sexp, SEXP nullable_sexp) {
   int type_id = INTEGER(type_id_sexp)[0];
-  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+  SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   int result = ArrowSchemaInitFromType(schema, type_id);
@@ -69,7 +58,7 @@ SEXP nanoarrow_c_schema_init_date_time(SEXP type_id_sexp, SEXP time_unit_sexp,
     timezone = NULL;
   }
 
-  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+  SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   ArrowSchemaInit(schema);
@@ -97,7 +86,7 @@ SEXP nanoarrow_c_schema_init_decimal(SEXP type_id_sexp, SEXP precision_sexp,
   int precision = INTEGER(precision_sexp)[0];
   int scale = INTEGER(scale_sexp)[0];
 
-  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+  SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   ArrowSchemaInit(schema);
@@ -124,7 +113,7 @@ SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp,
   int type_id = INTEGER(type_id_sexp)[0];
   int fixed_size = INTEGER(fixed_size_sexp)[0];
 
-  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+  SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   ArrowSchemaInit(schema);

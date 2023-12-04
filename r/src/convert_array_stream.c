@@ -32,7 +32,7 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
   double size = REAL(size_sexp)[0];
   double n = REAL(n_sexp)[0];
 
-  SEXP schema_xptr = PROTECT(schema_owning_xptr());
+  SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   int result = ArrowArrayStreamGetSchema(array_stream, schema, NULL);
   if (result != NANOARROW_OK) {
