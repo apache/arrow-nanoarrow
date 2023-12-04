@@ -15,9 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-set -e
-set -o pipefail
-
 if [ ${VERBOSE:-0} -gt 0 ]; then
   set -x
 fi
@@ -28,10 +25,25 @@ if [ -z "$NANOARROW_ARROW_TESTING_DIR" ]; then
 fi
 
 INTEGRATION_1_0_0="${NANOARROW_ARROW_TESTING_DIR}/data/arrow-ipc-stream/integration/1.0.0-littleendian"
+JSON_GZ_FILES=$(find "${INTEGRATION_1_0_0}" -name "*.json.gz")
+N_FAIL=0
 
-for f in generated_primitive ; do
-  gzip --decompress -c "${INTEGRATION_1_0_0}/${f}.json.gz" | \
+for json_gz_file in ${JSON_GZ_FILES} ; do
+  ipc_file=$(echo "${json_gz_file}" | sed -e s/.json.gz/.stream/)
+  json_gz_label=$(basename ${json_gz_file})
+  ipc_label=$(basename ${ipc_file})
+
+  gzip --decompress -c "${json_gz_file}" | \
     ./integration_test_util \
-      --from ipc "${INTEGRATION_1_0_0}/${f}.stream" \
+      --from ipc "${ipc_file}" \
       --check json -
+
+  if [ $? -eq 0 ]; then
+    echo "[v] ${json_gz_label} --check ${ipc_label}"
+  else
+    echo "[X] ${json_gz_label} --check ${ipc_label}"
+    N_FAIL=$((N_FAIL+1))
+  fi
 done
+
+exit $N_FAIL

@@ -29,7 +29,7 @@ void print_help() {
   std::cerr << "nanoarrow version " << ArrowNanoarrowVersion() << "\n";
   std::cerr << "  Usage: integration_test_util convert\n";
   std::cerr << "           --from [json|ipc] [file or -]\n";
-  std::cerr << "           [--to [json] [-] [--check [json|ipc] [file or -]]]\n";
+  std::cerr << "           [--to [json] [-]] OR [--check [json|ipc] [file or -]]]\n";
 }
 
 class ArgumentParser {
