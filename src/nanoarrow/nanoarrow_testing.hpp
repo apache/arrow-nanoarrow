@@ -187,6 +187,33 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
+  /// \brief Write the metadata portion of a field
+  ///
+  /// Creates output like `[{"key": "...", "value": "..."}, ...]`.
+  ArrowErrorCode WriteMetadata(std::ostream& out, const char* metadata) {
+    if (metadata == nullptr) {
+      out << "null";
+      return NANOARROW_OK;
+    }
+
+    ArrowMetadataReader reader;
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
+    if (reader.remaining_keys == 0) {
+      out << "[]";
+      return NANOARROW_OK;
+    }
+
+    out << "[";
+    NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+    while (reader.remaining_keys > 0) {
+      out << ", ";
+      NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+    }
+
+    out << "]";
+    return NANOARROW_OK;
+  }
+
   /// \brief Write a "batch" to out
   ///
   /// Creates output like `{"count": 123, "columns": [...]}`.
@@ -405,25 +432,6 @@ class TestingJSONWriter {
     }
 
     out << "}";
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode WriteMetadata(std::ostream& out, const char* metadata) {
-    ArrowMetadataReader reader;
-    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
-    if (reader.remaining_keys == 0) {
-      out << "[]";
-      return NANOARROW_OK;
-    }
-
-    out << "[";
-    NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
-    while (reader.remaining_keys > 0) {
-      out << ", ";
-      NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
-    }
-
-    out << "]";
     return NANOARROW_OK;
   }
 
@@ -1717,17 +1725,60 @@ class TestingJSONComparison {
 
   ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
                                ArrowError* error) {
-    std::stringstream ss;
+    // Compare the top-level schema "manually" because (1) map type needs special-cased
+    // comparison and (2) it's easier to read the output if differences are separated
+    // by field.
+    differences_.clear();
 
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, expected), error);
-    std::string expected_json = ss.str();
+    ArrowSchemaView actual_view;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaViewInit(&actual_view, actual, nullptr),
+                                       error);
+
+    ArrowSchemaView expected_view;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaViewInit(&expected_view, expected, nullptr), error);
+
+    if (actual_view.type != NANOARROW_TYPE_STRUCT ||
+        expected_view.type != NANOARROW_TYPE_STRUCT) {
+      ArrowErrorSet(error, "Top-level schema must be struct");
+      return EINVAL;
+    }
+
+    // (Purposefully ignore the name field at the top level)
+
+    // Compare flags
+    if (actual->flags != expected->flags) {
+      differences_.push_back({"", std::string("flags: ") + std::to_string(actual->flags),
+                              std::string("flags: ") + std::to_string(expected->flags)});
+    }
+
+    // Compare children
+    if (actual->n_children != expected->n_children) {
+      differences_.push_back(
+          {"", std::string("n_children: ") + std::to_string(actual->n_children),
+           std::string("n_children: ") + std::to_string(expected->n_children)});
+    } else {
+      for (int64_t i = 0; i < expected->n_children; i++) {
+        NANOARROW_RETURN_NOT_OK(
+            CompareField(actual->children[i], expected->children[i], error,
+                         std::string("[") + std::to_string(i) + std::string("]")));
+      }
+    }
+
+    // Compare metadata
+    std::stringstream ss;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteMetadata(ss, actual->metadata),
+                                       error);
+    std::string actual_metadata = ss.str();
 
     ss.str("");
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, actual), error);
-    std::string actual_json = ss.str();
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteMetadata(ss, expected->metadata),
+                                       error);
+    std::string expected_metadata = ss.str();
 
-    if (actual_json != expected_json) {
-      differences_.push_back({"", actual_json, expected_json});
+    if (actual_metadata != expected_metadata) {
+      differences_.push_back({"", std::string("metadata: ") + actual_metadata,
+                              std::string("metadata: ") + expected_metadata});
     }
 
     return NANOARROW_OK;
@@ -1789,6 +1840,24 @@ class TestingJSONComparison {
   }
 
  private:
+  ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
+                              ArrowError* error, const std::string& path = "") {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, expected), error);
+    std::string expected_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, actual), error);
+    std::string actual_json = ss.str();
+
+    if (actual_json != expected_json) {
+      differences_.push_back({path, actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
   ArrowErrorCode CompareColumn(ArrowSchema* schema, ArrowArrayView* actual,
                                ArrowArrayView* expected, ArrowError* error,
                                const std::string& path = "") {
