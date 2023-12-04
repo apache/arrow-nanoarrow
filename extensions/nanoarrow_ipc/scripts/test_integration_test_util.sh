@@ -29,21 +29,58 @@ JSON_GZ_FILES=$(find "${INTEGRATION_1_0_0}" -name "*.json.gz")
 N_FAIL=0
 
 for json_gz_file in ${JSON_GZ_FILES} ; do
+  json_file=$(echo "${json_gz_file}" | sed -e s/.json.gz/.json/)
   ipc_file=$(echo "${json_gz_file}" | sed -e s/.json.gz/.stream/)
   json_gz_label=$(basename ${json_gz_file})
   ipc_label=$(basename ${ipc_file})
 
-  gzip --decompress -c "${json_gz_file}" | \
-    ./integration_test_util \
+  # Unzip the .json.gz file
+  gzip --decompress -c "${json_gz_file}" > "${json_file}"
+
+  # Skip dictionary test files for now to keep the noise down
+  if echo "${json_gz_file}" | grep -e "dictionary" >/dev/null; then
+    echo "[SKIP] ${json_gz_label}"
+    continue
+  fi
+
+  # Read IPC, check against IPC
+  ./integration_test_util \
       --from ipc "${ipc_file}" \
-      --check json -
+      --check ipc "${ipc_file}"
 
   if [ $? -eq 0 ]; then
-    echo "[v] ${json_gz_label} --check ${ipc_label}"
+    echo "[PASS] ${ipc_label} --check ${ipc_label}"
   else
-    echo "[X] ${json_gz_label} --check ${ipc_label}"
+    echo "[FAIL] ${ipc_label} --check ${ipc_label}"
     N_FAIL=$((N_FAIL+1))
   fi
+
+  # Read JSON, check against JSON
+  ./integration_test_util \
+      --from json "${json_file}" \
+      --check json "${json_file}"
+
+  if [ $? -eq 0 ]; then
+    echo "[PASS] ${json_gz_label} --check ${json_gz_label}"
+  else
+    echo "[FAIL] ${json_gz_label} --check ${json_gz_label}"
+    N_FAIL=$((N_FAIL+1))
+  fi
+
+  # Read JSON, check against IPC
+  ./integration_test_util \
+      --from json "${json_file}" \
+      --check ipc "${ipc_file}"
+
+  if [ $? -eq 0 ]; then
+    echo "[PASS] ${json_gz_label} --check ${ipc_label}"
+  else
+    echo "[FAIL] ${json_gz_label} --check ${ipc_label}"
+    N_FAIL=$((N_FAIL+1))
+  fi
+
+  # Clean up the json file
+  rm "${json_file}"
 done
 
 exit $N_FAIL

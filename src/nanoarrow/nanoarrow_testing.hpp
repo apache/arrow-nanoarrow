@@ -1796,7 +1796,7 @@ class TestingJSONComparison {
     std::string actual_json = ss.str();
 
     if (actual_json != expected_json) {
-      differences_.push_back({"", actual_json, expected_json});
+      differences_.push_back({path, actual_json, expected_json});
     }
 
     return NANOARROW_OK;

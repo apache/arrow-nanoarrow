@@ -29,7 +29,7 @@ void print_help() {
   std::cerr << "nanoarrow version " << ArrowNanoarrowVersion() << "\n";
   std::cerr << "  Usage: integration_test_util convert\n";
   std::cerr << "           --from [json|ipc] [file or -]\n";
-  std::cerr << "           [--to [json] [-]] OR [--check [json|ipc] [file or -]]]\n";
+  std::cerr << "           [[--to [json] [-]] OR [--check [json|ipc] [file or -]]]\n";
 }
 
 class ArgumentParser {
@@ -83,14 +83,15 @@ class ArgumentParser {
     return NANOARROW_OK;
   }
 
-  bool has_kwarg(const std::string& key) { return kwargs_.find(key) != kwargs_.end(); }
+  bool has_kwarg(const std::string& key) const {
+    return kwargs_.find(key) != kwargs_.end();
+  }
 
-  const std::pair<std::string, std::string>& kwarg(const std::string& key) {
-    return kwargs_[key];
+  const std::pair<std::string, std::string>& kwarg(const std::string& key) const {
+    return kwargs_.find(key)->second;
   }
 
  private:
-  std::string action_;
   std::unordered_map<std::string, std::pair<std::string, std::string>> kwargs_;
 };
 
@@ -213,10 +214,7 @@ ArrowErrorCode CheckArrayStream(const std::string& format, const std::string& re
   return NANOARROW_OK;
 }
 
-int DoMain(int argc, char* argv[], ArrowError* error) {
-  ArgumentParser args;
-  NANOARROW_RETURN_NOT_OK(args.parse(argc, argv));
-
+int DoMain(const ArgumentParser& args, ArrowError* error) {
   nanoarrow::ipc::UniqueInputStream from;
   NANOARROW_RETURN_NOT_OK(Open(args.kwarg("from").second, from.get(), error));
 
@@ -247,10 +245,16 @@ int main(int argc, char* argv[]) {
   ArrowError error;
   error.message[0] = '\0';
 
-  int result = DoMain(argc, argv, &error);
+  ArgumentParser args;
+  int result = args.parse(argc, argv);
+  if (result != NANOARROW_OK) {
+    print_help();
+    return result;
+  }
+
+  result = DoMain(args, &error);
   if (result != NANOARROW_OK) {
     std::cerr << error.message << "\n";
-    print_help();
     return result;
   }
 
