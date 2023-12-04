@@ -279,6 +279,7 @@ class TestingJSONWriter {
       case NANOARROW_TYPE_LIST:
       case NANOARROW_TYPE_LARGE_LIST:
       case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      case NANOARROW_TYPE_MAP:
       case NANOARROW_TYPE_DENSE_UNION:
       case NANOARROW_TYPE_SPARSE_UNION:
         break;
