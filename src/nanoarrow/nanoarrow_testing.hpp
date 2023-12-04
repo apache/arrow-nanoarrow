@@ -1714,14 +1714,44 @@ class TestingJSONReader {
   }
 };
 
+/// \brief Integration testing comparison utility
+///
+/// Utility to compare ArrowSchema, ArrowArray, and ArrowArrayStream instances.
+/// This should only be used in the context of integration testing as the
+/// comparison logic is specific to the integration testing JSON files and
+/// specification. Notably:
+///
+/// - Map types are considered equal regardless of the child names "entries",
+///   "key", and "value".
+/// - Float32 and Float64 values are only compared to 3 decimal places.
 class TestingJSONComparison {
- public:
+ private:
+  // Internal representation of a human-readable inequality
   struct Difference {
     std::string path;
     std::string actual;
     std::string expected;
   };
 
+ public:
+  /// \brief Returns the number of differences found by the previous call
+  size_t num_differences() const { return differences_.size(); }
+
+  /// \brief Dump a human-readable summary of differences to out
+  void WriteDifferences(std::ostream& out) {
+    for (const auto& difference : differences_) {
+      out << "Path: " << difference.path << "\n";
+      out << "- " << difference.actual << "\n";
+      out << "+ " << difference.expected << "\n";
+      out << "\n";
+    }
+  }
+
+  /// \brief Compare a top-level ArrowSchema struct
+  ///
+  /// Returns NANOARROW_OK if the comparison ran without error. Callers must
+  /// query num_differences() to obtain the result of the comparison on success.
+  /// Calling this method clears all previous differences.
   ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
                                ArrowError* error) {
     // Compare the top-level schema "manually" because (1) map type needs special-cased
@@ -1783,19 +1813,10 @@ class TestingJSONComparison {
     return NANOARROW_OK;
   }
 
-  size_t num_differences() const { return differences_.size(); }
-
-  void WriteDifferences(std::ostream& out) {
-    for (const auto& difference : differences_) {
-      out << "Path: " << difference.path << "\n";
-      out << "- " << difference.actual << "\n";
-      out << "+ " << difference.expected << "\n";
-      out << "\n";
-    }
-  }
-
+  /// \brief Set the ArrowSchema to be used to for future calls to CompareBatch().
+  ///
+  /// Takes ownership of schema.
   ArrowErrorCode SetSchema(ArrowSchema* schema, ArrowError* error) {
-    differences_.clear();
     schema_.reset(schema);
     actual_.reset();
     expected_.reset();
@@ -1805,17 +1826,22 @@ class TestingJSONComparison {
     NANOARROW_RETURN_NOT_OK(
         ArrowArrayViewInitFromSchema(expected_.get(), schema_.get(), error));
 
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode CompareBatch(const ArrowArray* actual, const ArrowArray* expected,
-                              ArrowError* error) {
-    if (expected_->storage_type != NANOARROW_TYPE_STRUCT) {
-      ArrowErrorSet(error, "Can't CompareBatch() for non-struct schema got %d",
-                    (int)expected_->storage_type);
+    if (actual_->storage_type != NANOARROW_TYPE_STRUCT) {
+      ArrowErrorSet(error, "Can't SetSchema() with non-struct");
       return EINVAL;
     }
 
+    return NANOARROW_OK;
+  }
+
+  /// \brief Compare a top-level ArrowArray struct
+  ///
+  /// Returns NANOARROW_OK if the comparison ran without error. Callers must
+  /// query num_differences() to obtain the result of the comparison on success.
+  /// Calling this method clears all previous differences.
+  ArrowErrorCode CompareBatch(const ArrowArray* actual, const ArrowArray* expected,
+                              ArrowError* error) {
+    differences_.clear();
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(expected_.get(), expected, error));
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(actual_.get(), actual, error));
 
