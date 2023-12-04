@@ -156,62 +156,15 @@ ArrowErrorCode CheckArrayStream(const std::string& format, const std::string& re
   nanoarrow::UniqueArrayStream expected;
   NANOARROW_RETURN_NOT_OK(GetArrayStream(format, check.get(), expected.get(), error));
 
-  nanoarrow::UniqueSchema actual_schema;
-  nanoarrow::UniqueSchema expected_schema;
-
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_schema(actual, actual_schema.get()),
-                                     error);
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      expected->get_schema(expected.get(), expected_schema.get()), error);
-
   nanoarrow::testing::TestingJSONComparison comparison;
-  NANOARROW_RETURN_NOT_OK(
-      comparison.CompareSchema(expected_schema.get(), actual_schema.get(), error));
+  NANOARROW_RETURN_NOT_OK(comparison.CompareArrayStream(actual, expected.get(), error));
+
   if (comparison.num_differences() > 0) {
     std::cerr << comparison.num_differences()
-              << " Difference(s) found between actual Schema and expected Schema:\n";
+              << " Difference(s) found between --from and --check:\n";
     comparison.WriteDifferences(std::cerr);
     return EINVAL;
   }
-
-  NANOARROW_RETURN_NOT_OK(comparison.SetSchema(expected_schema.get(), error));
-
-  int64_t n_batches = -1;
-  nanoarrow::UniqueArray actual_array;
-  nanoarrow::UniqueArray expected_array;
-  do {
-    n_batches++;
-    actual_array.reset();
-    expected_array.reset();
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_next(actual, actual_array.get()),
-                                       error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        expected->get_next(expected.get(), expected_array.get()), error);
-
-    if (actual_array->release == nullptr && expected_array->release != nullptr) {
-      std::cerr << "Actual stream finished; expected stream is not finished\n";
-      return EINVAL;
-    }
-
-    if (actual_array->release != nullptr && expected_array->release == nullptr) {
-      std::cerr << "Expected stream finished; actual stream is not finished\n";
-      return EINVAL;
-    }
-
-    if (actual_array->release == nullptr) {
-      break;
-    }
-
-    NANOARROW_RETURN_NOT_OK(
-        comparison.CompareBatch(actual_array.get(), expected_array.get(), error));
-    if (comparison.num_differences() > 0) {
-      std::cerr << comparison.num_differences()
-                << " Difference(s) found between actual Batch " << n_batches
-                << " and expected Batch " << n_batches << ":\n";
-      comparison.WriteDifferences(std::cerr);
-      return EINVAL;
-    }
-  } while (true);
 
   return NANOARROW_OK;
 }
