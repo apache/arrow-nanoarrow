@@ -1095,19 +1095,24 @@ class TestingJSONReader {
 
   ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value,
                                 ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(Check(value.contains("bitWidth"), error,
-                                  "Type[name=='decimal'] missing key 'bitWidth'"));
     NANOARROW_RETURN_NOT_OK(Check(value.contains("precision"), error,
                                   "Type[name=='decimal'] missing key 'precision'"));
     NANOARROW_RETURN_NOT_OK(Check(value.contains("scale"), error,
                                   "Type[name=='decimal'] missing key 'scale'"));
 
-    const auto& bitWidth = value["bitWidth"];
-    NANOARROW_RETURN_NOT_OK(Check(bitWidth.is_number_integer(), error,
-                                  "Type[name=='decimal'] bitWidth must be integer"));
+    // Some test files omit bitWidth for decimal128
+    int bit_width_int;
+    if (value.contains("bitWidth")) {
+      const auto& bit_width = value["bitWidth"];
+      NANOARROW_RETURN_NOT_OK(Check(bit_width.is_number_integer(), error,
+                                    "Type[name=='decimal'] bitWidth must be integer"));
+      bit_width_int = bit_width.get<int>();
+    } else {
+      bit_width_int = 128;
+    }
 
     ArrowType type;
-    switch (bitWidth.get<int>()) {
+    switch (bit_width_int) {
       case 128:
         type = NANOARROW_TYPE_DECIMAL128;
         break;
