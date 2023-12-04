@@ -15,8 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_NANOARROW_H_INCLUDED
-#define R_NANOARROW_H_INCLUDED
+#ifndef NANOARROW_R_H_INCLUDED
+#define NANOARROW_R_H_INCLUDED
+
+#include <R.h>
+#include <Rinternals.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,6 +113,25 @@ struct ArrowArrayStream {
 
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
+
+// Returns the underlying struct ArrowSchema* from an external pointer,
+// checking and erroring for invalid objects, pointers, and arrays.
+static inline struct ArrowSchema* nanoarrow_schema_from_xptr(SEXP schema_xptr) {
+  if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
+    Rf_error("`schema` argument that does not inherit from 'nanoarrow_schema'");
+  }
+
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  if (schema == NULL) {
+    Rf_error("nanoarrow_schema() is an external pointer to NULL");
+  }
+
+  if (schema->release == NULL) {
+    Rf_error("nanoarrow_schema() has already been released");
+  }
+
+  return schema;
+}
 
 #ifdef __cplusplus
 }

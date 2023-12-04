@@ -70,7 +70,7 @@ enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
 
 // The same as the above, but from a nanoarrow_schema()
 enum VectorType nanoarrow_infer_vector_type_schema(SEXP schema_xptr) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
@@ -104,7 +104,7 @@ static SEXP call_infer_ptype_other(SEXP schema_xptr) {
 SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 
 static SEXP infer_ptype_data_frame(SEXP schema_xptr) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
   SEXP result = PROTECT(Rf_allocVector(VECSXP, schema->n_children));
   SEXP result_names = PROTECT(Rf_allocVector(STRSXP, schema->n_children));
 

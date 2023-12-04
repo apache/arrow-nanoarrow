@@ -204,7 +204,7 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
 // keep all the object dependencies alive and/or risk moving a dependency
 // of some other R object.
 SEXP nanoarrow_c_export_schema(SEXP schema_xptr, SEXP ptr_dst) {
-  struct ArrowSchema* obj_src = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* obj_src = nanoarrow_schema_from_xptr(schema_xptr);
   SEXP xptr_dst = PROTECT(nanoarrow_c_pointer(ptr_dst));
 
   struct ArrowSchema* obj_dst = (struct ArrowSchema*)R_ExternalPtrAddr(xptr_dst);

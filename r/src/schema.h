@@ -23,6 +23,7 @@
 
 #include "nanoarrow.h"
 #include "util.h"
+#include <nanoarrow/r.h>
 
 void finalize_schema_xptr(SEXP schema_xptr);
 
@@ -32,32 +33,13 @@ void finalize_schema_xptr(SEXP schema_xptr);
 SEXP borrow_schema_child_xptr(SEXP schema_xptr, int64_t i);
 
 // Returns the underlying struct ArrowSchema* from an external pointer,
-// checking and erroring for invalid objects, pointers, and arrays.
-static inline struct ArrowSchema* schema_from_xptr(SEXP schema_xptr) {
-  if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
-    Rf_error("`schema` argument that does not inherit from 'nanoarrow_schema'");
-  }
-
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
-  if (schema == NULL) {
-    Rf_error("nanoarrow_schema() is an external pointer to NULL");
-  }
-
-  if (schema->release == NULL) {
-    Rf_error("nanoarrow_schema() has already been released");
-  }
-
-  return schema;
-}
-
-// Returns the underlying struct ArrowSchema* from an external pointer,
 // checking and erroring for invalid objects, pointers, and arrays, but
 // allowing for R_NilValue to signify a NULL return.
 static inline struct ArrowSchema* nullable_schema_from_xptr(SEXP schema_xptr) {
   if (schema_xptr == R_NilValue) {
     return NULL;
   } else {
-    return schema_from_xptr(schema_xptr);
+    return nanoarrow_schema_from_xptr(schema_xptr);
   }
 }
 
@@ -80,7 +62,7 @@ static inline SEXP schema_owning_xptr(void) {
 }
 
 static inline void schema_export(SEXP schema_xptr, struct ArrowSchema* schema_copy) {
-  int result = ArrowSchemaDeepCopy(schema_from_xptr(schema_xptr), schema_copy);
+  int result = ArrowSchemaDeepCopy(nanoarrow_schema_from_xptr(schema_xptr), schema_copy);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowSchemaDeepCopy() failed");
   }

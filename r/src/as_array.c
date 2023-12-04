@@ -380,7 +380,7 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
 static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                                 struct ArrowSchemaView* schema_view,
                                 struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   switch (schema_view->type) {
     case NANOARROW_TYPE_SPARSE_UNION:
@@ -504,7 +504,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
 
 static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                              struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   struct ArrowSchemaView schema_view;
   int result = ArrowSchemaViewInit(&schema_view, schema, error);

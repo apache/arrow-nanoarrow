@@ -174,7 +174,7 @@ static void set_converter_list_of(SEXP converter_xptr, struct RConverter* conver
 static int set_converter_children_schema(SEXP converter_xptr, SEXP schema_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   if (schema->n_children != converter->n_children) {
     ArrowErrorSet(&converter->error,
@@ -286,7 +286,7 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
 int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
   NANOARROW_RETURN_NOT_OK(
       ArrowSchemaViewInit(&converter->schema_view, schema, &converter->error));
 

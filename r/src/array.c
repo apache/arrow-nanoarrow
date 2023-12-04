@@ -39,7 +39,7 @@ void finalize_array_xptr(SEXP array_xptr) {
 }
 
 SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
   SEXP array_xptr = PROTECT(array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
 
@@ -266,7 +266,7 @@ SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) 
   // This operation will invalidate array_xptr (but this is OK since we very
   // specifically just allocated it).
   struct ArrowArray* array = array_from_xptr(array_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
   struct ArrowError error;
 
   // Even though array was initialized using ArrowArrayInit(), it doesn't have
@@ -305,7 +305,7 @@ SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP valida
   if (validate) {
     // If adding a schema, validate the schema and the pair
     struct ArrowArray* array = array_from_xptr(array_xptr);
-    struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+    struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
     struct ArrowArrayView array_view;
     struct ArrowError error;
