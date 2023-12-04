@@ -21,9 +21,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <nanoarrow/r.h>
 #include "nanoarrow.h"
 #include "util.h"
-#include <nanoarrow/r.h>
 
 void finalize_schema_xptr(SEXP schema_xptr);
 
