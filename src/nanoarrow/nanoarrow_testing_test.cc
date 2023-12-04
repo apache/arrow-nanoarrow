@@ -317,7 +317,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchema) {
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteSchemaJSON,
-      R"({"fields": [], "metadata": null})");
+      R"({"fields": []})");
 
   // More than zero fields
   TestWriteJSON(
@@ -332,9 +332,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchema) {
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteSchemaJSON,
       R"({"fields": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
-      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
-      R"("metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": []}]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
@@ -344,7 +343,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})");
 
   TestWriteJSON(
       [](ArrowSchema* schema) {
@@ -353,7 +352,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
-      R"({"name": null, "nullable": false, "type": {"name": "null"}, "children": [], "metadata": null})");
+      R"({"name": null, "nullable": false, "type": {"name": "null"}, "children": []})");
 
   TestWriteJSON(
       [](ArrowSchema* schema) {
@@ -362,7 +361,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
         return NANOARROW_OK;
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
-      R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})");
+      R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": []})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
@@ -409,9 +408,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNested) {
       },
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
       R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
-      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
-      R"("metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": []}]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestTypePrimitive) {
@@ -642,7 +640,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadSchema) {
   ASSERT_EQ(
       reader.ReadSchema(
           R"({"fields": [)"
-          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}], )"
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []}], )"
           R"("metadata": null})",
           schema.get()),
       NANOARROW_OK);
@@ -663,7 +661,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
 
   ASSERT_EQ(
       reader.ReadField(
-          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})",
           schema.get()),
       NANOARROW_OK);
   EXPECT_STREQ(schema->format, "n");
@@ -676,7 +674,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
   schema.reset();
   ASSERT_EQ(
       reader.ReadField(
-          R"({"name": null, "nullable": false, "type": {"name": "null"}, "children": [], "metadata": null})",
+          R"({"name": null, "nullable": false, "type": {"name": "null"}, "children": []})",
           schema.get()),
       NANOARROW_OK);
   EXPECT_FALSE(schema->flags & ARROW_FLAG_NULLABLE);
@@ -685,7 +683,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
   schema.reset();
   ASSERT_EQ(
       reader.ReadField(
-          R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
+          R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": []})",
           schema.get()),
       NANOARROW_OK);
   EXPECT_STREQ(schema->name, "colname");
@@ -699,7 +697,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldBasic) {
   // Check that field is validated
   EXPECT_EQ(
       reader.ReadField(
-          R"({"name": null, "nullable": true, "type": {"name": "fixedsizebinary", "byteWidth": -1}, "children": [], "metadata": null})",
+          R"({"name": null, "nullable": true, "type": {"name": "fixedsizebinary", "byteWidth": -1}, "children": []})",
           schema.get()),
       EINVAL);
 }
@@ -738,7 +736,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   ASSERT_EQ(
       reader.ReadField(
           R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
-          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}], )"
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []}], )"
           R"("metadata": null})",
           schema.get()),
       NANOARROW_OK);
@@ -754,9 +752,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
 
   std::string data_file_json =
       R"({"schema": {"fields": [)"
-      R"({"name": "col1", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
-      R"({"name": "col2", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null}], )"
-      R"("metadata": null})"
+      R"({"name": "col1", "nullable": true, "type": {"name": "null"}, "children": []}, )"
+      R"({"name": "col2", "nullable": true, "type": {"name": "utf8"}, "children": []}]})"
       R"(, "batches": [)"
       R"({"count": 1, "columns": [)"
       R"({"name": "col1", "count": 1}, )"
@@ -779,8 +776,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
   data_file_json_roundtrip.str("");
 
   // Check with zero batches
-  std::string data_file_json_empty =
-      R"({"schema": {"fields": [], "metadata": null}, "batches": []})";
+  std::string data_file_json_empty = R"({"schema": {"fields": []}, "batches": []})";
   ASSERT_EQ(reader.ReadDataFile(data_file_json_empty, stream.get(), &error), NANOARROW_OK)
       << error.message;
   ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
@@ -830,7 +826,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadColumnBasic) {
 
   ASSERT_EQ(
       reader.ReadField(
-          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})",
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})",
           schema.get()),
       NANOARROW_OK);
 
@@ -899,7 +895,7 @@ void TestTypeRoundtrip(const std::string& type_json,
                        const std::string& column_json = "") {
   std::stringstream field_json_builder;
   field_json_builder << R"({"name": null, "nullable": true, "type": )" << type_json
-                     << R"(, "children": [], "metadata": null})";
+                     << R"(, "children": []})";
   TestFieldRoundtrip(field_json_builder.str(), column_json);
 }
 
@@ -918,7 +914,7 @@ void TestTypeError(const std::string& type_json, const std::string& msg,
                    int code = EINVAL) {
   std::stringstream field_json_builder;
   field_json_builder << R"({"name": null, "nullable": true, "type": )" << type_json
-                     << R"(, "children": [], "metadata": null})";
+                     << R"(, "children": []})";
   TestFieldError(field_json_builder.str(), msg, code);
 }
 
@@ -1021,84 +1017,84 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "map", "keysSorted": true}, "children": [)"
       R"({"name": "entries", "nullable": false, "type": {"name": "struct"}, "children": [)"
-      R"({"name": null, "nullable": false, "type": {"name": "utf8"}, "children": [], "metadata": null}, )"
-      R"({"name": null, "nullable": true, "type": {"name": "bool"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": null, "nullable": false, "type": {"name": "utf8"}, "children": []}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "bool"}, "children": []})"
+      R"(]})"
+      R"(]})");
 
   // Unsorted keys
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "map", "keysSorted": false}, "children": [)"
       R"({"name": "entries", "nullable": false, "type": {"name": "struct"}, "children": [)"
-      R"({"name": null, "nullable": false, "type": {"name": "utf8"}, "children": [], "metadata": null}, )"
-      R"({"name": null, "nullable": true, "type": {"name": "bool"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": null, "nullable": false, "type": {"name": "utf8"}, "children": []}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "bool"}, "children": []})"
+      R"(]})"
+      R"(]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldStruct) {
   // Empty
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
-      R"(], "metadata": null})",
+      R"(]})",
       R"({"name": null, "count": 0, "VALIDITY": [], "children": []})");
 
   // Non-empty
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "struct"}, "children": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
+      R"(]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldList) {
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "list"}, "children": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
+      R"(]})");
 
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "largelist"}, "children": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
+      R"(]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeList) {
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "fixedsizelist", "listSize": 12}, "children": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
+      R"(]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
   // Empty unions
   TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": []}, "children": [], "metadata": null})",
+      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": []}, "children": []})",
       R"({"name": null, "count": 0, "TYPE_ID": [], "OFFSET": [], "children": []})");
   TestFieldRoundtrip(
-      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "SPARSE", "typeIds": []}, "children": [], "metadata": null})",
+      R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "SPARSE", "typeIds": []}, "children": []})",
       R"({"name": null, "count": 0, "TYPE_ID": [], "children": []})");
 
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": [10,20]}, "children": [)"
-      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
-      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})");
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, "children": []})"
+      R"(]})");
 
   // Non-empty unions (null, "abc")
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "SPARSE", "typeIds": [10,20]}, "children": [)"
-      R"({"name": "nulls", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
-      R"({"name": "strings", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})",
+      R"({"name": "nulls", "nullable": true, "type": {"name": "null"}, "children": []}, )"
+      R"({"name": "strings", "nullable": true, "type": {"name": "utf8"}, "children": []})"
+      R"(]})",
       R"({"name": null, "count": 2, "TYPE_ID": [20, 10], "children": [)"
       R"({"name": "nulls", "count": 2}, )"
       R"({"name": "strings", "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 3], "DATA": ["abc", ""]})"
       R"(]})");
   TestFieldRoundtrip(
       R"({"name": null, "nullable": true, "type": {"name": "union", "mode": "DENSE", "typeIds": [10,20]}, "children": [)"
-      R"({"name": "nulls", "nullable": true, "type": {"name": "null"}, "children": [], "metadata": null}, )"
-      R"({"name": "strings", "nullable": true, "type": {"name": "utf8"}, "children": [], "metadata": null})"
-      R"(], "metadata": null})",
+      R"({"name": "nulls", "nullable": true, "type": {"name": "null"}, "children": []}, )"
+      R"({"name": "strings", "nullable": true, "type": {"name": "utf8"}, "children": []})"
+      R"(]})",
       R"({"name": null, "count": 2, "TYPE_ID": [20, 10], "OFFSET": [0, 0], "children": [)"
       R"({"name": "nulls", "count": 1}, )"
       R"({"name": "strings", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]})"

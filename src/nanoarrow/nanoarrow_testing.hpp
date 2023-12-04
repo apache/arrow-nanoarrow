@@ -114,8 +114,10 @@ class TestingJSONWriter {
     }
 
     // Write metadata
-    out << R"(, "metadata": )";
-    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
+    if (schema->metadata != nullptr) {
+      out << R"(, "metadata": )";
+      NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
+    }
 
     out << "}";
     return NANOARROW_OK;
@@ -166,8 +168,10 @@ class TestingJSONWriter {
     // TODO: Dictionary (currently fails at WriteType)
 
     // Write metadata
-    out << R"(, "metadata": )";
-    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
+    if (field->metadata != nullptr) {
+      out << R"(, "metadata": )";
+      NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
+    }
 
     out << "}";
     return NANOARROW_OK;
@@ -404,11 +408,6 @@ class TestingJSONWriter {
   }
 
   ArrowErrorCode WriteMetadata(std::ostream& out, const char* metadata) {
-    if (metadata == nullptr) {
-      out << "null";
-      return NANOARROW_OK;
-    }
-
     ArrowMetadataReader reader;
     NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
     if (reader.remaining_keys == 0) {
