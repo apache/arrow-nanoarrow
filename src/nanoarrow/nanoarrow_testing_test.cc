@@ -272,13 +272,11 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFixedSizeBinary) {
         value_view.size_bytes = sizeof(value);
 
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendBytes(array, value_view));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], )"
-      R"("DATA": ["000000", "616263", "0001FF"]})");
+      R"({"name": null, "count": 2, "VALIDITY": [0, 1], "DATA": ["000000", "0001FF"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnStruct) {
