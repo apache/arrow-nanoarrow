@@ -1826,7 +1826,7 @@ class TestingJSONComparison {
   /// query num_differences() to obtain the result of the comparison on success.
   /// Calling this method clears all previous differences.
   ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
-                               ArrowError* error, const std::string& path = "") {
+                               ArrowError* error = nullptr, const std::string& path = "") {
     // Compare the top-level schema "manually" because (1) map type needs special-cased
     // comparison and (2) it's easier to read the output if differences are separated
     // by field.

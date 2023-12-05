@@ -23,6 +23,7 @@
 
 #include "nanoarrow/nanoarrow_testing.hpp"
 
+using nanoarrow::testing::TestingJSONComparison;
 using nanoarrow::testing::TestingJSONReader;
 using nanoarrow::testing::TestingJSONWriter;
 
@@ -640,8 +641,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadSchema) {
   ASSERT_EQ(
       reader.ReadSchema(
           R"({"fields": [)"
-          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []}], )"
-          R"("metadata": null})",
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
+          R"(]})",
           schema.get()),
       NANOARROW_OK);
   EXPECT_STREQ(schema->format, "+s");
@@ -1102,4 +1103,82 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
 
   TestTypeError(R"({"name": "union", "mode": "NOT_A_MODE", "typeIds": []})",
                 "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
+  nanoarrow::UniqueSchema actual;
+  nanoarrow::UniqueSchema expected;
+  TestingJSONReader reader;
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  // Start with two identical schemas and ensure there are no differences
+  ASSERT_EQ(
+      reader.ReadSchema(
+          R"({"fields": [)"
+          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
+          R"(]})",
+          actual.get()),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
+
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "");
+  msg.str("");
+
+  // With different top-level flags
+  actual->flags = ARROW_FLAG_MAP_KEYS_SORTED;
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "Path: \n- .flags: 4\n+ .flags: 2\n\n");
+  msg.str("");
+  actual->flags = expected->flags;
+
+  // With different top-level metadata
+  nanoarrow::UniqueBuffer buf;
+  ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key"), ArrowCharView("value")),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(),
+            "Path: "
+            R"(
+- .metadata: [{"key": "key", "value": "value"}]
++ .metadata: null
+
+)");
+  msg.str("");
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), nullptr), NANOARROW_OK);
+
+  // With different children
+  actual->children[0]->flags = 0;
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), R"(Path: .children[0]
+- {"name": null, "nullable": false, "type": {"name": "null"}, "children": []}
++ {"name": null, "nullable": true, "type": {"name": "null"}, "children": []}
+
+)");
+  msg.str("");
+  actual->children[0]->flags = expected->children[0]->flags;
+
+  // With different numbers of children
+  actual.reset();
+  ArrowSchemaInit(actual.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 0), NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "Path: \n- .n_children: 0\n+ .n_children: 1\n\n");
+  msg.str("");
 }
