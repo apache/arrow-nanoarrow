@@ -1802,8 +1802,7 @@ class TestingJSONComparison {
       }
 
       if (actual_array->release != nullptr && expected_array->release == nullptr) {
-        differences_.push_back(
-            {batch_label, "unfinished stream", "finished stream stream"});
+        differences_.push_back({batch_label, "unfinished stream", "finished stream"});
         return NANOARROW_OK;
       }
 

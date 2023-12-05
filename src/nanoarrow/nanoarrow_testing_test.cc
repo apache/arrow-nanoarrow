@@ -1277,3 +1277,25 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
 
 )");
 }
+
+void MakeArrayStream(const ArrowSchema* schema, std::vector<std::string> batches_json,
+                     ArrowArrayStream* out) {
+  TestingJSONReader reader;
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayStreamComparison) {
+  nanoarrow::UniqueSchema schema;
+
+  nanoarrow::UniqueArrayStream actual;
+  nanoarrow::UniqueArrayStream expected;
+
+  std::string batch_json = R"({"name": null, "count": 0})";
+
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(comparison.SetSchema(schema.get()), NANOARROW_OK);
+}
