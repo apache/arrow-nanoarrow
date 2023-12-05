@@ -28,7 +28,7 @@
 
 SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
                                       SEXP size_sexp, SEXP n_sexp) {
-  struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
+  struct ArrowArrayStream* array_stream = nanoarrow_array_stream_from_xptr(array_stream_xptr);
   double size = REAL(size_sexp)[0];
   double n = REAL(n_sexp)[0];
 

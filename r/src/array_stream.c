@@ -68,7 +68,8 @@ void finalize_array_stream_xptr(SEXP array_stream_xptr) {
 }
 
 SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
-  struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
+  struct ArrowArrayStream* array_stream =
+      nanoarrow_array_stream_from_xptr(array_stream_xptr);
 
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
@@ -83,7 +84,8 @@ SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
 }
 
 SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
-  struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
+  struct ArrowArrayStream* array_stream =
+      nanoarrow_array_stream_from_xptr(array_stream_xptr);
 
   SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
@@ -107,7 +109,7 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
       (struct ArrowSchema*)R_ExternalPtrAddr(schema_copy_xptr);
   schema_export(schema_xptr, schema_copy);
 
-  SEXP array_stream_xptr = PROTECT(array_stream_owning_xptr());
+  SEXP array_stream_xptr = PROTECT(nanoarow_array_stream_owning_xptr());
   struct ArrowArrayStream* array_stream =
       (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
 
@@ -198,7 +200,7 @@ static int wrapper_array_stream_get_next(struct ArrowArrayStream* array_stream,
 void array_stream_export(SEXP parent_array_stream_xptr,
                          struct ArrowArrayStream* array_stream_copy) {
   struct ArrowArrayStream* parent_array_stream =
-      array_stream_from_xptr(parent_array_stream_xptr);
+      nanoarrow_array_stream_from_xptr(parent_array_stream_xptr);
 
   // If there is no dependent object, don't bother with this wrapper
   SEXP dependent_sexp = R_ExternalPtrProtected(parent_array_stream_xptr);
@@ -209,7 +211,7 @@ void array_stream_export(SEXP parent_array_stream_xptr,
 
   // Allocate a new external pointer for an array stream (for consistency:
   // we always move an array stream when exporting)
-  SEXP parent_array_stream_xptr_new = PROTECT(array_stream_owning_xptr());
+  SEXP parent_array_stream_xptr_new = PROTECT(nanoarow_array_stream_owning_xptr());
   struct ArrowArrayStream* parent_array_stream_new =
       (struct ArrowArrayStream*)R_ExternalPtrAddr(parent_array_stream_xptr_new);
   ArrowArrayStreamMove(parent_array_stream, parent_array_stream_new);
