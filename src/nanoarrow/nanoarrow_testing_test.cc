@@ -1108,18 +1108,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
 TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   nanoarrow::UniqueSchema actual;
   nanoarrow::UniqueSchema expected;
-  TestingJSONReader reader;
   TestingJSONComparison comparison;
   std::stringstream msg;
 
   // Start with two identical schemas and ensure there are no differences
-  ASSERT_EQ(
-      reader.ReadSchema(
-          R"({"fields": [)"
-          R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
-          R"(]})",
-          actual.get()),
-      NANOARROW_OK);
+  ArrowSchemaInit(actual.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
 
   ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
@@ -1181,4 +1176,47 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   comparison.WriteDifferences(msg);
   EXPECT_EQ(msg.str(), "Path: \n- .n_children: 0\n+ .n_children: 1\n\n");
   msg.str("");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparisonMap) {
+  nanoarrow::UniqueSchema actual;
+  nanoarrow::UniqueSchema expected;
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  // Start with two identical schemas with maps and ensure there are no differences
+  ArrowSchemaInit(actual.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0], NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0]->children[0]->children[0],
+                               NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0]->children[0]->children[1],
+                               NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
+
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+
+  // Even when one of the maps has different namees, there should be no differences
+  ASSERT_EQ(
+      ArrowSchemaSetName(actual->children[0]->children[0], "this name is not 'entries'"),
+      NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+
+  // This should also be true if the map is nested below the top-level of the schema
+  nanoarrow::UniqueSchema actual2;
+  ASSERT_EQ(ArrowSchemaInitFromType(actual2.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(actual2.get(), 1), NANOARROW_OK);
+  ArrowSchemaMove(actual.get(), actual2->children[0]);
+  expected.reset();
+  ASSERT_EQ(ArrowSchemaDeepCopy(actual2.get(), expected.get()), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaSetName(expected->children[0]->children[0]->children[0], "entries"),
+      NANOARROW_OK);
+
+  ASSERT_EQ(comparison.CompareSchema(actual2.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
 }

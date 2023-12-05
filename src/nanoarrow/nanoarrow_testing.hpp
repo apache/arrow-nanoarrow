@@ -1826,7 +1826,8 @@ class TestingJSONComparison {
   /// query num_differences() to obtain the result of the comparison on success.
   /// Calling this method clears all previous differences.
   ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
-                               ArrowError* error = nullptr, const std::string& path = "") {
+                               ArrowError* error = nullptr,
+                               const std::string& path = "") {
     // Compare the top-level schema "manually" because (1) map type needs special-cased
     // comparison and (2) it's easier to read the output if differences are separated
     // by field.
@@ -1936,22 +1937,26 @@ class TestingJSONComparison {
   }
 
  private:
+  TestingJSONWriter writer_;
+  std::vector<Difference> differences_;
+  nanoarrow::UniqueSchema schema_;
+  nanoarrow::UniqueArrayView actual_;
+  nanoarrow::UniqueArrayView expected_;
+
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {
-    ArrowSchemaView actual_view;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaViewInit(&actual_view, actual, nullptr),
+    // Preprocess both fields such that map types have canonical names
+    nanoarrow::UniqueSchema actual_copy;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(actual, actual_copy.get()),
+                                       error);
+    nanoarrow::UniqueSchema expected_copy;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(expected, expected_copy.get()),
                                        error);
 
-    ArrowSchemaView expected_view;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaViewInit(&expected_view, expected, nullptr), error);
-
-    if (actual_view.type == NANOARROW_TYPE_MAP &&
-        expected_view.type == NANOARROW_TYPE_MAP) {
-      return CompareFieldMap(actual, expected, error, path);
-    } else {
-      return CompareFieldBase(actual, expected, error, path);
-    }
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ForceMapNamesCanonical(actual_copy.get()), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ForceMapNamesCanonical(expected_copy.get()),
+                                       error);
+    return CompareFieldBase(actual_copy.get(), expected_copy.get(), error, path);
   }
 
   ArrowErrorCode CompareFieldBase(ArrowSchema* actual, ArrowSchema* expected,
@@ -1970,33 +1975,6 @@ class TestingJSONComparison {
     }
 
     return NANOARROW_OK;
-  }
-
-  ArrowErrorCode CompareFieldMap(ArrowSchema* actual, ArrowSchema* expected,
-                                 ArrowError* error, const std::string& path = "") {
-    nanoarrow::UniqueSchema actual_copy;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(actual, actual_copy.get()),
-                                       error);
-
-    nanoarrow::UniqueSchema expected_copy;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(expected, expected_copy.get()),
-                                       error);
-
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaSetName(actual_copy->children[0], "entries"), error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaSetName(actual_copy->children[0]->children[0], "key"), error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaSetName(actual_copy->children[0]->children[1], "value"), error);
-
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaSetName(expected_copy->children[0], "entries"), error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaSetName(expected_copy->children[0]->children[0], "key"), error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSchemaSetName(expected_copy->children[0]->children[1], "value"), error);
-
-    return CompareFieldBase(actual_copy.get(), expected_copy.get(), error, path);
   }
 
   ArrowErrorCode CompareColumn(ArrowSchema* schema, ArrowArrayView* actual,
@@ -2018,12 +1996,24 @@ class TestingJSONComparison {
     return NANOARROW_OK;
   }
 
- private:
-  TestingJSONWriter writer_;
-  std::vector<Difference> differences_;
-  nanoarrow::UniqueSchema schema_;
-  nanoarrow::UniqueArrayView actual_;
-  nanoarrow::UniqueArrayView expected_;
+  ArrowErrorCode ForceMapNamesCanonical(ArrowSchema* schema) {
+    ArrowSchemaView view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, schema, nullptr));
+
+    if (view.type == NANOARROW_TYPE_MAP) {
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaSetName(schema->children[0]->children[0], "key"));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaSetName(schema->children[0]->children[1], "value"));
+    }
+
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(ForceMapNamesCanonical(schema->children[i]));
+    }
+
+    return NANOARROW_OK;
+  }
 };
 
 /// @}
