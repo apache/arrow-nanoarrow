@@ -195,14 +195,14 @@ test_that("nanoarrow_array_stream get_next() with schema = NULL", {
 
 test_that("User array stream finalizers are run on explicit release", {
   stream <- basic_array_stream(list(1:5))
-  array_stream_set_finalizer(stream, function() cat("All done!"))
+  stream <- array_stream_set_finalizer(stream, function() cat("All done!"))
   expect_output(stream$release(), "All done!")
   expect_silent(stream$release())
 })
 
 test_that("User array stream finalizers are run on explicit release even when moved", {
   stream <- basic_array_stream(list(1:5))
-  array_stream_set_finalizer(stream, function() cat("All done!"))
+  stream <- array_stream_set_finalizer(stream, function() cat("All done!"))
 
   stream2 <- nanoarrow_allocate_array_stream()
   nanoarrow_pointer_move(stream, stream2)
@@ -214,7 +214,7 @@ test_that("User array stream finalizers are run on explicit release even when mo
 
 test_that("User array stream finalizers are run on explicit release even when exported", {
   stream <- basic_array_stream(list(1:5))
-  array_stream_set_finalizer(stream, function() cat("All done!"))
+  stream <- array_stream_set_finalizer(stream, function() cat("All done!"))
 
   stream2 <- nanoarrow_allocate_array_stream()
   nanoarrow_pointer_export(stream, stream2)
@@ -226,7 +226,7 @@ test_that("User array stream finalizers are run on explicit release even when ex
 
 test_that("Errors from user array stream finalizer are ignored", {
   stream <- basic_array_stream(list(1:5))
-  array_stream_set_finalizer(stream, function() stop("Error that will be ignored"))
+  stream <- array_stream_set_finalizer(stream, function() stop("Error that will be ignored"))
   # Because this comes from REprintf(), it's not a message and not "output"
   # according to testthat, so we use capture.output()
   expect_identical(

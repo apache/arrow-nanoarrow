@@ -30,7 +30,9 @@ SEXP nanoarrow_c_allocate_schema(void) { return nanoarrow_schema_owning_xptr(); 
 
 SEXP nanoarrow_c_allocate_array(void) { return nanoarrow_array_owning_xptr(); }
 
-SEXP nanoarrow_c_allocate_array_stream(void) { return nanoarow_array_stream_owning_xptr(); }
+SEXP nanoarrow_c_allocate_array_stream(void) {
+  return nanoarow_array_stream_owning_xptr();
+}
 
 SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
   if (TYPEOF(obj_sexp) == EXTPTRSXP) {
@@ -111,7 +113,6 @@ SEXP nanoarrow_c_pointer_release(SEXP ptr) {
     if (obj != NULL && obj->release != NULL) {
       obj->release(obj);
       obj->release = NULL;
-      run_user_array_stream_finalizer(ptr);
     }
   } else {
     Rf_error(

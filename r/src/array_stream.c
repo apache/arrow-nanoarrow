@@ -41,7 +41,7 @@ static SEXP run_finalizer_error_handler(SEXP cond, void* hdata) {
   return R_NilValue;
 }
 
-void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
+static void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
   SEXP protected = PROTECT(R_ExternalPtrProtected(array_stream_xptr));
   R_SetExternalPtrProtected(array_stream_xptr, R_NilValue);
 
@@ -51,20 +51,6 @@ void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
   }
 
   UNPROTECT(1);
-}
-
-void finalize_array_stream_xptr(SEXP array_stream_xptr) {
-  struct ArrowArrayStream* array_stream =
-      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
-  if (array_stream != NULL && array_stream->release != NULL) {
-    array_stream->release(array_stream);
-  }
-
-  if (array_stream != NULL) {
-    ArrowFree(array_stream);
-  }
-
-  run_user_array_stream_finalizer(array_stream_xptr);
 }
 
 SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {

@@ -12,7 +12,8 @@ array_stream_set_finalizer(array_stream, finalizer)
 \item{finalizer}{A function that will be called with zero arguments.}
 }
 \value{
-\code{array_stream}, invisibly
+A newly allocated \code{array_stream} whose release callback will call
+the supplied finalizer.
 }
 \description{
 In some cases, R functions that return a \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}
@@ -26,8 +27,10 @@ environments will be garbage-collected when \code{nanoarrow:::preserved_empty()}
 is run.
 }
 \examples{
-stream <- basic_array_stream(list(1:5))
-array_stream_set_finalizer(stream, function() message("All done!"))
+stream <- array_stream_set_finalizer(
+  basic_array_stream(list(1:5)),
+  function() message("All done!")
+)
 stream$release()
 
 }
