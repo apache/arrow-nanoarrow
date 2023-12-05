@@ -1122,6 +1122,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   comparison.WriteDifferences(msg);
   EXPECT_EQ(msg.str(), "");
   msg.str("");
+  comparison.ClearDifferences();
 
   // With different top-level flags
   actual->flags = ARROW_FLAG_MAP_KEYS_SORTED;
@@ -1131,6 +1132,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   EXPECT_EQ(msg.str(), "Path: \n- .flags: 4\n+ .flags: 2\n\n");
   msg.str("");
   actual->flags = expected->flags;
+  comparison.ClearDifferences();
 
   // With different top-level metadata
   nanoarrow::UniqueBuffer buf;
@@ -1153,6 +1155,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
 )");
   msg.str("");
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), nullptr), NANOARROW_OK);
+  comparison.ClearDifferences();
 
   // With different children
   actual->children[0]->flags = 0;
@@ -1166,6 +1169,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
 )");
   msg.str("");
   actual->children[0]->flags = expected->children[0]->flags;
+  comparison.ClearDifferences();
 
   // With different numbers of children
   actual.reset();
@@ -1176,13 +1180,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   comparison.WriteDifferences(msg);
   EXPECT_EQ(msg.str(), "Path: \n- .n_children: 0\n+ .n_children: 1\n\n");
   msg.str("");
+  comparison.ClearDifferences();
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparisonMap) {
   nanoarrow::UniqueSchema actual;
   nanoarrow::UniqueSchema expected;
   TestingJSONComparison comparison;
-  std::stringstream msg;
 
   // Start with two identical schemas with maps and ensure there are no differences
   ArrowSchemaInit(actual.get());
@@ -1219,4 +1223,57 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparisonMap) {
 
   ASSERT_EQ(comparison.CompareSchema(actual2.get(), expected.get()), NANOARROW_OK);
   EXPECT_EQ(comparison.num_differences(), 0);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray actual;
+  nanoarrow::UniqueArray expected;
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(comparison.SetSchema(schema.get()), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(actual.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(actual->children[0], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(actual.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(expected.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(expected->children[0], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(expected.get(), nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+  comparison.ClearDifferences();
+
+  actual->length = 1;
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "Path: \n- .length: 1\n+ .length: 0\n\n");
+  msg.str("");
+  comparison.ClearDifferences();
+  actual->length = 0;
+
+  actual->offset = 1;
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "Path: \n- .offset: 1\n+ .offset: 0\n\n");
+  msg.str("");
+  comparison.ClearDifferences();
+  actual->offset = 0;
+
+  actual->children[0]->length = 2;
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), R"(Path: .children[0]
+- {"name": null, "count": 2}
++ {"name": null, "count": 1}
+
+)");
 }

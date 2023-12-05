@@ -1747,6 +1747,9 @@ class TestingJSONComparison {
     }
   }
 
+  /// \brief Clear any existing differences
+  void ClearDifferences() { differences_.clear(); }
+
   /// \brief Compare a stream of record batches
   ///
   /// Compares actual against expected using the following strategy:
@@ -1757,11 +1760,8 @@ class TestingJSONComparison {
   ///
   /// Returns NANOARROW_OK if the comparison ran without error. Callers must
   /// query num_differences() to obtain the result of the comparison on success.
-  /// Calling this method clears all previous differences.
   ArrowErrorCode CompareArrayStream(ArrowArrayStream* actual, ArrowArrayStream* expected,
                                     ArrowError* error) {
-    differences_.clear();
-
     // Read both schemas
     nanoarrow::UniqueSchema actual_schema;
     nanoarrow::UniqueSchema expected_schema;
@@ -1824,15 +1824,12 @@ class TestingJSONComparison {
   ///
   /// Returns NANOARROW_OK if the comparison ran without error. Callers must
   /// query num_differences() to obtain the result of the comparison on success.
-  /// Calling this method clears all previous differences.
   ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
                                ArrowError* error = nullptr,
                                const std::string& path = "") {
     // Compare the top-level schema "manually" because (1) map type needs special-cased
     // comparison and (2) it's easier to read the output if differences are separated
     // by field.
-    differences_.clear();
-
     ArrowSchemaView actual_view;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaViewInit(&actual_view, actual, nullptr),
                                        error);
@@ -1889,7 +1886,7 @@ class TestingJSONComparison {
   }
 
   /// \brief Set the ArrowSchema to be used to for future calls to CompareBatch().
-  ArrowErrorCode SetSchema(const ArrowSchema* schema, ArrowError* error) {
+  ArrowErrorCode SetSchema(const ArrowSchema* schema, ArrowError* error = nullptr) {
     schema_.reset();
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(schema, schema_.get()), error);
     actual_.reset();
@@ -1913,20 +1910,21 @@ class TestingJSONComparison {
   /// Returns NANOARROW_OK if the comparison ran without error. Callers must
   /// query num_differences() to obtain the result of the comparison on success.
   ArrowErrorCode CompareBatch(const ArrowArray* actual, const ArrowArray* expected,
-                              ArrowError* error, const std::string& path = "") {
+                              ArrowError* error = nullptr, const std::string& path = "") {
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(expected_.get(), expected, error));
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(actual_.get(), actual, error));
 
     if (actual->offset != expected->offset) {
       differences_.push_back({path, ".offset: " + std::to_string(actual->offset),
-                              ".actual: " + std::to_string(actual->offset)});
+                              ".offset: " + std::to_string(expected->offset)});
     }
 
     if (actual->length != expected->length) {
       differences_.push_back({path, ".length: " + std::to_string(actual->length),
-                              ".length: " + std::to_string(actual->length)});
+                              ".length: " + std::to_string(expected->length)});
     }
 
+    // ArrowArrayViewSetArray() ensured that number of children of both match schema
     for (int64_t i = 0; i < expected_->n_children; i++) {
       NANOARROW_RETURN_NOT_OK(CompareColumn(
           schema_->children[i], actual_->children[i], expected_->children[i], error,
