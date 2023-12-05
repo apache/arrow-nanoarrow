@@ -1761,7 +1761,7 @@ class TestingJSONComparison {
   /// Returns NANOARROW_OK if the comparison ran without error. Callers must
   /// query num_differences() to obtain the result of the comparison on success.
   ArrowErrorCode CompareArrayStream(ArrowArrayStream* actual, ArrowArrayStream* expected,
-                                    ArrowError* error) {
+                                    ArrowError* error = nullptr) {
     // Read both schemas
     nanoarrow::UniqueSchema actual_schema;
     nanoarrow::UniqueSchema expected_schema;

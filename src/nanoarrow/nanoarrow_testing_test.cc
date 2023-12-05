@@ -1278,18 +1278,31 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
 )");
 }
 
-void MakeArrayStream(const ArrowSchema* schema, std::vector<std::string> batches_json,
-                     ArrowArrayStream* out) {
+ArrowErrorCode MakeArrayStream(const ArrowSchema* schema,
+                               std::vector<std::string> batches_json,
+                               ArrowArrayStream* out) {
   TestingJSONReader reader;
+  nanoarrow::UniqueSchema schema_copy;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaDeepCopy(schema, schema_copy.get()));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowBasicArrayStreamInit(out, schema_copy.get(), batches_json.size()));
+
+  nanoarrow::UniqueArray array;
+  for (size_t i = 0; i < batches_json.size(); i++) {
+    NANOARROW_RETURN_NOT_OK(reader.ReadBatch(batches_json[i], schema, array.get()));
+    ArrowBasicArrayStreamSetArray(out, i, array.get());
+  }
+
+  return NANOARROW_OK;
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayStreamComparison) {
   nanoarrow::UniqueSchema schema;
-
   nanoarrow::UniqueArrayStream actual;
   nanoarrow::UniqueArrayStream expected;
 
-  std::string batch_json = R"({"name": null, "count": 0})";
+  std::string null1_batch_json =
+      R"({"count": 1, "columns": [{"name": null, "count": 1}]})";
 
   TestingJSONComparison comparison;
   std::stringstream msg;
@@ -1297,5 +1310,84 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayStreamComparison) {
   ArrowSchemaInit(schema.get());
   ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
-  ASSERT_EQ(comparison.SetSchema(schema.get()), NANOARROW_OK);
+
+  // Identical streams with 0 batches
+  actual.reset();
+  expected.reset();
+  ASSERT_EQ(MakeArrayStream(schema.get(), {}, actual.get()), NANOARROW_OK);
+  ASSERT_EQ(MakeArrayStream(schema.get(), {}, expected.get()), NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareArrayStream(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+  comparison.WriteDifferences(msg);
+
+  // Identical streams with >0 batches
+  actual.reset();
+  expected.reset();
+  ASSERT_EQ(MakeArrayStream(schema.get(), {null1_batch_json}, actual.get()),
+            NANOARROW_OK);
+  ASSERT_EQ(MakeArrayStream(schema.get(), {null1_batch_json}, expected.get()),
+            NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareArrayStream(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+
+  // Stream where actual has more batches
+  actual.reset();
+  expected.reset();
+  ASSERT_EQ(MakeArrayStream(schema.get(), {null1_batch_json}, actual.get()),
+            NANOARROW_OK);
+  ASSERT_EQ(MakeArrayStream(schema.get(), {}, expected.get()), NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareArrayStream(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "Path: Batch 0\n- unfinished stream\n+ finished stream\n\n");
+  msg.str("");
+  comparison.ClearDifferences();
+
+  // Stream where expected has more batches
+  actual.reset();
+  expected.reset();
+  ASSERT_EQ(MakeArrayStream(schema.get(), {}, actual.get()), NANOARROW_OK);
+  ASSERT_EQ(MakeArrayStream(schema.get(), {null1_batch_json}, expected.get()),
+            NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareArrayStream(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "Path: Batch 0\n- finished stream\n+ unfinished stream\n\n");
+  msg.str("");
+  comparison.ClearDifferences();
+
+  // Stream where schemas differ
+  nanoarrow::UniqueSchema schema2;
+  ArrowSchemaInit(schema2.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema2.get(), 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema2->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema2->children[1], NANOARROW_TYPE_NA), NANOARROW_OK);
+  actual.reset();
+  expected.reset();
+  ASSERT_EQ(MakeArrayStream(schema2.get(), {}, actual.get()), NANOARROW_OK);
+  ASSERT_EQ(MakeArrayStream(schema.get(), {}, expected.get()), NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareArrayStream(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "Path: Schema\n- .n_children: 1\n+ .n_children: 2\n\n");
+  msg.str("");
+  comparison.ClearDifferences();
+
+  // Stream where batches differ
+  actual.reset();
+  expected.reset();
+  ASSERT_EQ(MakeArrayStream(schema.get(),
+                            {R"({"count": 1, "columns": [{"name": null, "count": 2}]})"},
+                            actual.get()),
+            NANOARROW_OK);
+  ASSERT_EQ(MakeArrayStream(schema.get(), {null1_batch_json}, expected.get()),
+            NANOARROW_OK);
+  ASSERT_EQ(comparison.CompareArrayStream(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), R"(Path: Batch 0.children[0]
+- {"name": null, "count": 2}
++ {"name": null, "count": 1}
+
+)");
 }
