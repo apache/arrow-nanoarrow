@@ -141,13 +141,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnInt64) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT64);
       },
       [](ArrowArray* array) {
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": ["0", "1", "0"]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": ["0", "1", "0"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
@@ -156,13 +156,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_UINT64);
       },
       [](ArrowArray* array) {
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, 0));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 3, "VALIDITY": [1, 1, 1], "DATA": ["0", "1", "0"]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": ["0", "1", "0"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
@@ -171,12 +171,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_FLOAT);
       },
       [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 0.1234));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 1.2345));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 2, "VALIDITY": [1, 1], "DATA": [0.123, 1.235]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.000, 0.123, 1.235]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
@@ -185,13 +186,14 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
       },
       [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
-      R"("OFFSET": [0, 3, 6], "DATA": ["abc", "def"]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], )"
+      R"("OFFSET": [0, 0, 3, 6], "DATA": ["", "abc", "def"]})");
 
   // Check a string that requires escaping of characters \ and "
   TestWriteJSON(
@@ -226,13 +228,14 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnLargeString) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_LARGE_STRING);
       },
       [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
-      R"("OFFSET": ["0", "3", "6"], "DATA": ["abc", "def"]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], )"
+      R"("OFFSET": ["0", "0", "3", "6"], "DATA": ["", "abc", "def"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
@@ -246,13 +249,36 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
         value_view.data.as_uint8 = value;
         value_view.size_bytes = sizeof(value);
 
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendBytes(array, value_view));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 2, "VALIDITY": [1, 1], )"
-      R"("OFFSET": [0, 3, 6], "DATA": ["616263", "0001FF"]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], )"
+      R"("OFFSET": [0, 0, 3, 6], "DATA": ["", "616263", "0001FF"]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFixedSizeBinary) {
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        ArrowSchemaInit(schema);
+        return ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, 3);
+      },
+      [](ArrowArray* array) {
+        uint8_t value[] = {0x00, 0x01, 0xff};
+        ArrowBufferView value_view;
+        value_view.data.as_uint8 = value;
+        value_view.size_bytes = sizeof(value);
+
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendBytes(array, value_view));
+        return NANOARROW_OK;
+      },
+      &WriteColumnJSON,
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], )"
+      R"("DATA": ["000000", "616263", "0001FF"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnStruct) {
@@ -642,12 +668,21 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadSchema) {
       reader.ReadSchema(
           R"({"fields": [)"
           R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})"
-          R"(]})",
+          R"(], "metadata": [{"key": "k1", "value": "v1"}]})",
           schema.get()),
       NANOARROW_OK);
   EXPECT_STREQ(schema->format, "+s");
   ASSERT_EQ(schema->n_children, 1);
   EXPECT_STREQ(schema->children[0]->format, "n");
+
+  ArrowMetadataReader metadata_reader;
+  ASSERT_EQ(ArrowMetadataReaderInit(&metadata_reader, schema->metadata), NANOARROW_OK);
+  ASSERT_EQ(metadata_reader.remaining_keys, 1);
+  ArrowStringView key;
+  ArrowStringView value;
+  ASSERT_EQ(ArrowMetadataReaderRead(&metadata_reader, &key, &value), NANOARROW_OK);
+  ASSERT_EQ(std::string(key.data, key.size_bytes), "k1");
+  ASSERT_EQ(std::string(value.data, value.size_bytes), "v1");
 
   // Check invalid JSON
   EXPECT_EQ(reader.ReadSchema(R"({)", schema.get()), EINVAL);
@@ -1011,6 +1046,16 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
 
   TestTypeError(R"({"name": "decimal", "bitWidth": 123, "precision": 10, "scale": 3})",
                 "Type[name=='decimal'] bitWidth must be 128 or 256");
+
+  // Ensure that omitted bitWidth maps to decimal128
+  TestingJSONReader reader;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": null, "nullable": true, "type": {"name": "decimal", "precision": 10, "scale": 3}, "children": []})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "d:10,3");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {
