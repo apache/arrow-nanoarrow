@@ -100,13 +100,15 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
 }
 
 TEST(NanoarrowIpcReader, InputStreamFile) {
+  struct ArrowIpcInputStream stream;
+  ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, nullptr, 1), EINVAL);
+
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   FILE* file_ptr = tmpfile();
   ASSERT_NE(file_ptr, nullptr);
   ASSERT_EQ(fwrite(input_data, 1, sizeof(input_data), file_ptr), sizeof(input_data));
   fseek(file_ptr, 0, SEEK_SET);
 
-  struct ArrowIpcInputStream stream;
   uint8_t output_data[] = {0xff, 0xff, 0xff, 0xff, 0xff};
   int64_t size_read_bytes;
 
