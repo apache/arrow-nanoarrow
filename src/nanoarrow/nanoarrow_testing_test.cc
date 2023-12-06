@@ -407,6 +407,15 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
+  // Missing metadata
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})");
+
   // Non-null but zero-size metadata
   TestWriteJSON(
       [](ArrowSchema* schema) {
