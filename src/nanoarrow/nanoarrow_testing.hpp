@@ -1742,7 +1742,7 @@ class TestingJSONReader {
 ///
 /// - Map types are considered equal regardless of the child names "entries",
 ///   "key", and "value".
-/// - Float32 and Float64 values are only compared to 3 decimal places.
+/// - Float32 and Float64 values are compared according to their JSON serialization.
 class TestingJSONComparison {
  private:
   // Internal representation of a human-readable inequality
