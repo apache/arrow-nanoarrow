@@ -46,6 +46,16 @@ namespace testing {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
+  TestingJSONWriter() : float_precision_(-1) {}
+
+  /// \brief Set the floating point precision of the writer
+  ///
+  /// The floating point precision by default is -1, which uses the JSON serializer
+  /// to encode the value in the output. When writing files specifically for
+  /// integration tests, floating point values should be rounded to 3 decimal places to
+  /// avoid serialization issues.
+  void set_float_precision(int precision) { float_precision_ = precision; }
+
   /// \brief Write an ArrowArrayStream as a data file JSON object to out
   ///
   /// Creates output like `{"schema": {...}, "batches": [...], ...}`.
@@ -335,6 +345,8 @@ class TestingJSONWriter {
   }
 
  private:
+  int float_precision_;
+
   ArrowErrorCode WriteType(std::ostream& out, const ArrowSchemaView* field) {
     ArrowType type;
     if (field->extension_name.data != nullptr) {
@@ -542,9 +554,9 @@ class TestingJSONWriter {
 
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE: {
-        // JSON number to 3 decimal places
+        // JSON number to float_precision_ decimal places
         LocalizedStream local_stream_opt(out);
-        local_stream_opt.SetFixed(3);
+        local_stream_opt.SetFixed(float_precision_);
 
         WriteFloatMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
@@ -609,10 +621,18 @@ class TestingJSONWriter {
   }
 
   void WriteFloatMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << static_cast<double>(0);
+    if (float_precision_ >= 0) {
+      if (ArrowArrayViewIsNull(view, i)) {
+        out << static_cast<double>(0);
+      } else {
+        out << ArrowArrayViewGetDoubleUnsafe(view, i);
+      }
     } else {
-      out << ArrowArrayViewGetDoubleUnsafe(view, i);
+      if (ArrowArrayViewIsNull(view, i)) {
+        out << "0.0";
+      } else {
+        out << nlohmann::json(ArrowArrayViewGetDoubleUnsafe(view, i));
+      }
     }
   }
 

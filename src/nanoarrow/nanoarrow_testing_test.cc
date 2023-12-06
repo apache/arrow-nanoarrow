@@ -27,41 +27,37 @@ using nanoarrow::testing::TestingJSONComparison;
 using nanoarrow::testing::TestingJSONReader;
 using nanoarrow::testing::TestingJSONWriter;
 
-ArrowErrorCode WriteBatchJSON(std::ostream& out, const ArrowSchema* schema,
-                              ArrowArrayView* array_view) {
-  TestingJSONWriter writer;
+ArrowErrorCode WriteBatchJSON(std::ostream& out, TestingJSONWriter& writer,
+                              const ArrowSchema* schema, ArrowArrayView* array_view) {
   return writer.WriteBatch(out, schema, array_view);
 }
 
-ArrowErrorCode WriteColumnJSON(std::ostream& out, const ArrowSchema* schema,
-                               ArrowArrayView* array_view) {
-  TestingJSONWriter writer;
+ArrowErrorCode WriteColumnJSON(std::ostream& out, TestingJSONWriter& writer,
+                               const ArrowSchema* schema, ArrowArrayView* array_view) {
   return writer.WriteColumn(out, schema, array_view);
 }
 
-ArrowErrorCode WriteSchemaJSON(std::ostream& out, const ArrowSchema* schema,
-                               ArrowArrayView* array_view) {
-  TestingJSONWriter writer;
+ArrowErrorCode WriteSchemaJSON(std::ostream& out, TestingJSONWriter& writer,
+                               const ArrowSchema* schema, ArrowArrayView* array_view) {
   return writer.WriteSchema(out, schema);
 }
 
-ArrowErrorCode WriteFieldJSON(std::ostream& out, const ArrowSchema* schema,
-                              ArrowArrayView* array_view) {
-  TestingJSONWriter writer;
+ArrowErrorCode WriteFieldJSON(std::ostream& out, TestingJSONWriter& writer,
+                              const ArrowSchema* schema, ArrowArrayView* array_view) {
   return writer.WriteField(out, schema);
 }
 
-ArrowErrorCode WriteTypeJSON(std::ostream& out, const ArrowSchema* schema,
-                             ArrowArrayView* array_view) {
-  TestingJSONWriter writer;
+ArrowErrorCode WriteTypeJSON(std::ostream& out, TestingJSONWriter& writer,
+                             const ArrowSchema* schema, ArrowArrayView* array_view) {
   return writer.WriteType(out, schema);
 }
 
 void TestWriteJSON(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
                    std::function<ArrowErrorCode(ArrowArray*)> append_expr,
-                   ArrowErrorCode (*test_expr)(std::ostream&, const ArrowSchema*,
-                                               ArrowArrayView*),
-                   const std::string& expected_json) {
+                   ArrowErrorCode (*test_expr)(std::ostream&, TestingJSONWriter&,
+                                               const ArrowSchema*, ArrowArrayView*),
+                   const std::string& expected_json,
+                   void (*setup_writer)(TestingJSONWriter& writer) = nullptr) {
   std::stringstream ss;
 
   nanoarrow::UniqueSchema schema;
@@ -77,7 +73,12 @@ void TestWriteJSON(std::function<ArrowErrorCode(ArrowSchema*)> type_expr,
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
 
-  ASSERT_EQ(test_expr(ss, schema.get(), array_view.get()), NANOARROW_OK);
+  TestingJSONWriter writer;
+  if (setup_writer != nullptr) {
+    setup_writer(writer);
+  }
+
+  ASSERT_EQ(test_expr(ss, writer, schema.get(), array_view.get()), NANOARROW_OK);
   EXPECT_EQ(ss.str(), expected_json);
 }
 
@@ -166,6 +167,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnUInt64) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
+  // Test with constrained precision
   TestWriteJSON(
       [](ArrowSchema* schema) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_FLOAT);
@@ -177,7 +179,22 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnFloat) {
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
-      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.000, 0.123, 1.235]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.000, 0.123, 1.235]})",
+      [](TestingJSONWriter& writer) { writer.set_float_precision(3); });
+
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_FLOAT);
+      },
+      [](ArrowArray* array) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 0.1234));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendDouble(array, 1.2345));
+        return NANOARROW_OK;
+      },
+      &WriteColumnJSON,
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.0, 0.1234000027179718, 1.2345000505447388]})",
+      [](TestingJSONWriter& writer) { writer.set_float_precision(-1); });
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
@@ -1020,10 +1037,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFloatingPoint) {
   TestTypeRoundtrip(R"({"name": "floatingpoint", "precision": "HALF"})");
   TestTypeRoundtrip(
       R"({"name": "floatingpoint", "precision": "SINGLE"})",
-      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.000, 1.230, 4.560]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.0, 1.0, 2.0]})");
   TestTypeRoundtrip(
       R"({"name": "floatingpoint", "precision": "DOUBLE"})",
-      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.000, 1.230, 4.560]})");
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": [0.0, 4.0, 5.0]})");
 
   TestTypeError(
       R"({"name": "floatingpoint", "precision": "NOT_A_PRECISION"})",
