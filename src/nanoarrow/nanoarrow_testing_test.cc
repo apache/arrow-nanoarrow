@@ -1174,11 +1174,30 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
                 "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
 }
 
+void AssertSchemasCompareEqual(ArrowSchema* actual, ArrowSchema* expected) {
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  ASSERT_EQ(comparison.CompareSchema(actual, expected), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), "");
+}
+
+void AssertSchemasCompareUnequal(ArrowSchema* actual, ArrowSchema* expected,
+                                 int num_differences, const std::string& differences) {
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  ASSERT_EQ(comparison.CompareSchema(actual, expected), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), num_differences);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), differences);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   nanoarrow::UniqueSchema actual;
   nanoarrow::UniqueSchema expected;
-  TestingJSONComparison comparison;
-  std::stringstream msg;
 
   // Start with two identical schemas and ensure there are no differences
   ArrowSchemaInit(actual.get());
@@ -1186,22 +1205,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   ASSERT_EQ(ArrowSchemaSetType(actual->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
 
-  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 0);
-  comparison.WriteDifferences(msg);
-  EXPECT_EQ(msg.str(), "");
-  msg.str("");
-  comparison.ClearDifferences();
+  AssertSchemasCompareEqual(actual.get(), expected.get());
 
   // With different top-level flags
   actual->flags = ARROW_FLAG_MAP_KEYS_SORTED;
-  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 1);
-  comparison.WriteDifferences(msg);
-  EXPECT_EQ(msg.str(), "Path: \n- .flags: 4\n+ .flags: 2\n\n");
-  msg.str("");
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
+                              "Path: \n- .flags: 4\n+ .flags: 2\n\n");
   actual->flags = expected->flags;
-  comparison.ClearDifferences();
 
   // With different top-level metadata
   nanoarrow::UniqueBuffer buf;
@@ -1212,50 +1222,38 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
 
-  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 1);
-  comparison.WriteDifferences(msg);
-  EXPECT_EQ(msg.str(),
-            "Path: "
-            R"(
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: "
+                              R"(
 - .metadata: [{"key": "key", "value": "value"}]
 + .metadata: null
 
 )");
-  msg.str("");
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), nullptr), NANOARROW_OK);
-  comparison.ClearDifferences();
 
   // With different children
   actual->children[0]->flags = 0;
-  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 1);
-  comparison.WriteDifferences(msg);
-  EXPECT_EQ(msg.str(), R"(Path: .children[0]
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
+                              /*differences*/ R"(Path: .children[0]
 - {"name": null, "nullable": false, "type": {"name": "null"}, "children": []}
 + {"name": null, "nullable": true, "type": {"name": "null"}, "children": []}
 
 )");
-  msg.str("");
   actual->children[0]->flags = expected->children[0]->flags;
-  comparison.ClearDifferences();
 
   // With different numbers of children
   actual.reset();
   ArrowSchemaInit(actual.get());
   ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 0), NANOARROW_OK);
-  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 1);
-  comparison.WriteDifferences(msg);
-  EXPECT_EQ(msg.str(), "Path: \n- .n_children: 0\n+ .n_children: 1\n\n");
-  msg.str("");
-  comparison.ClearDifferences();
+  AssertSchemasCompareUnequal(
+      actual.get(), expected.get(), /*num_differences*/ 1,
+      /*differences*/ "Path: \n- .n_children: 0\n+ .n_children: 1\n\n");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparisonMap) {
   nanoarrow::UniqueSchema actual;
   nanoarrow::UniqueSchema expected;
-  TestingJSONComparison comparison;
 
   // Start with two identical schemas with maps and ensure there are no differences
   ArrowSchemaInit(actual.get());
@@ -1269,15 +1267,13 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparisonMap) {
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
 
-  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 0);
+  AssertSchemasCompareEqual(actual.get(), expected.get());
 
   // Even when one of the maps has different namees, there should be no differences
   ASSERT_EQ(
       ArrowSchemaSetName(actual->children[0]->children[0], "this name is not 'entries'"),
       NANOARROW_OK);
-  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 0);
+  AssertSchemasCompareEqual(actual.get(), expected.get());
 
   // This should also be true if the map is nested below the top-level of the schema
   nanoarrow::UniqueSchema actual2;
@@ -1290,8 +1286,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparisonMap) {
       ArrowSchemaSetName(expected->children[0]->children[0]->children[0], "entries"),
       NANOARROW_OK);
 
-  ASSERT_EQ(comparison.CompareSchema(actual2.get(), expected.get()), NANOARROW_OK);
-  EXPECT_EQ(comparison.num_differences(), 0);
+  AssertSchemasCompareEqual(actual2.get(), expected.get());
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
