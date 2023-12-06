@@ -218,7 +218,7 @@ class TestingJSONWriter {
   ///
   /// Creates output like `{"count": 123, "columns": [...]}`.
   ArrowErrorCode WriteBatch(std::ostream& out, const ArrowSchema* schema,
-                            ArrowArrayView* value) {
+                            const ArrowArrayView* value) {
     // Make sure we have a struct
     if (std::string(schema->format) != "+s") {
       return EINVAL;
@@ -241,7 +241,7 @@ class TestingJSONWriter {
   ///
   /// Creates output like `{"name": "col", "count": 123, "VALIDITY": [...], ...}`.
   ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
-                             ArrowArrayView* value) {
+                             const ArrowArrayView* value) {
     out << "{";
 
     // Write schema->name (may be null)
@@ -500,7 +500,7 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteData(std::ostream& out, ArrowArrayView* value) {
+  ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value) {
     if (value->length == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -583,7 +583,7 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  void WriteIntMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+  void WriteIntMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
     if (ArrowArrayViewIsNull(view, i)) {
       out << 0;
     } else {
@@ -591,7 +591,7 @@ class TestingJSONWriter {
     }
   }
 
-  void WriteQuotedIntMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+  void WriteQuotedIntMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
     if (ArrowArrayViewIsNull(view, i)) {
       out << R"("0")";
     } else {
@@ -599,7 +599,8 @@ class TestingJSONWriter {
     }
   }
 
-  void WriteQuotedUIntMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+  void WriteQuotedUIntMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                int64_t i) {
     if (ArrowArrayViewIsNull(view, i)) {
       out << R"("0")";
     } else {
@@ -607,7 +608,7 @@ class TestingJSONWriter {
     }
   }
 
-  void WriteFloatMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+  void WriteFloatMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
     if (ArrowArrayViewIsNull(view, i)) {
       out << static_cast<double>(0);
     } else {
@@ -615,7 +616,7 @@ class TestingJSONWriter {
     }
   }
 
-  void WriteBytesMaybeNull(std::ostream& out, ArrowArrayView* view, int64_t i) {
+  void WriteBytesMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
     ArrowBufferView item = ArrowArrayViewGetBytesUnsafe(view, i);
     if (ArrowArrayViewIsNull(view, i)) {
       out << R"(")";
@@ -666,7 +667,7 @@ class TestingJSONWriter {
   }
 
   ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
-                               ArrowArrayView* value) {
+                               const ArrowArrayView* value) {
     if (field->n_children == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -812,13 +813,12 @@ class TestingJSONReader {
 
       // ArrowArrayView to enable validation
       nanoarrow::UniqueArrayView array_view;
-      NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(
-          array_view.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewInitFromSchema(array_view.get(), schema, error));
 
       // ArrowArray to hold memory
       nanoarrow::UniqueArray array;
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayInitFromSchema(array.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
 
       NANOARROW_RETURN_NOT_OK(SetArrayBatch(obj, array_view.get(), array.get(), error));
       ArrowArrayMove(array.get(), out);
@@ -841,13 +841,12 @@ class TestingJSONReader {
 
       // ArrowArrayView to enable validation
       nanoarrow::UniqueArrayView array_view;
-      NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(
-          array_view.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewInitFromSchema(array_view.get(), schema, error));
 
       // ArrowArray to hold memory
       nanoarrow::UniqueArray array;
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayInitFromSchema(array.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
 
       // Parse the JSON into the array
       NANOARROW_RETURN_NOT_OK(SetArrayColumn(obj, array_view.get(), array.get(), error));
