@@ -2008,6 +2008,10 @@ class TestingJSONComparison {
       NANOARROW_RETURN_NOT_OK(ForceMapNamesCanonical(schema->children[i]));
     }
 
+    if (schema->dictionary != nullptr) {
+      NANOARROW_RETURN_NOT_OK(ForceMapNamesCanonical(schema->dictionary));
+    }
+
     return NANOARROW_OK;
   }
 };
