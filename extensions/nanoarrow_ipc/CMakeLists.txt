@@ -259,18 +259,4 @@ endif()
 if(NANOARROW_IPC_BUILD_APPS)
   add_executable(dump_stream src/apps/dump_stream.c)
   target_link_libraries(dump_stream nanoarrow_ipc nanoarrow)
-
-  # JSON library for integration testing
-  # Also used by some versions of Arrow, so check if this is already available
-  if(NOT TARGET nlohmann_json::nlohmann_json)
-    fetchcontent_declare(nlohmann_json
-                         URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
-                         URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
-    )
-    fetchcontent_makeavailable(nlohmann_json)
-  endif()
-
-  add_executable(integration_test_util src/apps/integration_test_util.cc)
-  target_link_libraries(integration_test_util nanoarrow_ipc nanoarrow
-                        nlohmann_json::nlohmann_json)
 endif()
