@@ -146,6 +146,10 @@ static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* st
 
 ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
                                            void* file_ptr, int close_on_release) {
+  if (file_ptr == NULL) {
+    return EINVAL;
+  }
+
   struct ArrowIpcInputStreamFilePrivate* private_data =
       (struct ArrowIpcInputStreamFilePrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcInputStreamFilePrivate));
