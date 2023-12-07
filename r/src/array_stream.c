@@ -164,6 +164,9 @@ static void finalize_wrapper_array_stream(struct ArrowArrayStream* array_stream)
     struct WrapperArrayStreamData* data =
         (struct WrapperArrayStreamData*)array_stream->private_data;
 
+    // Release the parent
+    data->parent_array_stream->release(data->parent_array_stream);
+
     // If safe to do so, attempt to do an eager evaluation of a release
     // callback that may have been registered. If it is not safe to do so,
     // garbage collection will run any finalizers that have been set
