@@ -46,6 +46,16 @@ namespace testing {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
+  TestingJSONWriter() : float_precision_(-1) {}
+
+  /// \brief Set the floating point precision of the writer
+  ///
+  /// The floating point precision by default is -1, which uses the JSON serializer
+  /// to encode the value in the output. When writing files specifically for
+  /// integration tests, floating point values should be rounded to 3 decimal places to
+  /// avoid serialization issues.
+  void set_float_precision(int precision) { float_precision_ = precision; }
+
   /// \brief Write an ArrowArrayStream as a data file JSON object to out
   ///
   /// Creates output like `{"schema": {...}, "batches": [...], ...}`.
@@ -114,8 +124,10 @@ class TestingJSONWriter {
     }
 
     // Write metadata
-    out << R"(, "metadata": )";
-    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
+    if (schema->metadata != nullptr) {
+      out << R"(, "metadata": )";
+      NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
+    }
 
     out << "}";
     return NANOARROW_OK;
@@ -135,7 +147,7 @@ class TestingJSONWriter {
       out << R"("name": null)";
     } else {
       out << R"("name": )";
-      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->name)));
+      WriteString(out, ArrowCharView(field->name));
     }
 
     // Write nullability
@@ -166,8 +178,10 @@ class TestingJSONWriter {
     // TODO: Dictionary (currently fails at WriteType)
 
     // Write metadata
-    out << R"(, "metadata": )";
-    NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
+    if (field->metadata != nullptr) {
+      out << R"(, "metadata": )";
+      NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
+    }
 
     out << "}";
     return NANOARROW_OK;
@@ -183,11 +197,38 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
+  /// \brief Write the metadata portion of a field
+  ///
+  /// Creates output like `[{"key": "...", "value": "..."}, ...]`.
+  ArrowErrorCode WriteMetadata(std::ostream& out, const char* metadata) {
+    if (metadata == nullptr) {
+      out << "null";
+      return NANOARROW_OK;
+    }
+
+    ArrowMetadataReader reader;
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
+    if (reader.remaining_keys == 0) {
+      out << "[]";
+      return NANOARROW_OK;
+    }
+
+    out << "[";
+    NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+    while (reader.remaining_keys > 0) {
+      out << ", ";
+      NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+    }
+
+    out << "]";
+    return NANOARROW_OK;
+  }
+
   /// \brief Write a "batch" to out
   ///
   /// Creates output like `{"count": 123, "columns": [...]}`.
   ArrowErrorCode WriteBatch(std::ostream& out, const ArrowSchema* schema,
-                            ArrowArrayView* value) {
+                            const ArrowArrayView* value) {
     // Make sure we have a struct
     if (std::string(schema->format) != "+s") {
       return EINVAL;
@@ -210,7 +251,7 @@ class TestingJSONWriter {
   ///
   /// Creates output like `{"name": "col", "count": 123, "VALIDITY": [...], ...}`.
   ArrowErrorCode WriteColumn(std::ostream& out, const ArrowSchema* field,
-                             ArrowArrayView* value) {
+                             const ArrowArrayView* value) {
     out << "{";
 
     // Write schema->name (may be null)
@@ -218,7 +259,7 @@ class TestingJSONWriter {
       out << R"("name": null)";
     } else {
       out << R"("name": )";
-      NANOARROW_RETURN_NOT_OK(WriteString(out, ArrowCharView(field->name)));
+      WriteString(out, ArrowCharView(field->name));
     }
 
     // Write length
@@ -275,6 +316,7 @@ class TestingJSONWriter {
       case NANOARROW_TYPE_LIST:
       case NANOARROW_TYPE_LARGE_LIST:
       case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      case NANOARROW_TYPE_MAP:
       case NANOARROW_TYPE_DENSE_UNION:
       case NANOARROW_TYPE_SPARSE_UNION:
         break;
@@ -303,6 +345,8 @@ class TestingJSONWriter {
   }
 
  private:
+  int float_precision_;
+
   ArrowErrorCode WriteType(std::ostream& out, const ArrowSchemaView* field) {
     ArrowType type;
     if (field->extension_name.data != nullptr) {
@@ -403,38 +447,14 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteMetadata(std::ostream& out, const char* metadata) {
-    if (metadata == nullptr) {
-      out << "null";
-      return NANOARROW_OK;
-    }
-
-    ArrowMetadataReader reader;
-    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
-    if (reader.remaining_keys == 0) {
-      out << "[]";
-      return NANOARROW_OK;
-    }
-
-    out << "[";
-    NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
-    while (reader.remaining_keys > 0) {
-      out << ", ";
-      NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
-    }
-
-    out << "]";
-    return NANOARROW_OK;
-  }
-
   ArrowErrorCode WriteMetadataItem(std::ostream& out, ArrowMetadataReader* reader) {
     ArrowStringView key;
     ArrowStringView value;
     NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderRead(reader, &key, &value));
     out << R"({"key": )";
-    NANOARROW_RETURN_NOT_OK(WriteString(out, key));
+    WriteString(out, key);
     out << R"(, "value": )";
-    NANOARROW_RETURN_NOT_OK(WriteString(out, value));
+    WriteString(out, value);
     out << "}";
     return NANOARROW_OK;
   }
@@ -492,7 +512,7 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteData(std::ostream& out, ArrowArrayView* value) {
+  ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value) {
     if (value->length == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -509,58 +529,59 @@ class TestingJSONWriter {
       case NANOARROW_TYPE_INT32:
       case NANOARROW_TYPE_UINT32:
         // Regular JSON integers (i.e., 123456)
-        out << ArrowArrayViewGetIntUnsafe(value, 0);
+        WriteIntMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << ", " << ArrowArrayViewGetIntUnsafe(value, i);
+          out << ", ";
+          WriteIntMaybeNull(out, value, i);
         }
         break;
       case NANOARROW_TYPE_INT64:
         // Quoted integers to avoid overflow (i.e., "123456")
-        out << R"(")" << ArrowArrayViewGetIntUnsafe(value, 0) << R"(")";
+        WriteQuotedIntMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << R"(, ")" << ArrowArrayViewGetIntUnsafe(value, i) << R"(")";
+          out << ", ";
+          WriteQuotedIntMaybeNull(out, value, i);
         }
         break;
       case NANOARROW_TYPE_UINT64:
         // Quoted integers to avoid overflow (i.e., "123456")
-        out << R"(")" << ArrowArrayViewGetUIntUnsafe(value, 0) << R"(")";
+        WriteQuotedUIntMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << R"(, ")" << ArrowArrayViewGetUIntUnsafe(value, i) << R"(")";
+          out << ", ";
+          WriteQuotedUIntMaybeNull(out, value, i);
         }
         break;
 
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE: {
-        // JSON number to 3 decimal places
+        // JSON number to float_precision_ decimal places
         LocalizedStream local_stream_opt(out);
-        local_stream_opt.SetFixed(3);
+        local_stream_opt.SetFixed(float_precision_);
 
-        out << ArrowArrayViewGetDoubleUnsafe(value, 0);
+        WriteFloatMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
-          out << ", " << ArrowArrayViewGetDoubleUnsafe(value, i);
+          out << ", ";
+          WriteFloatMaybeNull(out, value, i);
         }
         break;
       }
 
       case NANOARROW_TYPE_STRING:
       case NANOARROW_TYPE_LARGE_STRING:
-        NANOARROW_RETURN_NOT_OK(
-            WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0)));
+        WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0));
         for (int64_t i = 1; i < value->length; i++) {
           out << ", ";
-          NANOARROW_RETURN_NOT_OK(
-              WriteString(out, ArrowArrayViewGetStringUnsafe(value, i)));
+          WriteString(out, ArrowArrayViewGetStringUnsafe(value, i));
         }
         break;
 
       case NANOARROW_TYPE_BINARY:
       case NANOARROW_TYPE_LARGE_BINARY:
       case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
-        NANOARROW_RETURN_NOT_OK(WriteBytes(out, ArrowArrayViewGetBytesUnsafe(value, 0)));
+        WriteBytesMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
           out << ", ";
-          NANOARROW_RETURN_NOT_OK(
-              WriteBytes(out, ArrowArrayViewGetBytesUnsafe(value, i)));
+          WriteBytesMaybeNull(out, value, i);
         }
         break;
       }
@@ -574,7 +595,61 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteString(std::ostream& out, ArrowStringView value) {
+  void WriteIntMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << 0;
+    } else {
+      out << ArrowArrayViewGetIntUnsafe(view, i);
+    }
+  }
+
+  void WriteQuotedIntMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"("0")";
+    } else {
+      out << R"(")" << ArrowArrayViewGetIntUnsafe(view, i) << R"(")";
+    }
+  }
+
+  void WriteQuotedUIntMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                int64_t i) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"("0")";
+    } else {
+      out << R"(")" << ArrowArrayViewGetUIntUnsafe(view, i) << R"(")";
+    }
+  }
+
+  void WriteFloatMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
+    if (float_precision_ >= 0) {
+      if (ArrowArrayViewIsNull(view, i)) {
+        out << static_cast<double>(0);
+      } else {
+        out << ArrowArrayViewGetDoubleUnsafe(view, i);
+      }
+    } else {
+      if (ArrowArrayViewIsNull(view, i)) {
+        out << "0.0";
+      } else {
+        out << nlohmann::json(ArrowArrayViewGetDoubleUnsafe(view, i));
+      }
+    }
+  }
+
+  void WriteBytesMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
+    ArrowBufferView item = ArrowArrayViewGetBytesUnsafe(view, i);
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"(")";
+      for (int64_t i = 0; i < item.size_bytes; i++) {
+        out << "00";
+      }
+      out << R"(")";
+    } else {
+      WriteBytes(out, item);
+    }
+  }
+
+  void WriteString(std::ostream& out, ArrowStringView value) {
     out << R"(")";
 
     for (int64_t i = 0; i < value.size_bytes; i++) {
@@ -583,12 +658,8 @@ class TestingJSONWriter {
         out << R"(\")";
       } else if (c == '\\') {
         out << R"(\\)";
-      } else if (c < 0) {
-        // Not supporting multibyte unicode yet
-        return ENOTSUP;
-      } else if (c < 20) {
-        // Data in the arrow-testing repo has a lot of content that requires escaping
-        // in this way (\uXXXX).
+      } else if (c >= 0 && c < 32) {
+        // Control characters need to be escaped with a \uXXXX escape
         uint16_t utf16_bytes = static_cast<uint16_t>(c);
 
         char utf16_esc[7];
@@ -601,10 +672,9 @@ class TestingJSONWriter {
     }
 
     out << R"(")";
-    return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteBytes(std::ostream& out, ArrowBufferView value) {
+  void WriteBytes(std::ostream& out, ArrowBufferView value) {
     out << R"(")";
     char hex[3];
     hex[2] = '\0';
@@ -614,11 +684,10 @@ class TestingJSONWriter {
       out << hex;
     }
     out << R"(")";
-    return NANOARROW_OK;
   }
 
   ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
-                               ArrowArrayView* value) {
+                               const ArrowArrayView* value) {
     if (field->n_children == 0) {
       out << "[]";
       return NANOARROW_OK;
@@ -764,13 +833,12 @@ class TestingJSONReader {
 
       // ArrowArrayView to enable validation
       nanoarrow::UniqueArrayView array_view;
-      NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(
-          array_view.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewInitFromSchema(array_view.get(), schema, error));
 
       // ArrowArray to hold memory
       nanoarrow::UniqueArray array;
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayInitFromSchema(array.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
 
       NANOARROW_RETURN_NOT_OK(SetArrayBatch(obj, array_view.get(), array.get(), error));
       ArrowArrayMove(array.get(), out);
@@ -793,13 +861,12 @@ class TestingJSONReader {
 
       // ArrowArrayView to enable validation
       nanoarrow::UniqueArrayView array_view;
-      NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(
-          array_view.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewInitFromSchema(array_view.get(), schema, error));
 
       // ArrowArray to hold memory
       nanoarrow::UniqueArray array;
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayInitFromSchema(array.get(), const_cast<ArrowSchema*>(schema), error));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
 
       // Parse the JSON into the array
       NANOARROW_RETURN_NOT_OK(SetArrayColumn(obj, array_view.get(), array.get(), error));
@@ -819,8 +886,6 @@ class TestingJSONReader {
         Check(value.is_object(), error, "Expected Schema to be a JSON object"));
     NANOARROW_RETURN_NOT_OK(
         Check(value.contains("fields"), error, "Schema missing key 'fields'"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.contains("metadata"), error, "Schema missing key 'metadata'"));
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), error);
@@ -834,7 +899,9 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(SetField(schema->children[i], fields[i], error));
     }
 
-    NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    if (value.contains("metadata")) {
+      NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    }
 
     // Validate!
     ArrowSchemaView schema_view;
@@ -853,8 +920,6 @@ class TestingJSONReader {
         Check(value.contains("type"), error, "Field missing key 'type'"));
     NANOARROW_RETURN_NOT_OK(
         Check(value.contains("children"), error, "Field missing key 'children'"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.contains("metadata"), error, "Field missing key 'metadata'"));
 
     ArrowSchemaInit(schema);
 
@@ -887,7 +952,9 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(SetField(schema->children[i], children[i], error));
     }
 
-    NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    if (value.contains("metadata")) {
+      NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
+    }
 
     // Validate!
     ArrowSchemaView schema_view;
@@ -1055,19 +1122,24 @@ class TestingJSONReader {
 
   ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value,
                                 ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(Check(value.contains("bitWidth"), error,
-                                  "Type[name=='decimal'] missing key 'bitWidth'"));
     NANOARROW_RETURN_NOT_OK(Check(value.contains("precision"), error,
                                   "Type[name=='decimal'] missing key 'precision'"));
     NANOARROW_RETURN_NOT_OK(Check(value.contains("scale"), error,
                                   "Type[name=='decimal'] missing key 'scale'"));
 
-    const auto& bitWidth = value["bitWidth"];
-    NANOARROW_RETURN_NOT_OK(Check(bitWidth.is_number_integer(), error,
-                                  "Type[name=='decimal'] bitWidth must be integer"));
+    // Some test files omit bitWidth for decimal128
+    int bit_width_int;
+    if (value.contains("bitWidth")) {
+      const auto& bit_width = value["bitWidth"];
+      NANOARROW_RETURN_NOT_OK(Check(bit_width.is_number_integer(), error,
+                                    "Type[name=='decimal'] bitWidth must be integer"));
+      bit_width_int = bit_width.get<int>();
+    } else {
+      bit_width_int = 128;
+    }
 
     ArrowType type;
-    switch (bitWidth.get<int>()) {
+    switch (bit_width_int) {
       case 128:
         type = NANOARROW_TYPE_DECIMAL128;
         break;
@@ -1658,6 +1730,309 @@ class TestingJSONReader {
       ArrowErrorSet(error, "%s", err.c_str());
       return EINVAL;
     }
+  }
+};
+
+/// \brief Integration testing comparison utility
+///
+/// Utility to compare ArrowSchema, ArrowArray, and ArrowArrayStream instances.
+/// This should only be used in the context of integration testing as the
+/// comparison logic is specific to the integration testing JSON files and
+/// specification. Notably:
+///
+/// - Map types are considered equal regardless of the child names "entries",
+///   "key", and "value".
+/// - Float32 and Float64 values are compared according to their JSON serialization.
+class TestingJSONComparison {
+ private:
+  // Internal representation of a human-readable inequality
+  struct Difference {
+    std::string path;
+    std::string actual;
+    std::string expected;
+  };
+
+ public:
+  /// \brief Returns the number of differences found by the previous call
+  size_t num_differences() const { return differences_.size(); }
+
+  /// \brief Dump a human-readable summary of differences to out
+  void WriteDifferences(std::ostream& out) {
+    for (const auto& difference : differences_) {
+      out << "Path: " << difference.path << "\n";
+      out << "- " << difference.actual << "\n";
+      out << "+ " << difference.expected << "\n";
+      out << "\n";
+    }
+  }
+
+  /// \brief Clear any existing differences
+  void ClearDifferences() { differences_.clear(); }
+
+  /// \brief Compare a stream of record batches
+  ///
+  /// Compares actual against expected using the following strategy:
+  ///
+  /// - Compares schemas for equality, returning if differences were found
+  /// - Compares pairs of record batches, returning if one stream finished
+  ///   before another.
+  ///
+  /// Returns NANOARROW_OK if the comparison ran without error. Callers must
+  /// query num_differences() to obtain the result of the comparison on success.
+  ArrowErrorCode CompareArrayStream(ArrowArrayStream* actual, ArrowArrayStream* expected,
+                                    ArrowError* error = nullptr) {
+    // Read both schemas
+    nanoarrow::UniqueSchema actual_schema;
+    nanoarrow::UniqueSchema expected_schema;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_schema(actual, actual_schema.get()),
+                                       error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        expected->get_schema(expected, expected_schema.get()), error);
+
+    // Compare them and return if they are not equal
+    NANOARROW_RETURN_NOT_OK(
+        CompareSchema(expected_schema.get(), actual_schema.get(), error, "Schema"));
+    if (num_differences() > 0) {
+      return NANOARROW_OK;
+    }
+
+    // Keep a record of the schema to compare batches
+    NANOARROW_RETURN_NOT_OK(SetSchema(expected_schema.get(), error));
+
+    int64_t n_batches = -1;
+    nanoarrow::UniqueArray actual_array;
+    nanoarrow::UniqueArray expected_array;
+    do {
+      n_batches++;
+      std::string batch_label = std::string("Batch ") + std::to_string(n_batches);
+
+      // Read a batch from each stream
+      actual_array.reset();
+      expected_array.reset();
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_next(actual, actual_array.get()),
+                                         error);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          expected->get_next(expected, expected_array.get()), error);
+
+      // Check the finished/unfinished status of both streams
+      if (actual_array->release == nullptr && expected_array->release != nullptr) {
+        differences_.push_back({batch_label, "finished stream", "unfinished stream"});
+        return NANOARROW_OK;
+      }
+
+      if (actual_array->release != nullptr && expected_array->release == nullptr) {
+        differences_.push_back({batch_label, "unfinished stream", "finished stream"});
+        return NANOARROW_OK;
+      }
+
+      // If both streams are done, break
+      if (actual_array->release == nullptr) {
+        break;
+      }
+
+      // Compare this batch
+      NANOARROW_RETURN_NOT_OK(
+          CompareBatch(actual_array.get(), expected_array.get(), error, batch_label));
+    } while (true);
+
+    return NANOARROW_OK;
+  }
+
+  /// \brief Compare a top-level ArrowSchema struct
+  ///
+  /// Returns NANOARROW_OK if the comparison ran without error. Callers must
+  /// query num_differences() to obtain the result of the comparison on success.
+  ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
+                               ArrowError* error = nullptr,
+                               const std::string& path = "") {
+    // Compare the top-level schema "manually" because (1) map type needs special-cased
+    // comparison and (2) it's easier to read the output if differences are separated
+    // by field.
+    ArrowSchemaView actual_view;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaViewInit(&actual_view, actual, nullptr),
+                                       error);
+
+    ArrowSchemaView expected_view;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaViewInit(&expected_view, expected, nullptr), error);
+
+    if (actual_view.type != NANOARROW_TYPE_STRUCT ||
+        expected_view.type != NANOARROW_TYPE_STRUCT) {
+      ArrowErrorSet(error, "Top-level schema must be struct");
+      return EINVAL;
+    }
+
+    // (Purposefully ignore the name field at the top level)
+
+    // Compare flags
+    if (actual->flags != expected->flags) {
+      differences_.push_back({path,
+                              std::string(".flags: ") + std::to_string(actual->flags),
+                              std::string(".flags: ") + std::to_string(expected->flags)});
+    }
+
+    // Compare children
+    if (actual->n_children != expected->n_children) {
+      differences_.push_back(
+          {path, std::string(".n_children: ") + std::to_string(actual->n_children),
+           std::string(".n_children: ") + std::to_string(expected->n_children)});
+    } else {
+      for (int64_t i = 0; i < expected->n_children; i++) {
+        NANOARROW_RETURN_NOT_OK(CompareField(
+            actual->children[i], expected->children[i], error,
+            path + std::string(".children[") + std::to_string(i) + std::string("]")));
+      }
+    }
+
+    // Compare metadata
+    std::stringstream ss;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteMetadata(ss, actual->metadata),
+                                       error);
+    std::string actual_metadata = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteMetadata(ss, expected->metadata),
+                                       error);
+    std::string expected_metadata = ss.str();
+
+    if (actual_metadata != expected_metadata) {
+      differences_.push_back({path, std::string(".metadata: ") + actual_metadata,
+                              std::string(".metadata: ") + expected_metadata});
+    }
+
+    return NANOARROW_OK;
+  }
+
+  /// \brief Set the ArrowSchema to be used to for future calls to CompareBatch().
+  ArrowErrorCode SetSchema(const ArrowSchema* schema, ArrowError* error = nullptr) {
+    schema_.reset();
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(schema, schema_.get()), error);
+    actual_.reset();
+    expected_.reset();
+
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(actual_.get(), schema_.get(), error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(expected_.get(), schema_.get(), error));
+
+    if (actual_->storage_type != NANOARROW_TYPE_STRUCT) {
+      ArrowErrorSet(error, "Can't SetSchema() with non-struct");
+      return EINVAL;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  /// \brief Compare a top-level ArrowArray struct
+  ///
+  /// Returns NANOARROW_OK if the comparison ran without error. Callers must
+  /// query num_differences() to obtain the result of the comparison on success.
+  ArrowErrorCode CompareBatch(const ArrowArray* actual, const ArrowArray* expected,
+                              ArrowError* error = nullptr, const std::string& path = "") {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(expected_.get(), expected, error));
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(actual_.get(), actual, error));
+
+    if (actual->offset != expected->offset) {
+      differences_.push_back({path, ".offset: " + std::to_string(actual->offset),
+                              ".offset: " + std::to_string(expected->offset)});
+    }
+
+    if (actual->length != expected->length) {
+      differences_.push_back({path, ".length: " + std::to_string(actual->length),
+                              ".length: " + std::to_string(expected->length)});
+    }
+
+    // ArrowArrayViewSetArray() ensured that number of children of both match schema
+    for (int64_t i = 0; i < expected_->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(CompareColumn(
+          schema_->children[i], actual_->children[i], expected_->children[i], error,
+          path + std::string(".children[") + std::to_string(i) + "]"));
+    }
+
+    return NANOARROW_OK;
+  }
+
+ private:
+  TestingJSONWriter writer_;
+  std::vector<Difference> differences_;
+  nanoarrow::UniqueSchema schema_;
+  nanoarrow::UniqueArrayView actual_;
+  nanoarrow::UniqueArrayView expected_;
+
+  ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
+                              ArrowError* error, const std::string& path = "") {
+    // Preprocess both fields such that map types have canonical names
+    nanoarrow::UniqueSchema actual_copy;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(actual, actual_copy.get()),
+                                       error);
+    nanoarrow::UniqueSchema expected_copy;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(expected, expected_copy.get()),
+                                       error);
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ForceMapNamesCanonical(actual_copy.get()), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ForceMapNamesCanonical(expected_copy.get()),
+                                       error);
+    return CompareFieldBase(actual_copy.get(), expected_copy.get(), error, path);
+  }
+
+  ArrowErrorCode CompareFieldBase(ArrowSchema* actual, ArrowSchema* expected,
+                                  ArrowError* error, const std::string& path = "") {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, expected), error);
+    std::string expected_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, actual), error);
+    std::string actual_json = ss.str();
+
+    if (actual_json != expected_json) {
+      differences_.push_back({path, actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode CompareColumn(ArrowSchema* schema, ArrowArrayView* actual,
+                               ArrowArrayView* expected, ArrowError* error,
+                               const std::string& path = "") {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteColumn(ss, schema, expected), error);
+    std::string expected_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteColumn(ss, schema, actual), error);
+    std::string actual_json = ss.str();
+
+    if (actual_json != expected_json) {
+      differences_.push_back({path, actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode ForceMapNamesCanonical(ArrowSchema* schema) {
+    ArrowSchemaView view;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, schema, nullptr));
+
+    if (view.type == NANOARROW_TYPE_MAP) {
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "entries"));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaSetName(schema->children[0]->children[0], "key"));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaSetName(schema->children[0]->children[1], "value"));
+    }
+
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(ForceMapNamesCanonical(schema->children[i]));
+    }
+
+    if (schema->dictionary != nullptr) {
+      NANOARROW_RETURN_NOT_OK(ForceMapNamesCanonical(schema->dictionary));
+    }
+
+    return NANOARROW_OK;
   }
 };
 
