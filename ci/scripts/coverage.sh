@@ -67,7 +67,7 @@ function main() {
     cmake "${TARGET_NANOARROW_DIR}" \
         -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
     cmake --build .
-    ctest .
+    CTEST_OUTPUT_ON_FAILURE=1 ctest .
 
     popd
 
@@ -79,7 +79,7 @@ function main() {
     cmake "${TARGET_NANOARROW_DIR}/extensions/nanoarrow_ipc" \
         -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_IPC_CODE_COVERAGE=ON
     cmake --build .
-    ctest .
+    CTEST_OUTPUT_ON_FAILURE=1 ctest .
 
     popd
 
@@ -93,7 +93,7 @@ function main() {
     cmake "${TARGET_NANOARROW_DIR}/extensions/nanoarrow_device" \
         -DNANOARROW_DEVICE_BUILD_TESTS=ON -DNANOARROW_DEVICE_CODE_COVERAGE=ON
     cmake --build .
-    ctest .
+    CTEST_OUTPUT_ON_FAILURE=1 ctest .
 
     popd
 

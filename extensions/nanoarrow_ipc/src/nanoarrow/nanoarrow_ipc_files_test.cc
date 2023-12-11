@@ -337,13 +337,15 @@ std::ostream& operator<<(std::ostream& os, const TestFile& obj) {
 
 // Start building the arrow-testing path or skip if the environment
 // variable was not set
-void InitArrowTestingPath(std::ostream& builder) {
+ArrowErrorCode InitArrowTestingPath(std::ostream& builder, ArrowError* error) {
   const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
   if (testing_dir == nullptr || strlen(testing_dir) == 0) {
-    GTEST_SKIP() << "NANOARROW_ARROW_TESTING_DIR environment variable not set";
+    ArrowErrorSet(error, "NANOARROW_ARROW_TESTING_DIR environment variable not set");
+    return ENOENT;
   }
 
   builder << testing_dir;
+  return NANOARROW_OK;
 }
 
 class TestFileFixture : public ::testing::TestWithParam<TestFile> {
@@ -353,7 +355,11 @@ class TestFileFixture : public ::testing::TestWithParam<TestFile> {
 
 TEST_P(TestFileFixture, NanoarrowIpcTestFileNativeEndian) {
   std::stringstream dir_builder;
-  InitArrowTestingPath(dir_builder);
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
+  }
 
 #if defined(__BIG_ENDIAN__)
   dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
@@ -366,7 +372,11 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileNativeEndian) {
 
 TEST_P(TestFileFixture, NanoarrowIpcTestFileSwapEndian) {
   std::stringstream dir_builder;
-  InitArrowTestingPath(dir_builder);
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
+  }
 
 #if defined(__BIG_ENDIAN__)
   dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
@@ -379,7 +389,12 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileSwapEndian) {
 
 TEST_P(TestFileFixture, NanoarrowIpcTestFileCheckJSON) {
   std::stringstream dir_builder;
-  InitArrowTestingPath(dir_builder);
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
+  }
+
   dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
 
   TestFile param = GetParam();
