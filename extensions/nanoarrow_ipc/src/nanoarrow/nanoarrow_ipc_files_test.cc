@@ -76,17 +76,21 @@ class TestFile {
     return path_.substr(0, dot_pos) + std::string(".json.gz");
   }
 
-  void GetArrowArrayStreamIPC(const std::string& dir_prefix, ArrowArrayStream* out) {
+  ArrowErrorCode GetArrowArrayStreamIPC(const std::string& dir_prefix,
+                                        ArrowArrayStream* out, ArrowError* error) {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << path_;
 
     // Read using nanoarrow_ipc
     nanoarrow::UniqueBuffer content;
-    ReadFileBuffer(path_builder.str(), content.get());
+    NANOARROW_RETURN_NOT_OK(ReadFileBuffer(path_builder.str(), content.get(), error));
 
     struct ArrowIpcInputStream input;
-    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, content.get()), NANOARROW_OK);
-    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(out, &input, nullptr), NANOARROW_OK);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcInputStreamInitBuffer(&input, content.get()), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcArrayStreamReaderInit(out, &input, nullptr), error);
+    return NANOARROW_OK;
   }
 
   ArrowErrorCode GetArrowArrayStreamCheckJSON(const std::string& dir_prefix,
@@ -96,11 +100,12 @@ class TestFile {
 
     // Read .json.gz file into a buffer
     nanoarrow::UniqueBuffer json_gz_content;
-    ReadFileBuffer(path_builder.str(), json_gz_content.get());
+    NANOARROW_RETURN_NOT_OK(
+        ReadFileBuffer(path_builder.str(), json_gz_content.get(), error));
 
     // Decompress into a JSON string
     nanoarrow::UniqueBuffer json_content;
-    UnGZIP(json_gz_content.get(), json_content.get());
+    NANOARROW_RETURN_NOT_OK(UnGZIP(json_gz_content.get(), json_content.get(), error));
 
     std::string json_string(reinterpret_cast<char*>(json_content->data),
                             json_content->size_bytes);
@@ -112,14 +117,17 @@ class TestFile {
   }
 
   // Read a whole file into an ArrowBuffer
-  static void ReadFileBuffer(const std::string& path, ArrowBuffer* content) {
+  static ArrowErrorCode ReadFileBuffer(const std::string& path, ArrowBuffer* content,
+                                       ArrowError* error) {
     std::ifstream infile(path, std::ios::in | std::ios::binary);
     do {
       content->size_bytes += infile.gcount();
-      ASSERT_EQ(ArrowBufferReserve(content, 8096), NANOARROW_OK);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(content, 8096), error);
     } while (
         infile.read(reinterpret_cast<char*>(content->data + content->size_bytes), 8096));
     content->size_bytes += infile.gcount();
+
+    return NANOARROW_OK;
   }
 
   // Create an arrow::io::InputStream wrapper around an ArrowBuffer
@@ -146,10 +154,11 @@ class TestFile {
   }
 
   // Decompress gzipped buffer content (currently uses Arrow C++)
-  static void UnGZIP(ArrowBuffer* src, ArrowBuffer* dst) {
+  static ArrowErrorCode UnGZIP(ArrowBuffer* src, ArrowBuffer* dst, ArrowError* error) {
     auto maybe_gzip = arrow::util::Codec::Create(arrow::Compression::GZIP);
     if (!maybe_gzip.ok()) {
-      GTEST_FAIL() << maybe_gzip.status().message();
+      ArrowErrorSet(error, "%s", maybe_gzip.status().message().c_str());
+      return EINVAL;
     }
 
     std::shared_ptr<io::InputStream> gz_input_stream;
@@ -158,31 +167,39 @@ class TestFile {
     auto maybe_input =
         io::CompressedInputStream::Make(maybe_gzip->get(), gz_input_stream);
     if (!maybe_input.ok()) {
-      GTEST_FAIL() << maybe_input.status().message();
+      ArrowErrorSet(error, "%s", maybe_input.status().message().c_str());
+      return EINVAL;
     }
 
     std::stringstream testing_json;
     auto input = *maybe_input;
     int64_t bytes_read = 0;
     do {
-      ASSERT_EQ(ArrowBufferReserve(dst, 8096), NANOARROW_OK);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(dst, 8096), error);
       auto maybe_bytes_read = input->Read(8096, dst->data + dst->size_bytes);
       if (!maybe_bytes_read.ok()) {
-        GTEST_FAIL() << maybe_bytes_read.status().message();
+        ArrowErrorSet(error, "%s", maybe_bytes_read.status().message().c_str());
+        return EINVAL;
       }
 
       bytes_read = *maybe_bytes_read;
       dst->size_bytes += bytes_read;
     } while (bytes_read > 0);
+
+    return NANOARROW_OK;
   }
 
   void TestEqualsArrowCpp(const std::string& dir_prefix) {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << path_;
 
+    ArrowError error;
+    ArrowErrorInit(&error);
+
     // Read using nanoarrow_ipc
     nanoarrow::UniqueArrayStream stream;
-    GetArrowArrayStreamIPC(dir_prefix, stream.get());
+    ASSERT_EQ(GetArrowArrayStreamIPC(dir_prefix, stream.get(), &error), NANOARROW_OK)
+        << error.message;
 
     nanoarrow::UniqueSchema schema;
     int result = stream->get_schema(stream.get(), schema.get());
@@ -224,7 +241,9 @@ class TestFile {
     // Read the same file with Arrow C++. Use the in-memory version to avoid
     // requiring Arrow C++ with filesystem.
     nanoarrow::UniqueBuffer content_copy;
-    ReadFileBuffer(path_builder.str(), content_copy.get());
+    ASSERT_EQ(ReadFileBuffer(path_builder.str(), content_copy.get(), &error),
+              NANOARROW_OK)
+        << error.message;
     std::shared_ptr<io::InputStream> input_stream;
     BufferInputStream(content_copy.get(), &input_stream);
 
@@ -265,7 +284,8 @@ class TestFile {
     ArrowErrorInit(&error);
 
     nanoarrow::UniqueArrayStream ipc_stream;
-    GetArrowArrayStreamIPC(dir_prefix, ipc_stream.get());
+    ASSERT_EQ(GetArrowArrayStreamIPC(dir_prefix, ipc_stream.get(), &error), NANOARROW_OK)
+        << error.message;
 
     nanoarrow::UniqueArrayStream json_stream;
     int result = GetArrowArrayStreamCheckJSON(dir_prefix, json_stream.get(), &error);
