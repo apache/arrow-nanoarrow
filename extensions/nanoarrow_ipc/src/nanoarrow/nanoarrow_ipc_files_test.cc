@@ -131,26 +131,12 @@ class TestFile {
   }
 
   // Create an arrow::io::InputStream wrapper around an ArrowBuffer
-  static void BufferInputStream(ArrowBuffer* src, std::shared_ptr<io::InputStream>* dst) {
-    // Read the same data with Arrow C++.
+  static arrow::Result<std::shared_ptr<io::InputStream>> BufferInputStream(
+      ArrowBuffer* src) {
     auto content_copy_wrapped = Buffer::Wrap<uint8_t>(src->data, src->size_bytes);
     auto buffer_reader = std::make_shared<io::BufferReader>(content_copy_wrapped);
-
-    // Support Arrow 9.0.0 for Fedora and Centos7 images
-#if ARROW_VERSION_MAJOR >= 10
-    auto maybe_input_stream =
-        io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
-    if (!maybe_input_stream.ok()) {
-      GTEST_FAIL() << maybe_input_stream.status().message();
-    }
-
-    std::shared_ptr<io::InputStream> input_stream = maybe_input_stream.ValueUnsafe();
-#else
-    std::shared_ptr<io::InputStream> input_stream =
-        io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
-#endif
-
-    *dst = input_stream;
+    return io::RandomAccessFile::GetStream(buffer_reader, 0,
+                                           content_copy_wrapped->size());
   }
 
   // Decompress gzipped buffer content (currently uses Arrow C++)
@@ -161,11 +147,14 @@ class TestFile {
       return EINVAL;
     }
 
-    std::shared_ptr<io::InputStream> gz_input_stream;
-    BufferInputStream(src, &gz_input_stream);
+    auto maybe_gz_input_stream = BufferInputStream(src);
+    if (!maybe_gz_input_stream.ok()) {
+      ArrowErrorSet(error, "%s", maybe_gz_input_stream.status().message().c_str());
+      return EINVAL;
+    }
 
     auto maybe_input =
-        io::CompressedInputStream::Make(maybe_gzip->get(), gz_input_stream);
+        io::CompressedInputStream::Make(maybe_gzip->get(), *maybe_gz_input_stream);
     if (!maybe_input.ok()) {
       ArrowErrorSet(error, "%s", maybe_input.status().message().c_str());
       return EINVAL;
@@ -244,10 +233,12 @@ class TestFile {
     ASSERT_EQ(ReadFileBuffer(path_builder.str(), content_copy.get(), &error),
               NANOARROW_OK)
         << error.message;
-    std::shared_ptr<io::InputStream> input_stream;
-    BufferInputStream(content_copy.get(), &input_stream);
+    auto maybe_input_stream = BufferInputStream(content_copy.get());
+    if (!maybe_input_stream.ok()) {
+      GTEST_FAIL() << maybe_input_stream.status().message();
+    }
 
-    auto maybe_reader = ipc::RecordBatchStreamReader::Open(input_stream);
+    auto maybe_reader = ipc::RecordBatchStreamReader::Open(*maybe_input_stream);
     if (!maybe_reader.ok()) {
       GTEST_FAIL() << maybe_reader.status().message();
     }
@@ -330,12 +321,13 @@ class TestFile {
   std::string expected_error_message_;
 };
 
+// For better testing output
 std::ostream& operator<<(std::ostream& os, const TestFile& obj) {
   os << obj.path_;
   return os;
 }
 
-// Start building the arrow-testing path or skip if the environment
+// Start building the arrow-testing path or error if the environment
 // variable was not set
 ArrowErrorCode InitArrowTestingPath(std::ostream& builder, ArrowError* error) {
   const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
