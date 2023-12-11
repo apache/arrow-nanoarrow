@@ -48,11 +48,6 @@ class TestFile {
 
   TestFile() : TestFile("") {}
 
-  std::string CheckJSONGzFile() {
-    size_t dot_pos = path_.find('.');
-    return path_.substr(0, dot_pos) + std::string(".json.gz");
-  }
-
   static TestFile OK(std::string path) { return TestFile(path); }
 
   static TestFile Err(int code, std::string path, std::string message = "__any__") {
@@ -75,8 +70,45 @@ class TestFile {
     return Err(ENODATA, path, message);
   }
 
-  // Read a whole file into an ArrowBuffer. This allows us to avoid requiring Arrow C++
-  // with filesystem.
+  std::string CheckJSONGzFile() {
+    size_t dot_pos = path_.find('.');
+    return path_.substr(0, dot_pos) + std::string(".json.gz");
+  }
+
+  void GetArrowArrayStreamIPC(const std::string& dir_prefix, ArrowArrayStream* out) {
+    std::stringstream path_builder;
+    path_builder << dir_prefix << "/" << path_;
+
+    // Read using nanoarrow_ipc
+    nanoarrow::UniqueBuffer content;
+    ReadFileBuffer(path_builder.str(), content.get());
+
+    struct ArrowIpcInputStream input;
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, content.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(out, &input, nullptr), NANOARROW_OK);
+  }
+
+  void GetArrowArrayStreamCheckJSON(const std::string& dir_prefix,
+                                    ArrowArrayStream* out) {
+    std::stringstream path_builder;
+    path_builder << dir_prefix << "/" << CheckJSONGzFile();
+
+    // Read .json.gz file into a buffer
+    nanoarrow::UniqueBuffer json_gz_content;
+    ReadFileBuffer(path_builder.str(), json_gz_content.get());
+
+    // Decompress into a JSON string
+    nanoarrow::UniqueBuffer json_content;
+    UnGZIP(json_gz_content.get(), json_content.get());
+
+    std::string json_string(reinterpret_cast<char*>(json_content->data),
+                            json_content->size_bytes);
+
+    // Use testing util to populate the array stream
+    GTEST_FAIL() << "Not implemented";
+  }
+
+  // Read a whole file into an ArrowBuffer
   static void ReadFileBuffer(const std::string& path, ArrowBuffer* content) {
     std::ifstream infile(path, std::ios::in | std::ios::binary);
     do {
@@ -87,6 +119,7 @@ class TestFile {
     content->size_bytes += infile.gcount();
   }
 
+  // Create an arrow::io::InputStream wrapper around an ArrowBuffer
   static void BufferInputStream(ArrowBuffer* src, std::shared_ptr<io::InputStream>* dst) {
     // Read the same data with Arrow C++.
     auto content_copy_wrapped = Buffer::Wrap<uint8_t>(src->data, src->size_bytes);
@@ -109,18 +142,44 @@ class TestFile {
     *dst = input_stream;
   }
 
-  void TestEqualsArrowCpp(std::string dir_prefix) {
+  // Decompress gzipped buffer content (currently uses Arrow C++)
+  static void UnGZIP(ArrowBuffer* src, ArrowBuffer* dst) {
+    auto maybe_gzip = arrow::util::Codec::Create(arrow::Compression::GZIP);
+    if (!maybe_gzip.ok()) {
+      GTEST_FAIL() << maybe_gzip.status().message();
+    }
+
+    std::shared_ptr<io::InputStream> gz_input_stream;
+    BufferInputStream(src, &gz_input_stream);
+
+    auto maybe_input =
+        io::CompressedInputStream::Make(maybe_gzip->get(), gz_input_stream);
+    if (!maybe_input.ok()) {
+      GTEST_FAIL() << maybe_input.status().message();
+    }
+
+    std::stringstream testing_json;
+    auto input = *maybe_input;
+    int64_t bytes_read = 0;
+    do {
+      ASSERT_EQ(ArrowBufferReserve(dst, 8096), NANOARROW_OK);
+      auto maybe_bytes_read = input->Read(8096, dst->data + dst->size_bytes);
+      if (!maybe_bytes_read.ok()) {
+        GTEST_FAIL() << maybe_bytes_read.status().message();
+      }
+
+      bytes_read = *maybe_bytes_read;
+      dst->size_bytes += bytes_read;
+    } while (bytes_read > 0);
+  }
+
+  void TestEqualsArrowCpp(const std::string& dir_prefix) {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << path_;
 
     // Read using nanoarrow_ipc
-    nanoarrow::UniqueBuffer content;
-    ReadFileBuffer(path_builder.str(), content.get());
-
-    struct ArrowIpcInputStream input;
     nanoarrow::UniqueArrayStream stream;
-    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, content.get()), NANOARROW_OK);
-    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(stream.get(), &input, nullptr), NANOARROW_OK);
+    GetArrowArrayStreamIPC(dir_prefix, stream.get());
 
     nanoarrow::UniqueSchema schema;
     int result = stream->get_schema(stream.get(), schema.get());
@@ -194,51 +253,20 @@ class TestFile {
     EXPECT_TRUE(maybe_table.ValueUnsafe()->Equals(**maybe_table_arrow, true));
   }
 
-  void TestCheckJSON(std::string dir_prefix) {
+  void TestIPCCheckJSON(const std::string& dir_prefix) {
     if (expected_return_code_ != NANOARROW_OK) {
       GTEST_SKIP() << path_ << " is not currently supported by the IPC reader";
     }
 
-    // Read IPC file into a buffer
-    std::stringstream path_builder;
-    path_builder << dir_prefix << "/" << path_;
-    nanoarrow::UniqueBuffer content;
-    ReadFileBuffer(path_builder.str(), content.get());
+    nanoarrow::UniqueArrayStream ipc_stream;
+    GetArrowArrayStreamIPC(dir_prefix, ipc_stream.get());
 
-    // Read .json.gz file into a buffer
-    path_builder.str("");
-    path_builder << dir_prefix << "/" << CheckJSONGzFile();
-    nanoarrow::UniqueBuffer json_gz_content;
-    ReadFileBuffer(path_builder.str(), json_gz_content.get());
+    nanoarrow::UniqueArrayStream json_stream;
+    GetArrowArrayStreamCheckJSON(dir_prefix, json_stream.get());
 
-    // Use Arrow C++ to decompress with gzip
-    std::shared_ptr<io::InputStream> gz_input_stream;
-    BufferInputStream(json_gz_content.get(), &gz_input_stream);
-
-    auto maybe_gzip = arrow::util::Codec::Create(arrow::Compression::GZIP);
-    if (!maybe_gzip.ok()) {
-      GTEST_FAIL() << maybe_gzip.status().message();
-    }
-
-    auto maybe_input =
-        io::CompressedInputStream::Make(maybe_gzip->get(), gz_input_stream);
-    if (!maybe_input.ok()) {
-      GTEST_FAIL() << maybe_input.status().message();
-    }
-
-    std::stringstream testing_json;
-    auto input = *maybe_input;
-    char buf[8096];
-    int64_t bytes_read = 0;
-    do {
-      auto maybe_bytes_read = input->Read(sizeof(buf), buf);
-      if (!maybe_bytes_read.ok()) {
-        GTEST_FAIL() << maybe_bytes_read.status().message();
-      }
-
-      bytes_read = *maybe_bytes_read;
-      testing_json << std::string(buf, bytes_read);
-    } while (bytes_read > 0);
+    // Use testing utility to compare
+    ArrowError error;
+    ArrowErrorInit(&error);
   }
 
   bool Check(int result, std::string msg) {
@@ -266,6 +294,8 @@ std::ostream& operator<<(std::ostream& os, const TestFile& obj) {
   return os;
 }
 
+// Start building the arrow-testing path or skip if the environment
+// variable was not set
 void InitArrowTestingPath(std::ostream& builder) {
   const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
   if (testing_dir == nullptr || strlen(testing_dir) == 0) {
@@ -309,11 +339,10 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileSwapEndian) {
 TEST_P(TestFileFixture, NanoarrowIpcTestFileCheckJSON) {
   std::stringstream dir_builder;
   InitArrowTestingPath(dir_builder);
-  TestFile file = GetParam();
+  dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
 
-  if (file.expected_return_code_ != NANOARROW_OK) {
-    GTEST_SKIP() << file.path_ << " is not currently supported by the IPC reader";
-  }
+  TestFile param = GetParam();
+  param.TestIPCCheckJSON(dir_builder.str());
 }
 
 INSTANTIATE_TEST_SUITE_P(
