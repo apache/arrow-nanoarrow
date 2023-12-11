@@ -269,7 +269,7 @@ class TestFile {
 
     nanoarrow::UniqueArrayStream json_stream;
     int result = GetArrowArrayStreamCheckJSON(dir_prefix, json_stream.get(), &error);
-    // Skip instead of faile for ENOTSUP
+    // Skip instead of fail for ENOTSUP
     if (result == ENOTSUP) {
       GTEST_SKIP() << "File contains type(s) not supported by the testing JSON reader: "
                    << error.message;
