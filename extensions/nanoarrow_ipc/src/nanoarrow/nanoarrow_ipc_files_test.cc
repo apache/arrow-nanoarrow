@@ -28,6 +28,7 @@
 
 #include "nanoarrow.hpp"
 #include "nanoarrow_ipc.h"
+#include "nanoarrow_testing.hpp"
 
 #include "flatcc/portable/pendian_detect.h"
 
@@ -88,8 +89,8 @@ class TestFile {
     ASSERT_EQ(ArrowIpcArrayStreamReaderInit(out, &input, nullptr), NANOARROW_OK);
   }
 
-  void GetArrowArrayStreamCheckJSON(const std::string& dir_prefix,
-                                    ArrowArrayStream* out) {
+  ArrowErrorCode GetArrowArrayStreamCheckJSON(const std::string& dir_prefix,
+                                              ArrowArrayStream* out, ArrowError* error) {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << CheckJSONGzFile();
 
@@ -105,7 +106,9 @@ class TestFile {
                             json_content->size_bytes);
 
     // Use testing util to populate the array stream
-    GTEST_FAIL() << "Not implemented";
+    nanoarrow::testing::TestingJSONReader reader;
+    NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(json_string, out, error));
+    return NANOARROW_OK;
   }
 
   // Read a whole file into an ArrowBuffer
@@ -258,15 +261,33 @@ class TestFile {
       GTEST_SKIP() << path_ << " is not currently supported by the IPC reader";
     }
 
+    ArrowError error;
+    ArrowErrorInit(&error);
+
     nanoarrow::UniqueArrayStream ipc_stream;
     GetArrowArrayStreamIPC(dir_prefix, ipc_stream.get());
 
     nanoarrow::UniqueArrayStream json_stream;
-    GetArrowArrayStreamCheckJSON(dir_prefix, json_stream.get());
+    int result = GetArrowArrayStreamCheckJSON(dir_prefix, json_stream.get(), &error);
+    // Skip instead of faile for ENOTSUP
+    if (result == ENOTSUP) {
+      GTEST_SKIP() << "File contains type(s) not supported by the testing JSON reader: "
+                   << error.message;
+    }
+    ASSERT_EQ(result, NANOARROW_OK) << error.message;
 
     // Use testing utility to compare
-    ArrowError error;
-    ArrowErrorInit(&error);
+    nanoarrow::testing::TestingJSONComparison comparison;
+    ASSERT_EQ(comparison.CompareArrayStream(ipc_stream.get(), json_stream.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+
+    std::stringstream differences;
+    comparison.WriteDifferences(differences);
+    EXPECT_EQ(comparison.num_differences(), 0)
+        << "CompareArrayStream() found " << comparison.num_differences()
+        << " difference(s):\n"
+        << differences.str();
   }
 
   bool Check(int result, std::string msg) {
