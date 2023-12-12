@@ -34,6 +34,16 @@
 
 using namespace arrow;
 
+// Helpers for reporting Arrow C++ Result failures
+#define FAIL_RESULT_NOT_OK(expr) \
+  if (!(expr).ok()) GTEST_FAIL() << (expr).status().message()
+
+#define NANOARROW_RETURN_ARROW_RESULT_NOT_OK(expr, error_expr)            \
+  if (!(expr).ok()) {                                                     \
+    ArrowErrorSet((error_expr), "%s", (expr).status().message().c_str()); \
+    return EINVAL;                                                        \
+  }
+
 // Utility to test an IPC stream written a as a file (where path does not include a
 // prefix that might be specific where a specific system has arrow-testing checked out).
 // This helper also checks a read that is supposed to be valid against what Arrow C++
@@ -131,45 +141,30 @@ class TestFile {
   }
 
   // Create an arrow::io::InputStream wrapper around an ArrowBuffer
-  static arrow::Result<std::shared_ptr<io::InputStream>> BufferInputStream(
-      ArrowBuffer* src) {
+  static std::shared_ptr<io::InputStream> BufferInputStream(ArrowBuffer* src) {
     auto content_copy_wrapped = Buffer::Wrap<uint8_t>(src->data, src->size_bytes);
-    auto buffer_reader = std::make_shared<io::BufferReader>(content_copy_wrapped);
-    return io::RandomAccessFile::GetStream(buffer_reader, 0,
-                                           content_copy_wrapped->size());
+    return std::make_shared<io::BufferReader>(content_copy_wrapped);
   }
 
   // Decompress gzipped buffer content (currently uses Arrow C++)
   static ArrowErrorCode UnGZIP(ArrowBuffer* src, ArrowBuffer* dst, ArrowError* error) {
     auto maybe_gzip = arrow::util::Codec::Create(arrow::Compression::GZIP);
-    if (!maybe_gzip.ok()) {
-      ArrowErrorSet(error, "%s", maybe_gzip.status().message().c_str());
-      return EINVAL;
-    }
+    NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_gzip, error);
 
-    auto maybe_gz_input_stream = BufferInputStream(src);
-    if (!maybe_gz_input_stream.ok()) {
-      ArrowErrorSet(error, "%s", maybe_gz_input_stream.status().message().c_str());
-      return EINVAL;
-    }
+    std::shared_ptr<io::InputStream> gz_input_stream = BufferInputStream(src);
 
     auto maybe_input =
-        io::CompressedInputStream::Make(maybe_gzip->get(), *maybe_gz_input_stream);
-    if (!maybe_input.ok()) {
-      ArrowErrorSet(error, "%s", maybe_input.status().message().c_str());
-      return EINVAL;
-    }
+        io::CompressedInputStream::Make(maybe_gzip->get(), gz_input_stream);
+    NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_input, error);
 
     std::stringstream testing_json;
     auto input = *maybe_input;
     int64_t bytes_read = 0;
     do {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(dst, 8096), error);
+
       auto maybe_bytes_read = input->Read(8096, dst->data + dst->size_bytes);
-      if (!maybe_bytes_read.ok()) {
-        ArrowErrorSet(error, "%s", maybe_bytes_read.status().message().c_str());
-        return EINVAL;
-      }
+      NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_bytes_read, error);
 
       bytes_read = *maybe_bytes_read;
       dst->size_bytes += bytes_read;
@@ -227,42 +222,36 @@ class TestFile {
       GTEST_FAIL() << MakeError(NANOARROW_OK, "");
     }
 
-    // Read the same file with Arrow C++. Use the in-memory version to avoid
-    // requiring Arrow C++ with filesystem.
+    // Read the same file with Arrow C++
     nanoarrow::UniqueBuffer content_copy;
     ASSERT_EQ(ReadFileBuffer(path_builder.str(), content_copy.get(), &error),
               NANOARROW_OK)
         << error.message;
-    auto maybe_input_stream = BufferInputStream(content_copy.get());
-    if (!maybe_input_stream.ok()) {
-      GTEST_FAIL() << maybe_input_stream.status().message();
-    }
+    std::shared_ptr<io::InputStream> input_stream = BufferInputStream(content_copy.get());
 
-    auto maybe_reader = ipc::RecordBatchStreamReader::Open(*maybe_input_stream);
-    if (!maybe_reader.ok()) {
-      GTEST_FAIL() << maybe_reader.status().message();
-    }
+    auto maybe_reader = ipc::RecordBatchStreamReader::Open(input_stream);
+    FAIL_RESULT_NOT_OK(maybe_reader);
 
     auto maybe_table_arrow = maybe_reader.ValueUnsafe()->ToTable();
-    if (!maybe_table_arrow.ok()) {
-      GTEST_FAIL() << maybe_table_arrow.status().message();
-    }
+    FAIL_RESULT_NOT_OK(maybe_table_arrow);
 
     // Make a Table from the our vector of arrays
     auto maybe_schema = ImportSchema(schema.get());
-    if (!maybe_schema.ok()) {
-      GTEST_FAIL() << maybe_schema.status().message();
-    }
+    FAIL_RESULT_NOT_OK(maybe_schema);
 
     ASSERT_TRUE(maybe_table_arrow.ValueUnsafe()->schema()->Equals(**maybe_schema, true));
 
     std::vector<std::shared_ptr<RecordBatch>> batches;
     for (auto& array : arrays) {
       auto maybe_batch = ImportRecordBatch(array.get(), *maybe_schema);
+      FAIL_RESULT_NOT_OK(maybe_batch);
+
       batches.push_back(std::move(*maybe_batch));
     }
 
     auto maybe_table = Table::FromRecordBatches(*maybe_schema, batches);
+    FAIL_RESULT_NOT_OK(maybe_table);
+
     EXPECT_TRUE(maybe_table.ValueUnsafe()->Equals(**maybe_table_arrow, true));
   }
 
