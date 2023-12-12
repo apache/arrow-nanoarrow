@@ -28,10 +28,21 @@
 
 #include "nanoarrow.hpp"
 #include "nanoarrow_ipc.h"
+#include "nanoarrow_testing.hpp"
 
 #include "flatcc/portable/pendian_detect.h"
 
 using namespace arrow;
+
+// Helpers for reporting Arrow C++ Result failures
+#define FAIL_RESULT_NOT_OK(expr) \
+  if (!(expr).ok()) GTEST_FAIL() << (expr).status().message()
+
+#define NANOARROW_RETURN_ARROW_RESULT_NOT_OK(expr, error_expr)            \
+  if (!(expr).ok()) {                                                     \
+    ArrowErrorSet((error_expr), "%s", (expr).status().message().c_str()); \
+    return EINVAL;                                                        \
+  }
 
 // Utility to test an IPC stream written a as a file (where path does not include a
 // prefix that might be specific where a specific system has arrow-testing checked out).
@@ -70,31 +81,109 @@ class TestFile {
     return Err(ENODATA, path, message);
   }
 
-  void Test(std::string dir_prefix) {
+  std::string CheckJSONGzFile() {
+    size_t dot_pos = path_.find('.');
+    return path_.substr(0, dot_pos) + std::string(".json.gz");
+  }
+
+  ArrowErrorCode GetArrowArrayStreamIPC(const std::string& dir_prefix,
+                                        ArrowArrayStream* out, ArrowError* error) {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << path_;
 
-    // Read the whole file into an ArrowBuffer. We need the whole thing in memory
-    // to avoid requiring Arrow C++ with filesystem.
-    std::ifstream infile(path_builder.str(), std::ios::in | std::ios::binary);
+    // Read using nanoarrow_ipc
     nanoarrow::UniqueBuffer content;
+    NANOARROW_RETURN_NOT_OK(ReadFileBuffer(path_builder.str(), content.get(), error));
+
+    struct ArrowIpcInputStream input;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcInputStreamInitBuffer(&input, content.get()), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcArrayStreamReaderInit(out, &input, nullptr), error);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode GetArrowArrayStreamCheckJSON(const std::string& dir_prefix,
+                                              ArrowArrayStream* out, ArrowError* error) {
+    std::stringstream path_builder;
+    path_builder << dir_prefix << "/" << CheckJSONGzFile();
+
+    // Read .json.gz file into a buffer
+    nanoarrow::UniqueBuffer json_gz_content;
+    NANOARROW_RETURN_NOT_OK(
+        ReadFileBuffer(path_builder.str(), json_gz_content.get(), error));
+
+    // Decompress into a JSON string
+    nanoarrow::UniqueBuffer json_content;
+    NANOARROW_RETURN_NOT_OK(UnGZIP(json_gz_content.get(), json_content.get(), error));
+
+    std::string json_string(reinterpret_cast<char*>(json_content->data),
+                            json_content->size_bytes);
+
+    // Use testing util to populate the array stream
+    nanoarrow::testing::TestingJSONReader reader;
+    NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(json_string, out, error));
+    return NANOARROW_OK;
+  }
+
+  // Read a whole file into an ArrowBuffer
+  static ArrowErrorCode ReadFileBuffer(const std::string& path, ArrowBuffer* content,
+                                       ArrowError* error) {
+    std::ifstream infile(path, std::ios::in | std::ios::binary);
     do {
       content->size_bytes += infile.gcount();
-      ASSERT_EQ(ArrowBufferReserve(content.get(), 8096), NANOARROW_OK);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(content, 8096), error);
     } while (
         infile.read(reinterpret_cast<char*>(content->data + content->size_bytes), 8096));
     content->size_bytes += infile.gcount();
 
-    // Make a copy into another buffer so we can wrap it in something Arrow C++
-    // understands
-    nanoarrow::UniqueBuffer content_copy;
-    ASSERT_EQ(ArrowBufferAppend(content_copy.get(), content->data, content->size_bytes),
-              NANOARROW_OK);
+    return NANOARROW_OK;
+  }
 
-    struct ArrowIpcInputStream input;
+  // Create an arrow::io::InputStream wrapper around an ArrowBuffer
+  static std::shared_ptr<io::InputStream> BufferInputStream(ArrowBuffer* src) {
+    auto content_copy_wrapped = Buffer::Wrap<uint8_t>(src->data, src->size_bytes);
+    return std::make_shared<io::BufferReader>(content_copy_wrapped);
+  }
+
+  // Decompress gzipped buffer content (currently uses Arrow C++)
+  static ArrowErrorCode UnGZIP(ArrowBuffer* src, ArrowBuffer* dst, ArrowError* error) {
+    auto maybe_gzip = arrow::util::Codec::Create(arrow::Compression::GZIP);
+    NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_gzip, error);
+
+    std::shared_ptr<io::InputStream> gz_input_stream = BufferInputStream(src);
+
+    auto maybe_input =
+        io::CompressedInputStream::Make(maybe_gzip->get(), gz_input_stream);
+    NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_input, error);
+
+    std::stringstream testing_json;
+    auto input = *maybe_input;
+    int64_t bytes_read = 0;
+    do {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(dst, 8096), error);
+
+      auto maybe_bytes_read = input->Read(8096, dst->data + dst->size_bytes);
+      NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_bytes_read, error);
+
+      bytes_read = *maybe_bytes_read;
+      dst->size_bytes += bytes_read;
+    } while (bytes_read > 0);
+
+    return NANOARROW_OK;
+  }
+
+  void TestEqualsArrowCpp(const std::string& dir_prefix) {
+    std::stringstream path_builder;
+    path_builder << dir_prefix << "/" << path_;
+
+    ArrowError error;
+    ArrowErrorInit(&error);
+
+    // Read using nanoarrow_ipc
     nanoarrow::UniqueArrayStream stream;
-    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, content.get()), NANOARROW_OK);
-    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(stream.get(), &input, nullptr), NANOARROW_OK);
+    ASSERT_EQ(GetArrowArrayStreamIPC(dir_prefix, stream.get(), &error), NANOARROW_OK)
+        << error.message;
 
     nanoarrow::UniqueSchema schema;
     int result = stream->get_schema(stream.get(), schema.get());
@@ -133,51 +222,72 @@ class TestFile {
       GTEST_FAIL() << MakeError(NANOARROW_OK, "");
     }
 
-    // Read the same data with Arrow C++.
-    auto content_copy_wrapped =
-        Buffer::Wrap<uint8_t>(content_copy->data, content_copy->size_bytes);
-    auto buffer_reader = std::make_shared<io::BufferReader>(content_copy_wrapped);
-
-    // Support Arrow 9.0.0 for Fedora and Centos7 images
-#if ARROW_VERSION_MAJOR >= 10
-    auto maybe_input_stream =
-        io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
-    if (!maybe_input_stream.ok()) {
-      GTEST_FAIL() << maybe_input_stream.status().message();
-    }
-
-    std::shared_ptr<io::InputStream> input_stream = maybe_input_stream.ValueUnsafe();
-#else
-    std::shared_ptr<io::InputStream> input_stream =
-        io::RandomAccessFile::GetStream(buffer_reader, 0, content_copy_wrapped->size());
-#endif
+    // Read the same file with Arrow C++
+    nanoarrow::UniqueBuffer content_copy;
+    ASSERT_EQ(ReadFileBuffer(path_builder.str(), content_copy.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    std::shared_ptr<io::InputStream> input_stream = BufferInputStream(content_copy.get());
 
     auto maybe_reader = ipc::RecordBatchStreamReader::Open(input_stream);
-    if (!maybe_reader.ok()) {
-      GTEST_FAIL() << maybe_reader.status().message();
-    }
+    FAIL_RESULT_NOT_OK(maybe_reader);
 
     auto maybe_table_arrow = maybe_reader.ValueUnsafe()->ToTable();
-    if (!maybe_table_arrow.ok()) {
-      GTEST_FAIL() << maybe_table_arrow.status().message();
-    }
+    FAIL_RESULT_NOT_OK(maybe_table_arrow);
 
     // Make a Table from the our vector of arrays
     auto maybe_schema = ImportSchema(schema.get());
-    if (!maybe_schema.ok()) {
-      GTEST_FAIL() << maybe_schema.status().message();
-    }
+    FAIL_RESULT_NOT_OK(maybe_schema);
 
     ASSERT_TRUE(maybe_table_arrow.ValueUnsafe()->schema()->Equals(**maybe_schema, true));
 
     std::vector<std::shared_ptr<RecordBatch>> batches;
     for (auto& array : arrays) {
       auto maybe_batch = ImportRecordBatch(array.get(), *maybe_schema);
+      FAIL_RESULT_NOT_OK(maybe_batch);
+
       batches.push_back(std::move(*maybe_batch));
     }
 
     auto maybe_table = Table::FromRecordBatches(*maybe_schema, batches);
+    FAIL_RESULT_NOT_OK(maybe_table);
+
     EXPECT_TRUE(maybe_table.ValueUnsafe()->Equals(**maybe_table_arrow, true));
+  }
+
+  void TestIPCCheckJSON(const std::string& dir_prefix) {
+    if (expected_return_code_ != NANOARROW_OK) {
+      GTEST_SKIP() << path_ << " is not currently supported by the IPC reader";
+    }
+
+    ArrowError error;
+    ArrowErrorInit(&error);
+
+    nanoarrow::UniqueArrayStream ipc_stream;
+    ASSERT_EQ(GetArrowArrayStreamIPC(dir_prefix, ipc_stream.get(), &error), NANOARROW_OK)
+        << error.message;
+
+    nanoarrow::UniqueArrayStream json_stream;
+    int result = GetArrowArrayStreamCheckJSON(dir_prefix, json_stream.get(), &error);
+    // Skip instead of fail for ENOTSUP
+    if (result == ENOTSUP) {
+      GTEST_SKIP() << "File contains type(s) not supported by the testing JSON reader: "
+                   << error.message;
+    }
+    ASSERT_EQ(result, NANOARROW_OK) << error.message;
+
+    // Use testing utility to compare
+    nanoarrow::testing::TestingJSONComparison comparison;
+    ASSERT_EQ(comparison.CompareArrayStream(ipc_stream.get(), json_stream.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+
+    std::stringstream differences;
+    comparison.WriteDifferences(differences);
+    EXPECT_EQ(comparison.num_differences(), 0)
+        << "CompareArrayStream() found " << comparison.num_differences()
+        << " difference(s):\n"
+        << differences.str();
   }
 
   bool Check(int result, std::string msg) {
@@ -200,53 +310,80 @@ class TestFile {
   std::string expected_error_message_;
 };
 
+// For better testing output
 std::ostream& operator<<(std::ostream& os, const TestFile& obj) {
   os << obj.path_;
   return os;
 }
 
-class ArrowTestingPathParameterizedTestFixture
-    : public ::testing::TestWithParam<TestFile> {
+// Start building the arrow-testing path or error if the environment
+// variable was not set
+ArrowErrorCode InitArrowTestingPath(std::ostream& builder, ArrowError* error) {
+  const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
+  if (testing_dir == nullptr || strlen(testing_dir) == 0) {
+    ArrowErrorSet(error, "NANOARROW_ARROW_TESTING_DIR environment variable not set");
+    return ENOENT;
+  }
+
+  builder << testing_dir;
+  return NANOARROW_OK;
+}
+
+class TestFileFixture : public ::testing::TestWithParam<TestFile> {
  protected:
   TestFile test_file;
 };
 
-TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFileNativeEndian) {
-  const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
-  if (testing_dir == nullptr || strlen(testing_dir) == 0) {
-    GTEST_SKIP() << "NANOARROW_ARROW_TESTING_DIR environment variable not set";
+TEST_P(TestFileFixture, NanoarrowIpcTestFileNativeEndian) {
+  std::stringstream dir_builder;
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
   }
 
-  std::stringstream dir_builder;
-
 #if defined(__BIG_ENDIAN__)
-  dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
+  dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
 #else
-  dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
+  dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
 #endif
   TestFile param = GetParam();
-  param.Test(dir_builder.str());
+  param.TestEqualsArrowCpp(dir_builder.str());
 }
 
-TEST_P(ArrowTestingPathParameterizedTestFixture, NanoarrowIpcTestFileSwapEndian) {
-  const char* testing_dir = getenv("NANOARROW_ARROW_TESTING_DIR");
-  if (testing_dir == nullptr || strlen(testing_dir) == 0) {
-    GTEST_SKIP() << "NANOARROW_ARROW_TESTING_DIR environment variable not set";
+TEST_P(TestFileFixture, NanoarrowIpcTestFileSwapEndian) {
+  std::stringstream dir_builder;
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
   }
 
-  std::stringstream dir_builder;
-
 #if defined(__BIG_ENDIAN__)
-  dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
+  dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
 #else
-  dir_builder << testing_dir << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
+  dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-bigendian";
 #endif
   TestFile param = GetParam();
-  param.Test(dir_builder.str());
+  param.TestEqualsArrowCpp(dir_builder.str());
+}
+
+TEST_P(TestFileFixture, NanoarrowIpcTestFileCheckJSON) {
+  std::stringstream dir_builder;
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
+  }
+
+  dir_builder << "/data/arrow-ipc-stream/integration/1.0.0-littleendian";
+
+  TestFile param = GetParam();
+  param.TestIPCCheckJSON(dir_builder.str());
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    NanoarrowIpcTest, ArrowTestingPathParameterizedTestFixture,
+    NanoarrowIpcTest, TestFileFixture,
     ::testing::Values(
         // Files in data/arrow-ipc-stream/integration/1.0.0-(little|big)endian/
         // should read without error and the data should match Arrow C++'s read

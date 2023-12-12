@@ -205,6 +205,16 @@ if(NANOARROW_IPC_BUILD_TESTS)
 
   fetchcontent_makeavailable(googletest)
 
+  # JSON library for integration testing
+  # Also used by some versions of Arrow, so check if this is already available
+  if(NOT TARGET nlohmann_json::nlohmann_json)
+    fetchcontent_declare(nlohmann_json
+                         URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
+                         URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
+    )
+    fetchcontent_makeavailable(nlohmann_json)
+  endif()
+
   enable_testing()
 
   add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
@@ -240,6 +250,7 @@ if(NANOARROW_IPC_BUILD_TESTS)
                         nanoarrow_ipc
                         nanoarrow
                         ${NANOARROW_IPC_ARROW_TARGET}
+                        nlohmann_json
                         gtest_main
                         ipc_coverage_config)
   target_link_libraries(nanoarrow_ipc_hpp_test
