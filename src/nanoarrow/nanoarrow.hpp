@@ -289,6 +289,8 @@ using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
 /// not required) to implement a ToArrayStream(ArrowArrayStream*) that creates a new
 /// instance owned by the ArrowArrayStream and moves the relevant data to that instance.
 ///
+/// An example implementation might be:
+///
 /// \code
 /// class StreamImpl {
 ///  public:
@@ -309,6 +311,17 @@ using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
 ///   int GetNext(struct ArrowArray* array) { return ENOTSUP; }
 ///   const char* GetLastError() { nullptr; }
 /// };
+/// \endcode
+///
+/// An example usage might be:
+///
+/// \code
+/// // Call constructor and/or public methods to initialize relevant data
+/// StreamImpl impl;
+///
+/// // Export to ArrowArrayStream after data are finalized
+/// UniqueArrayStream stream;
+/// impl.ToArrayStream(stream.get());
 /// \endcode
 template <typename T>
 class ArrayStreamFactory {
@@ -353,10 +366,14 @@ class ArrayStreamFactory {
 /// custom ArrowArrayStream implementations.
 class EmptyArrayStream {
  public:
+  /// \brief Create an EmptyArrayStream from an ArrowSchema
+  ///
+  /// Takes ownership of schema.
   EmptyArrayStream(struct ArrowSchema* schema) : schema_(schema) {
     ArrowErrorInit(&error_);
   }
 
+  /// \brief Export to ArrowArrayStream
   void ToArrayStream(struct ArrowArrayStream* out) {
     EmptyArrayStream* impl = new EmptyArrayStream(schema_.get());
     ArrayStreamFactory<EmptyArrayStream>::InitArrayStream(impl, out);
@@ -404,14 +421,21 @@ class EmptyArrayStream {
 /// \brief Implementation of an ArrowArrayStream backed by a vector of UniqueArray objects
 class VectorArrayStream {
  public:
+  /// \brief Create a VectorArrayStream from an ArrowSchema + vector of UniqueArray
+  ///
+  /// Takes ownership of schema and moves arrays if possible.
   VectorArrayStream(struct ArrowSchema* schema, std::vector<UniqueArray> arrays)
       : offset_(0), schema_(schema), arrays_(std::move(arrays)) {}
 
+  /// \brief Create a one-shot VectorArrayStream from an ArrowSchema + ArrowArray
+  ///
+  /// Takes ownership of schema and array.
   VectorArrayStream(struct ArrowSchema* schema, struct ArrowArray* array)
       : offset_(0), schema_(schema) {
     arrays_.emplace_back(array);
   }
 
+  /// \brief Export to ArrowArrayStream
   void ToArrayStream(struct ArrowArrayStream* out) {
     VectorArrayStream* impl = new VectorArrayStream(schema_.get(), std::move(arrays_));
     ArrayStreamFactory<VectorArrayStream>::InitArrayStream(impl, out);
