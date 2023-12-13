@@ -88,70 +88,108 @@ namespace internal {
 ///
 /// @{
 
-static inline void init_pointer(struct ArrowSchema* data) { data->release = nullptr; }
+template <typename T>
+static inline void init_pointer(T* data);
 
-static inline void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
-  ArrowSchemaMove(src, dst);
-}
+template <typename T>
+static inline void move_pointer(T* src, T* dst);
 
-static inline void release_pointer(struct ArrowSchema* data) {
-  if (data->release != nullptr) {
-    data->release(data);
-  }
-}
+template <typename T>
+static inline void release_pointer(T* data);
 
-static inline void init_pointer(struct ArrowArray* data) { data->release = nullptr; }
-
-static inline void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
-  ArrowArrayMove(src, dst);
-}
-
-static inline void release_pointer(struct ArrowArray* data) {
-  if (data->release != nullptr) {
-    data->release(data);
-  }
-}
-
-static inline void init_pointer(struct ArrowArrayStream* data) {
+template <>
+inline void init_pointer(struct ArrowSchema* data) {
   data->release = nullptr;
 }
 
-static inline void move_pointer(struct ArrowArrayStream* src,
-                                struct ArrowArrayStream* dst) {
-  ArrowArrayStreamMove(src, dst);
+template <>
+inline void move_pointer(struct ArrowSchema* src, struct ArrowSchema* dst) {
+  ArrowSchemaMove(src, dst);
 }
 
-static inline void release_pointer(ArrowArrayStream* data) {
+template <>
+inline void release_pointer(struct ArrowSchema* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
 }
 
-static inline void init_pointer(struct ArrowBuffer* data) { ArrowBufferInit(data); }
+template <>
+inline void init_pointer(struct ArrowArray* data) {
+  data->release = nullptr;
+}
 
-static inline void move_pointer(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
+template <>
+inline void move_pointer(struct ArrowArray* src, struct ArrowArray* dst) {
+  ArrowArrayMove(src, dst);
+}
+
+template <>
+inline void release_pointer(struct ArrowArray* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+template <>
+inline void init_pointer(struct ArrowArrayStream* data) {
+  data->release = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowArrayStream* src, struct ArrowArrayStream* dst) {
+  ArrowArrayStreamMove(src, dst);
+}
+
+template <>
+inline void release_pointer(ArrowArrayStream* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+template <>
+inline void init_pointer(struct ArrowBuffer* data) {
+  ArrowBufferInit(data);
+}
+
+template <>
+inline void move_pointer(struct ArrowBuffer* src, struct ArrowBuffer* dst) {
   ArrowBufferMove(src, dst);
 }
 
-static inline void release_pointer(struct ArrowBuffer* data) { ArrowBufferReset(data); }
+template <>
+inline void release_pointer(struct ArrowBuffer* data) {
+  ArrowBufferReset(data);
+}
 
-static inline void init_pointer(struct ArrowBitmap* data) { ArrowBitmapInit(data); }
+template <>
+inline void init_pointer(struct ArrowBitmap* data) {
+  ArrowBitmapInit(data);
+}
 
-static inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
+template <>
+inline void move_pointer(struct ArrowBitmap* src, struct ArrowBitmap* dst) {
   ArrowBitmapMove(src, dst);
 }
 
-static inline void release_pointer(struct ArrowBitmap* data) { ArrowBitmapReset(data); }
+template <>
+inline void release_pointer(struct ArrowBitmap* data) {
+  ArrowBitmapReset(data);
+}
 
-static inline void init_pointer(struct ArrowArrayView* data) {
+template <>
+inline void init_pointer(struct ArrowArrayView* data) {
   ArrowArrayViewInitFromType(data, NANOARROW_TYPE_UNINITIALIZED);
 }
 
-static inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
+template <>
+inline void move_pointer(struct ArrowArrayView* src, struct ArrowArrayView* dst) {
   ArrowArrayViewMove(src, dst);
 }
 
-static inline void release_pointer(struct ArrowArrayView* data) {
+template <>
+inline void release_pointer(struct ArrowArrayView* data) {
   ArrowArrayViewReset(data);
 }
 
