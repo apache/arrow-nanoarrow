@@ -326,7 +326,6 @@ using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
 template <typename T>
 class ArrayStreamFactory {
  public:
-
   /// \brief Take ownership of instance and populate callbacks of out
   static void InitArrayStream(T* instance, struct ArrowArrayStream* out) {
     out->get_schema = &get_schema_wrapper;
