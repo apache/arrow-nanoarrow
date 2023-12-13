@@ -263,7 +263,8 @@ if(NANOARROW_BUILD_TESTS)
 endif()
 
 if(NANOARROW_BUILD_INTEGRATION_TESTS)
-  add_library(nanoarrow_c_data_integration SHARED src/nanoarrow/integration/c_data_integration.cc)
+  add_library(nanoarrow_c_data_integration SHARED
+              src/nanoarrow/integration/c_data_integration.cc)
   target_include_directories(nanoarrow_c_data_integration
                              PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
