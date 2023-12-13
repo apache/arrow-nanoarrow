@@ -32,6 +32,7 @@ set(NANOARROW_VERSION_MINOR "${nanoarrow_VERSION_MINOR}")
 set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
+option(NANOARROW_BUILD_INTEGRATION_TESTS "Build integration tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
 option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OFF)
 option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
@@ -151,10 +152,17 @@ else()
           DESTINATION include/nanoarrow)
 endif()
 
-if(NANOARROW_BUILD_TESTS)
-  # For testing we use GTest + Arrow C++
+if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
   include(FetchContent)
 
+  fetchcontent_declare(nlohmann_json
+                       URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
+                       URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
+  )
+  fetchcontent_makeavailable(nlohmann_json)
+endif()
+
+if(NANOARROW_BUILD_TESTS)
   set(MEMORYCHECK_COMMAND_OPTIONS
       "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/valgrind.supp --error-exitcode=1"
   )
@@ -202,16 +210,6 @@ if(NANOARROW_BUILD_TESTS)
   endif()
 
   fetchcontent_makeavailable(googletest)
-
-  # JSON library for integration testing
-  # Also used by some versions of Arrow, so check if this is already available
-  if(NOT TARGET nlohmann_json::nlohmann_json)
-    fetchcontent_declare(nlohmann_json
-                         URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
-                         URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
-    )
-    fetchcontent_makeavailable(nlohmann_json)
-  endif()
 
   add_executable(utils_test src/nanoarrow/utils_test.cc)
   add_executable(buffer_test src/nanoarrow/buffer_test.cc)
@@ -262,4 +260,12 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
+endif()
+
+if(NANOARROW_BUILD_INTEGRATION_TESTS)
+  add_library(nanoarrow_c_data_integration SHARED src/nanoarrow/integration/c_data_integration.cc)
+  target_include_directories(nanoarrow_c_data_integration
+                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                    $<INSTALL_INTERFACE:include>)
+  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
 endif()
