@@ -39,13 +39,65 @@ int64_t nanoarrow_BytesAllocated();
 
 }  // extern "C"
 
-static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_path,
-                                     ArrowError* error) {
+static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_path) {
   std::ifstream infile(file_path, std::ios::in | std::ios::binary);
   char buf[8096];
   do {
     out << std::string(buf, infile.gcount());
   } while (infile.read(buf, sizeof(buf)));
+
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrayStreamFromJsonFilePath(const std::string& json_path,
+                                                  ArrowArrayStream* out,
+                                                  ArrowError* error) {
+  std::stringstream ss;
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ReadFileString(ss, json_path), error);
+
+  nanoarrow::testing::TestingJSONReader reader;
+
+  nanoarrow::UniqueArrayStream stream;
+  NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(ss.str(), stream.get(), error));
+  return NANOARROW_OK;
+}
+
+using MaterializedArrayStream =
+    std::pair<nanoarrow::UniqueSchema, std::vector<nanoarrow::UniqueArray>>;
+
+static ArrowErrorCode MaterializeJsonFilePath(const std::string& json_path,
+                                              MaterializedArrayStream* out,
+                                              ArrowError* error) {
+  nanoarrow::UniqueArrayStream stream;
+  NANOARROW_RETURN_NOT_OK(ArrayStreamFromJsonFilePath(json_path, stream.get(), error));
+
+  int result = stream->get_schema(stream.get(), out->first.get());
+  if (result != NANOARROW_OK) {
+    const char* err = stream->get_last_error(stream.get());
+    if (err != nullptr) {
+      ArrowErrorSet(error, "%s", err);
+    }
+  }
+
+  nanoarrow::UniqueArray tmp;
+  do {
+    tmp.reset();
+    int result = stream->get_next(stream.get(), tmp.get());
+    if (result != NANOARROW_OK) {
+      const char* err = stream->get_last_error(stream.get());
+      if (err != nullptr) {
+        ArrowErrorSet(error, "%s", err);
+      }
+
+      return result;
+    }
+
+    if (tmp->release == nullptr) {
+      break;
+    }
+
+    out->second.emplace_back(tmp.get());
+  } while (true);
 
   return NANOARROW_OK;
 }
