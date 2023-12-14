@@ -243,10 +243,9 @@ ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
 #define NANOARROW_ASSERT_OK(EXPR) \
   _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
 
-#define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)            \
-  do {                                                    \
-    const int NAME = (EXPR);                              \
-    if (!(EXPR)) NANOARROW_PRINT_AND_DIE(NAME, EXPR_STR); \
+#define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)         \
+  do {                                                 \
+    if (!(EXPR)) NANOARROW_PRINT_AND_DIE(0, EXPR_STR); \
   } while (0)
 
 #define NANOARROW_DCHECK(EXPR) _NANOARROW_DCHECK_IMPL(EXPR, #EXPR)
@@ -265,8 +264,8 @@ static inline void ArrowSchemaMove(struct ArrowSchema* src, struct ArrowSchema* 
 
 static inline void ArrowSchemaRelease(struct ArrowSchema* schema) {
   NANOARROW_DCHECK(schema != NULL);
-
   schema->release(schema);
+  NANOARROW_DCHECK(schema->release == NULL);
 }
 
 static inline void ArrowArrayMove(struct ArrowArray* src, struct ArrowArray* dst) {
@@ -279,8 +278,8 @@ static inline void ArrowArrayMove(struct ArrowArray* src, struct ArrowArray* dst
 
 static inline void ArrowArrayRelease(struct ArrowArray* array) {
   NANOARROW_DCHECK(array != NULL);
-
   array->release(array);
+  NANOARROW_DCHECK(array->release == NULL);
 }
 
 static inline void ArrowArrayStreamMove(struct ArrowArrayStream* src,
@@ -333,6 +332,7 @@ static inline ArrowErrorCode ArrowArrayStreamGetNext(
 static inline void ArrowArrayStreamRelease(struct ArrowArrayStream* array_stream) {
   NANOARROW_DCHECK(array_stream != NULL);
   array_stream->release(array_stream);
+  NANOARROW_DCHECK(array_stream->release == NULL);
 }
 
 static char _ArrowIsLittleEndian(void) {
