@@ -184,12 +184,21 @@ struct ArrowError {
   char message[1024];
 };
 
+/// \brief Ensure an ArrowError is null-terminated by zeroing the first character.
+/// \ingroup nanoarrow-errors
+///
+/// If error is NULL, this function does nothing.
 static inline void ArrowErrorInit(struct ArrowError* error) {
   if (error != NULL) {
     error->message[0] = '\0';
   }
 }
 
+/// \brief Get the contents of an error
+/// \ingroup nanoarrow-errors
+///
+/// If error is NULL, returns "", or returns the contents of the error message
+/// otherwise.
 static inline const char* ArrowErrorMessage(struct ArrowError* error) {
   if (error == NULL) {
     return "";
@@ -198,6 +207,10 @@ static inline const char* ArrowErrorMessage(struct ArrowError* error) {
   }
 }
 
+/// \brief Set the contents of an error using printf syntax.
+/// \ingroup nanoarrow-errors
+///
+/// If error is NULL, this function does nothing and returns NANOARROW_OK.
 ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
 
 /// \brief Check the result of an expression and return it if not NANOARROW_OK
