@@ -17,8 +17,13 @@
 
 FROM archlinux:latest
 
-RUN pacman -Syu --noconfirm git gcc make cmake r-base gnupg curl arrow \
-    python-pip python-build cython python-numpy python-pytest python-pyarrow
+RUN pacman -Syu --noconfirm git gcc make cmake gnupg curl \
+    python-pip python-build cython python-numpy python-pytest python-virtualenv \
+    r-base r-tools r-utils r-methods \
+    arrow python-pyarrow
+
+# For Python
+RUN virtualenv -v --download --system-site-packages /venv
 
 # For R
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars

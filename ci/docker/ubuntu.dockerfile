@@ -20,11 +20,9 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    locales git cmake r-base gnupg curl valgrind python3-pip python3-venv doxygen pandoc lcov \
+    locales git cmake r-base gnupg curl valgrind python3-venv doxygen pandoc lcov \
     libxml2-dev libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev \
     libjpeg-dev libpng-dev libtiff-dev
-
-RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 
 # For Arrow C++
 RUN apt-get install -y -V ca-certificates lsb-release wget && \
@@ -34,9 +32,11 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
     apt-get install -y -V libarrow-dev
 
 # For documentation build + Python build
-# Note: sphinx can be unpinned when the interaction between sphinx and breathe
-# has been sorted: https://github.com/sphinx-doc/sphinx/issues/11605
-RUN pip3 install pydata-sphinx-theme "sphinx<7.2.0" breathe build Cython numpy pytest pyarrow
+RUN python3 -m venv --upgrade-deps /venv
+RUN source /venv/bin/activate && pydata-sphinx-theme sphinx breathe build Cython numpy pytest pyarrow
+
+# Locale required for R CMD check
+RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 
 # For R. Note that we install arrow here so that the integration tests for R run
 # in at least one test image.

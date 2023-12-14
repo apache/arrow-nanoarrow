@@ -19,13 +19,7 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 
-RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl py3-pip python3-dev
-
-RUN pip3 install build Cython pytest
-
-# There's a missing define that numpy's build needs on s390x and there is no wheel
-RUN (grep -e "S390" /usr/include/bits/hwcap.h && echo "#define HWCAP_S390_VX HWCAP_S390_VXRS" >> /usr/include/bits/hwcap.h) || true
-RUN pip3 install numpy
+RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl py3-virtualenv python3-dev
 
 # For Arrow C++
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-11.0.0.tar.gz | tar -zxf - && \
@@ -37,6 +31,9 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-11.0.
         -DCMAKE_INSTALL_PREFIX=../arrow && \
     cmake --build . && \
     cmake --install . --prefix=../arrow
+
+RUN virtualenv -v --download /venv
+RUN source /venv/bin/activate && pip install build Cython pytest numpy
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars

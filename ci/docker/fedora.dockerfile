@@ -20,9 +20,11 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} fedora:latest
 
 RUN dnf install -y git cmake R gnupg curl libarrow-devel glibc-langpack-en \
-    python3-pip python3-devel
+   python3-devel python3-virtualenv
 
-RUN pip3 install build Cython numpy pytest pyarrow
+# For Python
+RUN python3 -m venv --upgrade-deps /venv
+RUN source /venv/bin/activate && pip install build Cython pytest numpy pyarrow
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars

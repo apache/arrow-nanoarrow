@@ -20,12 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} centos:7
 
 RUN yum install -y epel-release
-RUN yum install -y git gnupg curl R gcc-c++ cmake3 python3-devel
-# On centos7/arm64, cythonize/build is required and fails with cython >= 3
-RUN pip3 install build "Cython < 3.0.0" numpy pytest
-
-RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
-ENV LC_ALL en_US.UTF-8
+RUN yum install -y git gnupg curl R gcc-c++ cmake3
 
 # For Arrow C++. Use 9.0.0 because this version works fine with the default gcc
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
@@ -37,6 +32,10 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0
         -DCMAKE_INSTALL_PREFIX=../arrow && \
     cmake3 --build . && \
     make install
+
+# Locale required for R CMD check
+RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
