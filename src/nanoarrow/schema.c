@@ -34,7 +34,7 @@ static void ArrowSchemaReleaseInternal(struct ArrowSchema* schema) {
     for (int64_t i = 0; i < schema->n_children; i++) {
       if (schema->children[i] != NULL) {
         if (schema->children[i]->release != NULL) {
-          schema->children[i]->release(schema->children[i]);
+          ArrowSchemaRelease(schema->children[i]);
         }
 
         ArrowFree(schema->children[i]);
@@ -49,7 +49,7 @@ static void ArrowSchemaReleaseInternal(struct ArrowSchema* schema) {
   // release() callback.
   if (schema->dictionary != NULL) {
     if (schema->dictionary->release != NULL) {
-      schema->dictionary->release(schema->dictionary);
+      ArrowSchemaRelease(schema->dictionary);
     }
 
     ArrowFree(schema->dictionary);
@@ -207,7 +207,7 @@ ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema, enum ArrowTyp
 
   int result = ArrowSchemaSetType(schema, type);
   if (result != NANOARROW_OK) {
-    schema->release(schema);
+    ArrowSchemaRelease(schema);
     return result;
   }
 
@@ -489,7 +489,7 @@ ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
 
   int result = ArrowSchemaSetFormat(schema_out, schema->format);
   if (result != NANOARROW_OK) {
-    schema_out->release(schema_out);
+    ArrowSchemaRelease(schema_out);
     return result;
   }
 
@@ -497,26 +497,26 @@ ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
 
   result = ArrowSchemaSetName(schema_out, schema->name);
   if (result != NANOARROW_OK) {
-    schema_out->release(schema_out);
+    ArrowSchemaRelease(schema_out);
     return result;
   }
 
   result = ArrowSchemaSetMetadata(schema_out, schema->metadata);
   if (result != NANOARROW_OK) {
-    schema_out->release(schema_out);
+    ArrowSchemaRelease(schema_out);
     return result;
   }
 
   result = ArrowSchemaAllocateChildren(schema_out, schema->n_children);
   if (result != NANOARROW_OK) {
-    schema_out->release(schema_out);
+    ArrowSchemaRelease(schema_out);
     return result;
   }
 
   for (int64_t i = 0; i < schema->n_children; i++) {
     result = ArrowSchemaDeepCopy(schema->children[i], schema_out->children[i]);
     if (result != NANOARROW_OK) {
-      schema_out->release(schema_out);
+      ArrowSchemaRelease(schema_out);
       return result;
     }
   }
@@ -524,13 +524,13 @@ ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
   if (schema->dictionary != NULL) {
     result = ArrowSchemaAllocateDictionary(schema_out);
     if (result != NANOARROW_OK) {
-      schema_out->release(schema_out);
+      ArrowSchemaRelease(schema_out);
       return result;
     }
 
     result = ArrowSchemaDeepCopy(schema->dictionary, schema_out->dictionary);
     if (result != NANOARROW_OK) {
-      schema_out->release(schema_out);
+      ArrowSchemaRelease(schema_out);
       return result;
     }
   }
