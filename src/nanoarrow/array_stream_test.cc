@@ -39,7 +39,8 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
 
   struct ArrowSchema schema_copy;
-  EXPECT_EQ(ArrowArrayStreamGetSchema(&array_stream, &schema_copy, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetSchema(&array_stream, &schema_copy, nullptr),
+            NANOARROW_OK);
   EXPECT_STREQ(schema_copy.format, "i");
   ArrowSchemaRelease(&schema_copy);
 
