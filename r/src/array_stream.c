@@ -72,14 +72,10 @@ SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
 
   SEXP schema_xptr = PROTECT(schema_owning_xptr());
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
-  int result = array_stream->get_schema(array_stream, schema);
-
+  int result = ArrowArrayStreamGetSchema(array_stream, schema, NULL);
   if (result != 0) {
-    const char* last_error = array_stream->get_last_error(array_stream);
-    if (last_error == NULL) {
-      last_error = "";
-    }
-    Rf_error("array_stream->get_schema(): [%d] %s", result, last_error);
+    Rf_error("array_stream->get_schema(): [%d] %s", result,
+             ArrowArrayStreamGetLastError(array_stream));
   }
 
   UNPROTECT(1);
@@ -91,14 +87,10 @@ SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
 
   SEXP array_xptr = PROTECT(array_owning_xptr());
   struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
-  int result = array_stream->get_next(array_stream, array);
-
-  if (result != 0) {
-    const char* last_error = array_stream->get_last_error(array_stream);
-    if (last_error == NULL) {
-      last_error = "";
-    }
-    Rf_error("array_stream->get_next(): [%d] %s", result, last_error);
+  int result = ArrowArrayStreamGetNext(array_stream, array, NULL);
+  if (result != NANOARROW_OK) {
+    Rf_error("array_stream->get_next(): [%d] %s", result,
+             ArrowArrayStreamGetLastError(array_stream));
   }
 
   UNPROTECT(1);

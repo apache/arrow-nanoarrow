@@ -39,17 +39,17 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
 
   struct ArrowSchema schema_copy;
-  EXPECT_EQ(array_stream.get_schema(&array_stream, &schema_copy), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetSchema(&array_stream, &schema_copy, nullptr), NANOARROW_OK);
   EXPECT_STREQ(schema_copy.format, "i");
   ArrowSchemaRelease(&schema_copy);
 
   struct ArrowArray array_copy;
-  EXPECT_EQ(array_stream.get_next(&array_stream, &array_copy), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array_copy, nullptr), NANOARROW_OK);
   EXPECT_EQ(array_copy.length, 1);
   EXPECT_EQ(array_copy.n_buffers, 2);
   ArrowArrayRelease(&array_copy);
 
-  EXPECT_EQ(array_stream.get_next(&array_stream, &array_copy), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array_copy, nullptr), NANOARROW_OK);
   EXPECT_EQ(array_copy.release, nullptr);
 
   EXPECT_EQ(array_stream.get_last_error(&array_stream), nullptr);
@@ -68,7 +68,7 @@ TEST(ArrayStreamTest, ArrayStreamTestEmpty) {
   EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
 
   for (int i = 0; i < 5; i++) {
-    EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
+    EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array, nullptr), NANOARROW_OK);
     EXPECT_EQ(array.release, nullptr);
   }
 
@@ -95,7 +95,7 @@ TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
   }
 
   // Pull only one of them
-  EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array, nullptr), NANOARROW_OK);
   EXPECT_EQ(array.length, 0);
   ArrowArrayRelease(&array);
 

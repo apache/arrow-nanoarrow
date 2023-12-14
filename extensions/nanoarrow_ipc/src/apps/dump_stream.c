@@ -77,14 +77,10 @@ int main(int argc, char* argv[]) {
   clock_t begin = clock();
 
   struct ArrowSchema schema;
-  result = stream.get_schema(&stream, &schema);
+  result = ArrowArrayStreamGetSchema(&stream, &schema, NULL);
   if (result != NANOARROW_OK) {
-    const char* message = stream.get_last_error(&stream);
-    if (message == NULL) {
-      message = "";
-    }
-
-    fprintf(stderr, "stream.get_schema() returned %d with error '%s'\n", result, message);
+    fprintf(stderr, "stream.get_schema() returned %d with error '%s'\n", result,
+            ArrowArrayStreamGetLastError(&stream));
     ArrowArrayStreamRelease(&stream);
     return 1;
   }
@@ -106,14 +102,10 @@ int main(int argc, char* argv[]) {
   begin = clock();
 
   while (1) {
-    result = stream.get_next(&stream, &array);
+    result = ArrowArrayStreamGetNext(&stream, &array, NULL);
     if (result != NANOARROW_OK) {
-      const char* message = stream.get_last_error(&stream);
-      if (message == NULL) {
-        message = "";
-      }
-
-      fprintf(stderr, "stream.get_next() returned %d with error '%s'\n", result, message);
+      fprintf(stderr, "stream.get_next() returned %d with error '%s'\n", result,
+              ArrowArrayStreamGetLastError(&stream));
       ArrowArrayStreamRelease(&stream);
       return 1;
     }

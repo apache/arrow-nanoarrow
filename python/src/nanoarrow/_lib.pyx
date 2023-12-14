@@ -1094,18 +1094,10 @@ cdef class ArrayStream:
 
     def _get_schema(self, Schema schema):
         self._assert_valid()
+        cdef Error error = Error()
         cdef int code = self._ptr.get_schema(self._ptr, schema._ptr)
-        cdef const char* message = NULL
         if code != NANOARROW_OK:
-            message = self._ptr.get_last_error(self._ptr)
-            if message != NULL:
-                raise NanoarrowException(
-                    "ArrowArrayStream::get_schema()",
-                    code,
-                    message.decode("UTF-8")
-                )
-            else:
-                raise NanoarrowException("ArrowArrayStream::get_schema()", code)
+            error.raise_error("ArrowArrayStream::get_schema()", code)
 
         self._cached_schema = schema
 
@@ -1131,19 +1123,11 @@ cdef class ArrayStream:
             self._cached_schema = Schema.allocate()
             self._get_schema(self._cached_schema)
 
+        cdef Error error = Error()
         cdef Array array = Array.allocate(self._cached_schema)
-        cdef int code = self._ptr.get_next(self._ptr, array._ptr)
-        cdef const char* message = NULL
+        cdef int code = ArrowArrayStreamGetNext(self._ptr, array._ptr, &error.c_error)
         if code != NANOARROW_OK:
-            message = self._ptr.get_last_error(self._ptr)
-            if message != NULL:
-                raise NanoarrowException(
-                    "ArrowArrayStream::get_next()",
-                    code,
-                    message.decode("UTF-8")
-                )
-            else:
-                raise NanoarrowException("ArrowArrayStream::get_next()", code)
+            error.raise_error("ArrowArrayStream::get_next()", code)
 
         if not array.is_valid():
             raise StopIteration()

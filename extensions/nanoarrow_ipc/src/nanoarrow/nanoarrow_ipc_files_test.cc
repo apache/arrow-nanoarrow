@@ -188,28 +188,26 @@ class TestFile {
         << error.message;
 
     nanoarrow::UniqueSchema schema;
-    int result = stream->get_schema(stream.get(), schema.get());
+    int result = ArrowArrayStreamGetSchema(stream.get(), schema.get(), &error);
     if (result != NANOARROW_OK) {
-      std::string err(stream->get_last_error(stream.get()));
-      if (Check(result, err)) {
+      if (Check(result, error.message)) {
         return;
       }
 
-      GTEST_FAIL() << MakeError(result, err);
+      GTEST_FAIL() << MakeError(result, error.message);
     }
 
     std::vector<nanoarrow::UniqueArray> arrays;
     while (true) {
       nanoarrow::UniqueArray array;
 
-      result = stream->get_next(stream.get(), array.get());
+      result = ArrowArrayStreamGetNext(stream.get(), array.get(), &error);
       if (result != NANOARROW_OK) {
-        std::string err(stream->get_last_error(stream.get()));
-        if (Check(result, err)) {
+        if (Check(result, error.message)) {
           return;
         }
 
-        GTEST_FAIL() << MakeError(result, err);
+        GTEST_FAIL() << MakeError(result, error.message);
       }
 
       if (array->release == nullptr) {
