@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
     }
 
     fprintf(stderr, "stream.get_schema() returned %d with error '%s'\n", result, message);
-    stream.release(&stream);
+    ArrowArrayStreamRelease(&stream);
     return 1;
   }
 
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
   char schema_tmp[8096];
   memset(schema_tmp, 0, sizeof(schema_tmp));
   dump_schema_to_stdout(&schema, 0, schema_tmp, sizeof(schema_tmp));
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
 
   struct ArrowArray array;
   array.release = NULL;
@@ -114,14 +114,14 @@ int main(int argc, char* argv[]) {
       }
 
       fprintf(stderr, "stream.get_next() returned %d with error '%s'\n", result, message);
-      stream.release(&stream);
+      ArrowArrayStreamRelease(&stream);
       return 1;
     }
 
     if (array.release != NULL) {
       row_count += array.length;
       batch_count++;
-      array.release(&array);
+      ArrowArrayRelease(&array);
     } else {
       break;
     }
@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
   fprintf(stdout, "Read %ld rows in %ld batch(es) <%.06f seconds>\n", (long)row_count,
           (long)batch_count, elapsed);
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
   fclose(file_ptr);
   return 0;
 }

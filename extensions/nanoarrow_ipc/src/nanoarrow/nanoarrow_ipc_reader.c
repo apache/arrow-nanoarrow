@@ -189,7 +189,7 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
   ArrowIpcDecoderReset(&private_data->decoder);
 
   if (private_data->out_schema.release != NULL) {
-    private_data->out_schema.release(&private_data->out_schema);
+    ArrowSchemaRelease(&private_data->out_schema);
   }
 
   ArrowBufferReset(&private_data->header);
@@ -326,7 +326,7 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
 
   // Only support "read the whole thing" for now
   if (private_data->field_index != -1) {
-    tmp.release(&tmp);
+    ArrowSchemaRelease(&tmp);
     ArrowErrorSet(&private_data->error, "Field index != -1 is not yet supported");
     return ENOTSUP;
   }
@@ -335,7 +335,7 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
   int result =
       ArrowIpcDecoderSetSchema(&private_data->decoder, &tmp, &private_data->error);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowSchemaRelease(&tmp);
     return result;
   }
 

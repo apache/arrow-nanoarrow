@@ -96,7 +96,7 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
   EXPECT_EQ(stream.read(&stream, nullptr, 0, &size_read_bytes, nullptr), NANOARROW_OK);
   EXPECT_EQ(size_read_bytes, 0);
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, InputStreamFile) {
@@ -138,7 +138,7 @@ TEST(NanoarrowIpcReader, InputStreamFile) {
   EXPECT_EQ(stream.read(&stream, nullptr, 0, &size_read_bytes, nullptr), NANOARROW_OK);
   EXPECT_EQ(size_read_bytes, 0);
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderBasic) {
@@ -160,12 +160,12 @@ TEST(NanoarrowIpcReader, StreamReaderBasic) {
 
   ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
 
   struct ArrowArray array;
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
@@ -173,7 +173,7 @@ TEST(NanoarrowIpcReader, StreamReaderBasic) {
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
@@ -197,12 +197,12 @@ TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
   struct ArrowSchema schema;
   ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
 
   struct ArrowArray array;
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
@@ -210,7 +210,7 @@ TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
@@ -233,17 +233,17 @@ TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
   struct ArrowSchema schema;
   ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
 
   struct ArrowArray array;
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.length, 3);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   ASSERT_EQ(stream.get_next(&stream, &array), NANOARROW_OK);
   EXPECT_EQ(array.release, nullptr);
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageHeader) {
@@ -263,7 +263,7 @@ TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageHeader) {
   EXPECT_STREQ(stream.get_last_error(&stream),
                "Expected >= 280 bytes of remaining data but found 279 bytes in buffer");
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageBody) {
@@ -287,7 +287,7 @@ TEST(NanoarrowIpcReader, StreamReaderIncompleteMessageBody) {
   EXPECT_STREQ(stream.get_last_error(&stream),
                "Expected to be able to read 16 bytes for message body but got 15");
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
@@ -307,14 +307,14 @@ TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
   struct ArrowSchema schema;
   ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
 
   struct ArrowArray array;
   ASSERT_EQ(stream.get_next(&stream, &array), EINVAL);
   EXPECT_STREQ(stream.get_last_error(&stream),
                "Unexpected message type (expected RecordBatch)");
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderExpectedSchema) {
@@ -335,7 +335,7 @@ TEST(NanoarrowIpcReader, StreamReaderExpectedSchema) {
   EXPECT_STREQ(stream.get_last_error(&stream),
                "Unexpected message type at start of input (expected Schema)");
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
@@ -368,7 +368,7 @@ TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
     ASSERT_NE(stream.get_schema(&stream, &schema), NANOARROW_OK);
     ASSERT_GT(strlen(stream.get_last_error(&stream)), 0);
 
-    stream.release(&stream);
+    ArrowArrayStreamRelease(&stream);
   }
 
   // Do the same exercise removing bytes of the record batch message.
@@ -388,11 +388,11 @@ TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
     ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
 
     ASSERT_EQ(stream.get_schema(&stream, &schema), NANOARROW_OK);
-    schema.release(&schema);
+    ArrowSchemaRelease(&schema);
     ASSERT_NE(stream.get_next(&stream, &array), NANOARROW_OK);
     ASSERT_GT(strlen(stream.get_last_error(&stream)), 0);
 
-    stream.release(&stream);
+    ArrowArrayStreamRelease(&stream);
   }
 }
 
@@ -418,7 +418,7 @@ TEST(NanoarrowIpcReader, StreamReaderUnsupportedFieldIndex) {
   ASSERT_EQ(stream.get_schema(&stream, &schema), ENOTSUP);
   EXPECT_STREQ(stream.get_last_error(&stream), "Field index != -1 is not yet supported");
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderEmptyInput) {
@@ -435,7 +435,7 @@ TEST(NanoarrowIpcReader, StreamReaderEmptyInput) {
   ASSERT_EQ(stream.get_schema(&stream, &schema), ENODATA);
   EXPECT_STREQ(stream.get_last_error(&stream), "No data available on stream");
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderIncompletePrefix) {
@@ -454,5 +454,5 @@ TEST(NanoarrowIpcReader, StreamReaderIncompletePrefix) {
   EXPECT_STREQ(stream.get_last_error(&stream),
                "Expected at least 8 bytes in remainder of stream");
 
-  stream.release(&stream);
+  ArrowArrayStreamRelease(&stream);
 }

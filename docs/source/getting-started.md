@@ -243,7 +243,7 @@ NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_STRING))
 // or it will leak.
 int code = ArrowArrayInitFromSchema(&array, &schema, NULL);
 if (code != NANOARROW_OK) {
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
   return code;
 }
 ```
