@@ -42,9 +42,7 @@ static ArrowErrorCode ArrayStreamFromJsonFilePath(const std::string& json_path,
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ReadFileString(ss, json_path), error);
 
   nanoarrow::testing::TestingJSONReader reader;
-
-  nanoarrow::UniqueArrayStream stream;
-  NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(ss.str(), stream.get(), error));
+  NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(ss.str(), out, error));
   return NANOARROW_OK;
 }
 

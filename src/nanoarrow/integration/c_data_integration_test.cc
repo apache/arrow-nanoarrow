@@ -88,6 +88,7 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestSchema) {
       NANOARROW_OK);
   err =
       nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(temp.name(), schema.get());
-  ASSERT_EQ(err, nullptr) << err;
+  ASSERT_NE(err, nullptr);
+  ASSERT_EQ(std::string(err).substr(0, 19), "Found 1 differences") << err;
   ASSERT_EQ(schema->release, nullptr);
 }
