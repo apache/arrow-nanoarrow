@@ -39,7 +39,7 @@ static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
     for (int64_t i = 0; i < array->n_children; i++) {
       if (array->children[i] != NULL) {
         if (array->children[i]->release != NULL) {
-          array->children[i]->release(array->children[i]);
+          ArrowArrayRelease(array->children[i]);
         }
 
         ArrowFree(array->children[i]);
@@ -54,7 +54,7 @@ static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
   // release() callback.
   if (array->dictionary != NULL) {
     if (array->dictionary->release != NULL) {
-      array->dictionary->release(array->dictionary);
+      ArrowArrayRelease(array->dictionary);
     }
 
     ArrowFree(array->dictionary);
@@ -154,7 +154,7 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
 
   int result = ArrowArraySetStorageType(array, storage_type);
   if (result != NANOARROW_OK) {
-    array->release(array);
+    ArrowArrayRelease(array);
     return result;
   }
 
@@ -179,7 +179,7 @@ ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
   if (array_view->n_children > 0) {
     result = ArrowArrayAllocateChildren(array, array_view->n_children);
     if (result != NANOARROW_OK) {
-      array->release(array);
+      ArrowArrayRelease(array);
       return result;
     }
 
@@ -187,7 +187,7 @@ ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
       result =
           ArrowArrayInitFromArrayView(array->children[i], array_view->children[i], error);
       if (result != NANOARROW_OK) {
-        array->release(array);
+        ArrowArrayRelease(array);
         return result;
       }
     }
@@ -196,14 +196,14 @@ ArrowErrorCode ArrowArrayInitFromArrayView(struct ArrowArray* array,
   if (array_view->dictionary != NULL) {
     result = ArrowArrayAllocateDictionary(array);
     if (result != NANOARROW_OK) {
-      array->release(array);
+      ArrowArrayRelease(array);
       return result;
     }
 
     result =
         ArrowArrayInitFromArrayView(array->dictionary, array_view->dictionary, error);
     if (result != NANOARROW_OK) {
-      array->release(array);
+      ArrowArrayRelease(array);
       return result;
     }
   }
