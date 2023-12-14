@@ -96,7 +96,7 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
   EXPECT_EQ(stream.read(&stream, nullptr, 0, &size_read_bytes, nullptr), NANOARROW_OK);
   EXPECT_EQ(size_read_bytes, 0);
 
-  ArrowArrayStreamRelease(&stream);
+  stream.release(&stream);
 }
 
 TEST(NanoarrowIpcReader, InputStreamFile) {
@@ -138,7 +138,7 @@ TEST(NanoarrowIpcReader, InputStreamFile) {
   EXPECT_EQ(stream.read(&stream, nullptr, 0, &size_read_bytes, nullptr), NANOARROW_OK);
   EXPECT_EQ(size_read_bytes, 0);
 
-  ArrowArrayStreamRelease(&stream);
+  stream.release(&stream);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderBasic) {
@@ -195,7 +195,7 @@ TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
   ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
 
   struct ArrowSchema schema;
-  ASSERT_EQ(ArrowArrayStreamGetSchema(&stream, &schema), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStreamGetSchema(&stream, &schema, nullptr), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+s");
   ArrowSchemaRelease(&schema);
 
