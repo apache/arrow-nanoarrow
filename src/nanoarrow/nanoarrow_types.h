@@ -207,11 +207,24 @@ static inline const char* ArrowErrorMessage(struct ArrowError* error) {
   }
 }
 
-/// \brief Set the contents of an error using printf syntax.
+/// \brief Set the contents of an error from an existing null-terminated string
 /// \ingroup nanoarrow-errors
 ///
-/// If error is NULL, this function does nothing and returns NANOARROW_OK.
-ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
+/// If error is NULL, this function does nothing.
+static inline void ArrowErrorSetString(struct ArrowError* error, const char* src) {
+  if (error == NULL) {
+    return;
+  }
+
+  int64_t src_len = strlen(src);
+  if (src_len >= ((int64_t)sizeof(error->message))) {
+    memcpy(error->message, src, sizeof(error->message) - 1);
+    error->message[sizeof(error->message) - 1] = '\0';
+  } else {
+    memcpy(error->message, src, src_len);
+    error->message[src_len] = '\0';
+  }
+}
 
 /// \brief Check the result of an expression and return it if not NANOARROW_OK
 /// \ingroup nanoarrow-errors
@@ -323,7 +336,7 @@ static inline ArrowErrorCode ArrowArrayStreamGetSchema(
 
   int result = array_stream->get_schema(array_stream, out);
   if (result != NANOARROW_OK && error != NULL) {
-    ArrowErrorSet(error, "%s", ArrowArrayStreamGetLastError(array_stream));
+    ArrowErrorSetString(error, ArrowArrayStreamGetLastError(array_stream));
   }
 
   return result;
@@ -336,7 +349,7 @@ static inline ArrowErrorCode ArrowArrayStreamGetNext(
 
   int result = array_stream->get_next(array_stream, out);
   if (result != NANOARROW_OK && error != NULL) {
-    ArrowErrorSet(error, "%s", ArrowArrayStreamGetLastError(array_stream));
+    ArrowErrorSetString(error, ArrowArrayStreamGetLastError(array_stream));
   }
 
   return result;

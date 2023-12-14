@@ -254,6 +254,15 @@ static inline void ArrowArrayStreamRelease(struct ArrowArrayStream* array_stream
 /// NANOARROW_ASSERT_OK macros are provided to help propagate errors. C++ clients can use
 /// the helpers provided in the nanoarrow.hpp header to facilitate using C++ idioms
 /// for memory management and error propgagtion.
+///
+/// @{
+
+/// \brief Set the contents of an error using printf syntax.
+///
+/// If error is NULL, this function does nothing and returns NANOARROW_OK.
+ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
+
+/// @}
 
 /// \defgroup nanoarrow-utils Utility data structures
 ///
