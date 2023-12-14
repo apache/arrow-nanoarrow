@@ -71,4 +71,23 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestSchema) {
       nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(temp.name(), schema.get());
   ASSERT_EQ(err, nullptr) << err;
   ASSERT_EQ(schema->release, nullptr);
+
+  // Check roundtrip with differences
+  ASSERT_EQ(WriteFileString(R"({"schema": {"fields": []}, "batches": []})", temp.name()),
+            NANOARROW_OK);
+
+  err = nanoarrow_CDataIntegration_ExportSchemaFromJson(temp.name(), schema.get());
+  ASSERT_EQ(err, nullptr) << err;
+  ASSERT_NE(schema->release, nullptr);
+
+  // Change underlying JSON so we get differences
+  ASSERT_EQ(
+      WriteFileString(
+          R"({"schema": {"fields": [{"name": "col1", "nullable": true, "type": {"name": "null"}, "children": []}]}, "batches": []})",
+          temp.name()),
+      NANOARROW_OK);
+  err =
+      nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(temp.name(), schema.get());
+  ASSERT_EQ(err, nullptr) << err;
+  ASSERT_EQ(schema->release, nullptr);
 }
