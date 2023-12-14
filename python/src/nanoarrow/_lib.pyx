@@ -56,7 +56,7 @@ cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
         schema_capsule, 'arrow_schema'
     )
     if schema.release != NULL:
-        schema.release(schema)
+        ArrowSchemaRelease(schema)
 
     free(schema)
 
@@ -74,7 +74,7 @@ cdef void pycapsule_array_deleter(object array_capsule) noexcept:
     )
     # Do not invoke the deleter on a used/moved capsule
     if array.release != NULL:
-        array.release(array)
+        ArrowArrayRelease(array)
 
     free(array)
 
@@ -92,7 +92,7 @@ cdef void pycapsule_stream_deleter(object stream_capsule) noexcept:
     )
     # Do not invoke the deleter on a used/moved capsule
     if stream.release != NULL:
-        stream.release(stream)
+        ArrowArrayStreamRelease(stream)
 
     free(stream)
 
@@ -124,7 +124,7 @@ cdef class SchemaHolder:
 
     def __dealloc__(self):
         if self.c_schema.release != NULL:
-          self.c_schema.release(&self.c_schema)
+          ArrowSchemaRelease(&self.c_schema)
 
     def _addr(self):
         return <uintptr_t>&self.c_schema
@@ -144,7 +144,7 @@ cdef class ArrayHolder:
 
     def __dealloc__(self):
         if self.c_array.release != NULL:
-          self.c_array.release(&self.c_array)
+          ArrowArrayRelease(&self.c_array)
 
     def _addr(self):
         return <uintptr_t>&self.c_array
@@ -163,7 +163,7 @@ cdef class ArrayStreamHolder:
 
     def __dealloc__(self):
         if self.c_array_stream.release != NULL:
-          self.c_array_stream.release(&self.c_array_stream)
+            ArrowArrayStreamRelease(&self.c_array_stream)
 
     def _addr(self):
         return <uintptr_t>&self.c_array_stream
@@ -1176,7 +1176,7 @@ cdef class DeviceArrayHolder:
 
     def __dealloc__(self):
         if self.c_array.array.release != NULL:
-          self.c_array.array.release(&self.c_array.array)
+          ArrowArrayRelease(&self.c_array.array)
 
     def _addr(self):
         return <uintptr_t>&self.c_array

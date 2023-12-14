@@ -243,7 +243,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
   ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, metal, &device_array2), ENOTSUP);
   ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, metal, &device_array2),
             NANOARROW_OK);
-  device_array.array.release(&device_array.array);
+  ArrowArrayRelease(&device_array.array);
 
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, metal->device_id);
@@ -261,7 +261,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
   EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
             0);
 
-  device_array.array.release(&device_array.array);
+  ArrowArrayRelease(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 

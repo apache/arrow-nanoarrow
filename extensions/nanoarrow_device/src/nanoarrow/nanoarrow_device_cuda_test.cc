@@ -184,7 +184,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, gpu, &device_array2), ENOTSUP);
   ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, gpu, &device_array2),
             NANOARROW_OK);
-  device_array.array.release(&device_array.array);
+  ArrowArrayRelease(&device_array.array);
 
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, gpu->device_id);
@@ -201,7 +201,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   } else {
     ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, cpu, &device_array),
               NANOARROW_OK);
-    device_array2.array.release(&device_array2.array);
+    ArrowArrayRelease(&device_array2.array);
   }
 
   ASSERT_NE(device_array.array.release, nullptr);
@@ -213,7 +213,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
             0);
 
-  device_array.array.release(&device_array.array);
+  ArrowArrayRelease(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
 }
 
