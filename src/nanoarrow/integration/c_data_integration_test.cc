@@ -15,10 +15,60 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstdio>
+#include <fstream>
+
 #include <gtest/gtest.h>
 
 #include <nanoarrow/nanoarrow.hpp>
 
 #include "c_data_integration.h"
 
-TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestRoundtrip) { ASSERT_EQ(5, 5); }
+class TempFile {
+ public:
+  const char* name() { return name_; }
+
+  ~TempFile() {
+    if (std::remove(name_) != 0) {
+      std::cerr << "Failed to remove '" << name_ << "'\n";
+    }
+  }
+
+ private:
+  const char* name_ = "c_data_integration.tmp.json";
+};
+
+ArrowErrorCode WriteFileString(const std::string& content, const std::string& path) {
+  std::ofstream outfile(path, std::ios::out | std::ios::binary | std::ios::trunc);
+  if (!outfile.is_open()) {
+    return EINVAL;
+  }
+  outfile.write(content.data(), content.size());
+  outfile.close();
+  return NANOARROW_OK;
+}
+
+TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestSchema) {
+  TempFile temp;
+  nanoarrow::UniqueSchema schema;
+
+  // Check error on export
+  ASSERT_EQ(WriteFileString("this is not valid JSON", temp.name()), NANOARROW_OK);
+  const char* err =
+      nanoarrow_CDataIntegration_ExportSchemaFromJson(temp.name(), schema.get());
+  ASSERT_NE(err, nullptr);
+  ASSERT_EQ(std::string(err).substr(0, 9), "Exception");
+
+  // Check valid roundtrip
+  ASSERT_EQ(WriteFileString(R"({"schema": {"fields": []}, "batches": []})", temp.name()),
+            NANOARROW_OK);
+
+  err = nanoarrow_CDataIntegration_ExportSchemaFromJson(temp.name(), schema.get());
+  ASSERT_EQ(err, nullptr) << err;
+  ASSERT_NE(schema->release, nullptr);
+
+  err =
+      nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(temp.name(), schema.get());
+  ASSERT_EQ(err, nullptr) << err;
+  ASSERT_EQ(schema->release, nullptr);
+}

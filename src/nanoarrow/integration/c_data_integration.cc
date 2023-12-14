@@ -30,6 +30,7 @@ static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_
     out << std::string(buf, infile.gcount());
   } while (infile.read(buf, sizeof(buf)));
 
+  infile.close();
   return NANOARROW_OK;
 }
 
