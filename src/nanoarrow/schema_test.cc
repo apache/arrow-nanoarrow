@@ -449,7 +449,7 @@ TEST(SchemaTest, SchemaCopySimpleType) {
   EXPECT_STREQ(schema.format, "i");
 
   ArrowSchemaRelease(&schema);
-  schema_copy.release(&schema_copy);
+  ArrowSchemaRelease(&schema_copy);
 }
 
 TEST(SchemaTest, SchemaCopyNestedType) {
@@ -467,7 +467,7 @@ TEST(SchemaTest, SchemaCopyNestedType) {
   EXPECT_STREQ(schema_copy.children[0]->name, "col1");
 
   ArrowSchemaRelease(&schema);
-  schema_copy.release(&schema_copy);
+  ArrowSchemaRelease(&schema_copy);
 }
 
 TEST(SchemaTest, SchemaCopyDictType) {
@@ -483,7 +483,7 @@ TEST(SchemaTest, SchemaCopyDictType) {
   EXPECT_STREQ(schema_copy.dictionary->format, "l");
 
   ArrowSchemaRelease(&schema);
-  schema_copy.release(&schema_copy);
+  ArrowSchemaRelease(&schema_copy);
 }
 
 TEST(SchemaTest, SchemaCopyFlags) {
@@ -501,7 +501,7 @@ TEST(SchemaTest, SchemaCopyFlags) {
   ASSERT_FALSE(schema_copy.flags & ARROW_FLAG_NULLABLE);
 
   ArrowSchemaRelease(&schema);
-  schema_copy.release(&schema_copy);
+  ArrowSchemaRelease(&schema_copy);
 }
 
 TEST(SchemaTest, SchemaCopyMetadata) {
