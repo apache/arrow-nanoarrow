@@ -38,7 +38,6 @@
 #define ArrowNanoarrowVersion NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersion)
 #define ArrowNanoarrowVersionInt \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowNanoarrowVersionInt)
-#define ArrowErrorMessage NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorMessage)
 #define ArrowMalloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMalloc)
 #define ArrowRealloc NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowRealloc)
 #define ArrowFree NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowFree)
