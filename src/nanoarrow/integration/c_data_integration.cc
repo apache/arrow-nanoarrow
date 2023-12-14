@@ -27,8 +27,9 @@ static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_
   std::ifstream infile(file_path, std::ios::in | std::ios::binary);
   char buf[8096];
   do {
+    infile.read(buf, sizeof(buf));
     out << std::string(buf, infile.gcount());
-  } while (infile.read(buf, sizeof(buf)));
+  } while (infile.gcount() > 0);
 
   infile.close();
   return NANOARROW_OK;
