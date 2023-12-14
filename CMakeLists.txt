@@ -152,6 +152,7 @@ else()
           DESTINATION include/nanoarrow)
 endif()
 
+# Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
   include(FetchContent)
 
@@ -160,6 +161,13 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
                        URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
   )
   fetchcontent_makeavailable(nlohmann_json)
+
+  add_library(nanoarrow_c_data_integration SHARED
+              src/nanoarrow/integration/c_data_integration.cc)
+  target_include_directories(nanoarrow_c_data_integration
+                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                    $<INSTALL_INTERFACE:include>)
+  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
 endif()
 
 if(NANOARROW_BUILD_TESTS)
@@ -218,6 +226,8 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(array_stream_test src/nanoarrow/array_stream_test.cc)
   add_executable(nanoarrow_hpp_test src/nanoarrow/nanoarrow_hpp_test.cc)
   add_executable(nanoarrow_testing_test src/nanoarrow/nanoarrow_testing_test.cc)
+  add_executable(c_data_integration_test
+                 src/nanoarrow/integration/c_data_integration_test.cc)
 
   if(NANOARROW_CODE_COVERAGE)
     target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
@@ -248,6 +258,8 @@ if(NANOARROW_BUILD_TESTS)
                         gtest_main
                         nlohmann_json::nlohmann_json
                         coverage_config)
+  target_link_libraries(c_data_integration_test nanoarrow nanoarrow_c_data_integration
+                        gtest_main)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5
@@ -260,13 +272,4 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
-endif()
-
-if(NANOARROW_BUILD_INTEGRATION_TESTS)
-  add_library(nanoarrow_c_data_integration SHARED
-              src/nanoarrow/integration/c_data_integration.cc)
-  target_include_directories(nanoarrow_c_data_integration
-                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                                    $<INSTALL_INTERFACE:include>)
-  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
 endif()

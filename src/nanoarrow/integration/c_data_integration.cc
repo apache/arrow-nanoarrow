@@ -16,28 +16,12 @@
 // under the License.
 
 #include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include <nanoarrow/nanoarrow_testing.hpp>
-
-extern "C" {
-
-const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(const char* json_path,
-                                                            ArrowSchema* out);
-
-const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(const char* json_path,
-                                                                    ArrowSchema* schema);
-
-const char* nanoarrow_CDataIntegration_ExportBatchFromJson(const char* json_path,
-                                                           int num_batch,
-                                                           ArrowArray* out);
-
-const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(const char* json_path,
-                                                                   int num_batch,
-                                                                   ArrowArray* batch);
-
-int64_t nanoarrow_BytesAllocated();
-
-}  // extern "C"
+#include "c_data_integration.h"
 
 static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_path) {
   std::ifstream infile(file_path, std::ios::in | std::ios::binary);
@@ -62,8 +46,10 @@ static ArrowErrorCode ArrayStreamFromJsonFilePath(const std::string& json_path,
   return NANOARROW_OK;
 }
 
-using MaterializedArrayStream =
-    std::pair<nanoarrow::UniqueSchema, std::vector<nanoarrow::UniqueArray>>;
+struct MaterializedArrayStream {
+  nanoarrow::UniqueSchema schema;
+  std::vector<nanoarrow::UniqueArray> arrays;
+};
 
 static ArrowErrorCode MaterializeJsonFilePath(const std::string& json_path,
                                               MaterializedArrayStream* out,
@@ -71,7 +57,7 @@ static ArrowErrorCode MaterializeJsonFilePath(const std::string& json_path,
   nanoarrow::UniqueArrayStream stream;
   NANOARROW_RETURN_NOT_OK(ArrayStreamFromJsonFilePath(json_path, stream.get(), error));
 
-  int result = stream->get_schema(stream.get(), out->first.get());
+  int result = stream->get_schema(stream.get(), out->schema.get());
   if (result != NANOARROW_OK) {
     const char* err = stream->get_last_error(stream.get());
     if (err != nullptr) {
@@ -96,7 +82,7 @@ static ArrowErrorCode MaterializeJsonFilePath(const std::string& json_path,
       break;
     }
 
-    out->second.emplace_back(tmp.get());
+    out->arrays.emplace_back(tmp.get());
   } while (true);
 
   return NANOARROW_OK;
@@ -104,23 +90,73 @@ static ArrowErrorCode MaterializeJsonFilePath(const std::string& json_path,
 
 static ArrowErrorCode ExportSchemaFromJson(const char* json_path, ArrowSchema* out,
                                            ArrowError* error) {
-  return ENOTSUP;
+  MaterializedArrayStream data;
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
+  ArrowSchemaMove(data.schema.get(), out);
+  return NANOARROW_OK;
 }
 
 static ArrowErrorCode ImportSchemaAndCompareToJson(const char* json_path,
                                                    ArrowSchema* schema,
                                                    ArrowError* error) {
-  return ENOTSUP;
+  nanoarrow::UniqueSchema actual(schema);
+
+  MaterializedArrayStream data;
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
+
+  nanoarrow::testing::TestingJSONComparison comparison;
+  NANOARROW_RETURN_NOT_OK(
+      comparison.CompareSchema(actual.get(), data.schema.get(), error));
+  if (comparison.num_differences() > 0) {
+    std::stringstream ss;
+    comparison.WriteDifferences(ss);
+    ArrowErrorSet(error, "Found %d differences:\n%s",
+                  static_cast<int>(comparison.num_differences()), ss.str().c_str());
+    return EINVAL;
+  }
+
+  return NANOARROW_OK;
 }
 
 static ArrowErrorCode ExportBatchFromJson(const char* json_path, int num_batch,
                                           ArrowArray* out, ArrowError* error) {
-  return ENOTSUP;
+  MaterializedArrayStream data;
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
+  if (num_batch < 0 || num_batch >= data.arrays.size()) {
+    ArrowErrorSet(error, "Expected num_batch between 0 and %d but got %d",
+                  static_cast<int>(data.arrays.size() - 1), num_batch);
+    return EINVAL;
+  }
+
+  ArrowArrayMove(data.arrays[num_batch].get(), out);
+  return NANOARROW_OK;
 }
 
 static ArrowErrorCode ImportBatchAndCompareToJson(const char* json_path, int num_batch,
                                                   ArrowArray* batch, ArrowError* error) {
-  return ENOTSUP;
+  nanoarrow::UniqueArray actual(batch);
+
+  MaterializedArrayStream data;
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
+  if (num_batch < 0 || num_batch >= data.arrays.size()) {
+    ArrowErrorSet(error, "Expected num_batch between 0 and %d but got %d",
+                  static_cast<int>(data.arrays.size() - 1), num_batch);
+    return EINVAL;
+  }
+
+  nanoarrow::testing::TestingJSONComparison comparison;
+  NANOARROW_RETURN_NOT_OK(comparison.SetSchema(data.schema.get(), error));
+  NANOARROW_RETURN_NOT_OK(
+      comparison.CompareBatch(actual.get(), data.arrays[num_batch].get(), error));
+  if (comparison.num_differences() > 0) {
+    std::stringstream ss;
+    comparison.WriteDifferences(ss);
+    ArrowErrorSet(error, "Found %d differences:\n%s",
+                  static_cast<int>(comparison.num_differences()), ss.str().c_str());
+    return EINVAL;
+  }
+
+  return NANOARROW_OK;
 }
 
 static ArrowError global_error;
