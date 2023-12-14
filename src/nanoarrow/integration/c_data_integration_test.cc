@@ -24,6 +24,8 @@
 
 #include "c_data_integration.h"
 
+// Not a true tempfile (writes to working directory), but is possibly more
+// portable than mkstemp()
 class TempFile {
  public:
   const char* name() { return name_; }
@@ -39,10 +41,7 @@ class TempFile {
 };
 
 ArrowErrorCode WriteFileString(const std::string& content, const std::string& path) {
-  std::ofstream outfile(path, std::ios::out | std::ios::binary | std::ios::trunc);
-  if (!outfile.is_open()) {
-    return EINVAL;
-  }
+  std::ofstream outfile(path, std::ios::out | std::ios::binary);
   outfile.write(content.data(), content.size());
   outfile.close();
   return NANOARROW_OK;
@@ -91,4 +90,50 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestSchema) {
   ASSERT_NE(err, nullptr);
   ASSERT_EQ(std::string(err).substr(0, 19), "Found 1 differences") << err;
   ASSERT_EQ(schema->release, nullptr);
+}
+
+TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
+  TempFile temp;
+  nanoarrow::UniqueArray array;
+
+  // Check error on export
+  ASSERT_EQ(WriteFileString("this is not valid JSON", temp.name()), NANOARROW_OK);
+  const char* err =
+      nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
+  ASSERT_NE(err, nullptr);
+  ASSERT_EQ(std::string(err).substr(0, 9), "Exception") << err;
+
+  // Check error for invalid batch id
+  ASSERT_EQ(WriteFileString(
+                R"({"schema": {"fields": []}, "batches": [{"count": 1, "columns": []}]})",
+                temp.name()),
+            NANOARROW_OK);
+  err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), -1, array.get());
+  ASSERT_EQ(array->release, nullptr);
+  ASSERT_NE(err, nullptr);
+  ASSERT_STREQ(err, "Expected num_batch between 0 and 0 but got -1") << err;
+
+  // Check valid roundtrip
+  err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
+  ASSERT_NE(array->release, nullptr);
+  ASSERT_EQ(err, nullptr);
+  err =
+      nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(temp.name(), 0, array.get());
+  ASSERT_EQ(array->release, nullptr);
+  ASSERT_EQ(err, nullptr) << err;
+
+  // Check roundtrip with differences
+  err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
+  ASSERT_NE(array->release, nullptr);
+  ASSERT_EQ(err, nullptr) << err;
+
+  ASSERT_EQ(WriteFileString(
+                R"({"schema": {"fields": []}, "batches": [{"count": 2, "columns": []}]})",
+                temp.name()),
+            NANOARROW_OK);
+  err =
+      nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(temp.name(), 0, array.get());
+  ASSERT_NE(err, nullptr);
+  ASSERT_EQ(std::string(err).substr(0, 19), "Found 1 differences") << err;
+  ASSERT_EQ(array->release, nullptr);
 }
