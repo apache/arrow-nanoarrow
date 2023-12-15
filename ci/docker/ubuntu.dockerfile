@@ -33,7 +33,7 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
 
 # For documentation build + Python build
 RUN python3 -m venv --upgrade-deps /venv
-RUN source /venv/bin/activate && pydata-sphinx-theme sphinx breathe build Cython numpy pytest pyarrow
+RUN echo "source /venv/bin/activate && pip install pydata-sphinx-theme sphinx breathe build Cython numpy pytest pyarrow" | bash
 
 # Locale required for R CMD check
 RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8

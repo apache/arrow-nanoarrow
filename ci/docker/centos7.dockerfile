@@ -29,9 +29,15 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0
     cmake3 ../arrow-apache-arrow-9.0.0/cpp \
         -DARROW_JEMALLOC=OFF \
         -DARROW_SIMD_LEVEL=NONE \
+        -DARROW_WITH_ZLIB=ON \
         -DCMAKE_INSTALL_PREFIX=../arrow && \
     cmake3 --build . && \
     make install
+
+RUN python3 -m venv /venv
+RUN source /venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install build Cython pytest numpy
 
 # Locale required for R CMD check
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
