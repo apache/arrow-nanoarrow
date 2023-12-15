@@ -20,7 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    locales git cmake r-base gnupg curl valgrind python3-venv doxygen pandoc lcov \
+    locales git cmake r-base gnupg curl valgrind gfortran python3-venv doxygen pandoc lcov \
     libxml2-dev libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev \
     libjpeg-dev libpng-dev libtiff-dev
 
@@ -41,7 +41,7 @@ RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 # For R. Note that we install arrow here so that the integration tests for R run
 # in at least one test image.
 RUN mkdir ~/.R && echo "MAKEFLAGS += -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "pkgdown", "covr", "pkgbuild"), repos = "https://cloud.r-project.org")'
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64", "pkgdown", "covr", "pkgbuild"), repos = "https://cloud.r-project.org")'
 
 # Required for this to work on MacOS/arm64
 RUN echo "CXX17FLAGS += -fPIC" >> ~/.R/Makevars
