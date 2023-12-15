@@ -656,7 +656,7 @@ cdef class CArray:
         return array_repr(self)
 
 
-cdef class ArrayView:
+cdef class CArrayView:
     """ArrowArrayView wrapper
 
     The ArrowArrayView is a nanoarrow C library structure that provides
@@ -715,7 +715,7 @@ cdef class ArrayView:
         if i < 0 or i >= self._ptr.n_children:
             raise IndexError(f"{i} out of range [0, {self._ptr.n_children})")
 
-        cdef ArrayView child = ArrayView(
+        cdef CArrayView child = CArrayView(
             self._base,
             <uintptr_t>self._ptr.children[i]
         )
@@ -759,7 +759,7 @@ cdef class ArrayView:
         if self._ptr.dictionary == NULL:
             return None
         else:
-            return ArrayView(
+            return CArrayView(
                 self,
                 <uintptr_t>self._ptr.dictionary
             )
@@ -779,7 +779,7 @@ cdef class ArrayView:
         if result != NANOARROW_OK:
             error.raise_message("ArrowArrayViewSetArray()", result)
 
-        return ArrayView((base, array), <uintptr_t>c_array_view)
+        return CArrayView((base, array), <uintptr_t>c_array_view)
 
 
 cdef class SchemaMetadata:

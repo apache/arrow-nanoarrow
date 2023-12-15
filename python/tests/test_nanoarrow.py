@@ -58,7 +58,7 @@ def test_array_stream_helper():
 def test_array_view_helper():
     array = na.lib.carray(pa.array([1, 2, 3]))
     view = na.array_view(array)
-    assert isinstance(view, na.ArrayView)
+    assert isinstance(view, na.CArrayView)
     assert na.array_view(view) is view
 
 
