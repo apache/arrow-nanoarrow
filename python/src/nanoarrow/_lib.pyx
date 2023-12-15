@@ -612,10 +612,17 @@ cdef class CArray:
 
     @property
     def null_count(self):
+        self._assert_valid()
         return self._ptr.null_count
 
     @property
+    def n_buffers(self):
+        self._assert_valid()
+        return self._ptr.n_buffers
+
+    @property
     def buffers(self):
+        self._assert_valid()
         return tuple(<uintptr_t>self._ptr.buffers[i] for i in range(self._ptr.n_buffers))
 
     @property

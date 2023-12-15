@@ -177,6 +177,7 @@ def test_array():
     assert array.length == 3
     assert array.offset == 0
     assert array.null_count == 0
+    assert array.n_buffers == 2
     assert len(array.buffers) == 2
     assert array.buffers[0] == 0
     assert array.n_children == 0
