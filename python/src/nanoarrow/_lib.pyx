@@ -86,7 +86,7 @@ cdef object alloc_c_array(ArrowArray** c_array) noexcept:
     return PyCapsule_New(c_array[0], 'arrow_array', &pycapsule_array_deleter)
 
 
-cdef void pycapsule_stream_deleter(object stream_capsule) noexcept:
+cdef void pycapsule_array_stream_deleter(object stream_capsule) noexcept:
     cdef ArrowArrayStream* stream = <ArrowArrayStream*>PyCapsule_GetPointer(
         stream_capsule, 'arrow_array_stream'
     )
@@ -97,76 +97,17 @@ cdef void pycapsule_stream_deleter(object stream_capsule) noexcept:
     free(stream)
 
 
-cdef object alloc_c_stream(ArrowArrayStream** c_stream) noexcept:
+cdef object alloc_c_array_stream(ArrowArrayStream** c_stream) noexcept:
     c_stream[0] = <ArrowArrayStream*> malloc(sizeof(ArrowArrayStream))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_stream[0].release = NULL
-    return PyCapsule_New(c_stream[0], 'arrow_array_stream', &pycapsule_stream_deleter)
+    return PyCapsule_New(c_stream[0], 'arrow_array_stream', &pycapsule_array_stream_deleter)
 
 
 cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
     Py_DECREF(<object>array.private_data)
     array.private_data = NULL
     array.release = NULL
-
-
-cdef class SchemaHolder:
-    """Memory holder for an ArrowSchema
-
-    This class is responsible for the lifecycle of the ArrowSchema
-    whose memory it is responsible for. When this object is deleted,
-    a non-NULL release callback is invoked.
-    """
-    cdef ArrowSchema c_schema
-
-    def __cinit__(self):
-        self.c_schema.release = NULL
-
-    def __dealloc__(self):
-        if self.c_schema.release != NULL:
-          ArrowSchemaRelease(&self.c_schema)
-
-    def _addr(self):
-        return <uintptr_t>&self.c_schema
-
-
-cdef class ArrayHolder:
-    """Memory holder for an ArrowArray
-
-    This class is responsible for the lifecycle of the ArrowArray
-    whose memory it is responsible. When this object is deleted,
-    a non-NULL release callback is invoked.
-    """
-    cdef ArrowArray c_array
-
-    def __cinit__(self):
-        self.c_array.release = NULL
-
-    def __dealloc__(self):
-        if self.c_array.release != NULL:
-          ArrowArrayRelease(&self.c_array)
-
-    def _addr(self):
-        return <uintptr_t>&self.c_array
-
-cdef class ArrayStreamHolder:
-    """Memory holder for an ArrowArrayStream
-
-    This class is responsible for the lifecycle of the ArrowArrayStream
-    whose memory it is responsible. When this object is deleted,
-    a non-NULL release callback is invoked.
-    """
-    cdef ArrowArrayStream c_array_stream
-
-    def __cinit__(self):
-        self.c_array_stream.release = NULL
-
-    def __dealloc__(self):
-        if self.c_array_stream.release != NULL:
-            ArrowArrayStreamRelease(&self.c_array_stream)
-
-    def _addr(self):
-        return <uintptr_t>&self.c_array_stream
 
 
 cdef class ArrayViewHolder:
@@ -264,8 +205,9 @@ cdef class CSchema:
 
     @staticmethod
     def allocate():
-        base = SchemaHolder()
-        return CSchema(base, base._addr())
+        cdef ArrowSchema* c_schema_out
+        base = alloc_c_schema(&c_schema_out)
+        return CSchema(base, <uintptr_t>(c_schema_out))
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base,
@@ -527,8 +469,9 @@ cdef class CArray:
 
     @staticmethod
     def allocate(CSchema schema):
-        base = ArrayHolder()
-        return CArray(base, base._addr(), schema)
+        cdef ArrowArray* c_array_out
+        base = alloc_c_array(&c_array_out)
+        return CArray(base, <uintptr_t>c_array_out, schema)
 
     def __cinit__(self, object base, uintptr_t addr, CSchema schema):
         self._base = base
@@ -1027,8 +970,9 @@ cdef class ArrayStream:
 
     @staticmethod
     def allocate():
-        base = ArrayStreamHolder()
-        return ArrayStream(base, base._addr())
+        cdef ArrowArrayStream* c_array_stream_out
+        base = alloc_c_array_stream(&c_array_stream_out)
+        return ArrayStream(base, <uintptr_t>c_array_stream_out)
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
@@ -1070,15 +1014,15 @@ cdef class ArrayStream:
             raise NotImplementedError("requested_schema")
 
         cdef:
-            ArrowArrayStream* c_stream_out
+            ArrowArrayStream* c_array_stream_out
 
-        stream_capsule = alloc_c_stream(&c_stream_out)
+        array_stream_capsule = alloc_c_array_stream(&c_array_stream_out)
 
         # move the stream
-        memcpy(c_stream_out, self._ptr, sizeof(ArrowArrayStream))
+        memcpy(c_array_stream_out, self._ptr, sizeof(ArrowArrayStream))
         self._ptr.release = NULL
 
-        return stream_capsule
+        return array_stream_capsule
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -1140,11 +1084,6 @@ cdef class ArrayStream:
 
     def __next__(self):
         return self.get_next()
-
-    @staticmethod
-    def allocate():
-        base = ArrayStreamHolder()
-        return ArrayStream(base, base._addr())
 
 
 cdef class DeviceArrayHolder:
