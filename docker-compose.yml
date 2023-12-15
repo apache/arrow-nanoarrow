@@ -45,4 +45,6 @@ services:
       # Don't mix the "dev tools" and "source" checkouts
       - ./ci/scripts/build-docs.sh:/build-docs.sh
       - ${NANOARROW_SOURCE_DIR}:/nanoarrow
+    environment:
+      - NANOARROW_PYTHON_VENV
     command: "/bin/bash /build-docs.sh /nanoarrow"
