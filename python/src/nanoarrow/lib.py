@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import Array, ArrayStream, ArrayView, CSchema
+from nanoarrow._lib import CArray, ArrayStream, ArrayView, CSchema
 
 
 def array_view(obj):
@@ -44,21 +44,21 @@ def schema(obj):
 
 
 def array(obj):
-    if isinstance(obj, Array):
+    if isinstance(obj, CArray):
         return obj
 
     if hasattr(obj, "__arrow_c_array__"):
         # TODO support requested schema
-        return Array._import_from_c_capsule(*obj.__arrow_c_array__())
+        return CArray._import_from_c_capsule(*obj.__arrow_c_array__())
 
     # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
-        out = Array.allocate(CSchema.allocate())
+        out = CArray.allocate(CSchema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.Array"
+            f"Can't convert object of type {type(obj).__name__} to nanoarrow.lib.CArray"
         )
 
 

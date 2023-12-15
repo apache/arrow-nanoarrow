@@ -59,11 +59,11 @@ def schema_repr(schema, indent=0):
 def array_repr(array, indent=0):
     indent_str = " " * indent
     if array._addr() == 0:
-        return "<NULL nanoarrow.Array>"
+        return "<NULL nanoarrow.lib.CArray>"
     elif not array.is_valid():
-        return "<released nanoarrow.Array>"
+        return "<released nanoarrow.lib.CArray>"
 
-    lines = [f"<nanoarrow.Array {array.schema._to_string()}>"]
+    lines = [f"<nanoarrow.lib.CArray {array.schema._to_string()}>"]
     for attr in ("length", "offset", "null_count", "buffers"):
         attr_repr = repr(getattr(array, attr))
         lines.append(f"{indent_str}- {attr}: {attr_repr}")

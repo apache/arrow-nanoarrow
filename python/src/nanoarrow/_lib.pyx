@@ -496,7 +496,7 @@ cdef class SchemaView:
                 self._schema_view.extension_metadata.size_bytes
             )
 
-cdef class Array:
+cdef class CArray:
     """ArrowArray wrapper
 
     This class provides a user-facing interface to access the fields of
@@ -528,7 +528,7 @@ cdef class Array:
     @staticmethod
     def allocate(CSchema schema):
         base = ArrayHolder()
-        return Array(base, base._addr(), schema)
+        return CArray(base, base._addr(), schema)
 
     def __cinit__(self, object base, uintptr_t addr, CSchema schema):
         self._base = base
@@ -551,10 +551,10 @@ cdef class Array:
         """
         cdef:
             CSchema out_schema
-            Array out
+            CArray out
 
         out_schema = CSchema._import_from_c_capsule(schema_capsule)
-        out = Array(
+        out = CArray(
             array_capsule,
             <uintptr_t>PyCapsule_GetPointer(array_capsule, 'arrow_array'),
             out_schema
@@ -610,9 +610,9 @@ cdef class Array:
 
     def _assert_valid(self):
         if self._ptr == NULL:
-            raise RuntimeError("Array is NULL")
+            raise RuntimeError("CArray is NULL")
         if self._ptr.release == NULL:
-            raise RuntimeError("Array is released")
+            raise RuntimeError("CArray is released")
 
     @property
     def schema(self):
@@ -644,7 +644,7 @@ cdef class Array:
     def dictionary(self):
         self._assert_valid()
         if self._ptr.dictionary != NULL:
-            return Array(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
+            return CArray(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
         else:
             return None
 
@@ -730,7 +730,7 @@ cdef class ArrayView:
             raise RuntimeError("ArrayView is not representing a CPU device")
 
     @staticmethod
-    def from_cpu_array(Array array):
+    def from_cpu_array(CArray array):
         cdef ArrayViewHolder holder = ArrayViewHolder()
 
         cdef Error error = Error()
@@ -805,12 +805,12 @@ cdef class SchemaMetadata:
 
 
 cdef class ArrayChildren:
-    """Wrapper for a lazily-resolved list of Array children
+    """Wrapper for a lazily-resolved list of CArray children
     """
-    cdef Array _parent
+    cdef CArray _parent
     cdef int64_t _length
 
-    def __cinit__(self, Array parent):
+    def __cinit__(self, CArray parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -821,7 +821,7 @@ cdef class ArrayChildren:
         k = int(k)
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
-        return Array(self._parent, self._child_addr(k), self._parent.schema.children[k])
+        return CArray(self._parent, self._child_addr(k), self._parent.schema.children[k])
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArray** children = self._parent._ptr.children
@@ -1124,8 +1124,9 @@ cdef class ArrayStream:
             self._get_schema(self._cached_schema)
 
         cdef Error error = Error()
-        cdef Array array = Array.allocate(self._cached_schema)
+        cdef CArray array = CArray.allocate(self._cached_schema)
         cdef int code = ArrowArrayStreamGetNext(self._ptr, array._ptr, &error.c_error)
+        cdef const char* message = NULL
         if code != NANOARROW_OK:
             error.raise_error("ArrowArrayStream::get_next()", code)
 
@@ -1233,7 +1234,7 @@ cdef class DeviceArray:
 
     @property
     def array(self):
-        return Array(self, <uintptr_t>&self._ptr.array, self._schema)
+        return CArray(self, <uintptr_t>&self._ptr.array, self._schema)
 
     def __repr__(self):
         return device_array_repr(self)

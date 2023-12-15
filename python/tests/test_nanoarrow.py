@@ -37,11 +37,11 @@ def test_schema_helper():
 
 
 def test_array_helper():
-    array = na.Array.allocate(na.CSchema.allocate())
+    array = na.CArray.allocate(na.CSchema.allocate())
     assert na.array(array) is array
 
     array = na.array(pa.array([], pa.null()))
-    assert isinstance(array, na.Array)
+    assert isinstance(array, na.CArray)
 
     with pytest.raises(TypeError):
         na.array(None)
@@ -165,9 +165,9 @@ def test_schema_view_extra_params():
 
 
 def test_array_empty():
-    array = na.Array.allocate(na.CSchema.allocate())
+    array = na.CArray.allocate(na.CSchema.allocate())
     assert array.is_valid() is False
-    assert repr(array) == "<released nanoarrow.Array>"
+    assert repr(array) == "<released nanoarrow.lib.CArray>"
 
 
 def test_array():
@@ -180,7 +180,7 @@ def test_array():
     assert array.buffers[0] == 0
     assert len(array.children) == 0
     assert array.dictionary is None
-    assert "<nanoarrow.Array int32" in repr(array)
+    assert "<nanoarrow.lib.CArray int32" in repr(array)
 
 
 def test_array_recursive():
@@ -188,7 +188,7 @@ def test_array_recursive():
     assert len(array.children) == 1
     assert array.children[0].length == 3
     assert array.children[0].schema._to_string() == "int32"
-    assert "'col': <nanoarrow.Array int32" in repr(array)
+    assert "'col': <nanoarrow.lib.CArray int32" in repr(array)
 
     with pytest.raises(IndexError):
         array.children[1]
@@ -198,7 +198,7 @@ def test_array_dictionary():
     array = na.array(pa.array(["a", "b", "b"]).dictionary_encode())
     assert array.length == 3
     assert array.dictionary.length == 2
-    assert "dictionary: <nanoarrow.Array string>" in repr(array)
+    assert "dictionary: <nanoarrow.lib.CArray string>" in repr(array)
 
 
 def test_array_view():

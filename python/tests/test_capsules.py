@@ -113,9 +113,9 @@ def test_export_invalid():
     with pytest.raises(RuntimeError, match="schema is released"):
         pa.schema(schema)
 
-    array = na.Array.allocate(na.CSchema.allocate())
+    array = na.CArray.allocate(na.CSchema.allocate())
     assert array.is_valid() is False
-    with pytest.raises(RuntimeError, match="Array is released"):
+    with pytest.raises(RuntimeError, match="CArray is released"):
         pa.array(array)
 
     array_stream = na.ArrayStream.allocate()
@@ -135,10 +135,10 @@ def test_import_from_c_errors():
         na.CSchema._import_from_c_capsule(pa_arr.__arrow_c_array__())
 
     with pytest.raises(ValueError):
-        na.Array._import_from_c_capsule("wrong", "wrong")
+        na.CArray._import_from_c_capsule("wrong", "wrong")
 
     with pytest.raises(ValueError):
-        na.Array._import_from_c_capsule(
+        na.CArray._import_from_c_capsule(
             pa_arr.__arrow_c_array__(), pa_arr.type.__arrow_c_schema__()
         )
 
