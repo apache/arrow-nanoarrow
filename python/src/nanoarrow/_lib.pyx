@@ -719,8 +719,30 @@ cdef class ArrayView:
             yield self.child(i)
 
     @property
+    def n_buffers(self):
+        for i in range(3):
+            if self._ptr.layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE:
+                return i
+        return 3
+
+    def buffer(self, int64_t i):
+        if i < 0 or i >= self.n_buffers:
+            raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
+
+        cdef ArrowBufferView* buffer_view = &(self._ptr.buffer_views[i])
+        return BufferView(
+            self,
+            <uintptr_t>buffer_view,
+            self._ptr.layout.buffer_type[i],
+            self._ptr.layout.buffer_data_type[i],
+            self._ptr.layout.element_size_bits[i],
+            <uintptr_t>self._device
+        )
+
+    @property
     def buffers(self):
-        return ArrayViewBuffers(self)
+        for i in range(self.n_buffers):
+            yield self.buffer(i)
 
     @property
     def dictionary(self):
@@ -821,6 +843,12 @@ cdef class BufferView:
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
 
+    def _addr(self):
+        return <uintptr_t>self._ptr.data.data
+
+    @property
+    def size_bytes(self):
+        return self._ptr.size_bytes
 
     cdef Py_ssize_t _item_size(self):
         if self._buffer_data_type == NANOARROW_TYPE_BOOL:
@@ -876,41 +904,6 @@ cdef class BufferView:
 
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
-
-
-cdef class ArrayViewBuffers:
-    """A lazily-resolved list of ArrayView buffers
-    """
-    cdef ArrayView _array_view
-    cdef int64_t _length
-
-    def __cinit__(self, ArrayView array_view):
-        self._array_view = array_view
-        self._length = 3
-        for i in range(3):
-            if self._array_view._ptr.layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE:
-                self._length = i
-                break
-
-    def __len__(self):
-        return self._length
-
-    def __getitem__(self, k):
-        k = int(k)
-        if k < 0 or k >= self._length:
-            raise IndexError(f"{k} out of range [0, {self._length})")
-        cdef ArrowBufferView* buffer_view = &(self._array_view._ptr.buffer_views[k])
-        if buffer_view.data.data == NULL:
-            return None
-
-        return BufferView(
-            self._array_view,
-            <uintptr_t>buffer_view,
-            self._array_view._ptr.layout.buffer_type[k],
-            self._array_view._ptr.layout.buffer_data_type[k],
-            self._array_view._ptr.layout.element_size_bits[k],
-            <uintptr_t>self._array_view._device
-        )
 
 
 cdef class ArrayStream:

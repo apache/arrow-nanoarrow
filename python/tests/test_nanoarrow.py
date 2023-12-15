@@ -210,7 +210,7 @@ def test_array_view():
 
     assert view.schema is array.schema
 
-    data_buffer = memoryview(view.buffers[1])
+    data_buffer = memoryview(view.buffer(1))
     data_buffer_copy = bytes(data_buffer)
     assert len(data_buffer_copy) == 12
 
@@ -239,12 +239,14 @@ def test_array_view_recursive():
     assert array.child(0).schema._addr() == array.schema.child(0)._addr()
 
     view = na.array_view(array)
-    assert len(view.buffers) == 1
+    assert view.n_buffers == 1
+    assert len(list(view.buffers)) == 1
     assert view.n_children == 1
     assert len(list(view.children)) == 1
     assert view.schema._addr() == array.schema._addr()
 
-    assert len(view.child(0).buffers) == 2
+    assert view.child(0).n_buffers == 2
+    assert len(list(view.child(0).buffers)) == 2
     assert view.child(0).schema._addr() == array.schema.child(0)._addr()
     assert view.child(0).schema._addr() == array.child(0).schema._addr()
 
@@ -257,8 +259,8 @@ def test_array_view_dictionary():
     assert array.dictionary.schema.format == "u"
 
     view = na.array_view(array)
-    assert len(view.buffers) == 2
-    assert len(view.dictionary.buffers) == 3
+    assert view.n_buffers == 2
+    assert view.dictionary.n_buffers == 3
 
 
 def test_buffers_data():
@@ -278,30 +280,30 @@ def test_buffers_data():
     for pa_type, np_type in data_types:
         view = na.array_view(pa.array([0, 1, 2], pa_type))
         np.testing.assert_array_equal(
-            np.array(view.buffers[1]), np.array([0, 1, 2], np_type)
+            np.array(view.buffer(1)), np.array([0, 1, 2], np_type)
         )
 
 
 def test_buffers_string():
     view = na.array_view(pa.array(["a", "bc", "def"]))
 
-    assert view.buffers[0] is None
+    assert view.buffer(0).size_bytes == 0
     np.testing.assert_array_equal(
-        np.array(view.buffers[1]), np.array([0, 1, 3, 6], np.int32())
+        np.array(view.buffer(1)), np.array([0, 1, 3, 6], np.int32())
     )
     np.testing.assert_array_equal(
-        np.array(view.buffers[2]), np.array(list("abcdef"), dtype="|S1")
+        np.array(view.buffer(2)), np.array(list("abcdef"), dtype="|S1")
     )
 
 
 def test_buffers_binary():
     view = na.array_view(pa.array([b"a", b"bc", b"def"]))
 
-    assert view.buffers[0] is None
+    assert view.buffer(0).size_bytes == 0
     np.testing.assert_array_equal(
-        np.array(view.buffers[1]), np.array([0, 1, 3, 6], np.int32())
+        np.array(view.buffer(1)), np.array([0, 1, 3, 6], np.int32())
     )
-    np.testing.assert_array_equal(np.array(view.buffers[2]), np.array(list(b"abcdef")))
+    np.testing.assert_array_equal(np.array(view.buffer(2)), np.array(list(b"abcdef")))
 
 
 def test_array_stream():
