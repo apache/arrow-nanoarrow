@@ -50,7 +50,7 @@ def test_schema():
     pa_schema = pa.schema([pa.field("some_name", pa.int32())])
 
     for schema_obj in [pa_schema, SchemaWrapper(pa_schema)]:
-        schema = na.cschema(schema_obj)
+        schema = na.lib.cschema(schema_obj)
         # some basic validation
         assert schema.is_valid()
         assert schema.format == "+s"
@@ -68,7 +68,7 @@ def test_array():
     pa_arr = pa.array([1, 2, 3], pa.int32())
 
     for arr_obj in [pa_arr, ArrayWrapper(pa_arr)]:
-        array = na.carray(arr_obj)
+        array = na.lib.carray(arr_obj)
         # some basic validation
         assert array.is_valid()
         assert array.length == 3
@@ -107,13 +107,13 @@ def test_array_stream():
 
 
 def test_export_invalid():
-    schema = na.CSchema.allocate()
+    schema = na.lib.CSchema.allocate()
     assert schema.is_valid() is False
 
     with pytest.raises(RuntimeError, match="schema is released"):
         pa.schema(schema)
 
-    array = na.CArray.allocate(na.CSchema.allocate())
+    array = na.lib.CArray.allocate(na.lib.CSchema.allocate())
     assert array.is_valid() is False
     with pytest.raises(RuntimeError, match="CArray is released"):
         pa.array(array)
@@ -129,16 +129,16 @@ def test_import_from_c_errors():
     pa_arr = pa.array([1, 2, 3], pa.int32())
 
     with pytest.raises(ValueError):
-        na.CSchema._import_from_c_capsule("wrong")
+        na.lib.CSchema._import_from_c_capsule("wrong")
 
     with pytest.raises(ValueError):
-        na.CSchema._import_from_c_capsule(pa_arr.__arrow_c_array__())
+        na.lib.CSchema._import_from_c_capsule(pa_arr.__arrow_c_array__())
 
     with pytest.raises(ValueError):
-        na.CArray._import_from_c_capsule("wrong", "wrong")
+        na.lib.CArray._import_from_c_capsule("wrong", "wrong")
 
     with pytest.raises(ValueError):
-        na.CArray._import_from_c_capsule(
+        na.lib.CArray._import_from_c_capsule(
             pa_arr.__arrow_c_array__(), pa_arr.type.__arrow_c_schema__()
         )
 
