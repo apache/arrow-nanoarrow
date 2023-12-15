@@ -36,7 +36,7 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-14.0.
 # There's a missing define that numpy's build needs on s390x and there is no wheel
 RUN (grep -e "S390" /usr/include/bits/hwcap.h && echo "#define HWCAP_S390_VX HWCAP_S390_VXRS" >> /usr/include/bits/hwcap.h) || true
 RUN virtualenv -v --download /venv
-RUN source /venv/bin/activate && pip install build Cython pytest numpy
+RUN source /venv/bin/activate && pip install build Cython pytest pytest-cython numpy
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
