@@ -50,7 +50,7 @@ def test_schema():
     pa_schema = pa.schema([pa.field("some_name", pa.int32())])
 
     for schema_obj in [pa_schema, SchemaWrapper(pa_schema)]:
-        schema = na.schema(schema_obj)
+        schema = na.cschema(schema_obj)
         # some basic validation
         assert schema.is_valid()
         assert schema.format == "+s"
@@ -68,7 +68,7 @@ def test_array():
     pa_arr = pa.array([1, 2, 3], pa.int32())
 
     for arr_obj in [pa_arr, ArrayWrapper(pa_arr)]:
-        array = na.array(arr_obj)
+        array = na.carray(arr_obj)
         # some basic validation
         assert array.is_valid()
         assert array.length == 3

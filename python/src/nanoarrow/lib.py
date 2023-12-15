@@ -22,10 +22,10 @@ def array_view(obj):
     if isinstance(obj, ArrayView):
         return obj
 
-    return ArrayView.from_cpu_array(array(obj))
+    return ArrayView.from_cpu_array(carray(obj))
 
 
-def schema(obj):
+def cschema(obj):
     if isinstance(obj, CSchema):
         return obj
 
@@ -44,7 +44,7 @@ def schema(obj):
         )
 
 
-def array(obj):
+def carray(obj):
     if isinstance(obj, CArray):
         return obj
 

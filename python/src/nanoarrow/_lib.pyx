@@ -365,7 +365,7 @@ cdef class CSchema:
 
     def view(self):
         self._assert_valid()
-        schema_view = SchemaView()
+        schema_view = CSchemaView()
         cdef Error error = Error()
         cdef int result = ArrowSchemaViewInit(&schema_view._schema_view, self._ptr, &error.c_error)
         if result != NANOARROW_OK:
@@ -374,7 +374,7 @@ cdef class CSchema:
         return schema_view
 
 
-cdef class SchemaView:
+cdef class CSchemaView:
     """ArrowSchemaView wrapper
 
     The ArrowSchemaView is a nanoarrow C library structure that facilitates
@@ -439,27 +439,27 @@ cdef class SchemaView:
 
     @property
     def fixed_size(self):
-        if self._schema_view.type in SchemaView._fixed_size_types:
+        if self._schema_view.type in CSchemaView._fixed_size_types:
             return self._schema_view.fixed_size
 
     @property
     def decimal_bitwidth(self):
-        if self._schema_view.type in SchemaView._decimal_types:
+        if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_bitwidth
 
     @property
     def decimal_precision(self):
-        if self._schema_view.type in SchemaView._decimal_types:
+        if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_precision
 
     @property
     def decimal_scale(self):
-        if self._schema_view.type in SchemaView._decimal_types:
+        if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_scale
 
     @property
     def time_unit(self):
-        if self._schema_view.type in SchemaView._time_unit_types:
+        if self._schema_view.type in CSchemaView._time_unit_types:
             return ArrowTimeUnitString(self._schema_view.time_unit).decode('UTF-8')
 
     @property
@@ -469,7 +469,7 @@ cdef class SchemaView:
 
     @property
     def union_type_ids(self):
-        if self._schema_view.type in SchemaView._union_types:
+        if self._schema_view.type in CSchemaView._union_types:
             type_ids_str = self._schema_view.union_type_ids.decode('UTF-8').split(',')
             return (int(type_id) for type_id in type_ids_str)
 

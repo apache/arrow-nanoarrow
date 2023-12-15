@@ -25,26 +25,26 @@ np = pytest.importorskip("numpy")
 pa = pytest.importorskip("pyarrow")
 
 
-def test_schema_helper():
+def test_cschema_helper():
     schema = na.CSchema.allocate()
-    assert na.schema(schema) is schema
+    assert na.cschema(schema) is schema
 
-    schema = na.schema(pa.null())
+    schema = na.cschema(pa.null())
     assert isinstance(schema, na.CSchema)
 
     with pytest.raises(TypeError):
-        na.schema(None)
+        na.cschema(None)
 
 
-def test_array_helper():
+def test_carray_helper():
     array = na.CArray.allocate(na.CSchema.allocate())
-    assert na.array(array) is array
+    assert na.carray(array) is array
 
-    array = na.array(pa.array([], pa.null()))
+    array = na.carray(pa.array([], pa.null()))
     assert isinstance(array, na.CArray)
 
     with pytest.raises(TypeError):
-        na.array(None)
+        na.carray(None)
 
 
 def test_array_stream_helper():
@@ -56,19 +56,19 @@ def test_array_stream_helper():
 
 
 def test_array_view_helper():
-    array = na.array(pa.array([1, 2, 3]))
+    array = na.carray(pa.array([1, 2, 3]))
     view = na.array_view(array)
     assert isinstance(view, na.ArrayView)
     assert na.array_view(view) is view
 
 
-def test_schema_basic():
+def test_cschema_basic():
     schema = na.CSchema.allocate()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
     assert repr(schema) == "<released nanoarrow.lib.CSchema>"
 
-    schema = na.schema(pa.schema([pa.field("some_name", pa.int32())]))
+    schema = na.cschema(pa.schema([pa.field("some_name", pa.int32())]))
 
     assert schema.format == "+s"
     assert schema.flags == 0
@@ -85,8 +85,8 @@ def test_schema_basic():
         schema.child(1)
 
 
-def test_schema_dictionary():
-    schema = na.schema(pa.dictionary(pa.int32(), pa.utf8()))
+def test_cschema_dictionary():
+    schema = na.cschema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
     assert "dictionary: <nanoarrow.lib.CSchema string" in repr(schema)
@@ -94,7 +94,7 @@ def test_schema_dictionary():
 
 def test_schema_metadata():
     meta = {"key1": "value1", "key2": "value2"}
-    schema = na.schema(pa.field("", pa.int32(), metadata=meta))
+    schema = na.cschema(pa.field("", pa.int32(), metadata=meta))
 
     assert len(schema.metadata) == 2
 
@@ -104,12 +104,12 @@ def test_schema_metadata():
     assert "'key1': b'value1'" in repr(schema)
 
 
-def test_schema_view():
+def test_cschema_view():
     schema = na.CSchema.allocate()
     with pytest.raises(RuntimeError):
         schema.view()
 
-    schema = na.schema(pa.int32())
+    schema = na.cschema(pa.int32())
     view = schema.view()
     assert view.type == "int32"
     assert view.storage_type == "int32"
@@ -124,31 +124,31 @@ def test_schema_view():
     assert view.extension_metadata is None
 
 
-def test_schema_view_extra_params():
-    schema = na.schema(pa.binary(12))
+def test_cschema_view_extra_params():
+    schema = na.cschema(pa.binary(12))
     view = schema.view()
     assert view.fixed_size == 12
 
-    schema = na.schema(pa.list_(pa.int32(), 12))
+    schema = na.cschema(pa.list_(pa.int32(), 12))
     assert view.fixed_size == 12
 
-    schema = na.schema(pa.decimal128(10, 3))
+    schema = na.cschema(pa.decimal128(10, 3))
     view = schema.view()
     assert view.decimal_bitwidth == 128
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.schema(pa.decimal256(10, 3))
+    schema = na.cschema(pa.decimal256(10, 3))
     view = schema.view()
     assert view.decimal_bitwidth == 256
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.schema(pa.duration("us"))
+    schema = na.cschema(pa.duration("us"))
     view = schema.view()
     assert view.time_unit == "us"
 
-    schema = na.schema(pa.timestamp("us", tz="America/Halifax"))
+    schema = na.cschema(pa.timestamp("us", tz="America/Halifax"))
     view = schema.view()
     assert view.type == "timestamp"
     assert view.storage_type == "int64"
@@ -159,20 +159,20 @@ def test_schema_view_extra_params():
         "ARROW:extension:name": "some_name",
         "ARROW:extension:metadata": "some_metadata",
     }
-    schema = na.schema(pa.field("", pa.int32(), metadata=meta))
+    schema = na.cschema(pa.field("", pa.int32(), metadata=meta))
     view = schema.view()
     assert view.extension_name == "some_name"
     assert view.extension_metadata == b"some_metadata"
 
 
-def test_array_empty():
+def test_carray_empty():
     array = na.CArray.allocate(na.CSchema.allocate())
     assert array.is_valid() is False
     assert repr(array) == "<released nanoarrow.lib.CArray>"
 
 
-def test_array():
-    array = na.array(pa.array([1, 2, 3], pa.int32()))
+def test_carray():
+    array = na.carray(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
     assert array.length == 3
     assert array.offset == 0
@@ -186,8 +186,8 @@ def test_array():
     assert "<nanoarrow.lib.CArray int32" in repr(array)
 
 
-def test_array_recursive():
-    array = na.array(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
+def test_carray_recursive():
+    array = na.carray(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
     assert array.n_children == 1
     assert len(list(array.children)) == 1
     assert array.child(0).length == 3
@@ -198,15 +198,15 @@ def test_array_recursive():
         array.child(-1)
 
 
-def test_array_dictionary():
-    array = na.array(pa.array(["a", "b", "b"]).dictionary_encode())
+def test_carray_dictionary():
+    array = na.carray(pa.array(["a", "b", "b"]).dictionary_encode())
     assert array.length == 3
     assert array.dictionary.length == 2
     assert "dictionary: <nanoarrow.lib.CArray string>" in repr(array)
 
 
 def test_array_view():
-    array = na.array(pa.array([1, 2, 3], pa.int32()))
+    array = na.carray(pa.array([1, 2, 3], pa.int32()))
     view = na.array_view(array)
 
     assert view.schema is array.schema
@@ -228,7 +228,7 @@ def test_array_view_recursive():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 
-    array = na.array(pa_array)
+    array = na.carray(pa_array)
 
     assert array.schema.format == "+s"
     assert array.length == 3
@@ -254,7 +254,7 @@ def test_array_view_recursive():
 
 def test_array_view_dictionary():
     pa_array = pa.array(["a", "b", "b"], pa.dictionary(pa.int32(), pa.utf8()))
-    array = na.array(pa_array)
+    array = na.carray(pa_array)
 
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"
