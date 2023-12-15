@@ -334,7 +334,7 @@ cdef class CSchema:
     def metadata(self):
         self._assert_valid()
         if self._ptr.metadata != NULL:
-            return SchemaMetadata(self, <uintptr_t>self._ptr.metadata)
+            return SchemaMetadata(self._base, <uintptr_t>self._ptr.metadata)
         else:
             return None
 
@@ -681,13 +681,11 @@ cdef class ArrayView:
     cdef ArrowArrayView* _ptr
     cdef ArrowDevice* _device
     cdef CSchema _schema
-    cdef object _base_buffer
 
-    def __cinit__(self, object base, uintptr_t addr, CSchema schema, object base_buffer):
+    def __cinit__(self, object base, uintptr_t addr, CSchema schema):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
         self._schema = schema
-        self._base_buffer = base_buffer
         self._device = ArrowDeviceCpu()
 
     @property
@@ -713,8 +711,7 @@ cdef class ArrayView:
         cdef ArrayView child = ArrayView(
             self._base,
             <uintptr_t>self._ptr.children[i],
-            self._schema.child(i),
-            None
+            self._schema.child(i)
         )
 
         child._device = self._device
@@ -738,7 +735,7 @@ cdef class ArrayView:
 
         cdef ArrowBufferView* buffer_view = &(self._ptr.buffer_views[i])
         return BufferView(
-            self,
+            self._base,
             <uintptr_t>buffer_view,
             self._ptr.layout.buffer_type[i],
             self._ptr.layout.buffer_data_type[i],
@@ -759,8 +756,7 @@ cdef class ArrayView:
             return ArrayView(
                 self,
                 <uintptr_t>self._ptr.dictionary,
-                self._schema.dictionary,
-                None
+                self._schema.dictionary
             )
 
     @property
@@ -786,19 +782,19 @@ cdef class ArrayView:
         if result != NANOARROW_OK:
             error.raise_message("ArrowArrayViewSetArray()", result)
 
-        return ArrayView(base, <uintptr_t>c_array_view, array._schema, array)
+        return ArrayView((base, array), <uintptr_t>c_array_view, array._schema)
 
 
 cdef class SchemaMetadata:
     """Wrapper for a lazily-parsed CSchema.metadata string
     """
 
-    cdef object _parent
+    cdef object _base
     cdef const char* _metadata
     cdef ArrowMetadataReader _reader
 
-    def __cinit__(self, object parent, uintptr_t ptr):
-        self._parent = parent
+    def __cinit__(self, object base, uintptr_t ptr):
+        self._base = base
         self._metadata = <const char*>ptr
 
     def _init_reader(self):
