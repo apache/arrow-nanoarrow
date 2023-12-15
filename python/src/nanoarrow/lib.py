@@ -18,7 +18,7 @@
 from nanoarrow._lib import ArrayStream, CArray, CArrayView, CSchema
 
 
-def array_view(obj):
+def carray_view(obj):
     if isinstance(obj, CArrayView):
         return obj
 
