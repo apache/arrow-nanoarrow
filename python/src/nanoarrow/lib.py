@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CArray, ArrayStream, ArrayView, CSchema
+from nanoarrow._lib import ArrayStream, ArrayView, CArray, CSchema
 
 
 def array_view(obj):
@@ -39,7 +39,8 @@ def schema(obj):
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.lib.CSchema"
+            f"Can't convert object of type {type(obj).__name__} "
+            "to nanoarrow.lib.CSchema"
         )
 
 
