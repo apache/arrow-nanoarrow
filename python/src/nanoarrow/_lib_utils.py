@@ -84,7 +84,7 @@ def array_repr(array, indent=0):
 
 
 def device_array_repr(device_array):
-    title_line = "<nanoarrow.device.DeviceArray>"
+    title_line = "<nanoarrow.device.lib.CDeviceArray>"
     device_type = f"- device_type: {device_array.device_type}"
     device_id = f"- device_id: {device_array.device_id}"
     array = f"- array: {array_repr(device_array.array, indent=2)}"

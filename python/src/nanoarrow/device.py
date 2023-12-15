@@ -15,12 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import Device, DeviceArray
+from nanoarrow._lib import Device, CDeviceArray
 from nanoarrow.lib import array
 
 
 def device_array(obj):
-    if isinstance(obj, DeviceArray):
+    if isinstance(obj, CDeviceArray):
         return obj
 
     # Only CPU for now

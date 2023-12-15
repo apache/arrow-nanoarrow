@@ -1188,7 +1188,7 @@ cdef class Device:
         if result != NANOARROW_OK:
             Error.raise_error("ArrowDevice::init_array", result)
 
-        return DeviceArray(holder, holder._addr(), schema)
+        return CDeviceArray(holder, holder._addr(), schema)
 
     def __repr__(self):
         return device_repr(self)
@@ -1214,7 +1214,7 @@ cdef class Device:
         return Device(None, <uintptr_t>ArrowDeviceCpu())
 
 
-cdef class DeviceArray:
+cdef class CDeviceArray:
     cdef object _base
     cdef ArrowDeviceArray* _ptr
     cdef CSchema _schema
