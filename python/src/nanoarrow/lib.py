@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CArrayStream, CArray, CArrayView, CSchema
+from nanoarrow._lib import CArray, CArrayStream, CArrayView, CSchema
 
 
 def carray_view(obj):
@@ -63,7 +63,7 @@ def carray(obj):
         )
 
 
-def array_stream(obj):
+def carray_stream(obj):
     if isinstance(obj, CArrayStream):
         return obj
 

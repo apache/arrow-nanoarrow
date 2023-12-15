@@ -49,10 +49,10 @@ def test_carray_helper():
 
 def test_array_stream_helper():
     array_stream = na.CArrayStream.allocate()
-    assert na.array_stream(array_stream) is array_stream
+    assert na.carray_stream(array_stream) is array_stream
 
     with pytest.raises(TypeError):
-        na.array_stream(None)
+        na.carray_stream(None)
 
 
 def test_array_view_helper():
@@ -304,9 +304,9 @@ def test_buffers_binary():
     np.testing.assert_array_equal(np.array(view.buffer(2)), np.array(list(b"abcdef")))
 
 
-def test_array_stream():
+def test_carray_stream():
     array_stream = na.CArrayStream.allocate()
-    assert na.array_stream(array_stream) is array_stream
+    assert na.carray_stream(array_stream) is array_stream
 
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):
@@ -317,7 +317,7 @@ def test_array_stream():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
     reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-    array_stream = na.array_stream(reader)
+    array_stream = na.carray_stream(reader)
 
     assert array_stream.is_valid() is True
     array = array_stream.get_next()
@@ -326,11 +326,11 @@ def test_array_stream():
         array_stream.get_next()
 
 
-def test_array_stream_iter():
+def test_carray_stream_iter():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
     reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-    array_stream = na.array_stream(reader)
+    array_stream = na.carray_stream(reader)
 
     arrays = list(array_stream)
     assert len(arrays) == 1
