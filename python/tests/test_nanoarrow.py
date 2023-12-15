@@ -179,20 +179,22 @@ def test_array():
     assert array.null_count == 0
     assert len(array.buffers) == 2
     assert array.buffers[0] == 0
-    assert len(array.children) == 0
+    assert array.n_children == 0
+    assert len(list(array.children)) == 0
     assert array.dictionary is None
     assert "<nanoarrow.lib.CArray int32" in repr(array)
 
 
 def test_array_recursive():
     array = na.array(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
-    assert len(array.children) == 1
-    assert array.children[0].length == 3
-    assert array.children[0].schema._to_string() == "int32"
+    assert array.n_children == 1
+    assert len(list(array.children)) == 1
+    assert array.child(0).length == 3
+    assert array.child(0).schema._to_string() == "int32"
     assert "'col': <nanoarrow.lib.CArray int32" in repr(array)
 
     with pytest.raises(IndexError):
-        array.children[1]
+        array.child(-1)
 
 
 def test_array_dictionary():
@@ -229,11 +231,12 @@ def test_array_view_recursive():
 
     assert array.schema.format == "+s"
     assert array.length == 3
-    assert len(array.children) == 1
+    assert array.n_children == 1
+    assert len(list(array.children)) == 1
 
-    assert array.children[0].schema.format == "i"
-    assert array.children[0].length == 3
-    assert array.children[0].schema._addr() == array.schema.child(0)._addr()
+    assert array.child(0).schema.format == "i"
+    assert array.child(0).length == 3
+    assert array.child(0).schema._addr() == array.schema.child(0)._addr()
 
     view = na.array_view(array)
     assert len(view.buffers) == 1
@@ -242,7 +245,7 @@ def test_array_view_recursive():
 
     assert len(view.children[0].buffers) == 2
     assert view.children[0].schema._addr() == array.schema.child(0)._addr()
-    assert view.children[0].schema._addr() == array.children[0].schema._addr()
+    assert view.children[0].schema._addr() == array.child(0).schema._addr()
 
 
 def test_array_view_dictionary():

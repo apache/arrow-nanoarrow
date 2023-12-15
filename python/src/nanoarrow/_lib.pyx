@@ -620,8 +620,21 @@ cdef class CArray:
         return tuple(<uintptr_t>self._ptr.buffers[i] for i in range(self._ptr.n_buffers))
 
     @property
+    def n_children(self):
+        self._assert_valid()
+        return self._ptr.n_children
+
+    def child(self, int64_t i):
+        self._assert_valid()
+        if i < 0 or i >= self._ptr.n_children:
+            raise IndexError(f"{i} out of range [0, {self._ptr.n_children})")
+        return CArray(self._base, <uintptr_t>self._ptr.children[i], self._schema.child(i))
+
+    @property
     def children(self):
-        return ArrayChildren(self)
+        for i, schema in zip(range(self.n_children), self._schema.children):
+            self._assert_valid()
+            yield CArray(self._base, <uintptr_t>self._ptr.children[i], schema)
 
     @property
     def dictionary(self):
@@ -760,31 +773,6 @@ cdef class SchemaMetadata:
             key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes).decode('UTF-8')
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
-
-
-cdef class ArrayChildren:
-    """Wrapper for a lazily-resolved list of CArray children
-    """
-    cdef CArray _parent
-    cdef int64_t _length
-
-    def __cinit__(self, CArray parent):
-        self._parent = parent
-        self._length = parent._ptr.n_children
-
-    def __len__(self):
-        return self._length
-
-    def __getitem__(self, k):
-        k = int(k)
-        if k < 0 or k >= self._length:
-            raise IndexError(f"{k} out of range [0, {self._length})")
-        return CArray(self._parent, self._child_addr(k), self._parent.schema.child(k))
-
-    cdef _child_addr(self, int64_t i):
-        cdef ArrowArray** children = self._parent._ptr.children
-        cdef ArrowArray* child = children[i]
-        return <uintptr_t>child
 
 
 cdef class ArrayViewChildren:

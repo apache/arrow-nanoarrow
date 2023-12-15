@@ -73,9 +73,8 @@ def array_repr(array, indent=0):
     else:
         lines.append(f"{indent_str}- dictionary: NULL")
 
-    children = array.children
-    lines.append(f"{indent_str}- children[{len(children)}]:")
-    for child in children:
+    lines.append(f"{indent_str}- children[{array.n_children}]:")
+    for child in array.children:
         child_repr = array_repr(child, indent=indent + 4)
         lines.append(f"{indent_str}  {repr(child.schema.name)}: {child_repr}")
 
