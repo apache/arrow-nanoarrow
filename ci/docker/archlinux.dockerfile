@@ -25,6 +25,7 @@ RUN pacman -Syu --noconfirm git gcc gcc-fortran make cmake gnupg curl which \
 # For Python
 RUN virtualenv -v --download --system-site-packages /venv
 RUN source /venv/bin/activate && pip install pytest-cython
+ENV NANOARROW_PYTHON_VENV "/venv"
 
 # For R
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars

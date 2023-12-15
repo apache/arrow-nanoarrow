@@ -25,6 +25,7 @@ RUN dnf install -y git cmake R gnupg curl libarrow-devel glibc-langpack-en \
 # For Python
 RUN python3 -m venv --upgrade-deps /venv
 RUN source /venv/bin/activate && pip install build Cython pytest pytest-cython numpy pyarrow
+ENV NANOARROW_PYTHON_VENV "/venv"
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars

@@ -38,6 +38,7 @@ RUN python3 -m venv /venv
 RUN source /venv/bin/activate && \
     pip install --upgrade pip && \
     pip install build Cython pytest pytest-cython numpy
+ENV NANOARROW_PYTHON_VENV "/venv"
 
 # Locale required for R CMD check
 RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
