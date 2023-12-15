@@ -763,10 +763,6 @@ cdef class ArrayView:
     def schema(self):
         return self._schema
 
-    def _assert_cpu(self):
-        if self._device.device_type != ARROW_DEVICE_CPU:
-            raise RuntimeError("ArrayView is not representing a CPU device")
-
     @staticmethod
     def from_cpu_array(CArray array):
         cdef ArrowArrayView* c_array_view
