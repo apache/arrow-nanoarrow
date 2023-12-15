@@ -46,11 +46,12 @@ def c_version():
     return ArrowNanoarrowVersion().decode("UTF-8")
 
 
+# PyCapsule utilities
 #
-# PyCapsule export utilities
-#
-
-
+# PyCapsules are used (1) to safely manage memory associated with C structures
+# by initializing them and ensuring the appropriate cleanup is invoked when
+# the object is deleted; and (2) as an export mechanism conforming to the
+# Arrow PyCapsule interface for the objects where this is defined.
 cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
     cdef ArrowSchema* schema = <ArrowSchema*>PyCapsule_GetPointer(
         schema_capsule, 'arrow_schema'
@@ -104,10 +105,52 @@ cdef object alloc_c_array_stream(ArrowArrayStream** c_stream) noexcept:
     return PyCapsule_New(c_stream[0], 'arrow_array_stream', &pycapsule_array_stream_deleter)
 
 
+cdef void pycapsule_device_array_deleter(object device_array_capsule) noexcept:
+    cdef ArrowDeviceArray* device_array = <ArrowDeviceArray*>PyCapsule_GetPointer(
+        device_array_capsule, 'arrow_device_array'
+    )
+    # Do not invoke the deleter on a used/moved capsule
+    if device_array.array.release != NULL:
+        device_array.array.release(&device_array.array)
+
+    free(device_array)
+
+
+cdef object alloc_c_device_array(ArrowDeviceArray** c_device_array) noexcept:
+    c_device_array[0] = <ArrowDeviceArray*> malloc(sizeof(ArrowDeviceArray))
+    # Ensure the capsule destructor doesn't call a random release pointer
+    c_device_array[0].array.release = NULL
+    return PyCapsule_New(c_device_array[0], 'arrow_device_array', &pycapsule_device_array_deleter)
+
+
+# To more safely implement export of an ArrowArray whose address may be
+# dependend on by some other Python object, we implement a shallow copy
+# whose constructor calls Py_INCREF() on a Python object responsible
+# for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
+# the same object.
 cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
     Py_DECREF(<object>array.private_data)
     array.private_data = NULL
     array.release = NULL
+
+
+cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
+    cdef:
+        ArrowArray* c_array_out
+
+    array_capsule = alloc_c_array(&c_array_out)
+
+    # shallow copy
+    memcpy(c_array_out, c_array, sizeof(ArrowArray))
+    c_array_out.release = NULL
+    c_array_out.private_data = NULL
+
+    # track original base
+    c_array_out.private_data = <void*>base
+    Py_INCREF(base)
+    c_array_out.release = arrow_array_release
+
+    return array_capsule
 
 
 cdef class ArrayViewHolder:
@@ -525,24 +568,11 @@ cdef class CArray:
         if requested_schema is not None:
             raise NotImplementedError("requested_schema")
 
+        # Export a shallow copy pointing to the same data in a way
+        # that ensures this object stays valid.
         # TODO optimize this to export a version where children are reference
         # counted and can be released separately
-
-        cdef:
-            ArrowArray* c_array_out
-
-        array_capsule = alloc_c_array(&c_array_out)
-
-        # shallow copy
-        memcpy(c_array_out, self._ptr, sizeof(ArrowArray))
-        c_array_out.release = NULL
-        c_array_out.private_data = NULL
-
-        # track original base
-        c_array_out.private_data = <void*>self._base
-        Py_INCREF(self._base)
-        c_array_out.release = arrow_array_release
-
+        array_capsule = alloc_c_array_shallow_copy(self._base, self._ptr)
         return self._schema.__arrow_c_schema__(), array_capsule
 
     def _addr(self):
@@ -1055,7 +1085,7 @@ cdef class ArrayStream:
     def get_next(self):
         """Get the next Array from this stream
 
-        Returns None when there are no more arrays in this stream.
+        Raises StopIteration when there are no more arrays in this stream.
         """
         self._assert_valid()
 
@@ -1086,25 +1116,6 @@ cdef class ArrayStream:
         return self.get_next()
 
 
-cdef class DeviceArrayHolder:
-    """Memory holder for an ArrowDeviceArray
-
-    This class is responsible for the lifecycle of the ArrowDeviceArray
-    whose memory it is responsible. When this object is deleted,
-    a non-NULL release callback is invoked.
-    """
-    cdef ArrowDeviceArray c_array
-
-    def __cinit__(self):
-        self.c_array.array.release = NULL
-
-    def __dealloc__(self):
-        if self.c_array.array.release != NULL:
-          ArrowArrayRelease(&self.c_array.array)
-
-    def _addr(self):
-        return <uintptr_t>&self.c_array
-
 cdef class Device:
     """ArrowDevice wrapper
 
@@ -1122,12 +1133,13 @@ cdef class Device:
 
     def _array_init(self, uintptr_t array_addr, CSchema schema):
         cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
-        cdef DeviceArrayHolder holder = DeviceArrayHolder()
-        cdef int result = ArrowDeviceArrayInit(self._ptr, &holder.c_array, array_ptr)
+        cdef ArrowDeviceArray* device_array_ptr
+        holder = alloc_c_device_array(&device_array_ptr)
+        cdef int result = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
         if result != NANOARROW_OK:
             Error.raise_error("ArrowDevice::init_array", result)
 
-        return CDeviceArray(holder, holder._addr(), schema)
+        return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
 
     def __repr__(self):
         return device_repr(self)
