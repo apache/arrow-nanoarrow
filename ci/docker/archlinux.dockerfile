@@ -17,9 +17,9 @@
 
 FROM archlinux:latest
 
-RUN pacman -Syu --noconfirm git gcc make cmake gnupg curl \
+RUN pacman -Syu --noconfirm git gcc gcc-fortran make cmake gnupg curl which \
     python-pip python-build cython python-numpy python-pytest python-virtualenv \
-    r-base r-tools r-utils r-methods \
+    r \
     arrow python-pyarrow
 
 # For Python
@@ -27,5 +27,5 @@ RUN virtualenv -v --download --system-site-packages /venv
 
 # For R
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'utils::install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+RUN R -e 'utils::install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars

@@ -19,7 +19,7 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 
-RUN apk add bash linux-headers git cmake R R-dev g++ gnupg curl py3-virtualenv python3-dev
+RUN apk add bash linux-headers git cmake R R-dev g++ gfortran gnupg curl py3-virtualenv python3-dev
 
 # For Arrow C++
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-14.0.1.tar.gz | tar -zxf - && \
@@ -40,7 +40,7 @@ RUN source /venv/bin/activate && pip install build Cython pytest numpy
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow

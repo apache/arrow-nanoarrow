@@ -28,5 +28,5 @@ RUN source /venv/bin/activate && pip install build Cython pytest numpy pyarrow
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
