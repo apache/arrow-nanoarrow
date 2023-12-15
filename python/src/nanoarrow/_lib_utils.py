@@ -47,9 +47,8 @@ def schema_repr(schema, indent=0):
     else:
         lines.append(f"{indent_str}- dictionary: NULL")
 
-    children = schema.children
-    lines.append(f"{indent_str}- children[{len(children)}]:")
-    for child in children:
+    lines.append(f"{indent_str}- children[{schema.n_children}]:")
+    for child in schema.children:
         child_repr = schema_repr(child, indent=indent + 4)
         lines.append(f"{indent_str}  {repr(child.name)}: {child_repr}")
 

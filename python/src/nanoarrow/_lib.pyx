@@ -339,9 +339,22 @@ cdef class CSchema:
             return None
 
     @property
-    def children(self):
+    def n_children(self):
         self._assert_valid()
-        return SchemaChildren(self)
+        return self._ptr.n_children
+
+    def child(self, int64_t i):
+        self._assert_valid()
+        if i < 0 or i >= self._ptr.n_children:
+            raise IndexError(f"{i} out of range [0, {self._ptr.n_children})")
+
+        return CSchema(self._base, <uintptr_t>self._ptr.children[i])
+
+    @property
+    def children(self):
+        for i in range(self.n_children):
+            self._assert_valid()
+            yield CSchema(self._base, <uintptr_t>self._ptr.children[i])
 
     @property
     def dictionary(self):
@@ -717,32 +730,6 @@ cdef class ArrayView:
         return ArrayView(base, <uintptr_t>c_array_view, array._schema, array)
 
 
-cdef class SchemaChildren:
-    """Wrapper for a lazily-resolved list of CSchema children
-    """
-    cdef CSchema _parent
-    cdef int64_t _length
-
-    def __cinit__(self, CSchema parent):
-        self._parent = parent
-        self._length = parent._ptr.n_children
-
-    def __len__(self):
-        return self._length
-
-    def __getitem__(self, k):
-        k = int(k)
-        if k < 0 or k >= self._length:
-            raise IndexError(f"{k} out of range [0, {self._length})")
-
-        return CSchema(self._parent, self._child_addr(k))
-
-    cdef _child_addr(self, int64_t i):
-        cdef ArrowSchema** children = self._parent._ptr.children
-        cdef ArrowSchema* child = children[i]
-        return <uintptr_t>child
-
-
 cdef class SchemaMetadata:
     """Wrapper for a lazily-parsed CSchema.metadata string
     """
@@ -792,7 +779,7 @@ cdef class ArrayChildren:
         k = int(k)
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
-        return CArray(self._parent, self._child_addr(k), self._parent.schema.children[k])
+        return CArray(self._parent, self._child_addr(k), self._parent.schema.child(k))
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowArray** children = self._parent._ptr.children
@@ -820,7 +807,7 @@ cdef class ArrayViewChildren:
         cdef ArrayView child = ArrayView(
             self._parent,
             self._child_addr(k),
-            self._parent._schema.children[k],
+            self._parent._schema.child(k),
             None
         )
 

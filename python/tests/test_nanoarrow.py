@@ -73,15 +73,16 @@ def test_schema_basic():
     assert schema.format == "+s"
     assert schema.flags == 0
     assert schema.metadata is None
-    assert len(schema.children) == 1
-    assert schema.children[0].format == "i"
-    assert schema.children[0].name == "some_name"
-    assert schema.children[0]._to_string() == "int32"
+    assert schema.n_children == 1
+    assert len(list(schema.children)) == 1
+    assert schema.child(0).format == "i"
+    assert schema.child(0).name == "some_name"
+    assert schema.child(0)._to_string() == "int32"
     assert "<nanoarrow.lib.CSchema int32>" in repr(schema)
     assert schema.dictionary is None
 
     with pytest.raises(IndexError):
-        schema.children[1]
+        schema.child(1)
 
 
 def test_schema_dictionary():
@@ -232,7 +233,7 @@ def test_array_view_recursive():
 
     assert array.children[0].schema.format == "i"
     assert array.children[0].length == 3
-    assert array.children[0].schema._addr() == array.schema.children[0]._addr()
+    assert array.children[0].schema._addr() == array.schema.child(0)._addr()
 
     view = na.array_view(array)
     assert len(view.buffers) == 1
@@ -240,7 +241,7 @@ def test_array_view_recursive():
     assert view.schema._addr() == array.schema._addr()
 
     assert len(view.children[0].buffers) == 2
-    assert view.children[0].schema._addr() == array.schema.children[0]._addr()
+    assert view.children[0].schema._addr() == array.schema.child(0)._addr()
     assert view.children[0].schema._addr() == array.children[0].schema._addr()
 
 
@@ -316,7 +317,7 @@ def test_array_stream():
 
     assert array_stream.is_valid() is True
     array = array_stream.get_next()
-    assert array.schema.children[0].name == "some_column"
+    assert array.schema.child(0).name == "some_column"
     with pytest.raises(StopIteration):
         array_stream.get_next()
 
@@ -329,4 +330,4 @@ def test_array_stream_iter():
 
     arrays = list(array_stream)
     assert len(arrays) == 1
-    assert arrays[0].schema.children[0].name == "some_column"
+    assert arrays[0].schema.child(0).name == "some_column"
