@@ -353,8 +353,7 @@ cdef class CSchema:
     @property
     def children(self):
         for i in range(self.n_children):
-            self._assert_valid()
-            yield CSchema(self._base, <uintptr_t>self._ptr.children[i])
+            yield self.child(i)
 
     @property
     def dictionary(self):
@@ -632,9 +631,8 @@ cdef class CArray:
 
     @property
     def children(self):
-        for i, schema in zip(range(self.n_children), self._schema.children):
-            self._assert_valid()
-            yield CArray(self._base, <uintptr_t>self._ptr.children[i], schema)
+        for i in range(self.n_children):
+            yield self.child(i)
 
     @property
     def dictionary(self):
@@ -698,8 +696,27 @@ cdef class ArrayView:
         return self._ptr.null_count
 
     @property
+    def n_children(self):
+        return self._ptr.n_children
+
+    def child(self, int64_t i):
+        if i < 0 or i >= self._ptr.n_children:
+            raise IndexError(f"{i} out of range [0, {self._ptr.n_children})")
+
+        cdef ArrayView child = ArrayView(
+            self._base,
+            <uintptr_t>self._ptr.children[i],
+            self._schema.child(i),
+            None
+        )
+
+        child._device = self._device
+        return child
+
+    @property
     def children(self):
-        return ArrayViewChildren(self)
+        for i in range(self.n_children):
+            yield self.child(i)
 
     @property
     def buffers(self):
@@ -773,39 +790,6 @@ cdef class SchemaMetadata:
             key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes).decode('UTF-8')
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
-
-
-cdef class ArrayViewChildren:
-    """Wrapper for a lazily-resolved list of ArrayView children
-    """
-    cdef ArrayView _parent
-    cdef int64_t _length
-
-    def __cinit__(self, ArrayView parent):
-        self._parent = parent
-        self._length = parent._ptr.n_children
-
-    def __len__(self):
-        return self._length
-
-    def __getitem__(self, k):
-        k = int(k)
-        if k < 0 or k >= self._length:
-            raise IndexError(f"{k} out of range [0, {self._length})")
-        cdef ArrayView child = ArrayView(
-            self._parent,
-            self._child_addr(k),
-            self._parent._schema.child(k),
-            None
-        )
-
-        child._device = self._parent._device
-        return child
-
-    cdef _child_addr(self, int64_t i):
-        cdef ArrowArrayView** children = self._parent._ptr.children
-        cdef ArrowArrayView* child = children[i]
-        return <uintptr_t>child
 
 
 cdef class BufferView:

@@ -220,7 +220,7 @@ def test_array_view():
         assert data_buffer_copy == b"\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03"
 
     with pytest.raises(IndexError):
-        view.children[1]
+        view.child(1)
 
 
 def test_array_view_recursive():
@@ -240,12 +240,13 @@ def test_array_view_recursive():
 
     view = na.array_view(array)
     assert len(view.buffers) == 1
-    assert len(view.children) == 1
+    assert view.n_children == 1
+    assert len(list(view.children)) == 1
     assert view.schema._addr() == array.schema._addr()
 
-    assert len(view.children[0].buffers) == 2
-    assert view.children[0].schema._addr() == array.schema.child(0)._addr()
-    assert view.children[0].schema._addr() == array.child(0).schema._addr()
+    assert len(view.child(0).buffers) == 2
+    assert view.child(0).schema._addr() == array.schema.child(0)._addr()
+    assert view.child(0).schema._addr() == array.child(0).schema._addr()
 
 
 def test_array_view_dictionary():
