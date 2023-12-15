@@ -123,6 +123,22 @@ cdef object alloc_c_device_array(ArrowDeviceArray** c_device_array) noexcept:
     return PyCapsule_New(c_device_array[0], 'arrow_device_array', &pycapsule_device_array_deleter)
 
 
+cdef void pycapsule_array_view_deleter(object array_capsule) noexcept:
+    cdef ArrowArrayView* array_view = <ArrowArrayView*>PyCapsule_GetPointer(
+        array_capsule, 'nanoarrow_array_view'
+    )
+
+    ArrowArrayViewReset(array_view)
+
+    free(array_view)
+
+
+cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
+    c_array_view[0] = <ArrowArrayView*> malloc(sizeof(ArrowArrayView))
+    ArrowArrayViewInitFromType(c_array_view[0], NANOARROW_TYPE_UNINITIALIZED)
+    return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_deleter)
+
+
 # To more safely implement export of an ArrowArray whose address may be
 # dependend on by some other Python object, we implement a shallow copy
 # whose constructor calls Py_INCREF() on a Python object responsible
@@ -151,25 +167,6 @@ cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) n
     c_array_out.release = arrow_array_release
 
     return array_capsule
-
-
-cdef class ArrayViewHolder:
-    """Memory holder for an ArrowArrayView
-
-    This class is responsible for the lifecycle of the ArrowArrayView
-    whose memory it is responsible. When this object is deleted,
-    ArrowArrayViewReset() is called on the contents.
-    """
-    cdef ArrowArrayView c_array_view
-
-    def __cinit__(self):
-        ArrowArrayViewInitFromType(&self.c_array_view, NANOARROW_TYPE_UNINITIALIZED)
-
-    def __dealloc__(self):
-        ArrowArrayViewReset(&self.c_array_view)
-
-    def _addr(self):
-        return <uintptr_t>&self.c_array_view
 
 
 class NanoarrowException(RuntimeError):
@@ -704,19 +701,20 @@ cdef class ArrayView:
 
     @staticmethod
     def from_cpu_array(CArray array):
-        cdef ArrayViewHolder holder = ArrayViewHolder()
+        cdef ArrowArrayView* c_array_view
+        base = alloc_c_array_view(&c_array_view)
 
         cdef Error error = Error()
-        cdef int result = ArrowArrayViewInitFromSchema(&holder.c_array_view,
+        cdef int result = ArrowArrayViewInitFromSchema(c_array_view,
                                                        array._schema._ptr, &error.c_error)
         if result != NANOARROW_OK:
             error.raise_message("ArrowArrayViewInitFromSchema()", result)
 
-        result = ArrowArrayViewSetArray(&holder.c_array_view, array._ptr, &error.c_error)
+        result = ArrowArrayViewSetArray(c_array_view, array._ptr, &error.c_error)
         if result != NANOARROW_OK:
             error.raise_message("ArrowArrayViewSetArray()", result)
 
-        return ArrayView(holder, holder._addr(), array._schema, array)
+        return ArrayView(base, <uintptr_t>c_array_view, array._schema, array)
 
 
 cdef class SchemaChildren:
