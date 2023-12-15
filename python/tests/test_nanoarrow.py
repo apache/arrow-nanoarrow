@@ -209,7 +209,7 @@ def test_array_view():
     array = na.lib.carray(pa.array([1, 2, 3], pa.int32()))
     view = na.array_view(array)
 
-    assert view.schema is array.schema
+    assert view.storage_type == "int32"
 
     data_buffer = memoryview(view.buffer(1))
     data_buffer_copy = bytes(data_buffer)
@@ -244,12 +244,9 @@ def test_array_view_recursive():
     assert len(list(view.buffers)) == 1
     assert view.n_children == 1
     assert len(list(view.children)) == 1
-    assert view.schema._addr() == array.schema._addr()
 
     assert view.child(0).n_buffers == 2
     assert len(list(view.child(0).buffers)) == 2
-    assert view.child(0).schema._addr() == array.schema.child(0)._addr()
-    assert view.child(0).schema._addr() == array.child(0).schema._addr()
 
 
 def test_array_view_dictionary():

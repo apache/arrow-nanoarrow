@@ -371,6 +371,7 @@ cdef class CSchema:
         if result != NANOARROW_OK:
             error.raise_message("ArrowSchemaViewInit()", result)
 
+        schema_view._base = self._base
         return schema_view
 
 
@@ -397,6 +398,7 @@ cdef class CSchemaView:
     >>> schema_view.decimal_scale
     3
     """
+    cdef object _base
     cdef ArrowSchemaView _schema_view
 
     _fixed_size_types = (
@@ -422,6 +424,7 @@ cdef class CSchemaView:
     )
 
     def __cinit__(self):
+        self._base = None
         self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
         self._schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED
 
@@ -680,13 +683,17 @@ cdef class ArrayView:
     cdef object _base
     cdef ArrowArrayView* _ptr
     cdef ArrowDevice* _device
-    cdef CSchema _schema
 
-    def __cinit__(self, object base, uintptr_t addr, CSchema schema):
+    def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._schema = schema
         self._device = ArrowDeviceCpu()
+
+    @property
+    def storage_type(self):
+        cdef const char* type_str = ArrowTypeString(self._ptr.storage_type)
+        if type_str != NULL:
+            return type_str.decode('UTF-8')
 
     @property
     def length(self):
@@ -710,8 +717,7 @@ cdef class ArrayView:
 
         cdef ArrayView child = ArrayView(
             self._base,
-            <uintptr_t>self._ptr.children[i],
-            self._schema.child(i)
+            <uintptr_t>self._ptr.children[i]
         )
 
         child._device = self._device
@@ -755,13 +761,8 @@ cdef class ArrayView:
         else:
             return ArrayView(
                 self,
-                <uintptr_t>self._ptr.dictionary,
-                self._schema.dictionary
+                <uintptr_t>self._ptr.dictionary
             )
-
-    @property
-    def schema(self):
-        return self._schema
 
     @staticmethod
     def from_cpu_array(CArray array):
@@ -778,7 +779,7 @@ cdef class ArrayView:
         if result != NANOARROW_OK:
             error.raise_message("ArrowArrayViewSetArray()", result)
 
-        return ArrayView((base, array), <uintptr_t>c_array_view, array._schema)
+        return ArrayView((base, array), <uintptr_t>c_array_view)
 
 
 cdef class SchemaMetadata:
