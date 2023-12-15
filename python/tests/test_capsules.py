@@ -85,7 +85,7 @@ def test_array_stream():
     pa_table = pa.table({"some_column": pa.array([1, 2, 3], pa.int32())})
 
     for stream_obj in [pa_table, StreamWrapper(pa_table)]:
-        array_stream = na.carray_stream(stream_obj)
+        array_stream = na.lib.carray_stream(stream_obj)
         # some basic validation
         assert array_stream.is_valid()
         array = array_stream.get_next()
@@ -96,7 +96,7 @@ def test_array_stream():
         )
 
         # roundtrip
-        array_stream = na.carray_stream(stream_obj)
+        array_stream = na.lib.carray_stream(stream_obj)
         pa_table2 = pa.table(array_stream)
         assert pa_table2.equals(pa_table)
         # exporting a stream marks the original object as released (it is moved)
@@ -118,7 +118,7 @@ def test_export_invalid():
     with pytest.raises(RuntimeError, match="CArray is released"):
         pa.array(array)
 
-    array_stream = na.CArrayStream.allocate()
+    array_stream = na.lib.CArrayStream.allocate()
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError, match="array stream is released"):
         pa.table(array_stream)
@@ -143,7 +143,7 @@ def test_import_from_c_errors():
         )
 
     with pytest.raises(ValueError):
-        na.CArrayStream._import_from_c_capsule("wrong")
+        na.lib.CArrayStream._import_from_c_capsule("wrong")
 
     with pytest.raises(ValueError):
-        na.CArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())
+        na.lib.CArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())

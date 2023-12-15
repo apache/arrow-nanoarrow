@@ -48,18 +48,18 @@ def test_carray_helper():
 
 
 def test_array_stream_helper():
-    array_stream = na.CArrayStream.allocate()
-    assert na.carray_stream(array_stream) is array_stream
+    array_stream = na.lib.CArrayStream.allocate()
+    assert na.lib.carray_stream(array_stream) is array_stream
 
     with pytest.raises(TypeError):
-        na.carray_stream(None)
+        na.lib.carray_stream(None)
 
 
 def test_array_view_helper():
     array = na.lib.carray(pa.array([1, 2, 3]))
-    view = na.carray_view(array)
-    assert isinstance(view, na.CArrayView)
-    assert na.carray_view(view) is view
+    view = na.lib.carray_view(array)
+    assert isinstance(view, na.lib.CArrayView)
+    assert na.lib.carray_view(view) is view
 
 
 def test_cschema_basic():
@@ -207,7 +207,7 @@ def test_carray_dictionary():
 
 def test_carray_view():
     array = na.lib.carray(pa.array([1, 2, 3], pa.int32()))
-    view = na.carray_view(array)
+    view = na.lib.carray_view(array)
 
     assert view.storage_type == "int32"
 
@@ -239,7 +239,7 @@ def test_carray_view_recursive():
     assert array.child(0).length == 3
     assert array.child(0).schema._addr() == array.schema.child(0)._addr()
 
-    view = na.carray_view(array)
+    view = na.lib.carray_view(array)
     assert view.n_buffers == 1
     assert len(list(view.buffers)) == 1
     assert view.n_children == 1
@@ -256,7 +256,7 @@ def test_carray_view_dictionary():
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"
 
-    view = na.carray_view(array)
+    view = na.lib.carray_view(array)
     assert view.n_buffers == 2
     assert view.dictionary.n_buffers == 3
 
@@ -276,14 +276,14 @@ def test_buffers_data():
     ]
 
     for pa_type, np_type in data_types:
-        view = na.carray_view(pa.array([0, 1, 2], pa_type))
+        view = na.lib.carray_view(pa.array([0, 1, 2], pa_type))
         np.testing.assert_array_equal(
             np.array(view.buffer(1)), np.array([0, 1, 2], np_type)
         )
 
 
 def test_buffers_string():
-    view = na.carray_view(pa.array(["a", "bc", "def"]))
+    view = na.lib.carray_view(pa.array(["a", "bc", "def"]))
 
     assert view.buffer(0).size_bytes == 0
     np.testing.assert_array_equal(
@@ -295,7 +295,7 @@ def test_buffers_string():
 
 
 def test_buffers_binary():
-    view = na.carray_view(pa.array([b"a", b"bc", b"def"]))
+    view = na.lib.carray_view(pa.array([b"a", b"bc", b"def"]))
 
     assert view.buffer(0).size_bytes == 0
     np.testing.assert_array_equal(
@@ -305,8 +305,8 @@ def test_buffers_binary():
 
 
 def test_carray_stream():
-    array_stream = na.CArrayStream.allocate()
-    assert na.carray_stream(array_stream) is array_stream
+    array_stream = na.lib.CArrayStream.allocate()
+    assert na.lib.carray_stream(array_stream) is array_stream
 
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):
@@ -317,7 +317,7 @@ def test_carray_stream():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
     reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-    array_stream = na.carray_stream(reader)
+    array_stream = na.lib.carray_stream(reader)
 
     assert array_stream.is_valid() is True
     array = array_stream.get_next()
@@ -330,7 +330,7 @@ def test_carray_stream_iter():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
     reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-    array_stream = na.carray_stream(reader)
+    array_stream = na.lib.carray_stream(reader)
 
     arrays = list(array_stream)
     assert len(arrays) == 1
