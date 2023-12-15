@@ -32,9 +32,9 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_CheckExact
+from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from cpython cimport Py_buffer
-from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
+from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
@@ -136,7 +136,7 @@ cdef void pycapsule_array_view_deleter(object array_capsule) noexcept:
 cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
     c_array_view[0] = <ArrowArrayView*> malloc(sizeof(ArrowArrayView))
     ArrowArrayViewInitFromType(c_array_view[0], NANOARROW_TYPE_UNINITIALIZED)
-    return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_deleter)
+    return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
 
 
 # To more safely implement export of an ArrowArray whose address may be
