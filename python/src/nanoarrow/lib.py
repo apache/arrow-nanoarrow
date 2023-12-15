@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import ArrayStream, CArray, CArrayView, CSchema
+from nanoarrow._lib import CArrayStream, CArray, CArrayView, CSchema
 
 
 def carray_view(obj):
@@ -64,16 +64,16 @@ def carray(obj):
 
 
 def array_stream(obj):
-    if isinstance(obj, ArrayStream):
+    if isinstance(obj, CArrayStream):
         return obj
 
     if hasattr(obj, "__arrow_c_stream__"):
         # TODO support requested schema
-        return ArrayStream._import_from_c_capsule(obj.__arrow_c_stream__())
+        return CArrayStream._import_from_c_capsule(obj.__arrow_c_stream__())
 
     # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
-        out = ArrayStream.allocate()
+        out = CArrayStream.allocate()
         obj._export_to_c(out._addr())
         return out
     else:

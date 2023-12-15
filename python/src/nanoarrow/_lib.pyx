@@ -906,7 +906,7 @@ cdef class BufferView:
         pass
 
 
-cdef class ArrayStream:
+cdef class CArrayStream:
     """ArrowArrayStream wrapper
 
     This class provides a user-facing interface to access the fields of
@@ -952,7 +952,7 @@ cdef class ArrayStream:
     def allocate():
         cdef ArrowArrayStream* c_array_stream_out
         base = alloc_c_array_stream(&c_array_stream_out)
-        return ArrayStream(base, <uintptr_t>c_array_stream_out)
+        return CArrayStream(base, <uintptr_t>c_array_stream_out)
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
@@ -970,7 +970,7 @@ cdef class ArrayStream:
             A valid PyCapsule with name 'arrow_array_stream' containing an
             ArrowArrayStream pointer.
         """
-        return ArrayStream(
+        return CArrayStream(
             stream_capsule,
             <uintptr_t>PyCapsule_GetPointer(stream_capsule, 'arrow_array_stream')
         )

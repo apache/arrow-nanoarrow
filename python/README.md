@@ -147,7 +147,7 @@ array.length
 
 ### Array streams
 
-You can use `nanoarrow.array_stream()` to convert an object representing a sequence of `Array`s with a common `Schema` to a `nanoarrow.ArrayStream`. This is currently only implemented for pyarrow objects.
+You can use `nanoarrow.array_stream()` to convert an object representing a sequence of `Array`s with a common `Schema` to a `nanoarrow.CArrayStream`. This is currently only implemented for pyarrow objects.
 
 
 ```python
@@ -178,7 +178,7 @@ You can also get the address of a freshly-allocated stream to pass to a suitable
 
 
 ```python
-array_stream = na.ArrayStream.allocate()
+array_stream = na.CArrayStream.allocate()
 reader._export_to_c(array_stream._addr())
 array_stream.get_schema()
 ```

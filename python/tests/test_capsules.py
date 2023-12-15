@@ -118,7 +118,7 @@ def test_export_invalid():
     with pytest.raises(RuntimeError, match="CArray is released"):
         pa.array(array)
 
-    array_stream = na.ArrayStream.allocate()
+    array_stream = na.CArrayStream.allocate()
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError, match="array stream is released"):
         pa.table(array_stream)
@@ -143,7 +143,7 @@ def test_import_from_c_errors():
         )
 
     with pytest.raises(ValueError):
-        na.ArrayStream._import_from_c_capsule("wrong")
+        na.CArrayStream._import_from_c_capsule("wrong")
 
     with pytest.raises(ValueError):
-        na.ArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())
+        na.CArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())

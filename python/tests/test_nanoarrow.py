@@ -48,7 +48,7 @@ def test_carray_helper():
 
 
 def test_array_stream_helper():
-    array_stream = na.ArrayStream.allocate()
+    array_stream = na.CArrayStream.allocate()
     assert na.array_stream(array_stream) is array_stream
 
     with pytest.raises(TypeError):
@@ -305,7 +305,7 @@ def test_buffers_binary():
 
 
 def test_array_stream():
-    array_stream = na.ArrayStream.allocate()
+    array_stream = na.CArrayStream.allocate()
     assert na.array_stream(array_stream) is array_stream
 
     assert array_stream.is_valid() is False
