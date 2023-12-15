@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import Array, ArrayStream, ArrayView, Schema
+from nanoarrow._lib import Array, ArrayStream, ArrayView, CSchema
 
 
 def array_view(obj):
@@ -26,20 +26,20 @@ def array_view(obj):
 
 
 def schema(obj):
-    if isinstance(obj, Schema):
+    if isinstance(obj, CSchema):
         return obj
 
     if hasattr(obj, "__arrow_c_schema__"):
-        return Schema._import_from_c_capsule(obj.__arrow_c_schema__())
+        return CSchema._import_from_c_capsule(obj.__arrow_c_schema__())
 
     # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
-        out = Schema.allocate()
+        out = CSchema.allocate()
         obj._export_to_c(out._addr())
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.Schema"
+            f"Can't convert object of type {type(obj).__name__} to nanoarrow.lib.CSchema"
         )
 
 
@@ -53,7 +53,7 @@ def array(obj):
 
     # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
-        out = Array.allocate(Schema.allocate())
+        out = Array.allocate(CSchema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
     else:

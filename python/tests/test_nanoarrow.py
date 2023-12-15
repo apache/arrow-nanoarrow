@@ -26,18 +26,18 @@ pa = pytest.importorskip("pyarrow")
 
 
 def test_schema_helper():
-    schema = na.Schema.allocate()
+    schema = na.CSchema.allocate()
     assert na.schema(schema) is schema
 
     schema = na.schema(pa.null())
-    assert isinstance(schema, na.Schema)
+    assert isinstance(schema, na.CSchema)
 
     with pytest.raises(TypeError):
         na.schema(None)
 
 
 def test_array_helper():
-    array = na.Array.allocate(na.Schema.allocate())
+    array = na.Array.allocate(na.CSchema.allocate())
     assert na.array(array) is array
 
     array = na.array(pa.array([], pa.null()))
@@ -63,10 +63,10 @@ def test_array_view_helper():
 
 
 def test_schema_basic():
-    schema = na.Schema.allocate()
+    schema = na.CSchema.allocate()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
-    assert repr(schema) == "<released nanoarrow.Schema>"
+    assert repr(schema) == "<released nanoarrow.lib.CSchema>"
 
     schema = na.schema(pa.schema([pa.field("some_name", pa.int32())]))
 
@@ -77,7 +77,7 @@ def test_schema_basic():
     assert schema.children[0].format == "i"
     assert schema.children[0].name == "some_name"
     assert schema.children[0]._to_string() == "int32"
-    assert "<nanoarrow.Schema int32>" in repr(schema)
+    assert "<nanoarrow.lib.CSchema int32>" in repr(schema)
     assert schema.dictionary is None
 
     with pytest.raises(IndexError):
@@ -88,7 +88,7 @@ def test_schema_dictionary():
     schema = na.schema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
-    assert "dictionary: <nanoarrow.Schema string" in repr(schema)
+    assert "dictionary: <nanoarrow.lib.CSchema string" in repr(schema)
 
 
 def test_schema_metadata():
@@ -104,7 +104,7 @@ def test_schema_metadata():
 
 
 def test_schema_view():
-    schema = na.Schema.allocate()
+    schema = na.CSchema.allocate()
     with pytest.raises(RuntimeError):
         schema.view()
 
@@ -165,7 +165,7 @@ def test_schema_view_extra_params():
 
 
 def test_array_empty():
-    array = na.Array.allocate(na.Schema.allocate())
+    array = na.Array.allocate(na.CSchema.allocate())
     assert array.is_valid() is False
     assert repr(array) == "<released nanoarrow.Array>"
 

@@ -15,6 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import Array, ArrayStream, ArrayView, Schema, c_version  # noqa: F401
+from ._lib import Array, ArrayStream, ArrayView, CSchema, c_version  # noqa: F401
 from .lib import array, array_stream, schema, array_view  # noqa: F401
 from ._version import __version__  # noqa: F401

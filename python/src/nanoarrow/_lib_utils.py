@@ -23,11 +23,11 @@
 def schema_repr(schema, indent=0):
     indent_str = " " * indent
     if schema._addr() == 0:
-        return "<NULL nanoarrow.Schema>"
+        return "<NULL nanoarrow.lib.CSchema>"
     elif not schema.is_valid():
-        return "<released nanoarrow.Schema>"
+        return "<released nanoarrow.lib.CSchema>"
 
-    lines = [f"<nanoarrow.Schema {schema._to_string()}>"]
+    lines = [f"<nanoarrow.lib.CSchema {schema._to_string()}>"]
 
     for attr in ("format", "name", "flags"):
         attr_repr = repr(getattr(schema, attr))

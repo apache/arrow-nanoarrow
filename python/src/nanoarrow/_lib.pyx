@@ -233,7 +233,7 @@ cdef class Error:
         raise NanoarrowException(what, code, "")
 
 
-cdef class Schema:
+cdef class CSchema:
     """ArrowSchema wrapper
 
     This class provides a user-facing interface to access the fields of
@@ -265,7 +265,7 @@ cdef class Schema:
     @staticmethod
     def allocate():
         base = SchemaHolder()
-        return Schema(base, base._addr())
+        return CSchema(base, base._addr())
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base,
@@ -282,7 +282,7 @@ cdef class Schema:
             A valid PyCapsule with name 'arrow_schema' containing an
             ArrowSchema pointer.
         """
-        return Schema(
+        return CSchema(
             schema_capsule,
             <uintptr_t>PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
         )
@@ -365,7 +365,7 @@ cdef class Schema:
     def dictionary(self):
         self._assert_valid()
         if self._ptr.dictionary != NULL:
-            return Schema(self, <uintptr_t>self._ptr.dictionary)
+            return CSchema(self, <uintptr_t>self._ptr.dictionary)
         else:
             return None
 
@@ -501,7 +501,7 @@ cdef class Array:
 
     This class provides a user-facing interface to access the fields of
     an ArrowArray as defined in the Arrow C Data interface, holding an
-    optional reference to a Schema that can be used to safely deserialize
+    optional reference to a CSchema that can be used to safely deserialize
     the content. These objects are usually created using `nanoarrow.array()`.
     This Python wrapper allows access to array fields but does not
     automatically deserialize their content: use `nanoarrow.array_view()`
@@ -523,14 +523,14 @@ cdef class Array:
     """
     cdef object _base
     cdef ArrowArray* _ptr
-    cdef Schema _schema
+    cdef CSchema _schema
 
     @staticmethod
-    def allocate(Schema schema):
+    def allocate(CSchema schema):
         base = ArrayHolder()
         return Array(base, base._addr(), schema)
 
-    def __cinit__(self, object base, uintptr_t addr, Schema schema):
+    def __cinit__(self, object base, uintptr_t addr, CSchema schema):
         self._base = base
         self._ptr = <ArrowArray*>addr
         self._schema = schema
@@ -550,10 +550,10 @@ cdef class Array:
             ArrowArray pointer.
         """
         cdef:
-            Schema out_schema
+            CSchema out_schema
             Array out
 
-        out_schema = Schema._import_from_c_capsule(schema_capsule)
+        out_schema = CSchema._import_from_c_capsule(schema_capsule)
         out = Array(
             array_capsule,
             <uintptr_t>PyCapsule_GetPointer(array_capsule, 'arrow_array'),
@@ -679,10 +679,10 @@ cdef class ArrayView:
     cdef object _base
     cdef ArrowArrayView* _ptr
     cdef ArrowDevice* _device
-    cdef Schema _schema
+    cdef CSchema _schema
     cdef object _base_buffer
 
-    def __cinit__(self, object base, uintptr_t addr, Schema schema, object base_buffer):
+    def __cinit__(self, object base, uintptr_t addr, CSchema schema, object base_buffer):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
         self._schema = schema
@@ -747,12 +747,12 @@ cdef class ArrayView:
 
 
 cdef class SchemaChildren:
-    """Wrapper for a lazily-resolved list of Schema children
+    """Wrapper for a lazily-resolved list of CSchema children
     """
-    cdef Schema _parent
+    cdef CSchema _parent
     cdef int64_t _length
 
-    def __cinit__(self, Schema parent):
+    def __cinit__(self, CSchema parent):
         self._parent = parent
         self._length = parent._ptr.n_children
 
@@ -764,7 +764,7 @@ cdef class SchemaChildren:
         if k < 0 or k >= self._length:
             raise IndexError(f"{k} out of range [0, {self._length})")
 
-        return Schema(self._parent, self._child_addr(k))
+        return CSchema(self._parent, self._child_addr(k))
 
     cdef _child_addr(self, int64_t i):
         cdef ArrowSchema** children = self._parent._ptr.children
@@ -773,7 +773,7 @@ cdef class SchemaChildren:
 
 
 cdef class SchemaMetadata:
-    """Wrapper for a lazily-parsed Schema.metadata string
+    """Wrapper for a lazily-parsed CSchema.metadata string
     """
 
     cdef object _parent
@@ -1000,14 +1000,14 @@ cdef class ArrayStream:
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
     >>> array_stream = na.array_stream(pa_reader)
     >>> array_stream.get_schema()
-    <nanoarrow.Schema struct>
+    <nanoarrow.CSchema struct>
     - format: '+s'
     - name: ''
     - flags: 0
     - metadata: NULL
     - dictionary: NULL
     - children[1]:
-      'col1': <nanoarrow.Schema int32>
+      'col1': <nanoarrow.CSchema int32>
         - format: 'i'
         - name: 'col1'
         - flags: 2
@@ -1092,7 +1092,7 @@ cdef class ArrayStream:
         if self._ptr.release == NULL:
             raise RuntimeError("array stream is released")
 
-    def _get_schema(self, Schema schema):
+    def _get_schema(self, CSchema schema):
         self._assert_valid()
         cdef Error error = Error()
         cdef int code = self._ptr.get_schema(self._ptr, schema._ptr)
@@ -1104,7 +1104,7 @@ cdef class ArrayStream:
     def get_schema(self):
         """Get the schema associated with this stream
         """
-        out = Schema.allocate()
+        out = CSchema.allocate()
         self._get_schema(out)
         return out
 
@@ -1120,7 +1120,7 @@ cdef class ArrayStream:
         # which is guaranteed to call the C object's callback and
         # faithfully pass on the returned value.
         if self._cached_schema is None:
-            self._cached_schema = Schema.allocate()
+            self._cached_schema = CSchema.allocate()
             self._get_schema(self._cached_schema)
 
         cdef Error error = Error()
@@ -1180,7 +1180,7 @@ cdef class Device:
         self._base = base,
         self._ptr = <ArrowDevice*>addr
 
-    def _array_init(self, uintptr_t array_addr, Schema schema):
+    def _array_init(self, uintptr_t array_addr, CSchema schema):
         cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
         cdef DeviceArrayHolder holder = DeviceArrayHolder()
         cdef int result = ArrowDeviceArrayInit(self._ptr, &holder.c_array, array_ptr)
@@ -1216,9 +1216,9 @@ cdef class Device:
 cdef class DeviceArray:
     cdef object _base
     cdef ArrowDeviceArray* _ptr
-    cdef Schema _schema
+    cdef CSchema _schema
 
-    def __cinit__(self, object base, uintptr_t addr, Schema schema):
+    def __cinit__(self, object base, uintptr_t addr, CSchema schema):
         self._base = base
         self._ptr = <ArrowDeviceArray*>addr
         self._schema = schema
