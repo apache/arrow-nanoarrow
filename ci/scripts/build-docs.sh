@@ -59,7 +59,7 @@ maybe_activate_venv() {
 }
 
 main() {
-  maybe_activate_venv
+   maybe_activate_venv
 
    pushd "${TARGET_NANOARROW_DIR}"
 
