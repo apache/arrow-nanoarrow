@@ -20,11 +20,9 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    locales git cmake r-base gnupg curl valgrind python3-pip python3-venv doxygen pandoc lcov \
+    locales git cmake r-base gnupg curl valgrind gfortran python3-venv doxygen pandoc lcov \
     libxml2-dev libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev \
     libjpeg-dev libpng-dev libtiff-dev
-
-RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 
 # For Arrow C++
 RUN apt-get install -y -V ca-certificates lsb-release wget && \
@@ -34,16 +32,19 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
     apt-get install -y -V libarrow-dev
 
 # For documentation build + Python build
-# Note: sphinx can be unpinned when the interaction between sphinx and breathe
-# has been sorted: https://github.com/sphinx-doc/sphinx/issues/11605
-RUN pip3 install pydata-sphinx-theme "sphinx<7.2.0" breathe build Cython numpy pytest pyarrow
+RUN python3 -m venv --upgrade-deps /venv
+RUN echo "source /venv/bin/activate && pip install pydata-sphinx-theme sphinx breathe build Cython numpy pytest pytest-cython pytest-cov pyarrow" | bash
+ENV NANOARROW_PYTHON_VENV "/venv"
 
-# For R. Note that we install arrow here so that the integration tests for R run
-# in at least one test image.
+# Locale required for R CMD check
+RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
+
+# For R
 RUN mkdir ~/.R && echo "MAKEFLAGS += -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "pkgdown", "covr", "pkgbuild"), repos = "https://cloud.r-project.org")'
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64", "pkgdown", "covr", "pkgbuild"), repos = "https://cloud.r-project.org")'
 
-# Required for this to work on MacOS/arm64
+# Install arrow here so that the integration tests for R run in at least one test image.
+# -fPIC required for this to work on MacOS/arm64
 RUN echo "CXX17FLAGS += -fPIC" >> ~/.R/Makevars
 RUN ARROW_USE_PKG_CONFIG=false ARROW_R_DEV=true R -e 'install.packages("arrow", repos = "https://cloud.r-project.org"); library(arrow)'
 RUN rm -f ~/.R/Makevars

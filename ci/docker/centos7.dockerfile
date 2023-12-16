@@ -20,12 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} centos:7
 
 RUN yum install -y epel-release
-RUN yum install -y git gnupg curl R gcc-c++ cmake3 python3-devel
-# On centos7/arm64, cythonize/build is required and fails with cython >= 3
-RUN pip3 install build "Cython < 3.0.0" numpy pytest
-
-RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
-ENV LC_ALL en_US.UTF-8
+RUN yum install -y git gnupg curl R gcc-c++ gcc-gfortran cmake3
 
 # For Arrow C++. Use 9.0.0 because this version works fine with the default gcc
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
@@ -34,13 +29,24 @@ RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0
     cmake3 ../arrow-apache-arrow-9.0.0/cpp \
         -DARROW_JEMALLOC=OFF \
         -DARROW_SIMD_LEVEL=NONE \
+        -DARROW_WITH_ZLIB=ON \
         -DCMAKE_INSTALL_PREFIX=../arrow && \
     cmake3 --build . && \
     make install
 
+RUN python3 -m venv /venv
+RUN source /venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install build Cython pytest pytest-cython numpy
+ENV NANOARROW_PYTHON_VENV "/venv"
+
+# Locale required for R CMD check
+RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
+
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr"), repos = "https://cloud.r-project.org")'
+RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow

@@ -52,7 +52,15 @@ case $# in
      ;;
 esac
 
+maybe_activate_venv() {
+  if [ ! -z "${NANOARROW_PYTHON_VENV}" ]; then
+    source "${NANOARROW_PYTHON_VENV}/bin/activate"
+  fi
+}
+
 main() {
+   maybe_activate_venv
+
    pushd "${TARGET_NANOARROW_DIR}"
 
    # Clean the previous build
