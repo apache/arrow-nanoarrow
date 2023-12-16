@@ -229,7 +229,7 @@ cdef class CSchema:
 
     >>> import pyarrow as pa
     >>> import nanoarrow as na
-    >>> schema = na.schema(pa.int32())
+    >>> schema = na.lib.cschema(pa.int32())
     >>> schema.is_valid()
     True
     >>> schema.format
@@ -387,7 +387,7 @@ cdef class CSchemaView:
 
     >>> import pyarrow as pa
     >>> import nanoarrow as na
-    >>> schema = na.schema(pa.decimal128(10, 3))
+    >>> schema = na.lib.cschema(pa.decimal128(10, 3))
     >>> schema_view = schema.view()
     >>> schema_view.type
     'decimal128'
@@ -511,12 +511,12 @@ cdef class CArray:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array = na.array(pa.array(["one", "two", "three", None]))
+    >>> array = na.lib.carray(pa.array(["one", "two", "three", None]))
     >>> array.length
     4
     >>> array.null_count
     1
-    >>> array_view = na.array_view(array)
+    >>> array_view = na.lib.carray_view(array)
     """
     cdef object _base
     cdef ArrowArray* _ptr
@@ -672,11 +672,11 @@ cdef class CArrayView:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array = na.array(pa.array(["one", "two", "three", None]))
-    >>> array_view = na.array_view(array)
-    >>> np.array(array_view.buffers[1])
+    >>> array = na.lib.carray(pa.array(["one", "two", "three", None]))
+    >>> array_view = na.lib.carray_view(array)
+    >>> np.array(array_view.buffer(1))
     array([ 0,  3,  6, 11, 11], dtype=int32)
-    >>> np.array(array_view.buffers[2])
+    >>> np.array(array_view.buffer(2))
     array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
           dtype='|S1')
     """
@@ -921,16 +921,16 @@ cdef class CArrayStream:
     >>> pa_column = pa.array([1, 2, 3], pa.int32())
     >>> pa_batch = pa.record_batch([pa_column], names=["col1"])
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
-    >>> array_stream = na.array_stream(pa_reader)
+    >>> array_stream = na.lib.carray_stream(pa_reader)
     >>> array_stream.get_schema()
-    <nanoarrow.CSchema struct>
+    <nanoarrow.lib.CSchema struct>
     - format: '+s'
     - name: ''
     - flags: 0
     - metadata: NULL
     - dictionary: NULL
     - children[1]:
-      'col1': <nanoarrow.CSchema int32>
+      'col1': <nanoarrow.lib.CSchema int32>
         - format: 'i'
         - name: 'col1'
         - flags: 2
