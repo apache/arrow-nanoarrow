@@ -107,7 +107,9 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
   // Check error for invalid batch id
   ASSERT_EQ(
       WriteFileString(
-          R"({"schema": {"fields": [{"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": []}]}, "batches": [{"count": 1, "columns": [{"name": "col1", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}]})",
+          R"({"schema": {)"
+          R"("fields": [{"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": []}]}, )"
+          R"("batches": [{"count": 1, "columns": [{"name": "col1", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}]})",
           temp.name()),
       NANOARROW_OK);
   err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), -1, array.get());
@@ -135,7 +137,9 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
 
   ASSERT_EQ(
       WriteFileString(
-          R"({"schema": {"fields": [{"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": []}]}, "batches": [{"count": 0, "columns": [{"name": "col1", "count": 0, "VALIDITY": [], "OFFSET": [0], "DATA": []}]}]})",
+          R"({"schema": {)"
+          R"("fields": [{"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": []}]}, )"
+          R"("batches": [{"count": 0, "columns": [{"name": "col1", "count": 0, "VALIDITY": [], "OFFSET": [0], "DATA": []}]}]})",
           temp.name()),
       NANOARROW_OK);
   err =
