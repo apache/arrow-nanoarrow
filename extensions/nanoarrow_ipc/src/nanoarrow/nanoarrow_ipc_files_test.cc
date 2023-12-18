@@ -122,7 +122,9 @@ class TestFile {
 
     // Use testing util to populate the array stream
     nanoarrow::testing::TestingJSONReader reader;
-    NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(json_string, out, error));
+    NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(
+        json_string, out, nanoarrow::testing::TestingJSONReader::kNumBatchReadAll,
+        error));
     return NANOARROW_OK;
   }
 
