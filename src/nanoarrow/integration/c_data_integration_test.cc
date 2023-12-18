@@ -117,6 +117,14 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
   ASSERT_NE(err, nullptr);
   ASSERT_STREQ(err, "Expected num_batch between 0 and 0 but got -1") << err;
 
+  err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
+  ASSERT_EQ(err, nullptr) << err;
+  ASSERT_NE(array->release, nullptr);
+  err = nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(temp.name(), -1,
+                                                               array.get());
+  ASSERT_EQ(array->release, nullptr);
+  ASSERT_STREQ(err, "Expected num_batch between 0 and 0 but got -1") << err;
+
   // Check valid roundtrip
   err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
   ASSERT_NE(array->release, nullptr);
