@@ -66,13 +66,13 @@ static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_
 }
 
 static ArrowErrorCode ArrayStreamFromJsonFilePath(const std::string& json_path,
-                                                  ArrowArrayStream* out,
+                                                  ArrowArrayStream* out, int num_batch,
                                                   ArrowError* error) {
   std::stringstream ss;
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ReadFileString(ss, json_path), error);
 
   nanoarrow::testing::TestingJSONReader reader(IntegrationTestAllocator());
-  NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(ss.str(), out, error));
+  NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(ss.str(), out, num_batch, error));
   return NANOARROW_OK;
 }
 
@@ -82,10 +82,11 @@ struct MaterializedArrayStream {
 };
 
 static ArrowErrorCode MaterializeJsonFilePath(const std::string& json_path,
-                                              MaterializedArrayStream* out,
+                                              MaterializedArrayStream* out, int num_batch,
                                               ArrowError* error) {
   nanoarrow::UniqueArrayStream stream;
-  NANOARROW_RETURN_NOT_OK(ArrayStreamFromJsonFilePath(json_path, stream.get(), error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrayStreamFromJsonFilePath(json_path, stream.get(), num_batch, error));
 
   int result = stream->get_schema(stream.get(), out->schema.get());
   if (result != NANOARROW_OK) {
@@ -121,7 +122,9 @@ static ArrowErrorCode MaterializeJsonFilePath(const std::string& json_path,
 static ArrowErrorCode ExportSchemaFromJson(const char* json_path, ArrowSchema* out,
                                            ArrowError* error) {
   MaterializedArrayStream data;
-  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(
+      json_path, &data, nanoarrow::testing::TestingJSONReader::kNumBatchOnlySchema,
+      error));
   ArrowSchemaMove(data.schema.get(), out);
   return NANOARROW_OK;
 }
@@ -132,7 +135,9 @@ static ArrowErrorCode ImportSchemaAndCompareToJson(const char* json_path,
   nanoarrow::UniqueSchema actual(schema);
 
   MaterializedArrayStream data;
-  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(
+      json_path, &data, nanoarrow::testing::TestingJSONReader::kNumBatchOnlySchema,
+      error));
 
   nanoarrow::testing::TestingJSONComparison comparison;
   NANOARROW_RETURN_NOT_OK(
@@ -151,12 +156,7 @@ static ArrowErrorCode ImportSchemaAndCompareToJson(const char* json_path,
 static ArrowErrorCode ExportBatchFromJson(const char* json_path, int num_batch,
                                           ArrowArray* out, ArrowError* error) {
   MaterializedArrayStream data;
-  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
-  if (num_batch < 0 || num_batch >= data.arrays.size()) {
-    ArrowErrorSet(error, "Expected num_batch between 0 and %d but got %d",
-                  static_cast<int>(data.arrays.size() - 1), num_batch);
-    return EINVAL;
-  }
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, num_batch, error));
 
   ArrowArrayMove(data.arrays[num_batch].get(), out);
   return NANOARROW_OK;
@@ -167,12 +167,7 @@ static ArrowErrorCode ImportBatchAndCompareToJson(const char* json_path, int num
   nanoarrow::UniqueArray actual(batch);
 
   MaterializedArrayStream data;
-  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, error));
-  if (num_batch < 0 || num_batch >= data.arrays.size()) {
-    ArrowErrorSet(error, "Expected num_batch between 0 and %d but got %d",
-                  static_cast<int>(data.arrays.size() - 1), num_batch);
-    return EINVAL;
-  }
+  NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, num_batch, error));
 
   nanoarrow::testing::TestingJSONComparison comparison;
   NANOARROW_RETURN_NOT_OK(comparison.SetSchema(data.schema.get(), error));

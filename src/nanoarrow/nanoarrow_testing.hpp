@@ -736,11 +736,15 @@ class TestingJSONReader {
   TestingJSONReader(ArrowBufferAllocator allocator) : allocator_(allocator) {}
   TestingJSONReader() : TestingJSONReader(ArrowBufferAllocatorDefault()) {}
 
+  static const int kNumBatchOnlySchema = -2;
+  static const int kNumBatchReadAll = -1;
+
   /// \brief Read JSON representing a data file object
   ///
   /// Read a JSON object in the form `{"schema": {...}, "batches": [...], ...}`,
   /// propagating `out` on success.
   ArrowErrorCode ReadDataFile(const std::string& data_file_json, ArrowArrayStream* out,
+                              int num_batch = kNumBatchReadAll,
                               ArrowError* error = nullptr) {
     try {
       auto obj = json::parse(data_file_json);
@@ -763,19 +767,34 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
 
+      // Get a vector of batch ids to parse
+      std::vector<size_t> batch_ids;
+      if (num_batch == kNumBatchOnlySchema) {
+        batch_ids.resize(0);
+      } else if (num_batch == kNumBatchReadAll) {
+        batch_ids.resize(batches.size());
+        std::iota(batch_ids.begin(), batch_ids.end(), 0);
+      } else if (num_batch >= 0 && num_batch < batches.size()) {
+        batch_ids.push_back(num_batch);
+      } else {
+        ArrowErrorSet(error, "Expected num_batch between 0 and %d but got %d",
+                      static_cast<int>(batches.size() - 1), num_batch);
+        return EINVAL;
+      }
+
       // Initialize ArrayStream with required capacity
       nanoarrow::UniqueArrayStream stream;
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBasicArrayStreamInit(stream.get(), schema.get(), batches.size()), error);
+          ArrowBasicArrayStreamInit(stream.get(), schema.get(), batch_ids.size()), error);
 
       // Populate ArrayStream batches
-      for (size_t i = 0; i < batches.size(); i++) {
+      for (size_t i = 0; i < batch_ids.size(); i++) {
         nanoarrow::UniqueArray array;
         NANOARROW_RETURN_NOT_OK(
             ArrowArrayInitFromArrayView(array.get(), array_view.get(), error));
         SetArrayAllocatorRecursive(array.get());
         NANOARROW_RETURN_NOT_OK(
-            SetArrayBatch(batches[i], array_view.get(), array.get(), error));
+            SetArrayBatch(batches[batch_ids[i]], array_view.get(), array.get(), error));
         ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
       }
 

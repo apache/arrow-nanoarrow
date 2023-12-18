@@ -112,18 +112,18 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
           R"("batches": [{"count": 1, "columns": [{"name": "col1", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}]})",
           temp.name()),
       NANOARROW_OK);
-  err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), -1, array.get());
+  err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 1, array.get());
   ASSERT_EQ(array->release, nullptr);
   ASSERT_NE(err, nullptr);
-  ASSERT_STREQ(err, "Expected num_batch between 0 and 0 but got -1") << err;
+  ASSERT_STREQ(err, "Expected num_batch between 0 and 0 but got 1") << err;
 
   err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
   ASSERT_EQ(err, nullptr) << err;
   ASSERT_NE(array->release, nullptr);
-  err = nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(temp.name(), -1,
-                                                               array.get());
+  err =
+      nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(temp.name(), 1, array.get());
   ASSERT_EQ(array->release, nullptr);
-  ASSERT_STREQ(err, "Expected num_batch between 0 and 0 but got -1") << err;
+  ASSERT_STREQ(err, "Expected num_batch between 0 and 0 but got 1") << err;
 
   // Check valid roundtrip
   err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
