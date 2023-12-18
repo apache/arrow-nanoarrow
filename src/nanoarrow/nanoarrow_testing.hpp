@@ -733,6 +733,9 @@ class TestingJSONReader {
   using json = nlohmann::json;
 
  public:
+  TestingJSONReader(ArrowBufferAllocator allocator) : allocator_(allocator) {}
+  TestingJSONReader() : TestingJSONReader(ArrowBufferAllocatorDefault()) {}
+
   /// \brief Read JSON representing a data file object
   ///
   /// Read a JSON object in the form `{"schema": {...}, "batches": [...], ...}`,
@@ -770,6 +773,7 @@ class TestingJSONReader {
         nanoarrow::UniqueArray array;
         NANOARROW_RETURN_NOT_OK(
             ArrowArrayInitFromArrayView(array.get(), array_view.get(), error));
+        SetArrayAllocatorRecursive(array.get());
         NANOARROW_RETURN_NOT_OK(
             SetArrayBatch(batches[i], array_view.get(), array.get(), error));
         ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
@@ -839,6 +843,7 @@ class TestingJSONReader {
       // ArrowArray to hold memory
       nanoarrow::UniqueArray array;
       NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
+      SetArrayAllocatorRecursive(array.get());
 
       NANOARROW_RETURN_NOT_OK(SetArrayBatch(obj, array_view.get(), array.get(), error));
       ArrowArrayMove(array.get(), out);
@@ -867,6 +872,7 @@ class TestingJSONReader {
       // ArrowArray to hold memory
       nanoarrow::UniqueArray array;
       NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
+      SetArrayAllocatorRecursive(array.get());
 
       // Parse the JSON into the array
       NANOARROW_RETURN_NOT_OK(SetArrayColumn(obj, array_view.get(), array.get(), error));
@@ -881,6 +887,8 @@ class TestingJSONReader {
   }
 
  private:
+  ArrowBufferAllocator allocator_;
+
   ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_object(), error, "Expected Schema to be a JSON object"));
@@ -1711,6 +1719,20 @@ class TestingJSONReader {
     }
 
     return NANOARROW_OK;
+  }
+
+  void SetArrayAllocatorRecursive(ArrowArray* array) {
+    for (int i = 0; i < array->n_buffers; i++) {
+      ArrowArrayBuffer(array, i)->allocator = allocator_;
+    }
+
+    for (int64_t i = 0; i < array->n_children; i++) {
+      SetArrayAllocatorRecursive(array->children[i]);
+    }
+
+    if (array->dictionary != nullptr) {
+      SetArrayAllocatorRecursive(array->dictionary);
+    }
   }
 
   ArrowErrorCode PrefixError(ArrowErrorCode value, ArrowError* error,

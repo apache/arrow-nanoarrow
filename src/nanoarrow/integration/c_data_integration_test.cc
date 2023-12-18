@@ -95,6 +95,7 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestSchema) {
 TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
   TempFile temp;
   nanoarrow::UniqueArray array;
+  int64_t bytes_allocated_start = nanoarrow_BytesAllocated();
 
   // Check error on export
   ASSERT_EQ(WriteFileString("this is not valid JSON", temp.name()), NANOARROW_OK);
@@ -104,10 +105,11 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
   ASSERT_EQ(std::string(err).substr(0, 9), "Exception") << err;
 
   // Check error for invalid batch id
-  ASSERT_EQ(WriteFileString(
-                R"({"schema": {"fields": []}, "batches": [{"count": 1, "columns": []}]})",
-                temp.name()),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      WriteFileString(
+          R"({"schema": {"fields": [{"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": []}]}, "batches": [{"count": 1, "columns": [{"name": "col1", "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}]}]})",
+          temp.name()),
+      NANOARROW_OK);
   err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), -1, array.get());
   ASSERT_EQ(array->release, nullptr);
   ASSERT_NE(err, nullptr);
@@ -117,23 +119,30 @@ TEST(NanoarrowIntegrationTest, NanoarrowIntegrationTestBatch) {
   err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
   ASSERT_NE(array->release, nullptr);
   ASSERT_EQ(err, nullptr);
+  ASSERT_GT(nanoarrow_BytesAllocated(), bytes_allocated_start);
+
   err =
       nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(temp.name(), 0, array.get());
   ASSERT_EQ(array->release, nullptr);
   ASSERT_EQ(err, nullptr) << err;
+  ASSERT_EQ(nanoarrow_BytesAllocated(), bytes_allocated_start);
 
   // Check roundtrip with differences
   err = nanoarrow_CDataIntegration_ExportBatchFromJson(temp.name(), 0, array.get());
   ASSERT_NE(array->release, nullptr);
   ASSERT_EQ(err, nullptr) << err;
+  ASSERT_GT(nanoarrow_BytesAllocated(), bytes_allocated_start);
 
-  ASSERT_EQ(WriteFileString(
-                R"({"schema": {"fields": []}, "batches": [{"count": 2, "columns": []}]})",
-                temp.name()),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      WriteFileString(
+          R"({"schema": {"fields": [{"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": []}]}, "batches": [{"count": 0, "columns": [{"name": "col1", "count": 0, "VALIDITY": [], "OFFSET": [0], "DATA": []}]}]})",
+          temp.name()),
+      NANOARROW_OK);
   err =
       nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(temp.name(), 0, array.get());
   ASSERT_NE(err, nullptr);
-  ASSERT_EQ(std::string(err).substr(0, 19), "Found 1 differences") << err;
+  ASSERT_EQ(std::string(err).substr(0, 19), "Found 2 differences") << err;
   ASSERT_EQ(array->release, nullptr);
+
+  ASSERT_EQ(nanoarrow_BytesAllocated(), bytes_allocated_start);
 }

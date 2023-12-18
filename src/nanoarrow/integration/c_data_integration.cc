@@ -23,6 +23,36 @@
 #include <nanoarrow/nanoarrow_testing.hpp>
 #include "c_data_integration.h"
 
+static int64_t kBytesAllocated = 0;
+
+static uint8_t* IntegrationTestReallocate(ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                          int64_t old_size, int64_t new_size) {
+  ArrowBufferAllocator default_allocator = ArrowBufferAllocatorDefault();
+  kBytesAllocated -= old_size;
+  uint8_t* out =
+      default_allocator.reallocate(&default_allocator, ptr, old_size, new_size);
+  if (out != nullptr) {
+    kBytesAllocated += new_size;
+  }
+
+  return out;
+}
+
+static void IntegrationTestFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                int64_t size) {
+  ArrowBufferAllocator default_allocator = ArrowBufferAllocatorDefault();
+  kBytesAllocated -= size;
+  default_allocator.free(&default_allocator, ptr, size);
+}
+
+static ArrowBufferAllocator IntegrationTestAllocator() {
+  ArrowBufferAllocator allocator;
+  allocator.reallocate = &IntegrationTestReallocate;
+  allocator.free = &IntegrationTestFree;
+  allocator.private_data = nullptr;
+  return allocator;
+}
+
 static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_path) {
   std::ifstream infile(file_path, std::ios::in | std::ios::binary);
   char buf[8096];
@@ -41,7 +71,7 @@ static ArrowErrorCode ArrayStreamFromJsonFilePath(const std::string& json_path,
   std::stringstream ss;
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ReadFileString(ss, json_path), error);
 
-  nanoarrow::testing::TestingJSONReader reader;
+  nanoarrow::testing::TestingJSONReader reader(IntegrationTestAllocator());
   NANOARROW_RETURN_NOT_OK(reader.ReadDataFile(ss.str(), out, error));
   return NANOARROW_OK;
 }
@@ -169,8 +199,7 @@ static const char* ConvertError(ArrowErrorCode errno_code) {
   }
 }
 
-// TODO
-int64_t nanoarrow_BytesAllocated() { return 0; }
+int64_t nanoarrow_BytesAllocated() { return kBytesAllocated; }
 
 const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(const char* json_path,
                                                             ArrowSchema* out) {
