@@ -32,7 +32,8 @@ set(NANOARROW_VERSION_MINOR "${nanoarrow_VERSION_MINOR}")
 set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
-option(NANOARROW_BUILD_INTEGRATION_TESTS "Build cross-implementation Arrow integration tests" OFF)
+option(NANOARROW_BUILD_INTEGRATION_TESTS
+       "Build cross-implementation Arrow integration tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
 option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OFF)
 option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
