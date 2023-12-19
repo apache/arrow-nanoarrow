@@ -618,7 +618,7 @@ explicit clean up. Whereas in C you might have to write code like this:</p>
 <span class="c1">// or it will leak.</span>
 <span class="kt">int</span><span class="w"> </span><span class="n">code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowArrayInitFromSchema</span><span class="p">(</span><span class="o">&amp;</span><span class="n">array</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
 <span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">schema</span><span class="p">.</span><span class="n">release</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ArrowSchemaRelease</span><span class="p">(</span><span class="o">&amp;</span><span class="n">schema</span><span class="p">);</span>
 <span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">code</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>

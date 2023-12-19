@@ -255,7 +255,7 @@ explicit clean up. Whereas in C you might have to write code like this:
    // or it will leak.
    int code = ArrowArrayInitFromSchema(&array, &schema, NULL);
    if (code != NANOARROW_OK) {
-     schema.release(&schema);
+     ArrowSchemaRelease(&schema);
      return code;
    }
 
