@@ -81,7 +81,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: arrow
-          key: arrow-${{ runner.os }}-5
+          key: arrow-${{ runner.os }}-6
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
