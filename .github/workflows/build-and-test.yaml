@@ -68,7 +68,8 @@ jobs:
           sudo ldconfig
           mkdir build
           cd build
-          cmake .. -DNANOARROW_BUILD_TESTS=ON ${{ matrix.config.cmake_args }}
+          cmake .. -DNANOARROW_BUILD_TESTS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            ${{ matrix.config.cmake_args }}
           cmake --build .
 
       - name: Check for non-namespaced symbols in namespaced build
