@@ -19,6 +19,8 @@
 #include <fstream>
 #include <sstream>
 
+#include <zlib.h>
+
 #include <arrow/buffer.h>
 #include <arrow/c/bridge.h>
 #include <arrow/io/api.h>
@@ -109,13 +111,9 @@ class TestFile {
     path_builder << dir_prefix << "/" << CheckJSONGzFile();
 
     // Read .json.gz file into a buffer
-    nanoarrow::UniqueBuffer json_gz_content;
-    NANOARROW_RETURN_NOT_OK(
-        ReadFileBuffer(path_builder.str(), json_gz_content.get(), error));
-
-    // Decompress into a JSON string
     nanoarrow::UniqueBuffer json_content;
-    NANOARROW_RETURN_NOT_OK(UnGZIP(json_gz_content.get(), json_content.get(), error));
+    NANOARROW_RETURN_NOT_OK(
+        ReadGzFileBuffer(path_builder.str(), json_content.get(), error));
 
     std::string json_string(reinterpret_cast<char*>(json_content->data),
                             json_content->size_bytes);
@@ -142,37 +140,35 @@ class TestFile {
     return NANOARROW_OK;
   }
 
+  static ArrowErrorCode ReadGzFileBuffer(const std::string& path, ArrowBuffer* dst,
+                                         ArrowError* error) {
+    gzFile file = gzopen(path.c_str(), "rb");
+    if (file == NULL) {
+      ArrowErrorSet(error, "Failed to open '%s'", path.c_str());
+      return EINVAL;
+    }
+
+    char buf[8096];
+    int out_len = 0;
+    do {
+      out_len = gzread(file, buf, sizeof(buf));
+      if (out_len < 0) {
+        gzclose(file);
+        ArrowErrorSet(error, "gzread() returned %d", out_len);
+        return EIO;
+      }
+
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppend(dst, buf, out_len), error);
+    } while (out_len > 0);
+
+    gzclose(file);
+    return NANOARROW_OK;
+  }
+
   // Create an arrow::io::InputStream wrapper around an ArrowBuffer
   static std::shared_ptr<io::InputStream> BufferInputStream(ArrowBuffer* src) {
     auto content_copy_wrapped = Buffer::Wrap<uint8_t>(src->data, src->size_bytes);
     return std::make_shared<io::BufferReader>(content_copy_wrapped);
-  }
-
-  // Decompress gzipped buffer content (currently uses Arrow C++)
-  static ArrowErrorCode UnGZIP(ArrowBuffer* src, ArrowBuffer* dst, ArrowError* error) {
-    auto maybe_gzip = arrow::util::Codec::Create(arrow::Compression::GZIP);
-    NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_gzip, error);
-
-    std::shared_ptr<io::InputStream> gz_input_stream = BufferInputStream(src);
-
-    auto maybe_input =
-        io::CompressedInputStream::Make(maybe_gzip->get(), gz_input_stream);
-    NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_input, error);
-
-    std::stringstream testing_json;
-    auto input = *maybe_input;
-    int64_t bytes_read = 0;
-    do {
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(dst, 8096), error);
-
-      auto maybe_bytes_read = input->Read(8096, dst->data + dst->size_bytes);
-      NANOARROW_RETURN_ARROW_RESULT_NOT_OK(maybe_bytes_read, error);
-
-      bytes_read = *maybe_bytes_read;
-      dst->size_bytes += bytes_read;
-    } while (bytes_read > 0);
-
-    return NANOARROW_OK;
   }
 
   void TestEqualsArrowCpp(const std::string& dir_prefix) {

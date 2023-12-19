@@ -215,6 +215,9 @@ if(NANOARROW_IPC_BUILD_TESTS)
     fetchcontent_makeavailable(nlohmann_json)
   endif()
 
+  # zlib for integration testing
+  find_package(ZLIB REQUIRED)
+
   enable_testing()
 
   add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
@@ -251,6 +254,7 @@ if(NANOARROW_IPC_BUILD_TESTS)
                         nanoarrow
                         ${NANOARROW_IPC_ARROW_TARGET}
                         nlohmann_json
+                        ZLIB::ZLIB
                         gtest_main
                         ipc_coverage_config)
   target_link_libraries(nanoarrow_ipc_hpp_test
