@@ -243,11 +243,11 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
       _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR, #EXPR)
 
 #if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
-#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                  \
-  do {                                                                            \
-    fprintf(stderr, "%s failed with errno %d\n* %s:%d\n", EXPR_STR, (int)(VALUE), \
-            __FILE__, (int)__LINE__);                                             \
-    abort();                                                                      \
+#define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                 \
+  do {                                                                           \
+    fprintf(stderr, "%s failed with code %d\n* %s:%d\n", EXPR_STR, (int)(VALUE), \
+            __FILE__, (int)__LINE__);                                            \
+    abort();                                                                     \
   } while (0)
 #endif
 
@@ -269,9 +269,9 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 #define NANOARROW_ASSERT_OK(EXPR) \
   _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
 
-#define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)         \
-  do {                                                 \
-    if (!(EXPR)) NANOARROW_PRINT_AND_DIE(0, EXPR_STR); \
+#define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)                       \
+  do {                                                               \
+    if (!(EXPR)) NANOARROW_PRINT_AND_DIE(ENOTRECOVERABLE, EXPR_STR); \
   } while (0)
 
 #define NANOARROW_DCHECK(EXPR) _NANOARROW_DCHECK_IMPL(EXPR, #EXPR)
