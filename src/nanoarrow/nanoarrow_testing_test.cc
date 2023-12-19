@@ -824,7 +824,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
       R"(]})";
 
   TestingJSONReader reader;
-  ASSERT_EQ(reader.ReadDataFile(data_file_json, stream.get(), &error), NANOARROW_OK)
+  ASSERT_EQ(reader.ReadDataFile(data_file_json, stream.get(),
+                                TestingJSONReader::kNumBatchReadAll, &error),
+            NANOARROW_OK)
       << error.message;
 
   TestingJSONWriter writer;
@@ -837,7 +839,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
 
   // Check with zero batches
   std::string data_file_json_empty = R"({"schema": {"fields": []}, "batches": []})";
-  ASSERT_EQ(reader.ReadDataFile(data_file_json_empty, stream.get(), &error), NANOARROW_OK)
+  ASSERT_EQ(reader.ReadDataFile(data_file_json_empty, stream.get(),
+                                TestingJSONReader::kNumBatchReadAll, &error),
+            NANOARROW_OK)
       << error.message;
   ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
   EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json_empty);
