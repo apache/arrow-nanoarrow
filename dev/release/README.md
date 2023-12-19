@@ -84,7 +84,7 @@ curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
   tar -zxf -
 mkdir arrow-build && cd arrow-build
 cmake ../apache-arrow-11.0.0/cpp \
-    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE \
+    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE -DARROW_WITH_ZLIB=ON \
     # Required for Arrow on old MacOS
     -DCMAKE_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY" \
     -DCMAKE_INSTALL_PREFIX=../arrow
@@ -142,7 +142,7 @@ the verification script.
 curl https://dlcdn.apache.org/arrow/arrow-12.0.1/apache-arrow-12.0.1.tar.gz | \
   tar -zxf -
 mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-12.0.1/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+cmake ../apache-arrow-12.0.1/cpp -DCMAKE_INSTALL_PREFIX=../arrow -DARROW_WITH_ZLIB=ON
 cmake --build .
 cmake --install . --prefix=../arrow --config=Debug
 cd ..
@@ -233,6 +233,7 @@ curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar
     cmake3 ../arrow-apache-arrow-9.0.0/cpp \
         -DARROW_JEMALLOC=OFF \
         -DARROW_SIMD_LEVEL=NONE \
+        -DARROW_WITH_ZLIB=ON \
         -DCMAKE_INSTALL_PREFIX=../arrow && \
     cmake3 --build . && \
     make install
