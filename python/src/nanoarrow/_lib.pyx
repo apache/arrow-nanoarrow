@@ -56,7 +56,7 @@ cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
         schema_capsule, 'arrow_schema'
     )
     if schema.release != NULL:
-        schema.release(schema)
+        ArrowSchemaRelease(schema)
 
     free(schema)
 
@@ -74,7 +74,7 @@ cdef void pycapsule_array_deleter(object array_capsule) noexcept:
     )
     # Do not invoke the deleter on a used/moved capsule
     if array.release != NULL:
-        array.release(array)
+        ArrowArrayRelease(array)
 
     free(array)
 
@@ -92,7 +92,7 @@ cdef void pycapsule_stream_deleter(object stream_capsule) noexcept:
     )
     # Do not invoke the deleter on a used/moved capsule
     if stream.release != NULL:
-        stream.release(stream)
+        ArrowArrayStreamRelease(stream)
 
     free(stream)
 
@@ -124,7 +124,7 @@ cdef class SchemaHolder:
 
     def __dealloc__(self):
         if self.c_schema.release != NULL:
-          self.c_schema.release(&self.c_schema)
+          ArrowSchemaRelease(&self.c_schema)
 
     def _addr(self):
         return <uintptr_t>&self.c_schema
@@ -144,7 +144,7 @@ cdef class ArrayHolder:
 
     def __dealloc__(self):
         if self.c_array.release != NULL:
-          self.c_array.release(&self.c_array)
+          ArrowArrayRelease(&self.c_array)
 
     def _addr(self):
         return <uintptr_t>&self.c_array
@@ -163,7 +163,7 @@ cdef class ArrayStreamHolder:
 
     def __dealloc__(self):
         if self.c_array_stream.release != NULL:
-          self.c_array_stream.release(&self.c_array_stream)
+            ArrowArrayStreamRelease(&self.c_array_stream)
 
     def _addr(self):
         return <uintptr_t>&self.c_array_stream
@@ -1094,18 +1094,10 @@ cdef class ArrayStream:
 
     def _get_schema(self, Schema schema):
         self._assert_valid()
+        cdef Error error = Error()
         cdef int code = self._ptr.get_schema(self._ptr, schema._ptr)
-        cdef const char* message = NULL
         if code != NANOARROW_OK:
-            message = self._ptr.get_last_error(self._ptr)
-            if message != NULL:
-                raise NanoarrowException(
-                    "ArrowArrayStream::get_schema()",
-                    code,
-                    message.decode("UTF-8")
-                )
-            else:
-                raise NanoarrowException("ArrowArrayStream::get_schema()", code)
+            error.raise_error("ArrowArrayStream::get_schema()", code)
 
         self._cached_schema = schema
 
@@ -1131,19 +1123,11 @@ cdef class ArrayStream:
             self._cached_schema = Schema.allocate()
             self._get_schema(self._cached_schema)
 
+        cdef Error error = Error()
         cdef Array array = Array.allocate(self._cached_schema)
-        cdef int code = self._ptr.get_next(self._ptr, array._ptr)
-        cdef const char* message = NULL
+        cdef int code = ArrowArrayStreamGetNext(self._ptr, array._ptr, &error.c_error)
         if code != NANOARROW_OK:
-            message = self._ptr.get_last_error(self._ptr)
-            if message != NULL:
-                raise NanoarrowException(
-                    "ArrowArrayStream::get_next()",
-                    code,
-                    message.decode("UTF-8")
-                )
-            else:
-                raise NanoarrowException("ArrowArrayStream::get_next()", code)
+            error.raise_error("ArrowArrayStream::get_next()", code)
 
         if not array.is_valid():
             raise StopIteration()
@@ -1176,7 +1160,7 @@ cdef class DeviceArrayHolder:
 
     def __dealloc__(self):
         if self.c_array.array.release != NULL:
-          self.c_array.array.release(&self.c_array.array)
+          ArrowArrayRelease(&self.c_array.array)
 
     def _addr(self):
         return <uintptr_t>&self.c_array

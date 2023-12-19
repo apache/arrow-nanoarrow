@@ -36,7 +36,7 @@ static inline void move_pointer(struct ArrowDeviceArray* src,
 
 static inline void release_pointer(struct ArrowDeviceArray* data) {
   if (data->array.release != nullptr) {
-    data->array.release(&data->array);
+    ArrowArrayRelease(&data->array);
   }
 
   data->sync_event = nullptr;

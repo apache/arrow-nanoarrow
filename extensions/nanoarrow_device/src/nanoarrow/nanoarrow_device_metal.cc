@@ -146,7 +146,7 @@ static void ArrowDeviceMetalArrayRelease(struct ArrowArray* array) {
   struct ArrowDeviceMetalArrayPrivate* private_data =
       (struct ArrowDeviceMetalArrayPrivate*)array->private_data;
   private_data->event->release();
-  private_data->parent.release(&private_data->parent);
+  ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
   array->release = NULL;
 }

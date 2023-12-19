@@ -246,7 +246,7 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
     ArrowArrayViewReset(&private_data->array_view);
 
     if (private_data->array.release != NULL) {
-      private_data->array.release(&private_data->array);
+      ArrowArrayRelease(&private_data->array);
     }
 
     if (private_data->fields != NULL) {
@@ -1117,7 +1117,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
   ArrowSchemaInit(&tmp);
   int result = ArrowSchemaSetTypeStruct(&tmp, n_fields);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowSchemaRelease(&tmp);
     ArrowErrorSet(error, "Failed to allocate struct schema with %ld children",
                   (long)n_fields);
     return result;
@@ -1125,13 +1125,13 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
 
   result = ArrowIpcDecoderSetChildren(&tmp, fields, error);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowSchemaRelease(&tmp);
     return result;
   }
 
   result = ArrowIpcDecoderSetMetadata(&tmp, ns(Schema_custom_metadata(schema)), error);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowSchemaRelease(&tmp);
     return result;
   }
 
@@ -1178,7 +1178,7 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
   private_data->n_fields = 0;
   ArrowArrayViewReset(&private_data->array_view);
   if (private_data->array.release != NULL) {
-    private_data->array.release(&private_data->array);
+    ArrowArrayRelease(&private_data->array);
   }
   if (private_data->fields != NULL) {
     ArrowFree(private_data->fields);
@@ -1675,7 +1675,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
   int result =
       ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, validation_level, error);
   if (result != NANOARROW_OK && temp.release != NULL) {
-    temp.release(&temp);
+    ArrowArrayRelease(&temp);
   } else if (result != NANOARROW_OK) {
     return result;
   }
@@ -1699,7 +1699,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
   int result =
       ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, validation_level, error);
   if (result != NANOARROW_OK && temp.release != NULL) {
-    temp.release(&temp);
+    ArrowArrayRelease(&temp);
   } else if (result != NANOARROW_OK) {
     return result;
   }

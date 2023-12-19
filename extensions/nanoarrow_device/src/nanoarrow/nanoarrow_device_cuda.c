@@ -118,7 +118,7 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)array->private_data;
   cudaEventDestroy(private_data->sync_event);
-  private_data->parent.release(&private_data->parent);
+  ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
   array->release = NULL;
 }

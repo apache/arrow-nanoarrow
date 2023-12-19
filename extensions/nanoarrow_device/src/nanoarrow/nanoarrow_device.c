@@ -226,7 +226,7 @@ static int ArrowDeviceBasicArrayStreamGetNext(struct ArrowDeviceArrayStream* arr
       private_data->naive_stream.get_next(&private_data->naive_stream, &tmp));
   int result = ArrowDeviceArrayInit(private_data->device, device_array, &tmp);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowArrayRelease(&tmp);
     return result;
   }
 
@@ -244,7 +244,7 @@ static void ArrowDeviceBasicArrayStreamRelease(
     struct ArrowDeviceArrayStream* array_stream) {
   struct ArrowBasicDeviceArrayStreamPrivate* private_data =
       (struct ArrowBasicDeviceArrayStreamPrivate*)array_stream->private_data;
-  private_data->naive_stream.release(&private_data->naive_stream);
+  ArrowArrayStreamRelease(&private_data->naive_stream);
   ArrowFree(private_data);
   array_stream->release = NULL;
 }
@@ -439,19 +439,19 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
   int result =
       ArrowDeviceArrayViewCopyInternal(src->device, &src->array_view, device_dst, &tmp);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowArrayRelease(&tmp);
     return result;
   }
 
   result = ArrowArrayFinishBuilding(&tmp, NANOARROW_VALIDATION_LEVEL_MINIMAL, NULL);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowArrayRelease(&tmp);
     return result;
   }
 
   result = ArrowDeviceArrayInit(device_dst, dst, &tmp);
   if (result != NANOARROW_OK) {
-    tmp.release(&tmp);
+    ArrowArrayRelease(&tmp);
     return result;
   }
 

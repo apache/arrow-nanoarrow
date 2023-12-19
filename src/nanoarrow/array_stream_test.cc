@@ -39,22 +39,23 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
 
   struct ArrowSchema schema_copy;
-  EXPECT_EQ(array_stream.get_schema(&array_stream, &schema_copy), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetSchema(&array_stream, &schema_copy, nullptr),
+            NANOARROW_OK);
   EXPECT_STREQ(schema_copy.format, "i");
-  schema_copy.release(&schema_copy);
+  ArrowSchemaRelease(&schema_copy);
 
   struct ArrowArray array_copy;
-  EXPECT_EQ(array_stream.get_next(&array_stream, &array_copy), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array_copy, nullptr), NANOARROW_OK);
   EXPECT_EQ(array_copy.length, 1);
   EXPECT_EQ(array_copy.n_buffers, 2);
-  array_copy.release(&array_copy);
+  ArrowArrayRelease(&array_copy);
 
-  EXPECT_EQ(array_stream.get_next(&array_stream, &array_copy), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array_copy, nullptr), NANOARROW_OK);
   EXPECT_EQ(array_copy.release, nullptr);
 
   EXPECT_EQ(array_stream.get_last_error(&array_stream), nullptr);
 
-  array_stream.release(&array_stream);
+  ArrowArrayStreamRelease(&array_stream);
   EXPECT_EQ(array_stream.release, nullptr);
 }
 
@@ -68,11 +69,11 @@ TEST(ArrayStreamTest, ArrayStreamTestEmpty) {
   EXPECT_EQ(ArrowBasicArrayStreamValidate(&array_stream, nullptr), NANOARROW_OK);
 
   for (int i = 0; i < 5; i++) {
-    EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
+    EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array, nullptr), NANOARROW_OK);
     EXPECT_EQ(array.release, nullptr);
   }
 
-  array_stream.release(&array_stream);
+  ArrowArrayStreamRelease(&array_stream);
 }
 
 TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
@@ -95,12 +96,12 @@ TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
   }
 
   // Pull only one of them
-  EXPECT_EQ(array_stream.get_next(&array_stream, &array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array, nullptr), NANOARROW_OK);
   EXPECT_EQ(array.length, 0);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   // The remaining arrays, owned by the stream, should be released here
-  array_stream.release(&array_stream);
+  ArrowArrayStreamRelease(&array_stream);
 }
 
 TEST(ArrayStreamTest, ArrayStreamTestInvalid) {
@@ -121,5 +122,5 @@ TEST(ArrayStreamTest, ArrayStreamTestInvalid) {
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Expected array with 2 buffer(s) but found 3 buffer(s)");
 
-  array_stream.release(&array_stream);
+  ArrowArrayStreamRelease(&array_stream);
 }

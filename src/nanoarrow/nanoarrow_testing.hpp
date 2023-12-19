@@ -67,7 +67,7 @@ class TestingJSONWriter {
     out << R"({"schema": )";
 
     nanoarrow::UniqueSchema schema;
-    NANOARROW_RETURN_NOT_OK(stream->get_schema(stream, schema.get()));
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetSchema(stream, schema.get(), nullptr));
     NANOARROW_RETURN_NOT_OK(WriteSchema(out, schema.get()));
 
     nanoarrow::UniqueArrayView array_view;
@@ -79,7 +79,7 @@ class TestingJSONWriter {
     nanoarrow::UniqueArray array;
     std::string sep;
     do {
-      NANOARROW_RETURN_NOT_OK(stream->get_next(stream, array.get()));
+      NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetNext(stream, array.get(), nullptr));
       if (array->release == nullptr) {
         break;
       }
@@ -1825,10 +1825,10 @@ class TestingJSONComparison {
     // Read both schemas
     nanoarrow::UniqueSchema actual_schema;
     nanoarrow::UniqueSchema expected_schema;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_schema(actual, actual_schema.get()),
-                                       error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        expected->get_schema(expected, expected_schema.get()), error);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayStreamGetSchema(actual, actual_schema.get(), error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayStreamGetSchema(expected, expected_schema.get(), error));
 
     // Compare them and return if they are not equal
     NANOARROW_RETURN_NOT_OK(
@@ -1850,10 +1850,9 @@ class TestingJSONComparison {
       // Read a batch from each stream
       actual_array.reset();
       expected_array.reset();
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(actual->get_next(actual, actual_array.get()),
-                                         error);
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          expected->get_next(expected, expected_array.get()), error);
+      NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetNext(actual, actual_array.get(), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayStreamGetNext(expected, expected_array.get(), error));
 
       // Check the finished/unfinished status of both streams
       if (actual_array->release == nullptr && expected_array->release != nullptr) {

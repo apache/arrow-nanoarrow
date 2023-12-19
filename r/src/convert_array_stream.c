@@ -34,10 +34,10 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
 
   SEXP schema_xptr = PROTECT(schema_owning_xptr());
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
-  int result = array_stream->get_schema(array_stream, schema);
+  int result = ArrowArrayStreamGetSchema(array_stream, schema, NULL);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayStream::get_schema(): %s",
-             array_stream->get_last_error(array_stream));
+             ArrowArrayStreamGetLastError(array_stream));
   }
 
   SEXP converter_xptr = PROTECT(nanoarrow_converter_from_ptype(ptype_sexp));
@@ -55,11 +55,11 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
   int64_t n_batches = 0;
   int64_t n_materialized = 0;
   if (n > 0) {
-    result = array_stream->get_next(array_stream, array);
+    result = ArrowArrayStreamGetNext(array_stream, array, NULL);
     n_batches++;
     if (result != NANOARROW_OK) {
       Rf_error("ArrowArrayStream::get_next(): %s",
-               array_stream->get_last_error(array_stream));
+               ArrowArrayStreamGetLastError(array_stream));
     }
 
     while (array->release != NULL) {
@@ -78,11 +78,11 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
       }
 
       array->release(array);
-      result = array_stream->get_next(array_stream, array);
+      result = ArrowArrayStreamGetNext(array_stream, array, NULL);
       n_batches++;
       if (result != NANOARROW_OK) {
         Rf_error("ArrowArrayStream::get_next(): %s",
-                 array_stream->get_last_error(array_stream));
+                 ArrowArrayStreamGetLastError(array_stream));
       }
     }
   }

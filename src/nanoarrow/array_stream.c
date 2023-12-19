@@ -69,12 +69,12 @@ static void ArrowBasicArrayStreamRelease(struct ArrowArrayStream* array_stream) 
       (struct BasicArrayStreamPrivate*)array_stream->private_data;
 
   if (private_data->schema.release != NULL) {
-    private_data->schema.release(&private_data->schema);
+    ArrowSchemaRelease(&private_data->schema);
   }
 
   for (int64_t i = 0; i < private_data->n_arrays; i++) {
     if (private_data->arrays[i].release != NULL) {
-      private_data->arrays[i].release(&private_data->arrays[i]);
+      ArrowArrayRelease(&private_data->arrays[i]);
     }
   }
 

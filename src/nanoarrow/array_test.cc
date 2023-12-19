@@ -53,19 +53,19 @@ TEST(ArrayTest, ArrayTestInit) {
 
   EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
   EXPECT_EQ(array.n_buffers, 0);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   EXPECT_EQ(array.n_buffers, 1);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(array.n_buffers, 2);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_EQ(array.n_buffers, 3);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DATE64), EINVAL);
 }
@@ -76,13 +76,13 @@ TEST(ArrayTest, ArrayTestAllocateChildren) {
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAllocateChildren(&array, 0), NANOARROW_OK);
   EXPECT_EQ(array.n_children, 0);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAllocateChildren(
                 &array, std::numeric_limits<int64_t>::max() / sizeof(void*)),
             ENOMEM);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAllocateChildren(&array, 2), NANOARROW_OK);
@@ -98,7 +98,7 @@ TEST(ArrayTest, ArrayTestAllocateChildren) {
 
   EXPECT_EQ(ArrowArrayAllocateChildren(&array, 0), EINVAL);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAllocateDictionary) {
@@ -113,7 +113,7 @@ TEST(ArrayTest, ArrayTestAllocateDictionary) {
 
   EXPECT_EQ(ArrowArrayAllocateDictionary(&array), EINVAL);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestInitFromSchema) {
@@ -133,8 +133,8 @@ TEST(ArrayTest, ArrayTestInitFromSchema) {
   EXPECT_EQ(array.children[0]->n_buffers, 2);
   EXPECT_EQ(array.children[1]->n_buffers, 3);
 
-  array.release(&array);
-  schema.release(&schema);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 }
 
 TEST(ArrayTest, ArrayTestSetBitmap) {
@@ -151,7 +151,7 @@ TEST(ArrayTest, ArrayTestSetBitmap) {
   EXPECT_EQ(bitmap_buffer[1], 0x01);
   EXPECT_EQ(ArrowArrayValidityBitmap(&array)->buffer.data, array.buffers[0]);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestSetBuffer) {
@@ -185,7 +185,7 @@ TEST(ArrayTest, ArrayTestSetBuffer) {
   // try to set a buffer that isn't, 0, 1, or 2
   EXPECT_EQ(ArrowArraySetBuffer(&array, 3, &buffer0), EINVAL);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestBuildByBuffer) {
@@ -238,7 +238,7 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
                "Expected string array buffer 2 to have size >= 11 bytes but found buffer "
                "with 10 bytes");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
@@ -295,7 +295,7 @@ TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
                "Expected string array buffer 1 to have size >= 12 bytes but found buffer "
                "with 0 bytes");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestValidateMinimalBufferAccess) {
@@ -321,7 +321,7 @@ TEST(ArrayTest, ArrayTestValidateMinimalBufferAccess) {
   // ...restore the pointer so we don't leak memory
   ArrowArrayBuffer(&array, 1)->data = tmp;
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToNullArray) {
@@ -352,7 +352,7 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   buffer_view.size_bytes = 0;
   EXPECT_EQ(ArrowArrayAppendBytes(&array, buffer_view), EINVAL);
   EXPECT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), EINVAL);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt64Array) {
@@ -518,7 +518,7 @@ TEST(ArrayTest, ArrayTestAppendEmptyToString) {
   ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("")), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
   EXPECT_NE(array.buffers[2], nullptr);
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
@@ -888,7 +888,7 @@ TEST(ArrayTest, ArrayTestAppendToBinaryArrayErrors) {
   item.size_bytes = static_cast<int64_t>(INT_MAX) + 1;
   EXPECT_EQ(ArrowArrayAppendBytes(&array, item), EOVERFLOW);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
@@ -1342,8 +1342,8 @@ TEST(ArrayTest, ArrayTestAppendToListArrayErrors) {
   array.children[0]->length = static_cast<int64_t>(INT32_MAX) + 1;
   EXPECT_EQ(ArrowArrayFinishElement(&array), EOVERFLOW);
 
-  array.release(&array);
-  schema.release(&schema);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 }
 
 TEST(ArrayTest, ArrayTestAppendToStructArray) {
@@ -1535,8 +1535,8 @@ TEST(ArrayTest, ArrayTestAppendToUnionArrayErrors) {
   ASSERT_EQ(ArrowSchemaSetFormat(&schema, "+us:1"), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), EINVAL);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayViewTestBasic) {
@@ -1602,7 +1602,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1700,7 +1700,7 @@ TEST(ArrayTest, ArrayViewTestString) {
             EINVAL);
   EXPECT_STREQ(error.message, "[2] Expected element size >= 0");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1771,7 +1771,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
             EINVAL);
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1857,7 +1857,7 @@ TEST(ArrayTest, ArrayViewTestList) {
             EINVAL);
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1890,7 +1890,7 @@ TEST(ArrayTest, ArrayViewTestListGet) {
   EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 2), 1);
   EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 3), 2);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1923,7 +1923,7 @@ TEST(ArrayTest, ArrayViewTestLargeListGet) {
   EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 2), 1);
   EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 3), 2);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -1978,7 +1978,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
             EINVAL);
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -2044,8 +2044,8 @@ TEST(ArrayTest, ArrayViewTestStructArray) {
   EXPECT_EQ(array_view.children[0]->buffer_views[1].data.as_int32[0], 123);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
@@ -2088,8 +2088,8 @@ TEST(ArrayTest, ArrayViewTestFixedSizeListArray) {
   EXPECT_EQ(array_view.children[0]->buffer_views[1].data.as_int32[0], 123);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayViewTestDictionary) {
@@ -2134,7 +2134,7 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   item = ArrowArrayViewGetStringUnsafe(array_view.dictionary, 1);
   EXPECT_EQ(std::string(item.data, item.size_bytes), "def");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   // Setting a non-dictionary array should error
   struct ArrowError error;
@@ -2142,7 +2142,7 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected dictionary but found NULL");
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   // Setting a dictionary array to a non-dictionary array view should error
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
@@ -2151,8 +2151,8 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected NULL dictionary but found dictionary member");
 
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
 
@@ -2260,8 +2260,8 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   EXPECT_EQ(array_view.union_type_id_map[128 + 1], 2);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayViewTestDenseUnionGet) {
@@ -2306,8 +2306,8 @@ TEST(ArrayTest, ArrayViewTestDenseUnionGet) {
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), NANOARROW_OK);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
@@ -2352,8 +2352,8 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), NANOARROW_OK);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 template <typename TypeClass>
@@ -2395,8 +2395,8 @@ void TestGetFromNumericArrayView() {
   EXPECT_EQ(buffer_view.size_bytes, 0);
 
   ArrowArrayViewReset(&array_view);
-  array.release(&array);
-  schema.release(&schema);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 
   // Array without nulls (Arrow does not allocate the validity buffer)
   builder = NumericBuilder<TypeClass>();
@@ -2422,8 +2422,8 @@ void TestGetFromNumericArrayView() {
   EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 1), 2);
 
   ArrowArrayViewReset(&array_view);
-  array.release(&array);
-  schema.release(&schema);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
@@ -2472,8 +2472,8 @@ void TestGetFromBinary(BuilderClass& builder) {
   EXPECT_EQ(memcmp(buffer_view.data.as_char, "four", buffer_view.size_bytes), 0);
 
   ArrowArrayViewReset(&array_view);
-  array.release(&array);
-  schema.release(&schema);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetString) {
@@ -2526,8 +2526,8 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
   EXPECT_EQ(interval.months, -42);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalDayTime) {
@@ -2562,8 +2562,8 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalDayTime) {
   EXPECT_EQ(interval.ms, -42);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalMonthDayNano) {
@@ -2600,8 +2600,8 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalMonthDayNano) {
   EXPECT_EQ(interval.ns, -42);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetDecimal128) {
@@ -2637,8 +2637,8 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal128) {
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -5678);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetDecimal256) {
@@ -2674,6 +2674,6 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal256) {
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -5678);
 
   ArrowArrayViewReset(&array_view);
-  schema.release(&schema);
-  array.release(&array);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
 }

@@ -62,6 +62,25 @@ TEST(ErrorTest, ErrorTestSetOverrun) {
   EXPECT_EQ(ArrowErrorSet(&error, "%ls", bad_string), EINVAL);
 }
 
+TEST(ErrorTest, ErrorTestSetString) {
+  struct ArrowError error;
+  ArrowErrorSetString(&error, "a pretty short error string");
+  EXPECT_STREQ(ArrowErrorMessage(&error), "a pretty short error string");
+}
+
+TEST(ErrorTest, ErrorTestSetStringOverrun) {
+  struct ArrowError error;
+  char big_error[2048];
+  const char* a_few_chars = "abcdefg";
+  for (int i = 0; i < 2047; i++) {
+    big_error[i] = a_few_chars[i % strlen(a_few_chars)];
+  }
+  big_error[2047] = '\0';
+
+  ArrowErrorSetString(&error, big_error);
+  EXPECT_EQ(std::string(ArrowErrorMessage(&error)), std::string(big_error, 1023));
+}
+
 #if defined(NANOARROW_DEBUG)
 #undef NANOARROW_PRINT_AND_DIE
 #define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)             \

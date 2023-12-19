@@ -291,7 +291,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   EXPECT_EQ(schema.children[0]->flags, ARROW_FLAG_NULLABLE);
   EXPECT_STREQ(schema.children[0]->format, "i");
 
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
 
@@ -351,7 +351,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
       memcmp(array.children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le)),
       0);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   // Check field extract
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
@@ -362,7 +362,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   EXPECT_EQ(array.null_count, 0);
   EXPECT_EQ(memcmp(array.buffers[1], one_two_three_le, sizeof(one_two_three_le)), 0);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   // Field extract should fail if compression was set
   decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
@@ -389,7 +389,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected 0 field nodes in message but found 1");
 
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
 
@@ -421,7 +421,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   EXPECT_EQ(decoder_private->n_fields, 2);
   EXPECT_EQ(decoder_private->n_buffers, 3);
 
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
 
@@ -442,7 +442,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
   EXPECT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), EINVAL);
   EXPECT_STREQ(error.message, "schema must be a struct type");
 
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
 
@@ -531,7 +531,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
       memcmp(array.children[0]->buffers[1], one_two_three_le, sizeof(one_two_three_le)),
       0);
 
-  array.release(&array);
+  ArrowArrayRelease(&array);
 
   // Check field extract
   EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(
@@ -546,8 +546,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   EXPECT_EQ(array.null_count, 0);
   EXPECT_EQ(memcmp(array.buffers[1], one_two_three_le, sizeof(one_two_three_le)), 0);
 
-  array.release(&array);
-  schema.release(&schema);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
   ArrowBufferReset(&body);
   ArrowIpcDecoderReset(&decoder);
 }
@@ -596,7 +596,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   // Clean up
   ArrowIpcSharedBufferReset(&shared);
   ArrowIpcDecoderReset(&decoder);
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
 
   // Access the data and release from another thread
   std::thread threads[10];
@@ -604,7 +604,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
     threads[i] = std::thread([&arrays, i, &one_two_three_le] {
       memcmp(arrays[i].children[0]->buffers[1], one_two_three_le,
              sizeof(one_two_three_le));
-      arrays[i].release(arrays + i);
+      ArrowArrayRelease(arrays + i);
     });
   }
 
@@ -677,7 +677,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), nulls->ToString());
   EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*nulls));
 
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
 
@@ -928,7 +928,7 @@ TEST_P(ArrowTypeIdParameterizedTestFixture, NanoarrowIpcDecodeSwapEndian) {
                    array_view->buffer_views[1].size_bytes),
             0);
 
-  schema.release(&schema);
+  ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
 
