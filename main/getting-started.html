@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html lang="en" data-content_root="./" >
 
   <head>
     <meta charset="utf-8" />
@@ -18,12 +18,12 @@
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=c5ced968eda925caa686" rel="stylesheet" />
-<link href="_static/styles/bootstrap.css?digest=c5ced968eda925caa686" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=c5ced968eda925caa686" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
 
   
-  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=c5ced968eda925caa686" rel="stylesheet" />
+  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
@@ -31,16 +31,16 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=c5ced968eda925caa686" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=c5ced968eda925caa686" />
-  <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=c5ced968eda925caa686"></script>
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
-    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'getting-started';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.14.2';
+        DOCUMENTATION_OPTIONS.theme_version = '0.14.4';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://arrow.apache.org/nanoarrow/switcher.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
         DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
@@ -112,6 +112,7 @@
   <div class="col-lg-3 navbar-header-items__start">
     
       <div class="navbar-item">
+
   
 
 <a class="navbar-brand logo" href="index.html">
@@ -155,7 +156,8 @@ document.write(`
     
     <div class="me-auto navbar-header-items__center">
       
-        <div class="navbar-item"><nav class="navbar-nav">
+        <div class="navbar-item">
+<nav class="navbar-nav">
   <p class="sidebar-header-items__title"
      role="heading"
      aria-level="1"
@@ -194,6 +196,7 @@ document.write(`
       
         <div class="navbar-item navbar-persistent--container">
           
+
  <script>
  document.write(`
    <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -207,6 +210,7 @@ document.write(`
       
       
         <div class="navbar-item">
+
 <script>
 document.write(`
   <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -223,6 +227,7 @@ document.write(`
   
   
     <div class="navbar-persistent--mobile">
+
  <script>
  document.write(`
    <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -256,7 +261,8 @@ document.write(`
     
       <div class="sidebar-header-items__center">
         
-          <div class="navbar-item"><nav class="navbar-nav">
+          <div class="navbar-item">
+<nav class="navbar-nav">
   <p class="sidebar-header-items__title"
      role="heading"
      aria-level="1"
@@ -295,6 +301,7 @@ document.write(`
       <div class="sidebar-header-items__end">
         
           <div class="navbar-item">
+
 <script>
 document.write(`
   <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -396,7 +403,7 @@ document.write(`
   specific language governing permissions and limitations
   under the License.
 --><section id="getting-started-with-nanoarrow">
-<h1>Getting started with nanoarrow<a class="headerlink" href="#getting-started-with-nanoarrow" title="Permalink to this heading">#</a></h1>
+<h1>Getting started with nanoarrow<a class="headerlink" href="#getting-started-with-nanoarrow" title="Link to this heading">#</a></h1>
 <p>This tutorial provides a short example of writing a C++ library that
 exposes an Arrow-based API and uses nanoarrow to implement a simple text
 file reader/writer. In general, nanoarrow can help you write a library
@@ -429,7 +436,7 @@ below or take a look at the
 <a class="reference external" href="https://github.com/apache/arrow-nanoarrow/tree/main/examples/linesplitter">final example project</a>.</p>
 </div>
 <section id="the-library">
-<h2>The library<a class="headerlink" href="#the-library" title="Permalink to this heading">#</a></h2>
+<h2>The library<a class="headerlink" href="#the-library" title="Link to this heading">#</a></h2>
 <p>The library we’ll write in this tutorial is a simple text processing
 library that splits and reassembles lines of text. It will be able to:</p>
 <ul class="simple">
@@ -441,7 +448,7 @@ breaks after every element.</p></li>
 <p>For the sake of argument, we’ll call it <code class="docutils literal notranslate"><span class="pre">linesplitter</span></code>.</p>
 </section>
 <section id="the-development-environment">
-<h2>The development environment<a class="headerlink" href="#the-development-environment" title="Permalink to this heading">#</a></h2>
+<h2>The development environment<a class="headerlink" href="#the-development-environment" title="Link to this heading">#</a></h2>
 <p>There are many excellent IDEs that can be used to develop C and C++
 libraries. For this tutorial, we will use
 <a class="reference external" href="https://code.visualstudio.com/">VSCode</a> and
@@ -462,7 +469,7 @@ a folder called <code class="docutils literal notranslate"><span class="pre">lin
 Folder</strong>.</p>
 </section>
 <section id="the-interface">
-<h2>The interface<a class="headerlink" href="#the-interface" title="Permalink to this heading">#</a></h2>
+<h2>The interface<a class="headerlink" href="#the-interface" title="Link to this heading">#</a></h2>
 <p>We’ll expose the interface to our library as a header called
 <code class="docutils literal notranslate"><span class="pre">linesplitter.h</span></code>. To ensure the definitions are only included once in
 any given source file, we’ll add the following line at the top:</p>
@@ -545,7 +552,7 @@ the same (with possibly a different version of nanoarrow).</p>
 </div>
 </section>
 <section id="arrow-c-data-nanoarrow-interface-basics">
-<h2>Arrow C data/nanoarrow interface basics<a class="headerlink" href="#arrow-c-data-nanoarrow-interface-basics" title="Permalink to this heading">#</a></h2>
+<h2>Arrow C data/nanoarrow interface basics<a class="headerlink" href="#arrow-c-data-nanoarrow-interface-basics" title="Link to this heading">#</a></h2>
 <p>Now that we’ve seen the functions we need to implement and the Arrow
 types exposed in the C data interface, let’s unpack a few basics about
 using the Arrow C data interface and a few conventions used in the
@@ -626,7 +633,7 @@ explicit clean up. Whereas in C you might have to write code like this:</p>
 </div>
 </section>
 <section id="building-the-library">
-<h2>Building the library<a class="headerlink" href="#building-the-library" title="Permalink to this heading">#</a></h2>
+<h2>Building the library<a class="headerlink" href="#building-the-library" title="Link to this heading">#</a></h2>
 <p>Our library implementation will live in <code class="docutils literal notranslate"><span class="pre">linesplitter.cc</span></code>. Before
 writing the actual implementations, let’s add just enough to our project
 that we can build it using VSCode’s C/C++/CMake integration:</p>
@@ -687,7 +694,7 @@ with <code class="docutils literal notranslate"><span class="pre">mkdir</span> <
 </div>
 </section>
 <section id="building-an-arrowarray">
-<h2>Building an ArrowArray<a class="headerlink" href="#building-an-arrowarray" title="Permalink to this heading">#</a></h2>
+<h2>Building an ArrowArray<a class="headerlink" href="#building-an-arrowarray" title="Link to this heading">#</a></h2>
 <p>The input for our <code class="docutils literal notranslate"><span class="pre">linesplitter_read()</span></code> function is an
 <code class="docutils literal notranslate"><span class="pre">std::string</span></code>, which we’ll iterate over and add each detected line as
 its own element. First, we’ll define a function for the core logic of
@@ -745,7 +752,7 @@ definition.</p>
 </div>
 </section>
 <section id="reading-an-arrowarray">
-<h2>Reading an ArrowArray<a class="headerlink" href="#reading-an-arrowarray" title="Permalink to this heading">#</a></h2>
+<h2>Reading an ArrowArray<a class="headerlink" href="#reading-an-arrowarray" title="Link to this heading">#</a></h2>
 <p>The input for our <code class="docutils literal notranslate"><span class="pre">linesplitter_write()</span></code> function is an
 <code class="docutils literal notranslate"><span class="pre">ArrowArray*</span></code> like the one we create in <code class="docutils literal notranslate"><span class="pre">linesplitter_read()</span></code>. Just
 as nanoarrow provides helpers to build arrays, it also provides helpers
@@ -788,7 +795,7 @@ definition.</p>
 </div>
 </section>
 <section id="testing">
-<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this heading">#</a></h2>
+<h2>Testing<a class="headerlink" href="#testing" title="Link to this heading">#</a></h2>
 <p>We have an implementation, but does it work? Unlike higher-level
 runtimes like R and Python, we can’t just open a prompt and type some
 code to find out. For C and C++ libraries, the
@@ -874,7 +881,7 @@ automatically pause at the line of code that caused the crash. For more
 fine-tuned debugging, you can set breakpoints and step through code.</p>
 </section>
 <section id="summary">
-<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this heading">#</a></h2>
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">#</a></h2>
 <p>This tutorial covered the basics of writing and testing a C++ library
 exposing an Arrow-based API implemented using the nanoarrow C library.</p>
 </section>
@@ -888,7 +895,7 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
               
               
                 <footer class="prev-next-footer">
-                  <!-- Previous / next buttons -->
+                  
 <div class="prev-next-area">
     <a class="left-prev"
        href="index.html"
@@ -918,6 +925,7 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
                 <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
   <div class="sidebar-secondary-item">
+
   <div class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
@@ -936,6 +944,7 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
   </nav></div>
 
   <div class="sidebar-secondary-item">
+
   
   <div class="tocsection editthispage">
     <a href="https://github.com/apache/arrow-nanoarrow/edit/main/docs/source/getting-started.rst">
@@ -951,6 +960,7 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
 </div>
 
   <div class="sidebar-secondary-item">
+
   <div class="tocsection sourcelink">
     <a href="_sources/getting-started.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
@@ -971,8 +981,8 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="_static/scripts/bootstrap.js?digest=c5ced968eda925caa686"></script>
-<script src="_static/scripts/pydata-sphinx-theme.js?digest=c5ced968eda925caa686"></script>
+  <script src="_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -980,6 +990,7 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
     <div class="footer-items__start">
       
         <div class="footer-item">
+
   <p class="copyright">
     
       © Copyright 2016-2023 Apache Software Foundation.
@@ -989,8 +1000,9 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
 </div>
       
         <div class="footer-item">
+
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
     <br/>
   </p>
 </div>
@@ -1001,8 +1013,9 @@ exposing an Arrow-based API implemented using the nanoarrow C library.</p>
   
     <div class="footer-items__end">
       
-        <div class="footer-item"><p class="theme-version">
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.2.
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
 </p></div>
       
     </div>
