@@ -217,6 +217,7 @@ test_cmake_project() {
   show_info "Configure CMake Project"
   ${CMAKE_BIN} "${NANOARROW_SOURCE_DIR}/${2}" \
     "${@:3}" \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     ${NANOARROW_CMAKE_OPTIONS:-}
 
   show_info "Build CMake Project"
