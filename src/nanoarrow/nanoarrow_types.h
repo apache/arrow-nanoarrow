@@ -269,9 +269,9 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 #define NANOARROW_ASSERT_OK(EXPR) \
   _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
 
-#define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)                       \
-  do {                                                               \
-    if (!(EXPR)) NANOARROW_PRINT_AND_DIE(ENOTRECOVERABLE, EXPR_STR); \
+#define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)          \
+  do {                                                  \
+    if (!(EXPR)) NANOARROW_PRINT_AND_DIE(-1, EXPR_STR); \
   } while (0)
 
 #define NANOARROW_DCHECK(EXPR) _NANOARROW_DCHECK_IMPL(EXPR, #EXPR)
