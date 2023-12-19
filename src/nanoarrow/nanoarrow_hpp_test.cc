@@ -191,7 +191,9 @@ TEST(NanoarrowHppTest, NanoarrowHppEmptyArrayStreamTest) {
 
   nanoarrow::UniqueSchema schema_in;
   EXPECT_EQ(ArrowSchemaInitFromType(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
-  auto array_stream = nanoarrow::EmptyArrayStream::MakeUnique(schema_in.get());
+
+  nanoarrow::UniqueArrayStream array_stream;
+  nanoarrow::EmptyArrayStream(schema_in.get()).ToArrayStream(array_stream.get());
 
   EXPECT_EQ(array_stream->get_schema(array_stream.get(), schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");
@@ -201,10 +203,6 @@ TEST(NanoarrowHppTest, NanoarrowHppEmptyArrayStreamTest) {
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
-  nanoarrow::UniqueSchema schema;
-  nanoarrow::UniqueArray array;
-  nanoarrow::UniqueArrayView array_view;
-
   nanoarrow::UniqueArray array_in;
   EXPECT_EQ(ArrowArrayInitFromType(array_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(array_in.get()), NANOARROW_OK);
@@ -214,15 +212,26 @@ TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
   nanoarrow::UniqueSchema schema_in;
   EXPECT_EQ(ArrowSchemaInitFromType(schema_in.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
 
-  auto array_stream =
-      nanoarrow::VectorArrayStream::MakeUnique(schema_in.get(), array_in.get());
+  nanoarrow::UniqueArrayStream array_stream;
+  nanoarrow::VectorArrayStream(schema_in.get(), array_in.get())
+      .ToArrayStream(array_stream.get());
 
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(array_stream->get_schema(array_stream.get(), schema.get()), NANOARROW_OK);
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArray array;
   EXPECT_EQ(array_stream->get_next(array_stream.get(), array.get()), NANOARROW_OK);
-  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_INT32);
+
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view.get(), 0), 1234);
   array.reset();
 
   EXPECT_EQ(array_stream->get_next(array_stream.get(), array.get()), NANOARROW_OK);
   EXPECT_EQ(array->release, nullptr);
+
+  EXPECT_STREQ(array_stream->get_last_error(array_stream.get()), "");
 }

@@ -15,40 +15,46 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "nanoarrow_ipc.h"
-
 #ifndef NANOARROW_IPC_HPP_INCLUDED
 #define NANOARROW_IPC_HPP_INCLUDED
+
+#include "nanoarrow.hpp"
+#include "nanoarrow_ipc.h"
 
 namespace nanoarrow {
 
 namespace internal {
 
-static inline void init_pointer(struct ArrowIpcDecoder* data) {
+template <>
+inline void init_pointer(struct ArrowIpcDecoder* data) {
   data->private_data = nullptr;
 }
 
-static inline void move_pointer(struct ArrowIpcDecoder* src,
-                                struct ArrowIpcDecoder* dst) {
+template <>
+inline void move_pointer(struct ArrowIpcDecoder* src, struct ArrowIpcDecoder* dst) {
   memcpy(dst, src, sizeof(struct ArrowIpcDecoder));
   src->private_data = nullptr;
 }
 
-static inline void release_pointer(struct ArrowIpcDecoder* data) {
+template <>
+inline void release_pointer(struct ArrowIpcDecoder* data) {
   ArrowIpcDecoderReset(data);
 }
 
-static inline void init_pointer(struct ArrowIpcInputStream* data) {
+template <>
+inline void init_pointer(struct ArrowIpcInputStream* data) {
   data->release = nullptr;
 }
 
-static inline void move_pointer(struct ArrowIpcInputStream* src,
-                                struct ArrowIpcInputStream* dst) {
+template <>
+inline void move_pointer(struct ArrowIpcInputStream* src,
+                         struct ArrowIpcInputStream* dst) {
   memcpy(dst, src, sizeof(struct ArrowIpcInputStream));
   src->release = nullptr;
 }
 
-static inline void release_pointer(struct ArrowIpcInputStream* data) {
+template <>
+inline void release_pointer(struct ArrowIpcInputStream* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
@@ -56,8 +62,6 @@ static inline void release_pointer(struct ArrowIpcInputStream* data) {
 
 }  // namespace internal
 }  // namespace nanoarrow
-
-#include "nanoarrow.hpp"
 
 namespace nanoarrow {
 
