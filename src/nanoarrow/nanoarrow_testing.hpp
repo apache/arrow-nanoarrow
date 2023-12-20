@@ -746,6 +746,8 @@ class TestingJSONReader {
   ArrowErrorCode ReadDataFile(const std::string& data_file_json, ArrowArrayStream* out,
                               int num_batch = kNumBatchReadAll,
                               ArrowError* error = nullptr) {
+    ResetDictionaries();
+
     try {
       auto obj = json::parse(data_file_json);
       NANOARROW_RETURN_NOT_OK(Check(obj.is_object(), error, "data file must be object"));
@@ -926,6 +928,11 @@ class TestingJSONReader {
   std::unordered_map<int32_t, Dictionary> dictionaries_;
   // But allow the ID to be looked up from SetArrayColumn()
   std::unordered_map<const ArrowSchema*, int32_t> dictionary_ids_;
+
+  void ResetDictionaries() {
+    dictionaries_.clear();
+    dictionary_ids_.clear();
+  }
 
   ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
