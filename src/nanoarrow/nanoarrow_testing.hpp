@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <algorithm>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -43,6 +44,7 @@ namespace internal {
 // nanoarrow doesn't currently have the ability to copy or reference count an Array.
 struct Dictionary {
   nanoarrow::UniqueSchema schema;
+  int64_t column_length;
   std::string column_json;
 };
 
@@ -68,8 +70,15 @@ class DictionaryContext {
     return NANOARROW_OK;
   }
 
-  void RecordArray(int32_t dictionary_id, std::string column_json) {
+  void RecordArray(int32_t dictionary_id, int64_t length, std::string column_json) {
+    dictionaries_[dictionary_id].column_length = length;
     dictionaries_[dictionary_id].column_json = std::move(column_json);
+  }
+
+  void RecordArray(const ArrowSchema* values_schema, int64_t length,
+                   std::string column_json) {
+    auto ids_it = dictionary_ids_.find(values_schema);
+    RecordArray(ids_it->second, length, column_json);
   }
 
   void clear() {
@@ -85,10 +94,23 @@ class DictionaryContext {
     return dictionaries_.find(dictionary_id) != dictionaries_.end();
   }
 
+  const std::string& GetArray(int32_t dictionary_id) const {
+    auto dict_it = dictionaries_.find(dictionary_id);
+    return dict_it->second.column_json;
+  }
+
   const std::string& GetArray(const ArrowSchema* values_schema) const {
     auto ids_it = dictionary_ids_.find(values_schema);
-    auto dict_it = dictionaries_.find(ids_it->second);
-    return dict_it->second.column_json;
+    return GetArray(ids_it->second);
+  }
+
+  const std::vector<int32_t> GetAllIds() const {
+    std::vector<int32_t> out;
+    out.reserve(dictionaries_.size());
+    for (const auto& value : dictionaries_) {
+      out.push_back(value.first);
+    }
+    return out;
   }
 
  private:
@@ -422,12 +444,52 @@ class TestingJSONWriter {
     }
 
     out << "}";
+
+    // Write the dictionary values to the DictionaryContext for later if applicable
+    if (field->dictionary != nullptr) {
+      if (!dictionaries_.HasDictionaryForSchema(field->dictionary)) {
+        return EINVAL;
+      }
+
+      std::stringstream dictionary_output;
+      NANOARROW_RETURN_NOT_OK(
+          WriteColumn(dictionary_output, field->dictionary, value->dictionary));
+      dictionaries_.RecordArray(field->dictionary, value->length,
+                                std::move(dictionary_output.str()));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteDictionaries(std::ostream& out) {
+    std::vector<int32_t> ids = dictionaries_.GetAllIds();
+    if (ids.empty()) {
+      out << "[]";
+      return NANOARROW_OK;
+    }
+
+    out << "[";
+    std::sort(ids.begin(), ids.end());
+    NANOARROW_RETURN_NOT_OK(WriteDictionary(out, ids[0]));
+    for (size_t i = 1; i < ids.size(); i++) {
+      out << ", ";
+      NANOARROW_RETURN_NOT_OK(WriteDictionary(out, ids[i]));
+    }
+    out << "]";
+
     return NANOARROW_OK;
   }
 
  private:
   int float_precision_;
   internal::DictionaryContext dictionaries_;
+
+  ArrowErrorCode WriteDictionary(std::ostream& out, int32_t dictionary_id) {
+    out << "{";
+    // TODO (need to keep track of count in dictionaries_ also)
+    out << "}";
+    return NANOARROW_OK;
+  }
 
   ArrowErrorCode WriteType(std::ostream& out, const ArrowSchemaView* field) {
     ArrowType type;
@@ -1556,12 +1618,20 @@ class TestingJSONReader {
         Check(batch.is_object(), error, "dictionary batch data must be object"));
     NANOARROW_RETURN_NOT_OK(Check(batch.contains("columns"), error,
                                   "dictionary batch missing key 'columns'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(batch.contains("count"), error, "dictionary batch missing key 'count'"));
+
     const auto& batch_columns = batch["columns"];
     NANOARROW_RETURN_NOT_OK(Check(batch_columns.is_array() && batch_columns.size() == 1,
                                   error,
                                   "dictionary batch columns must be array of size 1"));
 
-    dictionaries_.RecordArray(id_int, batch_columns[0].dump());
+    const auto& batch_count = batch["count"];
+    NANOARROW_RETURN_NOT_OK(Check(batch_count.is_number_integer(), error,
+                                  "dictionary batch count must be integer"));
+
+    dictionaries_.RecordArray(id_int, batch_count.get<int32_t>(),
+                              batch_columns[0].dump());
     return NANOARROW_OK;
   }
 
