@@ -809,18 +809,30 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldDictionary) {
   nanoarrow::UniqueSchema schema;
   TestingJSONReader reader;
 
+  // Unordered
   ASSERT_EQ(
       reader.ReadField(
-          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], "dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}})",
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
+          R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}})",
           schema.get()),
       NANOARROW_OK);
   EXPECT_STREQ(schema->format, "i");
   EXPECT_STREQ(schema->name, "col1");
   EXPECT_TRUE(schema->flags & ARROW_FLAG_NULLABLE);
+  EXPECT_FALSE(schema->flags & ARROW_FLAG_DICTIONARY_ORDERED);
   ASSERT_NE(schema->dictionary, nullptr);
   EXPECT_STREQ(schema->dictionary->format, "u");
   EXPECT_EQ(schema->dictionary->name, nullptr);
   EXPECT_EQ(schema->dictionary->dictionary, nullptr);
+
+  // Ordered
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
+          R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": true}})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_TRUE(schema->flags & ARROW_FLAG_DICTIONARY_ORDERED);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
