@@ -19,6 +19,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 #include <nlohmann/json.hpp>
 
@@ -34,6 +35,56 @@
 namespace nanoarrow {
 
 namespace testing {
+
+namespace internal {
+
+// Internal representation of the various structures needed to import and/or export
+// a dictionary array. We use a serialized version of the dictionary value because
+// nanoarrow doesn't currently have the ability to copy or reference count an Array.
+struct Dictionary {
+  nanoarrow::UniqueSchema schema;
+  std::string column_json;
+};
+
+class DictionaryContext {
+ public:
+  ArrowErrorCode RecordSchema(int32_t dictionary_id, const ArrowSchema* values_schema) {
+    dictionaries_[dictionary_id] = internal::Dictionary();
+    NANOARROW_RETURN_NOT_OK(
+        ArrowSchemaDeepCopy(values_schema, dictionaries_[dictionary_id].schema.get()));
+    dictionary_ids_[values_schema] = dictionary_id;
+    return NANOARROW_OK;
+  }
+
+  void RecordArray(int32_t dictionary_id, std::string column_json) {
+    dictionaries_[dictionary_id].column_json = std::move(column_json);
+  }
+
+  void clear() {
+    dictionaries_.clear();
+    dictionary_ids_.clear();
+  }
+
+  bool HasDictionaryForSchema(const ArrowSchema* values_schema) const {
+    return dictionary_ids_.find(values_schema) != dictionary_ids_.end();
+  }
+
+  bool HasDictionaryForId(int32_t dictionary_id) const {
+    return dictionaries_.find(dictionary_id) != dictionaries_.end();
+  }
+
+  const std::string& GetArray(const ArrowSchema* values_schema) const {
+    auto ids_it = dictionary_ids_.find(values_schema);
+    auto dict_it = dictionaries_.find(ids_it->second);
+    return dict_it->second.column_json;
+  }
+
+ private:
+  std::unordered_map<int32_t, Dictionary> dictionaries_;
+  std::unordered_map<const ArrowSchema*, int32_t> dictionary_ids_;
+};
+
+}  // namespace internal
 
 /// \defgroup nanoarrow_testing-json Integration test helpers
 ///
@@ -346,6 +397,7 @@ class TestingJSONWriter {
 
  private:
   int float_precision_;
+  internal::DictionaryContext dictionaries_;
 
   ArrowErrorCode WriteType(std::ostream& out, const ArrowSchemaView* field) {
     ArrowType type;
@@ -746,7 +798,7 @@ class TestingJSONReader {
   ArrowErrorCode ReadDataFile(const std::string& data_file_json, ArrowArrayStream* out,
                               int num_batch = kNumBatchReadAll,
                               ArrowError* error = nullptr) {
-    ResetDictionaries();
+    dictionaries_.clear();
 
     try {
       auto obj = json::parse(data_file_json);
@@ -915,24 +967,8 @@ class TestingJSONReader {
   }
 
  private:
-  // Internal representation of an unparsed dictionary because nanoarrow does not
-  // currently have the ability to reference count or deep copy an ArrowArray.
-  struct Dictionary {
-    nanoarrow::UniqueSchema schema;
-    nanoarrow::UniqueArrayView array_view;
-    json value;
-  };
-
   ArrowBufferAllocator allocator_;
-  // Store dictionaries by dictionary ID
-  std::unordered_map<int32_t, Dictionary> dictionaries_;
-  // But allow the ID to be looked up from SetArrayColumn()
-  std::unordered_map<const ArrowSchema*, int32_t> dictionary_ids_;
-
-  void ResetDictionaries() {
-    dictionaries_.clear();
-    dictionary_ids_.clear();
-  }
+  internal::DictionaryContext dictionaries_;
 
   ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
@@ -1022,7 +1058,7 @@ class TestingJSONReader {
 
       // Keep track of this dictionary_id/schema for parsing batches
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          RecordDictionarySchema(dictionary_id, schema->dictionary, schema), error);
+          dictionaries_.RecordSchema(dictionary_id, schema->dictionary), error);
       return NANOARROW_OK;
     }
 
@@ -1043,8 +1079,6 @@ class TestingJSONReader {
     return NANOARROW_OK;
   }
 
-  // "dictionary": {"id": /* integer */, "indexType": /* Type */, "isOrdered": /* boolean
-  // */}
   ArrowErrorCode SetDictionary(ArrowSchema* schema, const json& value,
                                int32_t* dictionary_id, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(Check(value.is_object(), error, "Dictionary must be object"));
@@ -1073,16 +1107,6 @@ class TestingJSONReader {
       schema->flags &= ~ARROW_FLAG_DICTIONARY_ORDERED;
     }
 
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode RecordDictionarySchema(int32_t dictionary_id,
-                                        const ArrowSchema* dictionary,
-                                        const ArrowSchema* indices) {
-    dictionaries_[dictionary_id] = Dictionary();
-    NANOARROW_RETURN_NOT_OK(
-        ArrowSchemaDeepCopy(dictionary, dictionaries_[dictionary_id].schema.get()));
-    dictionary_ids_[indices] = dictionary_id;
     return NANOARROW_OK;
   }
 
@@ -1456,7 +1480,11 @@ class TestingJSONReader {
   ArrowErrorCode RecordDictionaryBatches(const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "dictionaries must be array"));
 
-    return ENOTSUP;
+    for (const auto& batch : value) {
+      NANOARROW_RETURN_NOT_OK(RecordDictionaryBatch(batch, error));
+    }
+
+    return NANOARROW_OK;
   }
 
   ArrowErrorCode RecordDictionaryBatch(const json& value, ArrowError* error) {
@@ -1471,10 +1499,8 @@ class TestingJSONReader {
     NANOARROW_RETURN_NOT_OK(
         Check(id.is_number_integer(), error, "dictionary batch id must be integer"));
     int id_int = value.get<int>();
-    if (dictionaries_.find(id_int) == dictionaries_.end()) {
-      ArrowErrorSet(error, "dictionary schema with id %d was not found", id_int);
-      return EINVAL;
-    }
+    NANOARROW_RETURN_NOT_OK(Check(dictionaries_.HasDictionaryForId(id_int), error,
+                                  "dictionary batch has unknown id"));
 
     const auto& batch = value["data"];
     NANOARROW_RETURN_NOT_OK(
@@ -1486,7 +1512,7 @@ class TestingJSONReader {
                                   error,
                                   "dictionary batch columns must be array of size 1"));
 
-    dictionaries_[id_int].value = batch_columns[0];
+    dictionaries_.RecordArray(id_int, batch_columns[0].dump());
     return NANOARROW_OK;
   }
 
@@ -1557,17 +1583,14 @@ class TestingJSONReader {
     }
 
     // If there is a dictionary associated with schema, parse its value into dictionary
-    if (dictionary_ids_.find(schema) != dictionary_ids_.end()) {
-      int32_t dictionary_id = dictionary_ids_[schema];
+    if (schema->dictionary != nullptr) {
       NANOARROW_RETURN_NOT_OK(Check(
-          dictionaries_.find(dictionary_id) != dictionaries_.end(), error,
+          dictionaries_.HasDictionaryForSchema(schema->dictionary), error,
           error_prefix +
               "dictionary could not be resolved from dictionary id in SetArrayColumn()"));
-      NANOARROW_RETURN_NOT_OK(
-          Check(array_view->dictionary != nullptr && array->dictionary != nullptr, error,
-                error_prefix + "dictionary resolved for non-dictionary schema"));
-      const Dictionary& dict = dictionaries_[dictionary_id];
-      NANOARROW_RETURN_NOT_OK(SetArrayColumn(dict.value, schema->dictionary,
+
+      const std::string& column_json = dictionaries_.GetArray(schema->dictionary);
+      NANOARROW_RETURN_NOT_OK(SetArrayColumn(json::parse(column_json), schema->dictionary,
                                              array_view->dictionary, array->dictionary,
                                              error, error_prefix + "-> <dictionary> "));
     }
