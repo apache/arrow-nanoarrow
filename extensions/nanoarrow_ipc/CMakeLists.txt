@@ -217,7 +217,7 @@ if(NANOARROW_IPC_BUILD_TESTS)
 
   # zlib for integration testing
   find_package(ZLIB)
-  if (NOT ZLIB_FOUND)
+  if(NOT ZLIB_FOUND)
     add_subdirectory(cmake/zlib)
   endif()
 
