@@ -907,6 +907,7 @@ class TestingJSONReader {
 
  private:
   ArrowBufferAllocator allocator_;
+  std::unordered_map<int32_t, nanoarrow::UniqueSchema> dictionaries_;
 
   ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
@@ -942,16 +943,16 @@ class TestingJSONReader {
   ArrowErrorCode SetField(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_object(), error, "Expected Field to be a JSON object"));
+    ArrowSchemaInit(schema);
+
     NANOARROW_RETURN_NOT_OK(
         Check(value.contains("name"), error, "Field missing key 'name'"));
     NANOARROW_RETURN_NOT_OK(
-        Check(value.contains("nullable"), error, "Field missing key 'nullable'"));
-    NANOARROW_RETURN_NOT_OK(
         Check(value.contains("type"), error, "Field missing key 'type'"));
     NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("nullable"), error, "Field missing key 'nullable'"));
+    NANOARROW_RETURN_NOT_OK(
         Check(value.contains("children"), error, "Field missing key 'children'"));
-
-    ArrowSchemaInit(schema);
 
     const auto& name = value["name"];
     NANOARROW_RETURN_NOT_OK(Check(name.is_string() || name.is_null(), error,
@@ -960,6 +961,28 @@ class TestingJSONReader {
       auto name_str = name.get<std::string>();
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema, name_str.c_str()),
                                          error);
+    }
+
+    // If we have a dictionary, this value needs to be in schema->dictionary
+    // and value["dictionary"] needs to be in schema
+    if (value.contains("dictionary")) {
+      // Put the index type in this schema
+      int32_t dictionary_id;
+      NANOARROW_RETURN_NOT_OK(
+          SetDictionary(schema, value["dictionary"], &dictionary_id, error));
+
+      // Allocate a dictionary and put this value (minus dictionary and name)
+      json value_copy = value;
+      value_copy.erase("dictionary");
+      value_copy["name"] = nullptr;
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaAllocateDictionary(schema), error);
+      ArrowSchemaInit(schema->dictionary);
+      NANOARROW_RETURN_NOT_OK(SetField(schema->dictionary, value_copy, error));
+
+      // Keep track of this dictionary_id/schema for parsing batches
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          RecordDictionarySchema(dictionary_id, schema->dictionary), error);
+      return NANOARROW_OK;
     }
 
     const auto& nullable = value["nullable"];
@@ -989,6 +1012,48 @@ class TestingJSONReader {
     // Validate!
     ArrowSchemaView schema_view;
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+    return NANOARROW_OK;
+  }
+
+  // "dictionary": {"id": /* integer */, "indexType": /* Type */, "isOrdered": /* boolean
+  // */}
+  ArrowErrorCode SetDictionary(ArrowSchema* schema, const json& value,
+                               int32_t* dictionary_id, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.is_object(), error, "Dictionary must be object"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("id"), error, "Dictionary missing key 'id'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("indexType"), error, "Dictionary missing key 'type'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("isOrdered"), error, "Dictionary missing key 'isOrdered'"));
+
+    const auto& id = value["id"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(id.is_number_integer(), error, "Dictionary id must be integer"));
+    *dictionary_id = id.get<int32_t>();
+
+    // Parse the index type
+    NANOARROW_RETURN_NOT_OK(SetType(schema, value["indexType"], error));
+
+    // Set the flag
+    const auto& is_ordered = value["isOrdered"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(is_ordered.is_boolean(), error, "Dictionary isOrdered must be bool"));
+    if (is_ordered.get<bool>()) {
+      schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
+    } else {
+      schema->flags &= ~ARROW_FLAG_DICTIONARY_ORDERED;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode RecordDictionarySchema(int32_t dictionary_id,
+                                        const ArrowSchema* dictionary) {
+    // Keep a copy of the dictionary type so that we can parse dictionary batches later
+    nanoarrow::UniqueSchema dictionary_copy;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaDeepCopy(dictionary, dictionary_copy.get()));
+    dictionaries_[dictionary_id] = std::move(dictionary_copy);
     return NANOARROW_OK;
   }
 
