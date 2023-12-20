@@ -406,6 +406,21 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
       R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": []})");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDict) {
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT16));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateDictionary(schema));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false}, "children": []})");
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
   // Missing metadata
   TestWriteJSON(
@@ -1207,6 +1222,20 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
 
   TestTypeError(R"({"name": "union", "mode": "NOT_A_MODE", "typeIds": []})",
                 "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDictionaryRoundtrip) {
+  // Unordered
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false}, "children": []})");
+
+  // Ordered
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": true}, "children": []})");
 }
 
 void AssertSchemasCompareEqual(ArrowSchema* actual, ArrowSchema* expected) {
