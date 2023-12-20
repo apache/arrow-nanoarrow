@@ -805,6 +805,24 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   EXPECT_STREQ(schema->children[0]->format, "n");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldDictionary) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], "dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "i");
+  EXPECT_STREQ(schema->name, "col1");
+  EXPECT_TRUE(schema->flags & ARROW_FLAG_NULLABLE);
+  ASSERT_NE(schema->dictionary, nullptr);
+  EXPECT_STREQ(schema->dictionary->format, "u");
+  EXPECT_EQ(schema->dictionary->name, nullptr);
+  EXPECT_EQ(schema->dictionary->dictionary, nullptr);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
   nanoarrow::UniqueArrayStream stream;
   ArrowError error;
