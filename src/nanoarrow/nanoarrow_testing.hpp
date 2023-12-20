@@ -767,6 +767,11 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
 
+      // Record any dictionaries that might be present
+      if (obj.contains("dictionaries")) {
+        NANOARROW_RETURN_NOT_OK(RecordDictionaryBatches(obj["dictionaries"], error));
+      }
+
       // Get a vector of batch ids to parse
       std::vector<size_t> batch_ids;
       if (num_batch == kNumBatchOnlySchema) {
@@ -793,8 +798,8 @@ class TestingJSONReader {
         NANOARROW_RETURN_NOT_OK(
             ArrowArrayInitFromArrayView(array.get(), array_view.get(), error));
         SetArrayAllocatorRecursive(array.get());
-        NANOARROW_RETURN_NOT_OK(
-            SetArrayBatch(batches[batch_ids[i]], array_view.get(), array.get(), error));
+        NANOARROW_RETURN_NOT_OK(SetArrayBatch(batches[batch_ids[i]], schema.get(),
+                                              array_view.get(), array.get(), error));
         ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
       }
 
@@ -864,7 +869,8 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
       SetArrayAllocatorRecursive(array.get());
 
-      NANOARROW_RETURN_NOT_OK(SetArrayBatch(obj, array_view.get(), array.get(), error));
+      NANOARROW_RETURN_NOT_OK(
+          SetArrayBatch(obj, schema, array_view.get(), array.get(), error));
       ArrowArrayMove(array.get(), out);
       return NANOARROW_OK;
     } catch (json::exception& e) {
@@ -894,7 +900,8 @@ class TestingJSONReader {
       SetArrayAllocatorRecursive(array.get());
 
       // Parse the JSON into the array
-      NANOARROW_RETURN_NOT_OK(SetArrayColumn(obj, array_view.get(), array.get(), error));
+      NANOARROW_RETURN_NOT_OK(
+          SetArrayColumn(obj, schema, array_view.get(), array.get(), error));
 
       // Return the result
       ArrowArrayMove(array.get(), out);
@@ -906,8 +913,19 @@ class TestingJSONReader {
   }
 
  private:
+  // Internal representation of an unparsed dictionary because nanoarrow does not
+  // currently have the ability to reference count or deep copy an ArrowArray.
+  struct Dictionary {
+    nanoarrow::UniqueSchema schema;
+    nanoarrow::UniqueArrayView array_view;
+    json value;
+  };
+
   ArrowBufferAllocator allocator_;
-  std::unordered_map<int32_t, nanoarrow::UniqueSchema> dictionaries_;
+  // Store dictionaries by dictionary ID
+  std::unordered_map<int32_t, Dictionary> dictionaries_;
+  // But allow the ID to be looked up from SetArrayColumn()
+  std::unordered_map<const ArrowSchema*, int32_t> dictionary_ids_;
 
   ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value, ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
@@ -997,7 +1015,7 @@ class TestingJSONReader {
 
       // Keep track of this dictionary_id/schema for parsing batches
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          RecordDictionarySchema(dictionary_id, schema->dictionary), error);
+          RecordDictionarySchema(dictionary_id, schema->dictionary, schema), error);
       return NANOARROW_OK;
     }
 
@@ -1052,11 +1070,12 @@ class TestingJSONReader {
   }
 
   ArrowErrorCode RecordDictionarySchema(int32_t dictionary_id,
-                                        const ArrowSchema* dictionary) {
-    // Keep a copy of the dictionary type so that we can parse dictionary batches later
-    nanoarrow::UniqueSchema dictionary_copy;
-    NANOARROW_RETURN_NOT_OK(ArrowSchemaDeepCopy(dictionary, dictionary_copy.get()));
-    dictionaries_[dictionary_id] = std::move(dictionary_copy);
+                                        const ArrowSchema* dictionary,
+                                        const ArrowSchema* indices) {
+    dictionaries_[dictionary_id] = Dictionary();
+    NANOARROW_RETURN_NOT_OK(
+        ArrowSchemaDeepCopy(dictionary, dictionaries_[dictionary_id].schema.get()));
+    dictionary_ids_[indices] = dictionary_id;
     return NANOARROW_OK;
   }
 
@@ -1385,8 +1404,9 @@ class TestingJSONReader {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode SetArrayBatch(const json& value, ArrowArrayView* array_view,
-                               ArrowArray* array, ArrowError* error) {
+  ArrowErrorCode SetArrayBatch(const json& value, const ArrowSchema* schema,
+                               ArrowArrayView* array_view, ArrowArray* array,
+                               ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_object(), error, "Expected RecordBatch to be a JSON object"));
 
@@ -1408,8 +1428,9 @@ class TestingJSONReader {
                                   "RecordBatch children has incorrect size"));
 
     for (int64_t i = 0; i < array_view->n_children; i++) {
-      NANOARROW_RETURN_NOT_OK(
-          SetArrayColumn(columns[i], array_view->children[i], array->children[i], error));
+      NANOARROW_RETURN_NOT_OK(SetArrayColumn(columns[i], schema->children[i],
+                                             array_view->children[i], array->children[i],
+                                             error));
     }
 
     // Validate the array view
@@ -1425,8 +1446,46 @@ class TestingJSONReader {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode SetArrayColumn(const json& value, ArrowArrayView* array_view,
-                                ArrowArray* array, ArrowError* error,
+  ArrowErrorCode RecordDictionaryBatches(const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "dictionaries must be array"));
+
+    return ENOTSUP;
+  }
+
+  ArrowErrorCode RecordDictionaryBatch(const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_object(), error, "dictionary batch must be object"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("id"), error, "dictionary batch missing key 'id'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("data"), error, "dictionary batch missing key 'data'"));
+
+    const auto& id = value["id"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(id.is_number_integer(), error, "dictionary batch id must be integer"));
+    int id_int = value.get<int>();
+    if (dictionaries_.find(id_int) == dictionaries_.end()) {
+      ArrowErrorSet(error, "dictionary schema with id %d was not found", id_int);
+      return EINVAL;
+    }
+
+    const auto& batch = value["data"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(batch.is_object(), error, "dictionary batch data must be object"));
+    NANOARROW_RETURN_NOT_OK(Check(batch.contains("columns"), error,
+                                  "dictionary batch missing key 'columns'"));
+    const auto& batch_columns = batch["columns"];
+    NANOARROW_RETURN_NOT_OK(Check(batch_columns.is_array() && batch_columns.size() == 1,
+                                  error,
+                                  "dictionary batch columns must be array of size 1"));
+
+    dictionaries_[id_int].value = batch_columns[0];
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema* schema,
+                                ArrowArrayView* array_view, ArrowArray* array,
+                                ArrowError* error,
                                 const std::string& parent_error_prefix = "") {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_object(), error, "Expected Column to be a JSON object"));
@@ -1459,7 +1518,8 @@ class TestingJSONReader {
                                     error_prefix + "children has incorrect size"));
 
       for (int64_t i = 0; i < array_view->n_children; i++) {
-        NANOARROW_RETURN_NOT_OK(SetArrayColumn(children[i], array_view->children[i],
+        NANOARROW_RETURN_NOT_OK(SetArrayColumn(children[i], schema->children[i],
+                                               array_view->children[i],
                                                array->children[i], error, error_prefix));
       }
     }
