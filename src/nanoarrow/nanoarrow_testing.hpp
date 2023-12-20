@@ -954,6 +954,7 @@ class TestingJSONReader {
     NANOARROW_RETURN_NOT_OK(
         Check(value.contains("children"), error, "Field missing key 'children'"));
 
+    // Name
     const auto& name = value["name"];
     NANOARROW_RETURN_NOT_OK(Check(name.is_string() || name.is_null(), error,
                                   "Field name must be string or null"));
@@ -961,6 +962,21 @@ class TestingJSONReader {
       auto name_str = name.get<std::string>();
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema, name_str.c_str()),
                                          error);
+    }
+
+    // Nullability
+    const auto& nullable = value["nullable"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(nullable.is_boolean(), error, "Field nullable must be boolean"));
+    if (nullable.get<bool>()) {
+      schema->flags |= ARROW_FLAG_NULLABLE;
+    } else {
+      schema->flags &= ~ARROW_FLAG_NULLABLE;
+    }
+
+    // Metadata
+    if (value.contains("metadata")) {
+      NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
     }
 
     // If we have a dictionary, this value needs to be in schema->dictionary
@@ -971,9 +987,10 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(
           SetDictionary(schema, value["dictionary"], &dictionary_id, error));
 
-      // Allocate a dictionary and put this value (minus dictionary and name)
+      // Allocate a dictionary and put this value (minus dictionary, metadata, and name)
       json value_copy = value;
       value_copy.erase("dictionary");
+      value_copy.erase("metadata");
       value_copy["name"] = nullptr;
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaAllocateDictionary(schema), error);
       ArrowSchemaInit(schema->dictionary);
@@ -985,15 +1002,6 @@ class TestingJSONReader {
       return NANOARROW_OK;
     }
 
-    const auto& nullable = value["nullable"];
-    NANOARROW_RETURN_NOT_OK(
-        Check(nullable.is_boolean(), error, "Field nullable must be boolean"));
-    if (nullable.get<bool>()) {
-      schema->flags |= ARROW_FLAG_NULLABLE;
-    } else {
-      schema->flags &= ~ARROW_FLAG_NULLABLE;
-    }
-
     NANOARROW_RETURN_NOT_OK(SetType(schema, value["type"], error));
 
     const auto& children = value["children"];
@@ -1003,10 +1011,6 @@ class TestingJSONReader {
         ArrowSchemaAllocateChildren(schema, children.size()), error);
     for (int64_t i = 0; i < schema->n_children; i++) {
       NANOARROW_RETURN_NOT_OK(SetField(schema->children[i], children[i], error));
-    }
-
-    if (value.contains("metadata")) {
-      NANOARROW_RETURN_NOT_OK(SetMetadata(schema, value["metadata"], error));
     }
 
     // Validate!
