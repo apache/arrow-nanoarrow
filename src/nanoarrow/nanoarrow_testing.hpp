@@ -1549,6 +1549,22 @@ class TestingJSONReader {
       buffer_view->size_bytes = buffer->size_bytes;
     }
 
+    // If there is a dictionary associated with schema, parse its value into dictionary
+    if (dictionary_ids_.find(schema) != dictionary_ids_.end()) {
+      int32_t dictionary_id = dictionary_ids_[schema];
+      NANOARROW_RETURN_NOT_OK(Check(
+          dictionaries_.find(dictionary_id) != dictionaries_.end(), error,
+          error_prefix +
+              "dictionary could not be resolved from dictionary id in SetArrayColumn()"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(array_view->dictionary != nullptr && array->dictionary != nullptr, error,
+                error_prefix + "dictionary resolved for non-dictionary schema"));
+      const Dictionary& dict = dictionaries_[dictionary_id];
+      NANOARROW_RETURN_NOT_OK(SetArrayColumn(dict.value, schema->dictionary,
+                                             array_view->dictionary, array->dictionary,
+                                             error, error_prefix + "-> <dictionary> "));
+    }
+
     // Validate the array view
     NANOARROW_RETURN_NOT_OK(PrefixError(
         ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
