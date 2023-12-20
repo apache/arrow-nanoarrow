@@ -917,6 +917,9 @@ class TestingJSONReader {
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), error);
 
+    // Top-level schema is non-nullable
+    schema->flags = 0;
+
     const auto& fields = value["fields"];
     NANOARROW_RETURN_NOT_OK(
         Check(fields.is_array(), error, "Schema fields must be array"));
