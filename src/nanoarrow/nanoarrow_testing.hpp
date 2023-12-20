@@ -48,11 +48,23 @@ struct Dictionary {
 
 class DictionaryContext {
  public:
+  DictionaryContext() : next_id_(0) {}
+
   ArrowErrorCode RecordSchema(int32_t dictionary_id, const ArrowSchema* values_schema) {
     dictionaries_[dictionary_id] = internal::Dictionary();
     NANOARROW_RETURN_NOT_OK(
         ArrowSchemaDeepCopy(values_schema, dictionaries_[dictionary_id].schema.get()));
     dictionary_ids_[values_schema] = dictionary_id;
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode RecordSchema(const ArrowSchema* values_schema, int32_t* dictionary_id) {
+    while (HasDictionaryForId(next_id_)) {
+      next_id_++;
+    }
+
+    NANOARROW_RETURN_NOT_OK(RecordSchema(next_id_, values_schema));
+    *dictionary_id = next_id_++;
     return NANOARROW_OK;
   }
 
@@ -80,6 +92,7 @@ class DictionaryContext {
   }
 
  private:
+  int32_t next_id_;
   std::unordered_map<int32_t, Dictionary> dictionaries_;
   std::unordered_map<const ArrowSchema*, int32_t> dictionary_ids_;
 };
@@ -189,7 +202,7 @@ class TestingJSONWriter {
   /// Creates output like `{"name" : "col", "type": {...}, ...}`
   ArrowErrorCode WriteField(std::ostream& out, const ArrowSchema* field) {
     ArrowSchemaView view;
-    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, (ArrowSchema*)field, nullptr));
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, field, nullptr));
 
     out << "{";
 
@@ -208,9 +221,28 @@ class TestingJSONWriter {
       out << R"(, "nullable": false)";
     }
 
-    // Write type
-    out << R"(, "type": )";
-    NANOARROW_RETURN_NOT_OK(WriteType(out, &view));
+    // For dictionary encoding, write type as the dictionary (values) type,
+    // record the dictionary schema, and write the "dictionary" member
+    if (field->dictionary != nullptr) {
+      ArrowSchemaView dictionary_view;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaViewInit(&dictionary_view, field->dictionary, nullptr));
+
+      out << R"(, "type": )";
+      NANOARROW_RETURN_NOT_OK(WriteType(out, &dictionary_view));
+
+      int32_t dictionary_id;
+      NANOARROW_RETURN_NOT_OK(
+          dictionaries_.RecordSchema(field->dictionary, &dictionary_id));
+
+      out << R"(, "dictionary": )";
+      view.type = view.storage_type;
+      NANOARROW_RETURN_NOT_OK(WriteDictionary(
+          out, dictionary_id, field->flags & ARROW_FLAG_DICTIONARY_ORDERED, &view));
+    } else {
+      out << R"(, "type": )";
+      NANOARROW_RETURN_NOT_OK(WriteType(out, &view));
+    }
 
     // Write children
     out << R"(, "children": )";
@@ -225,8 +257,6 @@ class TestingJSONWriter {
       }
       out << "]";
     }
-
-    // TODO: Dictionary (currently fails at WriteType)
 
     // Write metadata
     if (field->metadata != nullptr) {
@@ -493,6 +523,25 @@ class TestingJSONWriter {
       default:
         // Not supported
         return ENOTSUP;
+    }
+
+    out << "}";
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteDictionary(std::ostream& out, int32_t dictionary_id,
+                                 bool is_ordered, const ArrowSchemaView* indices_field) {
+    out << "{";
+
+    out << R"("id": )" << dictionary_id;
+
+    out << R"(, "indexType": )";
+    NANOARROW_RETURN_NOT_OK(WriteType(out, indices_field));
+
+    if (is_ordered) {
+      out << R"(, "isOrdered": true)";
+    } else {
+      out << R"(, "isOrdered": false)";
     }
 
     out << "}";
