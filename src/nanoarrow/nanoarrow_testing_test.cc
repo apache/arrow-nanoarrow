@@ -826,6 +826,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldDictionary) {
   EXPECT_EQ(schema->dictionary->dictionary, nullptr);
 
   // Ordered
+  schema.reset();
   ASSERT_EQ(
       reader.ReadField(
           R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
