@@ -19,6 +19,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 #include <nanoarrow/nanoarrow_testing.hpp>
 #include "c_data_integration.h"
@@ -196,26 +197,26 @@ static const char* ConvertError(ArrowErrorCode errno_code) {
 
 int64_t nanoarrow_BytesAllocated() { return kBytesAllocated; }
 
-const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(const char* json_path,
+DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(const char* json_path,
                                                             ArrowSchema* out) {
   ArrowErrorInit(&global_error);
   return ConvertError(ExportSchemaFromJson(json_path, out, &global_error));
 }
 
-const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(const char* json_path,
+DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(const char* json_path,
                                                                     ArrowSchema* schema) {
   ArrowErrorInit(&global_error);
   return ConvertError(ImportSchemaAndCompareToJson(json_path, schema, &global_error));
 }
 
-const char* nanoarrow_CDataIntegration_ExportBatchFromJson(const char* json_path,
+DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportBatchFromJson(const char* json_path,
                                                            int num_batch,
                                                            ArrowArray* out) {
   ArrowErrorInit(&global_error);
   return ConvertError(ExportBatchFromJson(json_path, num_batch, out, &global_error));
 }
 
-const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(const char* json_path,
+DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(const char* json_path,
                                                                    int num_batch,
                                                                    ArrowArray* batch) {
   ArrowErrorInit(&global_error);

@@ -1574,7 +1574,7 @@ class TestingJSONReader {
         // The JSON parser here can handle up to 2^64 - 1
         auto item_int = json::parse(item.get<std::string>());
         return SetBufferIntItem<T, BiggerT>(item_int, buffer, error);
-      } catch (json::parse_error& e) {
+      } catch (json::parse_error&) {
         ArrowErrorSet(error,
                       "integer buffer item encoded as string must parse as integer: %s",
                       item.dump().c_str());
@@ -1597,7 +1597,7 @@ class TestingJSONReader {
                   item_int <= std::numeric_limits<T>::max(),
               error, "integer buffer item '" + item.dump() + "' outside type limits"));
 
-    T buffer_value = item_int;
+    T buffer_value = static_cast<T>(item_int);
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
 
@@ -1620,7 +1620,7 @@ class TestingJSONReader {
               item_dbl <= std::numeric_limits<T>::max(),
           error, "floatingpoint buffer item '" + item.dump() + "' outside type limits"));
 
-      T buffer_value = item_dbl;
+      T buffer_value = static_cast<T>(item_dbl);
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
     }
@@ -1725,10 +1725,10 @@ class TestingJSONReader {
                                   "binary data buffer item must have even size"));
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(data, item_size_bytes), error);
-    for (int64_t i = 0; i < item_str.size(); i += 2) {
+    for (size_t i = 0; i < item_str.size(); i += 2) {
       std::string byte_hex = item_str.substr(i, 2);
       char* end_ptr;
-      uint8_t byte = std::strtoul(byte_hex.data(), &end_ptr, 16);
+      uint8_t byte = static_cast<uint8_t>(std::strtoul(byte_hex.data(), &end_ptr, 16));
       NANOARROW_RETURN_NOT_OK(
           Check(end_ptr == (byte_hex.data() + 2), error,
                 "binary data buffer item must contain a valid hex-encoded byte string"));
