@@ -993,7 +993,6 @@ class TestingJSONReader {
       value_copy.erase("metadata");
       value_copy["name"] = nullptr;
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaAllocateDictionary(schema), error);
-      ArrowSchemaInit(schema->dictionary);
       NANOARROW_RETURN_NOT_OK(SetField(schema->dictionary, value_copy, error));
 
       // Keep track of this dictionary_id/schema for parsing batches
