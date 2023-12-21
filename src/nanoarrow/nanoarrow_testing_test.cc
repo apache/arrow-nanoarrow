@@ -896,6 +896,26 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
   ASSERT_EQ(reader.ReadDataFile("{", stream.get()), EINVAL);
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFileDictionary) {
+  nanoarrow::UniqueArrayStream stream;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  std::string data_file_json =
+      R"({"schema": {"fields": [{"name": null, "nullable": true, "type": {"name": "binary"}, "dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}, "children": []}, {"name": null, "nullable": true, "type": {"name": "utf8"}, "dictionary": {"id": 1, "indexType": {"name": "int", "bitWidth": 8, "isSigned": true}, "isOrdered": false}, "children": []}]}, "batches": [{"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "DATA": [0]}, {"name": null, "count": 1, "VALIDITY": [1], "DATA": [1]}]}], "dictionaries": [{"id": 0, "data": {"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["616263"]}]}}, {"id": 1, "data": {"count": 2, "columns": [{"name": null, "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 6], "DATA": ["abc", "def"]}]}}]})";
+
+  TestingJSONReader reader;
+  ASSERT_EQ(reader.ReadDataFile(data_file_json, stream.get(),
+                                TestingJSONReader::kNumBatchReadAll, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  TestingJSONWriter writer;
+  std::stringstream data_file_json_roundtrip;
+  ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
+  EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadBatch) {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray array;

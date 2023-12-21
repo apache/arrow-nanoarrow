@@ -81,6 +81,8 @@ class DictionaryContext {
     RecordArray(ids_it->second, length, column_json);
   }
 
+  bool empty() { return dictionaries_.empty(); }
+
   void clear() {
     dictionaries_.clear();
     dictionary_ids_.clear();
@@ -94,14 +96,14 @@ class DictionaryContext {
     return dictionaries_.find(dictionary_id) != dictionaries_.end();
   }
 
-  const std::string& GetArray(int32_t dictionary_id) const {
+  const Dictionary& Get(int32_t dictionary_id) const {
     auto dict_it = dictionaries_.find(dictionary_id);
-    return dict_it->second.column_json;
+    return dict_it->second;
   }
 
-  const std::string& GetArray(const ArrowSchema* values_schema) const {
+  const Dictionary& Get(const ArrowSchema* values_schema) const {
     auto ids_it = dictionary_ids_.find(values_schema);
-    return GetArray(ids_it->second);
+    return Get(ids_it->second);
   }
 
   const std::vector<int32_t> GetAllIds() const {
@@ -150,6 +152,8 @@ class TestingJSONWriter {
       return EINVAL;
     }
 
+    dictionaries_.clear();
+
     out << R"({"schema": )";
 
     nanoarrow::UniqueSchema schema;
@@ -179,7 +183,14 @@ class TestingJSONWriter {
       array.reset();
     } while (true);
 
-    out << "]}";
+    out << "]";
+
+    if (!dictionaries_.empty()) {
+      out << R"(, "dictionaries": )";
+      NANOARROW_RETURN_NOT_OK(WriteDictionaries(out));
+    }
+
+    out << "}";
 
     return NANOARROW_OK;
   }
@@ -454,7 +465,7 @@ class TestingJSONWriter {
       std::stringstream dictionary_output;
       NANOARROW_RETURN_NOT_OK(
           WriteColumn(dictionary_output, field->dictionary, value->dictionary));
-      dictionaries_.RecordArray(field->dictionary, value->length,
+      dictionaries_.RecordArray(field->dictionary, value->dictionary->length,
                                 std::move(dictionary_output.str()));
     }
 
@@ -485,9 +496,9 @@ class TestingJSONWriter {
   internal::DictionaryContext dictionaries_;
 
   ArrowErrorCode WriteDictionary(std::ostream& out, int32_t dictionary_id) {
-    out << "{";
-    // TODO (need to keep track of count in dictionaries_ also)
-    out << "}";
+    const internal::Dictionary& dict = dictionaries_.Get(dictionary_id);
+    out << R"({"id": )" << dictionary_id << R"(, "data": {"count": )"
+        << dict.column_length << R"(, "columns": [)" << dict.column_json << "]}}";
     return NANOARROW_OK;
   }
 
@@ -1609,7 +1620,7 @@ class TestingJSONReader {
     const auto& id = value["id"];
     NANOARROW_RETURN_NOT_OK(
         Check(id.is_number_integer(), error, "dictionary batch id must be integer"));
-    int id_int = value.get<int>();
+    int id_int = id.get<int>();
     NANOARROW_RETURN_NOT_OK(Check(dictionaries_.HasDictionaryForId(id_int), error,
                                   "dictionary batch has unknown id"));
 
@@ -1708,10 +1719,10 @@ class TestingJSONReader {
           error_prefix +
               "dictionary could not be resolved from dictionary id in SetArrayColumn()"));
 
-      const std::string& column_json = dictionaries_.GetArray(schema->dictionary);
-      NANOARROW_RETURN_NOT_OK(SetArrayColumn(json::parse(column_json), schema->dictionary,
-                                             array_view->dictionary, array->dictionary,
-                                             error, error_prefix + "-> <dictionary> "));
+      const internal::Dictionary& dict = dictionaries_.Get(schema->dictionary);
+      NANOARROW_RETURN_NOT_OK(SetArrayColumn(
+          json::parse(dict.column_json), schema->dictionary, array_view->dictionary,
+          array->dictionary, error, error_prefix + "-> <dictionary> "));
     }
 
     // Validate the array view
