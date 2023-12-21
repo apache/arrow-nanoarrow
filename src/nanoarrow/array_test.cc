@@ -2121,9 +2121,8 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 2 * sizeof(int32_t));
   EXPECT_EQ(array_view.dictionary->buffer_views[2].size_bytes, 6);
 
-  // Full validation not yet supported for dictionary
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
-            ENOTSUP);
+            NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 1), 1);
