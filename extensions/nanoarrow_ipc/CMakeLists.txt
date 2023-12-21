@@ -215,6 +215,16 @@ if(NANOARROW_IPC_BUILD_TESTS)
     fetchcontent_makeavailable(nlohmann_json)
   endif()
 
+  # zlib to decode gzipped integration testing JSON files
+  # We don't use Arrow C++ for this because building Arrow C++ with zlib
+  # is not trivial on Windows.
+  find_package(ZLIB)
+  if(NOT ZLIB_FOUND)
+    # Wrapper around FetchContent that better isolates the zlib CMakeLists.txt
+    message(STATUS "Using FetchContent to build a static zlib")
+    add_subdirectory(thirdparty/zlib)
+  endif()
+
   enable_testing()
 
   add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
@@ -251,6 +261,7 @@ if(NANOARROW_IPC_BUILD_TESTS)
                         nanoarrow
                         ${NANOARROW_IPC_ARROW_TARGET}
                         nlohmann_json
+                        ZLIB::ZLIB
                         gtest_main
                         ipc_coverage_config)
   target_link_libraries(nanoarrow_ipc_hpp_test

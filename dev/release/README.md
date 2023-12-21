@@ -80,10 +80,10 @@ Command Line Tools (i.e., `xcode-select --install`),
 
 ```bash
 # Download + build Arrow C++
-curl https://dlcdn.apache.org/arrow/arrow-11.0.0/apache-arrow-11.0.0.tar.gz | \
+curl https://github.com/apache/arrow/archive/refs/tags/apache-arrow-14.0.2.tar.gz | \
   tar -zxf -
 mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-11.0.0/cpp \
+cmake ../apache-arrow-14.0.2/cpp \
     -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE \
     # Required for Arrow on old MacOS
     -DCMAKE_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY" \
@@ -139,10 +139,10 @@ the verification script.
 
 ```bash
 # Build Arrow C++ from source
-curl https://dlcdn.apache.org/arrow/arrow-12.0.1/apache-arrow-12.0.1.tar.gz | \
+curl https://github.com/apache/arrow/archive/refs/tags/apache-arrow-14.0.2.tar.gz | \
   tar -zxf -
 mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-12.0.1/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+cmake ../apache-arrow-14.0.2/cpp -DCMAKE_INSTALL_PREFIX=../arrow
 cmake --build .
 cmake --install . --prefix=../arrow --config=Debug
 cd ..
