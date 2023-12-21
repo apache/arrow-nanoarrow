@@ -159,7 +159,7 @@ static ArrowErrorCode ExportBatchFromJson(const char* json_path, int num_batch,
   MaterializedArrayStream data;
   NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, num_batch, error));
 
-  ArrowArrayMove(data.arrays[num_batch].get(), out);
+  ArrowArrayMove(data.arrays[0].get(), out);
   return NANOARROW_OK;
 }
 
@@ -173,7 +173,7 @@ static ArrowErrorCode ImportBatchAndCompareToJson(const char* json_path, int num
   nanoarrow::testing::TestingJSONComparison comparison;
   NANOARROW_RETURN_NOT_OK(comparison.SetSchema(data.schema.get(), error));
   NANOARROW_RETURN_NOT_OK(
-      comparison.CompareBatch(actual.get(), data.arrays[num_batch].get(), error));
+      comparison.CompareBatch(actual.get(), data.arrays[0].get(), error));
   if (comparison.num_differences() > 0) {
     std::stringstream ss;
     comparison.WriteDifferences(ss);
