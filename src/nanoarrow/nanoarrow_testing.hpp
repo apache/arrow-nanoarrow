@@ -2188,7 +2188,6 @@ class TestingJSONComparison {
           CompareBatch(actual_array.get(), expected_array.get(), error, batch_label));
     } while (true);
 
-    NANOARROW_RETURN_NOT_OK(CompareDictionaries(error, "dictionaries"));
     return NANOARROW_OK;
   }
 
@@ -2274,6 +2273,13 @@ class TestingJSONComparison {
       return EINVAL;
     }
 
+    // "Write" the schema using both writers to ensure dictionary ids can be resolved
+    std::stringstream ss;
+    writer_actual_.ResetDictionaries();
+    writer_actual_.WriteSchema(ss, schema_.get());
+    writer_expected_.ResetDictionaries();
+    writer_expected_.WriteSchema(ss, schema_.get());
+
     return NANOARROW_OK;
   }
 
@@ -2314,23 +2320,6 @@ class TestingJSONComparison {
   nanoarrow::UniqueArrayView actual_;
   nanoarrow::UniqueArrayView expected_;
 
-  ArrowErrorCode CompareDictionaries(ArrowError* error, const std::string& path) {
-    std::stringstream ss;
-
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteDictionaries(ss), error);
-    std::string actual_json = ss.str();
-
-    ss.str("");
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_expected_.WriteDictionaries(ss), error);
-    std::string expected_json = ss.str();
-
-    if (actual_json != expected_json) {
-      differences_.push_back({path, actual_json, expected_json});
-    }
-
-    return NANOARROW_OK;
-  }
-
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {
     // Preprocess both fields such that map types have canonical names
@@ -2368,8 +2357,24 @@ class TestingJSONComparison {
   ArrowErrorCode CompareColumn(ArrowSchema* schema, ArrowArrayView* actual,
                                ArrowArrayView* expected, ArrowError* error,
                                const std::string& path = "") {
-    std::stringstream ss;
+    // Compare children and dictionaries first, then higher-level structures after.
+    // This is a redundant because the higher-level serialized JSON will also report
+    // a difference if deeply nested children have differences; however, it will not
+    // contain dictionaries and this output is slightly better (more targeted differences
+    // that are slightly easier to read appear first).
+    for (int64_t i = 0; i < schema->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(
+          CompareColumn(schema->children[i], actual->children[i], expected->children[i],
+                        error, path + ".children[" + std::to_string(i) + "]"));
+    }
 
+    if (schema->dictionary != nullptr) {
+      NANOARROW_RETURN_NOT_OK(CompareColumn(schema->dictionary, actual->dictionary,
+                                            expected->dictionary, error,
+                                            path + ".dictionary"));
+    }
+
+    std::stringstream ss;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_expected_.WriteColumn(ss, schema, expected),
                                        error);
     std::string expected_json = ss.str();
