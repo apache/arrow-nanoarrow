@@ -1713,6 +1713,15 @@ class TestingJSONReader {
       ArrowBufferView* buffer_view = array_view->buffer_views + i;
       buffer_view->data.as_uint8 = buffer->data;
       buffer_view->size_bytes = buffer->size_bytes;
+
+      // If this is a validity buffer with a big enough size, set the array_view's
+      // null_count
+      if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+          _ArrowBytesForBits(array_view->length) <= buffer_view->size_bytes) {
+        array_view->null_count =
+            array_view->length -
+            ArrowBitCountSet(buffer_view->data.as_uint8, 0, array_view->length);
+      }
     }
 
     // If there is a dictionary associated with schema, parse its value into dictionary
@@ -1734,9 +1743,10 @@ class TestingJSONReader {
         error_prefix + "failed to validate: "));
 
     // Flush length and buffer pointers to the Array
-    array->length = array_view->length;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr), error);
+    array->length = array_view->length;
+    array->null_count = array_view->null_count;
 
     return NANOARROW_OK;
   }
