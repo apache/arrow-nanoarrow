@@ -902,7 +902,14 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFileDictionary) {
   error.message[0] = '\0';
 
   std::string data_file_json =
-      R"({"schema": {"fields": [{"name": null, "nullable": true, "type": {"name": "binary"}, "dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}, "children": []}, {"name": null, "nullable": true, "type": {"name": "utf8"}, "dictionary": {"id": 1, "indexType": {"name": "int", "bitWidth": 8, "isSigned": true}, "isOrdered": false}, "children": []}]}, "batches": [{"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "DATA": [0]}, {"name": null, "count": 1, "VALIDITY": [1], "DATA": [1]}]}], "dictionaries": [{"id": 0, "data": {"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["616263"]}]}}, {"id": 1, "data": {"count": 2, "columns": [{"name": null, "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 6], "DATA": ["abc", "def"]}]}}]})";
+      R"({"schema": {"fields": [{"name": null, "nullable": true, "type": {"name": "binary"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}, "children": []}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 1, "indexType": {"name": "int", "bitWidth": 8, "isSigned": true}, "isOrdered": false}, "children": []}]}, )"
+      R"("batches": [{"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "DATA": [0]}, )"
+      R"({"name": null, "count": 1, "VALIDITY": [1], "DATA": [1]}]}], )"
+      R"("dictionaries": [{"id": 0, "data": {"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["616263"]}]}}, )"
+      R"({"id": 1, "data": {"count": 2, "columns": [{"name": null, "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 6], "DATA": ["abc", "def"]}]}}]})";
 
   TestingJSONReader reader;
   ASSERT_EQ(reader.ReadDataFile(data_file_json, stream.get(),
