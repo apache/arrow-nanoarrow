@@ -278,23 +278,18 @@ class TestingJSONWriter {
       view.type = view.storage_type;
       NANOARROW_RETURN_NOT_OK(WriteDictionary(
           out, dictionary_id, field->flags & ARROW_FLAG_DICTIONARY_ORDERED, &view));
+
+      // Write dictionary children
+      out << R"(, "children": )";
+      NANOARROW_RETURN_NOT_OK(WriteFieldChildren(out, field->dictionary));
     } else {
+      // Write non-dictionary type/children
       out << R"(, "type": )";
       NANOARROW_RETURN_NOT_OK(WriteType(out, &view));
-    }
 
-    // Write children
-    out << R"(, "children": )";
-    if (field->n_children == 0) {
-      out << "[]";
-    } else {
-      out << "[";
-      NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[0]));
-      for (int64_t i = 1; i < field->n_children; i++) {
-        out << ", ";
-        NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[i]));
-      }
-      out << "]";
+      // Write children
+      out << R"(, "children": )";
+      NANOARROW_RETURN_NOT_OK(WriteFieldChildren(out, field));
     }
 
     // Write metadata
@@ -505,6 +500,22 @@ class TestingJSONWriter {
     const internal::Dictionary& dict = dictionaries_.Get(dictionary_id);
     out << R"({"id": )" << dictionary_id << R"(, "data": {"count": )"
         << dict.column_length << R"(, "columns": [)" << dict.column_json << "]}}";
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteFieldChildren(std::ostream& out, const ArrowSchema* field) {
+    if (field->n_children == 0) {
+      out << "[]";
+    } else {
+      out << "[";
+      NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[0]));
+      for (int64_t i = 1; i < field->n_children; i++) {
+        out << ", ";
+        NANOARROW_RETURN_NOT_OK(WriteField(out, field->children[i]));
+      }
+      out << "]";
+    }
+
     return NANOARROW_OK;
   }
 
