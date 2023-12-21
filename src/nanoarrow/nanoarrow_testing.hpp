@@ -144,6 +144,8 @@ class TestingJSONWriter {
   /// avoid serialization issues.
   void set_float_precision(int precision) { float_precision_ = precision; }
 
+  void ResetDictionaries() { dictionaries_.clear(); }
+
   /// \brief Write an ArrowArrayStream as a data file JSON object to out
   ///
   /// Creates output like `{"schema": {...}, "batches": [...], ...}`.
@@ -152,7 +154,7 @@ class TestingJSONWriter {
       return EINVAL;
     }
 
-    dictionaries_.clear();
+    ResetDictionaries();
 
     out << R"({"schema": )";
 
@@ -2115,7 +2117,11 @@ class TestingJSONComparison {
   }
 
   /// \brief Clear any existing differences
-  void ClearDifferences() { differences_.clear(); }
+  void ClearDifferences() {
+    differences_.clear();
+    writer_actual_.ResetDictionaries();
+    writer_expected_.ResetDictionaries();
+  }
 
   /// \brief Compare a stream of record batches
   ///
@@ -2182,6 +2188,7 @@ class TestingJSONComparison {
           CompareBatch(actual_array.get(), expected_array.get(), error, batch_label));
     } while (true);
 
+    NANOARROW_RETURN_NOT_OK(CompareDictionaries(error, "dictionaries"));
     return NANOARROW_OK;
   }
 
@@ -2233,13 +2240,13 @@ class TestingJSONComparison {
 
     // Compare metadata
     std::stringstream ss;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteMetadata(ss, actual->metadata),
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteMetadata(ss, actual->metadata),
                                        error);
     std::string actual_metadata = ss.str();
 
     ss.str("");
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteMetadata(ss, expected->metadata),
-                                       error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        writer_expected_.WriteMetadata(ss, expected->metadata), error);
     std::string expected_metadata = ss.str();
 
     if (actual_metadata != expected_metadata) {
@@ -2300,11 +2307,29 @@ class TestingJSONComparison {
   }
 
  private:
-  TestingJSONWriter writer_;
+  TestingJSONWriter writer_actual_;
+  TestingJSONWriter writer_expected_;
   std::vector<Difference> differences_;
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArrayView actual_;
   nanoarrow::UniqueArrayView expected_;
+
+  ArrowErrorCode CompareDictionaries(ArrowError* error, const std::string& path) {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteDictionaries(ss), error);
+    std::string actual_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_expected_.WriteDictionaries(ss), error);
+    std::string expected_json = ss.str();
+
+    if (actual_json != expected_json) {
+      differences_.push_back({path, actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
 
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {
@@ -2326,11 +2351,11 @@ class TestingJSONComparison {
                                   ArrowError* error, const std::string& path = "") {
     std::stringstream ss;
 
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, expected), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_expected_.WriteField(ss, expected), error);
     std::string expected_json = ss.str();
 
     ss.str("");
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteField(ss, actual), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteField(ss, actual), error);
     std::string actual_json = ss.str();
 
     if (actual_json != expected_json) {
@@ -2345,11 +2370,13 @@ class TestingJSONComparison {
                                const std::string& path = "") {
     std::stringstream ss;
 
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteColumn(ss, schema, expected), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_expected_.WriteColumn(ss, schema, expected),
+                                       error);
     std::string expected_json = ss.str();
 
     ss.str("");
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_.WriteColumn(ss, schema, actual), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteColumn(ss, schema, actual),
+                                       error);
     std::string actual_json = ss.str();
 
     if (actual_json != expected_json) {
