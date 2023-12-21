@@ -53,9 +53,12 @@ class DictionaryContext {
   DictionaryContext() : next_id_(0) {}
 
   ArrowErrorCode RecordSchema(int32_t dictionary_id, const ArrowSchema* values_schema) {
-    dictionaries_[dictionary_id] = internal::Dictionary();
-    NANOARROW_RETURN_NOT_OK(
-        ArrowSchemaDeepCopy(values_schema, dictionaries_[dictionary_id].schema.get()));
+    if (!HasDictionaryForId(dictionary_id)) {
+      dictionaries_[dictionary_id] = internal::Dictionary();
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaDeepCopy(values_schema, dictionaries_[dictionary_id].schema.get()));
+    }
+
     dictionary_ids_[values_schema] = dictionary_id;
     return NANOARROW_OK;
   }
@@ -1184,6 +1187,11 @@ class TestingJSONReader {
       // Keep track of this dictionary_id/schema for parsing batches
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           dictionaries_.RecordSchema(dictionary_id, schema->dictionary), error);
+
+      // Validate!
+      ArrowSchemaView schema_view;
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+
       return NANOARROW_OK;
     }
 
