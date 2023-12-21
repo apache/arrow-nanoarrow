@@ -193,7 +193,7 @@ class TestingJSONWriter {
 
     if (!dictionaries_.empty()) {
       out << R"(, "dictionaries": )";
-      NANOARROW_RETURN_NOT_OK(WriteDictionaries(out));
+      NANOARROW_RETURN_NOT_OK(WriteDictionaryBatches(out));
     }
 
     out << "}";
@@ -276,7 +276,7 @@ class TestingJSONWriter {
 
       out << R"(, "dictionary": )";
       view.type = view.storage_type;
-      NANOARROW_RETURN_NOT_OK(WriteDictionary(
+      NANOARROW_RETURN_NOT_OK(WriteFieldDictionary(
           out, dictionary_id, field->flags & ARROW_FLAG_DICTIONARY_ORDERED, &view));
 
       // Write dictionary children
@@ -473,7 +473,7 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteDictionaries(std::ostream& out) {
+  ArrowErrorCode WriteDictionaryBatches(std::ostream& out) {
     std::vector<int32_t> ids = dictionaries_.GetAllIds();
     if (ids.empty()) {
       out << "[]";
@@ -482,10 +482,10 @@ class TestingJSONWriter {
 
     out << "[";
     std::sort(ids.begin(), ids.end());
-    NANOARROW_RETURN_NOT_OK(WriteDictionary(out, ids[0]));
+    NANOARROW_RETURN_NOT_OK(WriteDictionaryBatch(out, ids[0]));
     for (size_t i = 1; i < ids.size(); i++) {
       out << ", ";
-      NANOARROW_RETURN_NOT_OK(WriteDictionary(out, ids[i]));
+      NANOARROW_RETURN_NOT_OK(WriteDictionaryBatch(out, ids[i]));
     }
     out << "]";
 
@@ -496,7 +496,7 @@ class TestingJSONWriter {
   int float_precision_;
   internal::DictionaryContext dictionaries_;
 
-  ArrowErrorCode WriteDictionary(std::ostream& out, int32_t dictionary_id) {
+  ArrowErrorCode WriteDictionaryBatch(std::ostream& out, int32_t dictionary_id) {
     const internal::Dictionary& dict = dictionaries_.Get(dictionary_id);
     out << R"({"id": )" << dictionary_id << R"(, "data": {"count": )"
         << dict.column_length << R"(, "columns": [)" << dict.column_json << "]}}";
@@ -619,8 +619,9 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteDictionary(std::ostream& out, int32_t dictionary_id,
-                                 bool is_ordered, const ArrowSchemaView* indices_field) {
+  ArrowErrorCode WriteFieldDictionary(std::ostream& out, int32_t dictionary_id,
+                                      bool is_ordered,
+                                      const ArrowSchemaView* indices_field) {
     out << "{";
 
     out << R"("id": )" << dictionary_id;
