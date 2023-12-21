@@ -86,6 +86,7 @@ class DictionaryContext {
   void clear() {
     dictionaries_.clear();
     dictionary_ids_.clear();
+    next_id_ = 0;
   }
 
   bool HasDictionaryForSchema(const ArrowSchema* values_schema) const {
@@ -2117,11 +2118,7 @@ class TestingJSONComparison {
   }
 
   /// \brief Clear any existing differences
-  void ClearDifferences() {
-    differences_.clear();
-    writer_actual_.ResetDictionaries();
-    writer_expected_.ResetDictionaries();
-  }
+  void ClearDifferences() { differences_.clear(); }
 
   /// \brief Compare a stream of record batches
   ///
@@ -2198,6 +2195,9 @@ class TestingJSONComparison {
   ArrowErrorCode CompareSchema(const ArrowSchema* actual, const ArrowSchema* expected,
                                ArrowError* error = nullptr,
                                const std::string& path = "") {
+    writer_actual_.ResetDictionaries();
+    writer_expected_.ResetDictionaries();
+
     // Compare the top-level schema "manually" because (1) map type needs special-cased
     // comparison and (2) it's easier to read the output if differences are separated
     // by field.
@@ -2274,10 +2274,11 @@ class TestingJSONComparison {
     }
 
     // "Write" the schema using both writers to ensure dictionary ids can be resolved
+    // using the ArrowSchema* pointers from schema_
     std::stringstream ss;
     writer_actual_.ResetDictionaries();
-    writer_actual_.WriteSchema(ss, schema_.get());
     writer_expected_.ResetDictionaries();
+    writer_actual_.WriteSchema(ss, schema_.get());
     writer_expected_.WriteSchema(ss, schema_.get());
 
     return NANOARROW_OK;

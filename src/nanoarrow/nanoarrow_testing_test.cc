@@ -1433,6 +1433,61 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
 )");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayWithDictionaryComparison) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray actual;
+  nanoarrow::UniqueArray expected;
+
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema->children[0]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
+  ASSERT_EQ(comparison.SetSchema(schema.get()), NANOARROW_OK);
+
+  // Dictionary-encoded with one element
+  ASSERT_EQ(ArrowArrayInitFromSchema(expected.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(expected.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(expected->children[0], 0), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowArrayAppendString(expected->children[0]->dictionary, ArrowCharView("abc")),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(expected.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(expected.get(), nullptr), NANOARROW_OK);
+
+  // Dictionary-encoded with one element with the only difference in the dictionary
+  ASSERT_EQ(ArrowArrayInitFromSchema(actual.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(actual.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(actual->children[0], 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(actual->children[0]->dictionary, ArrowCharView("def")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(actual.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(actual.get(), nullptr), NANOARROW_OK);
+
+  // Compare array with dictionary that has no differences
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), actual.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+  comparison.ClearDifferences();
+
+  // Compare arrays with nested difference in the dictionary
+  ArrowError error;
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), R"(Path: .children[0].dictionary
+- {"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["def"]}
++ {"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}
+
+)");
+}
+
 ArrowErrorCode MakeArrayStream(const ArrowSchema* schema,
                                std::vector<std::string> batches_json,
                                ArrowArrayStream* out) {
