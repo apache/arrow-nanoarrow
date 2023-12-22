@@ -163,6 +163,34 @@ infer_nanoarrow_schema.vctrs_list_of <- function(x, ...) {
   }
 }
 
+#' @export
+infer_nanoarrow_schema.AsIs <- function(x, ...) {
+  # NextMethod() goes directly to `default`
+  class(x) <- class(x)[-1]
+  infer_nanoarrow_schema(x)
+}
+
+#' @export
+infer_nanoarrow_schema.list <- function(x, ...) {
+  # TODO: Move this to C
+  is_null <- vapply(x, is.null, logical(1))
+
+  if (all(is_null)) {
+    return(na_list(na_na()))
+  }
+
+  is_raw <- vapply(x, is.raw, logical(1))
+  if (!all(is_raw | is_null)) {
+    return(NextMethod())
+  }
+
+  if (length(x) > 0 && sum(lengths(x)) > .Machine$integer.max) {
+    na_large_binary()
+  } else {
+    na_binary()
+  }
+}
+
 #' @rdname as_nanoarrow_schema
 #' @export
 nanoarrow_schema_parse <- function(x, recursive = FALSE) {

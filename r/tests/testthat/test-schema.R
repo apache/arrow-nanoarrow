@@ -100,6 +100,25 @@ test_that("infer_nanoarrow_schema() method works for integer64()", {
   expect_identical(infer_nanoarrow_schema(bit64::integer64())$format, "l")
 })
 
+test_that("infer_nanoarrow_schema() method works for AsIs", {
+  expect_identical(
+    infer_nanoarrow_schema(I(integer()))$format,
+    infer_nanoarrow_schema(integer())$format
+  )
+})
+
+test_that("infer_nanoarrow_schema() returns list of null for empty or all null list", {
+  expect_identical(infer_nanoarrow_schema(list())$format, "+l")
+  expect_identical(infer_nanoarrow_schema(list())$children[[1]]$format, "n")
+  expect_identical(infer_nanoarrow_schema(list(NULL))$format, "+l")
+  expect_identical(infer_nanoarrow_schema(list())$children[[1]]$format, "n")
+})
+
+test_that("infer_nanoarrow_schema() returns binary for list of raw", {
+  expect_identical(infer_nanoarrow_schema(list(raw()))$format, "z")
+  expect_identical(infer_nanoarrow_schema(list(raw(), NULL))$format, "z")
+})
+
 test_that("nanoarrow_schema_parse() works", {
   simple_info <- nanoarrow_schema_parse(na_int32())
   expect_identical(simple_info$type, "int32")

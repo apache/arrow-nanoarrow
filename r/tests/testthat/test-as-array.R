@@ -535,6 +535,75 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
   )
 })
 
+
+test_that("as_nanoarrow_array() works for list(raw()) -> na_binary()", {
+  # Without nulls
+  array <- as_nanoarrow_array(lapply(letters, charToRaw))
+  expect_identical(infer_nanoarrow_schema(array)$format, "z")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(0:26))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(c(lapply(letters, charToRaw), list(NULL)))
+  expect_identical(infer_nanoarrow_schema(array)$format, "z")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(0:26, 26L)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[3]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+})
+
+test_that("as_nanoarrow_array() works for list(NULL) -> na_list(na_na())", {
+  array <- as_nanoarrow_array(list(NULL))
+  expect_identical(infer_nanoarrow_schema(array)$format, "+l")
+  expect_identical(array$length, 1L)
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    as.raw(as_nanoarrow_array(FALSE)$buffers[[2]])
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(0L, 0L)))
+  )
+  expect_identical(infer_nanoarrow_schema(array$children[[1]])$format, "n")
+  expect_identical(array$children[[1]]$length, 0L)
+})
+
+test_that("as_nanoarrow_array() works for list(integer()) -> na_list(na_int32())", {
+  array <- as_nanoarrow_array(list(1:5, 6:10), schema = na_list(na_int32()))
+  expect_identical(infer_nanoarrow_schema(array)$format, "+l")
+  expect_identical(array$length, 2L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    as.raw(as_nanoarrow_array(c(TRUE, TRUE))$buffers[[2]])
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(c(0L, 5L, 10L)))
+  )
+  expect_identical(infer_nanoarrow_schema(array$children[[1]])$format, "i")
+  expect_identical(array$children[[1]]$length, 10L)
+})
+
 test_that("as_nanoarrow_array() works for unspecified() -> na_na()", {
   skip_if_not_installed("vctrs")
 
