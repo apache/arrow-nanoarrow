@@ -51,11 +51,15 @@ static inline int nanoarrow_materialize_chr(struct RConverter* converter) {
     case NANOARROW_TYPE_INT64: {
       char buf[64];
       for (R_xlen_t i = 0; i < dst->length; i++) {
-        int n_chars =
-            snprintf(buf, sizeof(buf), "%" PRId64,
-                     ArrowArrayViewGetIntUnsafe(src->array_view, src->offset + i));
-        SET_STRING_ELT(dst->vec_sexp, dst->offset + i,
-                       Rf_mkCharLenCE(buf, n_chars, CE_UTF8));
+        if (ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+          SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
+        } else {
+          int n_chars =
+              snprintf(buf, sizeof(buf), "%" PRId64,
+                       ArrowArrayViewGetIntUnsafe(src->array_view, src->offset + i));
+          SET_STRING_ELT(dst->vec_sexp, dst->offset + i,
+                         Rf_mkCharLenCE(buf, n_chars, CE_UTF8));
+        }
       }
       return NANOARROW_OK;
     }
