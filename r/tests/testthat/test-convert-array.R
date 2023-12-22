@@ -636,8 +636,8 @@ test_that("convert to vector works for character()", {
 
   # check an array that we can't convert
   expect_error(
-    convert_array(as_nanoarrow_array(1:5), character()),
-    "Can't convert array <int32> to R vector of type character"
+    convert_array(as_nanoarrow_array(1:5), list()),
+    "Can't convert array <int32> to R vector of type list"
   )
 })
 
@@ -788,7 +788,7 @@ test_that("convert to vector works for list -> vctrs::list_of", {
 
   # With bad ptype
   expect_error(
-    convert_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = list())),
     "Can't convert `item`"
   )
 
@@ -825,7 +825,7 @@ test_that("convert to vector works for large_list -> vctrs::list_of", {
 
   # With bad ptype
   expect_error(
-    convert_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = list())),
     "Can't convert `item`"
   )
 })
@@ -854,7 +854,7 @@ test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
 
   # With bad ptype
   expect_error(
-    convert_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = list())),
     "Can't convert `item`"
   )
 })

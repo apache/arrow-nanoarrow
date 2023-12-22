@@ -21,10 +21,17 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <inttypes.h>
+#include <stdint.h>
+
 #include "materialize_common.h"
 #include "nanoarrow.h"
 
 static inline int nanoarrow_materialize_chr(struct RConverter* converter) {
+  if (converter->src.array_view->array->dictionary != NULL) {
+    return ENOTSUP;
+  }
+
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
 
@@ -34,6 +41,24 @@ static inline int nanoarrow_materialize_chr(struct RConverter* converter) {
         SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
       }
       return NANOARROW_OK;
+
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64: {
+      char buf[64];
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        int n_chars =
+            snprintf(buf, sizeof(buf), "%" PRId64,
+                     ArrowArrayViewGetIntUnsafe(src->array_view, src->offset + i));
+        SET_STRING_ELT(dst->vec_sexp, dst->offset + i,
+                       Rf_mkCharLenCE(buf, n_chars, CE_UTF8));
+      }
+      return NANOARROW_OK;
+    }
 
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
