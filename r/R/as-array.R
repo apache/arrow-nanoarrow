@@ -208,7 +208,7 @@ as_nanoarrow_array.list <- function(x, ..., schema = NULL) {
 
   schema <- as_nanoarrow_schema(schema)
   parsed <- nanoarrow_schema_parse(schema)
-  if (parsed$type != "list") {
+  if (!is.null(parsed$extension_name) || parsed$type != "list") {
     return(NextMethod())
   }
 
