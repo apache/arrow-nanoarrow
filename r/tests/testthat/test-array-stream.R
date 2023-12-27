@@ -98,6 +98,31 @@ test_that("as_nanoarrow_array_stream() works for nanoarow_array_stream", {
   )
 })
 
+test_that("as_nanoarrow_array_stream() works for nanoarow_array", {
+  array <- as_nanoarrow_array(data.frame(x = 1:5))
+
+  stream <- as_nanoarrow_array_stream(array)
+  expect_identical(infer_nanoarrow_schema(stream)$format, "+s")
+  expect_identical(
+    lapply(collect_array_stream(stream), as.data.frame),
+    list(data.frame(x = 1:5))
+  )
+
+  # With explicit but identical schema
+  stream <- as_nanoarrow_array_stream(array, schema = na_struct(list(x = na_int32())))
+  expect_identical(infer_nanoarrow_schema(stream)$format, "+s")
+  expect_identical(
+    lapply(collect_array_stream(stream), as.data.frame),
+    list(data.frame(x = 1:5))
+  )
+
+  # With schema requiring a cast (not implemented in arrow)
+  skip_if_not_installed("arrow")
+  expect_snapshot_error(
+    as_nanoarrow_array_stream(array, schema = na_struct(list(x = na_double())))
+  )
+})
+
 test_that("infer_nanoarrow_schema() is implemented for streams", {
   stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
   schema <- infer_nanoarrow_schema(stream)
