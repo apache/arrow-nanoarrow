@@ -15,7 +15,7 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-Teseting API Reference
+Testing API Reference
 ======================
 
 .. doxygengroup:: nanoarrow_testing
