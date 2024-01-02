@@ -38,13 +38,13 @@ def test_cschema_helper():
 
 def test_carray_helper():
     array = na.lib.CArray.allocate(na.lib.CSchema.allocate())
-    assert na.lib.carray(array) is array
+    assert na.carray(array) is array
 
-    array = na.lib.carray(pa.array([], pa.null()))
+    array = na.carray(pa.array([], pa.null()))
     assert isinstance(array, na.lib.CArray)
 
     with pytest.raises(TypeError):
-        na.lib.carray(None)
+        na.carray(None)
 
 
 def test_array_stream_helper():
@@ -56,7 +56,7 @@ def test_array_stream_helper():
 
 
 def test_array_view_helper():
-    array = na.lib.carray(pa.array([1, 2, 3]))
+    array = na.carray(pa.array([1, 2, 3]))
     view = na.lib.carray_view(array)
     assert isinstance(view, na.lib.CArrayView)
     assert na.lib.carray_view(view) is view
@@ -172,7 +172,7 @@ def test_carray_empty():
 
 
 def test_carray():
-    array = na.lib.carray(pa.array([1, 2, 3], pa.int32()))
+    array = na.carray(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
     assert array.length == 3
     assert array.offset == 0
@@ -187,7 +187,7 @@ def test_carray():
 
 
 def test_carray_recursive():
-    array = na.lib.carray(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
+    array = na.carray(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
     assert array.n_children == 1
     assert len(list(array.children)) == 1
     assert array.child(0).length == 3
@@ -199,14 +199,14 @@ def test_carray_recursive():
 
 
 def test_carray_dictionary():
-    array = na.lib.carray(pa.array(["a", "b", "b"]).dictionary_encode())
+    array = na.carray(pa.array(["a", "b", "b"]).dictionary_encode())
     assert array.length == 3
     assert array.dictionary.length == 2
     assert "dictionary: <nanoarrow.lib.CArray string>" in repr(array)
 
 
 def test_carray_view():
-    array = na.lib.carray(pa.array([1, 2, 3], pa.int32()))
+    array = na.carray(pa.array([1, 2, 3], pa.int32()))
     view = na.lib.carray_view(array)
 
     assert view.storage_type == "int32"
@@ -228,7 +228,7 @@ def test_carray_view_recursive():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 
-    array = na.lib.carray(pa_array)
+    array = na.carray(pa_array)
 
     assert array.schema.format == "+s"
     assert array.length == 3
@@ -251,7 +251,7 @@ def test_carray_view_recursive():
 
 def test_carray_view_dictionary():
     pa_array = pa.array(["a", "b", "b"], pa.dictionary(pa.int32(), pa.utf8()))
-    array = na.lib.carray(pa_array)
+    array = na.carray(pa_array)
 
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"

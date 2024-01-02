@@ -68,7 +68,7 @@ def test_array():
     pa_arr = pa.array([1, 2, 3], pa.int32())
 
     for arr_obj in [pa_arr, ArrayWrapper(pa_arr)]:
-        array = na.lib.carray(arr_obj)
+        array = na.carray(arr_obj)
         # some basic validation
         assert array.is_valid()
         assert array.length == 3

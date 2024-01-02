@@ -511,7 +511,7 @@ cdef class CArray:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array = na.lib.carray(pa.array(["one", "two", "three", None]))
+    >>> array = na.carray(pa.array(["one", "two", "three", None]))
     >>> array.length
     4
     >>> array.null_count
@@ -672,7 +672,7 @@ cdef class CArrayView:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array = na.lib.carray(pa.array(["one", "two", "three", None]))
+    >>> array = na.carray(pa.array(["one", "two", "three", None]))
     >>> array_view = na.lib.carray_view(array)
     >>> np.array(array_view.buffer(1))
     array([ 0,  3,  6, 11, 11], dtype=int32)
