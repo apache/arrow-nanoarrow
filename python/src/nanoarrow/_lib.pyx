@@ -40,8 +40,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
-from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr, device_repr, \
-    array_stream_repr
+from nanoarrow import _lib_utils
 
 def cversion():
     """Return the nanoarrow C library version string
@@ -296,7 +295,7 @@ cdef class CSchema:
         return out_str
 
     def __repr__(self):
-        return schema_repr(self)
+        return _lib_utils.schema_repr(self)
 
     @property
     def format(self):
@@ -458,6 +457,10 @@ cdef class CSchemaView:
                 self._schema_view.extension_metadata.size_bytes
             )
 
+
+    def __repr__(self):
+        return _lib_utils.schema_view_repr(self)
+
 cdef class CArray:
     """Low-level ArrowArray wrapper
 
@@ -602,7 +605,7 @@ cdef class CArray:
             return None
 
     def __repr__(self):
-        return array_repr(self)
+        return _lib_utils.array_repr(self)
 
 
 cdef class CArrayView:
@@ -966,7 +969,7 @@ cdef class CArrayStream:
         return self.get_next()
 
     def __repr__(self):
-        return array_stream_repr(self)
+        return _lib_utils.array_stream_repr(self)
 
 
 cdef class Device:
@@ -995,7 +998,7 @@ cdef class Device:
         return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
 
     def __repr__(self):
-        return device_repr(self)
+        return _lib_utils.device_repr(self)
 
     @property
     def device_type(self):
@@ -1041,4 +1044,4 @@ cdef class CDeviceArray:
         return CArray(self, <uintptr_t>&self._ptr.array, self._schema)
 
     def __repr__(self):
-        return device_array_repr(self)
+        return _lib_utils.device_array_repr(self)

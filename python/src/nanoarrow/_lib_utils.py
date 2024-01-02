@@ -81,6 +81,26 @@ def array_repr(array, indent=0):
     return "\n".join(lines)
 
 
+def schema_view_repr(schema_view):
+    lines = [
+        "<nanoarrow.clib.CSchemaView>",
+        f"- type: {repr(schema_view.type)}",
+        f"- storage_type: {repr(schema_view.storage_type)}"
+    ]
+
+    for attr_name in sorted(dir(schema_view)):
+        if attr_name.startswith("_") or attr_name in ("type", "storage_type"):
+            continue
+
+        attr_value = getattr(schema_view, attr_name)
+        if attr_value is None:
+            continue
+
+        lines.append(f"- {attr_name}: {repr(attr_value)}")
+
+    return "\n".join(lines)
+
+
 def array_stream_repr(array_stream):
     if array_stream._addr() == 0:
         return "<NULL nanoarrow.clib.CArrayStream>"

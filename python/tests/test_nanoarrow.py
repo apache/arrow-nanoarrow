@@ -116,6 +116,7 @@ def test_cschema_view():
 
     schema = na.cschema(pa.int32())
     view = na.cschema_view(schema)
+    assert "- type: 'int32'" in repr(view)
     assert view.type == "int32"
     assert view.storage_type == "int32"
 
