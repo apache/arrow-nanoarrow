@@ -57,6 +57,13 @@ test_that("infer_nanoarrow_schema() works for arrow objects", {
     arrow::InMemoryDataset$create(arrow::record_batch(x = 1L))
   )
   expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
+
+  tbl_schema <- infer_nanoarrow_schema(
+    arrow::Scanner$create(
+      arrow::InMemoryDataset$create(arrow::record_batch(x = 1L))
+    )
+  )
+  expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
 })
 
 test_that("nanoarrow_array to Array works", {
@@ -182,6 +189,59 @@ test_that("ChunkedArray to nanoarrow_array works", {
   )
 })
 
+test_that("ChunkedArray to nanoarrow_array_stream works", {
+  skip_if_not_installed("arrow")
+
+  int <- arrow::ChunkedArray$create(1:5)
+  int_array_stream <- as_nanoarrow_array_stream(int)
+  expect_s3_class(int_array_stream, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_chunked_array(int_array_stream)$Equals(
+      arrow::ChunkedArray$create(1:5)
+    )
+  )
+
+  dbl_array_stream <- as_nanoarrow_array_stream(int, schema = arrow::float64())
+  expect_s3_class(dbl_array_stream, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_chunked_array(dbl_array_stream)$Equals(
+      arrow::ChunkedArray$create(1:5, type = arrow::float64())
+    )
+  )
+})
+
+test_that("Array to nanoarrow_array_stream works", {
+  skip_if_not_installed("arrow")
+
+  int <- arrow::Array$create(1:5)
+  int_array_stream <- as_nanoarrow_array_stream(int)
+  expect_s3_class(int_array_stream, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_arrow_array(int_array_stream)$Equals(
+      arrow::Array$create(1:5)
+    )
+  )
+
+  dbl_array_stream <- as_nanoarrow_array_stream(int, schema = arrow::float64())
+  expect_s3_class(dbl_array_stream, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_arrow_array(dbl_array_stream)$Equals(
+      arrow::Array$create(1:5, type = arrow::float64())
+    )
+  )
+
+  empty_array_stream <- basic_array_stream(list(), na_int32())
+  expect_true(
+    arrow::as_arrow_array(empty_array_stream)$Equals(
+      arrow::concat_arrays(type = arrow::int32())
+    )
+  )
+})
+
 test_that("nanoarrow_array to RecordBatch works", {
   skip_if_not_installed("arrow")
 
@@ -278,6 +338,75 @@ test_that("Table to nanoarrow_array", {
   expect_true(
     arrow::as_arrow_table(struct_array_casted)$Equals(
       arrow::arrow_table(a = as.double(1:5), b = letters[1:5])
+    )
+  )
+})
+
+test_that("Table to nanoarrow_array_stream works", {
+  skip_if_not_installed("arrow")
+
+  table <- arrow::arrow_table(a = 1:5, b = letters[1:5])
+  stream <- as_nanoarrow_array_stream(table)
+  expect_s3_class(stream, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_arrow_table(stream)$Equals(
+      arrow::arrow_table(a = 1:5, b = letters[1:5])
+    )
+  )
+
+  # Check cast in the stream -> table direction
+  stream <- as_nanoarrow_array_stream(table)
+  expect_true(
+    arrow::as_arrow_table(
+      stream,
+      schema = arrow::schema(a = arrow::float64(), b = arrow::string())
+    )$Equals(
+      arrow::arrow_table(a = as.double(1:5), b = letters[1:5])
+    )
+  )
+
+  # Check cast in the table -> stream direction
+  stream_casted <- as_nanoarrow_array_stream(
+    table,
+    schema = arrow::schema(a = arrow::float64(), b = arrow::string())
+  )
+  expect_s3_class(stream_casted, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_arrow_table(stream_casted)$Equals(
+      arrow::arrow_table(a = as.double(1:5), b = letters[1:5])
+    )
+  )
+})
+
+test_that("Dataset to nanoarrow_array_stream works", {
+  skip_if_not_installed("arrow")
+  skip_if_not(isTRUE(arrow::arrow_info()$capabilities["dataset"]))
+
+  dataset <- arrow::InMemoryDataset$create(arrow::arrow_table(a = 1:5, b = letters[1:5]))
+  stream <- as_nanoarrow_array_stream(dataset)
+  expect_s3_class(stream, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_arrow_table(stream)$Equals(
+      arrow::arrow_table(a = 1:5, b = letters[1:5])
+    )
+  )
+})
+
+test_that("Scanner to nanoarrow_array_stream works", {
+  skip_if_not_installed("arrow")
+  skip_if_not(isTRUE(arrow::arrow_info()$capabilities["dataset"]))
+
+  dataset <- arrow::InMemoryDataset$create(arrow::arrow_table(a = 1:5, b = letters[1:5]))
+  scanner <- arrow::Scanner$create(dataset)
+  stream <- as_nanoarrow_array_stream(scanner)
+  expect_s3_class(stream, "nanoarrow_array_stream")
+
+  expect_true(
+    arrow::as_arrow_table(stream)$Equals(
+      arrow::arrow_table(a = 1:5, b = letters[1:5])
     )
   )
 })

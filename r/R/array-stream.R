@@ -133,6 +133,23 @@ as_nanoarrow_array_stream.nanoarrow_array_stream <- function(x, ..., schema = NU
 }
 
 #' @export
+as_nanoarrow_array_stream.nanoarrow_array <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    return(basic_array_stream(list(x), validate = FALSE))
+  }
+
+  inferred_schema <- infer_nanoarrow_schema(x)
+  if (nanoarrow_schema_identical(schema, inferred_schema)) {
+    return(basic_array_stream(list(x), validate = FALSE))
+  }
+
+  as_nanoarrow_array_stream(
+    as_nanoarrow_array_stream(x),
+    schema = schema
+  )
+}
+
+#' @export
 as_nanoarrow_array_stream.default <- function(x, ..., schema = NULL) {
   assert_arrow_installed("default coerce to nanoarrow_array_stream")
 

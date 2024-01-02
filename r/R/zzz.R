@@ -23,9 +23,12 @@
   s3_register("arrow::as_data_type", "nanoarrow_schema")
   s3_register("arrow::as_schema", "nanoarrow_schema")
   s3_register("arrow::as_arrow_array", "nanoarrow_array")
+  s3_register("arrow::as_arrow_array", "nanoarrow_array_stream")
   s3_register("arrow::as_chunked_array", "nanoarrow_array")
+  s3_register("arrow::as_chunked_array", "nanoarrow_array_stream")
   s3_register("arrow::as_record_batch", "nanoarrow_array")
   s3_register("arrow::as_arrow_table", "nanoarrow_array")
+  s3_register("arrow::as_arrow_table", "nanoarrow_array_stream")
   s3_register("arrow::as_record_batch_reader", "nanoarrow_array_stream")
 
   s3_register("tibble::as_tibble", "nanoarrow_array")

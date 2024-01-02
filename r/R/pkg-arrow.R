@@ -43,14 +43,30 @@ as_arrow_array.nanoarrow_array <- function(x, ..., type = NULL) {
   result <- arrow::Array$import_from_c(exportable_array, exportable_schema)
 
   if (!is.null(type)) {
-    result$cast(type)
+    result$cast(arrow::as_data_type(type))
   } else {
     result
   }
 }
 
+as_arrow_array.nanoarrow_array_stream <- function(x, ..., type = NULL) {
+  chunked <- as_chunked_array.nanoarrow_array_stream(x, ..., type = type)
+  if (chunked$num_chunks == 1) {
+    chunked$chunks[[1]]
+  } else {
+    arrow::as_arrow_array(chunked)
+  }
+}
+
 as_chunked_array.nanoarrow_array <- function(x, ..., type = NULL) {
   arrow::as_chunked_array(as_arrow_array.nanoarrow_array(x, ..., type = type))
+}
+
+as_chunked_array.nanoarrow_array_stream <- function(x, ..., type = NULL) {
+  on.exit(x$release())
+  schema <- infer_nanoarrow_schema(x)
+  chunks <- collect_array_stream(x, validate = FALSE)
+  arrow::ChunkedArray$create(!!!chunks, type = arrow::as_data_type(schema))
 }
 
 as_record_batch.nanoarrow_array <- function(x, ..., schema = NULL) {
@@ -78,13 +94,26 @@ as_arrow_table.nanoarrow_array <- function(x, ..., schema = NULL) {
   )
 }
 
+as_arrow_table.nanoarrow_array_stream <- function(x, ..., schema = NULL) {
+  on.exit(x$release())
+  table <- arrow::as_arrow_table(as_record_batch_reader.nanoarrow_array_stream(x))
+
+  if (!is.null(schema)) {
+    table$cast(arrow::as_schema(schema))
+  } else {
+    table
+  }
+}
+
 as_record_batch_reader.nanoarrow_array_stream <- function(x, ..., schema = NULL) {
   # TODO: not supporting an explicit schema here yet
   stopifnot(is.null(schema))
 
-  # RecordBatchReaders are mutable and shouldn't be pulled from more than one
-  # place, so it's safe to move them and invalidate any R references to `x`
-  arrow::RecordBatchReader$import_from_c(x)
+  # Export stream to ensure self-containedness
+  stream_out <- nanoarrow::nanoarrow_allocate_array_stream()
+  nanoarrow_pointer_export(x, stream_out)
+
+  arrow::RecordBatchReader$import_from_c(stream_out)
 }
 
 #' @export
@@ -140,6 +169,11 @@ infer_nanoarrow_schema.RecordBatchReader <- function(x, ...) {
 
 #' @export
 infer_nanoarrow_schema.Dataset <- function(x, ...) {
+  as_nanoarrow_schema.Schema(x$schema)
+}
+
+#' @export
+infer_nanoarrow_schema.Scanner <- function(x, ...) {
   as_nanoarrow_schema.Schema(x$schema)
 }
 
@@ -207,4 +241,62 @@ as_nanoarrow_array_stream.RecordBatchReader <- function(x, ..., schema = NULL) {
   array_stream <- nanoarrow_allocate_array_stream()
   x$export_to_c(array_stream)
   array_stream
+}
+
+#' @export
+as_nanoarrow_array_stream.ArrowTabular <- function(x, ..., schema = NULL) {
+  if (!is.null(schema)) {
+    x <- x$cast(arrow::as_schema(schema))
+  }
+
+  as_nanoarrow_array_stream.RecordBatchReader(arrow::as_record_batch_reader(x))
+}
+
+#' @export
+as_nanoarrow_array_stream.Dataset <- function(x, ..., schema = NULL) {
+  as_nanoarrow_array_stream.RecordBatchReader(
+    arrow::as_record_batch_reader(x),
+    ...,
+    schema = schema
+  )
+}
+
+#' @export
+as_nanoarrow_array_stream.arrow_dplyr_query <- function(x, ..., schema = NULL) {
+  as_nanoarrow_array_stream.RecordBatchReader(
+    arrow::as_record_batch_reader(x),
+    ...,
+    schema = schema
+  )
+}
+
+#' @export
+as_nanoarrow_array_stream.Scanner <- function(x, ..., schema = NULL) {
+  as_nanoarrow_array_stream.RecordBatchReader(
+    arrow::as_record_batch_reader(x),
+    ...,
+    schema = schema
+  )
+}
+
+#' @export
+as_nanoarrow_array_stream.ChunkedArray <- function(x, ..., schema = NULL) {
+  if (!is.null(schema)) {
+    x <- x$cast(arrow::as_data_type(schema))
+  }
+
+  schema <- as_nanoarrow_schema.DataType(x$type)
+
+  # Could be more efficient (involves an S3 dispatch + export for each chunk)
+  basic_array_stream(x$chunks, schema = schema, validate = FALSE)
+}
+
+#' @export
+as_nanoarrow_array_stream.Array <- function(x, ..., schema = NULL) {
+  if (!is.null(schema)) {
+    x <- x$cast(arrow::as_data_type(schema))
+  }
+
+  schema <- as_nanoarrow_schema.DataType(x$type)
+  basic_array_stream(list(x), schema = schema, validate = FALSE)
 }
