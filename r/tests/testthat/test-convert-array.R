@@ -364,6 +364,31 @@ test_that("convert to vector works for valid integer()", {
   )
 })
 
+test_that("convert to works for integer() -> character()", {
+  skip_if_not_installed("arrow")
+
+  arrow_int_types <- list(
+    int8 = arrow::int8(),
+    uint8 = arrow::uint8(),
+    int16 = arrow::int16(),
+    uint16 = arrow::uint16(),
+    int32 = arrow::int32(),
+    uint32 = arrow::uint32(),
+    int64 = arrow::int64()
+  )
+
+  ints <- c(NA, 0:10)
+  for (nm in names(arrow_int_types)) {
+    expect_identical(
+      convert_array(
+        as_nanoarrow_array(ints, schema = arrow_int_types[[!!nm]]),
+        character()
+      ),
+      as.character(ints)
+    )
+  }
+})
+
 test_that("convert to vector works for null -> logical()", {
   array <- nanoarrow_array_init(na_na())
   array$length <- 10
@@ -636,8 +661,8 @@ test_that("convert to vector works for character()", {
 
   # check an array that we can't convert
   expect_error(
-    convert_array(as_nanoarrow_array(1:5), character()),
-    "Can't convert array <int32> to R vector of type character"
+    convert_array(as_nanoarrow_array(1:5), list()),
+    "Can't convert array <int32> to R vector of type list"
   )
 })
 
@@ -788,7 +813,7 @@ test_that("convert to vector works for list -> vctrs::list_of", {
 
   # With bad ptype
   expect_error(
-    convert_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = list())),
     "Can't convert `item`"
   )
 
@@ -825,7 +850,7 @@ test_that("convert to vector works for large_list -> vctrs::list_of", {
 
   # With bad ptype
   expect_error(
-    convert_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = list())),
     "Can't convert `item`"
   )
 })
@@ -854,7 +879,7 @@ test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
 
   # With bad ptype
   expect_error(
-    convert_array(array_list, vctrs::list_of(.ptype = character())),
+    convert_array(array_list, vctrs::list_of(.ptype = list())),
     "Can't convert `item`"
   )
 })

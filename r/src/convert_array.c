@@ -108,16 +108,26 @@ static SEXP convert_array_chr(SEXP array_xptr, SEXP ptype_sexp) {
   }
 
   // If array_xptr is an extension, use default conversion
-  if (schema_view.extension_name.size_bytes > 0) {
+  int source_can_altrep;
+  switch (schema_view.type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
+      source_can_altrep = 1;
+      break;
+    default:
+      source_can_altrep = 0;
+  }
+
+  if (!source_can_altrep || schema_view.extension_name.size_bytes > 0) {
     // Default conversion requires a ptype: resolve it if not already specified
     if (ptype_sexp == R_NilValue) {
       ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(array_xptr_get_schema(array_xptr)));
       SEXP default_result =
-          PROTECT(convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp));
+          PROTECT(convert_array_default(array_xptr, VECTOR_TYPE_CHR, ptype_sexp));
       UNPROTECT(2);
       return default_result;
     } else {
-      return convert_array_default(array_xptr, VECTOR_TYPE_OTHER, ptype_sexp);
+      return convert_array_default(array_xptr, VECTOR_TYPE_CHR, ptype_sexp);
     }
   }
 
