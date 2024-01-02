@@ -24,13 +24,15 @@ This Cython extension provides low-level Python wrappers around the
 Arrow C Data and Arrow C Stream interface structs. In general, there
 is one wrapper per C struct and pointer validity is managed by keeping
 strong references to Python objects. These wrappers are intended to
-be literal and stay close to the structure definitions.
+be literal and stay close to the structure definitions: higher level
+interfaces can and should be built in Python where it is faster to
+iterate and where it is easier to create a better user experience
+by default (i.e., classes, methods, and functions implemented in Python
+generally have better autocomplete + documentation available to IDEs).
 """
 
 from libc.stdint cimport uintptr_t, int64_t
-from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from cpython cimport Py_buffer
@@ -40,7 +42,7 @@ from nanoarrow_device_c cimport *
 
 from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr, device_repr
 
-def c_version():
+def cversion():
     """Return the nanoarrow C library version string
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
@@ -59,11 +61,11 @@ cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
     if schema.release != NULL:
         ArrowSchemaRelease(schema)
 
-    free(schema)
+    ArrowFree(schema)
 
 
 cdef object alloc_c_schema(ArrowSchema** c_schema) noexcept:
-    c_schema[0] = <ArrowSchema*> malloc(sizeof(ArrowSchema))
+    c_schema[0] = <ArrowSchema*> ArrowMalloc(sizeof(ArrowSchema))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_schema[0].release = NULL
     return PyCapsule_New(c_schema[0], 'arrow_schema', &pycapsule_schema_deleter)
@@ -77,11 +79,11 @@ cdef void pycapsule_array_deleter(object array_capsule) noexcept:
     if array.release != NULL:
         ArrowArrayRelease(array)
 
-    free(array)
+    ArrowFree(array)
 
 
 cdef object alloc_c_array(ArrowArray** c_array) noexcept:
-    c_array[0] = <ArrowArray*> malloc(sizeof(ArrowArray))
+    c_array[0] = <ArrowArray*> ArrowMalloc(sizeof(ArrowArray))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_array[0].release = NULL
     return PyCapsule_New(c_array[0], 'arrow_array', &pycapsule_array_deleter)
@@ -95,11 +97,11 @@ cdef void pycapsule_array_stream_deleter(object stream_capsule) noexcept:
     if stream.release != NULL:
         ArrowArrayStreamRelease(stream)
 
-    free(stream)
+    ArrowFree(stream)
 
 
 cdef object alloc_c_array_stream(ArrowArrayStream** c_stream) noexcept:
-    c_stream[0] = <ArrowArrayStream*> malloc(sizeof(ArrowArrayStream))
+    c_stream[0] = <ArrowArrayStream*> ArrowMalloc(sizeof(ArrowArrayStream))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_stream[0].release = NULL
     return PyCapsule_New(c_stream[0], 'arrow_array_stream', &pycapsule_array_stream_deleter)
@@ -113,11 +115,11 @@ cdef void pycapsule_device_array_deleter(object device_array_capsule) noexcept:
     if device_array.array.release != NULL:
         device_array.array.release(&device_array.array)
 
-    free(device_array)
+    ArrowFree(device_array)
 
 
 cdef object alloc_c_device_array(ArrowDeviceArray** c_device_array) noexcept:
-    c_device_array[0] = <ArrowDeviceArray*> malloc(sizeof(ArrowDeviceArray))
+    c_device_array[0] = <ArrowDeviceArray*> ArrowMalloc(sizeof(ArrowDeviceArray))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_device_array[0].array.release = NULL
     return PyCapsule_New(c_device_array[0], 'arrow_device_array', &pycapsule_device_array_deleter)
@@ -130,11 +132,11 @@ cdef void pycapsule_array_view_deleter(object array_capsule) noexcept:
 
     ArrowArrayViewReset(array_view)
 
-    free(array_view)
+    ArrowFree(array_view)
 
 
 cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
-    c_array_view[0] = <ArrowArrayView*> malloc(sizeof(ArrowArrayView))
+    c_array_view[0] = <ArrowArrayView*> ArrowMalloc(sizeof(ArrowArrayView))
     ArrowArrayViewInitFromType(c_array_view[0], NANOARROW_TYPE_UNINITIALIZED)
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
 
@@ -215,30 +217,13 @@ cdef class Error:
 
 
 cdef class CSchema:
-    """ArrowSchema wrapper
+    """Low-level ArrowSchema wrapper
 
-    This class provides a user-facing interface to access the fields of
-    an ArrowSchema as defined in the Arrow C Data interface. These objects
-    are usually created using `nanoarrow.schema()`. This Python wrapper
-    allows access to schema fields but does not automatically deserialize
-    their content: use `.view()` to validate and deserialize the content
-    into a more easily inspectable object.
+    This object is a literal wrapper around a read-only ArrowSchema. It provides field accessors
+    that return Python objects and handles the C Data interface lifecycle (i.e., initialized
+    ArrowSchema structures are always released).
 
-    Examples
-    --------
-
-    >>> import pyarrow as pa
-    >>> import nanoarrow as na
-    >>> schema = na.lib.cschema(pa.int32())
-    >>> schema.is_valid()
-    True
-    >>> schema.format
-    'i'
-    >>> schema.name
-    ''
-    >>> schema_view = schema.view()
-    >>> schema_view.type
-    'int32'
+    See `nanoarrow.cschema()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowSchema* _ptr
@@ -299,13 +284,13 @@ cdef class CSchema:
 
     def _to_string(self, recursive=False):
         cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, recursive)
-        cdef char* out = <char*>PyMem_Malloc(n_chars + 1)
+        cdef char* out = <char*>ArrowMalloc(n_chars + 1)
         if not out:
             raise MemoryError()
 
         ArrowSchemaToString(self._ptr, out, n_chars + 1, recursive)
         out_str = out.decode("UTF-8")
-        PyMem_Free(out)
+        ArrowFree(out)
 
         return out_str
 
@@ -363,40 +348,14 @@ cdef class CSchema:
         else:
             return None
 
-    def view(self):
-        self._assert_valid()
-        schema_view = CSchemaView()
-        cdef Error error = Error()
-        cdef int result = ArrowSchemaViewInit(&schema_view._schema_view, self._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowSchemaViewInit()", result)
-
-        schema_view._base = self._base
-        return schema_view
-
 
 cdef class CSchemaView:
-    """ArrowSchemaView wrapper
+    """Low-level ArrowSchemaView wrapper
 
-    The ArrowSchemaView is a nanoarrow C library structure that facilitates
-    access to the deserialized content of an ArrowSchema (e.g., parameter
-    values for parameterized types). This wrapper extends that facility to Python.
+    This object is a literal wrapper around a read-only ArrowSchema. It provides field accessors
+    that return Python objects and handles structure lifecycle.
 
-    Examples
-    --------
-
-    >>> import pyarrow as pa
-    >>> import nanoarrow as na
-    >>> schema = na.lib.cschema(pa.decimal128(10, 3))
-    >>> schema_view = schema.view()
-    >>> schema_view.type
-    'decimal128'
-    >>> schema_view.decimal_bitwidth
-    128
-    >>> schema_view.decimal_precision
-    10
-    >>> schema_view.decimal_scale
-    3
+    See `nanoarrow.cschema_view()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowSchemaView _schema_view
@@ -423,10 +382,15 @@ cdef class CSchemaView:
         NANOARROW_TYPE_SPARSE_UNION
     )
 
-    def __cinit__(self):
-        self._base = None
+    def __cinit__(self, CSchema schema):
+        self._base = schema
         self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
         self._schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED
+
+        cdef Error error = Error()
+        cdef int result = ArrowSchemaViewInit(&self._schema_view, schema._ptr, &error.c_error)
+        if result != NANOARROW_OK:
+            error.raise_message("ArrowSchemaViewInit()", result)
 
     @property
     def type(self):
@@ -494,29 +458,13 @@ cdef class CSchemaView:
             )
 
 cdef class CArray:
-    """ArrowArray wrapper
+    """Low-level ArrowArray wrapper
 
-    This class provides a user-facing interface to access the fields of
-    an ArrowArray as defined in the Arrow C Data interface, holding an
-    optional reference to a CSchema that can be used to safely deserialize
-    the content. These objects are usually created using `nanoarrow.array()`.
-    This Python wrapper allows access to array fields but does not
-    automatically deserialize their content: use `nanoarrow.array_view()`
-    to validate and deserialize the content into a more easily inspectable
-    object.
+    This object is a literal wrapper around a read-only ArrowArray. It provides field accessors
+    that return Python objects and handles the C Data interface lifecycle (i.e., initialized
+    ArrowArray structures are always released).
 
-    Examples
-    --------
-
-    >>> import pyarrow as pa
-    >>> import numpy as np
-    >>> import nanoarrow as na
-    >>> array = na.carray(pa.array(["one", "two", "three", None]))
-    >>> array.length
-    4
-    >>> array.null_count
-    1
-    >>> array_view = na.lib.carray_view(array)
+    See `nanoarrow.carray()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowArray* _ptr
@@ -657,28 +605,13 @@ cdef class CArray:
 
 
 cdef class CArrayView:
-    """ArrowArrayView wrapper
+    """Low-level ArrowArrayView wrapper
 
-    The ArrowArrayView is a nanoarrow C library structure that provides
-    structured access to buffers addresses, buffer sizes, and buffer
-    data types. The buffer data is usually propagated from an ArrowArray
-    but can also be propagated from other types of objects (e.g., serialized
-    IPC). The offset and length of this view are independent of its parent
-    (i.e., this object can also represent a slice of its parent).
+    This object is a literal wrapper around an ArrowArrayView. It provides field accessors
+    that return Python objects and handles the structure lifecycle (i.e., initialized
+    ArrowArrayView structures are always released).
 
-    Examples
-    --------
-
-    >>> import pyarrow as pa
-    >>> import numpy as np
-    >>> import nanoarrow as na
-    >>> array = na.carray(pa.array(["one", "two", "three", None]))
-    >>> array_view = na.lib.carray_view(array)
-    >>> np.array(array_view.buffer(1))
-    array([ 0,  3,  6, 11, 11], dtype=int32)
-    >>> np.array(array_view.buffer(2))
-    array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
-          dtype='|S1')
+    See `nanoarrow.carray_view()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowArrayView* _ptr
@@ -907,42 +840,13 @@ cdef class BufferView:
 
 
 cdef class CArrayStream:
-    """ArrowArrayStream wrapper
+    """Low-level ArrowArrayStream wrapper
 
-    This class provides a user-facing interface to access the fields of
-    an ArrowArrayStream as defined in the Arrow C Stream interface.
-    These objects are usually created using `nanoarrow.array_stream()`.
+    This object is a literal wrapper around an ArrowArrayStream. It provides methods that
+    that wrap the underlying C callbacks and handles the C Data interface lifecycle
+    (i.e., initialized ArrowArrayStream structures are always released).
 
-    Examples
-    --------
-
-    >>> import pyarrow as pa
-    >>> import nanoarrow as na
-    >>> pa_column = pa.array([1, 2, 3], pa.int32())
-    >>> pa_batch = pa.record_batch([pa_column], names=["col1"])
-    >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
-    >>> array_stream = na.lib.carray_stream(pa_reader)
-    >>> array_stream.get_schema()
-    <nanoarrow.lib.CSchema struct>
-    - format: '+s'
-    - name: ''
-    - flags: 0
-    - metadata: NULL
-    - dictionary: NULL
-    - children[1]:
-      'col1': <nanoarrow.lib.CSchema int32>
-        - format: 'i'
-        - name: 'col1'
-        - flags: 2
-        - metadata: NULL
-        - dictionary: NULL
-        - children[0]:
-    >>> array_stream.get_next().length
-    3
-    >>> array_stream.get_next() is None
-    Traceback (most recent call last):
-      ...
-    StopIteration
+    See `nanoarrow.carray_stream()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowArrayStream* _ptr
@@ -997,11 +901,7 @@ cdef class CArrayStream:
             ArrowArrayStream* c_array_stream_out
 
         array_stream_capsule = alloc_c_array_stream(&c_array_stream_out)
-
-        # move the stream
-        memcpy(c_array_stream_out, self._ptr, sizeof(ArrowArrayStream))
-        self._ptr.release = NULL
-
+        ArrowArrayStreamMove(self._ptr, c_array_stream_out)
         return array_stream_capsule
 
     def _addr(self):

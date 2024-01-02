@@ -23,11 +23,11 @@
 def schema_repr(schema, indent=0):
     indent_str = " " * indent
     if schema._addr() == 0:
-        return "<NULL nanoarrow.lib.CSchema>"
+        return "<NULL nanoarrow.clib.CSchema>"
     elif not schema.is_valid():
-        return "<released nanoarrow.lib.CSchema>"
+        return "<released nanoarrow.clib.CSchema>"
 
-    lines = [f"<nanoarrow.lib.CSchema {schema._to_string()}>"]
+    lines = [f"<nanoarrow.clib.CSchema {schema._to_string()}>"]
 
     for attr in ("format", "name", "flags"):
         attr_repr = repr(getattr(schema, attr))
@@ -58,11 +58,11 @@ def schema_repr(schema, indent=0):
 def array_repr(array, indent=0):
     indent_str = " " * indent
     if array._addr() == 0:
-        return "<NULL nanoarrow.lib.CArray>"
+        return "<NULL nanoarrow.clib.CArray>"
     elif not array.is_valid():
-        return "<released nanoarrow.lib.CArray>"
+        return "<released nanoarrow.clib.CArray>"
 
-    lines = [f"<nanoarrow.lib.CArray {array.schema._to_string()}>"]
+    lines = [f"<nanoarrow.clib.CArray {array.schema._to_string()}>"]
     for attr in ("length", "offset", "null_count", "buffers"):
         attr_repr = repr(getattr(array, attr))
         lines.append(f"{indent_str}- {attr}: {attr_repr}")
@@ -82,7 +82,7 @@ def array_repr(array, indent=0):
 
 
 def device_array_repr(device_array):
-    title_line = "<nanoarrow.device.lib.CDeviceArray>"
+    title_line = "<nanoarrow.device.clib.CDeviceArray>"
     device_type = f"- device_type: {device_array.device_type}"
     device_id = f"- device_id: {device_array.device_id}"
     array = f"- array: {array_repr(device_array.array, indent=2)}"

@@ -16,7 +16,7 @@
 # under the License.
 
 from nanoarrow._lib import CDeviceArray, Device
-from nanoarrow.lib import carray
+from nanoarrow.clib import carray
 
 
 def cdevice_array(obj):
