@@ -312,6 +312,7 @@ def test_buffers_binary():
 def test_carray_stream():
     array_stream = na.carray_stream()
     assert na.carray_stream(array_stream) is array_stream
+    assert repr(array_stream) == "<released nanoarrow.clib.CArrayStream>"
 
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):
@@ -325,6 +326,8 @@ def test_carray_stream():
     array_stream = na.carray_stream(reader)
 
     assert array_stream.is_valid() is True
+    assert "<nanoarrow.clib.CSchema struct>" in repr(array_stream)
+
     array = array_stream.get_next()
     assert array.schema.child(0).name == "some_column"
     with pytest.raises(StopIteration):

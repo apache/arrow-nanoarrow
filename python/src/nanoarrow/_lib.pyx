@@ -40,7 +40,8 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
-from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr, device_repr
+from nanoarrow._lib_utils import array_repr, device_array_repr, schema_repr, device_repr, \
+    array_stream_repr
 
 def cversion():
     """Return the nanoarrow C library version string
@@ -950,7 +951,6 @@ cdef class CArrayStream:
         cdef Error error = Error()
         cdef CArray array = CArray.allocate(self._cached_schema)
         cdef int code = ArrowArrayStreamGetNext(self._ptr, array._ptr, &error.c_error)
-        cdef const char* message = NULL
         if code != NANOARROW_OK:
             error.raise_error("ArrowArrayStream::get_next()", code)
 
@@ -964,6 +964,9 @@ cdef class CArrayStream:
 
     def __next__(self):
         return self.get_next()
+
+    def __repr__(self):
+        return array_stream_repr(self)
 
 
 cdef class Device:

@@ -81,6 +81,21 @@ def array_repr(array, indent=0):
     return "\n".join(lines)
 
 
+def array_stream_repr(array_stream):
+    if array_stream._addr() == 0:
+        return "<NULL nanoarrow.clib.CArrayStream>"
+    elif not array_stream.is_valid():
+        return "<released nanoarrow.clib.CArrayStream>"
+
+    lines = ["<nanoarrow.clib.CArrayStream>"]
+    try:
+        lines.append(f"- get_schema(): {schema_repr(array_stream.get_schema(), indent=2)}")
+    except:
+        lines.append("- get_schema(): <error calling get_schema()>")
+
+    return "\n".join(lines)
+
+
 def device_array_repr(device_array):
     title_line = "<nanoarrow.device.clib.CDeviceArray>"
     device_type = f"- device_type: {device_array.device_type}"

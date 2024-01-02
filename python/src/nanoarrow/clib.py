@@ -207,7 +207,7 @@ def carray_stream(obj=None, requested_schema=None) -> CArrayStream:
 def cschema_view(obj) -> CSchemaView:
     """ArrowSchemaView wrapper
 
-    The ``ArrowSchemaView``` is a nanoarrow C library structure that facilitates
+    The ``ArrowSchemaView`` is a nanoarrow C library structure that facilitates
     access to the deserialized content of an ``ArrowSchema`` (e.g., parameter values for
     parameterized types). This wrapper extends that facility to Python.
 
