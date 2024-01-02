@@ -422,8 +422,8 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
 
 static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                           struct ArrowSchemaView* schema_view, struct ArrowError* error) {
-  // We handle list(raw()) for now but fall back to arrow for vctrs::list_of()
-  // Arbitrary nested list support is complicated without some concept of a
+  // We handle list(raw()) in C but fall back to S3 for other types of list output.
+  // Arbitrary nested list support is complicated in C without some concept of a
   // "builder", which we don't use.
   if (schema_view->type != NANOARROW_TYPE_BINARY) {
     call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");

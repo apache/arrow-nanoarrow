@@ -112,7 +112,6 @@ as_nanoarrow_array.integer64 <- function(x, ..., schema = NULL) {
     },
     as_nanoarrow_array(as.double(x), schema = schema)
   )
-
 }
 
 #' @export
@@ -193,6 +192,58 @@ as_nanoarrow_array.blob <- function(x, ..., schema = NULL) {
   }
 
   as_nanoarrow_array(unclass(x), schema = schema)
+}
+
+#' @export
+as_nanoarrow_array.data.frame <- function(x, ..., schema = NULL) {
+  # We need to override this to prevent the list implementation from handling it
+  as_nanoarrow_array.default(x, ..., schema = schema)
+}
+
+#' @export
+as_nanoarrow_array.list <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  }
+
+  schema <- as_nanoarrow_schema(schema)
+  parsed <- nanoarrow_schema_parse(schema)
+  if (!is.null(parsed$extension_name) || parsed$type != "list") {
+    return(NextMethod())
+  }
+
+  # This R implementation can't handle complex nesting
+  if (startsWith(schema$children[[1]]$format, "+")) {
+    return(NextMethod())
+  }
+
+  array <- nanoarrow_array_init(schema)
+
+  child <- unlist(x, recursive = FALSE, use.names = FALSE)
+  if (is.null(child)) {
+    child_array <- as_nanoarrow_array.vctrs_unspecified(logical(), schema = na_na())
+  } else {
+    child_array <- as_nanoarrow_array(child, schema = schema$children[[1]])
+  }
+
+  offsets <- c(0L, cumsum(lengths(x)))
+  is_na <- vapply(x, is.null, logical(1))
+  validity <- as_nanoarrow_array(!is_na)$buffers[[2]]
+
+  nanoarrow_array_modify(
+    array,
+    list(
+      length = length(x),
+      null_count = sum(is_na),
+      buffers = list(
+        validity,
+        offsets
+      ),
+      children = list(
+        child_array
+      )
+    )
+  )
 }
 
 #' @export
