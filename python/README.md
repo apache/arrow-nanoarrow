@@ -75,14 +75,18 @@ You can extract the fields of a `CSchema` object one at a time or parse it into 
 
 
 ```python
-schema_view = na.cschema_view(schema)
-schema_view.decimal_precision
+na.cschema_view(schema)
 ```
 
 
 
 
-    10
+    <nanoarrow.clib.CSchemaView>
+    - type: 'decimal128'
+    - storage_type: 'decimal128'
+    - decimal_bitwidth: 128
+    - decimal_precision: 10
+    - decimal_scale: 3
 
 
 
@@ -127,7 +131,7 @@ array
     - length: 4
     - offset: 0
     - null_count: 1
-    - buffers: (3772659204288, 3772659204224, 3772659204352)
+    - buffers: (2939032895680, 2939032895616, 2939032895744)
     - dictionary: NULL
     - children[0]:
 
@@ -137,18 +141,23 @@ You can extract the fields of a `CArray` one at a time or parse it into a view t
 
 
 ```python
-import numpy as np
-array_view = na.carray_view(array)
-[np.array(buffer) for buffer in array_view.buffers]
+na.carray_view(array)
 ```
 
 
 
 
-    [array([7], dtype=uint8),
-     array([ 0,  3,  6, 11, 11], dtype=int32),
-     array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
-           dtype='|S1')]
+    <nanoarrow.clib.CArrayView>
+    - storage_type: 'string'
+    - length: 4
+    - offset: 0
+    - null_count: 1
+    - buffers[3]:
+      - <bool validity[1 b] 11100000>
+      - <int32 data_offset[20 b] 0 3 6 11 11>
+      - <string data[11 b] b'onetwothree'>
+    - dictionary: NULL
+    - children[0]:
 
 
 
@@ -221,7 +230,7 @@ for array in array_stream:
         - length: 3
         - offset: 0
         - null_count: 0
-        - buffers: (0, 3772659335552)
+        - buffers: (0, 2939033026688)
         - dictionary: NULL
         - children[0]:
 

@@ -704,6 +704,9 @@ cdef class CArrayView:
                 <uintptr_t>self._ptr.dictionary
             )
 
+    def __repr__(self):
+        return _lib_utils.array_view_repr(self)
+
     @staticmethod
     def from_cpu_array(CArray array):
         cdef ArrowArrayView* c_array_view
