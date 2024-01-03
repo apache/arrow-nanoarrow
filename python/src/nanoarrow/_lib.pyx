@@ -33,6 +33,7 @@ generally have better autocomplete + documentation available to IDEs).
 
 from libc.stdint cimport uintptr_t, int64_t
 from libc.string cimport memcpy
+from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from cpython cimport Py_buffer
@@ -767,10 +768,11 @@ cdef class BufferView:
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
+    cdef char _format[128]
 
     def __cinit__(self, object base, uintptr_t addr,
-                 ArrowBufferType buffer_type, ArrowType buffer_data_type,
-                 Py_ssize_t element_size_bits, uintptr_t device):
+                  ArrowBufferType buffer_type, ArrowType buffer_data_type,
+                  Py_ssize_t element_size_bits, uintptr_t device):
         self._base = base
         self._ptr = <ArrowBufferView*>addr
         self._buffer_type = buffer_type
@@ -779,56 +781,108 @@ cdef class BufferView:
         self._element_size_bits = element_size_bits
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
+        self._format[0] = 0
+        self._populate_format()
 
     def _addr(self):
         return <uintptr_t>self._ptr.data.data
 
     @property
+    def element_size_bits(self):
+        return self._element_size_bits
+
+    @property
+    def device_type(self):
+        return self._device.device_type
+
+    @property
+    def device_id(self):
+        return self._device.device_id
+
+    @property
     def size_bytes(self):
         return self._ptr.size_bytes
 
+    @property
+    def buffer_type(self):
+        if self._buffer_type == NANOARROW_BUFFER_TYPE_VALIDITY:
+            return "validity"
+        elif self._buffer_type == NANOARROW_BUFFER_TYPE_TYPE_ID:
+            return "type_id"
+        elif self._buffer_type == NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+            return "union_offset"
+        elif self._buffer_type == NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+            return "data_offset"
+        elif self._buffer_type == NANOARROW_BUFFER_TYPE_DATA:
+            return "data"
+
+    @property
+    def buffer_data_type(self):
+        return ArrowTypeString(self._buffer_data_type)
+
+    @property
+    def format(self):
+        return self._format.decode("UTF-8")
+
+    def __len__(self):
+        return self._shape
+
     cdef Py_ssize_t _item_size(self):
-        if self._buffer_data_type == NANOARROW_TYPE_BOOL:
-            return 1
-        elif self._buffer_data_type == NANOARROW_TYPE_STRING:
-            return 1
-        elif self._buffer_data_type == NANOARROW_TYPE_BINARY:
+        if self._element_size_bits < 8:
             return 1
         else:
             return self._element_size_bits // 8
 
-    cdef const char* _get_format(self):
-        if self._buffer_data_type == NANOARROW_TYPE_INT8:
-            return "b"
+    cdef void _populate_format(self):
+        cdef const char* format_const = NULL
+        if self._element_size_bits == 0:
+            # Variable-size elements (e.g., data buffer for string or binary) export as
+            # one byte per element (character if string, unspecified binary otherwise)
+            if self._buffer_data_type == NANOARROW_TYPE_STRING:
+                format_const = "c"
+            else:
+                format_const = "B"
+        elif self._element_size_bits < 8:
+            # Bitmaps export as unspecified binary
+            format_const = "B"
+        elif self._buffer_data_type == NANOARROW_TYPE_INT8:
+            format_const = "b"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT8:
-            return "B"
+            format_const = "B"
         elif self._buffer_data_type == NANOARROW_TYPE_INT16:
-            return "h"
+            format_const = "=h"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT16:
-            return "H"
+            format_const = "=H"
         elif self._buffer_data_type == NANOARROW_TYPE_INT32:
-            return "i"
+            format_const = "=i"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT32:
-            return "I"
+            format_const = "=I"
         elif self._buffer_data_type == NANOARROW_TYPE_INT64:
-            return "l"
+            format_const = "=q"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT64:
-            return "L"
+            format_const = "=Q"
+        elif self._buffer_data_type == NANOARROW_TYPE_HALF_FLOAT:
+            format_const = "=e"
         elif self._buffer_data_type == NANOARROW_TYPE_FLOAT:
-            return "f"
+            format_const = "=f"
         elif self._buffer_data_type == NANOARROW_TYPE_DOUBLE:
-            return "d"
-        elif self._buffer_data_type == NANOARROW_TYPE_STRING:
-            return "c"
+            format_const = "=d"
+        elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_DAY_TIME:
+            format_const = "=ii"
+        elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+            format_const = "=iil"
+
+        if format_const != NULL:
+            snprintf(self._format, sizeof(self._format), "%s", format_const)
         else:
-            return "B"
+            snprintf(self._format, sizeof(self._format), "%ds", self._element_size_bits // 8)
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         if self._device.device_type != ARROW_DEVICE_CPU:
             raise RuntimeError("nanoarrow.BufferView is not a CPU array")
 
         buffer.buf = <void*>self._ptr.data.data
-        buffer.format = self._get_format()
+        buffer.format = self._format
         buffer.internal = NULL
         buffer.itemsize = self._strides
         buffer.len = self._ptr.size_bytes
@@ -841,6 +895,9 @@ cdef class BufferView:
 
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
+
+    def __repr__(self):
+        return _lib_utils.buffer_view_repr()
 
 
 cdef class CArrayStream:

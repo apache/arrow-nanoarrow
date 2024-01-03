@@ -85,7 +85,7 @@ def schema_view_repr(schema_view):
     lines = [
         "<nanoarrow.clib.CSchemaView>",
         f"- type: {repr(schema_view.type)}",
-        f"- storage_type: {repr(schema_view.storage_type)}"
+        f"- storage_type: {repr(schema_view.storage_type)}",
     ]
 
     for attr_name in sorted(dir(schema_view)):
@@ -109,7 +109,9 @@ def array_stream_repr(array_stream):
 
     lines = ["<nanoarrow.clib.CArrayStream>"]
     try:
-        lines.append(f"- get_schema(): {schema_repr(array_stream.get_schema(), indent=2)}")
+        lines.append(
+            f"- get_schema(): {schema_repr(array_stream.get_schema(), indent=2)}"
+        )
     except:
         lines.append("- get_schema(): <error calling get_schema()>")
 
