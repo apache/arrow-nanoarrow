@@ -42,22 +42,24 @@ extern "C" {
 /// nanoarrow_array_stream_owning_xptr() initialize such an external pointer using
 /// malloc() and a NULL initial release() callback such that it can be distinguished from
 /// a pointer to an initialized value according to the Arrow C Data/Stream interface
-/// documentation. This structure is intended to have a valid valid initialized into it
+/// documentation. This structure is intended to have a valid value initialized into it
 /// using ArrowXXXMove() or by passing the pointer to a suitable exporting function.
 ///
 /// External pointers allocated by nanoarrow_xxxx_owning_xptr() register a finalizer
 /// that will call the release() callback when its value is non-NULL and points to
 /// a structure whose release() callback is also non-NULL. External pointers may also
 /// manage lifecycle by declaring a strong reference to a single R object via
-/// R_SetExternalPtrProtected(): when passing the address of an R external pointer to
-/// a non-R library, the ownership of the structure must *not* have such SEXP
+/// R_SetExternalPtrProtected(); however, when passing the address of an R external
+/// pointer to a non-R library, the ownership of the structure must *not* have such SEXP
 /// dependencies. The nanoarrow R package can wrap such an SEXP dependency into a
-/// self-contained thread-safe release callback via nanoarrow_pointer_export().
+/// self-contained thread-safe release callback via nanoarrow_pointer_export() that
+/// manages the SEXP dependency using a preserve/release mechanism similar to
+/// R_PreserveObject()/ R_ReleaseObject().
 ///
-/// The "tag" of a nanoarrow external pointer to an ArrowSchema or ArrowArrayStream is
-/// reserved for future use and must be R_NilValue. The "tag" of an external pointer to an
-/// ArrowArray must be R_NilValue or an external pointer to an ArrowSchema that may be
-/// used to interpret the pointed-to ArrowArray.
+/// The "tag" of an external pointer to an ArrowArray must be R_NilValue or an external
+/// pointer to an ArrowSchema that may be used to interpret the pointed-to ArrowArray. The
+/// "tag" of a nanoarrow external pointer to an ArrowSchema or ArrowArrayStream is
+/// reserved for future use and must be R_NilValue.
 ///
 /// @{
 
@@ -152,23 +154,23 @@ struct ArrowArrayStream {
 
 /// \brief Allocate an external pointer to an ArrowSchema
 ///
-/// Allocate an external pointer to a valid ArrowSchema with a finalizer that ensures that
-/// any non-null release callback in a pointed-to structure will be called when the
-/// external pointer is garbage collected.
+/// Allocate an external pointer to an uninitialized ArrowSchema with a finalizer that
+/// ensures that any non-null release callback in a pointed-to structure will be called
+/// when the external pointer is garbage collected.
 static inline SEXP nanoarrow_schema_owning_xptr(void);
 
 /// \brief Allocate an external pointer to an ArrowArray
 ///
-/// Allocate an external pointer to a valid ArrowArray with a finalizer that ensures that
-/// any non-null release callback in a pointed-to structure will be called when the
-/// external pointer is garbage collected.
+/// Allocate an external pointer to an uninitialized ArrowArray with a finalizer that
+/// ensures that any non-null release callback in a pointed-to structure will be called
+/// when the external pointer is garbage collected.
 static inline SEXP nanoarrow_array_owning_xptr(void);
 
 /// \brief Allocate an external pointer to an ArrowArrayStream
 ///
-/// Allocate an external pointer to a valid ArrowArrayStream with a finalizer that ensures
-/// that any non-null release callback in a pointed-to structure will be called when the
-/// external pointer is garbage collected.
+/// Allocate an external pointer to an uninitialized ArrowArrayStream with a finalizer
+/// that ensures that any non-null release callback in a pointed-to structure will be
+/// called when the external pointer is garbage collected.
 static inline SEXP nanoarow_array_stream_owning_xptr(void);
 
 /// \brief Ensure an input SEXP points to an initialized ArrowSchema
@@ -220,6 +222,7 @@ static void nanoarrow_finalize_schema_xptr(SEXP schema_xptr) {
 
   if (schema != NULL) {
     free(schema);
+    R_ClearExternalPtr(schema_xptr);
   }
 }
 
@@ -231,6 +234,7 @@ static void nanoarrow_finalize_array_xptr(SEXP array_xptr) {
 
   if (array != NULL) {
     free(array);
+    R_ClearExternalPtr(array_xptr);
   }
 }
 
@@ -243,6 +247,7 @@ static void nanoarrow_finalize_array_stream_xptr(SEXP array_stream_xptr) {
 
   if (array_stream != NULL) {
     free(array_stream);
+    R_ClearExternalPtr(array_stream_xptr);
   }
 }
 
