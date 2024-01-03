@@ -25,23 +25,24 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
-from nanoarrow._lib import CSchema, CArray, CArrayStream, CSchemaView, CArrayView
+from nanoarrow._lib import CArray, CArrayStream, CArrayView, CSchema, CSchemaView
 
 
 def cschema(obj=None) -> CSchema:
     """ArrowSchema wrapper
 
-    The ``CSchema`` class provides a Python-friendly interface to access the fields of
-    an ``ArrowSchema`` as defined in the Arrow C Data interface. These objects
+    The ``CSchema`` class provides a Python-friendly interface to access the fields
+    of an ``ArrowSchema`` as defined in the Arrow C Data interface. These objects
     are created using `nanoarrow.cschema()`, which accepts any schema or
     data type-like object according to the Arrow PyCapsule interface.
 
-    This Python wrapper allows access to schema struct members but does not automatically
-    deserialize their content: use :func:`cschema_view` to validate and deserialize the
-    content into a more easily inspectable object.
+    This Python wrapper allows access to schema struct members but does not
+    automatically deserialize their content: use :func:`cschema_view` to validate
+    and deserialize the content into a more easily inspectable object.
 
-    Note that the :class:`CSchema` objects returned by ``.child()`` hold strong references
-    to the original `ArrowSchema` to avoid copies while inspecting an imported structure.
+    Note that the :class:`CSchema` objects returned by ``.child()`` hold strong
+    references to the original `ArrowSchema` to avoid copies while inspecting an
+    imported structure.
 
     Examples
     --------

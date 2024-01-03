@@ -23,8 +23,8 @@
 
 The nanoarrow Python package provides bindings to the nanoarrow C library. Like
 the nanoarrow C library, it provides tools to facilitate the use of the
-[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html) 
-and [Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html) 
+[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html)
+and [Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html)
 interfaces.
 
 ## Installation
@@ -211,7 +211,7 @@ array_stream
 
 
 
-You can pull the next array from the stream using `.get_next()` or use it like an interator. The `.get_next()` method will raise `StopIteration` when there are no more arrays in the stream.
+You can pull the next array from the stream using `.get_next()` or use it like an iterator. The `.get_next()` method will raise `StopIteration` when there are no more arrays in the stream.
 
 
 ```python

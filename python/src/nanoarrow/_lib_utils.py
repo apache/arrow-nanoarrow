@@ -138,7 +138,8 @@ def buffer_view_repr(buffer_view, max_byte_width=80):
     if max_byte_width < 20:
         max_byte_width = 20
 
-    prefix = f"<{buffer_view.data_type} {buffer_view.type}[{buffer_view.size_bytes} b]"
+    prefix = f"<{buffer_view.data_type} {buffer_view.type}"
+    prefix += f"[{buffer_view.size_bytes} b]"
 
     if buffer_view.device_type == 1:
         return (
@@ -192,8 +193,8 @@ def array_stream_repr(array_stream):
         lines.append(
             f"- get_schema(): {schema_repr(array_stream.get_schema(), indent=2)}"
         )
-    except:
-        lines.append("- get_schema(): <error calling get_schema()>")
+    except Exception as e:
+        lines.append(f"- get_schema(): <error calling get_schema(): {e}>")
 
     return "\n".join(lines)
 

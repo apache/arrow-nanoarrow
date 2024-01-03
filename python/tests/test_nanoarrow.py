@@ -313,7 +313,9 @@ def test_buffers_binary():
         np.array(view.buffer(1)), np.array([0, 1, 3, 6], np.int32())
     )
     np.testing.assert_array_equal(np.array(view.buffer(2)), np.array(list(b"abcdef")))
-    np.testing.assert_array_equal(np.array(list(view.buffer(2))), np.array(list(b"abcdef")))
+    np.testing.assert_array_equal(
+        np.array(list(view.buffer(2))), np.array(list(b"abcdef"))
+    )
 
 
 def test_carray_stream():
