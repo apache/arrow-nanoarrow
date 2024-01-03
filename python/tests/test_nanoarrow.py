@@ -283,8 +283,13 @@ def test_buffers_data():
 
     for pa_type, np_type in data_types:
         view = na.carray_view(pa.array([0, 1, 2], pa_type))
+        # Check via buffer interface
         np.testing.assert_array_equal(
             np.array(view.buffer(1)), np.array([0, 1, 2], np_type)
+        )
+        # Check via iterator interface
+        np.testing.assert_array_equal(
+            np.array(list(view.buffer(1))), np.array([0, 1, 2], np_type)
         )
 
 
@@ -308,6 +313,7 @@ def test_buffers_binary():
         np.array(view.buffer(1)), np.array([0, 1, 3, 6], np.int32())
     )
     np.testing.assert_array_equal(np.array(view.buffer(2)), np.array(list(b"abcdef")))
+    np.testing.assert_array_equal(np.array(list(view.buffer(2))), np.array(list(b"abcdef")))
 
 
 def test_carray_stream():

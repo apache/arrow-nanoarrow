@@ -41,6 +41,8 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
+import struct
+
 from nanoarrow import _lib_utils
 
 def cversion():
@@ -788,10 +790,6 @@ cdef class BufferView:
         return <uintptr_t>self._ptr.data.data
 
     @property
-    def element_size_bits(self):
-        return self._element_size_bits
-
-    @property
     def device_type(self):
         return self._device.device_type
 
@@ -800,11 +798,15 @@ cdef class BufferView:
         return self._device.device_id
 
     @property
+    def element_size_bits(self):
+        return self._element_size_bits
+
+    @property
     def size_bytes(self):
         return self._ptr.size_bytes
 
     @property
-    def buffer_type(self):
+    def type(self):
         if self._buffer_type == NANOARROW_BUFFER_TYPE_VALIDITY:
             return "validity"
         elif self._buffer_type == NANOARROW_BUFFER_TYPE_TYPE_ID:
@@ -817,15 +819,33 @@ cdef class BufferView:
             return "data"
 
     @property
-    def buffer_data_type(self):
-        return ArrowTypeString(self._buffer_data_type)
+    def data_type(self):
+        return ArrowTypeString(self._buffer_data_type).decode("UTF-8")
 
     @property
     def format(self):
         return self._format.decode("UTF-8")
 
+    @property
+    def item_size(self):
+        return self._strides
+
     def __len__(self):
         return self._shape
+
+    def __getitem__(self, int64_t i):
+        if i < 0 or i >= self._shape:
+            raise IndexError(f"Index {i} out of range")
+        cdef int64_t offset = self._strides * i
+        value = struct.unpack_from(self.format, buffer=self, offset=offset)
+        if len(value) == 1:
+            return value[0]
+        else:
+            return value
+
+    def __iter__(self):
+        for i in range(self._shape):
+            yield self[i]
 
     cdef Py_ssize_t _item_size(self):
         if self._element_size_bits < 8:
@@ -897,7 +917,7 @@ cdef class BufferView:
         pass
 
     def __repr__(self):
-        return _lib_utils.buffer_view_repr()
+        return _lib_utils.buffer_view_repr(self)
 
 
 cdef class CArrayStream:

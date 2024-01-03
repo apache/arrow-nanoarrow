@@ -101,6 +101,50 @@ def schema_view_repr(schema_view):
     return "\n".join(lines)
 
 
+def buffer_view_repr(buffer_view, max_byte_width=80):
+    prefix = f"<{buffer_view.data_type} {buffer_view.type}[{buffer_view.size_bytes} b]"
+
+    if buffer_view.device_type == 1:
+        return (
+            prefix
+            + " "
+            + buffer_view_preview_cpu(buffer_view, max_byte_width - len(prefix) - 2)
+            + ">"
+        )
+    else:
+        return prefix + ">"
+
+
+def buffer_view_preview_cpu(buffer_view, max_byte_width):
+    if buffer_view.element_size_bits == 0:
+        preview_elements = max_byte_width - 3
+        joined = repr(bytes(memoryview(buffer_view)[:preview_elements]))
+    elif buffer_view.element_size_bits == 1:
+        max_elements = max_byte_width // 8
+        if max_elements > len(buffer_view):
+            preview_elements = len(buffer_view)
+        else:
+            preview_elements = max_elements
+
+        joined = "".join(
+            "".join(reversed(format(buffer_view[i], "08b")))
+            for i in range(preview_elements)
+        )
+    else:
+        max_elements = max_byte_width // 3
+        if max_elements > len(buffer_view):
+            preview_elements = len(buffer_view)
+        else:
+            preview_elements = max_elements
+
+        joined = " ".join(repr(buffer_view[i]) for i in range(preview_elements))
+
+    if len(joined) > max_byte_width or preview_elements < len(buffer_view):
+        return joined[: (max_byte_width - 3)] + "..."
+    else:
+        return joined
+
+
 def array_stream_repr(array_stream):
     if array_stream._addr() == 0:
         return "<NULL nanoarrow.clib.CArrayStream>"
