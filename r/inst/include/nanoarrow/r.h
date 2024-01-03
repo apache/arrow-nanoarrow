@@ -27,6 +27,40 @@
 extern "C" {
 #endif
 
+/// \defgroup nanoarrow-r Utilities for Arrow R extensions
+///
+/// EXPERIMENTAL: The interface and lifecycle semantics described in this header
+/// should be considered experimental and may change in a future version based on
+/// user feedback.
+///
+/// In the nanoarrow R package, an external pointer to an ArrowSchema, ArrowArray, or
+/// ArrowArrayStream carries the class "nanoarrow_schema", "nanoarrow_array", or
+/// "nanoarrow_array_stream" (respectively). The pointer must point to valid memory
+/// or be NULL until the R external pointer object is finalized.
+///
+/// nanoarrow_schema_owning_xptr(), nanoarrow_array_owning_xptr(), and
+/// nanoarrow_array_stream_owning_xptr() initialize such an external pointer using
+/// malloc() and a NULL initial release() callback such that it can be distinguished from
+/// a pointer to an initialized value according to the Arrow C Data/Stream interface
+/// documentation. This structure is intended to have a valid valid initialized into it
+/// using ArrowXXXMove() or by passing the pointer to a suitable exporting function.
+///
+/// External pointers allocated by nanoarrow_xxxx_owning_xptr() register a finalizer
+/// that will call the release() callback when its value is non-NULL and points to
+/// a structure whose release() callback is also non-NULL. External pointers may also
+/// manage lifecycle by declaring a strong reference to a single R object via
+/// R_SetExternalPtrProtected(): when passing the address of an R external pointer to
+/// a non-R library, the ownership of the structure must *not* have such SEXP
+/// dependencies. The nanoarrow R package can wrap such an SEXP dependency into a
+/// self-contained thread-safe release callback via nanoarrow_pointer_export().
+///
+/// The "tag" of a nanoarrow external pointer to an ArrowSchema or ArrowArrayStream is
+/// reserved for future use and must be R_NilValue. The "tag" of an external pointer to an
+/// ArrowArray must be R_NilValue or an external pointer to an ArrowSchema that may be
+/// used to interpret the pointed-to ArrowArray.
+///
+/// @{
+
 // Extra guard for versions of Arrow without the canonical guard
 #ifndef ARROW_FLAG_DICTIONARY_ORDERED
 
@@ -116,6 +150,68 @@ struct ArrowArrayStream {
 #endif  // ARROW_C_STREAM_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
+/// \brief Allocate an external pointer to an ArrowSchema
+///
+/// Allocate an external pointer to a valid ArrowSchema with a finalizer that ensures that
+/// any non-null release callback in a pointed-to structure will be called when the
+/// external pointer is garbage collected.
+static inline SEXP nanoarrow_schema_owning_xptr(void);
+
+/// \brief Allocate an external pointer to an ArrowArray
+///
+/// Allocate an external pointer to a valid ArrowArray with a finalizer that ensures that
+/// any non-null release callback in a pointed-to structure will be called when the
+/// external pointer is garbage collected.
+static inline SEXP nanoarrow_array_owning_xptr(void);
+
+/// \brief Allocate an external pointer to an ArrowArrayStream
+///
+/// Allocate an external pointer to a valid ArrowArrayStream with a finalizer that ensures
+/// that any non-null release callback in a pointed-to structure will be called when the
+/// external pointer is garbage collected.
+static inline SEXP nanoarow_array_stream_owning_xptr(void);
+
+/// \brief Ensure an input SEXP points to an initialized ArrowSchema
+///
+/// This function will always return an ArrowSchema pointer that can be safely
+/// consumed or raise an error via Rf_error().
+static inline struct ArrowSchema* nanoarrow_schema_from_xptr(SEXP schema_xptr);
+
+/// \brief Ensure an input SEXP points to an initialized ArrowArray
+///
+/// This function will always return an ArrowArray pointer that can be safely
+/// consumed or raise an error via Rf_error().
+static inline struct ArrowArray* nanoarrow_array_from_xptr(SEXP array_xptr);
+
+/// \brief Ensure an input SEXP points to an initialized ArrowArrayStream
+///
+/// This function will always return an ArrowArrayStream pointer that can be safely
+/// consumed or raise an error via Rf_error().
+static inline struct ArrowArrayStream* nanoarrow_array_stream_from_xptr(
+    SEXP array_stream_xptr);
+
+/// \brief Finalize an external pointer to an ArrowSchema
+///
+/// This function is provided for internal use by nanoarrow_schema_owning_xptr()
+/// and should not be called directly.
+static void nanoarrow_finalize_schema_xptr(SEXP schema_xptr);
+
+/// \brief Finalize an external pointer to an ArrowArray
+///
+/// This function is provided for internal use by nanoarrow_array_owning_xptr()
+/// and should not be called directly.
+static void nanoarrow_finalize_array_xptr(SEXP array_xptr);
+
+/// \brief Finalize an external pointer to an ArrowArrayStream
+///
+/// This function is provided for internal use by nanoarrow_array_stream_owning_xptr()
+/// and should not be called directly.
+static void nanoarrow_finalize_array_stream_xptr(SEXP array_stream_xptr);
+
+/// @}
+
+// Implementations follow
+
 static void nanoarrow_finalize_schema_xptr(SEXP schema_xptr) {
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   if (schema != NULL && schema->release != NULL) {
@@ -127,8 +223,29 @@ static void nanoarrow_finalize_schema_xptr(SEXP schema_xptr) {
   }
 }
 
-// Create an external pointer with the proper class and that will release any
-// non-null, non-released pointer when garbage collected.
+static void nanoarrow_finalize_array_xptr(SEXP array_xptr) {
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  if (array != NULL && array->release != NULL) {
+    array->release(array);
+  }
+
+  if (array != NULL) {
+    free(array);
+  }
+}
+
+static void nanoarrow_finalize_array_stream_xptr(SEXP array_stream_xptr) {
+  struct ArrowArrayStream* array_stream =
+      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
+  if (array_stream != NULL && array_stream->release != NULL) {
+    array_stream->release(array_stream);
+  }
+
+  if (array_stream != NULL) {
+    free(array_stream);
+  }
+}
+
 static inline SEXP nanoarrow_schema_owning_xptr(void) {
   struct ArrowSchema* schema = (struct ArrowSchema*)malloc(sizeof(struct ArrowSchema));
   if (schema == NULL) {
@@ -145,8 +262,32 @@ static inline SEXP nanoarrow_schema_owning_xptr(void) {
   return schema_xptr;
 }
 
-// Returns the underlying struct ArrowSchema* from an external pointer,
-// checking and erroring for invalid objects, pointers, and arrays.
+static inline SEXP nanoarrow_array_owning_xptr(void) {
+  struct ArrowArray* array = (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
+  array->release = NULL;
+
+  SEXP array_xptr = PROTECT(R_MakeExternalPtr(array, R_NilValue, R_NilValue));
+  SEXP array_cls = PROTECT(Rf_mkString("nanoarrow_array"));
+  Rf_setAttrib(array_xptr, R_ClassSymbol, array_cls);
+  R_RegisterCFinalizer(array_xptr, &nanoarrow_finalize_array_xptr);
+  UNPROTECT(2);
+  return array_xptr;
+}
+
+static inline SEXP nanoarow_array_stream_owning_xptr(void) {
+  struct ArrowArrayStream* array_stream =
+      (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
+  array_stream->release = NULL;
+
+  SEXP array_stream_xptr =
+      PROTECT(R_MakeExternalPtr(array_stream, R_NilValue, R_NilValue));
+  SEXP array_stream_cls = PROTECT(Rf_mkString("nanoarrow_array_stream"));
+  Rf_setAttrib(array_stream_xptr, R_ClassSymbol, array_stream_cls);
+  R_RegisterCFinalizer(array_stream_xptr, &nanoarrow_finalize_array_stream_xptr);
+  UNPROTECT(2);
+  return array_stream_xptr;
+}
+
 static inline struct ArrowSchema* nanoarrow_schema_from_xptr(SEXP schema_xptr) {
   if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
     Rf_error("`schema` argument that does not inherit from 'nanoarrow_schema'");
@@ -164,19 +305,6 @@ static inline struct ArrowSchema* nanoarrow_schema_from_xptr(SEXP schema_xptr) {
   return schema;
 }
 
-static void nanoarrow_finalize_array_xptr(SEXP array_xptr) {
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
-  if (array != NULL && array->release != NULL) {
-    array->release(array);
-  }
-
-  if (array != NULL) {
-    free(array);
-  }
-}
-
-// Returns the underlying struct ArrowArray* from an external pointer,
-// checking and erroring for invalid objects, pointers, and arrays.
 static inline struct ArrowArray* nanoarrow_array_from_xptr(SEXP array_xptr) {
   if (!Rf_inherits(array_xptr, "nanoarrow_array")) {
     Rf_error("`array` argument that is not a nanoarrow_array()");
@@ -194,50 +322,6 @@ static inline struct ArrowArray* nanoarrow_array_from_xptr(SEXP array_xptr) {
   return array;
 }
 
-// Create an external pointer with the proper class and that will release any
-// non-null, non-released pointer when garbage collected.
-static inline SEXP nanoarrow_array_owning_xptr(void) {
-  struct ArrowArray* array = (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
-  array->release = NULL;
-
-  SEXP array_xptr = PROTECT(R_MakeExternalPtr(array, R_NilValue, R_NilValue));
-  SEXP array_cls = PROTECT(Rf_mkString("nanoarrow_array"));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, array_cls);
-  R_RegisterCFinalizer(array_xptr, &nanoarrow_finalize_array_xptr);
-  UNPROTECT(2);
-  return array_xptr;
-}
-
-static void nanoarrow_finalize_array_stream_xptr(SEXP array_stream_xptr) {
-  struct ArrowArrayStream* array_stream =
-      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
-  if (array_stream != NULL && array_stream->release != NULL) {
-    array_stream->release(array_stream);
-  }
-
-  if (array_stream != NULL) {
-    free(array_stream);
-  }
-}
-
-// Create an external pointer with the proper class and that will release any
-// non-null, non-released pointer when garbage collected.
-static inline SEXP nanoarow_array_stream_owning_xptr(void) {
-  struct ArrowArrayStream* array_stream =
-      (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
-  array_stream->release = NULL;
-
-  SEXP array_stream_xptr =
-      PROTECT(R_MakeExternalPtr(array_stream, R_NilValue, R_NilValue));
-  SEXP array_stream_cls = PROTECT(Rf_mkString("nanoarrow_array_stream"));
-  Rf_setAttrib(array_stream_xptr, R_ClassSymbol, array_stream_cls);
-  R_RegisterCFinalizer(array_stream_xptr, &nanoarrow_finalize_array_stream_xptr);
-  UNPROTECT(2);
-  return array_stream_xptr;
-}
-
-// Returns the underlying struct ArrowSchema* from an external pointer,
-// checking and erroring for invalid objects, pointers, and arrays.
 static inline struct ArrowArrayStream* nanoarrow_array_stream_from_xptr(
     SEXP array_stream_xptr) {
   if (!Rf_inherits(array_stream_xptr, "nanoarrow_array_stream")) {
