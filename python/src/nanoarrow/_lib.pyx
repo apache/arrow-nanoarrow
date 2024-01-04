@@ -41,8 +41,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
-import struct
-
+from struct import unpack_from
 from nanoarrow import _lib_utils
 
 def cversion():
@@ -840,7 +839,7 @@ cdef class BufferView:
         if i < 0 or i >= self._shape:
             raise IndexError(f"Index {i} out of range")
         cdef int64_t offset = self._strides * i
-        value = struct.unpack_from(self.format, buffer=self, offset=offset)
+        value = unpack_from(self.format, buffer=self, offset=offset)
         if len(value) == 1:
             return value[0]
         else:
