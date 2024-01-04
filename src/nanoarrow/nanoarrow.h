@@ -382,33 +382,37 @@ ArrowSchemaDeepCopy(const struct ArrowSchema* schema, struct ArrowSchema* schema
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema,
+                                                           const char* format);
 
 /// \brief Copy name into schema->name
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema, const char* name);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema,
+                                                         const char* name);
 
 /// \brief Copy metadata into schema->metadata
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy.
-ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema, const char* metadata);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema,
+                                                             const char* metadata);
 
 /// \brief Allocate the schema->children array
 ///
 /// Includes the memory for each child struct ArrowSchema.
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
-                                           int64_t n_children);
+NANOARROW_CHECK_RETURN ArrowErrorCode
+ArrowSchemaAllocateChildren(struct ArrowSchema* schema, int64_t n_children);
 
 /// \brief Allocate the schema->dictionary member
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
+NANOARROW_CHECK_RETURN ArrowErrorCode
+ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
 
 /// @}
 
@@ -432,13 +436,13 @@ struct ArrowMetadataReader {
 };
 
 /// \brief Initialize an ArrowMetadataReader
-ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
-                                       const char* metadata);
+NANOARROW_CHECK_RETURN ArrowErrorCode
+ArrowMetadataReaderInit(struct ArrowMetadataReader* reader, const char* metadata);
 
 /// \brief Read the next key/value pair from an ArrowMetadataReader
-ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
-                                       struct ArrowStringView* key_out,
-                                       struct ArrowStringView* value_out);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataReaderRead(
+    struct ArrowMetadataReader* reader, struct ArrowStringView* key_out,
+    struct ArrowStringView* value_out);
 
 /// \brief The number of bytes in in a key/value metadata string
 int64_t ArrowMetadataSizeOf(const char* metadata);
@@ -449,32 +453,31 @@ char ArrowMetadataHasKey(const char* metadata, struct ArrowStringView key);
 /// \brief Extract a value from schema metadata
 ///
 /// If key does not exist in metadata, value_out is unmodified
-ArrowErrorCode ArrowMetadataGetValue(const char* metadata, struct ArrowStringView key,
-                                     struct ArrowStringView* value_out);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataGetValue(
+    const char* metadata, struct ArrowStringView key, struct ArrowStringView* value_out);
 
 /// \brief Initialize a builder for schema metadata from key/value pairs
 ///
 /// metadata can be an existing metadata string or NULL to initialize
 /// an empty metadata string.
-ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer, const char* metadata);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer,
+                                                               const char* metadata);
 
 /// \brief Append a key/value pair to a buffer containing serialized metadata
-ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer,
-                                          struct ArrowStringView key,
-                                          struct ArrowStringView value);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataBuilderAppend(
+    struct ArrowBuffer* buffer, struct ArrowStringView key, struct ArrowStringView value);
 
 /// \brief Set a key/value pair to a buffer containing serialized metadata
 ///
 /// Ensures that the only entry for key in the metadata is set to value.
 /// This function maintains the existing position of (the first instance of)
 /// key if present in the data.
-ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
-                                       struct ArrowStringView key,
-                                       struct ArrowStringView value);
+NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataBuilderSet(
+    struct ArrowBuffer* buffer, struct ArrowStringView key, struct ArrowStringView value);
 
 /// \brief Remove a key from a buffer containing serialized metadata
-ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
-                                          struct ArrowStringView key);
+NANOARROW_CHECK_RETURN ArrowErrorCode
+ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer, struct ArrowStringView key);
 
 /// @}
 

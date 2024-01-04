@@ -957,13 +957,15 @@ static ArrowErrorCode ArrowSchemaViewValidateNChildren(
   for (int64_t i = 0; i < schema_view->schema->n_children; i++) {
     child = schema_view->schema->children[i];
     if (child == NULL) {
-      ArrowErrorSet(error, "Expected valid schema at schema->children[%ld] but found NULL",
+      ArrowErrorSet(error,
+                    "Expected valid schema at schema->children[%ld] but found NULL",
                     (long)i);
       return EINVAL;
     } else if (child->release == NULL) {
       ArrowErrorSet(
           error,
-          "Expected valid schema at schema->children[%ld] but found a released schema", (long)i);
+          "Expected valid schema at schema->children[%ld] but found a released schema",
+          (long)i);
       return EINVAL;
     }
   }
@@ -1175,10 +1177,12 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
 
   schema_view->extension_name = ArrowCharView(NULL);
   schema_view->extension_metadata = ArrowCharView(NULL);
-  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),
-                        &schema_view->extension_name);
-  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:metadata"),
-                        &schema_view->extension_metadata);
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataGetValue(schema->metadata,
+                                                ArrowCharView("ARROW:extension:name"),
+                                                &schema_view->extension_name));
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataGetValue(schema->metadata,
+                                                ArrowCharView("ARROW:extension:metadata"),
+                                                &schema_view->extension_metadata));
 
   return NANOARROW_OK;
 }
@@ -1366,7 +1370,9 @@ int64_t ArrowMetadataSizeOf(const char* metadata) {
   struct ArrowMetadataReader reader;
   struct ArrowStringView key;
   struct ArrowStringView value;
-  ArrowMetadataReaderInit(&reader, metadata);
+  if (ArrowMetadataReaderInit(&reader, metadata) != NANOARROW_OK) {
+    return 0;
+  }
 
   int64_t size = sizeof(int32_t);
   while (ArrowMetadataReaderRead(&reader, &key, &value) == NANOARROW_OK) {
@@ -1382,7 +1388,7 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
   struct ArrowMetadataReader reader;
   struct ArrowStringView existing_key;
   struct ArrowStringView existing_value;
-  ArrowMetadataReaderInit(&reader, metadata);
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
 
   while (ArrowMetadataReaderRead(&reader, &existing_key, &existing_value) ==
          NANOARROW_OK) {
@@ -1409,7 +1415,10 @@ ArrowErrorCode ArrowMetadataGetValue(const char* metadata, struct ArrowStringVie
 
 char ArrowMetadataHasKey(const char* metadata, struct ArrowStringView key) {
   struct ArrowStringView value = ArrowCharView(NULL);
-  ArrowMetadataGetValue(metadata, key, &value);
+  if (ArrowMetadataGetValue(metadata, key, &value) != NANOARROW_OK) {
+    return 0;
+  }
+
   return value.data != NULL;
 }
 
