@@ -109,7 +109,7 @@ struct RConverter {
 
 static inline void warn_lossy_conversion(int64_t count, const char* msg) {
   SEXP fun = PROTECT(Rf_install("warn_lossy_conversion"));
-  SEXP count_sexp = PROTECT(Rf_ScalarReal(count));
+  SEXP count_sexp = PROTECT(Rf_ScalarReal((double)count));
   SEXP msg_sexp = PROTECT(Rf_mkString(msg));
   SEXP call = PROTECT(Rf_lang3(fun, count_sexp, msg_sexp));
   Rf_eval(call, nanoarrow_ns_pkg);
