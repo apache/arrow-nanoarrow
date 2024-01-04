@@ -415,7 +415,7 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
     case NANOARROW_TYPE_LARGE_BINARY:
     case NANOARROW_TYPE_LARGE_STRING:
       if (ArrowArrayBuffer(array, 2)->data == NULL) {
-        ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0);
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0));
       }
       break;
     default:

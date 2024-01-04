@@ -1133,8 +1133,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
   }
 
   const char* format_end_out;
-  ArrowErrorCode result =
-      ArrowSchemaViewParse(schema_view, format, &format_end_out, error);
+  int result = ArrowSchemaViewParse(schema_view, format, &format_end_out, error);
 
   if (result != NANOARROW_OK) {
     if (error != NULL) {

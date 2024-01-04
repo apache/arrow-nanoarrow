@@ -197,6 +197,10 @@ struct ArrowArrayStream {
 /// \ingroup nanoarrow-errors
 typedef int ArrowErrorCode;
 
+#if defined(NANOARROW_DEBUG)
+#define ArrowErrorCode NANOARROW_CHECK_RETURN ArrowErrorCode
+#endif
+
 /// \brief Error type containing a UTF-8 encoded message.
 /// \ingroup nanoarrow-errors
 struct ArrowError {

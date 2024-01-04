@@ -259,8 +259,8 @@ static inline void ArrowArrayStreamRelease(struct ArrowArrayStream* array_stream
 /// \brief Set the contents of an error using printf syntax.
 ///
 /// If error is NULL, this function does nothing and returns NANOARROW_OK.
-NANOARROW_CHECK_PRINTF_ATTRIBUTE ArrowErrorCode ArrowErrorSet(struct ArrowError* error,
-                                                              const char* fmt, ...);
+NANOARROW_CHECK_PRINTF_ATTRIBUTE int ArrowErrorSet(struct ArrowError* error,
+                                                   const char* fmt, ...);
 
 /// @}
 
@@ -301,8 +301,7 @@ void ArrowSchemaInit(struct ArrowSchema* schema);
 /// ArrowSchemaSetType() for the common case of constructing an
 /// unparameterized type. The caller is responsible for calling the schema->release
 /// callback if NANOARROW_OK is returned.
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema,
-                                                              enum ArrowType type);
+ArrowErrorCode ArrowSchemaInitFromType(struct ArrowSchema* schema, enum ArrowType type);
 
 /// \brief Get a human-readable summary of a Schema
 ///
@@ -321,16 +320,14 @@ int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t
 /// allocated, initialized, and named; however, the caller must
 /// ArrowSchemaSetType() on the preinitialized children. Schema must have been initialized
 /// using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema,
-                                                         enum ArrowType type);
+ArrowErrorCode ArrowSchemaSetType(struct ArrowSchema* schema, enum ArrowType type);
 
 /// \brief Set the format field and initialize children of a struct schema
 ///
 /// The specified number of children are initialized; however, the caller is responsible
 /// for calling ArrowSchemaSetType() and ArrowSchemaSetName() on each child.
 /// Schema must have been initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema,
-                                                               int64_t n_children);
+ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchema* schema, int64_t n_children);
 
 /// \brief Set the format field of a fixed-size schema
 ///
@@ -340,17 +337,17 @@ NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetTypeStruct(struct ArrowSchem
 /// allocated, initialized, and named; however, the caller must
 /// ArrowSchemaSetType() the first child. Schema must have been initialized using
 /// ArrowSchemaInit() or ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetTypeFixedSize(
-    struct ArrowSchema* schema, enum ArrowType type, int32_t fixed_size);
+ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
+                                           enum ArrowType type, int32_t fixed_size);
 
 /// \brief Set the format field of a decimal schema
 ///
 /// Returns EINVAL for scale <= 0 or for type that is not
 /// NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode
-ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
-                          int32_t decimal_precision, int32_t decimal_scale);
+ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
+                                         int32_t decimal_precision,
+                                         int32_t decimal_scale);
 
 /// \brief Set the format field of a time, timestamp, or duration schema
 ///
@@ -359,60 +356,55 @@ ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
 /// NANOARROW_TYPE_TIMESTAMP, or NANOARROW_TYPE_DURATION. The
 /// timezone parameter must be NULL for a non-timestamp type. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode
-ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum ArrowType type,
-                           enum ArrowTimeUnit time_unit, const char* timezone);
+ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum ArrowType type,
+                                          enum ArrowTimeUnit time_unit,
+                                          const char* timezone);
 
 /// \brief Seet the format field of a union schema
 ///
 /// Returns EINVAL for a type that is not NANOARROW_TYPE_DENSE_UNION
 /// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
 /// allocated, and initialized.
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
-                                                              enum ArrowType type,
-                                                              int64_t n_children);
+ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowType type,
+                                       int64_t n_children);
 
 /// \brief Make a (recursive) copy of a schema
 ///
 /// Allocates and copies fields of schema into schema_out.
-NANOARROW_CHECK_RETURN ArrowErrorCode
-ArrowSchemaDeepCopy(const struct ArrowSchema* schema, struct ArrowSchema* schema_out);
+ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
+                                   struct ArrowSchema* schema_out);
 
 /// \brief Copy format into schema->format
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema,
-                                                           const char* format);
+ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema, const char* format);
 
 /// \brief Copy name into schema->name
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema,
-                                                         const char* name);
+ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema, const char* name);
 
 /// \brief Copy metadata into schema->metadata
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy.
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema,
-                                                             const char* metadata);
+ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema, const char* metadata);
 
 /// \brief Allocate the schema->children array
 ///
 /// Includes the memory for each child struct ArrowSchema.
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode
-ArrowSchemaAllocateChildren(struct ArrowSchema* schema, int64_t n_children);
+ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
+                                           int64_t n_children);
 
 /// \brief Allocate the schema->dictionary member
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
 /// ArrowSchemaDeepCopy().
-NANOARROW_CHECK_RETURN ArrowErrorCode
-ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
+ArrowErrorCode ArrowSchemaAllocateDictionary(struct ArrowSchema* schema);
 
 /// @}
 
@@ -436,13 +428,13 @@ struct ArrowMetadataReader {
 };
 
 /// \brief Initialize an ArrowMetadataReader
-NANOARROW_CHECK_RETURN ArrowErrorCode
-ArrowMetadataReaderInit(struct ArrowMetadataReader* reader, const char* metadata);
+ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
+                                       const char* metadata);
 
 /// \brief Read the next key/value pair from an ArrowMetadataReader
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataReaderRead(
-    struct ArrowMetadataReader* reader, struct ArrowStringView* key_out,
-    struct ArrowStringView* value_out);
+ArrowErrorCode ArrowMetadataReaderRead(struct ArrowMetadataReader* reader,
+                                       struct ArrowStringView* key_out,
+                                       struct ArrowStringView* value_out);
 
 /// \brief The number of bytes in in a key/value metadata string
 int64_t ArrowMetadataSizeOf(const char* metadata);
@@ -453,31 +445,32 @@ char ArrowMetadataHasKey(const char* metadata, struct ArrowStringView key);
 /// \brief Extract a value from schema metadata
 ///
 /// If key does not exist in metadata, value_out is unmodified
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataGetValue(
-    const char* metadata, struct ArrowStringView key, struct ArrowStringView* value_out);
+ArrowErrorCode ArrowMetadataGetValue(const char* metadata, struct ArrowStringView key,
+                                     struct ArrowStringView* value_out);
 
 /// \brief Initialize a builder for schema metadata from key/value pairs
 ///
 /// metadata can be an existing metadata string or NULL to initialize
 /// an empty metadata string.
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer,
-                                                               const char* metadata);
+ArrowErrorCode ArrowMetadataBuilderInit(struct ArrowBuffer* buffer, const char* metadata);
 
 /// \brief Append a key/value pair to a buffer containing serialized metadata
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataBuilderAppend(
-    struct ArrowBuffer* buffer, struct ArrowStringView key, struct ArrowStringView value);
+ArrowErrorCode ArrowMetadataBuilderAppend(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key,
+                                          struct ArrowStringView value);
 
 /// \brief Set a key/value pair to a buffer containing serialized metadata
 ///
 /// Ensures that the only entry for key in the metadata is set to value.
 /// This function maintains the existing position of (the first instance of)
 /// key if present in the data.
-NANOARROW_CHECK_RETURN ArrowErrorCode ArrowMetadataBuilderSet(
-    struct ArrowBuffer* buffer, struct ArrowStringView key, struct ArrowStringView value);
+ArrowErrorCode ArrowMetadataBuilderSet(struct ArrowBuffer* buffer,
+                                       struct ArrowStringView key,
+                                       struct ArrowStringView value);
 
 /// \brief Remove a key from a buffer containing serialized metadata
-NANOARROW_CHECK_RETURN ArrowErrorCode
-ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer, struct ArrowStringView key);
+ArrowErrorCode ArrowMetadataBuilderRemove(struct ArrowBuffer* buffer,
+                                          struct ArrowStringView key);
 
 /// @}
 
@@ -1138,6 +1131,12 @@ ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* arra
                                              struct ArrowError* error);
 
 /// @}
+
+// Undefine ArrowErrorCode, which may have been defined to annotate functions that return
+// it to warn for an unsused result.
+#if defined(ArrowErrorCode)
+#undef ArrowErrorCode
+#endif
 
 // Inline function definitions
 #include "array_inline.h"
