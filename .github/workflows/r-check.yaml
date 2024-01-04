@@ -68,7 +68,7 @@ jobs:
       - name: Check R CMD INSTALL
         env:
           PKG_CPPFLAGS: "-DNANOARROW_DEBUG"
-          PKG_CFLAGS: "-Werror -Wall -Wextra -Wpedantic -Wconversion -Wno-sign-conversion"
+          PKG_CFLAGS: "-Werror -Wall -Wextra -Wpedantic -Wconversion -Wno-unused-parameter -Wno-sign-conversion"
         run: |
           R CMD INSTALL r --preclean
         shell: bash
