@@ -355,6 +355,36 @@ def test_buffers_binary():
     assert list(view.buffer(2)) == [int(item) for item in b"abcdef"]
 
 
+def test_buffers_fixed_size_binary():
+    view = na.carray_view(pa.array([b"abc", b"def", b"ghi"], pa.binary(3)))
+
+    assert view.buffer(1).size_bytes == 9
+
+    # Check via buffer interface
+    np.testing.assert_array_equal(
+        np.array(list(view.buffer(1))), np.array([b"abc", b"def", b"ghi"])
+    )
+
+    # Check via iterator interface
+    assert list(view.buffer(1)) == [b"abc", b"def", b"ghi"]
+
+
+def test_buffers_interval_month_day_nano():
+    view = na.carray_view(
+        pa.array([pa.scalar((1, 15, -30), type=pa.month_day_nano_interval())])
+    )
+
+    assert view.buffer(1).size_bytes == 16
+
+    # Check via buffer interface
+    np.testing.assert_array_equal(
+        np.array(list(view.buffer(1))), np.array([(1, 15, -30)])
+    )
+
+    # Check via iterator interface
+    assert list(view.buffer(1)) == [(1, 15, -30)]
+
+
 def test_carray_stream():
     array_stream = na.carray_stream()
     assert na.carray_stream(array_stream) is array_stream
