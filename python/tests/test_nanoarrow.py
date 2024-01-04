@@ -216,6 +216,8 @@ def test_carray_view():
     view = na.carray_view(array)
 
     assert view.storage_type == "int32"
+    assert "- storage_type: 'int32'" in repr(view)
+    assert "<int32 data[12 b] 1 2 3>" in repr(view)
 
     data_buffer = memoryview(view.buffer(1))
     data_buffer_copy = bytes(data_buffer)
@@ -227,7 +229,10 @@ def test_carray_view():
         assert data_buffer_copy == b"\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03"
 
     with pytest.raises(IndexError):
-        view.child(1)
+        view.child(0)
+
+    with pytest.raises(IndexError):
+        view.child(-1)
 
 
 def test_carray_view_recursive():
@@ -293,10 +298,28 @@ def test_buffers_data():
         )
 
 
+def test_buffers_bool():
+    view = na.carray_view(pa.array([True, True, True, False]))
+
+    assert view.buffer(1).size_bytes == 1
+
+    # Check via buffer interface
+    np.testing.assert_array_equal(
+        np.array(view.buffer(1)), np.array([1 + 2 + 4], np.int32())
+    )
+
+    # Check via iterator interface
+    assert list(view.buffer(1)) == [1 + 2 + 4]
+
+
 def test_buffers_string():
     view = na.carray_view(pa.array(["a", "bc", "def"]))
 
     assert view.buffer(0).size_bytes == 0
+    assert view.buffer(1).size_bytes == 16
+    assert view.buffer(2).size_bytes == 6
+
+    # Check via buffer interface
     np.testing.assert_array_equal(
         np.array(view.buffer(1)), np.array([0, 1, 3, 6], np.int32())
     )
@@ -304,11 +327,20 @@ def test_buffers_string():
         np.array(view.buffer(2)), np.array(list("abcdef"), dtype="|S1")
     )
 
+    # Check via iterator interface
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [0, 1, 3, 6]
+    assert list(view.buffer(2)) == [item.encode("UTF-8") for item in "abcdef"]
+
 
 def test_buffers_binary():
     view = na.carray_view(pa.array([b"a", b"bc", b"def"]))
 
     assert view.buffer(0).size_bytes == 0
+    assert view.buffer(1).size_bytes == 16
+    assert view.buffer(2).size_bytes == 6
+
+    # Check via buffer interface
     np.testing.assert_array_equal(
         np.array(view.buffer(1)), np.array([0, 1, 3, 6], np.int32())
     )
@@ -316,6 +348,11 @@ def test_buffers_binary():
     np.testing.assert_array_equal(
         np.array(list(view.buffer(2))), np.array(list(b"abcdef"))
     )
+
+    # Check via iterator interface
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [0, 1, 3, 6]
+    assert list(view.buffer(2)) == [int(item) for item in b"abcdef"]
 
 
 def test_carray_stream():
