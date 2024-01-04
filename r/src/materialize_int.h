@@ -80,7 +80,7 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
       // No need to bounds check for these types
       for (R_xlen_t i = 0; i < dst->length; i++) {
         result[dst->offset + i] =
-            ArrowArrayViewGetIntUnsafe(src->array_view, src->offset + i);
+            (int32_t)ArrowArrayViewGetIntUnsafe(src->array_view, src->offset + i);
       }
 
       // Set any nulls to NA_INTEGER
@@ -107,7 +107,7 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
               result[dst->offset + i] = NA_INTEGER;
               n_bad_values++;
             } else {
-              result[dst->offset + i] = value;
+              result[dst->offset + i] = (int32_t)value;
             }
           } else {
             result[dst->offset + i] = NA_INTEGER;
@@ -120,7 +120,7 @@ static inline int nanoarrow_materialize_int(struct ArrayViewSlice* src,
             result[dst->offset + i] = NA_INTEGER;
             n_bad_values++;
           } else {
-            result[dst->offset + i] = value;
+            result[dst->offset + i] = (int32_t)value;
           }
         }
       }

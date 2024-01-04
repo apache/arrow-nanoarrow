@@ -89,7 +89,7 @@ void nanoarrow_set_rownames(SEXP x, R_xlen_t len) {
   if (len <= INT_MAX) {
     SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
     INTEGER(rownames)[0] = NA_INTEGER;
-    INTEGER(rownames)[1] = -len;
+    INTEGER(rownames)[1] = (int)-len;
     Rf_setAttrib(x, R_RowNamesSymbol, rownames);
     UNPROTECT(1);
   } else {

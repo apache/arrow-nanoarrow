@@ -189,7 +189,7 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
 
 SEXP nanoarrow_c_buffer_head_bytes(SEXP buffer_xptr, SEXP max_bytes_sexp) {
   struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
-  int64_t max_bytes = REAL(max_bytes_sexp)[0];
+  int64_t max_bytes = (int64_t)REAL(max_bytes_sexp)[0];
 
   if (buffer->size_bytes <= max_bytes) {
     return buffer_xptr;

@@ -38,7 +38,7 @@ SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
   if (TYPEOF(obj_sexp) == EXTPTRSXP) {
     return obj_sexp;
   } else if (TYPEOF(obj_sexp) == REALSXP && Rf_length(obj_sexp) == 1) {
-    intptr_t ptr_int = REAL(obj_sexp)[0];
+    intptr_t ptr_int = (intptr_t)REAL(obj_sexp)[0];
     return R_MakeExternalPtr((void*)ptr_int, R_NilValue, R_NilValue);
   } else if (TYPEOF(obj_sexp) == STRSXP && Rf_length(obj_sexp) == 1) {
     const char* text = CHAR(STRING_ELT(obj_sexp, 0));

@@ -158,7 +158,7 @@ static SEXP schema_metadata_to_list(const char* metadata) {
       Rf_error("ArrowMetadataReaderRead() failed");
     }
 
-    SET_STRING_ELT(names, i, Rf_mkCharLenCE(key.data, key.size_bytes, CE_UTF8));
+    SET_STRING_ELT(names, i, Rf_mkCharLenCE(key.data, (int)key.size_bytes, CE_UTF8));
     SEXP value_raw = PROTECT(Rf_allocVector(RAWSXP, value.size_bytes));
     memcpy(RAW(value_raw), value.data, value.size_bytes);
     SET_VECTOR_ELT(values, i, value_raw);
@@ -205,7 +205,7 @@ SEXP nanoarrow_c_schema_to_list(SEXP schema_xptr) {
   }
 
   SET_VECTOR_ELT(result, 2, schema_metadata_to_list(schema->metadata));
-  SET_VECTOR_ELT(result, 3, Rf_ScalarInteger(schema->flags));
+  SET_VECTOR_ELT(result, 3, Rf_ScalarInteger((int)schema->flags));
 
   if (schema->n_children > 0) {
     SEXP children_sexp = PROTECT(Rf_allocVector(VECSXP, schema->n_children));
@@ -245,7 +245,7 @@ static SEXP mkStringView(struct ArrowStringView* view) {
     return R_NilValue;
   }
 
-  SEXP chr = PROTECT(Rf_mkCharLenCE(view->data, view->size_bytes, CE_UTF8));
+  SEXP chr = PROTECT(Rf_mkCharLenCE(view->data, (int)view->size_bytes, CE_UTF8));
   SEXP str = PROTECT(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(str, 0, chr);
   UNPROTECT(2);
@@ -341,13 +341,18 @@ SEXP nanoarrow_c_schema_format(SEXP schema_xptr, SEXP recursive_sexp) {
 
   struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
 
-  int64_t size_needed = ArrowSchemaToString(schema, NULL, 0, recursive);
+  int64_t size_needed = ArrowSchemaToString(schema, NULL, 0, recursive != 0);
+  if (size_needed >= INT_MAX) {
+    size_needed = INT_MAX - 1;
+  }
+
   // Using an SEXP because Rf_mkCharLenCE could jump
   SEXP formatted_sexp = PROTECT(Rf_allocVector(RAWSXP, size_needed + 1));
-  ArrowSchemaToString(schema, (char*)RAW(formatted_sexp), size_needed + 1, recursive);
+  ArrowSchemaToString(schema, (char*)RAW(formatted_sexp), size_needed + 1,
+                      recursive != 0);
   SEXP result_sexp = PROTECT(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(result_sexp, 0,
-                 Rf_mkCharLenCE((char*)RAW(formatted_sexp), size_needed, CE_UTF8));
+                 Rf_mkCharLenCE((char*)RAW(formatted_sexp), (int)size_needed, CE_UTF8));
   UNPROTECT(2);
   return result_sexp;
 }

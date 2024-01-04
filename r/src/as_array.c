@@ -224,7 +224,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       if (R_IsNA(x_data[i]) || R_IsNaN(x_data[i])) {
         buffer_data[i] = 0;
       } else {
-        buffer_data[i] = x_data[i];
+        buffer_data[i] = (int64_t)x_data[i];
       }
     }
 
@@ -250,7 +250,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
         n_overflow++;
         buffer_data[i] = 0;
       } else {
-        buffer_data[i] = x_data[i];
+        buffer_data[i] = (int32_t)x_data[i];
       }
     }
 
