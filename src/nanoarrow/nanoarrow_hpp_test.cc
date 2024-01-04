@@ -58,7 +58,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueSchemaTest) {
   nanoarrow::UniqueSchema schema;
   EXPECT_EQ(schema->release, nullptr);
 
-  ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_NE(schema->release, nullptr);
   EXPECT_STREQ(schema->format, "i");
 

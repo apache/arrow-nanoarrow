@@ -388,7 +388,7 @@ TEST(SchemaTest, SchemaInitUnion) {
 
 TEST(SchemaTest, SchemaSetFormat) {
   struct ArrowSchema schema;
-  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
 
   EXPECT_EQ(ArrowSchemaSetFormat(&schema, "i"), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "i");
@@ -401,7 +401,7 @@ TEST(SchemaTest, SchemaSetFormat) {
 
 TEST(SchemaTest, SchemaSetName) {
   struct ArrowSchema schema;
-  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
 
   EXPECT_EQ(ArrowSchemaSetName(&schema, "a_name"), NANOARROW_OK);
   EXPECT_STREQ(schema.name, "a_name");
@@ -414,7 +414,7 @@ TEST(SchemaTest, SchemaSetName) {
 
 TEST(SchemaTest, SchemaSetMetadata) {
   struct ArrowSchema schema;
-  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
 
   // Encoded metadata string for "key": "value"
   std::string simple_metadata = SimpleMetadata();
@@ -430,7 +430,7 @@ TEST(SchemaTest, SchemaSetMetadata) {
 
 TEST(SchemaTest, SchemaAllocateDictionary) {
   struct ArrowSchema schema;
-  ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED);
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
 
   EXPECT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
   EXPECT_EQ(schema.dictionary->release, nullptr);
@@ -443,7 +443,7 @@ TEST(SchemaTest, SchemaCopySimpleType) {
   ARROW_EXPECT_OK(ExportType(*int32(), &schema));
 
   struct ArrowSchema schema_copy;
-  ArrowSchemaDeepCopy(&schema, &schema_copy);
+  ASSERT_EQ(ArrowSchemaDeepCopy(&schema, &schema_copy), NANOARROW_OK);
 
   ASSERT_NE(schema_copy.release, nullptr);
   EXPECT_STREQ(schema.format, "i");
@@ -458,7 +458,7 @@ TEST(SchemaTest, SchemaCopyNestedType) {
   ARROW_EXPECT_OK(ExportType(*struct_type, &schema));
 
   struct ArrowSchema schema_copy;
-  ArrowSchemaDeepCopy(&schema, &schema_copy);
+  ASSERT_EQ(ArrowSchemaDeepCopy(&schema, &schema_copy), NANOARROW_OK);
 
   ASSERT_NE(schema_copy.release, nullptr);
   EXPECT_STREQ(schema_copy.format, "+s");
@@ -476,7 +476,7 @@ TEST(SchemaTest, SchemaCopyDictType) {
   ARROW_EXPECT_OK(ExportType(*struct_type, &schema));
 
   struct ArrowSchema schema_copy;
-  ArrowSchemaDeepCopy(&schema, &schema_copy);
+  ASSERT_EQ(ArrowSchemaDeepCopy(&schema, &schema_copy), NANOARROW_OK);
 
   ASSERT_STREQ(schema_copy.format, "i");
   ASSERT_NE(schema_copy.dictionary, nullptr);
@@ -494,7 +494,7 @@ TEST(SchemaTest, SchemaCopyFlags) {
   ASSERT_FALSE(schema.flags & ARROW_FLAG_NULLABLE);
 
   struct ArrowSchema schema_copy;
-  ArrowSchemaDeepCopy(&schema, &schema_copy);
+  ASSERT_EQ(ArrowSchemaDeepCopy(&schema, &schema_copy), NANOARROW_OK);
 
   ASSERT_NE(schema_copy.release, nullptr);
   ASSERT_EQ(schema.flags, schema_copy.flags);
@@ -513,7 +513,7 @@ TEST(SchemaTest, SchemaCopyMetadata) {
   ARROW_EXPECT_OK(ExportField(*int_field, &schema));
 
   struct ArrowSchema schema_copy;
-  ArrowSchemaDeepCopy(&schema, &schema_copy);
+  ASSERT_EQ(ArrowSchemaDeepCopy(&schema, &schema_copy), NANOARROW_OK);
 
   ASSERT_NE(schema_copy.release, nullptr);
   EXPECT_STREQ(schema_copy.name, "field_name");
