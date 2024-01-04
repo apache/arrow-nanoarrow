@@ -220,8 +220,8 @@ static int move_array_buffers(struct ArrowArray* src, struct ArrowArray* dst,
   dst->offset = src->offset;
 
   if (src->n_buffers != dst->n_buffers) {
-    ArrowErrorSet(error, "Expected %ld buffer(s) but got %ld", dst->n_buffers,
-                  src->n_buffers);
+    ArrowErrorSet(error, "Expected %ld buffer(s) but got %ld", (long)dst->n_buffers,
+                  (long)src->n_buffers);
     return EINVAL;
   }
 
@@ -230,8 +230,8 @@ static int move_array_buffers(struct ArrowArray* src, struct ArrowArray* dst,
   }
 
   if (src->n_children != dst->n_children) {
-    ArrowErrorSet(error, "Expected %ld child(ren) but got %ld", dst->n_children,
-                  src->n_children);
+    ArrowErrorSet(error, "Expected %ld child(ren) but got %ld", (long)dst->n_children,
+                  (long)src->n_children);
     return EINVAL;
   }
 
