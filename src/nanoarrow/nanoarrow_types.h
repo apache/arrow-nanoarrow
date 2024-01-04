@@ -169,7 +169,8 @@ struct ArrowArrayStream {
   } while (0)
 #endif
 
-// Check ArrowErrorSet() calls for valid printf format strings/arguments
+#if defined(NANOARROW_DEBUG)
+// For checking ArrowErrorSet() calls for valid printf format strings/arguments
 // If using mingw's c99-compliant printf, we need a different format-checking attribute
 #if defined(__USE_MINGW_ANSI_STDIO) && defined(__MINGW_PRINTF_FORMAT)
 #define NANOARROW_CHECK_PRINTF_ATTRIBUTE \
@@ -180,13 +181,18 @@ struct ArrowArrayStream {
 #define NANOARROW_CHECK_PRINTF_ATTRIBUTE
 #endif
 
-// Check calls to functions that return ArrowErrorCode
+// For checking calls to functions that return ArrowErrorCode
 #if defined(__GNUC__) && (__GNUC__ >= 4)
-#define NANOARROW_CHECK_RETURN __attribute__((warn_unused_result))
+#define NANOARROW_CHECK_RETURN_ATTRIBUTE __attribute__((warn_unused_result))
 #elif defined(_MSC_VER) && (_MSC_VER >= 1700)
-#define NANOARROW_CHECK_RETURN _Check_return_
+#define NANOARROW_CHECK_RETURN_ATTRIBUTE _Check_return_
 #else
-#define NANOARROW_CHECK_RETURN
+#define NANOARROW_CHECK_RETURN_ATTRIBUTE
+#endif
+
+#else
+#define NANOARROW_CHECK_RETURN_ATTRIBUTE
+#define NANOARROW_CHECK_PRINTF_ATTRIBUTE
 #endif
 
 /// \brief Return code for success.
@@ -198,7 +204,7 @@ struct ArrowArrayStream {
 typedef int ArrowErrorCode;
 
 #if defined(NANOARROW_DEBUG)
-#define ArrowErrorCode NANOARROW_CHECK_RETURN ArrowErrorCode
+#define ArrowErrorCode NANOARROW_CHECK_RETURN_ATTRIBUTE ArrowErrorCode
 #endif
 
 /// \brief Error type containing a UTF-8 encoded message.
