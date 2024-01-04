@@ -259,7 +259,8 @@ static inline void ArrowArrayStreamRelease(struct ArrowArrayStream* array_stream
 /// \brief Set the contents of an error using printf syntax.
 ///
 /// If error is NULL, this function does nothing and returns NANOARROW_OK.
-ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...);
+NANOARROW_CHECK_PRINTF_ATTRIBUTE ArrowErrorCode ArrowErrorSet(struct ArrowError* error,
+                                                              const char* fmt, ...);
 
 /// @}
 

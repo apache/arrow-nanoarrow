@@ -1151,7 +1151,7 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
             error,
             "[%ld] Expected union offset for child id %d to be between 0 and %ld but "
             "found offset value %ld",
-            (long)i, (int)child_id, (long)child_length, offset);
+            (long)i, (int)child_id, (long)child_length, (long)offset);
         return EINVAL;
       }
     }
