@@ -95,9 +95,10 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     for (int64_t i = first_null; i < len; i++) {
       uint8_t is_valid = x_data[i] != NA_INTEGER;
       null_count += !is_valid;
-      ArrowBitmapAppend(&bitmap, is_valid, 1);
+      ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
+    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -141,13 +142,16 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   for (int64_t i = 0; i < len; i++) {
     if (x_data[i] == NA_INTEGER) {
       has_nulls = 1;
-      ArrowBitmapAppend(&value_bitmap, 0, 1);
+      ArrowBitmapAppendUnsafe(&value_bitmap, 0, 1);
     } else {
-      ArrowBitmapAppend(&value_bitmap, x_data[i] != 0, 1);
+      ArrowBitmapAppendUnsafe(&value_bitmap, x_data[i] != 0, 1);
     }
   }
 
-  ArrowArraySetBuffer(array, 1, &value_bitmap.buffer);
+  result = ArrowArraySetBuffer(array, 1, &value_bitmap.buffer);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArraySetBuffer() failed");
+  }
 
   // Set the array fields
   array->length = len;
@@ -166,9 +170,10 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     for (int64_t i = 0; i < len; i++) {
       uint8_t is_valid = x_data[i] != NA_INTEGER;
       null_count += !is_valid;
-      ArrowBitmapAppend(&bitmap, is_valid, 1);
+      ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
+    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -283,9 +288,10 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     for (int64_t i = first_null; i < len; i++) {
       uint8_t is_valid = !R_IsNA(x_data[i]) && !R_IsNaN(x_data[i]);
       null_count += !is_valid;
-      ArrowBitmapAppend(&bitmap, is_valid, 1);
+      ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
+    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -316,7 +322,10 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
   struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 2);
 
-  ArrowBufferReserve(offset_buffer, (len + 1) * sizeof(int32_t));
+  result = ArrowBufferReserve(offset_buffer, (len + 1) * sizeof(int32_t));
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowBufferReserve() failed");
+  }
 
   int64_t null_count = 0;
   int32_t cumulative_len = 0;
@@ -361,9 +370,10 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
     for (int64_t i = 0; i < len; i++) {
       uint8_t is_valid = STRING_ELT(x_sexp, i) != NA_STRING;
-      ArrowBitmapAppend(&bitmap, is_valid, 1);
+      ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
+    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -489,9 +499,10 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
 
     for (int64_t i = 0; i < len; i++) {
       uint8_t is_valid = VECTOR_ELT(x_sexp, i) != R_NilValue;
-      ArrowBitmapAppend(&bitmap, is_valid, 1);
+      ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
+    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 

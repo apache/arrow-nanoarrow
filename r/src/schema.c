@@ -141,7 +141,11 @@ static SEXP schema_metadata_to_list(const char* metadata) {
   }
 
   struct ArrowMetadataReader reader;
-  ArrowMetadataReaderInit(&reader, metadata);
+  int result = ArrowMetadataReaderInit(&reader, metadata);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowMetadataReaderInit() failed");
+  }
+
   SEXP names = PROTECT(Rf_allocVector(STRSXP, reader.remaining_keys));
   SEXP values = PROTECT(Rf_allocVector(VECSXP, reader.remaining_keys));
 
@@ -149,7 +153,11 @@ static SEXP schema_metadata_to_list(const char* metadata) {
   struct ArrowStringView value;
   R_xlen_t i = 0;
   while (reader.remaining_keys > 0) {
-    ArrowMetadataReaderRead(&reader, &key, &value);
+    result = ArrowMetadataReaderRead(&reader, &key, &value);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowMetadataReaderRead() failed");
+    }
+
     SET_STRING_ELT(names, i, Rf_mkCharLenCE(key.data, key.size_bytes, CE_UTF8));
     SEXP value_raw = PROTECT(Rf_allocVector(RAWSXP, value.size_bytes));
     memcpy(RAW(value_raw), value.data, value.size_bytes);
