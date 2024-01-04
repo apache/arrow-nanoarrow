@@ -295,7 +295,7 @@ static inline void ArrowBitsUnpackInt8(const uint8_t* bits, int64_t start_offset
   }
 
   // last byte
-  const int bits_remaining = i_end % 8 == 0 ? 8 : i_end % 8;
+  const int bits_remaining = (int)(i_end % 8 == 0 ? 8 : i_end % 8);
   for (int i = 0; i < bits_remaining; i++) {
     *out++ = ArrowBitGet(&bits[bytes_last_valid], i);
   }
