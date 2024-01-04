@@ -127,20 +127,24 @@ else()
                              PRIVATE -Wall
                                      -Werror
                                      -Wextra
+                                     -Wpedantic
                                      -Wno-type-limits
                                      -Wno-unused-parameter
                                      -Wmaybe-uninitialized
-                                     -Wpedantic
-                                     -Wunused-result)
+                                     -Wunused-result
+                                     -Wconversion
+                                     -Wno-sign-conversion)
     elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
                                                         "Clang")
       target_compile_options(nanoarrow
                              PRIVATE -Wall
                                      -Werror
                                      -Wextra
+                                     -Wpedantic
                                      -Wdocumentation
                                      -Wno-unused-parameter
-                                     -Wshorten-64-to-32)
+                                     -Wconversion
+                                     -Wno-sign-conversion)
     endif()
   endif()
 

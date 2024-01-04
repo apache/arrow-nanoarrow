@@ -311,7 +311,7 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
       schema_view.type == NANOARROW_TYPE_SPARSE_UNION) {
     int8_t type_ids[128];
     int num_type_ids = _ArrowParseUnionTypeIds(schema_view.union_type_ids, type_ids);
-    if (num_type_ids == -1) {
+    if (num_type_ids == -1 || num_type_ids > 127) {
       Rf_error("Invalid type IDs in union type: '%s'", schema_view.union_type_ids);
     }
 
