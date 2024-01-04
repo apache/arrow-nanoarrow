@@ -185,12 +185,18 @@ def carray_stream(obj=None, requested_schema=None) -> CArrayStream:
             )
         return CArrayStream.allocate()
 
+    if requested_schema is not None:
+        requested_schema = cschema(requested_schema)
+
     if isinstance(obj, CArrayStream) and requested_schema is None:
         return obj
 
     if hasattr(obj, "__arrow_c_stream__"):
+        requested_schema_capsule = (
+            None if requested_schema is None else requested_schema.__arrow_c_schema__()
+        )
         return CArrayStream._import_from_c_capsule(
-            obj.__arrow_c_stream__(requested_schema=requested_schema)
+            obj.__arrow_c_stream__(requested_schema=requested_schema_capsule)
         )
 
     # for pyarrow < 14.0

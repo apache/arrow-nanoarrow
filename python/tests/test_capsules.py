@@ -81,6 +81,12 @@ def test_array():
         assert array.is_valid()
 
 
+def test_array_requested_schema():
+    pa_arr = pa.array([1, 2, 3], pa.int32())
+    array = na.carray(pa_arr, requested_schema=pa.int64())
+    assert array.schema.format == "l"
+
+
 def test_array_stream():
     pa_table = pa.table({"some_column": pa.array([1, 2, 3], pa.int32())})
 
@@ -104,6 +110,15 @@ def test_array_stream():
         # and thus exporting a second time doesn't work
         with pytest.raises(RuntimeError):
             pa.table(array_stream)
+
+
+def test_array_stream_requested_schema():
+    pa_table = pa.table({"some_column": pa.array([1, 2, 3], pa.int32())})
+    schema2 = pa.schema([pa.field("some_column", pa.int64())])
+
+    # Not implemented in pyarrow yet
+    with pytest.raises(NotImplementedError):
+        na.carray_stream(pa_table, requested_schema=schema2)
 
 
 def test_export_invalid():
