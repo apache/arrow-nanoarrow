@@ -258,6 +258,7 @@ def test_carray_view_recursive():
 
     assert view.child(0).n_buffers == 2
     assert len(list(view.child(0).buffers)) == 2
+    assert "- children[1]" in repr(view)
 
 
 def test_carray_view_dictionary():
@@ -270,9 +271,10 @@ def test_carray_view_dictionary():
     view = na.carray_view(array)
     assert view.n_buffers == 2
     assert view.dictionary.n_buffers == 3
+    assert "- dictionary: <nanoarrow.clib.CArrayView>" in repr(view)
 
 
-def test_buffers_data():
+def test_buffers_integer():
     data_types = [
         (pa.uint8(), np.uint8()),
         (pa.int8(), np.int8()),
@@ -282,20 +284,59 @@ def test_buffers_data():
         (pa.int32(), np.int32()),
         (pa.uint64(), np.uint64()),
         (pa.int64(), np.int64()),
+    ]
+
+    for pa_type, np_type in data_types:
+        view = na.carray_view(pa.array([0, 1, 2], pa_type))
+
+        # Check via buffer interface
+        np.testing.assert_array_equal(
+            np.array(view.buffer(1)), np.array([0, 1, 2], np_type)
+        )
+
+        # Check via iterator interface
+        assert list(view.buffer(1)) == [0, 1, 2]
+
+        # Check repr
+        assert "0 1 2" in repr(view.buffer(1))
+
+
+def test_buffers_float():
+    data_types = [
         (pa.float32(), np.float32()),
         (pa.float64(), np.float64()),
     ]
 
     for pa_type, np_type in data_types:
         view = na.carray_view(pa.array([0, 1, 2], pa_type))
+
         # Check via buffer interface
         np.testing.assert_array_equal(
             np.array(view.buffer(1)), np.array([0, 1, 2], np_type)
         )
+
         # Check via iterator interface
-        np.testing.assert_array_equal(
-            np.array(list(view.buffer(1))), np.array([0, 1, 2], np_type)
-        )
+        assert list(view.buffer(1)) == [0.0, 1.0, 2.0]
+
+        # Check repr
+        assert "0.0 1.0 2.0" in repr(view.buffer(1))
+
+
+def test_buffers_half_float():
+    # pyarrrow can only create half_float from np.float16()
+    np_array = np.array([0, 1, 2], np.float16())
+    view = na.carray_view(pa.array(np_array))
+
+    # Check via buffer interface
+    np.testing.assert_array_equal(
+        np.array(view.buffer(1)), np.array([0, 1, 2], np.float16())
+    )
+
+    # Check via iterator interface
+    assert list(view.buffer(1)) == [0.0, 1.0, 2.0]
+
+    # Check repr
+    assert "0.0 1.0 2.0" in repr(view.buffer(1))
 
 
 def test_buffers_bool():
@@ -310,6 +351,9 @@ def test_buffers_bool():
 
     # Check via iterator interface
     assert list(view.buffer(1)) == [1 + 2 + 4]
+
+    # Check repr
+    assert "11100000" in repr(view.buffer(1))
 
 
 def test_buffers_string():
@@ -332,6 +376,9 @@ def test_buffers_string():
     assert list(view.buffer(1)) == [0, 1, 3, 6]
     assert list(view.buffer(2)) == [item.encode("UTF-8") for item in "abcdef"]
 
+    # Check repr
+    assert "b'abcdef'" in repr(view.buffer(2))
+
 
 def test_buffers_binary():
     view = na.carray_view(pa.array([b"a", b"bc", b"def"]))
@@ -353,6 +400,9 @@ def test_buffers_binary():
     assert list(view.buffer(0)) == []
     assert list(view.buffer(1)) == [0, 1, 3, 6]
     assert list(view.buffer(2)) == [int(item) for item in b"abcdef"]
+
+    # Check repr
+    assert "b'abcdef'" in repr(view.buffer(2))
 
 
 def test_buffers_fixed_size_binary():
