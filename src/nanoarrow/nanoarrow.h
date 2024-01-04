@@ -1133,7 +1133,7 @@ ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* arra
 /// @}
 
 // Undefine ArrowErrorCode, which may have been defined to annotate functions that return
-// it to warn for an unsused result.
+// it to warn for an unused result.
 #if defined(ArrowErrorCode)
 #undef ArrowErrorCode
 #endif
