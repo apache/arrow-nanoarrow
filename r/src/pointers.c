@@ -38,6 +38,8 @@ SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
   if (TYPEOF(obj_sexp) == EXTPTRSXP) {
     return obj_sexp;
   } else if (TYPEOF(obj_sexp) == REALSXP && Rf_length(obj_sexp) == 1) {
+    // Note that this is not a good idea to actually do; however, is provided for
+    // backward compatibility with early versions of the arrow R package.
     intptr_t ptr_int = (intptr_t)(REAL(obj_sexp)[0]);
     return R_MakeExternalPtr((void*)ptr_int, R_NilValue, R_NilValue);
   } else if (TYPEOF(obj_sexp) == STRSXP && Rf_length(obj_sexp) == 1) {
@@ -56,8 +58,10 @@ SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
 }
 
 SEXP nanoarrow_c_pointer_addr_dbl(SEXP ptr) {
+  // Note that this is not a good idea to actually do; however, is provided for
+  // backward compatibility with early versions of the arrow R package.
   uintptr_t ptr_int = (uintptr_t)R_ExternalPtrAddr(nanoarrow_c_pointer(ptr));
-  return Rf_ScalarReal(ptr_int);
+  return Rf_ScalarReal((double)ptr_int);
 }
 
 SEXP nanoarrow_c_pointer_addr_chr(SEXP ptr) {

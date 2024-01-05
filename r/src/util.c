@@ -54,11 +54,11 @@ void nanoarrow_init_cached_sexps(void) {
 }
 
 SEXP nanoarrow_c_preserved_count(void) {
-  return Rf_ScalarReal(nanoarrow_preserved_count());
+  return Rf_ScalarReal((double)nanoarrow_preserved_count());
 }
 
 SEXP nanoarrow_c_preserved_empty(void) {
-  return Rf_ScalarReal(nanoarrow_preserved_empty());
+  return Rf_ScalarReal((double)nanoarrow_preserved_empty());
 }
 
 SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj) {

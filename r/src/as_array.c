@@ -344,7 +344,7 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       if (result != NANOARROW_OK) {
         Rf_error("ArrowBufferAppend() failed");
       }
-      cumulative_len += item_size;
+      cumulative_len += (int32_t)item_size;
 
       vmaxset(vmax);
     }
@@ -476,7 +476,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
       Rf_error("ArrowBufferAppend() failed");
     }
 
-    cumulative_len += item_size;
+    cumulative_len += (int32_t)item_size;
     ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
   }
 

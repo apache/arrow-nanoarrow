@@ -65,6 +65,7 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
         data = CHAR(x_sexp);
         break;
       }
+      break;
     default:
       Rf_error("Unsupported type");
   }
@@ -178,8 +179,8 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
                          ""};
   SEXP info = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(info, 0, R_MakeExternalPtr(buffer->data, NULL, buffer_xptr));
-  SET_VECTOR_ELT(info, 1, Rf_ScalarReal(buffer->size_bytes));
-  SET_VECTOR_ELT(info, 2, Rf_ScalarReal(buffer->capacity_bytes));
+  SET_VECTOR_ELT(info, 1, Rf_ScalarReal((double)buffer->size_bytes));
+  SET_VECTOR_ELT(info, 2, Rf_ScalarReal((double)buffer->capacity_bytes));
   SET_VECTOR_ELT(info, 3, buffer_type_sexp);
   SET_VECTOR_ELT(info, 4, buffer_data_type_sexp);
   SET_VECTOR_ELT(info, 5, Rf_ScalarInteger(element_size_bits));
