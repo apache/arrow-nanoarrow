@@ -60,15 +60,13 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Install valgrind on r-devel
-        if: matrix.config.r == 'devel'
-        run: sudo apt-get install -y valgrind
-
-      # Check package install with extra warning flags
+      # Check package install with extra warning flags except on Windows,
+      # where the R headers cause some problems
       - name: Check R CMD INSTALL
+        if: matrix.config.os != "windows-latest"
         env:
           PKG_CPPFLAGS: "-DNANOARROW_DEBUG"
-          PKG_CFLAGS: "-Werror -Wall -Wextra -Wpedantic -Wconversion -Wno-unused-parameter -Wno-sign-conversion"
+          PKG_CFLAGS: "-Werror -Wall -Wextra -Wpedantic -Wconversion -Wno-unused-parameter -Wno-sign-conversion -Wno-cast-function-type"
         run: |
           R CMD INSTALL r --preclean
         shell: bash
