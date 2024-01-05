@@ -98,7 +98,6 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
-    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -173,7 +172,6 @@ static void as_array_lgl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
-    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -291,7 +289,6 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
-    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -373,7 +370,6 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
       ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
-    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
@@ -502,7 +498,6 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
       ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
     }
 
-    bitmap.size_bits = len;
     ArrowArraySetValidityBitmap(array, &bitmap);
   }
 
