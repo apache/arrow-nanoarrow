@@ -41,7 +41,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
-from struct import unpack_from
+from struct import unpack_from, iter_unpack
 from nanoarrow import _lib_utils
 
 def cversion():
@@ -284,8 +284,13 @@ cdef class CSchema:
         if self._ptr.release == NULL:
             raise RuntimeError("schema is released")
 
-    def _to_string(self, recursive=False):
-        cdef int64_t n_chars = ArrowSchemaToString(self._ptr, NULL, 0, recursive)
+    def _to_string(self, int64_t max_chars=0, recursive=False):
+        cdef int64_t n_chars
+        if max_chars == 0:
+            n_chars = ArrowSchemaToString(self._ptr, NULL, 0, recursive)
+        else:
+            n_chars = max_chars
+
         cdef char* out = <char*>ArrowMalloc(n_chars + 1)
         if not out:
             raise MemoryError()
@@ -846,8 +851,11 @@ cdef class BufferView:
             return value
 
     def __iter__(self):
-        for i in range(self._shape):
-            yield self[i]
+        for value in iter_unpack(self.format, self):
+            if len(value) == 1:
+                yield value[0]
+            else:
+                yield value
 
     cdef Py_ssize_t _item_size(self):
         if self._element_size_bits < 8:
@@ -892,7 +900,7 @@ cdef class BufferView:
         elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_DAY_TIME:
             format_const = "=ii"
         elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-            format_const = "=iil"
+            format_const = "=iiq"
 
         if format_const != NULL:
             snprintf(self._format, sizeof(self._format), "%s", format_const)

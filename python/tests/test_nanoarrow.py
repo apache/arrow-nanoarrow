@@ -288,17 +288,21 @@ def test_buffers_integer():
 
     for pa_type, np_type in data_types:
         view = na.carray_view(pa.array([0, 1, 2], pa_type))
+        data_buffer = view.buffer(1)
 
         # Check via buffer interface
         np.testing.assert_array_equal(
-            np.array(view.buffer(1)), np.array([0, 1, 2], np_type)
+            np.array(data_buffer), np.array([0, 1, 2], np_type)
         )
 
         # Check via iterator interface
-        assert list(view.buffer(1)) == [0, 1, 2]
+        assert list(data_buffer) == [0, 1, 2]
+
+        # Check via buffer get_item interface
+        assert [data_buffer[i] for i in range(len(data_buffer))] == list(data_buffer)
 
         # Check repr
-        assert "0 1 2" in repr(view.buffer(1))
+        assert "0 1 2" in repr(data_buffer)
 
 
 def test_buffers_float():
@@ -309,51 +313,63 @@ def test_buffers_float():
 
     for pa_type, np_type in data_types:
         view = na.carray_view(pa.array([0, 1, 2], pa_type))
+        data_buffer = view.buffer(1)
 
         # Check via buffer interface
         np.testing.assert_array_equal(
-            np.array(view.buffer(1)), np.array([0, 1, 2], np_type)
+            np.array(data_buffer), np.array([0, 1, 2], np_type)
         )
 
         # Check via iterator interface
-        assert list(view.buffer(1)) == [0.0, 1.0, 2.0]
+        assert list(data_buffer) == [0.0, 1.0, 2.0]
+
+        # Check via buffer get_item interface
+        assert [data_buffer[i] for i in range(len(data_buffer))] == list(data_buffer)
 
         # Check repr
-        assert "0.0 1.0 2.0" in repr(view.buffer(1))
+        assert "0.0 1.0 2.0" in repr(data_buffer)
 
 
 def test_buffers_half_float():
     # pyarrrow can only create half_float from np.float16()
     np_array = np.array([0, 1, 2], np.float16())
     view = na.carray_view(pa.array(np_array))
+    data_buffer = view.buffer(1)
 
     # Check via buffer interface
     np.testing.assert_array_equal(
-        np.array(view.buffer(1)), np.array([0, 1, 2], np.float16())
+        np.array(data_buffer), np.array([0, 1, 2], np.float16())
     )
 
     # Check via iterator interface
-    assert list(view.buffer(1)) == [0.0, 1.0, 2.0]
+    assert list(data_buffer) == [0.0, 1.0, 2.0]
+
+    # Check via buffer get_item interface
+    assert [data_buffer[i] for i in range(len(data_buffer))] == list(data_buffer)
 
     # Check repr
-    assert "0.0 1.0 2.0" in repr(view.buffer(1))
+    assert "0.0 1.0 2.0" in repr(data_buffer)
 
 
 def test_buffers_bool():
     view = na.carray_view(pa.array([True, True, True, False]))
+    data_buffer = view.buffer(1)
 
-    assert view.buffer(1).size_bytes == 1
+    assert data_buffer.size_bytes == 1
 
     # Check via buffer interface
     np.testing.assert_array_equal(
-        np.array(view.buffer(1)), np.array([1 + 2 + 4], np.int32())
+        np.array(data_buffer), np.array([1 + 2 + 4], np.int32())
     )
 
     # Check via iterator interface
-    assert list(view.buffer(1)) == [1 + 2 + 4]
+    assert list(data_buffer) == [1 + 2 + 4]
+
+    # Check via buffer get_item interface
+    assert [data_buffer[i] for i in range(len(data_buffer))] == list(data_buffer)
 
     # Check repr
-    assert "11100000" in repr(view.buffer(1))
+    assert "11100000" in repr(data_buffer)
 
 
 def test_buffers_string():
@@ -452,7 +468,7 @@ def test_carray_stream():
     array_stream = na.carray_stream(reader)
 
     assert array_stream.is_valid() is True
-    assert "<nanoarrow.clib.CSchema struct>" in repr(array_stream)
+    assert "struct<some_column: int32>" in repr(array_stream)
 
     array = array_stream.get_next()
     assert array.schema.child(0).name == "some_column"

@@ -55,14 +55,20 @@ def schema_repr(schema, indent=0):
     return "\n".join(lines)
 
 
-def array_repr(array, indent=0):
+def array_repr(array, indent=0, max_char_width=80):
+    if max_char_width < 20:
+        max_char_width = 20
+
     indent_str = " " * indent
     if array._addr() == 0:
         return "<NULL nanoarrow.clib.CArray>"
     elif not array.is_valid():
         return "<released nanoarrow.clib.CArray>"
 
-    lines = [f"<nanoarrow.clib.CArray {array.schema._to_string()}>"]
+    schema_string = array.schema._to_string(
+        max_chars=max_char_width - indent - 23, recursive=True
+    )
+    lines = [f"<nanoarrow.clib.CArray {schema_string}>"]
     for attr in ("length", "offset", "null_count", "buffers"):
         attr_repr = repr(getattr(array, attr))
         lines.append(f"{indent_str}- {attr}: {attr_repr}")
@@ -101,7 +107,7 @@ def schema_view_repr(schema_view):
     return "\n".join(lines)
 
 
-def array_view_repr(array_view, max_byte_width=80, indent=0):
+def array_view_repr(array_view, max_char_width=80, indent=0):
     indent_str = " " * indent
 
     lines = ["<nanoarrow.clib.CArrayView>"]
@@ -113,12 +119,12 @@ def array_view_repr(array_view, max_byte_width=80, indent=0):
     lines.append(f"{indent_str}- buffers[{array_view.n_buffers}]:")
     for buffer in array_view.buffers:
         lines.append(
-            f"{indent_str}  - {buffer_view_repr(buffer, max_byte_width - indent - 4)}"
+            f"{indent_str}  - {buffer_view_repr(buffer, max_char_width - indent - 4)}"
         )
 
     if array_view.dictionary:
         dictionary_repr = array_view_repr(
-            array_view.dictionary, max_byte_width=max_byte_width, indent=indent + 2
+            array_view.dictionary, max_char_width=max_char_width, indent=indent + 2
         )
         lines.append(f"{indent_str}- dictionary: {dictionary_repr}")
     else:
@@ -127,16 +133,16 @@ def array_view_repr(array_view, max_byte_width=80, indent=0):
     lines.append(f"{indent_str}- children[{array_view.n_children}]:")
     for child in array_view.children:
         child_repr = array_view_repr(
-            child, max_byte_width=max_byte_width, indent=indent + 4
+            child, max_char_width=max_char_width, indent=indent + 4
         )
         lines.append(f"{indent_str}  - {child_repr}")
 
     return "\n".join(lines)
 
 
-def buffer_view_repr(buffer_view, max_byte_width=80):
-    if max_byte_width < 20:
-        max_byte_width = 20
+def buffer_view_repr(buffer_view, max_char_width=80):
+    if max_char_width < 20:
+        max_char_width = 20
 
     prefix = f"<{buffer_view.data_type} {buffer_view.type}"
     prefix += f"[{buffer_view.size_bytes} b]"
@@ -145,19 +151,19 @@ def buffer_view_repr(buffer_view, max_byte_width=80):
         return (
             prefix
             + " "
-            + buffer_view_preview_cpu(buffer_view, max_byte_width - len(prefix) - 2)
+            + buffer_view_preview_cpu(buffer_view, max_char_width - len(prefix) - 2)
             + ">"
         )
     else:
         return prefix + ">"
 
 
-def buffer_view_preview_cpu(buffer_view, max_byte_width):
+def buffer_view_preview_cpu(buffer_view, max_char_width):
     if buffer_view.element_size_bits == 0:
-        preview_elements = max_byte_width - 3
+        preview_elements = max_char_width - 3
         joined = repr(bytes(memoryview(buffer_view)[:preview_elements]))
     elif buffer_view.element_size_bits == 1:
-        max_elements = max_byte_width // 8
+        max_elements = max_char_width // 8
         if max_elements > len(buffer_view):
             preview_elements = len(buffer_view)
         else:
@@ -168,7 +174,7 @@ def buffer_view_preview_cpu(buffer_view, max_byte_width):
             for i in range(preview_elements)
         )
     else:
-        max_elements = max_byte_width // 3
+        max_elements = max_char_width // 3
         if max_elements > len(buffer_view):
             preview_elements = len(buffer_view)
         else:
@@ -176,13 +182,13 @@ def buffer_view_preview_cpu(buffer_view, max_byte_width):
 
         joined = " ".join(repr(buffer_view[i]) for i in range(preview_elements))
 
-    if len(joined) > max_byte_width or preview_elements < len(buffer_view):
-        return joined[: (max_byte_width - 3)] + "..."
+    if len(joined) > max_char_width or preview_elements < len(buffer_view):
+        return joined[: (max_char_width - 3)] + "..."
     else:
         return joined
 
 
-def array_stream_repr(array_stream):
+def array_stream_repr(array_stream, max_char_width=80):
     if array_stream._addr() == 0:
         return "<NULL nanoarrow.clib.CArrayStream>"
     elif not array_stream.is_valid():
@@ -190,9 +196,9 @@ def array_stream_repr(array_stream):
 
     lines = ["<nanoarrow.clib.CArrayStream>"]
     try:
-        lines.append(
-            f"- get_schema(): {schema_repr(array_stream.get_schema(), indent=2)}"
-        )
+        schema = array_stream.get_schema()
+        schema_string = schema._to_string(max_chars=max_char_width - 16, recursive=True)
+        lines.append(f"- get_schema(): {schema_string}")
     except Exception as e:
         lines.append(f"- get_schema(): <error calling get_schema(): {e}>")
 
