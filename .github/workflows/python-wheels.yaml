@@ -17,7 +17,7 @@
 
 name: Build Python Wheels
 
-# Build wheels only on a release branch or when requested since it's expensive
+# Build wheels only on a release branch, weekly, or when requested
 on:
   pull_request:
     branches:
@@ -25,12 +25,6 @@ on:
     paths:
       - '.github/workflows/python-wheels.yaml'
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to force on wheels"
-        required: false
-        type: string
-        default: ""
   push:
     branches:
       - 'maint-**'
@@ -45,8 +39,7 @@ jobs:
         - "ubuntu-20.04"
         - "windows-2019"
         - "macOS-11"
-        - ["self-hosted", "ubuntu-20.04", "arm64"]
-        - ["self-hosted", "macOS", "arm64"]
+        - ["self-hosted", "ubuntu-20.04", "arm"]
 
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +54,8 @@ jobs:
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse python
+        env:
+          CIBW_ARCHS_MACOS: x86_64 arm64
 
       - uses: actions/upload-artifact@v3
         with:
