@@ -16,9 +16,9 @@
 # under the License.
 
 import os
-import subprocess
 import re
 import shutil
+import subprocess
 import tempfile
 import warnings
 
@@ -161,7 +161,6 @@ class NanoarrowPxdGenerator:
 # any changes from nanoarrow C library sources in the checkout but is not
 # strictly necessary for things like installing from GitHub.
 def copy_or_generate_nanoarrow_c():
-    this_wd = os.getcwd()
     this_dir = os.path.abspath(os.path.dirname(__file__))
     source_dir = os.path.dirname(this_dir)
 
