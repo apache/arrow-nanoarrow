@@ -1,4 +1,3 @@
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,26 +14,12 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+#
+# This file is part of 'miniver': https://github.com/jbweston/miniver
 
-[project]
-name = "nanoarrow"
-dynamic = ["version"]
-description = "Python bindings to the nanoarrow C library"
-authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
-requires-python = ">=3.8"
+# Replaced by version-bumping scripts at release time
+version = "0.4.0dev"
 
-[project.optional-dependencies]
-test = ["pyarrow", "pytest", "numpy"]
-
-[project.urls]
-homepage = "https://arrow.apache.org"
-repository = "https://github.com/apache/arrow-nanoarrow"
-
-[build-system]
-requires = [
-    "setuptools >= 61.0.0",
-    "versioneer[toml]==0.29",
-    "Cython"
-]
-build-backend = "setuptools.build_meta"
+# These values are only set if the distribution was created with 'git archive'
+refnames = "$Format:%D$"
+git_hash = "$Format:%h$"
