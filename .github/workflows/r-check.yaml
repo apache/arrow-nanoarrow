@@ -63,7 +63,7 @@ jobs:
       # Check package install with extra warning flags except on Windows,
       # where the R headers cause some problems
       - name: Check R CMD INSTALL
-        if: matrix.config.os != "windows-latest"
+        if: matrix.config.os != 'windows-latest'
         env:
           PKG_CPPFLAGS: "-DNANOARROW_DEBUG"
           PKG_CFLAGS: "-Werror -Wall -Wextra -Wpedantic -Wconversion -Wno-unused-parameter -Wno-sign-conversion -Wno-cast-function-type"
