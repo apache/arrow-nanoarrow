@@ -144,13 +144,35 @@ else()
     endif()
   endif()
 
-  install(TARGETS nanoarrow DESTINATION lib)
+  install(
+    EXPORT nanoarrowTargets
+    FILE nanoarrowTargets.cmake
+    DESTINATION "lib/cmake/nanoarrow"
+  )
+
+  install(
+    TARGETS nanoarrow
+    EXPORT nanoarrowTargets
+    DESTINATION lib
+  )
   install(DIRECTORY src/
           DESTINATION include
           FILES_MATCHING
           PATTERN "*.h")
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
           DESTINATION include/nanoarrow)
+
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(
+    ci/nanoarrow.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/nanoarrowConfig.cmake"
+    INSTALL_DESTINATION "lib/cmake/nanoarrow"
+  )
+
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/nanoarrowConfig.cmake"
+    DESTINATION "lib/cmake/nanoarrow"
+  )
 endif()
 
 # Always build integration test if building tests
