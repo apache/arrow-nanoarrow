@@ -38,6 +38,7 @@ def get_version(pkg_path):
     spec.loader.exec_module(module)
     return module.__version__
 
+
 version = get_version("src/nanoarrow")
 
 
