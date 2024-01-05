@@ -39,7 +39,7 @@ jobs:
         - "ubuntu-20.04"
         - "windows-2019"
         - "macOS-11"
-        - ["self-hosted", "ubuntu-20.04", "arm"]
+        - ["self-hosted", "arm"]
 
     steps:
       - uses: actions/checkout@v4
