@@ -16,6 +16,7 @@
 # under the License.
 
 import re
+
 import nanoarrow as na
 
 
