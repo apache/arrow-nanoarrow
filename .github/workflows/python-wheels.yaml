@@ -77,17 +77,15 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
+          name: wheels
           path: ./wheelhouse/*.whl
 
   build_wheels_linux_arm:
     name: Build wheels (linux/arm64)
-    runs-on: ["self-hosted", "Linux", "arm64"]
+    runs-on: ["self-hosted", "arm", "linux"]
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-tags: true
-
       - uses: actions/setup-python@v3
 
       - name: Install cibuildwheel
@@ -99,4 +97,5 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
+          name: wheels-arm
           path: ./wheelhouse/*.whl
