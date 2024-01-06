@@ -17,7 +17,7 @@
 
 name: Build Python Wheels
 
-# Build wheels only on a release branch, weekly, or when requested
+# Build wheels weekly or when requested
 on:
   pull_request:
     branches:
@@ -25,21 +25,41 @@ on:
     paths:
       - '.github/workflows/python-wheels.yaml'
   workflow_dispatch:
-  push:
-    branches:
-      - 'maint-**'
+  schedule:
+    - cron: '6 0 * * 0'
 
 jobs:
+  build_sdist:
+    runs-on: "ubuntu-20.04"
+    steps:
+    - uses: actions/setup-python@v3
+    - name: Check that cmake is installed
+      run: |
+        cmake --version
+
+    - name: Install build
+      run: |
+        pip install build
+
+    - name: Build sdist
+      run: |
+        cd python
+        python -m build --sdist
+
+    - name: Check install from sdist
+      run: |
+        pip install python/dist/nanoarrow-*.tar.gz
+
+    - uses: actions/upload-artifact@v3
+      with:
+        path: ./python/dist/nanoarrow-*.tar.gz
+
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os:
-        - "ubuntu-20.04"
-        - "windows-2019"
-        - "macOS-11"
-        - ["self-hosted", "arm"]
+        os: ["ubuntu-20.04", "windows-2019", "macOS-11"]
 
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +76,28 @@ jobs:
           python -m cibuildwheel --output-dir wheelhouse python
         env:
           CIBW_ARCHS_MACOS: x86_64 arm64
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
+
+  build_wheels_linux_arm:
+    name: Build wheels (linux/arm64)
+    runs-on: ["self-hosted", "arm"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - uses: actions/setup-python@v3
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.15.0
+
+      - name: Build wheels
+        run: |
+          python -m cibuildwheel --output-dir wheelhouse python
 
       - uses: actions/upload-artifact@v3
         with:

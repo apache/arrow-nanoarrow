@@ -18,4 +18,6 @@
 exclude bootstrap.py
 include src/nanoarrow/nanoarrow.c
 include src/nanoarrow/nanoarrow.h
+include src/nanoarrow/nanoarrow_device.c
+include src/nanoarrow/nanoarrow_device.h
 include src/nanoarrow/nanoarrow_c.pxd
