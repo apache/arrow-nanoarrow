@@ -60,11 +60,16 @@ jobs:
         path: ./python/dist/nanoarrow-*.tar.gz
 
   build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    needs: ["build_sdist"]
+    name: Build wheels on ${{ matrix.config.label }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
-        os: ["ubuntu-20.04", "windows-2019", "macOS-11"]
+        config:
+          - {os: "ubuntu-20.04", label: "linux"}
+          - {os: "windows-2019", label: "windows"}
+          - {os: "macOS-11", label: "macOS"}
+          - {os: ["self-hosted", "arm", "linux"], label: "linux/arm64"}
 
     steps:
       - uses: actions/checkout@v4
@@ -87,24 +92,4 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: wheels
-          path: ./wheelhouse/*.whl
-
-  build_wheels_linux_arm:
-    name: Build wheels (linux/arm64)
-    runs-on: ["self-hosted", "arm", "linux"]
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v3
-
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.15.0
-
-      - name: Build wheels
-        run: |
-          python -m cibuildwheel --output-dir wheelhouse python
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: wheels-arm
           path: ./wheelhouse/*.whl
