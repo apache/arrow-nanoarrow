@@ -69,7 +69,9 @@ jobs:
           - {os: "ubuntu-20.04", label: "linux"}
           - {os: "windows-2019", label: "windows"}
           - {os: "macOS-11", label: "macOS"}
-          - {os: ["self-hosted", "arm", "linux"], label: "linux/arm64"}
+          # Doesn't seem to work yet. Ref:
+          # https://github.com/apache/arrow/blob/main/.github/workflows/go.yml#L46-L66
+          # - {os: ["self-hosted", "arm", "linux"], label: "linux/arm64"}
 
     steps:
       - uses: actions/checkout@v4
