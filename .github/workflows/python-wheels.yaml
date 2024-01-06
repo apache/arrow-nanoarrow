@@ -51,6 +51,10 @@ jobs:
       run: |
         pip install python/dist/nanoarrow-*.tar.gz
 
+    - name: Test import
+      run: |
+        python -c "import nanoarrow; print(nanoarrow.__version__)"
+
     - uses: actions/upload-artifact@v3
       with:
         path: ./python/dist/nanoarrow-*.tar.gz
@@ -74,6 +78,10 @@ jobs:
           python -m cibuildwheel --output-dir wheelhouse python
         env:
           CIBW_ARCHS_MACOS: x86_64 arm64
+          # Optional (test suite will pass if these are not available)
+          CIBW_BEFORE_TEST: pip install --only-binary ":all:" pyarrow numpy || pip install --only-binary ":all:" numpy || true
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: pytest {package}/tests
 
       - uses: actions/upload-artifact@v3
         with:

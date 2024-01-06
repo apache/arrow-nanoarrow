@@ -14,12 +14,16 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
-# This file is part of 'miniver': https://github.com/jbweston/miniver
 
-# Replaced by version-bumping scripts at release time
-version = "0.4.0dev0"
+import re
+import nanoarrow as na
 
-# These values are only set if the distribution was created with 'git archive'
-refnames = "$Format:%D$"
-git_hash = "$Format:%h$"
+
+def test_version():
+    re_py_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(dev[0-9+])?$")
+    assert re_py_version.match(na.__version__) is not None
+
+
+def test_c_version():
+    re_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$")
+    assert re_version.match(na.c_version()) is not None

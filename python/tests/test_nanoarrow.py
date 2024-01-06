@@ -15,19 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import re
 import sys
 
-import numpy as np
-import pyarrow as pa
 import pytest
 
 import nanoarrow as na
 
-
-def test_c_version():
-    re_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$")
-    assert re_version.match(na.c_version()) is not None
+np = pytest.importorskip("numpy")
+pa = pytest.importorskip("pyarrow")
 
 
 def test_schema_helper():

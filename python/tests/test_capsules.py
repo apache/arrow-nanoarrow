@@ -14,10 +14,12 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-import pyarrow as pa
+
 import pytest
 
 import nanoarrow as na
+
+pa = pytest.importorskip("pyarrow")
 
 
 class SchemaWrapper:
