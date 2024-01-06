@@ -32,6 +32,7 @@ jobs:
   build_sdist:
     runs-on: "ubuntu-20.04"
     steps:
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v3
     - name: Check that cmake is installed
       run: |
@@ -63,9 +64,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-tags: true
-
       - uses: actions/setup-python@v3
 
       - name: Install cibuildwheel
@@ -83,7 +81,7 @@ jobs:
 
   build_wheels_linux_arm:
     name: Build wheels (linux/arm64)
-    runs-on: ["self-hosted", "arm"]
+    runs-on: ["self-hosted", "Linux", "arm64"]
 
     steps:
       - uses: actions/checkout@v4
