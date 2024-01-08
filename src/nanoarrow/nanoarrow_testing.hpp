@@ -520,13 +520,6 @@ class TestingJSONWriter {
   }
 
   ArrowErrorCode WriteType(std::ostream& out, const ArrowSchemaView* field) {
-    ArrowType type;
-    if (field->extension_name.data != nullptr) {
-      type = field->storage_type;
-    } else {
-      type = field->type;
-    }
-
     out << "{";
 
     switch (field->type) {
