@@ -552,7 +552,7 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
 
 SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_xptr) {
   SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
   struct ArrowError error;
 
   as_array_default(x_sexp, array, schema_xptr, &error);

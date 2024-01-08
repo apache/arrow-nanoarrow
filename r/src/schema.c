@@ -26,8 +26,8 @@
 SEXP nanoarrow_c_schema_init(SEXP type_id_sexp, SEXP nullable_sexp) {
   int type_id = INTEGER(type_id_sexp)[0];
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
+  struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
 
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   int result = ArrowSchemaInitFromType(schema, type_id);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowSchemaInitFromType() failed");
@@ -59,8 +59,8 @@ SEXP nanoarrow_c_schema_init_date_time(SEXP type_id_sexp, SEXP time_unit_sexp,
   }
 
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
+  struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
 
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   ArrowSchemaInit(schema);
   int result = ArrowSchemaSetTypeDateTime(schema, type_id, time_unit, timezone);
   if (result != NANOARROW_OK) {
@@ -87,8 +87,8 @@ SEXP nanoarrow_c_schema_init_decimal(SEXP type_id_sexp, SEXP precision_sexp,
   int scale = INTEGER(scale_sexp)[0];
 
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
+  struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
 
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   ArrowSchemaInit(schema);
   int result = ArrowSchemaSetTypeDecimal(schema, type_id, precision, scale);
   if (result != NANOARROW_OK) {
@@ -114,8 +114,8 @@ SEXP nanoarrow_c_schema_init_fixed_size(SEXP type_id_sexp, SEXP fixed_size_sexp,
   int fixed_size = INTEGER(fixed_size_sexp)[0];
 
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
+  struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
 
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
   ArrowSchemaInit(schema);
   int result = ArrowSchemaSetTypeFixedSize(schema, type_id, fixed_size);
   if (result != NANOARROW_OK) {

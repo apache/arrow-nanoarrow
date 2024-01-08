@@ -29,8 +29,9 @@
 
 SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
   struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
+
   SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
 
   struct ArrowError error;
   int result = ArrowArrayInitFromSchema(array, schema, &error);
@@ -263,7 +264,8 @@ SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) 
   // what the storage type would be when it was being constructed. Here we create
   // a version that does and move buffers recursively into it.
   SEXP array_dst_xptr = PROTECT(nanoarrow_array_owning_xptr());
-  struct ArrowArray* array_dst = (struct ArrowArray*)R_ExternalPtrAddr(array_dst_xptr);
+  struct ArrowArray* array_dst = nanoarrow_output_array_from_xptr(array_dst_xptr);
+
   int result = ArrowArrayInitFromSchema(array_dst, schema, &error);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromSchema(): %s", error.message);

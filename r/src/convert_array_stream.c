@@ -34,7 +34,8 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
   double n = REAL(n_sexp)[0];
 
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
+
   int result = ArrowArrayStreamGetSchema(array_stream, schema, NULL);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayStream::get_schema(): %s",
@@ -51,7 +52,7 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
   }
 
   SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
 
   int64_t n_batches = 0;
   int64_t n_materialized = 0;

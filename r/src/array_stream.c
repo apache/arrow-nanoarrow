@@ -58,7 +58,8 @@ SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
       nanoarrow_array_stream_from_xptr(array_stream_xptr);
 
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
+
   int result = ArrowArrayStreamGetSchema(array_stream, schema, NULL);
   if (result != 0) {
     Rf_error("array_stream->get_schema(): [%d] %s", result,
@@ -74,7 +75,8 @@ SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
       nanoarrow_array_stream_from_xptr(array_stream_xptr);
 
   SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
+
   int result = ArrowArrayStreamGetNext(array_stream, array, NULL);
   if (result != NANOARROW_OK) {
     Rf_error("array_stream->get_next(): [%d] %s", result,
@@ -91,13 +93,12 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
 
   // Schema needs a copy here because ArrowBasicArrayStreamInit() takes ownership
   SEXP schema_copy_xptr = PROTECT(nanoarrow_schema_owning_xptr());
-  struct ArrowSchema* schema_copy =
-      (struct ArrowSchema*)R_ExternalPtrAddr(schema_copy_xptr);
+  struct ArrowSchema* schema_copy = nanoarrow_output_schema_from_xptr(schema_copy_xptr);
   schema_export(schema_xptr, schema_copy);
 
   SEXP array_stream_xptr = PROTECT(nanoarow_array_stream_owning_xptr());
   struct ArrowArrayStream* array_stream =
-      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
+      nanoarrow_output_array_stream_from_xptr(array_stream_xptr);
 
   int64_t n_arrays = Rf_xlength(batches_sexp);
   if (ArrowBasicArrayStreamInit(array_stream, schema_copy, n_arrays) != NANOARROW_OK) {

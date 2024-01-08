@@ -176,20 +176,45 @@ static inline SEXP nanoarow_array_stream_owning_xptr(void);
 /// \brief Ensure an input SEXP points to an initialized ArrowSchema
 ///
 /// This function will always return an ArrowSchema pointer that can be safely
-/// consumed or raise an error via Rf_error().
+/// consumed or raise an error via Rf_error(). This is intended to be used to
+/// sanitize an *input* ArrowSchema.
 static inline struct ArrowSchema* nanoarrow_schema_from_xptr(SEXP schema_xptr);
+
+/// \brief Ensure an output SEXP points to an uninitialized ArrowSchema
+///
+/// This function will always return an ArrowSchema pointer that can be safely
+/// used as an output argument or raise an error via Rf_error(). This is intended
+/// to be used to sanitize an *output* ArrowSchema allocated from R or elsewhere.
+static inline struct ArrowSchema* nanoarrow_output_schema_from_xptr(SEXP schema_xptr);
 
 /// \brief Ensure an input SEXP points to an initialized ArrowArray
 ///
 /// This function will always return an ArrowArray pointer that can be safely
-/// consumed or raise an error via Rf_error().
+/// consumed or raise an error via Rf_error(). This is intended to be used to
+/// sanitize an *input* ArrowArray.
 static inline struct ArrowArray* nanoarrow_array_from_xptr(SEXP array_xptr);
+
+/// \brief Ensure an output SEXP points to an uninitialized ArrowArray
+///
+/// This function will always return an ArrowArray pointer that can be safely
+/// used as an output argument or raise an error via Rf_error(). This is intended
+/// to be used to sanitize an *output* ArrowArray allocated from R or elsewhere.
+static inline struct ArrowArray* nanoarrow_output_array_from_xptr(SEXP array_xptr);
 
 /// \brief Ensure an input SEXP points to an initialized ArrowArrayStream
 ///
 /// This function will always return an ArrowArrayStream pointer that can be safely
-/// consumed or raise an error via Rf_error().
+/// consumed or raise an error via Rf_error(). This is intended to be used to
+/// sanitize an *input* ArrowArrayStream.
 static inline struct ArrowArrayStream* nanoarrow_array_stream_from_xptr(
+    SEXP array_stream_xptr);
+
+/// \brief Ensure an output SEXP points to an uninitialized ArrowArrayStream
+///
+/// This function will always return an ArrowArrayStream pointer that can be safely
+/// used as an output argument or raise an error via Rf_error(). This is intended
+/// to be used to sanitize an *output* ArrowArrayStream allocated from R or elsewhere.
+static inline struct ArrowArrayStream* nanoarrow_output_array_stream_from_xptr(
     SEXP array_stream_xptr);
 
 /// \brief Finalize an external pointer to an ArrowSchema
@@ -310,6 +335,23 @@ static inline struct ArrowSchema* nanoarrow_schema_from_xptr(SEXP schema_xptr) {
   return schema;
 }
 
+static inline struct ArrowSchema* nanoarrow_output_schema_from_xptr(SEXP schema_xptr) {
+  if (!Rf_inherits(schema_xptr, "nanoarrow_schema")) {
+    Rf_error("`schema` argument that does not inherit from 'nanoarrow_schema'");
+  }
+
+  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  if (schema == NULL) {
+    Rf_error("nanoarrow_schema() is an external pointer to NULL");
+  }
+
+  if (schema->release != NULL) {
+    Rf_error("nanoarrow_schema() output has already been initialized");
+  }
+
+  return schema;
+}
+
 static inline struct ArrowArray* nanoarrow_array_from_xptr(SEXP array_xptr) {
   if (!Rf_inherits(array_xptr, "nanoarrow_array")) {
     Rf_error("`array` argument that is not a nanoarrow_array()");
@@ -322,6 +364,23 @@ static inline struct ArrowArray* nanoarrow_array_from_xptr(SEXP array_xptr) {
 
   if (array->release == NULL) {
     Rf_error("nanoarrow_array() has already been released");
+  }
+
+  return array;
+}
+
+static inline struct ArrowArray* nanoarrow_output_array_from_xptr(SEXP array_xptr) {
+  if (!Rf_inherits(array_xptr, "nanoarrow_array")) {
+    Rf_error("`array` argument that is not a nanoarrow_array()");
+  }
+
+  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  if (array == NULL) {
+    Rf_error("nanoarrow_array() is an external pointer to NULL");
+  }
+
+  if (array->release != NULL) {
+    Rf_error("nanoarrow_array() output has already been initialized");
   }
 
   return array;
@@ -341,6 +400,25 @@ static inline struct ArrowArrayStream* nanoarrow_array_stream_from_xptr(
 
   if (array_stream->release == NULL) {
     Rf_error("nanoarrow_array_stream() has already been released");
+  }
+
+  return array_stream;
+}
+
+static inline struct ArrowArrayStream* nanoarrow_output_array_stream_from_xptr(
+    SEXP array_stream_xptr) {
+  if (!Rf_inherits(array_stream_xptr, "nanoarrow_array_stream")) {
+    Rf_error("`array_stream` argument that is not a nanoarrow_array_stream()");
+  }
+
+  struct ArrowArrayStream* array_stream =
+      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
+  if (array_stream == NULL) {
+    Rf_error("nanoarrow_array_stream() is an external pointer to NULL");
+  }
+
+  if (array_stream->release != NULL) {
+    Rf_error("nanoarrow_array_stream() output has already been initialized");
   }
 
   return array_stream;

@@ -151,7 +151,7 @@ static inline SEXP array_ensure_independent(struct ArrowArray* array) {
 
   // Move array to the newly created owner
   struct ArrowArray* original_array =
-      (struct ArrowArray*)R_ExternalPtrAddr(original_array_xptr);
+      nanoarrow_output_array_from_xptr(original_array_xptr);
   memcpy(original_array, array, sizeof(struct ArrowArray));
   array->release = NULL;
 
