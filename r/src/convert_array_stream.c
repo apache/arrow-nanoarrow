@@ -31,7 +31,14 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
   struct ArrowArrayStream* array_stream =
       nanoarrow_array_stream_from_xptr(array_stream_xptr);
   int64_t size = (int64_t)(REAL(size_sexp)[0]);
-  int64_t n = (int64_t)(REAL(n_sexp)[0]);
+
+  double n_real = REAL(n_sexp)[0];
+  int n;
+  if (R_FINITE(n_real)) {
+    n = (int)n_real;
+  } else {
+    n = INT_MAX;
+  }
 
   SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
   struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
