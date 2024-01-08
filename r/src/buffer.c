@@ -64,6 +64,8 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
       if (x_sexp != NA_STRING) {
         data = CHAR(x_sexp);
         break;
+      } else {
+        Rf_error("NA_character_ not supported in as_nanoarrow_buffer()");
       }
       break;
     default:
