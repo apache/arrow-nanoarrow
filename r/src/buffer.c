@@ -64,7 +64,10 @@ SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp) {
       if (x_sexp != NA_STRING) {
         data = CHAR(x_sexp);
         break;
+      } else {
+        Rf_error("NA_character_ not supported in as_nanoarrow_buffer()");
       }
+      break;
     default:
       Rf_error("Unsupported type");
   }
@@ -178,8 +181,8 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
                          ""};
   SEXP info = PROTECT(Rf_mkNamed(VECSXP, names));
   SET_VECTOR_ELT(info, 0, R_MakeExternalPtr(buffer->data, NULL, buffer_xptr));
-  SET_VECTOR_ELT(info, 1, Rf_ScalarReal(buffer->size_bytes));
-  SET_VECTOR_ELT(info, 2, Rf_ScalarReal(buffer->capacity_bytes));
+  SET_VECTOR_ELT(info, 1, Rf_ScalarReal((double)buffer->size_bytes));
+  SET_VECTOR_ELT(info, 2, Rf_ScalarReal((double)buffer->capacity_bytes));
   SET_VECTOR_ELT(info, 3, buffer_type_sexp);
   SET_VECTOR_ELT(info, 4, buffer_data_type_sexp);
   SET_VECTOR_ELT(info, 5, Rf_ScalarInteger(element_size_bits));
@@ -189,7 +192,7 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
 
 SEXP nanoarrow_c_buffer_head_bytes(SEXP buffer_xptr, SEXP max_bytes_sexp) {
   struct ArrowBuffer* buffer = buffer_from_xptr(buffer_xptr);
-  int64_t max_bytes = REAL(max_bytes_sexp)[0];
+  int64_t max_bytes = (int64_t)REAL(max_bytes_sexp)[0];
 
   if (buffer->size_bytes <= max_bytes) {
     return buffer_xptr;

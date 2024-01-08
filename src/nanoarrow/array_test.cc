@@ -140,7 +140,7 @@ TEST(ArrayTest, ArrayTestInitFromSchema) {
 TEST(ArrayTest, ArrayTestSetBitmap) {
   struct ArrowBitmap bitmap;
   ArrowBitmapInit(&bitmap);
-  ArrowBitmapAppend(&bitmap, true, 9);
+  ASSERT_EQ(ArrowBitmapAppend(&bitmap, true, 9), NANOARROW_OK);
 
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
@@ -162,11 +162,11 @@ TEST(ArrayTest, ArrayTestSetBuffer) {
 
   struct ArrowBuffer buffer0, buffer1, buffer2;
   ArrowBufferInit(&buffer0);
-  ArrowBufferAppend(&buffer0, validity_bitmap, 1);
+  ASSERT_EQ(ArrowBufferAppend(&buffer0, validity_bitmap, 1), NANOARROW_OK);
   ArrowBufferInit(&buffer1);
-  ArrowBufferAppend(&buffer1, offsets, 9 * sizeof(int32_t));
+  ASSERT_EQ(ArrowBufferAppend(&buffer1, offsets, 9 * sizeof(int32_t)), NANOARROW_OK);
   ArrowBufferInit(&buffer2);
-  ArrowBufferAppend(&buffer2, data, strlen(data));
+  ASSERT_EQ(ArrowBufferAppend(&buffer2, data, strlen(data)), NANOARROW_OK);
 
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
@@ -1558,7 +1558,7 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   struct ArrowArray array;
 
   // Build with no validity buffer
-  ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 11), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 12), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendInt32(ArrowArrayBuffer(&array, 1), 13), NANOARROW_OK);

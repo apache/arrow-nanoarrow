@@ -33,7 +33,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayTest) {
   nanoarrow::UniqueArray array;
   EXPECT_EQ(array->release, nullptr);
 
-  ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.get(), 123), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
@@ -58,7 +58,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueSchemaTest) {
   nanoarrow::UniqueSchema schema;
   EXPECT_EQ(schema->release, nullptr);
 
-  ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_NE(schema->release, nullptr);
   EXPECT_STREQ(schema->format, "i");
 
@@ -174,7 +174,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayViewTest) {
   // Use an ArrayView with children, since an ArrayView with no children
   // doesn't hold any resources
   ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_STRUCT);
-  ArrowArrayViewAllocateChildren(array_view.get(), 2);
+  ASSERT_EQ(ArrowArrayViewAllocateChildren(array_view.get(), 2), NANOARROW_OK);
   EXPECT_EQ(array_view->storage_type, NANOARROW_TYPE_STRUCT);
 
   // move constructor

@@ -39,7 +39,7 @@ SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
   struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   struct ArrowError error;
-  ArrowErrorSet(&error, "");
+  ArrowErrorInit(&error);
 
   struct ArrowArrayView* array_view =
       (struct ArrowArrayView*)ArrowMalloc(sizeof(struct ArrowArrayView));

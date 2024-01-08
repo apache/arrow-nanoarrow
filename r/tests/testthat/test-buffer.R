@@ -63,6 +63,11 @@ test_that("buffers can be printed", {
 
 test_that("as_nanoarrow_buffer() errors for unsupported types", {
   expect_error(
+    as_nanoarrow_buffer(NA_character_),
+    "NA_character_ not supported"
+  )
+
+  expect_error(
     as_nanoarrow_buffer(environment()),
     "Can't convert object of type environment to nanoarrow_buffer"
   )

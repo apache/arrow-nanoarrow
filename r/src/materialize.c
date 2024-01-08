@@ -89,11 +89,11 @@ void nanoarrow_set_rownames(SEXP x, R_xlen_t len) {
   if (len <= INT_MAX) {
     SEXP rownames = PROTECT(Rf_allocVector(INTSXP, 2));
     INTEGER(rownames)[0] = NA_INTEGER;
-    INTEGER(rownames)[1] = -len;
+    INTEGER(rownames)[1] = (int)(-len);
     Rf_setAttrib(x, R_RowNamesSymbol, rownames);
     UNPROTECT(1);
   } else {
-    SEXP length_dbl = PROTECT(Rf_ScalarReal(len));
+    SEXP length_dbl = PROTECT(Rf_ScalarReal((double)len));
     SEXP seq_len_symbol = PROTECT(Rf_install("seq_len"));
     SEXP seq_len_call = PROTECT(Rf_lang2(seq_len_symbol, length_dbl));
     SEXP rownames_call = PROTECT(Rf_lang2(R_AsCharacterSymbol, seq_len_call));
@@ -294,9 +294,9 @@ static int nanoarrow_materialize_other(struct RConverter* converter,
       (struct ArrowArray*)converter->array_view.array, schema_xptr, converter_xptr));
   Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
 
-  SEXP offset_sexp =
-      PROTECT(Rf_ScalarReal(converter->src.array_view->offset + converter->src.offset));
-  SEXP length_sexp = PROTECT(Rf_ScalarReal(converter->src.length));
+  SEXP offset_sexp = PROTECT(
+      Rf_ScalarReal((double)(converter->src.array_view->offset + converter->src.offset)));
+  SEXP length_sexp = PROTECT(Rf_ScalarReal((double)converter->src.length));
 
   SEXP fun = PROTECT(Rf_install("convert_fallback_other"));
   SEXP call = PROTECT(

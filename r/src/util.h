@@ -60,9 +60,9 @@ static inline void check_trivial_alloc(const void* ptr, const char* ptr_type) {
 // possible.
 static inline SEXP length_sexp_from_int64(int64_t value) {
   if (value < INT_MAX) {
-    return Rf_ScalarInteger(value);
+    return Rf_ScalarInteger((int)value);
   } else {
-    return Rf_ScalarReal(value);
+    return Rf_ScalarReal((double)value);
   }
 }
 

@@ -42,14 +42,21 @@ as_nanoarrow_buffer.nanoarrow_buffer <- function(x, ...) {
 
 #' @export
 as_nanoarrow_buffer.default <- function(x, ...) {
+  msg <- NULL
   result <- tryCatch(
     .Call(nanoarrow_c_as_buffer_default, x),
-    error = function(...) NULL
+    error = function(e) {
+      msg <<- conditionMessage(e)
+      NULL
+    }
   )
 
-  if (is.null(result)) {
+  if (is.null(result) && is.null(msg)) {
     cls <- paste(class(x), collapse = "/")
     stop(sprintf("Can't convert object of type %s to nanoarrow_buffer", cls))
+  } else if (is.null(result)) {
+    cls <- paste(class(x), collapse = "/")
+    stop(sprintf("Can't convert object of type %s to nanoarrow_buffer: %s", cls, msg))
   }
 
   result
