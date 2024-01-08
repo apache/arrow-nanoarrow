@@ -57,6 +57,7 @@ jobs:
 
     - uses: actions/upload-artifact@v3
       with:
+        name: sdist
         path: ./python/dist/nanoarrow-*.tar.gz
 
   build_wheels:
@@ -69,9 +70,8 @@ jobs:
           - {os: "ubuntu-20.04", label: "linux"}
           - {os: "windows-2019", label: "windows"}
           - {os: "macOS-11", label: "macOS"}
-          # Doesn't seem to work yet. Ref:
-          # https://github.com/apache/arrow/blob/main/.github/workflows/go.yml#L46-L66
-          - {os: ["self-hosted", "arm"], label: "linux/arm64"}
+          # Uncomment when apache/arrow-nanoarrow is added to the arrow runner group
+          # - {os: ["self-hosted", "arm"], label: "linux/arm64"}
 
     steps:
       - uses: actions/checkout@v4
