@@ -71,7 +71,7 @@ jobs:
           - {os: "macOS-11", label: "macOS"}
           # Doesn't seem to work yet. Ref:
           # https://github.com/apache/arrow/blob/main/.github/workflows/go.yml#L46-L66
-          # - {os: ["self-hosted", "arm", "linux"], label: "linux/arm64"}
+          - {os: ["self-hosted", "arm"], label: "linux/arm64"}
 
     steps:
       - uses: actions/checkout@v4
