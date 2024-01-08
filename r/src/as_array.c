@@ -37,7 +37,7 @@ static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array,
   // In many cases we can skip the array_export() step (which adds some complexity
   // and an additional R object to the mix)
   if (Rf_inherits(result, "nanoarrow_array_dont_export")) {
-    struct ArrowArray* array_result = array_from_xptr(result);
+    struct ArrowArray* array_result = nanoarrow_array_from_xptr(result);
     ArrowArrayMove(array_result, array);
   } else {
     array_export(result, array);
@@ -380,7 +380,7 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
 static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                                 struct ArrowSchemaView* schema_view,
                                 struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   switch (schema_view->type) {
     case NANOARROW_TYPE_SPARSE_UNION:
@@ -504,7 +504,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
 
 static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                              struct ArrowError* error) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   struct ArrowSchemaView schema_view;
   int result = ArrowSchemaViewInit(&schema_view, schema, error);
@@ -551,8 +551,8 @@ static void as_array_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
 }
 
 SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_xptr) {
-  SEXP array_xptr = PROTECT(array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
   struct ArrowError error;
 
   as_array_default(x_sexp, array, schema_xptr, &error);

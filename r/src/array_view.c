@@ -35,8 +35,8 @@ static void finalize_array_view_xptr(SEXP array_view_xptr) {
 }
 
 SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
   struct ArrowError error;
   ArrowErrorSet(&error, "");

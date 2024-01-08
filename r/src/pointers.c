@@ -26,11 +26,13 @@
 // More reliable way to stringify intptr_t on Windows using C++
 void intptr_as_string(intptr_t ptr_int, char* buf);
 
-SEXP nanoarrow_c_allocate_schema(void) { return schema_owning_xptr(); }
+SEXP nanoarrow_c_allocate_schema(void) { return nanoarrow_schema_owning_xptr(); }
 
-SEXP nanoarrow_c_allocate_array(void) { return array_owning_xptr(); }
+SEXP nanoarrow_c_allocate_array(void) { return nanoarrow_array_owning_xptr(); }
 
-SEXP nanoarrow_c_allocate_array_stream(void) { return array_stream_owning_xptr(); }
+SEXP nanoarrow_c_allocate_array_stream(void) {
+  return nanoarow_array_stream_owning_xptr();
+}
 
 SEXP nanoarrow_c_pointer(SEXP obj_sexp) {
   if (TYPEOF(obj_sexp) == EXTPTRSXP) {
@@ -111,7 +113,6 @@ SEXP nanoarrow_c_pointer_release(SEXP ptr) {
     if (obj != NULL && obj->release != NULL) {
       obj->release(obj);
       obj->release = NULL;
-      run_user_array_stream_finalizer(ptr);
     }
   } else {
     Rf_error(
@@ -204,7 +205,7 @@ SEXP nanoarrow_c_pointer_move(SEXP ptr_src, SEXP ptr_dst) {
 // keep all the object dependencies alive and/or risk moving a dependency
 // of some other R object.
 SEXP nanoarrow_c_export_schema(SEXP schema_xptr, SEXP ptr_dst) {
-  struct ArrowSchema* obj_src = schema_from_xptr(schema_xptr);
+  struct ArrowSchema* obj_src = nanoarrow_schema_from_xptr(schema_xptr);
   SEXP xptr_dst = PROTECT(nanoarrow_c_pointer(ptr_dst));
 
   struct ArrowSchema* obj_dst = (struct ArrowSchema*)R_ExternalPtrAddr(xptr_dst);

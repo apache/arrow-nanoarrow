@@ -41,7 +41,7 @@ static SEXP run_finalizer_error_handler(SEXP cond, void* hdata) {
   return R_NilValue;
 }
 
-void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
+static void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
   SEXP protected = PROTECT(R_ExternalPtrProtected(array_stream_xptr));
   R_SetExternalPtrProtected(array_stream_xptr, R_NilValue);
 
@@ -53,25 +53,13 @@ void run_user_array_stream_finalizer(SEXP array_stream_xptr) {
   UNPROTECT(1);
 }
 
-void finalize_array_stream_xptr(SEXP array_stream_xptr) {
-  struct ArrowArrayStream* array_stream =
-      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
-  if (array_stream != NULL && array_stream->release != NULL) {
-    array_stream->release(array_stream);
-  }
-
-  if (array_stream != NULL) {
-    ArrowFree(array_stream);
-  }
-
-  run_user_array_stream_finalizer(array_stream_xptr);
-}
-
 SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
-  struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
+  struct ArrowArrayStream* array_stream =
+      nanoarrow_array_stream_from_xptr(array_stream_xptr);
 
-  SEXP schema_xptr = PROTECT(schema_owning_xptr());
-  struct ArrowSchema* schema = (struct ArrowSchema*)R_ExternalPtrAddr(schema_xptr);
+  SEXP schema_xptr = PROTECT(nanoarrow_schema_owning_xptr());
+  struct ArrowSchema* schema = nanoarrow_output_schema_from_xptr(schema_xptr);
+
   int result = ArrowArrayStreamGetSchema(array_stream, schema, NULL);
   if (result != 0) {
     Rf_error("array_stream->get_schema(): [%d] %s", result,
@@ -83,10 +71,12 @@ SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr) {
 }
 
 SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr) {
-  struct ArrowArrayStream* array_stream = array_stream_from_xptr(array_stream_xptr);
+  struct ArrowArrayStream* array_stream =
+      nanoarrow_array_stream_from_xptr(array_stream_xptr);
 
-  SEXP array_xptr = PROTECT(array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
+
   int result = ArrowArrayStreamGetNext(array_stream, array, NULL);
   if (result != NANOARROW_OK) {
     Rf_error("array_stream->get_next(): [%d] %s", result,
@@ -102,14 +92,13 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
   int validate = LOGICAL(validate_sexp)[0];
 
   // Schema needs a copy here because ArrowBasicArrayStreamInit() takes ownership
-  SEXP schema_copy_xptr = PROTECT(schema_owning_xptr());
-  struct ArrowSchema* schema_copy =
-      (struct ArrowSchema*)R_ExternalPtrAddr(schema_copy_xptr);
+  SEXP schema_copy_xptr = PROTECT(nanoarrow_schema_owning_xptr());
+  struct ArrowSchema* schema_copy = nanoarrow_output_schema_from_xptr(schema_copy_xptr);
   schema_export(schema_xptr, schema_copy);
 
-  SEXP array_stream_xptr = PROTECT(array_stream_owning_xptr());
+  SEXP array_stream_xptr = PROTECT(nanoarow_array_stream_owning_xptr());
   struct ArrowArrayStream* array_stream =
-      (struct ArrowArrayStream*)R_ExternalPtrAddr(array_stream_xptr);
+      nanoarrow_output_array_stream_from_xptr(array_stream_xptr);
 
   int64_t n_arrays = Rf_xlength(batches_sexp);
   if (ArrowBasicArrayStreamInit(array_stream, schema_copy, n_arrays) != NANOARROW_OK) {
@@ -156,7 +145,7 @@ static void finalize_wrapper_array_stream(struct ArrowArrayStream* array_stream)
     struct WrapperArrayStreamData* data =
         (struct WrapperArrayStreamData*)array_stream->private_data;
 
-    // Release the parent
+    // Run the parent array stream release callback
     data->parent_array_stream->release(data->parent_array_stream);
 
     // If safe to do so, attempt to do an eager evaluation of a release
@@ -198,7 +187,7 @@ static int wrapper_array_stream_get_next(struct ArrowArrayStream* array_stream,
 void array_stream_export(SEXP parent_array_stream_xptr,
                          struct ArrowArrayStream* array_stream_copy) {
   struct ArrowArrayStream* parent_array_stream =
-      array_stream_from_xptr(parent_array_stream_xptr);
+      nanoarrow_array_stream_from_xptr(parent_array_stream_xptr);
 
   // If there is no dependent object, don't bother with this wrapper
   SEXP dependent_sexp = R_ExternalPtrProtected(parent_array_stream_xptr);
@@ -209,7 +198,7 @@ void array_stream_export(SEXP parent_array_stream_xptr,
 
   // Allocate a new external pointer for an array stream (for consistency:
   // we always move an array stream when exporting)
-  SEXP parent_array_stream_xptr_new = PROTECT(array_stream_owning_xptr());
+  SEXP parent_array_stream_xptr_new = PROTECT(nanoarow_array_stream_owning_xptr());
   struct ArrowArrayStream* parent_array_stream_new =
       (struct ArrowArrayStream*)R_ExternalPtrAddr(parent_array_stream_xptr_new);
   ArrowArrayStreamMove(parent_array_stream, parent_array_stream_new);

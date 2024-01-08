@@ -27,21 +27,11 @@
 #include "schema.h"
 #include "util.h"
 
-void finalize_array_xptr(SEXP array_xptr) {
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
-  if (array != NULL && array->release != NULL) {
-    array->release(array);
-  }
-
-  if (array != NULL) {
-    ArrowFree(array);
-  }
-}
-
 SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
-  SEXP array_xptr = PROTECT(array_owning_xptr());
-  struct ArrowArray* array = (struct ArrowArray*)R_ExternalPtrAddr(array_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
+
+  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
 
   struct ArrowError error;
   int result = ArrowArrayInitFromSchema(array, schema, &error);
@@ -55,7 +45,7 @@ SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
 }
 
 SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   if (TYPEOF(length_sexp) != REALSXP || Rf_length(length_sexp) != 1) {
     Rf_error("array$length must be double(1)");
   }
@@ -70,7 +60,7 @@ SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp) {
 }
 
 SEXP nanoarrow_c_array_set_null_count(SEXP array_xptr, SEXP null_count_sexp) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   if (TYPEOF(null_count_sexp) != REALSXP || Rf_length(null_count_sexp) != 1) {
     Rf_error("array$null_count must be double(1)");
   }
@@ -85,7 +75,7 @@ SEXP nanoarrow_c_array_set_null_count(SEXP array_xptr, SEXP null_count_sexp) {
 }
 
 SEXP nanoarrow_c_array_set_offset(SEXP array_xptr, SEXP offset_sexp) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   if (TYPEOF(offset_sexp) != REALSXP || Rf_length(offset_sexp) != 1) {
     Rf_error("array$offset must be double(1)");
   }
@@ -100,7 +90,7 @@ SEXP nanoarrow_c_array_set_offset(SEXP array_xptr, SEXP offset_sexp) {
 }
 
 SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
 
   int64_t n_buffers = Rf_xlength(buffers_sexp);
   if (n_buffers > 3) {
@@ -163,7 +153,7 @@ static void free_all_children(struct ArrowArray* array) {
 }
 
 SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
 
   release_all_children(array);
 
@@ -185,7 +175,7 @@ SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp) {
     // The arrays here will be moved, invalidating the arrays in the passed
     // list (the export step is handled in R)
     SEXP child_xptr = VECTOR_ELT(children_sexp, i);
-    struct ArrowArray* child = array_from_xptr(child_xptr);
+    struct ArrowArray* child = nanoarrow_array_from_xptr(child_xptr);
     ArrowArrayMove(child, array->children[i]);
   }
 
@@ -193,7 +183,7 @@ SEXP nanoarrow_c_array_set_children(SEXP array_xptr, SEXP children_sexp) {
 }
 
 SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
 
   // If there's already a dictionary, make sure we release it
   if (array->dictionary != NULL) {
@@ -215,7 +205,7 @@ SEXP nanoarrow_c_array_set_dictionary(SEXP array_xptr, SEXP dictionary_xptr) {
       }
     }
 
-    struct ArrowArray* dictionary = array_from_xptr(dictionary_xptr);
+    struct ArrowArray* dictionary = nanoarrow_array_from_xptr(dictionary_xptr);
     ArrowArrayMove(dictionary, array->dictionary);
   }
 
@@ -265,16 +255,17 @@ SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) 
   // but after we send the array into the wild, that information is lost.
   // This operation will invalidate array_xptr (but this is OK since we very
   // specifically just allocated it).
-  struct ArrowArray* array = array_from_xptr(array_xptr);
-  struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
   struct ArrowError error;
 
   // Even though array was initialized using ArrowArrayInit(), it doesn't have
   // all the information about storage types since it didn't necessarily know
   // what the storage type would be when it was being constructed. Here we create
   // a version that does and move buffers recursively into it.
-  SEXP array_dst_xptr = PROTECT(array_owning_xptr());
-  struct ArrowArray* array_dst = (struct ArrowArray*)R_ExternalPtrAddr(array_dst_xptr);
+  SEXP array_dst_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* array_dst = nanoarrow_output_array_from_xptr(array_dst_xptr);
+
   int result = ArrowArrayInitFromSchema(array_dst, schema, &error);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromSchema(): %s", error.message);
@@ -304,8 +295,8 @@ SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr, SEXP valida
   int validate = LOGICAL(validate_sexp)[0];
   if (validate) {
     // If adding a schema, validate the schema and the pair
-    struct ArrowArray* array = array_from_xptr(array_xptr);
-    struct ArrowSchema* schema = schema_from_xptr(schema_xptr);
+    struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+    struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
     struct ArrowArrayView array_view;
     struct ArrowError error;
@@ -343,7 +334,7 @@ static SEXP borrow_array_xptr(struct ArrowArray* array, SEXP shelter) {
 }
 
 SEXP borrow_array_child_xptr(SEXP array_xptr, int64_t i) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   SEXP schema_xptr = R_ExternalPtrTag(array_xptr);
   SEXP child_xptr = PROTECT(borrow_array_xptr(array->children[i], array_xptr));
   if (schema_xptr != R_NilValue) {
@@ -391,7 +382,7 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
 }
 
 SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr, SEXP recursive_sexp) {
-  struct ArrowArray* array = array_from_xptr(array_xptr);
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
   int recursive = LOGICAL(recursive_sexp)[0];
   struct ArrowArrayView* array_view = NULL;
   if (array_view_xptr != R_NilValue) {
