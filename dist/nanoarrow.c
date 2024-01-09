@@ -837,8 +837,7 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
     // decimal
     case 'd':
       if (format[1] != ':' || format[2] == '\0') {
-        ArrowErrorSet(error, "Expected ':precision,scale[,bitwidth]' following 'd'",
-                      format + 3);
+        ArrowErrorSet(error, "Expected ':precision,scale[,bitwidth]' following 'd'");
         return EINVAL;
       }
 
@@ -1183,13 +1182,15 @@ static ArrowErrorCode ArrowSchemaViewValidateNChildren(
   for (int64_t i = 0; i < schema_view->schema->n_children; i++) {
     child = schema_view->schema->children[i];
     if (child == NULL) {
-      ArrowErrorSet(error, "Expected valid schema at schema->children[%d] but found NULL",
-                    i);
+      ArrowErrorSet(error,
+                    "Expected valid schema at schema->children[%ld] but found NULL",
+                    (long)i);
       return EINVAL;
     } else if (child->release == NULL) {
       ArrowErrorSet(
           error,
-          "Expected valid schema at schema->children[%d] but found a released schema", i);
+          "Expected valid schema at schema->children[%ld] but found a released schema",
+          (long)i);
       return EINVAL;
     }
   }
@@ -1357,8 +1358,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
   }
 
   const char* format_end_out;
-  ArrowErrorCode result =
-      ArrowSchemaViewParse(schema_view, format, &format_end_out, error);
+  int result = ArrowSchemaViewParse(schema_view, format, &format_end_out, error);
 
   if (result != NANOARROW_OK) {
     if (error != NULL) {
@@ -1401,10 +1401,12 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
 
   schema_view->extension_name = ArrowCharView(NULL);
   schema_view->extension_metadata = ArrowCharView(NULL);
-  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),
-                        &schema_view->extension_name);
-  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:metadata"),
-                        &schema_view->extension_metadata);
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataGetValue(schema->metadata,
+                                                ArrowCharView("ARROW:extension:name"),
+                                                &schema_view->extension_name));
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataGetValue(schema->metadata,
+                                                ArrowCharView("ARROW:extension:metadata"),
+                                                &schema_view->extension_metadata));
 
   return NANOARROW_OK;
 }
@@ -1592,7 +1594,9 @@ int64_t ArrowMetadataSizeOf(const char* metadata) {
   struct ArrowMetadataReader reader;
   struct ArrowStringView key;
   struct ArrowStringView value;
-  ArrowMetadataReaderInit(&reader, metadata);
+  if (ArrowMetadataReaderInit(&reader, metadata) != NANOARROW_OK) {
+    return 0;
+  }
 
   int64_t size = sizeof(int32_t);
   while (ArrowMetadataReaderRead(&reader, &key, &value) == NANOARROW_OK) {
@@ -1608,7 +1612,7 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
   struct ArrowMetadataReader reader;
   struct ArrowStringView existing_key;
   struct ArrowStringView existing_value;
-  ArrowMetadataReaderInit(&reader, metadata);
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
 
   while (ArrowMetadataReaderRead(&reader, &existing_key, &existing_value) ==
          NANOARROW_OK) {
@@ -1635,7 +1639,10 @@ ArrowErrorCode ArrowMetadataGetValue(const char* metadata, struct ArrowStringVie
 
 char ArrowMetadataHasKey(const char* metadata, struct ArrowStringView key) {
   struct ArrowStringView value = ArrowCharView(NULL);
-  ArrowMetadataGetValue(metadata, key, &value);
+  if (ArrowMetadataGetValue(metadata, key, &value) != NANOARROW_OK) {
+    return 0;
+  }
+
   return value.data != NULL;
 }
 
@@ -2166,7 +2173,7 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
     case NANOARROW_TYPE_LARGE_BINARY:
     case NANOARROW_TYPE_LARGE_STRING:
       if (ArrowArrayBuffer(array, 2)->data == NULL) {
-        ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0);
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0));
       }
       break;
     default:
@@ -2336,8 +2343,8 @@ ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
     }
 
     memset(array_view->union_type_id_map, -1, 256);
-    int8_t n_type_ids = _ArrowParseUnionTypeIds(schema_view.union_type_ids,
-                                                array_view->union_type_id_map + 128);
+    int32_t n_type_ids = _ArrowParseUnionTypeIds(schema_view.union_type_ids,
+                                                 array_view->union_type_id_map + 128);
     for (int8_t child_index = 0; child_index < n_type_ids; child_index++) {
       int8_t type_id = array_view->union_type_id_map[128 + child_index];
       array_view->union_type_id_map[type_id] = child_index;
@@ -2902,7 +2909,7 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
             error,
             "[%ld] Expected union offset for child id %d to be between 0 and %ld but "
             "found offset value %ld",
-            (long)i, (int)child_id, (long)child_length, offset);
+            (long)i, (int)child_id, (long)child_length, (long)offset);
         return EINVAL;
       }
     }
