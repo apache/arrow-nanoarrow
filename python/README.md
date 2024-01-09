@@ -49,12 +49,12 @@ The Arrow C Data and Arrow C Stream interfaces are comprised of three structures
 
 ### Schemas
 
-Use `nanoarrow.cschema()` to convert an object to an `ArrowSchema` and wrap it as a Python object. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.Schema`, `pyarrow.DataType`, and `pyarrow.Field`).
+Use `nanoarrow.c_schema()` to convert an object to an `ArrowSchema` and wrap it as a Python object. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.Schema`, `pyarrow.DataType`, and `pyarrow.Field`).
 
 
 ```python
 import pyarrow as pa
-schema = na.cschema(pa.decimal128(10, 3))
+schema = na.c_schema(pa.decimal128(10, 3))
 schema
 ```
 
@@ -75,7 +75,7 @@ You can extract the fields of a `CSchema` object one at a time or parse it into 
 
 
 ```python
-na.cschema_view(schema)
+na.c_schema_view(schema)
 ```
 
 
@@ -94,7 +94,7 @@ Advanced users can allocate an empty `CSchema` and populate its contents by pass
 
 
 ```python
-schema = na.cschema()
+schema = na.c_schema()
 pa.int32()._export_to_c(schema._addr())
 schema
 ```
@@ -116,11 +116,11 @@ The `CSchema` object cleans up after itself: when the object is deleted, the und
 
 ### Arrays
 
-You can use `nanoarrow.carray()` to convert an array-like object to an `ArrowArray`, wrap it as a Python object, and attach a schema that can be used to interpret its contents. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.Array`, `pyarrow.RecordBatch`).
+You can use `nanoarrow.c_array()` to convert an array-like object to an `ArrowArray`, wrap it as a Python object, and attach a schema that can be used to interpret its contents. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.Array`, `pyarrow.RecordBatch`).
 
 
 ```python
-array = na.carray(pa.array(["one", "two", "three", None]))
+array = na.c_array(pa.array(["one", "two", "three", None]))
 array
 ```
 
@@ -141,7 +141,7 @@ You can extract the fields of a `CArray` one at a time or parse it into a view t
 
 
 ```python
-na.carray_view(array)
+na.c_array_view(array)
 ```
 
 
@@ -165,7 +165,7 @@ Like the `CSchema`, you can allocate an empty one and access its address with `_
 
 
 ```python
-array = na.carray()
+array = na.c_array()
 pa.array([1, 2, 3])._export_to_c(array._addr(), array.schema._addr())
 array.length
 ```
@@ -179,14 +179,14 @@ array.length
 
 ### Array streams
 
-You can use `nanoarrow.carray_stream()` to wrap an object representing a sequence of `CArray`s with a common `CSchema` to an `ArrowArrayStream` and wrap it as a Python object. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.RecordBatchReader`).
+You can use `nanoarrow.c_array_stream()` to wrap an object representing a sequence of `CArray`s with a common `CSchema` to an `ArrowArrayStream` and wrap it as a Python object. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.RecordBatchReader`).
 
 
 ```python
 pa_array_child = pa.array([1, 2, 3], pa.int32())
 pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-array_stream = na.carray_stream(reader)
+array_stream = na.c_array_stream(reader)
 array_stream
 ```
 
@@ -239,7 +239,7 @@ You can also get the address of a freshly-allocated stream to pass to a suitable
 
 
 ```python
-array_stream = na.carray_stream()
+array_stream = na.c_array_stream()
 reader._export_to_c(array_stream._addr())
 array_stream
 ```

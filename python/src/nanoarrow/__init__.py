@@ -17,9 +17,9 @@
 
 from nanoarrow._lib import cversion  # noqa: F401
 from nanoarrow.clib import (  # noqa: F401
-    cschema,
-    carray,
-    carray_stream,
-    cschema_view,
-    carray_view,
+    c_schema,
+    c_array,
+    c_array_stream,
+    c_schema_view,
+    c_array_view,
 )

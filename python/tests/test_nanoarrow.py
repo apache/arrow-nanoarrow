@@ -30,50 +30,50 @@ def test_cversion():
     assert re_version.match(na.cversion()) is not None
 
 
-def test_cschema_helper():
-    schema = na.cschema()
-    assert na.cschema(schema) is schema
+def test_c_schema_helper():
+    schema = na.c_schema()
+    assert na.c_schema(schema) is schema
 
-    schema = na.cschema(pa.null())
+    schema = na.c_schema(pa.null())
     assert isinstance(schema, na.clib.CSchema)
 
     with pytest.raises(TypeError):
-        na.cschema(1234)
+        na.c_schema(1234)
 
 
-def test_carray_helper():
-    array = na.carray()
-    assert na.carray(array) is array
+def test_c_array_helper():
+    array = na.c_array()
+    assert na.c_array(array) is array
 
-    array = na.carray(pa.array([], pa.null()))
+    array = na.c_array(pa.array([], pa.null()))
     assert isinstance(array, na.clib.CArray)
 
     with pytest.raises(TypeError):
-        na.carray(1234)
+        na.c_array(1234)
 
 
 def test_array_stream_helper():
-    array_stream = na.carray_stream()
-    assert na.carray_stream(array_stream) is array_stream
+    array_stream = na.c_array_stream()
+    assert na.c_array_stream(array_stream) is array_stream
 
     with pytest.raises(TypeError):
-        na.carray_stream(1234)
+        na.c_array_stream(1234)
 
 
 def test_array_view_helper():
-    array = na.carray(pa.array([1, 2, 3]))
-    view = na.carray_view(array)
+    array = na.c_array(pa.array([1, 2, 3]))
+    view = na.c_array_view(array)
     assert isinstance(view, na.clib.CArrayView)
-    assert na.carray_view(view) is view
+    assert na.c_array_view(view) is view
 
 
-def test_cschema_basic():
-    schema = na.cschema()
+def test_c_schema_basic():
+    schema = na.c_schema()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
     assert repr(schema) == "<released nanoarrow.clib.CSchema>"
 
-    schema = na.cschema(pa.schema([pa.field("some_name", pa.int32())]))
+    schema = na.c_schema(pa.schema([pa.field("some_name", pa.int32())]))
 
     assert schema.format == "+s"
     assert schema.flags == 0
@@ -90,8 +90,8 @@ def test_cschema_basic():
         schema.child(1)
 
 
-def test_cschema_dictionary():
-    schema = na.cschema(pa.dictionary(pa.int32(), pa.utf8()))
+def test_c_schema_dictionary():
+    schema = na.c_schema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
     assert "dictionary: <nanoarrow.clib.CSchema string" in repr(schema)
@@ -99,7 +99,7 @@ def test_cschema_dictionary():
 
 def test_schema_metadata():
     meta = {"key1": "value1", "key2": "value2"}
-    schema = na.cschema(pa.field("", pa.int32(), metadata=meta))
+    schema = na.c_schema(pa.field("", pa.int32(), metadata=meta))
 
     assert len(schema.metadata) == 2
 
@@ -109,13 +109,13 @@ def test_schema_metadata():
     assert "'key1': b'value1'" in repr(schema)
 
 
-def test_cschema_view():
-    schema = na.cschema()
+def test_c_schema_view():
+    schema = na.c_schema()
     with pytest.raises(RuntimeError):
-        na.cschema_view(schema)
+        na.c_schema_view(schema)
 
-    schema = na.cschema(pa.int32())
-    view = na.cschema_view(schema)
+    schema = na.c_schema(pa.int32())
+    view = na.c_schema_view(schema)
     assert "- type: 'int32'" in repr(view)
     assert view.type == "int32"
     assert view.storage_type == "int32"
@@ -130,32 +130,32 @@ def test_cschema_view():
     assert view.extension_metadata is None
 
 
-def test_cschema_view_extra_params():
-    schema = na.cschema(pa.binary(12))
-    view = na.cschema_view(schema)
+def test_c_schema_view_extra_params():
+    schema = na.c_schema(pa.binary(12))
+    view = na.c_schema_view(schema)
     assert view.fixed_size == 12
 
-    schema = na.cschema(pa.list_(pa.int32(), 12))
+    schema = na.c_schema(pa.list_(pa.int32(), 12))
     assert view.fixed_size == 12
 
-    schema = na.cschema(pa.decimal128(10, 3))
-    view = na.cschema_view(schema)
+    schema = na.c_schema(pa.decimal128(10, 3))
+    view = na.c_schema_view(schema)
     assert view.decimal_bitwidth == 128
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.cschema(pa.decimal256(10, 3))
-    view = na.cschema_view(schema)
+    schema = na.c_schema(pa.decimal256(10, 3))
+    view = na.c_schema_view(schema)
     assert view.decimal_bitwidth == 256
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.cschema(pa.duration("us"))
-    view = na.cschema_view(schema)
+    schema = na.c_schema(pa.duration("us"))
+    view = na.c_schema_view(schema)
     assert view.time_unit == "us"
 
-    schema = na.cschema(pa.timestamp("us", tz="America/Halifax"))
-    view = na.cschema_view(schema)
+    schema = na.c_schema(pa.timestamp("us", tz="America/Halifax"))
+    view = na.c_schema_view(schema)
     assert view.type == "timestamp"
     assert view.storage_type == "int64"
     assert view.time_unit == "us"
@@ -165,20 +165,20 @@ def test_cschema_view_extra_params():
         "ARROW:extension:name": "some_name",
         "ARROW:extension:metadata": "some_metadata",
     }
-    schema = na.cschema(pa.field("", pa.int32(), metadata=meta))
-    view = na.cschema_view(schema)
+    schema = na.c_schema(pa.field("", pa.int32(), metadata=meta))
+    view = na.c_schema_view(schema)
     assert view.extension_name == "some_name"
     assert view.extension_metadata == b"some_metadata"
 
 
-def test_carray_empty():
-    array = na.carray()
+def test_c_array_empty():
+    array = na.c_array()
     assert array.is_valid() is False
     assert repr(array) == "<released nanoarrow.clib.CArray>"
 
 
-def test_carray():
-    array = na.carray(pa.array([1, 2, 3], pa.int32()))
+def test_c_array():
+    array = na.c_array(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
     assert array.length == 3
     assert array.offset == 0
@@ -192,8 +192,8 @@ def test_carray():
     assert "<nanoarrow.clib.CArray int32" in repr(array)
 
 
-def test_carray_recursive():
-    array = na.carray(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
+def test_c_array_recursive():
+    array = na.c_array(pa.record_batch([pa.array([1, 2, 3], pa.int32())], ["col"]))
     assert array.n_children == 1
     assert len(list(array.children)) == 1
     assert array.child(0).length == 3
@@ -204,16 +204,16 @@ def test_carray_recursive():
         array.child(-1)
 
 
-def test_carray_dictionary():
-    array = na.carray(pa.array(["a", "b", "b"]).dictionary_encode())
+def test_c_array_dictionary():
+    array = na.c_array(pa.array(["a", "b", "b"]).dictionary_encode())
     assert array.length == 3
     assert array.dictionary.length == 2
     assert "dictionary: <nanoarrow.clib.CArray string>" in repr(array)
 
 
-def test_carray_view():
-    array = na.carray(pa.array([1, 2, 3], pa.int32()))
-    view = na.carray_view(array)
+def test_c_array_view():
+    array = na.c_array(pa.array([1, 2, 3], pa.int32()))
+    view = na.c_array_view(array)
 
     assert view.storage_type == "int32"
     assert "- storage_type: 'int32'" in repr(view)
@@ -235,11 +235,11 @@ def test_carray_view():
         view.child(-1)
 
 
-def test_carray_view_recursive():
+def test_c_array_view_recursive():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 
-    array = na.carray(pa_array)
+    array = na.c_array(pa_array)
 
     assert array.schema.format == "+s"
     assert array.length == 3
@@ -250,7 +250,7 @@ def test_carray_view_recursive():
     assert array.child(0).length == 3
     assert array.child(0).schema._addr() == array.schema.child(0)._addr()
 
-    view = na.carray_view(array)
+    view = na.c_array_view(array)
     assert view.n_buffers == 1
     assert len(list(view.buffers)) == 1
     assert view.n_children == 1
@@ -261,14 +261,14 @@ def test_carray_view_recursive():
     assert "- children[1]" in repr(view)
 
 
-def test_carray_view_dictionary():
+def test_c_array_view_dictionary():
     pa_array = pa.array(["a", "b", "b"], pa.dictionary(pa.int32(), pa.utf8()))
-    array = na.carray(pa_array)
+    array = na.c_array(pa_array)
 
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"
 
-    view = na.carray_view(array)
+    view = na.c_array_view(array)
     assert view.n_buffers == 2
     assert view.dictionary.n_buffers == 3
     assert "- dictionary: <nanoarrow.clib.CArrayView>" in repr(view)
@@ -287,7 +287,7 @@ def test_buffers_integer():
     ]
 
     for pa_type, np_type in data_types:
-        view = na.carray_view(pa.array([0, 1, 2], pa_type))
+        view = na.c_array_view(pa.array([0, 1, 2], pa_type))
         data_buffer = view.buffer(1)
 
         # Check via buffer interface
@@ -312,7 +312,7 @@ def test_buffers_float():
     ]
 
     for pa_type, np_type in data_types:
-        view = na.carray_view(pa.array([0, 1, 2], pa_type))
+        view = na.c_array_view(pa.array([0, 1, 2], pa_type))
         data_buffer = view.buffer(1)
 
         # Check via buffer interface
@@ -333,7 +333,7 @@ def test_buffers_float():
 def test_buffers_half_float():
     # pyarrrow can only create half_float from np.float16()
     np_array = np.array([0, 1, 2], np.float16())
-    view = na.carray_view(pa.array(np_array))
+    view = na.c_array_view(pa.array(np_array))
     data_buffer = view.buffer(1)
 
     # Check via buffer interface
@@ -352,7 +352,7 @@ def test_buffers_half_float():
 
 
 def test_buffers_bool():
-    view = na.carray_view(pa.array([True, True, True, False]))
+    view = na.c_array_view(pa.array([True, True, True, False]))
     data_buffer = view.buffer(1)
 
     assert data_buffer.size_bytes == 1
@@ -373,7 +373,7 @@ def test_buffers_bool():
 
 
 def test_buffers_string():
-    view = na.carray_view(pa.array(["a", "bc", "def"]))
+    view = na.c_array_view(pa.array(["a", "bc", "def"]))
 
     assert view.buffer(0).size_bytes == 0
     assert view.buffer(1).size_bytes == 16
@@ -397,7 +397,7 @@ def test_buffers_string():
 
 
 def test_buffers_binary():
-    view = na.carray_view(pa.array([b"a", b"bc", b"def"]))
+    view = na.c_array_view(pa.array([b"a", b"bc", b"def"]))
 
     assert view.buffer(0).size_bytes == 0
     assert view.buffer(1).size_bytes == 16
@@ -422,7 +422,7 @@ def test_buffers_binary():
 
 
 def test_buffers_fixed_size_binary():
-    view = na.carray_view(pa.array([b"abc", b"def", b"ghi"], pa.binary(3)))
+    view = na.c_array_view(pa.array([b"abc", b"def", b"ghi"], pa.binary(3)))
 
     assert view.buffer(1).size_bytes == 9
 
@@ -436,7 +436,7 @@ def test_buffers_fixed_size_binary():
 
 
 def test_buffers_interval_month_day_nano():
-    view = na.carray_view(
+    view = na.c_array_view(
         pa.array([pa.scalar((1, 15, -30), type=pa.month_day_nano_interval())])
     )
 
@@ -451,9 +451,9 @@ def test_buffers_interval_month_day_nano():
     assert list(view.buffer(1)) == [(1, 15, -30)]
 
 
-def test_carray_stream():
-    array_stream = na.carray_stream()
-    assert na.carray_stream(array_stream) is array_stream
+def test_c_array_stream():
+    array_stream = na.c_array_stream()
+    assert na.c_array_stream(array_stream) is array_stream
     assert repr(array_stream) == "<released nanoarrow.clib.CArrayStream>"
 
     assert array_stream.is_valid() is False
@@ -465,7 +465,7 @@ def test_carray_stream():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
     reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-    array_stream = na.carray_stream(reader)
+    array_stream = na.c_array_stream(reader)
 
     assert array_stream.is_valid() is True
     assert "struct<some_column: int32>" in repr(array_stream)
@@ -476,11 +476,11 @@ def test_carray_stream():
         array_stream.get_next()
 
 
-def test_carray_stream_iter():
+def test_c_array_stream_iter():
     pa_array_child = pa.array([1, 2, 3], pa.int32())
     pa_array = pa.record_batch([pa_array_child], names=["some_column"])
     reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-    array_stream = na.carray_stream(reader)
+    array_stream = na.c_array_stream(reader)
 
     arrays = list(array_stream)
     assert len(arrays) == 1

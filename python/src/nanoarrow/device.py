@@ -16,7 +16,7 @@
 # under the License.
 
 from nanoarrow._lib import CDeviceArray, Device
-from nanoarrow.clib import carray
+from nanoarrow.clib import c_array
 
 
 def cdevice_array(obj):
@@ -24,6 +24,6 @@ def cdevice_array(obj):
         return obj
 
     # Only CPU for now
-    cpu_array = carray(obj)
+    cpu_array = c_array(obj)
 
     return Device.cpu()._array_init(cpu_array._addr(), cpu_array.schema)

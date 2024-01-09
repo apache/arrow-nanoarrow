@@ -28,16 +28,16 @@ Python objects.
 from nanoarrow._lib import CArray, CArrayStream, CArrayView, CSchema, CSchemaView
 
 
-def cschema(obj=None) -> CSchema:
+def c_schema(obj=None) -> CSchema:
     """ArrowSchema wrapper
 
     The ``CSchema`` class provides a Python-friendly interface to access the fields
     of an ``ArrowSchema`` as defined in the Arrow C Data interface. These objects
-    are created using `nanoarrow.cschema()`, which accepts any schema or
+    are created using `nanoarrow.c_schema()`, which accepts any schema or
     data type-like object according to the Arrow PyCapsule interface.
 
     This Python wrapper allows access to schema struct members but does not
-    automatically deserialize their content: use :func:`cschema_view` to validate
+    automatically deserialize their content: use :func:`c_schema_view` to validate
     and deserialize the content into a more easily inspectable object.
 
     Note that the :class:`CSchema` objects returned by ``.child()`` hold strong
@@ -49,7 +49,7 @@ def cschema(obj=None) -> CSchema:
 
     >>> import pyarrow as pa
     >>> import nanoarrow as na
-    >>> schema = na.cschema(pa.int32())
+    >>> schema = na.c_schema(pa.int32())
     >>> schema.is_valid()
     True
     >>> schema.format
@@ -74,22 +74,22 @@ def cschema(obj=None) -> CSchema:
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.cschema"
+            f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_schema"
         )
 
 
-def carray(obj=None, requested_schema=None) -> CArray:
+def c_array(obj=None, requested_schema=None) -> CArray:
     """ArrowArray wrapper
 
     This class provides a user-facing interface to access the fields of an ArrowArray
     as defined in the Arrow C Data interface, holding an optional reference to a
     :class:`CSchema` that can be used to safely deserialize the content.
 
-    These objects are created using :func:`carray`, which accepts any array-like
+    These objects are created using :func:`c_array`, which accepts any array-like
     object according to the Arrow PyCapsule interface.
 
     This Python wrapper allows access to array fields but does not automatically
-    deserialize their content: use :func:`carray_view` to validate and deserialize
+    deserialize their content: use :func:`c_array_view` to validate and deserialize
     the content into a more easily inspectable object.
 
     Note that the :class:`CArray` objects returned by ``.child()`` hold strong
@@ -102,7 +102,7 @@ def carray(obj=None, requested_schema=None) -> CArray:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array = na.carray(pa.array(["one", "two", "three", None]))
+    >>> array = na.c_array(pa.array(["one", "two", "three", None]))
     >>> array.length
     4
     >>> array.null_count
@@ -110,7 +110,7 @@ def carray(obj=None, requested_schema=None) -> CArray:
     """
 
     if requested_schema is not None:
-        requested_schema = cschema(requested_schema)
+        requested_schema = c_schema(requested_schema)
 
     if obj is None:
         return CArray.allocate(
@@ -135,11 +135,11 @@ def carray(obj=None, requested_schema=None) -> CArray:
         return out
     else:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.carray"
+            f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
         )
 
 
-def carray_stream(obj=None, requested_schema=None) -> CArrayStream:
+def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
     """ArrowArrayStream wrapper
 
     This class provides a user-facing interface to access the fields of
@@ -154,7 +154,7 @@ def carray_stream(obj=None, requested_schema=None) -> CArrayStream:
     >>> pa_column = pa.array([1, 2, 3], pa.int32())
     >>> pa_batch = pa.record_batch([pa_column], names=["col1"])
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
-    >>> array_stream = na.carray_stream(pa_reader)
+    >>> array_stream = na.c_array_stream(pa_reader)
     >>> array_stream.get_schema()
     <nanoarrow.clib.CSchema struct>
     - format: '+s'
@@ -181,12 +181,12 @@ def carray_stream(obj=None, requested_schema=None) -> CArrayStream:
     if obj is None:
         if requested_schema is not None:
             raise ValueError(
-                "Can't allocate uninitialized carray_stream with requested_schema"
+                "Can't allocate uninitialized c_array_stream with requested_schema"
             )
         return CArrayStream.allocate()
 
     if requested_schema is not None:
-        requested_schema = cschema(requested_schema)
+        requested_schema = c_schema(requested_schema)
 
     if isinstance(obj, CArrayStream) and requested_schema is None:
         return obj
@@ -207,11 +207,11 @@ def carray_stream(obj=None, requested_schema=None) -> CArrayStream:
     else:
         raise TypeError(
             f"Can't convert object of type {type(obj).__name__} "
-            "to nanoarrow.carray_stream"
+            "to nanoarrow.c_array_stream"
         )
 
 
-def cschema_view(obj) -> CSchemaView:
+def c_schema_view(obj) -> CSchemaView:
     """ArrowSchemaView wrapper
 
     The ``ArrowSchemaView`` is a nanoarrow C library structure that facilitates
@@ -223,8 +223,8 @@ def cschema_view(obj) -> CSchemaView:
 
     >>> import pyarrow as pa
     >>> import nanoarrow as na
-    >>> schema = na.cschema(pa.decimal128(10, 3))
-    >>> schema_view = na.cschema_view(schema)
+    >>> schema = na.c_schema(pa.decimal128(10, 3))
+    >>> schema_view = na.c_schema_view(schema)
     >>> schema_view.type
     'decimal128'
     >>> schema_view.decimal_bitwidth
@@ -238,10 +238,10 @@ def cschema_view(obj) -> CSchemaView:
     if isinstance(obj, CSchemaView):
         return obj
 
-    return CSchemaView(cschema(obj))
+    return CSchemaView(c_schema(obj))
 
 
-def carray_view(obj, requested_schema=None) -> CArrayView:
+def c_array_view(obj, requested_schema=None) -> CArrayView:
     """ArrowArrayView wrapper
 
     The ``ArrowArrayView`` is a nanoarrow C library structure that provides
@@ -257,8 +257,8 @@ def carray_view(obj, requested_schema=None) -> CArrayView:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array = na.carray(pa.array(["one", "two", "three", None]))
-    >>> array_view = na.carray_view(array)
+    >>> array = na.c_array(pa.array(["one", "two", "three", None]))
+    >>> array_view = na.c_array_view(array)
     >>> np.array(array_view.buffer(1))
     array([ 0,  3,  6, 11, 11], dtype=int32)
     >>> np.array(array_view.buffer(2))
@@ -269,4 +269,4 @@ def carray_view(obj, requested_schema=None) -> CArrayView:
     if isinstance(obj, CArrayView) and requested_schema is None:
         return obj
 
-    return CArrayView.from_cpu_array(carray(obj, requested_schema))
+    return CArrayView.from_cpu_array(c_array(obj, requested_schema))

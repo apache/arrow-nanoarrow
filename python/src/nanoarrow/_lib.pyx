@@ -225,7 +225,7 @@ cdef class CSchema:
     that return Python objects and handles the C Data interface lifecycle (i.e., initialized
     ArrowSchema structures are always released).
 
-    See `nanoarrow.cschema()` for construction and usage examples.
+    See `nanoarrow.c_schema()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowSchema* _ptr
@@ -362,7 +362,7 @@ cdef class CSchemaView:
     This object is a literal wrapper around a read-only ArrowSchema. It provides field accessors
     that return Python objects and handles structure lifecycle.
 
-    See `nanoarrow.cschema_view()` for construction and usage examples.
+    See `nanoarrow.c_schema_view()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowSchemaView _schema_view
@@ -475,7 +475,7 @@ cdef class CArray:
     that return Python objects and handles the C Data interface lifecycle (i.e., initialized
     ArrowArray structures are always released).
 
-    See `nanoarrow.carray()` for construction and usage examples.
+    See `nanoarrow.c_array()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowArray* _ptr
@@ -622,7 +622,7 @@ cdef class CArrayView:
     that return Python objects and handles the structure lifecycle (i.e., initialized
     ArrowArrayView structures are always released).
 
-    See `nanoarrow.carray_view()` for construction and usage examples.
+    See `nanoarrow.c_array_view()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowArrayView* _ptr
@@ -937,7 +937,7 @@ cdef class CArrayStream:
     that wrap the underlying C callbacks and handles the C Data interface lifecycle
     (i.e., initialized ArrowArrayStream structures are always released).
 
-    See `nanoarrow.carray_stream()` for construction and usage examples.
+    See `nanoarrow.c_array_stream()` for construction and usage examples.
     """
     cdef object _base
     cdef ArrowArrayStream* _ptr
