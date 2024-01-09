@@ -406,6 +406,21 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldBasic) {
       R"({"name": "colname", "nullable": true, "type": {"name": "null"}, "children": []})");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDict) {
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT16));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateDictionary(schema));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false}, "children": []})");
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
   // Missing metadata
   TestWriteJSON(
@@ -805,6 +820,37 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
   EXPECT_STREQ(schema->children[0]->format, "n");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldDictionary) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+
+  // Unordered
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
+          R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "i");
+  EXPECT_STREQ(schema->name, "col1");
+  EXPECT_TRUE(schema->flags & ARROW_FLAG_NULLABLE);
+  EXPECT_FALSE(schema->flags & ARROW_FLAG_DICTIONARY_ORDERED);
+  ASSERT_NE(schema->dictionary, nullptr);
+  EXPECT_STREQ(schema->dictionary->format, "u");
+  EXPECT_EQ(schema->dictionary->name, nullptr);
+  EXPECT_EQ(schema->dictionary->dictionary, nullptr);
+
+  // Ordered
+  schema.reset();
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
+          R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": true}})",
+          schema.get()),
+      NANOARROW_OK);
+  EXPECT_TRUE(schema->flags & ARROW_FLAG_DICTIONARY_ORDERED);
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
   nanoarrow::UniqueArrayStream stream;
   ArrowError error;
@@ -848,6 +894,33 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
 
   // Also test error for invalid JSON
   ASSERT_EQ(reader.ReadDataFile("{", stream.get()), EINVAL);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFileDictionary) {
+  nanoarrow::UniqueArrayStream stream;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  std::string data_file_json =
+      R"({"schema": {"fields": [{"name": null, "nullable": true, "type": {"name": "binary"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, "isOrdered": false}, "children": []}, )"
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 1, "indexType": {"name": "int", "bitWidth": 8, "isSigned": true}, "isOrdered": false}, "children": []}]}, )"
+      R"("batches": [{"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "DATA": [0]}, )"
+      R"({"name": null, "count": 1, "VALIDITY": [1], "DATA": [1]}]}], )"
+      R"("dictionaries": [{"id": 0, "data": {"count": 1, "columns": [{"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["616263"]}]}}, )"
+      R"({"id": 1, "data": {"count": 2, "columns": [{"name": null, "count": 2, "VALIDITY": [1, 1], "OFFSET": [0, 3, 6], "DATA": ["abc", "def"]}]}}]})";
+
+  TestingJSONReader reader;
+  ASSERT_EQ(reader.ReadDataFile(data_file_json, stream.get(),
+                                TestingJSONReader::kNumBatchReadAll, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  TestingJSONWriter writer;
+  std::stringstream data_file_json_roundtrip;
+  ASSERT_EQ(writer.WriteDataFile(data_file_json_roundtrip, stream.get()), NANOARROW_OK);
+  EXPECT_EQ(data_file_json_roundtrip.str(), data_file_json);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadBatch) {
@@ -1178,6 +1251,20 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldUnion) {
                 "Type[name=='union'] mode must be 'DENSE' or 'SPARSE'");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDictionaryRoundtrip) {
+  // Unordered
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false}, "children": []})");
+
+  // Ordered
+  TestFieldRoundtrip(
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": true}, "children": []})");
+}
+
 void AssertSchemasCompareEqual(ArrowSchema* actual, ArrowSchema* expected) {
   TestingJSONComparison comparison;
   std::stringstream msg;
@@ -1342,6 +1429,61 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
   EXPECT_EQ(msg.str(), R"(Path: .children[0]
 - {"name": null, "count": 2}
 + {"name": null, "count": 1}
+
+)");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayWithDictionaryComparison) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray actual;
+  nanoarrow::UniqueArray expected;
+
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema->children[0]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
+  ASSERT_EQ(comparison.SetSchema(schema.get()), NANOARROW_OK);
+
+  // Dictionary-encoded with one element
+  ASSERT_EQ(ArrowArrayInitFromSchema(expected.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(expected.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(expected->children[0], 0), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowArrayAppendString(expected->children[0]->dictionary, ArrowCharView("abc")),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(expected.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(expected.get(), nullptr), NANOARROW_OK);
+
+  // Dictionary-encoded with one element with the only difference in the dictionary
+  ASSERT_EQ(ArrowArrayInitFromSchema(actual.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(actual.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(actual->children[0], 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(actual->children[0]->dictionary, ArrowCharView("def")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(actual.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(actual.get(), nullptr), NANOARROW_OK);
+
+  // Compare array with dictionary that has no differences
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), actual.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+  comparison.ClearDifferences();
+
+  // Compare arrays with nested difference in the dictionary
+  ArrowError error;
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.WriteDifferences(msg);
+  EXPECT_EQ(msg.str(), R"(Path: .children[0].dictionary
+- {"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["def"]}
++ {"name": null, "count": 1, "VALIDITY": [1], "OFFSET": [0, 3], "DATA": ["abc"]}
 
 )");
 }

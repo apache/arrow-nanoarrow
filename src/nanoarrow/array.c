@@ -1164,8 +1164,8 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
 
   // Dictionary valiation not implemented
   if (array_view->dictionary != NULL) {
-    ArrowErrorSet(error, "Validation for dictionary-encoded arrays is not implemented");
-    return ENOTSUP;
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->dictionary, error));
+    // TODO: validate the indices
   }
 
   return NANOARROW_OK;
