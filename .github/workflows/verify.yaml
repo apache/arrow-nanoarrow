@@ -53,7 +53,8 @@ jobs:
       matrix:
         config:
           - {os: macOS-latest, label: macos}
-          - {os: windows-latest, label: windows, extra_cmake_install: "--config=Debug"}
+          - {os: windows-latest, label: windows-x86, extra_cmake_install: "--config=Debug"}
+          - {os: windows-latest, label: windows-win32, extra_cmake_install: "--config=Debug"}
           - {os: ubuntu-latest, label: ubuntu}
 
     steps:
@@ -95,11 +96,17 @@ jobs:
           cmake --install . --prefix=../arrow ${{ matrix.config.extra_cmake_install }}
           cd ..
 
-      - name: Set CMake options (Windows)
-        if: matrix.config.label == 'windows'
+      - name: Set CMake options (windows-x86)
+        if: matrix.config.label == 'windows-x86'
         shell: bash
         run: |
-          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DNANOARROW_ARROW_STATIC=ON -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
+          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -A x86 -DNANOARROW_ARROW_STATIC=ON -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
+
+      - name: Set CMake options (Windows)
+        if: matrix.config.label == 'windows-win32'
+        shell: bash
+        run: |
+          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -A Win32 -DNANOARROW_ARROW_STATIC=ON -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
 
       - name: Set CMake options (POSIX)
         if: matrix.config.label != 'windows'
