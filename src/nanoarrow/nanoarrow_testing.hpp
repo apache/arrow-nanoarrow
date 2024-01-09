@@ -573,6 +573,39 @@ class TestingJSONWriter {
             << R"(, "precision": )" << field->decimal_precision << R"(, "scale": )"
             << field->decimal_scale;
         break;
+      case NANOARROW_TYPE_DURATION:
+        out << R"("name": "duration")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        break;
+      case NANOARROW_TYPE_DATE32:
+        out << R"("name": "date", "unit": "DAY")";
+        break;
+      case NANOARROW_TYPE_DATE64:
+        out << R"("name": "date", "unit": "MILLISECOND")";
+        break;
+      case NANOARROW_TYPE_TIME32:
+        out << R"("name": "time")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        out << R"(, "bitwidth": 32)";
+        break;
+      case NANOARROW_TYPE_TIME64:
+        out << R"("name": "time")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        out << R"(, "bitwidth": 64)";
+        break;
+      case NANOARROW_TYPE_TIMESTAMP:
+        out << R"("name": "time")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        break;
+      case NANOARROW_TYPE_INTERVAL_MONTHS:
+        out << R"("name": "interval", "unit": "YEAR_MONTH")";
+        break;
+      case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+        out << R"("name": "interval", "unit": "DAY_TIME")";
+        break;
+      case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+        out << R"("name": "date", "unit": "MONTH_DAY_NANO")";
+        break;
       case NANOARROW_TYPE_STRUCT:
         out << R"("name": "struct")";
         break;
@@ -610,6 +643,25 @@ class TestingJSONWriter {
 
     out << "}";
     return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteTimeUnit(std::ostream& out, const ArrowSchemaView* field) {
+    switch (field->time_unit) {
+      case NANOARROW_TIME_UNIT_NANO:
+        out << R"(, "unit": "NANOSECOND")";
+        return NANOARROW_OK;
+      case NANOARROW_TIME_UNIT_MICRO:
+        out << R"(, "unit": "MICROSECOND")";
+        return NANOARROW_OK;
+      case NANOARROW_TIME_UNIT_MILLI:
+        out << R"(, "unit": "MILLISECOND")";
+        return NANOARROW_OK;
+      case NANOARROW_TIME_UNIT_SECOND:
+        out << R"(, "unit": "SECOND")";
+        return NANOARROW_OK;
+      default:
+        return EINVAL;
+    }
   }
 
   ArrowErrorCode WriteFieldDictionary(std::ostream& out, int32_t dictionary_id,
