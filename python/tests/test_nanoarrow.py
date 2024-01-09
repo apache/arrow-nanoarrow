@@ -35,7 +35,7 @@ def test_c_schema_helper():
     assert na.c_schema(schema) is schema
 
     schema = na.c_schema(pa.null())
-    assert isinstance(schema, na.clib.CSchema)
+    assert isinstance(schema, na.c_lib.CSchema)
 
     with pytest.raises(TypeError):
         na.c_schema(1234)
@@ -46,7 +46,7 @@ def test_c_array_helper():
     assert na.c_array(array) is array
 
     array = na.c_array(pa.array([], pa.null()))
-    assert isinstance(array, na.clib.CArray)
+    assert isinstance(array, na.c_lib.CArray)
 
     with pytest.raises(TypeError):
         na.c_array(1234)
@@ -63,7 +63,7 @@ def test_array_stream_helper():
 def test_array_view_helper():
     array = na.c_array(pa.array([1, 2, 3]))
     view = na.c_array_view(array)
-    assert isinstance(view, na.clib.CArrayView)
+    assert isinstance(view, na.c_lib.CArrayView)
     assert na.c_array_view(view) is view
 
 
@@ -71,7 +71,7 @@ def test_c_schema_basic():
     schema = na.c_schema()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
-    assert repr(schema) == "<released nanoarrow.clib.CSchema>"
+    assert repr(schema) == "<released nanoarrow.c_lib.CSchema>"
 
     schema = na.c_schema(pa.schema([pa.field("some_name", pa.int32())]))
 
@@ -83,7 +83,7 @@ def test_c_schema_basic():
     assert schema.child(0).format == "i"
     assert schema.child(0).name == "some_name"
     assert schema.child(0)._to_string() == "int32"
-    assert "<nanoarrow.clib.CSchema int32>" in repr(schema)
+    assert "<nanoarrow.c_lib.CSchema int32>" in repr(schema)
     assert schema.dictionary is None
 
     with pytest.raises(IndexError):
@@ -94,7 +94,7 @@ def test_c_schema_dictionary():
     schema = na.c_schema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
-    assert "dictionary: <nanoarrow.clib.CSchema string" in repr(schema)
+    assert "dictionary: <nanoarrow.c_lib.CSchema string" in repr(schema)
 
 
 def test_schema_metadata():
@@ -174,7 +174,7 @@ def test_c_schema_view_extra_params():
 def test_c_array_empty():
     array = na.c_array()
     assert array.is_valid() is False
-    assert repr(array) == "<released nanoarrow.clib.CArray>"
+    assert repr(array) == "<released nanoarrow.c_lib.CArray>"
 
 
 def test_c_array():
@@ -189,7 +189,7 @@ def test_c_array():
     assert array.n_children == 0
     assert len(list(array.children)) == 0
     assert array.dictionary is None
-    assert "<nanoarrow.clib.CArray int32" in repr(array)
+    assert "<nanoarrow.c_lib.CArray int32" in repr(array)
 
 
 def test_c_array_recursive():
@@ -198,7 +198,7 @@ def test_c_array_recursive():
     assert len(list(array.children)) == 1
     assert array.child(0).length == 3
     assert array.child(0).schema._to_string() == "int32"
-    assert "'col': <nanoarrow.clib.CArray int32" in repr(array)
+    assert "'col': <nanoarrow.c_lib.CArray int32" in repr(array)
 
     with pytest.raises(IndexError):
         array.child(-1)
@@ -208,7 +208,7 @@ def test_c_array_dictionary():
     array = na.c_array(pa.array(["a", "b", "b"]).dictionary_encode())
     assert array.length == 3
     assert array.dictionary.length == 2
-    assert "dictionary: <nanoarrow.clib.CArray string>" in repr(array)
+    assert "dictionary: <nanoarrow.c_lib.CArray string>" in repr(array)
 
 
 def test_c_array_view():
@@ -271,7 +271,7 @@ def test_c_array_view_dictionary():
     view = na.c_array_view(array)
     assert view.n_buffers == 2
     assert view.dictionary.n_buffers == 3
-    assert "- dictionary: <nanoarrow.clib.CArrayView>" in repr(view)
+    assert "- dictionary: <nanoarrow.c_lib.CArrayView>" in repr(view)
 
 
 def test_buffers_integer():
@@ -454,7 +454,7 @@ def test_buffers_interval_month_day_nano():
 def test_c_array_stream():
     array_stream = na.c_array_stream()
     assert na.c_array_stream(array_stream) is array_stream
-    assert repr(array_stream) == "<released nanoarrow.clib.CArrayStream>"
+    assert repr(array_stream) == "<released nanoarrow.c_lib.CArrayStream>"
 
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):

@@ -23,11 +23,11 @@
 def schema_repr(schema, indent=0):
     indent_str = " " * indent
     if schema._addr() == 0:
-        return "<NULL nanoarrow.clib.CSchema>"
+        return "<NULL nanoarrow.c_lib.CSchema>"
     elif not schema.is_valid():
-        return "<released nanoarrow.clib.CSchema>"
+        return "<released nanoarrow.c_lib.CSchema>"
 
-    lines = [f"<nanoarrow.clib.CSchema {schema._to_string()}>"]
+    lines = [f"<nanoarrow.c_lib.CSchema {schema._to_string()}>"]
 
     for attr in ("format", "name", "flags"):
         attr_repr = repr(getattr(schema, attr))
@@ -61,14 +61,14 @@ def array_repr(array, indent=0, max_char_width=80):
 
     indent_str = " " * indent
     if array._addr() == 0:
-        return "<NULL nanoarrow.clib.CArray>"
+        return "<NULL nanoarrow.c_lib.CArray>"
     elif not array.is_valid():
-        return "<released nanoarrow.clib.CArray>"
+        return "<released nanoarrow.c_lib.CArray>"
 
     schema_string = array.schema._to_string(
         max_chars=max_char_width - indent - 23, recursive=True
     )
-    lines = [f"<nanoarrow.clib.CArray {schema_string}>"]
+    lines = [f"<nanoarrow.c_lib.CArray {schema_string}>"]
     for attr in ("length", "offset", "null_count", "buffers"):
         attr_repr = repr(getattr(array, attr))
         lines.append(f"{indent_str}- {attr}: {attr_repr}")
@@ -89,7 +89,7 @@ def array_repr(array, indent=0, max_char_width=80):
 
 def schema_view_repr(schema_view):
     lines = [
-        "<nanoarrow.clib.CSchemaView>",
+        "<nanoarrow.c_lib.CSchemaView>",
         f"- type: {repr(schema_view.type)}",
         f"- storage_type: {repr(schema_view.storage_type)}",
     ]
@@ -110,7 +110,7 @@ def schema_view_repr(schema_view):
 def array_view_repr(array_view, max_char_width=80, indent=0):
     indent_str = " " * indent
 
-    lines = ["<nanoarrow.clib.CArrayView>"]
+    lines = ["<nanoarrow.c_lib.CArrayView>"]
 
     for attr in ("storage_type", "length", "offset", "null_count"):
         attr_repr = repr(getattr(array_view, attr))
@@ -190,11 +190,11 @@ def buffer_view_preview_cpu(buffer_view, max_char_width):
 
 def array_stream_repr(array_stream, max_char_width=80):
     if array_stream._addr() == 0:
-        return "<NULL nanoarrow.clib.CArrayStream>"
+        return "<NULL nanoarrow.c_lib.CArrayStream>"
     elif not array_stream.is_valid():
-        return "<released nanoarrow.clib.CArrayStream>"
+        return "<released nanoarrow.c_lib.CArrayStream>"
 
-    lines = ["<nanoarrow.clib.CArrayStream>"]
+    lines = ["<nanoarrow.c_lib.CArrayStream>"]
     try:
         schema = array_stream.get_schema()
         schema_string = schema._to_string(max_chars=max_char_width - 16, recursive=True)
@@ -206,7 +206,7 @@ def array_stream_repr(array_stream, max_char_width=80):
 
 
 def device_array_repr(device_array):
-    title_line = "<nanoarrow.device.clib.CDeviceArray>"
+    title_line = "<nanoarrow.device.c_lib.CDeviceArray>"
     device_type = f"- device_type: {device_array.device_type}"
     device_id = f"- device_id: {device_array.device_id}"
     array = f"- array: {array_repr(device_array.array, indent=2)}"

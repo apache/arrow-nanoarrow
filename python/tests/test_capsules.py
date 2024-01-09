@@ -144,21 +144,21 @@ def test_import_from_c_errors():
     pa_arr = pa.array([1, 2, 3], pa.int32())
 
     with pytest.raises(ValueError):
-        na.clib.CSchema._import_from_c_capsule("wrong")
+        na.c_lib.CSchema._import_from_c_capsule("wrong")
 
     with pytest.raises(ValueError):
-        na.clib.CSchema._import_from_c_capsule(pa_arr.__arrow_c_array__())
+        na.c_lib.CSchema._import_from_c_capsule(pa_arr.__arrow_c_array__())
 
     with pytest.raises(ValueError):
-        na.clib.CArray._import_from_c_capsule("wrong", "wrong")
+        na.c_lib.CArray._import_from_c_capsule("wrong", "wrong")
 
     with pytest.raises(ValueError):
-        na.clib.CArray._import_from_c_capsule(
+        na.c_lib.CArray._import_from_c_capsule(
             pa_arr.__arrow_c_array__(), pa_arr.type.__arrow_c_schema__()
         )
 
     with pytest.raises(ValueError):
-        na.clib.CArrayStream._import_from_c_capsule("wrong")
+        na.c_lib.CArrayStream._import_from_c_capsule("wrong")
 
     with pytest.raises(ValueError):
-        na.clib.CArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())
+        na.c_lib.CArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())

@@ -61,7 +61,7 @@ schema
 
 
 
-    <nanoarrow.clib.CSchema decimal128(10, 3)>
+    <nanoarrow.c_lib.CSchema decimal128(10, 3)>
     - format: 'd:10,3'
     - name: ''
     - flags: 2
@@ -81,7 +81,7 @@ na.c_schema_view(schema)
 
 
 
-    <nanoarrow.clib.CSchemaView>
+    <nanoarrow.c_lib.CSchemaView>
     - type: 'decimal128'
     - storage_type: 'decimal128'
     - decimal_bitwidth: 128
@@ -102,7 +102,7 @@ schema
 
 
 
-    <nanoarrow.clib.CSchema int32>
+    <nanoarrow.c_lib.CSchema int32>
     - format: 'i'
     - name: ''
     - flags: 2
@@ -127,7 +127,7 @@ array
 
 
 
-    <nanoarrow.clib.CArray string>
+    <nanoarrow.c_lib.CArray string>
     - length: 4
     - offset: 0
     - null_count: 1
@@ -147,7 +147,7 @@ na.c_array_view(array)
 
 
 
-    <nanoarrow.clib.CArrayView>
+    <nanoarrow.c_lib.CArrayView>
     - storage_type: 'string'
     - length: 4
     - offset: 0
@@ -193,15 +193,15 @@ array_stream
 
 
 
-    <nanoarrow.clib.CArrayStream>
-    - get_schema(): <nanoarrow.clib.CSchema struct>
+    <nanoarrow.c_lib.CArrayStream>
+    - get_schema(): <nanoarrow.c_lib.CSchema struct>
       - format: '+s'
       - name: ''
       - flags: 0
       - metadata: NULL
       - dictionary: NULL
       - children[1]:
-        'some_column': <nanoarrow.clib.CSchema int32>
+        'some_column': <nanoarrow.c_lib.CSchema int32>
           - format: 'i'
           - name: 'some_column'
           - flags: 2
@@ -219,14 +219,14 @@ for array in array_stream:
     print(array)
 ```
 
-    <nanoarrow.clib.CArray struct>
+    <nanoarrow.c_lib.CArray struct>
     - length: 3
     - offset: 0
     - null_count: 0
     - buffers: (0,)
     - dictionary: NULL
     - children[1]:
-      'some_column': <nanoarrow.clib.CArray int32>
+      'some_column': <nanoarrow.c_lib.CArray int32>
         - length: 3
         - offset: 0
         - null_count: 0
@@ -247,15 +247,15 @@ array_stream
 
 
 
-    <nanoarrow.clib.CArrayStream>
-    - get_schema(): <nanoarrow.clib.CSchema struct>
+    <nanoarrow.c_lib.CArrayStream>
+    - get_schema(): <nanoarrow.c_lib.CSchema struct>
       - format: '+s'
       - name: ''
       - flags: 0
       - metadata: NULL
       - dictionary: NULL
       - children[1]:
-        'some_column': <nanoarrow.clib.CSchema int32>
+        'some_column': <nanoarrow.c_lib.CSchema int32>
           - format: 'i'
           - name: 'some_column'
           - flags: 2

@@ -156,14 +156,14 @@ def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
     >>> array_stream = na.c_array_stream(pa_reader)
     >>> array_stream.get_schema()
-    <nanoarrow.clib.CSchema struct>
+    <nanoarrow.c_lib.CSchema struct>
     - format: '+s'
     - name: ''
     - flags: 0
     - metadata: NULL
     - dictionary: NULL
     - children[1]:
-      'col1': <nanoarrow.clib.CSchema int32>
+      'col1': <nanoarrow.c_lib.CSchema int32>
         - format: 'i'
         - name: 'col1'
         - flags: 2

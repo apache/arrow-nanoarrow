@@ -16,7 +16,7 @@
 # under the License.
 
 from nanoarrow._lib import cversion  # noqa: F401
-from nanoarrow.clib import (  # noqa: F401
+from nanoarrow.c_lib import (  # noqa: F401
     c_schema,
     c_array,
     c_array_stream,
