@@ -1341,6 +1341,8 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, "+L"), error);
     } else if (name_str == "fixedsizelist") {
       NANOARROW_RETURN_NOT_OK(SetTypeFixedSizeList(schema, value, error));
+    } else if (name_str == "date") {
+      NANOARROW_RETURN_NOT_OK(SetTypeDate(schema, value, error));
     } else if (name_str == "map") {
       NANOARROW_RETURN_NOT_OK(SetTypeMap(schema, value, error));
     } else if (name_str == "union") {
@@ -1500,6 +1502,28 @@ class TestingJSONReader {
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaSetTypeDecimal(schema, type, precision.get<int>(), scale.get<int>()),
         error);
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeDate(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("unit"), error, "Type[name=='date'] missing key 'unit'"));
+    const auto& unit = value["unit"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(unit.is_string(), error, "Type[name=='date'] unit must be string"));
+    std::string unit_str = unit.get<std::string>();
+
+    if (unit_str == "DAY") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_DATE32), error);
+    } else if (unit_str == "MILLISECOND") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_DATE64), error);
+    } else {
+      ArrowErrorSet(error, "Type[name=='date'] unit must be 'DAY' or 'MILLISECOND'");
+      return EINVAL;
+    }
 
     return NANOARROW_OK;
   }
