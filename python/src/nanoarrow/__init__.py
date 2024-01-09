@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import cversion  # noqa: F401
+from nanoarrow._lib import c_version  # noqa: F401
 from nanoarrow.c_lib import (  # noqa: F401
     c_schema,
     c_array,

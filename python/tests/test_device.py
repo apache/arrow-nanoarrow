@@ -33,10 +33,10 @@ def test_cpu_device():
 
     pa_array = pa.array([1, 2, 3])
 
-    darray = device.cdevice_array(pa_array)
+    darray = device.c_device_array(pa_array)
     assert darray.device_type == 1
     assert darray.device_id == 0
     assert darray.array.length == 3
     assert "device_type: 1" in repr(darray)
 
-    assert device.cdevice_array(darray) is darray
+    assert device.c_device_array(darray) is darray

@@ -19,7 +19,7 @@ from nanoarrow._lib import CDeviceArray, Device
 from nanoarrow.c_lib import c_array
 
 
-def cdevice_array(obj):
+def c_device_array(obj):
     if isinstance(obj, CDeviceArray):
         return obj
 

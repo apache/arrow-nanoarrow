@@ -25,9 +25,9 @@ import nanoarrow as na
 np = pytest.importorskip("numpy")
 pa = pytest.importorskip("pyarrow")
 
-def test_cversion():
+def test_c_version():
     re_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$")
-    assert re_version.match(na.cversion()) is not None
+    assert re_version.match(na.c_version()) is not None
 
 
 def test_c_schema_helper():

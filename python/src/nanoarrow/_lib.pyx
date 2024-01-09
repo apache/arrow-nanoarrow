@@ -44,7 +44,7 @@ from nanoarrow_device_c cimport *
 from struct import unpack_from, iter_unpack
 from nanoarrow import _lib_utils
 
-def cversion():
+def c_version():
     """Return the nanoarrow C library version string
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
