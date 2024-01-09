@@ -594,8 +594,12 @@ class TestingJSONWriter {
         out << R"(, "bitWidth": 64)";
         break;
       case NANOARROW_TYPE_TIMESTAMP:
-        out << R"("name": "time")";
+        out << R"("name": "timestamp")";
         NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        if (strlen(field->timezone) > 0) {
+          out << R"(, "timezone": )";
+          WriteString(out, ArrowCharView(field->timezone));
+        }
         break;
       case NANOARROW_TYPE_INTERVAL_MONTHS:
         out << R"("name": "interval", "unit": "YEAR_MONTH")";

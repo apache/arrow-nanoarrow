@@ -1184,12 +1184,14 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldTime) {
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldTimestamp) {
   TestTypeRoundtrip(
       R"({"name": "timestamp", "unit": "SECOND", "timezone": "America/Halifax"})",
-      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
 
-  TestTypeRoundtrip(R"({"name": "timestamp", "unit": "SECOND"})",
-                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
-  TestTypeRoundtrip(R"({"name": "timestamp", "unit": "MILLISECOND"})",
-                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(
+      R"({"name": "timestamp", "unit": "SECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
+  TestTypeRoundtrip(
+      R"({"name": "timestamp", "unit": "MILLISECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
   TestTypeRoundtrip(
       R"({"name": "timestamp", "unit": "MICROSECOND"})",
       R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
@@ -1199,10 +1201,12 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldTimestamp) {
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDuration) {
-  TestTypeRoundtrip(R"({"name": "duration", "unit": "SECOND"})",
-                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
-  TestTypeRoundtrip(R"({"name": "duration", "unit": "MILLISECOND"})",
-                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(
+      R"({"name": "duration", "unit": "SECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
+  TestTypeRoundtrip(
+      R"({"name": "duration", "unit": "MILLISECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
   TestTypeRoundtrip(
       R"({"name": "duration", "unit": "MICROSECOND"})",
       R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
