@@ -1159,6 +1159,15 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
   EXPECT_STREQ(schema->format, "d:10,3");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDate) {
+  TestTypeRoundtrip(R"({"name": "date", "unit": "DAY"})",
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [0, 1]})");
+
+  TestTypeRoundtrip(
+      R"({"name": "date", "unit": "MILLISECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["0", "86400000"]})");
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {
   // Sorted keys
   TestFieldRoundtrip(
