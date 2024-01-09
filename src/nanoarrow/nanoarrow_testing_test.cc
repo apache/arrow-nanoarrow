@@ -1161,11 +1161,54 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDate) {
   TestTypeRoundtrip(R"({"name": "date", "unit": "DAY"})",
-                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [0, 1]})");
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
 
   TestTypeRoundtrip(
       R"({"name": "date", "unit": "MILLISECOND"})",
-      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["0", "86400000"]})");
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["86400000", "0"]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldTime) {
+  TestTypeRoundtrip(R"({"name": "time", "unit": "SECOND", "bitWidth": 32})",
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(R"({"name": "time", "unit": "MILLISECOND", "bitWidth": 32})",
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(
+      R"({"name": "time", "unit": "MICROSECOND", "bitWidth": 64})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
+  TestTypeRoundtrip(
+      R"({"name": "time", "unit": "NANOSECOND", "bitWidth": 64})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldTimestamp) {
+  TestTypeRoundtrip(
+      R"({"name": "timestamp", "unit": "SECOND", "timezone": "America/Halifax"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+
+  TestTypeRoundtrip(R"({"name": "timestamp", "unit": "SECOND"})",
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(R"({"name": "timestamp", "unit": "MILLISECOND"})",
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(
+      R"({"name": "timestamp", "unit": "MICROSECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
+  TestTypeRoundtrip(
+      R"({"name": "timestamp", "unit": "NANOSECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDuration) {
+  TestTypeRoundtrip(R"({"name": "duration", "unit": "SECOND"})",
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(R"({"name": "duration", "unit": "MILLISECOND"})",
+                    R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+  TestTypeRoundtrip(
+      R"({"name": "duration", "unit": "MICROSECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
+  TestTypeRoundtrip(
+      R"({"name": "duration", "unit": "NANOSECOND"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": ["1", "0"]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {
