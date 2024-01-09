@@ -144,7 +144,7 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
 
 
 # To more safely implement export of an ArrowArray whose address may be
-# dependend on by some other Python object, we implement a shallow copy
+# depended on by some other Python object, we implement a shallow copy
 # whose constructor calls Py_INCREF() on a Python object responsible
 # for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
 # the same object.
