@@ -81,7 +81,7 @@ jobs:
           - {os: "ubuntu-20.04", label: "linux"}
           - {os: "windows-2019", label: "windows"}
           - {os: "macOS-11", label: "macOS"}
-          - {os: ["self-hosted", "arm"], label: "linux/arm64"}
+          - {os: ["self-hosted", "arm"], label: "linux-arm64"}
 
     steps:
       - uses: actions/checkout@v4
