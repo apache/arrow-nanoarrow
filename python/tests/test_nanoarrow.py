@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import sys
 import re
+import sys
 
 import pytest
 
@@ -24,6 +24,7 @@ import nanoarrow as na
 
 np = pytest.importorskip("numpy")
 pa = pytest.importorskip("pyarrow")
+
 
 def test_c_version():
     re_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$")
