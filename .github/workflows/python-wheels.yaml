@@ -81,8 +81,8 @@ jobs:
           - {os: "ubuntu-20.04", label: "linux"}
           - {os: "windows-2019", label: "windows"}
           - {os: "macOS-11", label: "macOS"}
-          # Uncomment when apache/arrow-nanoarrow is added to the arrow runner group
-          # - {os: ["self-hosted", "arm"], label: "linux/arm64"}
+          - {os: ["self-hosted", "arm"], label: "linux/arm64"}
+          - {os: ["self-hosted", "macOS", "arm64"], label: "macOS/arm64"}
 
     steps:
       - uses: actions/checkout@v4
