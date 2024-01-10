@@ -59,7 +59,7 @@ jobs:
       run: |
         python -c "import nanoarrow; print(nanoarrow.__version__)"
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: sdist
         path: ./python/dist/nanoarrow-*.tar.gz
