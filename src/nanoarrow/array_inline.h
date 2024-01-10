@@ -933,7 +933,7 @@ static inline void ArrowArrayViewGetIntervalUnsafe(
     const struct ArrowArrayView* array_view, int64_t i, struct ArrowInterval* out) {
   const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
   switch (array_view->storage_type) {
-    case NANOARROW_TYPE_INTERVAL_MONTHS: {
+    case NANOARROW_TYPE_INT32: {
       const size_t size = sizeof(int32_t);
       memcpy(&out->months, data_view + i * size, sizeof(int32_t));
       break;
