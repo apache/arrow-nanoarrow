@@ -26,11 +26,13 @@ update_versions() {
     release)
       local version=${base_version}
       local docs_version=${base_version}
+      local python_version=${base_version}
       local r_version=${base_version}
       ;;
     snapshot)
       local version=${next_version}-SNAPSHOT
       local docs_version="${next_version} (dev)"
+      local python_version="${next_version}dev"
       local r_version="${base_version}.9000"
       ;;
   esac
@@ -45,6 +47,12 @@ update_versions() {
   pushd "${NANOARROW_DIR}/r"
   Rscript -e "desc::desc_set(Version = '${r_version}')"
   git add DESCRIPTION
+  popd
+
+  pushd "${NANOARROW_DIR}/python/src/nanoarrow"
+  sed -i.bak -E "s/version = \".+\"/version = \"${python_version}\"/" _static_version.py
+  rm _static_version.py.bak
+  git add _static_version.py
   popd
 }
 

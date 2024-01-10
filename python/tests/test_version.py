@@ -15,10 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-exclude bootstrap.py
-include src/nanoarrow/nanoarrow.c
-include src/nanoarrow/nanoarrow.h
-include src/nanoarrow/nanoarrow_c.pxd
-include src/nanoarrow/nanoarrow_device.c
-include src/nanoarrow/nanoarrow_device.h
-include src/nanoarrow/nanoarrow_device_c.pxd
+import re
+
+import nanoarrow as na
+
+
+def test_version():
+    re_py_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(dev[0-9+])?$")
+    assert re_py_version.match(na.__version__) is not None
+
+
+def test_c_version():
+    re_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$")
+    assert re_version.match(na.c_version()) is not None

@@ -23,6 +23,25 @@ import sys
 
 from setuptools import Extension, setup
 
+
+# https://github.com/jbweston/miniver
+def get_version(pkg_path):
+    """
+    Load version.py module without importing the whole package.
+
+    Template code from miniver.
+    """
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location("version", os.path.join(pkg_path, "_version.py"))
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.__version__
+
+
+version = get_version("src/nanoarrow")
+
+
 # Run bootstrap.py to run cmake generating a fresh bundle based on this
 # checkout or copy from ../dist if the caller doesn't have cmake available.
 # Note that bootstrap.py won't exist if building from sdist.
@@ -46,6 +65,7 @@ else:
     extra_link_args = []
     extra_define_macros = []
 
+
 setup(
     ext_modules=[
         Extension(
@@ -61,5 +81,6 @@ setup(
             extra_link_args=extra_link_args,
             define_macros=extra_define_macros,
         )
-    ]
+    ],
+    version=version,
 )

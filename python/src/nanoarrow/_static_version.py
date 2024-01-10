@@ -14,11 +14,12 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+#
+# This file is part of 'miniver': https://github.com/jbweston/miniver
 
-exclude bootstrap.py
-include src/nanoarrow/nanoarrow.c
-include src/nanoarrow/nanoarrow.h
-include src/nanoarrow/nanoarrow_c.pxd
-include src/nanoarrow/nanoarrow_device.c
-include src/nanoarrow/nanoarrow_device.h
-include src/nanoarrow/nanoarrow_device_c.pxd
+# Replaced by version-bumping scripts at release time
+version = "0.4.0dev0"
+
+# These values are only set if the distribution was created with 'git archive'
+refnames = "$Format:%D$"
+git_hash = "$Format:%h$"

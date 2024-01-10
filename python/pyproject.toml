@@ -18,7 +18,8 @@
 
 [project]
 name = "nanoarrow"
-version = "1.0.0-alpha0"
+dynamic = ["version"]
+readme = "README.md"
 description = "Python bindings to the nanoarrow C library"
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
@@ -34,7 +35,6 @@ repository = "https://github.com/apache/arrow-nanoarrow"
 [build-system]
 requires = [
     "setuptools >= 61.0.0",
-    "setuptools-scm",
     "Cython"
 ]
 build-backend = "setuptools.build_meta"

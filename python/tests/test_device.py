@@ -15,9 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import pyarrow as pa
+import pytest
 
 from nanoarrow import device
+
+pa = pytest.importorskip("pyarrow")
 
 
 def test_cpu_device():

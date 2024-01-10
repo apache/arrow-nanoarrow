@@ -18,6 +18,9 @@
 import os
 import re
 import shutil
+import subprocess
+import tempfile
+import warnings
 
 
 # Generate the nanoarrow_c.pxd file used by the Cython extension
@@ -158,7 +161,6 @@ class NanoarrowPxdGenerator:
 # any changes from nanoarrow C library sources in the checkout but is not
 # strictly necessary for things like installing from GitHub.
 def copy_or_generate_nanoarrow_c():
-    this_wd = os.getcwd()
     this_dir = os.path.abspath(os.path.dirname(__file__))
     source_dir = os.path.dirname(this_dir)
 
@@ -185,42 +187,49 @@ def copy_or_generate_nanoarrow_c():
         os.path.join(source_dir, "src", "nanoarrow")
     )
     has_cmake = os.system("cmake --version") == 0
-    build_dir = os.path.join(this_dir, "_cmake")
 
-    if is_in_nanoarrow_repo:
-        device_ext_src = os.path.join(
-            source_dir, "extensions/nanoarrow_device/src/nanoarrow"
-        )
-        shutil.copyfile(
-            os.path.join(device_ext_src, "nanoarrow_device.h"), maybe_nanoarrow_device_h
-        )
-        shutil.copyfile(
-            os.path.join(device_ext_src, "nanoarrow_device.c"), maybe_nanoarrow_device_c
-        )
-
-    if has_cmake and is_cmake_dir and is_in_nanoarrow_repo:
-        try:
-            os.mkdir(build_dir)
-            os.chdir(build_dir)
-            os.system(
-                "cmake ../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=PythonPkg"
+    with tempfile.TemporaryDirectory() as build_dir:
+        if is_in_nanoarrow_repo:
+            device_ext_src = os.path.join(
+                source_dir, "extensions/nanoarrow_device/src/nanoarrow"
             )
-            os.system("cmake --install . --prefix=../src/nanoarrow")
-        finally:
-            if os.path.exists(build_dir):
-                # Can fail on Windows with permission issues
-                try:
-                    shutil.rmtree(build_dir)
-                except Exception as e:
-                    print(f"Failed to remove _cmake temp directory: {str(e)}")
-            os.chdir(this_wd)
+            shutil.copyfile(
+                os.path.join(device_ext_src, "nanoarrow_device.h"),
+                maybe_nanoarrow_device_h,
+            )
+            shutil.copyfile(
+                os.path.join(device_ext_src, "nanoarrow_device.c"),
+                maybe_nanoarrow_device_c,
+            )
 
-    elif is_in_nanoarrow_repo:
-        shutil.copyfile()
-    else:
-        raise ValueError(
-            "Attempt to build source distribution outside the nanoarrow repo"
-        )
+        if has_cmake and is_cmake_dir and is_in_nanoarrow_repo:
+            try:
+                subprocess.run(
+                    [
+                        "cmake",
+                        "-B",
+                        build_dir,
+                        "-S",
+                        source_dir,
+                        "-DNANOARROW_BUNDLE=ON",
+                        "-DNANOARROW_NAMESPACE=PythonPkg",
+                    ]
+                )
+                subprocess.run(
+                    [
+                        "cmake",
+                        "--install",
+                        build_dir,
+                        "--prefix",
+                        os.path.join(this_dir, "src", "nanoarrow"),
+                    ]
+                )
+            except Exception as e:
+                warnings.warn(f"cmake call failed: {e}")
+        else:
+            raise ValueError(
+                "Attempt to build source distribution outside the nanoarrow repo"
+            )
 
     if not os.path.exists(os.path.join(this_dir, "src/nanoarrow/nanoarrow.h")):
         raise ValueError("Attempt to vendor nanoarrow.c/h failed")
