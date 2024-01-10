@@ -144,7 +144,7 @@ def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
 
     This class provides a user-facing interface to access the fields of
     an ArrowArrayStream as defined in the Arrow C Stream interface.
-    These objects are usually created using `nanoarrow.array_stream()`.
+    These objects are usually created using `nanoarrow.c_array_stream()`.
 
     Examples
     --------

@@ -365,8 +365,10 @@ cdef class CSchema:
 cdef class CSchemaView:
     """Low-level ArrowSchemaView wrapper
 
-    This object is a literal wrapper around a read-only ArrowSchema. It provides field accessors
-    that return Python objects and handles structure lifecycle.
+    This object is a literal wrapper around a read-only ArrowSchemaView. It provides field accessors
+    that return Python objects and handles structure lifecycle. Compared to an ArrowSchema,
+    the nanoarrow ArrowSchemaView facilitates access to the deserialized content of an ArrowSchema
+    (e.g., parameter values for parameterized types).
 
     See `nanoarrow.c_schema_view()` for construction and usage examples.
     """
