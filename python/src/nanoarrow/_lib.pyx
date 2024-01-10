@@ -143,11 +143,6 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
 
 
-# To more safely implement export of an ArrowArray whose address may be
-# depended on by some other Python object, we implement a shallow copy
-# whose constructor calls Py_INCREF() on a Python object responsible
-# for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
-# the same object.
 cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
     Py_DECREF(<object>array.private_data)
     array.private_data = NULL
@@ -155,6 +150,14 @@ cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
 
 
 cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
+    """Make a shallow copy of an ArrowArray
+
+    To more safely implement export of an ArrowArray whose address may be
+    depended on by some other Python object, we implement a shallow copy
+    whose constructor calls Py_INCREF() on a Python object responsible
+    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
+    the same object.
+    """
     cdef:
         ArrowArray* c_array_out
 
@@ -227,6 +230,9 @@ cdef class CSchema:
 
     See `nanoarrow.c_schema()` for construction and usage examples.
     """
+    # Currently, _base is always the capsule holding the root of a tree of ArrowSchemas
+    # (but in general is just a strong reference to an object whose Python lifetime is
+    # used to guarantee that _ptr is valid).
     cdef object _base
     cdef ArrowSchema* _ptr
 
@@ -364,6 +370,8 @@ cdef class CSchemaView:
 
     See `nanoarrow.c_schema_view()` for construction and usage examples.
     """
+    # _base is currently only a CSchema (but in general is just an object whose Python
+    # lifetime guarantees that the pointed-to data from ArrowStringViews remains valid
     cdef object _base
     cdef ArrowSchemaView _schema_view
 
@@ -684,7 +692,7 @@ cdef class CArrayView:
             raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
 
         cdef ArrowBufferView* buffer_view = &(self._ptr.buffer_views[i])
-        return BufferView(
+        return CBufferView(
             self._base,
             <uintptr_t>buffer_view,
             self._ptr.layout.buffer_type[i],
@@ -761,7 +769,7 @@ cdef class SchemaMetadata:
             yield key_obj, value_obj
 
 
-cdef class BufferView:
+cdef class CBufferView:
     """Wrapper for Array buffer content
 
     This object is a Python wrapper around a buffer held by an Array.
@@ -909,7 +917,7 @@ cdef class BufferView:
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         if self._device.device_type != ARROW_DEVICE_CPU:
-            raise RuntimeError("nanoarrow.BufferView is not a CPU array")
+            raise RuntimeError("nanoarrow.c_lib.CBufferView is not a CPU buffer")
 
         buffer.buf = <void*>self._ptr.data.data
         buffer.format = self._format
@@ -927,7 +935,7 @@ cdef class BufferView:
         pass
 
     def __repr__(self):
-        return _lib_utils.buffer_view_repr(self)
+        return f"<nanoarrow.c_lib.CBufferView>\n  {_lib_utils.buffer_view_repr(self)[1:]}"
 
 
 cdef class CArrayStream:
