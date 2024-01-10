@@ -23,3 +23,4 @@ from nanoarrow.c_lib import (  # noqa: F401
     c_schema_view,
     c_array_view,
 )
+from nanoarrow._version import __version__
