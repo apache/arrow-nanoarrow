@@ -18,7 +18,7 @@
 
 [project]
 name = "nanoarrow"
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 description = "Python bindings to the nanoarrow C library"
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}

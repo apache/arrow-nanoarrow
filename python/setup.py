@@ -65,6 +65,14 @@ else:
     extra_link_args = []
     extra_define_macros = []
 
+
+# README content
+readme_dir = os.path.dirname(__file__)
+readme_path = os.path.join(readme_dir, "README.md")
+with open(readme_path) as readme:
+    long_description = readme.read()
+
+
 setup(
     ext_modules=[
         Extension(
@@ -82,4 +90,6 @@ setup(
         )
     ],
     version=version,
+    long_description=long_description,
+    long_description_content_type="text/markdown",
 )
