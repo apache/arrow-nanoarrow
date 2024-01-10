@@ -912,7 +912,6 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           switch (format[2]) {
             case 'M':
               ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_INTERVAL_MONTHS);
-              schema_view->storage_type = NANOARROW_TYPE_INT32;
               *format_end_out = format + 3;
               return NANOARROW_OK;
             case 'D':

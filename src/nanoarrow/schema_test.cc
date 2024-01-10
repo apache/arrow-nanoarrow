@@ -980,7 +980,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeInterval) {
   ARROW_EXPECT_OK(ExportType(*month_interval(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_INTERVAL_MONTHS);
-  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INTERVAL_MONTHS);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "interval_months");
   ArrowSchemaRelease(&schema);
 

@@ -1219,6 +1219,14 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldInterval) {
   TestTypeRoundtrip(
       R"({"name": "interval", "unit": "YEAR_MONTH"})",
       R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [1, 0]})");
+
+  TestTypeRoundtrip(
+      R"({"name": "interval", "unit": "DAY_TIME"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [{"days": 1, "milliseconds": 2}, {"days": 0, "milliseconds": 0}]})");
+
+  TestTypeRoundtrip(
+      R"({"name": "interval", "unit": "MONTH_DAY_NANO"})",
+      R"({"name": null, "count": 2, "VALIDITY": [1, 0], "DATA": [{"months": 1, "days": 2, "nanoseconds": "3"}, {"months": 0, "days": 0, "nanoseconds": "0"}]})");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMap) {

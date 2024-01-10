@@ -775,6 +775,7 @@ static inline int64_t ArrowArrayViewGetIntUnsafe(const struct ArrowArrayView* ar
       return data_view->data.as_int64[i];
     case NANOARROW_TYPE_UINT64:
       return data_view->data.as_uint64[i];
+    case NANOARROW_TYPE_INTERVAL_MONTHS:
     case NANOARROW_TYPE_INT32:
       return data_view->data.as_int32[i];
     case NANOARROW_TYPE_UINT32:
@@ -807,6 +808,7 @@ static inline uint64_t ArrowArrayViewGetUIntUnsafe(
       return data_view->data.as_int64[i];
     case NANOARROW_TYPE_UINT64:
       return data_view->data.as_uint64[i];
+    case NANOARROW_TYPE_INTERVAL_MONTHS:
     case NANOARROW_TYPE_INT32:
       return data_view->data.as_int32[i];
     case NANOARROW_TYPE_UINT32:
@@ -933,8 +935,7 @@ static inline void ArrowArrayViewGetIntervalUnsafe(
     const struct ArrowArrayView* array_view, int64_t i, struct ArrowInterval* out) {
   const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
   switch (array_view->storage_type) {
-    // The storage type for NANOARROW_TYPE_INTERAVAL_MONTHS is a 32-bit integer
-    case NANOARROW_TYPE_INT32: {
+    case NANOARROW_TYPE_INTERVAL_MONTHS: {
       const size_t size = sizeof(int32_t);
       memcpy(&out->months, data_view + i * size, sizeof(int32_t));
       break;
