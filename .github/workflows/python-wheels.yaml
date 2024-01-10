@@ -87,10 +87,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.15.0
+
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16.2
-        with:
-          package-dir: python
+        run: |
+          python -m cibuildwheel --output-dir wheelhouse python
         env:
           # Optional (test suite will pass if these are not available)
           # Commenting this for now because not all the tests pass yet (fixes in another PR)
