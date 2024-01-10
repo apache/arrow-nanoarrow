@@ -2348,7 +2348,8 @@ class TestingJSONReader {
                 "interval_day_time buffer item missing key 'milliseconds'"));
 
       NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
-      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["milliseconds"], buffer, error));
+      NANOARROW_RETURN_NOT_OK(
+          SetBufferIntItem<int32_t>(item["milliseconds"], buffer, error));
     }
 
     return NANOARROW_OK;
@@ -2365,15 +2366,14 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(Check(item.contains("months"), error,
                                     "interval buffer item missing key 'months'"));
       NANOARROW_RETURN_NOT_OK(
-          Check(item.contains("days"), error,
-                "interval buffer item missing key 'days'"));
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.contains("nanoseconds"), error,
-                "interval buffer item missing key 'nanoseconds'"));
+          Check(item.contains("days"), error, "interval buffer item missing key 'days'"));
+      NANOARROW_RETURN_NOT_OK(Check(item.contains("nanoseconds"), error,
+                                    "interval buffer item missing key 'nanoseconds'"));
 
       NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["months"], buffer, error));
       NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
-      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int64_t>(item["nanoseconds"], buffer, error));
+      NANOARROW_RETURN_NOT_OK(
+          SetBufferIntItem<int64_t>(item["nanoseconds"], buffer, error));
     }
 
     return NANOARROW_OK;
