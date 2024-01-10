@@ -34,7 +34,6 @@ repository = "https://github.com/apache/arrow-nanoarrow"
 [build-system]
 requires = [
     "setuptools >= 61.0.0",
-    "versioneer[toml]==0.29",
     "Cython"
 ]
 build-backend = "setuptools.build_meta"
