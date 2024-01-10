@@ -21394,6 +21394,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
     return result;
   }
 
+  // Top-level batch schema is typically non-nullable
+  tmp.flags = 0;
+
   result = ArrowIpcDecoderSetChildren(&tmp, fields, error);
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);

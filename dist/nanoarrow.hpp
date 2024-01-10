@@ -206,15 +206,21 @@ class Unique {
 
   /// \brief Move and take ownership of data wrapped by rhs
   Unique(Unique&& rhs) : Unique(rhs.get()) {}
+  Unique& operator=(Unique&& rhs) {
+    reset(rhs.get());
+    return *this;
+  }
 
   // These objects are not copyable
-  Unique(Unique& rhs) = delete;
+  Unique(const Unique& rhs) = delete;
 
   /// \brief Get a pointer to the data owned by this object
   T* get() noexcept { return &data_; }
+  const T* get() const noexcept { return &data_; }
 
   /// \brief Use the pointer operator to access fields of this object
-  T* operator->() { return &data_; }
+  T* operator->() noexcept { return &data_; }
+  const T* operator->() const noexcept { return &data_; }
 
   /// \brief Call data's release callback if valid
   void reset() { release_pointer(&data_); }
