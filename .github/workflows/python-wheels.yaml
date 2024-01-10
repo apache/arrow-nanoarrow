@@ -42,9 +42,9 @@ jobs:
       run: |
         cmake --version
 
-    - name: Install build
+    - name: Install packaging tools
       run: |
-        pip install build
+        pip install build twine
 
     - name: Build sdist
       run: |
@@ -58,6 +58,10 @@ jobs:
     - name: Test import
       run: |
         python -c "import nanoarrow; print(nanoarrow.__version__)"
+
+    - name: Run twine check
+      run: |
+        twine check --strict python/dist/*
 
     - uses: actions/upload-artifact@v4
       with:
