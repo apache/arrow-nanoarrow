@@ -82,7 +82,6 @@ jobs:
           - {os: "windows-2019", label: "windows"}
           - {os: "macOS-11", label: "macOS"}
           - {os: ["self-hosted", "arm"], label: "linux/arm64"}
-          - {os: ["self-hosted", "macOS", "arm64"], label: "macOS/arm64"}
 
     steps:
       - uses: actions/checkout@v4
@@ -97,6 +96,7 @@ jobs:
         run: |
           python -m cibuildwheel --output-dir wheelhouse python
         env:
+          CIBW_ARCHS_MACOS: x86_64 arm64
           # Optional (test suite will pass if these are not available)
           # Commenting this for now because not all the tests pass yet (fixes in another PR)
           # CIBW_BEFORE_TEST: pip install --only-binary ":all:" pyarrow numpy || pip install --only-binary ":all:" numpy || true
