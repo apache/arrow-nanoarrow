@@ -24,6 +24,10 @@ on:
       - main
     paths:
       - '.github/workflows/python-wheels.yaml'
+      - 'python/setup.py'
+      - 'python/pyproject.toml'
+      - 'python/bootstrap.py'
+      - 'python/MANIFEST.in'
   workflow_dispatch:
   schedule:
     - cron: '6 0 * * 0'
