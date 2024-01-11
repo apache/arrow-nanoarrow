@@ -33,7 +33,7 @@ Python bindings for nanoarrow are not yet available on PyPI. You can install via
 URL (requires a C compiler):
 
 ```bash
-python -m pip install "https://github.com/apache/arrow-nanoarrow/archive/refs/heads/main.zip#egg=nanoarrow&subdirectory=python"
+python -m pip install "git+https://github.com/apache/arrow-nanoarrow.git#egg=nanoarrow&subdirectory=python"
 ```
 
 If you can import the namespace, you're good to go!
@@ -43,97 +43,129 @@ If you can import the namespace, you're good to go!
 import nanoarrow as na
 ```
 
-## Example
+## Low-level C library bindings
 
-The Arrow C Data and Arrow C Stream interfaces are comprised of three structures: the `ArrowSchema` which represents a data type of an array, the `ArrowArray` which represents the values of an array, and an `ArrowArrayStream`, which represents zero or more `ArrowArray`s with a common `ArrowSchema`. All three can be wrapped by Python objects using the nanoarrow Python package.
+The Arrow C Data and Arrow C Stream interfaces are comprised of three structures: the `ArrowSchema` which represents a data type of an array, the `ArrowArray` which represents the values of an array, and an `ArrowArrayStream`, which represents zero or more `ArrowArray`s with a common `ArrowSchema`.
 
 ### Schemas
 
-Use `nanoarrow.schema()` to convert a data type-like object to an `ArrowSchema`. This is currently only implemented for pyarrow objects.
+Use `nanoarrow.c_schema()` to convert an object to an `ArrowSchema` and wrap it as a Python object. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.Schema`, `pyarrow.DataType`, and `pyarrow.Field`).
 
 
 ```python
 import pyarrow as pa
-schema = na.schema(pa.decimal128(10, 3))
+schema = na.c_schema(pa.decimal128(10, 3))
+schema
 ```
 
-You can extract the fields of a `Schema` object one at a time or parse it into a view to extract deserialized parameters.
+
+
+
+    <nanoarrow.c_lib.CSchema decimal128(10, 3)>
+    - format: 'd:10,3'
+    - name: ''
+    - flags: 2
+    - metadata: NULL
+    - dictionary: NULL
+    - children[0]:
+
+
+
+You can extract the fields of a `CSchema` object one at a time or parse it into a view to extract deserialized parameters.
 
 
 ```python
-print(schema.format)
-print(schema.view().decimal_precision)
-print(schema.view().decimal_scale)
+na.c_schema_view(schema)
 ```
 
-    d:10,3
-    10
-    3
 
 
-The `nanoarrow.schema()` helper is currently only implemented for pyarrow objects. If your data type has an `_export_to_c()`-like function, you can get the address of a freshly-allocated `ArrowSchema` as well:
+
+    <nanoarrow.c_lib.CSchemaView>
+    - type: 'decimal128'
+    - storage_type: 'decimal128'
+    - decimal_bitwidth: 128
+    - decimal_precision: 10
+    - decimal_scale: 3
+
+
+
+Advanced users can allocate an empty `CSchema` and populate its contents by passing its `._addr()` to a schema-exporting function.
 
 
 ```python
-schema = na.Schema.allocate()
+schema = na.allocate_c_schema()
 pa.int32()._export_to_c(schema._addr())
-schema.view().type
+schema
 ```
 
 
 
 
-    'int32'
+    <nanoarrow.c_lib.CSchema int32>
+    - format: 'i'
+    - name: ''
+    - flags: 2
+    - metadata: NULL
+    - dictionary: NULL
+    - children[0]:
 
 
 
-The `Schema` object cleans up after itself: when the object is deleted, the underlying `Schema` is released.
+The `CSchema` object cleans up after itself: when the object is deleted, the underlying `ArrowSchema` is released.
 
 ### Arrays
 
-You can use `nanoarrow.array()` to convert an array-like object to a `nanoarrow.Array`, optionally attaching a `Schema` that can be used to interpret its contents. This is currently only implemented for pyarrow objects.
+You can use `nanoarrow.c_array()` to convert an array-like object to an `ArrowArray`, wrap it as a Python object, and attach a schema that can be used to interpret its contents. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.Array`, `pyarrow.RecordBatch`).
 
 
 ```python
-array = na.array(pa.array(["one", "two", "three", None]))
-```
-
-Like the `Schema`, you can inspect an `Array` by extracting fields individually:
-
-
-```python
-print(array.length)
-print(array.null_count)
-```
-
-    4
-    1
-
-
-...and parse the `Array`/`Schema` combination into a view whose contents is more readily accessible.
-
-
-```python
-import numpy as np
-view = array.view()
-[np.array(buffer) for buffer in view.buffers]
+array = na.c_array(pa.array(["one", "two", "three", None]))
+array
 ```
 
 
 
 
-    [array([7], dtype=uint8),
-     array([ 0,  3,  6, 11, 11], dtype=int32),
-     array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
-           dtype='|S1')]
+    <nanoarrow.c_lib.CArray string>
+    - length: 4
+    - offset: 0
+    - null_count: 1
+    - buffers: (2939032895680, 2939032895616, 2939032895744)
+    - dictionary: NULL
+    - children[0]:
 
 
 
-Like the `Schema`, you can allocate an empty one and access its address with `_addr()` to pass to other array-exporting functions.
+You can extract the fields of a `CArray` one at a time or parse it into a view to extract deserialized content:
 
 
 ```python
-array = na.Array.allocate(na.Schema.allocate())
+na.c_array_view(array)
+```
+
+
+
+
+    <nanoarrow.c_lib.CArrayView>
+    - storage_type: 'string'
+    - length: 4
+    - offset: 0
+    - null_count: 1
+    - buffers[3]:
+      - <bool validity[1 b] 11100000>
+      - <int32 data_offset[20 b] 0 3 6 11 11>
+      - <string data[11 b] b'onetwothree'>
+    - dictionary: NULL
+    - children[0]:
+
+
+
+Like the `CSchema`, you can allocate an empty one and access its address with `_addr()` to pass to other array-exporting functions.
+
+
+```python
+array = na.allocate_c_array()
 pa.array([1, 2, 3])._export_to_c(array._addr(), array.schema._addr())
 array.length
 ```
@@ -147,46 +179,89 @@ array.length
 
 ### Array streams
 
-You can use `nanoarrow.array_stream()` to convert an object representing a sequence of `Array`s with a common `Schema` to a `nanoarrow.ArrayStream`. This is currently only implemented for pyarrow objects.
+You can use `nanoarrow.c_array_stream()` to wrap an object representing a sequence of `CArray`s with a common `CSchema` to an `ArrowArrayStream` and wrap it as a Python object. This works for any object implementing the [Arrow PyCapsule Interface](https://arrow.apache.org/docs/format/CDataInterface.html) (e.g., `pyarrow.RecordBatchReader`).
 
 
 ```python
 pa_array_child = pa.array([1, 2, 3], pa.int32())
 pa_array = pa.record_batch([pa_array_child], names=["some_column"])
 reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
-array_stream = na.array_stream(reader)
+array_stream = na.c_array_stream(reader)
+array_stream
 ```
 
-You can pull the next array from the stream using `.get_next()` or use it like an iterator. The `.get_next()` method will return `None` when there are no more arrays in the stream.
+
+
+
+    <nanoarrow.c_lib.CArrayStream>
+    - get_schema(): <nanoarrow.c_lib.CSchema struct>
+      - format: '+s'
+      - name: ''
+      - flags: 0
+      - metadata: NULL
+      - dictionary: NULL
+      - children[1]:
+        'some_column': <nanoarrow.c_lib.CSchema int32>
+          - format: 'i'
+          - name: 'some_column'
+          - flags: 2
+          - metadata: NULL
+          - dictionary: NULL
+          - children[0]:
+
+
+
+You can pull the next array from the stream using `.get_next()` or use it like an iterator. The `.get_next()` method will raise `StopIteration` when there are no more arrays in the stream.
 
 
 ```python
-print(array_stream.get_schema())
-
 for array in array_stream:
-    print(array.length)
-
-print(array_stream.get_next() is None)
+    print(array)
 ```
 
-    struct<some_column: int32>
-    3
-    True
+    <nanoarrow.c_lib.CArray struct>
+    - length: 3
+    - offset: 0
+    - null_count: 0
+    - buffers: (0,)
+    - dictionary: NULL
+    - children[1]:
+      'some_column': <nanoarrow.c_lib.CArray int32>
+        - length: 3
+        - offset: 0
+        - null_count: 0
+        - buffers: (0, 2939033026688)
+        - dictionary: NULL
+        - children[0]:
 
 
 You can also get the address of a freshly-allocated stream to pass to a suitable exporting function:
 
 
 ```python
-array_stream = na.ArrayStream.allocate()
+array_stream = na.allocate_c_array_stream()
 reader._export_to_c(array_stream._addr())
-array_stream.get_schema()
+array_stream
 ```
 
 
 
 
-    struct<some_column: int32>
+    <nanoarrow.c_lib.CArrayStream>
+    - get_schema(): <nanoarrow.c_lib.CSchema struct>
+      - format: '+s'
+      - name: ''
+      - flags: 0
+      - metadata: NULL
+      - dictionary: NULL
+      - children[1]:
+        'some_column': <nanoarrow.c_lib.CSchema int32>
+          - format: 'i'
+          - name: 'some_column'
+          - flags: 2
+          - metadata: NULL
+          - dictionary: NULL
+          - children[0]:
 
 
 

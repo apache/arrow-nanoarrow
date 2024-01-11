@@ -15,6 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from ._lib import Array, ArrayStream, ArrayView, Schema, c_version  # noqa: F401
-from .lib import array, array_stream, schema, array_view  # noqa: F401
-from ._version import __version__  # noqa: F401
+from nanoarrow._lib import c_version  # noqa: F401
+from nanoarrow.c_lib import (  # noqa: F401
+    c_schema,
+    c_array,
+    c_array_stream,
+    c_schema_view,
+    c_array_view,
+    allocate_c_schema,
+    allocate_c_array,
+    allocate_c_array_stream,
+)
+from nanoarrow._version import __version__  # noqa: F401

@@ -61,8 +61,7 @@ jobs:
       - name: Run doctests
         if: success() && matrix.python-version == '3.10'
         run: |
-          pip install pytest-cython
-          pytest --pyargs nanoarrow --doctest-cython
+          pytest --pyargs nanoarrow --doctest-modules
 
       - name: Coverage
         if: success() && matrix.python-version == '3.10'
