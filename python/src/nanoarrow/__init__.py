@@ -24,6 +24,6 @@ from nanoarrow.c_lib import (  # noqa: F401
     c_array_view,
     allocate_c_schema,
     allocate_c_array,
-    allocate_c_array_stream
+    allocate_c_array_stream,
 )
 from nanoarrow._version import __version__  # noqa: F401
