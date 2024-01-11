@@ -52,7 +52,17 @@ case $# in
      ;;
 esac
 
+maybe_activate_venv() {
+  if [ ! -z "${NANOARROW_PYTHON_VENV}" ]; then
+    # TODO: Move to dockerfiles
+    apt-get install -y python3-dev
+    source "${NANOARROW_PYTHON_VENV}/bin/activate"
+  fi
+}
+
 function main() {
+    maybe_activate_venv
+
     SANDBOX_DIR="${TARGET_NANOARROW_DIR}/_coverage"
     if [ -d "${SANDBOX_DIR}" ]; then
         rm -rf "${SANDBOX_DIR}"
@@ -107,6 +117,7 @@ function main() {
         --exclude "*/gtest/*" \
         --exclude "*/flatcc/*" \
         --exclude "*_generated.h" \
+        --exclude "*nanoarrow/_deps/*" \
         --output-file coverage.info
 
     # Generate the html coverage while we're here
@@ -136,6 +147,27 @@ function main() {
 
     show_header "R package coverage summary"
     Rscript -e 'library(covr); print(readRDS("r_coverage.rds"))'
+    popd
+
+    # Build + test Python package with cython/gcc coverage options
+    show_header "Build + test Python package"
+    pushd "${SANDBOX_DIR}"
+    TARGET_NANOARROW_PYTHON_DIR="${TARGET_NANOARROW_DIR}/python"
+
+    pushd "${TARGET_NANOARROW_PYTHON_DIR}"
+    python -m pip install -e .
+    NANOARROW_COVERAGE=1 python setup.py build_ext --inplace
+
+    # Run tests + coverage.py (generates .coverage + coverage.xml files)
+    python -m pytest --cov ./src/nanoarrow
+    python -m coverage xml
+    python -m coverage html
+
+    mv .coverage "${SANDBOX_DIR}/python_coverage.db"
+    mv coverage.xml "${SANDBOX_DIR}/python_coverage.xml"
+    mv htmlcov "${SANDBOX_DIR}/python_htmlcov"
+
+    popd
     popd
 }
 
