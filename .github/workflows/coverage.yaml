@@ -57,4 +57,4 @@ jobs:
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v2
         with:
-          files: '_coverage/coverage.info,_coverage/r_coverage.json'
+          files: '_coverage/coverage.info,_coverage/r_coverage.json,_coverage/python_coverage.xml'

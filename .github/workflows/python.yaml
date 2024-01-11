@@ -62,24 +62,3 @@ jobs:
         if: success() && matrix.python-version == '3.12'
         run: |
           pytest --pyargs nanoarrow --doctest-modules
-
-      - name: Coverage
-        if: success() && matrix.python-version == '3.12'
-        run: |
-          pip uninstall --yes nanoarrow
-          pip install pytest-cov Cython
-          pushd python
-
-          # Build with Cython + gcc coverage options
-          pip install -e .
-          NANOARROW_PYTHON_COVERAGE=1 python setup.py build_ext --inplace
-
-          # Run tests + coverage.py (generates .coverage + coverage.xml files)
-          python -m pytest --cov ./src/nanoarrow
-          python -m coverage xml
-
-      - name: Upload coverage to codecov
-        if: success() && matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v2
-        with:
-          files: 'python/coverage.xml'
