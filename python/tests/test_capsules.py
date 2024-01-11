@@ -122,18 +122,18 @@ def test_array_stream_requested_schema():
 
 
 def test_export_invalid():
-    schema = na.c_schema()
+    schema = na.allocate_c_schema()
     assert schema.is_valid() is False
 
     with pytest.raises(RuntimeError, match="schema is released"):
         pa.schema(schema)
 
-    array = na.c_array()
+    array = na.allocate_c_array()
     assert array.is_valid() is False
     with pytest.raises(RuntimeError, match="CArray is released"):
         pa.array(array)
 
-    array_stream = na.c_array_stream()
+    array_stream = na.allocate_c_array_stream()
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError, match="array stream is released"):
         pa.table(array_stream)

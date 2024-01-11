@@ -61,9 +61,6 @@ def c_schema(obj=None) -> CSchema:
     if isinstance(obj, CSchema):
         return obj
 
-    if obj is None:
-        return CSchema.allocate()
-
     if hasattr(obj, "__arrow_c_schema__"):
         return CSchema._import_from_c_capsule(obj.__arrow_c_schema__())
 
@@ -111,11 +108,6 @@ def c_array(obj=None, requested_schema=None) -> CArray:
 
     if requested_schema is not None:
         requested_schema = c_schema(requested_schema)
-
-    if obj is None:
-        return CArray.allocate(
-            CSchema.allocate() if requested_schema is None else requested_schema
-        )
 
     if isinstance(obj, CArray) and requested_schema is None:
         return obj
@@ -177,13 +169,6 @@ def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
       ...
     StopIteration
     """
-
-    if obj is None:
-        if requested_schema is not None:
-            raise ValueError(
-                "Can't allocate uninitialized c_array_stream with requested_schema"
-            )
-        return CArrayStream.allocate()
 
     if requested_schema is not None:
         requested_schema = c_schema(requested_schema)
@@ -270,3 +255,53 @@ def c_array_view(obj, requested_schema=None) -> CArrayView:
         return obj
 
     return CArrayView.from_cpu_array(c_array(obj, requested_schema))
+
+
+def allocate_c_schema():
+    """Allocate an uninitialized ArrowSchema wrapper
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> schema = na.allocate_c_schema()
+    >>> pa.int32()._export_to_c(schema._addr())
+    """
+    return CSchema.allocate()
+
+
+def allocate_c_array(requested_schema=None):
+    """Allocate an uninitialized ArrowArray
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> schema = na.allocate_c_schema()
+    >>> pa.int32()._export_to_c(schema._addr())
+    """
+    if requested_schema is not None:
+        requested_schema = c_schema(requested_schema)
+
+    return CArray.allocate(
+        CSchema.allocate() if requested_schema is None else requested_schema
+    )
+
+
+def allocate_c_array_stream():
+    """Allocate an uninitialized ArrowArrayStream wrapper
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> pa_column = pa.array([1, 2, 3], pa.int32())
+    >>> pa_batch = pa.record_batch([pa_column], names=["col1"])
+    >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
+    >>> array_stream = na.allocate_c_array_stream()
+    >>> pa_reader._export_to_c(array_stream._addr())
+    """
+    return CArrayStream.allocate()

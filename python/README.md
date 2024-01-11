@@ -94,7 +94,7 @@ Advanced users can allocate an empty `CSchema` and populate its contents by pass
 
 
 ```python
-schema = na.c_schema()
+schema = na.allocate_c_schema()
 pa.int32()._export_to_c(schema._addr())
 schema
 ```
@@ -165,7 +165,7 @@ Like the `CSchema`, you can allocate an empty one and access its address with `_
 
 
 ```python
-array = na.c_array()
+array = na.allocate_c_array()
 pa.array([1, 2, 3])._export_to_c(array._addr(), array.schema._addr())
 array.length
 ```
@@ -239,7 +239,7 @@ You can also get the address of a freshly-allocated stream to pass to a suitable
 
 
 ```python
-array_stream = na.c_array_stream()
+array_stream = na.allocate_c_array_stream()
 reader._export_to_c(array_stream._addr())
 array_stream
 ```
