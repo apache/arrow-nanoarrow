@@ -223,3 +223,63 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
   allocator.private_data = private_data;
   return allocator;
 }
+
+const int kInt64DecimalDigits = 18;
+
+const uint64_t kUInt64PowersOfTen[] = {1ULL,
+                                       10ULL,
+                                       100ULL,
+                                       1000ULL,
+                                       10000ULL,
+                                       100000ULL,
+                                       1000000ULL,
+                                       10000000ULL,
+                                       100000000ULL,
+                                       1000000000ULL,
+                                       10000000000ULL,
+                                       100000000000ULL,
+                                       1000000000000ULL,
+                                       10000000000000ULL,
+                                       100000000000000ULL,
+                                       1000000000000000ULL,
+                                       10000000000000000ULL,
+                                       100000000000000000ULL,
+                                       1000000000000000000ULL};
+
+ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
+                                        struct ArrowStringView value) {
+  char value_string[128];
+  if (value.size_bytes >= sizeof(value_string)) {
+    return EINVAL;
+  }
+
+  memcpy(value_string, value.data, value.size_bytes);
+  value_string[value.size_bytes] = '\0';
+
+  for (int64_t posn = 0; posn < value.size_bytes;) {
+    int64_t group_size;
+    int64_t remaining = value.size_bytes - posn;
+    if (remaining > kInt64DecimalDigits) {
+      group_size = kInt64DecimalDigits;
+    } else {
+      group_size = remaining;
+    }
+    const uint64_t multiple = kUInt64PowersOfTen[group_size];
+    uint64_t chunk = strtoull(value_string + posn, NULL, 10);
+
+    // for (size_t i = 0; i < out_size; ++i) {
+    //   uint128_t tmp = out[i];
+    //   tmp *= multiple;
+    //   tmp += chunk;
+    //   out[i] = static_cast<uint64_t>(tmp & 0xFFFFFFFFFFFFFFFFULL);
+    //   chunk = static_cast<uint64_t>(tmp >> 64);
+    // }
+    posn += group_size;
+  }
+}
+
+/// \brief Get the integer value of an ArrowDecimal as string
+int64_t ArrowDecimalGetIntString(struct ArrowDecimal* decimal, char* out,
+                                 int64_t out_size) {
+  return 0;
+}
