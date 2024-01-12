@@ -74,7 +74,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
-        if: matrix.config.arch != 'amd64'
+        if: matrix.config.arch == 's390x'
         uses: docker/setup-qemu-action@v2
 
       - name: Build
@@ -130,6 +130,17 @@ jobs:
           ghcr.io/apache/arrow-nanoarrow:centos7-arm64 --arch arm64
 
         docker manifest create \
+          ghcr.io/apache/arrow-nanoarrow:fedora \
+          ghcr.io/apache/arrow-nanoarrow:fedora-amd64 \
+          ghcr.io/apache/arrow-nanoarrow:fedora-arm64
+        docker manifest annotate \
+          ghcr.io/apache/arrow-nanoarrow:fedora \
+          ghcr.io/apache/arrow-nanoarrow:fedora-amd64 --arch amd64
+        docker manifest annotate \
+          ghcr.io/apache/arrow-nanoarrow:fedora \
+          ghcr.io/apache/arrow-nanoarrow:fedora-arm64 --arch arm64
+
+        docker manifest create \
           ghcr.io/apache/arrow-nanoarrow:alpine \
           ghcr.io/apache/arrow-nanoarrow:alpine-amd64 \
           ghcr.io/apache/arrow-nanoarrow:alpine-arm64 \
@@ -148,5 +159,6 @@ jobs:
       if: ${{ github.event_name != 'pull_request' && github.repository == 'apache/arrow-nanoarrow'}}
       run: |
         docker manifest push ghcr.io/apache/arrow-nanoarrow:ubuntu
+        docker manifest push ghcr.io/apache/arrow-nanoarrow:fedora
         docker manifest push ghcr.io/apache/arrow-nanoarrow:centos7
         docker manifest push ghcr.io/apache/arrow-nanoarrow:alpine
