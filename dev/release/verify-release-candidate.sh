@@ -316,7 +316,7 @@ activate_or_create_venv() {
     "${PYTHON_BIN}" -m venv "${NANOARROW_TMPDIR}/venv"
     # bash on Windows needs venv/Scripts/activate instead of venv/bin/activate
     source "${NANOARROW_TMPDIR}/venv/bin/activate" || source "${NANOARROW_TMPDIR}/venv/Scripts/activate"
-    pip install --upgrade pip
+    python -m pip install --upgrade pip
   fi
 }
 
@@ -325,7 +325,7 @@ test_python() {
   activate_or_create_venv
 
   show_info "Installing build utilities"
-  pip install --upgrade build
+  python -m pip install --upgrade build
 
   pushd "${NANOARROW_SOURCE_DIR}/python"
 
@@ -336,13 +336,13 @@ test_python() {
   PYTHON_WHEEL_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".whl")
 
   show_info "Installing from sdist"
-  pip install "${NANOARROW_TMPDIR}/python/${PYTHON_SDIST_NAME}[test]"
+  python -m pip install "${NANOARROW_TMPDIR}/python/${PYTHON_SDIST_NAME}[test]"
 
   show_info "Testing source distribution"
   python -m pytest -vv
 
   show_info "Installing from wheel"
-  pip install --force-reinstall "${NANOARROW_TMPDIR}/python/${PYTHON_WHEEL_NAME}"
+  python -m pip install --force-reinstall "${NANOARROW_TMPDIR}/python/${PYTHON_WHEEL_NAME}"
 
   show_info "Testing wheel"
   python -m pytest -vv
