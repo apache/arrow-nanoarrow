@@ -20,7 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} centos:7
 
 RUN yum install -y epel-release
-RUN yum install -y git gnupg curl R gcc-c++ gcc-gfortran cmake3
+RUN yum install -y git gnupg curl R gcc-c++ gcc-gfortran cmake3 python3-devel
 
 # For Arrow C++. Use 9.0.0 because this version works fine with the default gcc
 RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \

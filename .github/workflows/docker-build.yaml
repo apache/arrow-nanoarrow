@@ -33,31 +33,38 @@ permissions:
 jobs:
   build-docker:
     name: "docker-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         config:
-          - { platform: "ubuntu", arch: "amd64" }
-          - { platform: "fedora", arch: "amd64" }
-          - { platform: "archlinux", arch: "amd64" }
-          - { platform: "alpine", arch: "amd64" }
-          - { platform: "centos7", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "ubuntu", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "fedora", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "archlinux", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "alpine", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "centos7", arch: "amd64" }
 
-          - { platform: "ubuntu", arch: "arm64" }
-          - { platform: "alpine", arch: "arm64" }
-          - { platform: "centos7", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "ubuntu", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "fedora", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "alpine", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "centos7", arch: "arm64" }
 
-          - { platform: "alpine", arch: "s390x" }
+          - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x" }
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Create Docker Context for Buildx
+        run: |
+          docker context create builders
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          endpoint: builders
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -67,7 +74,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
-        if: matrix.config.arch != 'amd64'
+        if: matrix.config.arch == 's390x'
         uses: docker/setup-qemu-action@v2
 
       - name: Build
@@ -76,7 +83,7 @@ jobs:
           NANOARROW_PLATFORM: ${{ matrix.config.platform }}
           DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.arch }}"
         run: |
-          docker compose build verify
+          docker-compose build verify
 
       - name: Push
         if: ${{ github.event_name != 'pull_request' && github.repository == 'apache/arrow-nanoarrow'}}
@@ -85,7 +92,7 @@ jobs:
           NANOARROW_PLATFORM: ${{ matrix.config.platform }}
           DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.arch }}"
         run: |
-          docker compose push verify
+          docker-compose push verify
 
   # Build some arch-agnostic images for non-verify docker bits
   build-docker-manifest:
@@ -123,6 +130,17 @@ jobs:
           ghcr.io/apache/arrow-nanoarrow:centos7-arm64 --arch arm64
 
         docker manifest create \
+          ghcr.io/apache/arrow-nanoarrow:fedora \
+          ghcr.io/apache/arrow-nanoarrow:fedora-amd64 \
+          ghcr.io/apache/arrow-nanoarrow:fedora-arm64
+        docker manifest annotate \
+          ghcr.io/apache/arrow-nanoarrow:fedora \
+          ghcr.io/apache/arrow-nanoarrow:fedora-amd64 --arch amd64
+        docker manifest annotate \
+          ghcr.io/apache/arrow-nanoarrow:fedora \
+          ghcr.io/apache/arrow-nanoarrow:fedora-arm64 --arch arm64
+
+        docker manifest create \
           ghcr.io/apache/arrow-nanoarrow:alpine \
           ghcr.io/apache/arrow-nanoarrow:alpine-amd64 \
           ghcr.io/apache/arrow-nanoarrow:alpine-arm64 \
@@ -141,5 +159,6 @@ jobs:
       if: ${{ github.event_name != 'pull_request' && github.repository == 'apache/arrow-nanoarrow'}}
       run: |
         docker manifest push ghcr.io/apache/arrow-nanoarrow:ubuntu
+        docker manifest push ghcr.io/apache/arrow-nanoarrow:fedora
         docker manifest push ghcr.io/apache/arrow-nanoarrow:centos7
         docker manifest push ghcr.io/apache/arrow-nanoarrow:alpine
