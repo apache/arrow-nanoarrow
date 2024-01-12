@@ -33,22 +33,23 @@ permissions:
 jobs:
   build-docker:
     name: "docker-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         config:
-          - { platform: "ubuntu", arch: "amd64" }
-          - { platform: "fedora", arch: "amd64" }
-          - { platform: "archlinux", arch: "amd64" }
-          - { platform: "alpine", arch: "amd64" }
-          - { platform: "centos7", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "ubuntu", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "fedora", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "archlinux", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "alpine", arch: "amd64" }
+          - { runs_on: "ubuntu-latest", platform: "centos7", arch: "amd64" }
 
-          - { platform: "ubuntu", arch: "arm64" }
-          - { platform: "alpine", arch: "arm64" }
-          - { platform: "centos7", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "ubuntu", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "fedora", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "alpine", arch: "arm64" }
+          - { runs_on: ["self-hosted", "arm"], platform: "centos7", arch: "arm64" }
 
-          - { platform: "alpine", arch: "s390x" }
+          - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x" }
 
     steps:
       - uses: actions/checkout@v3
