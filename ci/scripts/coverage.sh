@@ -158,14 +158,23 @@ function main() {
     python -m pip install -e .
     NANOARROW_COVERAGE=1 python setup.py build_ext --inplace
 
-    # Run tests + coverage.py (generates .coverage + coverage.xml files)
+    # Run tests + coverage.py (generates .coverage with absolute file paths)
     python -m pytest --cov ./src/nanoarrow
-    python -m coverage xml
-    python -m coverage html
 
-    mv .coverage "${SANDBOX_DIR}/python_coverage.db"
-    mv coverage.xml "${SANDBOX_DIR}/python_coverage.xml"
+    # Generate HTML report (file paths not important since it's just for viewing)
+    python -m coverage html
     mv htmlcov "${SANDBOX_DIR}/python_htmlcov"
+
+    # Move .coverage to the root directory and generate coverage.xml
+    # (generates relative file paths from the root of the repo)
+    mv .coverage ..
+    cp .coveragerc ..
+    pushd ..
+    python -m coverage xml
+    mv coverage.xml "${SANDBOX_DIR}/python_coverage.xml"
+    mv .coverage "${SANDBOX_DIR}/python_coverage.db"
+    rm .coveragerc
+    popd
 
     popd
     popd
