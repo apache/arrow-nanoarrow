@@ -224,9 +224,9 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
   return allocator;
 }
 
-const int kInt32DecimalDigits = 9;
+static const int kInt32DecimalDigits = 9;
 
-const uint64_t kUInt32PowersOfTen[] = {
+static const uint64_t kUInt32PowersOfTen[] = {
     1ULL,      10ULL,      100ULL,      1000ULL,      10000ULL,
     100000ULL, 1000000ULL, 10000000ULL, 100000000ULL, 1000000000ULL};
 
