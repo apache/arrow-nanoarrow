@@ -302,7 +302,8 @@ activate_or_create_venv() {
     show_info "Activating virtual environment at ${NANOARROW_PYTHON_VENV}"
     # TODO: Move to dockerfiles
     apt-get install -y python3-dev
-    source "${NANOARROW_PYTHON_VENV}/bin/activate"
+    # bash on Windows needs venv/Scripts/activate instead of venv/bin/activate
+    source "${NANOARROW_PYTHON_VENV}/bin/activate" || source "${NANOARROW_PYTHON_VENV}/Scripts/activate"
   else
     # Try python3 first, then try regular python (e.g., Windows)
     if [ -z "${PYTHON_BIN}" ] && python3 --version >/dev/null; then
@@ -313,7 +314,8 @@ activate_or_create_venv() {
 
     show_info "Creating temporary virtual environment using ${PYTHON_BIN}..."
     "${PYTHON_BIN}" -m venv "${NANOARROW_TMPDIR}/venv"
-    source "${NANOARROW_TMPDIR}/venv/bin/activate"
+    # bash on Windows needs venv/Scripts/activate instead of venv/bin/activate
+    source "${NANOARROW_TMPDIR}/venv/bin/activate" || source "${NANOARROW_TMPDIR}/venv/Scripts/activate"
     pip install --upgrade pip
   fi
 }
