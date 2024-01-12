@@ -269,3 +269,29 @@ TEST(DecimalTest, Decimal256Test) {
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 }
+
+TEST(DecimalTest, Decimal128FromIntStringTest) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 128, 10, 3);
+
+  // Only spans one 32-bit word
+  ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("123456")), NANOARROW_OK);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 123456);
+
+  // Spans >1 32-bit word
+  ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("1234567899")),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 1234567899L);
+
+  ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("18446744073709551615")),
+            NANOARROW_OK);
+  EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(decimal.words[decimal.high_word_index], 0);
+
+  // Check with the maximum value of a 128-bit integer
+  ASSERT_EQ(ArrowDecimalSetIntString(
+                &decimal, ArrowCharView("170141183460469231731687303715884105727")),
+            NANOARROW_OK);
+  EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(decimal.words[decimal.high_word_index], std::numeric_limits<int64_t>::max());
+}

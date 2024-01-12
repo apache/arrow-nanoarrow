@@ -224,58 +224,93 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
   return allocator;
 }
 
-const int kInt64DecimalDigits = 18;
+const int kInt32DecimalDigits = 9;
 
-const uint64_t kUInt64PowersOfTen[] = {1ULL,
-                                       10ULL,
-                                       100ULL,
-                                       1000ULL,
-                                       10000ULL,
-                                       100000ULL,
-                                       1000000ULL,
-                                       10000000ULL,
-                                       100000000ULL,
-                                       1000000000ULL,
-                                       10000000000ULL,
-                                       100000000000ULL,
-                                       1000000000000ULL,
-                                       10000000000000ULL,
-                                       100000000000000ULL,
-                                       1000000000000000ULL,
-                                       10000000000000000ULL,
-                                       100000000000000000ULL,
-                                       1000000000000000000ULL};
+const uint64_t kUInt32PowersOfTen[] = {
+    1ULL,      10ULL,      100ULL,      1000ULL,      10000ULL,
+    100000ULL, 1000000ULL, 10000000ULL, 100000000ULL, 1000000000ULL};
 
-ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
-                                        struct ArrowStringView value) {
-  char value_string[128];
-  if (value.size_bytes >= sizeof(value_string)) {
-    return EINVAL;
-  }
-
-  memcpy(value_string, value.data, value.size_bytes);
-  value_string[value.size_bytes] = '\0';
+// Adapted from Arrow C++ to use 32-bit words for better C portability
+// https://github.com/apache/arrow/blob/main/cpp/src/arrow/util/decimal.cc#L524-L544
+static void ShiftAndAdd(struct ArrowStringView value, uint32_t* out, int64_t out_size) {
+  // We use strtoll for parsing, which needs input that is null-terminated
+  char chunk_string[16];
 
   for (int64_t posn = 0; posn < value.size_bytes;) {
-    int64_t group_size;
     int64_t remaining = value.size_bytes - posn;
-    if (remaining > kInt64DecimalDigits) {
-      group_size = kInt64DecimalDigits;
+
+    int64_t group_size;
+    if (remaining > kInt32DecimalDigits) {
+      group_size = kInt32DecimalDigits;
     } else {
       group_size = remaining;
     }
-    const uint64_t multiple = kUInt64PowersOfTen[group_size];
-    uint64_t chunk = strtoull(value_string + posn, NULL, 10);
 
-    // for (size_t i = 0; i < out_size; ++i) {
-    //   uint128_t tmp = out[i];
-    //   tmp *= multiple;
-    //   tmp += chunk;
-    //   out[i] = static_cast<uint64_t>(tmp & 0xFFFFFFFFFFFFFFFFULL);
-    //   chunk = static_cast<uint64_t>(tmp >> 64);
-    // }
+    const uint64_t multiple = kUInt32PowersOfTen[group_size];
+
+    memcpy(chunk_string, value.data + posn, group_size);
+    chunk_string[group_size] = '\0';
+    uint32_t chunk = (uint32_t)strtoll(chunk_string, NULL, 10);
+
+    for (int64_t i = 0; i < out_size; i++) {
+      uint64_t tmp = out[i];
+      tmp *= multiple;
+      tmp += chunk;
+      out[i] = (uint32_t)(tmp & 0xFFFFFFFFULL);
+      chunk = (uint32_t)(tmp >> 32);
+    }
     posn += group_size;
   }
+}
+
+ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
+                                        struct ArrowStringView value) {
+  // Check for sign
+  int is_negative = value.data[0] == '-';
+  int has_sign = is_negative || value.data[0] == '+';
+  value.data += has_sign;
+  value.size_bytes -= has_sign;
+
+  // Check all characters are digits that are not the negative sign
+  for (int64_t i = 0; i < value.size_bytes; i++) {
+    char c = value.data[i];
+    if (c < '0' || c > '9') {
+      return EINVAL;
+    }
+  }
+
+  // Skip over leading 0s
+  int64_t n_leading_zeroes = 0;
+  for (int64_t i = 0; i < value.size_bytes; i++) {
+    if (value.data[i] == '0') {
+      n_leading_zeroes++;
+    } else {
+      break;
+    }
+  }
+
+  value.data += n_leading_zeroes;
+  value.size_bytes -= n_leading_zeroes;
+
+  // Use 32-bit words for portability
+  uint32_t words32[8];
+  int n_words32 = decimal->n_words * 2;
+  memset(words32, 0, sizeof(words32));
+
+  ShiftAndAdd(value, words32, n_words32);
+
+  if (decimal->low_word_index == 0) {
+    memcpy(decimal->words, words32, sizeof(uint32_t) * n_words32);
+  } else {
+    // Big endian
+    return ENOTSUP;
+  }
+
+  if (is_negative) {
+    return ENOTSUP;
+  }
+
+  return NANOARROW_OK;
 }
 
 /// \brief Get the integer value of an ArrowDecimal as string
