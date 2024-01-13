@@ -467,7 +467,7 @@ class TestingJSONWriter {
       NANOARROW_RETURN_NOT_OK(
           WriteColumn(dictionary_output, field->dictionary, value->dictionary));
       dictionaries_.RecordArray(field->dictionary, value->dictionary->length,
-                                std::move(dictionary_output.str()));
+                                dictionary_output.str());
     }
 
     return NANOARROW_OK;
@@ -573,6 +573,43 @@ class TestingJSONWriter {
             << R"(, "precision": )" << field->decimal_precision << R"(, "scale": )"
             << field->decimal_scale;
         break;
+      case NANOARROW_TYPE_DURATION:
+        out << R"("name": "duration")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        break;
+      case NANOARROW_TYPE_DATE32:
+        out << R"("name": "date", "unit": "DAY")";
+        break;
+      case NANOARROW_TYPE_DATE64:
+        out << R"("name": "date", "unit": "MILLISECOND")";
+        break;
+      case NANOARROW_TYPE_TIME32:
+        out << R"("name": "time")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        out << R"(, "bitWidth": 32)";
+        break;
+      case NANOARROW_TYPE_TIME64:
+        out << R"("name": "time")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        out << R"(, "bitWidth": 64)";
+        break;
+      case NANOARROW_TYPE_TIMESTAMP:
+        out << R"("name": "timestamp")";
+        NANOARROW_RETURN_NOT_OK(WriteTimeUnit(out, field));
+        if (strlen(field->timezone) > 0) {
+          out << R"(, "timezone": )";
+          WriteString(out, ArrowCharView(field->timezone));
+        }
+        break;
+      case NANOARROW_TYPE_INTERVAL_MONTHS:
+        out << R"("name": "interval", "unit": "YEAR_MONTH")";
+        break;
+      case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+        out << R"("name": "interval", "unit": "DAY_TIME")";
+        break;
+      case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+        out << R"("name": "interval", "unit": "MONTH_DAY_NANO")";
+        break;
       case NANOARROW_TYPE_STRUCT:
         out << R"("name": "struct")";
         break;
@@ -610,6 +647,25 @@ class TestingJSONWriter {
 
     out << "}";
     return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteTimeUnit(std::ostream& out, const ArrowSchemaView* field) {
+    switch (field->time_unit) {
+      case NANOARROW_TIME_UNIT_NANO:
+        out << R"(, "unit": "NANOSECOND")";
+        return NANOARROW_OK;
+      case NANOARROW_TIME_UNIT_MICRO:
+        out << R"(, "unit": "MICROSECOND")";
+        return NANOARROW_OK;
+      case NANOARROW_TIME_UNIT_MILLI:
+        out << R"(, "unit": "MILLISECOND")";
+        return NANOARROW_OK;
+      case NANOARROW_TIME_UNIT_SECOND:
+        out << R"(, "unit": "SECOND")";
+        return NANOARROW_OK;
+      default:
+        return EINVAL;
+    }
   }
 
   ArrowErrorCode WriteFieldDictionary(std::ostream& out, int32_t dictionary_id,
@@ -713,6 +769,7 @@ class TestingJSONWriter {
       case NANOARROW_TYPE_UINT16:
       case NANOARROW_TYPE_INT32:
       case NANOARROW_TYPE_UINT32:
+      case NANOARROW_TYPE_INTERVAL_MONTHS:
         // Regular JSON integers (i.e., 123456)
         WriteIntMaybeNull(out, value, 0);
         for (int64_t i = 1; i < value->length; i++) {
@@ -767,6 +824,28 @@ class TestingJSONWriter {
         for (int64_t i = 1; i < value->length; i++) {
           out << ", ";
           WriteBytesMaybeNull(out, value, i);
+        }
+        break;
+      }
+
+      case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
+        ArrowInterval interval;
+        ArrowIntervalInit(&interval, value->storage_type);
+        WriteIntervalDayTimeMaybeNull(out, value, 0, &interval);
+        for (int64_t i = 1; i < value->length; i++) {
+          out << ", ";
+          WriteIntervalDayTimeMaybeNull(out, value, i, &interval);
+        }
+        break;
+      }
+
+      case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+        ArrowInterval interval;
+        ArrowIntervalInit(&interval, value->storage_type);
+        WriteIntervalMonthDayNanoMaybeNull(out, value, 0, &interval);
+        for (int64_t i = 1; i < value->length; i++) {
+          out << ", ";
+          WriteIntervalMonthDayNanoMaybeNull(out, value, i, &interval);
         }
         break;
       }
@@ -831,6 +910,28 @@ class TestingJSONWriter {
       out << R"(")";
     } else {
       WriteBytes(out, item);
+    }
+  }
+
+  void WriteIntervalDayTimeMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                     int64_t i, ArrowInterval* interval) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"({"days": 0, "milliseconds": 0})";
+    } else {
+      ArrowArrayViewGetIntervalUnsafe(view, i, interval);
+      out << R"({"days": )" << interval->days << R"(, "milliseconds": )" << interval->ms
+          << "}";
+    }
+  }
+
+  void WriteIntervalMonthDayNanoMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                          int64_t i, ArrowInterval* interval) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"({"months": 0, "days": 0, "nanoseconds": "0"})";
+    } else {
+      ArrowArrayViewGetIntervalUnsafe(view, i, interval);
+      out << R"({"months": )" << interval->months << R"(, "days": )" << interval->days
+          << R"(, "nanoseconds": ")" << interval->ns << R"("})";
     }
   }
 
@@ -1289,6 +1390,16 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetFormat(schema, "+L"), error);
     } else if (name_str == "fixedsizelist") {
       NANOARROW_RETURN_NOT_OK(SetTypeFixedSizeList(schema, value, error));
+    } else if (name_str == "date") {
+      NANOARROW_RETURN_NOT_OK(SetTypeDate(schema, value, error));
+    } else if (name_str == "time") {
+      NANOARROW_RETURN_NOT_OK(SetTypeTime(schema, value, error));
+    } else if (name_str == "timestamp") {
+      NANOARROW_RETURN_NOT_OK(SetTypeTimestamp(schema, value, error));
+    } else if (name_str == "duration") {
+      NANOARROW_RETURN_NOT_OK(SetTypeDuration(schema, value, error));
+    } else if (name_str == "interval") {
+      NANOARROW_RETURN_NOT_OK(SetTypeInterval(schema, value, error));
     } else if (name_str == "map") {
       NANOARROW_RETURN_NOT_OK(SetTypeMap(schema, value, error));
     } else if (name_str == "union") {
@@ -1448,6 +1559,151 @@ class TestingJSONReader {
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaSetTypeDecimal(schema, type, precision.get<int>(), scale.get<int>()),
         error);
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeDate(ArrowSchema* schema, const json& value, ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("unit"), error, "Type[name=='date'] missing key 'unit'"));
+    const auto& unit = value["unit"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(unit.is_string(), error, "Type[name=='date'] unit must be string"));
+    std::string unit_str = unit.get<std::string>();
+
+    if (unit_str == "DAY") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_DATE32), error);
+    } else if (unit_str == "MILLISECOND") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_DATE64), error);
+    } else {
+      ArrowErrorSet(error, "Type[name=='date'] unit must be 'DAY' or 'MILLISECOND'");
+      return EINVAL;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeTime(ArrowSchema* schema, const json& value, ArrowError* error) {
+    ArrowTimeUnit time_unit;
+    NANOARROW_RETURN_NOT_OK(SetTimeUnit(value, &time_unit, error));
+
+    const auto& bit_width = value["bitWidth"];
+    NANOARROW_RETURN_NOT_OK(Check(bit_width.is_number_integer(), error,
+                                  "Type[name=='time'] bitWidth must be integer"));
+    auto bit_width_int = bit_width.get<int>();
+
+    if (bit_width_int == 32) {
+      NANOARROW_RETURN_NOT_OK(Check(
+          time_unit == NANOARROW_TIME_UNIT_SECOND ||
+              time_unit == NANOARROW_TIME_UNIT_MILLI,
+          error, "Expected time unit of 'SECOND' or 'MILLISECOND' for bitWidth 32"));
+
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIME32, time_unit, nullptr),
+          error);
+      return NANOARROW_OK;
+    } else if (bit_width_int == 64) {
+      NANOARROW_RETURN_NOT_OK(Check(
+          time_unit == NANOARROW_TIME_UNIT_MICRO || time_unit == NANOARROW_TIME_UNIT_NANO,
+          error, "Expected time unit of 'MICROSECOND' or 'NANOSECOND' for bitWidth 64"));
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIME64, time_unit, nullptr),
+          error);
+      return NANOARROW_OK;
+    } else {
+      ArrowErrorSet(error, "Expected Type[name=='time'] bitWidth of 32 or 64");
+      return EINVAL;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeTimestamp(ArrowSchema* schema, const json& value,
+                                  ArrowError* error) {
+    ArrowTimeUnit time_unit;
+    NANOARROW_RETURN_NOT_OK(SetTimeUnit(value, &time_unit, error));
+
+    std::string timezone_str;
+    if (value.contains("timezone")) {
+      const auto& timezone = value["timezone"];
+      NANOARROW_RETURN_NOT_OK(Check(timezone.is_string(), error,
+                                    "Type[name=='timestamp'] timezone must be string"));
+      timezone_str = timezone.get<std::string>();
+    }
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_TIMESTAMP, time_unit,
+                                   timezone_str.c_str()),
+        error);
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeDuration(ArrowSchema* schema, const json& value,
+                                 ArrowError* error) {
+    ArrowTimeUnit time_unit;
+    NANOARROW_RETURN_NOT_OK(SetTimeUnit(value, &time_unit, error));
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowSchemaSetTypeDateTime(schema, NANOARROW_TYPE_DURATION, time_unit, nullptr),
+        error);
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTimeUnit(const json& value, ArrowTimeUnit* time_unit,
+                             ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.contains("unit"), error, "Time-like type missing key 'unit'"));
+    const auto& unit = value["unit"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(unit.is_string(), error, "Time-like type unit must be string"));
+    std::string unit_str = unit.get<std::string>();
+
+    if (unit_str == "SECOND") {
+      *time_unit = NANOARROW_TIME_UNIT_SECOND;
+    } else if (unit_str == "MILLISECOND") {
+      *time_unit = NANOARROW_TIME_UNIT_MILLI;
+    } else if (unit_str == "MICROSECOND") {
+      *time_unit = NANOARROW_TIME_UNIT_MICRO;
+    } else if (unit_str == "NANOSECOND") {
+      *time_unit = NANOARROW_TIME_UNIT_NANO;
+    } else {
+      ArrowErrorSet(
+          error,
+          "TimeUnit must be 'SECOND' or 'MILLISECOND', 'MICROSECOND', or 'NANOSECOND'");
+      return EINVAL;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetTypeInterval(ArrowSchema* schema, const json& value,
+                                 ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(Check(value.contains("unit"), error,
+                                  "Type[name=='interval'] missing key 'unit'"));
+    const auto& unit = value["unit"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(unit.is_string(), error, "Type[name=='interval'] unit must be string"));
+    std::string unit_str = unit.get<std::string>();
+
+    if (unit_str == "YEAR_MONTH") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_MONTHS), error);
+    } else if (unit_str == "DAY_TIME") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_DAY_TIME), error);
+    } else if (unit_str == "MONTH_DAY_NANO") {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowSchemaSetType(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO), error);
+    } else {
+      ArrowErrorSet(error,
+                    "Type[name=='interval'] unit must be 'YEAR_MONTH', 'DAY_TIME', or "
+                    "'MONTH_DAY_NANO'");
+      return EINVAL;
+    }
 
     return NANOARROW_OK;
   }
@@ -1826,6 +2082,7 @@ class TestingJSONReader {
           case NANOARROW_TYPE_UINT16:
             return SetBufferInt<uint16_t>(data, buffer, error);
           case NANOARROW_TYPE_INT32:
+          case NANOARROW_TYPE_INTERVAL_MONTHS:
             return SetBufferInt<int32_t>(data, buffer, error);
           case NANOARROW_TYPE_UINT32:
             return SetBufferInt<uint32_t>(data, buffer, error);
@@ -1854,7 +2111,10 @@ class TestingJSONReader {
           case NANOARROW_TYPE_FIXED_SIZE_BINARY:
             return SetBufferFixedSizeBinary(
                 data, buffer, array_view->layout.element_size_bits[buffer_i] / 8, error);
-
+          case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+            return SetBufferIntervalDayTime(data, buffer, error);
+          case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+            return SetBufferIntervalMonthDayNano(data, buffer, error);
           default:
             ArrowErrorSet(error, "storage type %s DATA buffer not supported",
                           ArrowTypeString(array_view->storage_type));
@@ -2068,6 +2328,52 @@ class TestingJSONReader {
 
       data->data[data->size_bytes] = byte;
       data->size_bytes++;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetBufferIntervalDayTime(const json& value, ArrowBuffer* buffer,
+                                          ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "interval_day_time buffer must be array"));
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.is_object(), error, "interval_day_time buffer item must be object"));
+      NANOARROW_RETURN_NOT_OK(Check(item.contains("days"), error,
+                                    "interval_day_time buffer item missing key 'days'"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.contains("milliseconds"), error,
+                "interval_day_time buffer item missing key 'milliseconds'"));
+
+      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
+      NANOARROW_RETURN_NOT_OK(
+          SetBufferIntItem<int32_t>(item["milliseconds"], buffer, error));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetBufferIntervalMonthDayNano(const json& value, ArrowBuffer* buffer,
+                                               ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "interval buffer must be array"));
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.is_object(), error, "interval buffer item must be object"));
+      NANOARROW_RETURN_NOT_OK(Check(item.contains("months"), error,
+                                    "interval buffer item missing key 'months'"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.contains("days"), error, "interval buffer item missing key 'days'"));
+      NANOARROW_RETURN_NOT_OK(Check(item.contains("nanoseconds"), error,
+                                    "interval buffer item missing key 'nanoseconds'"));
+
+      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["months"], buffer, error));
+      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
+      NANOARROW_RETURN_NOT_OK(
+          SetBufferIntItem<int64_t>(item["nanoseconds"], buffer, error));
     }
 
     return NANOARROW_OK;
