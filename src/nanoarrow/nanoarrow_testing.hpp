@@ -467,7 +467,7 @@ class TestingJSONWriter {
       NANOARROW_RETURN_NOT_OK(
           WriteColumn(dictionary_output, field->dictionary, value->dictionary));
       dictionaries_.RecordArray(field->dictionary, value->dictionary->length,
-                                std::move(dictionary_output.str()));
+                                dictionary_output.str());
     }
 
     return NANOARROW_OK;
