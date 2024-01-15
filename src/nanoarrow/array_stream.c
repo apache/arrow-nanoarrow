@@ -57,6 +57,7 @@ static int ArrowBasicArrayStreamGetNext(struct ArrowArrayStream* array_stream,
 
 static const char* ArrowBasicArrayStreamGetLastError(
     struct ArrowArrayStream* array_stream) {
+  (void)array_stream;
   return NULL;
 }
 
