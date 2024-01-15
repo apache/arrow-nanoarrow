@@ -19,6 +19,8 @@
 
 #include "nanoarrow.h"
 
+#define NANOARROW_UNUSED(x) (void)(x)
+
 struct BasicArrayStreamPrivate {
   struct ArrowSchema schema;
   int64_t n_arrays;
@@ -57,7 +59,7 @@ static int ArrowBasicArrayStreamGetNext(struct ArrowArrayStream* array_stream,
 
 static const char* ArrowBasicArrayStreamGetLastError(
     struct ArrowArrayStream* array_stream) {
-  (void)array_stream;
+  NANOARROW_UNUSED(array_stream);
   return NULL;
 }
 

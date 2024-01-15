@@ -129,7 +129,6 @@ else()
                                      -Wextra
                                      -Wpedantic
                                      -Wno-type-limits
-                                     -Wno-unused-parameter
                                      -Wmaybe-uninitialized
                                      -Wunused-result
                                      -Wconversion
@@ -142,7 +141,6 @@ else()
                                      -Wextra
                                      -Wpedantic
                                      -Wdocumentation
-                                     -Wno-unused-parameter
                                      -Wconversion
                                      -Wno-sign-conversion)
     endif()

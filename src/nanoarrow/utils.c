@@ -24,6 +24,8 @@
 
 #include "nanoarrow.h"
 
+#define NANOARROW_UNUSED(x) (void)(x)
+
 const char* ArrowNanoarrowVersion(void) { return NANOARROW_VERSION; }
 
 int ArrowNanoarrowVersionInt(void) { return NANOARROW_VERSION_INT; }
@@ -197,8 +199,8 @@ static uint8_t* ArrowBufferAllocatorMallocReallocate(
 
 static void ArrowBufferAllocatorMallocFree(struct ArrowBufferAllocator* allocator,
                                            uint8_t* ptr, int64_t size) {
-  (void)allocator;
-  (void)size;
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(size);
   ArrowFree(ptr);
 }
 
@@ -212,10 +214,10 @@ struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void) {
 static uint8_t* ArrowBufferAllocatorNeverReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
     int64_t new_size) {
-  (void)allocator;
-  (void)ptr;
-  (void)old_size;
-  (void)new_size;
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(old_size);
+  NANOARROW_UNUSED(new_size);
   return NULL;
 }
 
