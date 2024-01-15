@@ -335,7 +335,7 @@ test_python() {
   PYTHON_SDIST_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".tar.gz")
   PYTHON_WHEEL_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".whl")
 
-  show_info "Installing from sdist"
+  show_info "Installing from source distribution"
   python -m pip install "${NANOARROW_TMPDIR}/python/${PYTHON_SDIST_NAME}[test]"
 
   show_info "Testing source distribution"
