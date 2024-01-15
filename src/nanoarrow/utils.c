@@ -313,6 +313,8 @@ ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
   return NANOARROW_OK;
 }
 
+// Adapted from Arrow C++ for C
+// https://github.com/apache/arrow/blob/main/cpp/src/arrow/util/decimal.cc#L365
 ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(struct ArrowDecimal* decimal,
                                                    struct ArrowBuffer* buffer) {
   int is_negative = decimal->words[decimal->high_word_index] < 0;
