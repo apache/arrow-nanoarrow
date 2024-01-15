@@ -54,8 +54,6 @@ esac
 
 maybe_activate_venv() {
   if [ ! -z "${NANOARROW_PYTHON_VENV}" ]; then
-    # TODO: Move to dockerfiles
-    apt-get install -y python3-dev
     source "${NANOARROW_PYTHON_VENV}/bin/activate"
   fi
 }

@@ -300,8 +300,6 @@ test_r() {
 activate_or_create_venv() {
   if [ ! -z "${NANOARROW_PYTHON_VENV}" ]; then
     show_info "Activating virtual environment at ${NANOARROW_PYTHON_VENV}"
-    # TODO: Move to dockerfiles
-    apt-get install -y python3-dev
     # bash on Windows needs venv/Scripts/activate instead of venv/bin/activate
     source "${NANOARROW_PYTHON_VENV}/bin/activate" || source "${NANOARROW_PYTHON_VENV}/Scripts/activate"
   else
