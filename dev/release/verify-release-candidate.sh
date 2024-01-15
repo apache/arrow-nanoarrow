@@ -332,8 +332,17 @@ test_python() {
   python -m build --wheel --outdir "${NANOARROW_TMPDIR}/python"
   PYTHON_WHEEL_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".whl")
 
+  # On Windows bash, pip install needs a Windows-style path
+  if uname | grep -e "_NT-" >/dev/null; then
+    pushd "${NANOARROW_TMPDIR}"
+    PYTHON_WHEEL_PATH="$(pwd -W)/python/${PYTHON_WHEEL_NAME}"
+    popd
+  else
+    PYTHON_WHEEL_PATH="${NANOARROW_TMPDIR}/python/${PYTHON_WHEEL_NAME}"
+  fi
+
   show_info "Installing Python package"
-  python -m pip install --force-reinstall "${NANOARROW_TMPDIR}/python/${PYTHON_WHEEL_NAME}[verify]"
+  python -m pip install --force-reinstall "${PYTHON_WHEEL_PATH}[verify]"
 
   show_info "Testing wheel"
   python -m pytest -vv
