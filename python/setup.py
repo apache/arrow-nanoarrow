@@ -66,12 +66,6 @@ else:
     extra_link_args = []
     extra_define_macros = []
 
-# Setting the CFLAGS environment variable doesn't seem sufficient in all cases to add
-# extra flags (e.g., -std=c99 on very old gcc).
-more_compile_args = os.getenv("NANOARROW_PYTHON_CFLAGS")
-if more_compile_args:
-    extra_compile_args += re.split(r"\s+", more_compile_args)
-
 setup(
     ext_modules=[
         Extension(
