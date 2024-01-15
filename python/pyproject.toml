@@ -27,6 +27,7 @@ requires-python = ">=3.8"
 
 [project.optional-dependencies]
 test = ["pyarrow", "pytest", "numpy"]
+verify = ["pytest", "numpy"]
 
 [project.urls]
 homepage = "https://arrow.apache.org"

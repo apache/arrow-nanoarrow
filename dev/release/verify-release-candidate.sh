@@ -334,7 +334,7 @@ test_python() {
   PYTHON_WHEEL_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".whl")
 
   show_info "Installing from source distribution"
-  python -m pip install "${NANOARROW_TMPDIR}/python/${PYTHON_SDIST_NAME}[test]"
+  python -m pip install "${NANOARROW_TMPDIR}/python/${PYTHON_SDIST_NAME}[verify]"
 
   show_info "Testing source distribution"
   python -m pytest -vv
