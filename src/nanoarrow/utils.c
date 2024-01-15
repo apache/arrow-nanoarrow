@@ -313,8 +313,65 @@ ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
   return NANOARROW_OK;
 }
 
-/// \brief Get the integer value of an ArrowDecimal as string
-int64_t ArrowDecimalGetIntString(struct ArrowDecimal* decimal, char* out,
-                                 int64_t out_size) {
-  return 0;
+ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(struct ArrowDecimal* decimal,
+                                                   struct ArrowBuffer* buffer) {
+  int is_negative = decimal->words[decimal->high_word_index] < 0;
+
+  uint64_t words_little_endian[4];
+  if (decimal->low_word_index == 0) {
+    memcpy(words_little_endian, decimal->words, decimal->n_words * sizeof(uint64_t));
+  } else {
+    for (int i = 0; i < decimal->n_words; i++) {
+      words_little_endian[i] = decimal->words[decimal->n_words - i - 1];
+    }
+  }
+
+  int most_significant_elem_idx = -1;
+  for (int i = decimal->n_words - 1; i >= 0; i--) {
+    if (words_little_endian[i] != 0) {
+      most_significant_elem_idx = i;
+      break;
+    }
+  }
+
+  if (most_significant_elem_idx == -1) {
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(buffer, '0'));
+    return NANOARROW_OK;
+  }
+
+  const uint32_t k1e9 = 1000000000U;
+  int num_segments = 0;
+  uint32_t segments[9];
+  memset(segments, 0, sizeof(segments));
+  uint64_t* most_significant_elem = words_little_endian + most_significant_elem_idx;
+
+  do {
+    uint32_t remainder = 0;
+    uint64_t* elem = most_significant_elem;
+    do {
+      uint32_t hi = (uint32_t)(*elem >> 32);
+      uint32_t lo = (uint32_t)(*elem & 0xFFFFFFFFULL);
+      uint64_t dividend_hi = ((uint64_t)(remainder) << 32) | hi;
+      uint64_t quotient_hi = dividend_hi / k1e9;
+      uint64_t dividend_lo = ((uint64_t)(remainder) << 32) | lo;
+      uint64_t quotient_lo = dividend_lo / k1e9;
+      remainder = (uint32_t)(dividend_hi % k1e9);
+      *elem = (quotient_hi << 32) | quotient_lo;
+    } while (elem-- != words_little_endian);
+
+    segments[num_segments++] = remainder;
+  } while (*most_significant_elem != 0 || most_significant_elem-- != words_little_endian);
+
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, num_segments * 16 + 1));
+  if (is_negative) {
+    buffer->data[buffer->size_bytes++] = '-';
+  }
+
+  for (int i = num_segments - 1; i >= 0; i--) {
+    int n_chars = snprintf((char*)buffer->data + buffer->size_bytes, 16, "%lu",
+                           (unsigned long)segments[i]);
+    buffer->size_bytes += n_chars;
+  }
+
+  return NANOARROW_OK;
 }

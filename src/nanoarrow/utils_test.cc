@@ -274,19 +274,41 @@ TEST(DecimalTest, Decimal128FromIntStringTest) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 10, 3);
 
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
   // Only spans one 32-bit word
   ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("123456")), NANOARROW_OK);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 123456);
+
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "123456");
 
   // Spans >1 32-bit word
   ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("1234567899")),
             NANOARROW_OK);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 1234567899L);
 
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "1234567899");
+
+  // Check maximum value of a 64-bit integer
   ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("18446744073709551615")),
             NANOARROW_OK);
   EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
   EXPECT_EQ(decimal.words[decimal.high_word_index], 0);
+
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "18446744073709551615");
 
   // Check with the maximum value of a 128-bit integer
   ASSERT_EQ(ArrowDecimalSetIntString(
@@ -294,4 +316,9 @@ TEST(DecimalTest, Decimal128FromIntStringTest) {
             NANOARROW_OK);
   EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
   EXPECT_EQ(decimal.words[decimal.high_word_index], std::numeric_limits<int64_t>::max());
+
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "170141183460469231731687303715884105727");
 }
