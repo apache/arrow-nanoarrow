@@ -138,7 +138,9 @@ jobs:
           - {
               platform: "centos7",
               arch: "amd64",
-              compose_args: "-e NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR=1"
+              # Currently the Python on the centos7 image is 3.6, which does not support
+              # new enough setuptools to build the Python package.
+              compose_args: "-e NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR=1 -e TEST_PYTHON=0"
             }
           - {
               platform: "ubuntu",

@@ -186,7 +186,10 @@ def copy_or_generate_nanoarrow_c():
     is_in_nanoarrow_repo = "nanoarrow.h" in os.listdir(
         os.path.join(source_dir, "src", "nanoarrow")
     )
-    has_cmake = os.system("cmake --version") == 0
+    cmake_bin = os.getenv("CMAKE_BIN")
+    if not cmake_bin:
+        cmake_bin = "cmake"
+    has_cmake = os.system(f"{cmake_bin} --version") == 0
 
     with tempfile.TemporaryDirectory() as build_dir:
         if is_in_nanoarrow_repo:
@@ -206,7 +209,7 @@ def copy_or_generate_nanoarrow_c():
             try:
                 subprocess.run(
                     [
-                        "cmake",
+                        cmake_bin,
                         "-B",
                         build_dir,
                         "-S",
@@ -217,7 +220,7 @@ def copy_or_generate_nanoarrow_c():
                 )
                 subprocess.run(
                     [
-                        "cmake",
+                        cmake_bin,
                         "--install",
                         build_dir,
                         "--prefix",

@@ -20,6 +20,7 @@
 import os
 import subprocess
 import sys
+import re
 
 from setuptools import Extension, setup
 
@@ -52,7 +53,7 @@ if os.path.exists(bootstrap_py):
 
 
 # Set some extra flags for compiling with coverage support
-if os.getenv("NANOARROW_COVERAGE") == "1":
+if os.getenv("NANOARROW_PYTHON_COVERAGE") == "1":
     extra_compile_args = ["--coverage"]
     extra_link_args = ["--coverage"]
     extra_define_macros = [("CYTHON_TRACE", 1)]
@@ -65,6 +66,11 @@ else:
     extra_link_args = []
     extra_define_macros = []
 
+# Setting the CFLAGS environment variable doesn't seem sufficient in all cases to add
+# extra flags (e.g., -std=c99 on very old gcc).
+more_compile_args = os.getenv("NANOARROW_PYTHON_CFLAGS")
+if more_compile_args:
+    extra_compile_args += re.split(r"\s+", more_compile_args)
 
 setup(
     ext_modules=[

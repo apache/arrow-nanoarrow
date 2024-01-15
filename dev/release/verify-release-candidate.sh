@@ -327,20 +327,13 @@ test_python() {
 
   pushd "${NANOARROW_SOURCE_DIR}/python"
 
-  show_info "Building sdist and wheel"
+  show_info "Building Python package"
   rm -rf "${NANOARROW_TMPDIR}/python"
-  python -m build --sdist --wheel --outdir "${NANOARROW_TMPDIR}/python"
-  PYTHON_SDIST_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".tar.gz")
+  python -m build --wheel --outdir "${NANOARROW_TMPDIR}/python"
   PYTHON_WHEEL_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".whl")
 
-  show_info "Installing from source distribution"
-  python -m pip install "${NANOARROW_TMPDIR}/python/${PYTHON_SDIST_NAME}[verify]"
-
-  show_info "Testing source distribution"
-  python -m pytest -vv
-
-  show_info "Installing from wheel"
-  python -m pip install --force-reinstall "${NANOARROW_TMPDIR}/python/${PYTHON_WHEEL_NAME}"
+  show_info "Installing Python package"
+  python -m pip install --force-reinstall "${NANOARROW_TMPDIR}/python/${PYTHON_WHEEL_NAME}[verify]"
 
   show_info "Testing wheel"
   python -m pytest -vv
