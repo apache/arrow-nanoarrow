@@ -53,11 +53,13 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
 // is made.
 static inline int8_t _ArrowArrayUnionChildIndex(struct ArrowArray* array,
                                                 int8_t type_id) {
+  (void)array;
   return type_id;
 }
 
 static inline int8_t _ArrowArrayUnionTypeId(struct ArrowArray* array,
                                             int8_t child_index) {
+  (void)array;  
   return child_index;
 }
 
