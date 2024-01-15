@@ -18,9 +18,9 @@
 # under the License.
 
 import os
+import re
 import subprocess
 import sys
-import re
 
 from setuptools import Extension, setup
 
