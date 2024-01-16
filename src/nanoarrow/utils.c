@@ -336,16 +336,13 @@ ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(const struct ArrowDecimal* de
 
   // We've already made a copy, so negate that if needed
   if (is_negative) {
-    for (int i = 0; i < (decimal->n_words - 1); i++) {
-      words_little_endian[i] = ~words_little_endian[i] + 1;
+    uint64_t carry = 1;
+    for (int i = 0; i < decimal->n_words; i++) {
+      uint64_t elem = words_little_endian[i];
+      elem = ~elem + carry;
+      carry &= (elem == 0);
+      words_little_endian[i] = elem;
     }
-
-    int64_t hi = ~words_little_endian[decimal->n_words - 1];
-    if (words_little_endian[decimal->n_words - 2] == 0) {
-      hi += 1;
-    }
-
-    words_little_endian[decimal->n_words - 1] = hi;
   }
 
   int most_significant_elem_idx = -1;
