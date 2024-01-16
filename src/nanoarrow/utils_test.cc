@@ -233,6 +233,28 @@ TEST(DecimalTest, Decimal128Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 }
 
+TEST(DecimalTest, DecimalNegateTest) {
+  struct ArrowDecimal decimal;
+
+  for (auto bitwidth : {128, 256}) {
+    ArrowDecimalInit(&decimal, bitwidth, 10, 3);
+    ArrowDecimalSetInt(&decimal, 12345);
+    ArrowDecimalNegate(&decimal);
+    EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -12345);
+    ArrowDecimalNegate(&decimal);
+    EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
+
+    memset(decimal.words, 0, sizeof(decimal.words));
+    decimal.words[decimal.low_word_index] = std::numeric_limits<uint64_t>::max();
+    ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
+    ArrowDecimalNegate(&decimal);
+    ASSERT_EQ(ArrowDecimalSign(&decimal), -1);
+    ArrowDecimalNegate(&decimal);
+    ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
+    EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+  }
+}
+
 TEST(DecimalTest, Decimal256Test) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 256, 10, 3);
@@ -333,6 +355,13 @@ TEST(DecimalTest, DecimalStringTestBasic) {
             "170141183460469231731687303715884105727");
 
   ArrowBufferReset(&buffer);
+}
+
+TEST(DecimalTest, DecimalStringTestInvalid) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 128, 39, 0);
+  EXPECT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("this is not an integer")),
+            EINVAL);
 }
 
 TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
