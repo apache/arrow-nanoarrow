@@ -379,7 +379,7 @@ TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
 
   // Generate test decimals by bitshifting powers of two and check roundtrip
   // through string back to decimal.
-  for (const auto is_negative : {0, 1}) {
+  for (const auto is_negative : {false, true}) {
     for (int i = 0; i < 255; i++) {
       SCOPED_TRACE("1 << " + std::to_string(i));
 
