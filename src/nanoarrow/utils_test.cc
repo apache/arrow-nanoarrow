@@ -251,7 +251,8 @@ TEST(DecimalTest, DecimalNegateTest) {
     ASSERT_EQ(ArrowDecimalSign(&decimal), -1);
     ArrowDecimalNegate(&decimal);
     ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
-    EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+    EXPECT_EQ(decimal.words[decimal.low_word_index],
+              std::numeric_limits<uint64_t>::max());
   }
 }
 
