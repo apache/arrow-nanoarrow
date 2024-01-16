@@ -289,7 +289,7 @@ ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
                                         struct ArrowStringView value);
 
 /// \brief Get the integer value of an ArrowDecimal as string
-ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(struct ArrowDecimal* decimal,
+ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(const struct ArrowDecimal* decimal,
                                                    struct ArrowBuffer* buffer);
 
 /// @}

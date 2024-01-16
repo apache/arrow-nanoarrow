@@ -302,12 +302,18 @@ ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
   if (decimal->low_word_index == 0) {
     memcpy(decimal->words, words32, sizeof(uint32_t) * n_words32);
   } else {
-    // Big endian
-    return ENOTSUP;
+    uint64_t lo;
+    uint64_t hi;
+
+    for (int i = 0; i < decimal->n_words; i++) {
+      lo = (uint64_t)words32[i * 2];
+      hi = (uint64_t)words32[i * 2 + 1] << 32;
+      decimal->words[decimal->n_words - i - 1] = lo | hi;
+    }
   }
 
   if (is_negative) {
-    return ENOTSUP;
+    ArrowDecimalNegate(decimal);
   }
 
   return NANOARROW_OK;
@@ -315,9 +321,9 @@ ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
 
 // Adapted from Arrow C++ for C
 // https://github.com/apache/arrow/blob/main/cpp/src/arrow/util/decimal.cc#L365
-ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(struct ArrowDecimal* decimal,
+ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(const struct ArrowDecimal* decimal,
                                                    struct ArrowBuffer* buffer) {
-  int is_negative = decimal->words[decimal->high_word_index] < 0;
+  int is_negative = ArrowDecimalSign(decimal) < 0;
 
   uint64_t words_little_endian[4];
   if (decimal->low_word_index == 0) {
@@ -326,6 +332,20 @@ ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(struct ArrowDecimal* decimal,
     for (int i = 0; i < decimal->n_words; i++) {
       words_little_endian[i] = decimal->words[decimal->n_words - i - 1];
     }
+  }
+
+  // We've already made a copy, so negate that if needed
+  if (is_negative) {
+    for (int i = 0; i < (decimal->n_words - 1); i++) {
+      words_little_endian[i] = ~words_little_endian[i] + 1;
+    }
+
+    int64_t hi = ~words_little_endian[decimal->n_words - 1];
+    if (words_little_endian[decimal->n_words - 2] == 0) {
+      hi += 1;
+    }
+
+    words_little_endian[decimal->n_words - 1] = hi;
   }
 
   int most_significant_elem_idx = -1;

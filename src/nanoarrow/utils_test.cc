@@ -287,6 +287,16 @@ TEST(DecimalTest, DecimalStringTestBasic) {
   EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
             "123456");
 
+  // Negative value
+  ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("-123456")), NANOARROW_OK);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -123456);
+
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "-123456");
+
   // Spans >1 32-bit word
   ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView("1234567899")),
             NANOARROW_OK);

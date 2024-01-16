@@ -914,6 +914,34 @@ static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t valu
   decimal->words[decimal->low_word_index] = value;
 }
 
+/// \brief Negate the value of this decimal in place
+/// \ingroup nanoarrow-utils
+static inline void ArrowDecimalNegate(struct ArrowDecimal* decimal) {
+  int64_t hi = ~decimal->words[decimal->high_word_index];
+
+  if (decimal->low_word_index == 0) {
+    for (int i = 0; i < decimal->high_word_index; i++) {
+      decimal->words[i] = ~decimal->words[i] + 1;
+    }
+
+    if (decimal->words[decimal->high_word_index - 1] == 0) {
+      hi += 1;
+    }
+
+    decimal->words[decimal->high_word_index] = hi;
+  } else {
+    for (int i = 1; i <= decimal->low_word_index; i++) {
+      decimal->words[i] = ~decimal->words[i] + 1;
+    }
+
+    if (decimal->words[decimal->high_word_index + 1] == 0) {
+      hi += 1;
+    }
+
+    decimal->words[decimal->high_word_index] = hi;
+  }
+}
+
 /// \brief Copy bytes from a buffer into this decimal
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
