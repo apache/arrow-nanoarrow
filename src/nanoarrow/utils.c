@@ -231,7 +231,7 @@ static const uint64_t kUInt32PowersOfTen[] = {
     100000ULL, 1000000ULL, 10000000ULL, 100000000ULL, 1000000000ULL};
 
 // Adapted from Arrow C++ to use 32-bit words for better C portability
-// https://github.com/apache/arrow/blob/main/cpp/src/arrow/util/decimal.cc#L524-L544
+// https://github.com/apache/arrow/blob/cd3321b28b0c9703e5d7105d6146c1270bbadd7f/cpp/src/arrow/util/decimal.cc#L524-L544
 static void ShiftAndAdd(struct ArrowStringView value, uint32_t* out, int64_t out_size) {
   // We use strtoll for parsing, which needs input that is null-terminated
   char chunk_string[16];
@@ -320,7 +320,7 @@ ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
 }
 
 // Adapted from Arrow C++ for C
-// https://github.com/apache/arrow/blob/main/cpp/src/arrow/util/decimal.cc#L365
+// https://github.com/apache/arrow/blob/cd3321b28b0c9703e5d7105d6146c1270bbadd7f/cpp/src/arrow/util/decimal.cc#L365
 ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(const struct ArrowDecimal* decimal,
                                                    struct ArrowBuffer* buffer) {
   int is_negative = ArrowDecimalSign(decimal) < 0;
