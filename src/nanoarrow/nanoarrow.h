@@ -49,8 +49,8 @@
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
 #define ArrowDecimalSetIntString \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetIntString)
-#define ArrowDecimalGetIntString \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalGetIntString)
+#define ArrowDecimalAppendIntStringToBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalAppendIntStringToBuffer)
 #define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
 #define ArrowSchemaInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFromType)
