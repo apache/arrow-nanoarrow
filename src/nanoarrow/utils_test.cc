@@ -270,9 +270,9 @@ TEST(DecimalTest, Decimal256Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 }
 
-TEST(DecimalTest, Decimal128FromIntStringTest) {
+TEST(DecimalTest, DecimalStringTestBasic) {
   struct ArrowDecimal decimal;
-  ArrowDecimalInit(&decimal, 128, 10, 3);
+  ArrowDecimalInit(&decimal, 128, 39, 0);
 
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
@@ -321,4 +321,69 @@ TEST(DecimalTest, Decimal128FromIntStringTest) {
   ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
   EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
             "170141183460469231731687303715884105727");
+}
+
+TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  // Generate test strings with powers of 10 and check roundtrip back to string
+  std::stringstream ss;
+  for (int i = 0; i < 76; i++) {
+    ss.str("");
+    ss << "1";
+    for (int j = 0; j < i; j++) {
+      ss << "0";
+    }
+
+    SCOPED_TRACE(ss.str());
+    ASSERT_EQ(ArrowDecimalSetIntString(&decimal, ArrowCharView(ss.str().c_str())),
+              NANOARROW_OK);
+
+    buffer.size_bytes = 0;
+    ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
+    EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+              ss.str());
+  }
+}
+
+TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+
+  struct ArrowDecimal decimal2;
+  ArrowDecimalInit(&decimal2, 256, 76, 0);
+
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  struct ArrowStringView str;
+
+  // Generate test decimals by bitshifting powers of two and check roundtrip
+  // through string back to decimal.
+  for (int i = 0; i < 255; i++) {
+    SCOPED_TRACE("1 << " + std::to_string(i));
+
+    memset(decimal.words, 0, sizeof(decimal.words));
+    int word = i / (8 * sizeof(uint64_t));
+    int shift = i % (8 * sizeof(uint64_t));
+    if (decimal.low_word_index == 0) {
+      decimal.words[word] = 1ULL << shift;
+    } else {
+      decimal.words[decimal.low_word_index - word] = 1ULL << shift;
+    }
+
+    buffer.size_bytes = 0;
+    ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
+    str.data = reinterpret_cast<char*>(buffer.data);
+    str.size_bytes = buffer.size_bytes;
+
+    ASSERT_EQ(ArrowDecimalSetIntString(&decimal2, str), NANOARROW_OK);
+
+    ASSERT_EQ(memcmp(decimal2.words, decimal.words, decimal.n_words * sizeof(uint64_t)),
+              0);
+  }
 }

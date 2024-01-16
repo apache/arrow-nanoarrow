@@ -366,27 +366,6 @@ ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(struct ArrowDecimal* decimal,
     segments[num_segments++] = remainder;
   } while (*most_significant_elem != 0 || most_significant_elem-- != words_little_endian);
 
-  // do {
-  //   // Compute remainder = copy % 1e9 and copy = copy / 1e9.
-  //   uint32_t remainder = 0;
-  //   uint64_t* elem = most_significant_elem;
-  //   do {
-  //     // Compute dividend = (remainder << 32) | *elem  (a virtual 96-bit integer);
-  //     // *elem = dividend / 1e9;
-  //     // remainder = dividend % 1e9.
-  //     uint32_t hi = static_cast<uint32_t>(*elem >> 32);
-  //     uint32_t lo = static_cast<uint32_t>(*elem &
-  //     bit_util::LeastSignificantBitMask(32)); uint64_t dividend_hi =
-  //     (static_cast<uint64_t>(remainder) << 32) | hi; uint64_t quotient_hi = dividend_hi
-  //     / k1e9; remainder = static_cast<uint32_t>(dividend_hi % k1e9); uint64_t
-  //     dividend_lo = (static_cast<uint64_t>(remainder) << 32) | lo; uint64_t quotient_lo
-  //     = dividend_lo / k1e9; remainder = static_cast<uint32_t>(dividend_lo % k1e9);
-  //     *elem = (quotient_hi << 32) | quotient_lo;
-  //   } while (elem-- != copy.data());
-
-  //   segments[num_segments++] = remainder;
-  // } while (*most_significant_elem != 0 || most_significant_elem-- != copy.data());
-
   // We know our output has no more than 9 digits per segment, plus a negative sign,
   // plus any further digits between our output of 9 digits and the maximum theoretical
   // number of digits in an unsigned long, including the null terminator.
@@ -395,8 +374,15 @@ ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(struct ArrowDecimal* decimal,
     buffer->data[buffer->size_bytes++] = '-';
   }
 
-  for (int i = num_segments - 1; i >= 0; i--) {
-    int n_chars = snprintf((char*)buffer->data + buffer->size_bytes, 21, "%lu",
+  // The most significant segment should have no leading zeroes
+  int n_chars = snprintf((char*)buffer->data + buffer->size_bytes, 21, "%lu",
+                         (unsigned long)segments[num_segments - 1]);
+  buffer->size_bytes += n_chars;
+
+  // Subsequent output needs to be left-padded with zeroes such that each segment
+  // takes up exactly 9 digits.
+  for (int i = num_segments - 2; i >= 0; i--) {
+    int n_chars = snprintf((char*)buffer->data + buffer->size_bytes, 21, "%09lu",
                            (unsigned long)segments[i]);
     buffer->size_bytes += n_chars;
   }
