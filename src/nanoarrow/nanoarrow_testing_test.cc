@@ -1141,9 +1141,11 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldFixedSizeBinary) {
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
   TestTypeRoundtrip(
-      R"({"name": "decimal", "bitWidth": 128, "precision": 10, "scale": 3})");
+      R"({"name": "decimal", "bitWidth": 128, "precision": 10, "scale": 3})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": ["0", "0", "258"]})");
   TestTypeRoundtrip(
-      R"({"name": "decimal", "bitWidth": 256, "precision": 10, "scale": 3})");
+      R"({"name": "decimal", "bitWidth": 256, "precision": 10, "scale": 3})",
+      R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": ["0", "0", "258"]})");
 
   TestTypeError(R"({"name": "decimal", "bitWidth": 123, "precision": 10, "scale": 3})",
                 "Type[name=='decimal'] bitWidth must be 128 or 256");

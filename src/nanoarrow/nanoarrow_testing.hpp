@@ -949,7 +949,7 @@ class TestingJSONWriter {
     nanoarrow::UniqueBuffer tmp;
 
     NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, 0, &value, tmp.get()));
-    for (int64_t i = 0; i < view->length; i++) {
+    for (int64_t i = 1; i < view->length; i++) {
       out << ", ";
       NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, i, &value, tmp.get()));
     }
