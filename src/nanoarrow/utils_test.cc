@@ -331,6 +331,8 @@ TEST(DecimalTest, DecimalStringTestBasic) {
   ASSERT_EQ(ArrowDecimalAppendIntStringToBuffer(&decimal, &buffer), NANOARROW_OK);
   EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
             "170141183460469231731687303715884105727");
+
+  ArrowBufferReset(&buffer);
 }
 
 TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
@@ -363,6 +365,8 @@ TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
                 ss.str());
     }
   }
+
+  ArrowBufferReset(&buffer);
 }
 
 TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
@@ -407,4 +411,6 @@ TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
                 0);
     }
   }
+
+  ArrowBufferReset(&buffer);
 }
