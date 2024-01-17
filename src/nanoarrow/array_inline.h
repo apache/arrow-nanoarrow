@@ -59,7 +59,7 @@ static inline int8_t _ArrowArrayUnionChildIndex(struct ArrowArray* array,
 
 static inline int8_t _ArrowArrayUnionTypeId(struct ArrowArray* array,
                                             int8_t child_index) {
-  (void)array;  
+  (void)array;
   return child_index;
 }
 
