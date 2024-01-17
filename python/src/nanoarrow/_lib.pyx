@@ -323,6 +323,13 @@ cdef class CSchema:
 
         return out
 
+    def __deepcopy__(self):
+        cdef CSchema out = CSchema.allocate()
+        cdef int result = ArrowSchemaDeepCopy(self._ptr, out._ptr)
+        if result != NANOARROW_OK:
+            raise NanoarrowException("ArrowSchemaDeepCopy()", result)
+        return out
+
     @staticmethod
     def _import_from_c_capsule(schema_capsule):
         """

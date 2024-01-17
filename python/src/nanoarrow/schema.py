@@ -16,7 +16,6 @@
 # under the License.
 
 import enum
-from typing import Iterable, Self
 
 from nanoarrow._lib import CArrowType, CSchema, CSchemaView
 from nanoarrow.c_lib import c_schema
@@ -65,7 +64,7 @@ class Type(enum.Enum):
 
     def __arrow_c_schema__(self):
         # This will only work for parameter-free types
-        c_schema = CSchema.create(self.value, None, True)
+        c_schema = CSchema.create(self.value, {}, True)
         return c_schema._capsule
 
 
@@ -73,6 +72,7 @@ class Schema:
     def __init__(
         self,
         type,
+        *,
         nullable=None,
         **params,
     ) -> None:
@@ -95,14 +95,12 @@ class Schema:
     def n_children(self) -> int:
         return self._c_schema.n_children
 
-    def child(self, i) -> Self:
-        # TODO: Do we want to deep copy the child schema here?
-        # Possibly inefficient; however, it might be unexpected for wide struct schemas
-        # to keep all other schema fields alive if only one child was selected?
-        return Schema(self._c_schema.child(i))
+    def child(self, i):
+        # Returning a copy to reduce interdependence between Schema instances
+        return Schema(self._c_schema.child(i).__deepcopy__())
 
     @property
-    def children(self) -> Iterable[Self]:
+    def children(self):
         for i in range(self.n_children):
             return self.child(i)
 
