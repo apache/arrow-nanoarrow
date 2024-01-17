@@ -107,8 +107,8 @@ class Schema:
     @property
     def unit(self) -> Union[TimeUnit, None]:
         unit_id = self._c_schema_view.time_unit_id
-        if unit_id is None:
-            TimeUnit(unit_id)
+        if unit_id is not None:
+            return TimeUnit(unit_id)
 
     @property
     def n_children(self) -> int:

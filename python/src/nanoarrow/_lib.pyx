@@ -585,7 +585,7 @@ cdef class CSchemaView:
     @property
     def time_unit_id(self):
         if self._schema_view.type in CSchemaView._time_unit_types:
-            self._schema_view.time_unit
+            return self._schema_view.time_unit
 
     @property
     def time_unit(self):
