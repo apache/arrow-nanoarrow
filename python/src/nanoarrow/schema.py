@@ -100,6 +100,10 @@ class Schema:
         return Type(self._c_schema_view.type_id)
 
     @property
+    def name(self) -> Union[str, None]:
+        return self._c_schema.name
+
+    @property
     def byte_width(self) -> Union[int, None]:
         if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_BINARY:
             return self._c_schema_view.fixed_size
@@ -126,7 +130,19 @@ class Schema:
     @staticmethod
     def _check_params(params) -> dict:
         if "fields" in params:
-            params["fields"] = [c_schema(field) for field in params["fields"]]
+            # TODO: This probably needs its own function
+            fields = params["fields"]
+            if isinstance(fields, dict):
+                params["fields"] = [(str(k), c_schema(v)) for k, v in fields.items()]
+            else:
+                fields_clean = []
+                for item in fields:
+                    if isinstance(item, tuple) and len(item) == 2:
+                        fields_clean.append((str(item[0]), c_schema(item[1])))
+                    else:
+                        fields_clean.append((None, c_schema(item)))
+
+                params["fields"] = fields_clean
 
         if "unit" in params:
             params["unit"] = TimeUnit(params["unit"]).value
@@ -135,3 +151,22 @@ class Schema:
             params["timezone"] = str(params["timezone"])
 
         return params
+
+
+def int32(nullable=True) -> Schema:
+    return Schema(Type.INT32, nullable=nullable)
+
+
+def binary(byte_width=None, nullable=True) -> Schema:
+    if byte_width is not None:
+        return Schema(Type.FIXED_SIZE_BINARY, byte_width=byte_width, nullable=nullable)
+    else:
+        return Schema(Type.BINARY)
+
+
+def timestamp(unit, timezone=None, nullable=True) -> Schema:
+    return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
+
+
+def struct(fields, nullable=True) -> Schema:
+    return Schema(Type.STRUCT, fields=fields, nullable=nullable)

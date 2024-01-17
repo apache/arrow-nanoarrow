@@ -344,11 +344,15 @@ cdef class CSchema:
             if result != NANOARROW_OK:
                 raise NanoarrowException("ArrowSchemaAllocateChildren()", result)
 
-            for i, child in enumerate(children):
-                c_child = child
+            for i, item in enumerate(children):
+                name = item[0]
+                c_child = item[1]
                 result = ArrowSchemaDeepCopy(c_child._ptr, out._ptr.children[i])
                 if result != NANOARROW_OK:
                     raise NanoarrowException("ArrowSchemaDeepCopy()", result)
+
+                if name is not None:
+                    result = ArrowSchemaSetName(out._ptr.children[i], name.encode("UTF-8"))
 
         if nullable:
             out._ptr.flags |= ARROW_FLAG_NULLABLE

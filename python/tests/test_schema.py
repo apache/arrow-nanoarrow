@@ -61,3 +61,14 @@ def test_schema_create_struct():
     schema_obj = na.Schema(na.Type.STRUCT, fields=[na.Type.INT32])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
+    assert schema_obj.child(0).name is None
+
+    schema_obj = na.Schema(na.Type.STRUCT, fields=[("col_name", na.Type.INT32)])
+    assert schema_obj.type == na.Type.STRUCT
+    assert schema_obj.child(0).type == na.Type.INT32
+    assert schema_obj.child(0).name == "col_name"
+
+    schema_obj = na.Schema(na.Type.STRUCT, fields={"col_name": na.Type.INT32})
+    assert schema_obj.type == na.Type.STRUCT
+    assert schema_obj.child(0).type == na.Type.INT32
+    assert schema_obj.child(0).name == "col_name"
