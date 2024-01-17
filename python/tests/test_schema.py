@@ -26,7 +26,7 @@ def test_type_schema_protocol():
 
 
 def test_schema_create_c_schema():
-    schema_obj = na.Schema(na.Type.INT32)
+    schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32
 
     schema_obj2 = na.Schema(schema_obj._c_schema)
@@ -38,37 +38,40 @@ def test_schema_create_c_schema():
 
 
 def test_schema_create_no_params():
-    schema_obj = na.Schema(na.Type.INT32)
+    schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32
 
     with pytest.raises(ValueError, match=r"^Unused parameter"):
         na.Schema(na.Type.INT32, unused_param="unused_value")
 
 
-def test_schema_fixed_size_binary():
-    schema_obj = na.Schema(na.Type.FIXED_SIZE_BINARY, byte_width=123)
+def test_schema_binary():
+    schema_obj = na.binary(byte_width=123)
     assert schema_obj.type == na.Type.FIXED_SIZE_BINARY
     assert schema_obj.byte_width == 123
 
+    schema_obj = na.binary()
+    assert schema_obj.type == na.Type.BINARY
+
 
 def test_schema_timestamp():
-    schema_obj = na.Schema(na.Type.TIMESTAMP, unit=na.TimeUnit.SECOND)
+    schema_obj = na.timestamp(na.TimeUnit.SECOND)
     assert schema_obj.type == na.Type.TIMESTAMP
     assert schema_obj.unit == na.TimeUnit.SECOND
 
 
 def test_schema_create_struct():
-    schema_obj = na.Schema(na.Type.STRUCT, fields=[na.Type.INT32])
+    schema_obj = na.struct([na.Type.INT32])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
     assert schema_obj.child(0).name is None
 
-    schema_obj = na.Schema(na.Type.STRUCT, fields=[("col_name", na.Type.INT32)])
+    schema_obj = na.struct([("col_name", na.Type.INT32)])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
     assert schema_obj.child(0).name == "col_name"
 
-    schema_obj = na.Schema(na.Type.STRUCT, fields={"col_name": na.Type.INT32})
+    schema_obj = na.struct({"col_name": na.Type.INT32})
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
     assert schema_obj.child(0).name == "col_name"
