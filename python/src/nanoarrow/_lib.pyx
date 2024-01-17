@@ -915,7 +915,7 @@ cdef class CBufferView:
         if format_const != NULL:
             snprintf(self._format, sizeof(self._format), "%s", format_const)
         else:
-            snprintf(self._format, sizeof(self._format), "%ds", self._element_size_bits // 8)
+            snprintf(self._format, sizeof(self._format), "%ds", <int>(self._element_size_bits // 8))
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         if self._device.device_type != ARROW_DEVICE_CPU:
