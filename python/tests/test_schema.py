@@ -45,6 +45,18 @@ def test_schema_create_no_params():
         na.Schema(na.Type.INT32, unused_param="unused_value")
 
 
+def test_schema_fixed_size_binary():
+    schema_obj = na.Schema(na.Type.FIXED_SIZE_BINARY, byte_width=123)
+    assert schema_obj.type == na.Type.FIXED_SIZE_BINARY
+    assert schema_obj.byte_width == 123
+
+
+def test_schema_timestamp():
+    schema_obj = na.Schema(na.Type.TIMESTAMP, unit=na.TimeUnit.SECOND)
+    assert schema_obj.type == na.Type.TIMESTAMP
+    assert schema_obj.unit == na.TimeUnit.SECOND
+
+
 def test_schema_create_struct():
     schema_obj = na.Schema(na.Type.STRUCT, fields=[na.Type.INT32])
     assert schema_obj.type == na.Type.STRUCT

@@ -26,5 +26,5 @@ from nanoarrow.c_lib import (  # noqa: F401
     allocate_c_array,
     allocate_c_array_stream,
 )
-from nanoarrow.schema import Schema, Type  # noqa: F401
+from nanoarrow.schema import Schema, Type, TimeUnit  # noqa: F401
 from nanoarrow._version import __version__  # noqa: F401

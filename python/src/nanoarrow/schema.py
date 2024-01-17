@@ -16,8 +16,9 @@
 # under the License.
 
 import enum
+from typing import Union
 
-from nanoarrow._lib import CArrowType, CSchema, CSchemaView
+from nanoarrow._lib import CArrowType, CSchema, CSchemaView, CArrowTimeUnit
 from nanoarrow.c_lib import c_schema
 
 
@@ -68,6 +69,13 @@ class Type(enum.Enum):
         return c_schema._capsule
 
 
+class TimeUnit(enum.Enum):
+    SECOND = CArrowTimeUnit.SECOND
+    MILLI = CArrowTimeUnit.MILLI
+    MICRO = CArrowTimeUnit.MICRO
+    NANO = CArrowTimeUnit.NANO
+
+
 class Schema:
     def __init__(
         self,
@@ -92,6 +100,17 @@ class Schema:
         return Type(self._c_schema_view.type_id)
 
     @property
+    def byte_width(self) -> Union[int, None]:
+        if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_BINARY:
+            return self._c_schema_view.fixed_size
+
+    @property
+    def unit(self) -> Union[TimeUnit, None]:
+        unit_id = self._c_schema_view.time_unit_id
+        if unit_id is None:
+            TimeUnit(unit_id)
+
+    @property
     def n_children(self) -> int:
         return self._c_schema.n_children
 
@@ -108,5 +127,11 @@ class Schema:
     def _check_params(params) -> dict:
         if "fields" in params:
             params["fields"] = [c_schema(field) for field in params["fields"]]
+
+        if "unit" in params:
+            params["unit"] = TimeUnit(params["unit"]).value
+
+        if "timezone" in params:
+            params["timezone"] = str(params["timezone"])
 
         return params

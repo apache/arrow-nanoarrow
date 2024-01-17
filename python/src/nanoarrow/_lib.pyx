@@ -221,6 +221,11 @@ cdef class Error:
         raise NanoarrowException(what, code, "")
 
 cdef class CArrowType:
+    """
+    Wrapper around ArrowType to provide implementations in Python access
+    to the values.
+    """
+
     UNINITIALIZED = NANOARROW_TYPE_UNINITIALIZED
     NA = NANOARROW_TYPE_NA
     BOOL = NANOARROW_TYPE_BOOL
@@ -261,6 +266,19 @@ cdef class CArrowType:
     LARGE_LIST = NANOARROW_TYPE_LARGE_LIST
     INTERVAL_MONTH_DAY_NANO = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 
+
+cdef class CArrowTimeUnit:
+    """
+    Wrapper around ArrowTimeUnit to provide implementations in Python access
+    to the values.
+    """
+
+    SECOND = NANOARROW_TIME_UNIT_SECOND
+    MILLI = NANOARROW_TIME_UNIT_MILLI
+    MICRO = NANOARROW_TIME_UNIT_MICRO
+    NANO = NANOARROW_TIME_UNIT_NANO
+
+
 cdef class CSchema:
     """Low-level ArrowSchema wrapper
 
@@ -293,7 +311,21 @@ cdef class CSchema:
         cdef int result
         children = None
 
-        if type == NANOARROW_TYPE_STRUCT:
+        if type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
+            byte_width = params.pop("byte_width")
+            result = ArrowSchemaSetTypeFixedSize(out._ptr, type, byte_width)
+        elif type == NANOARROW_TYPE_TIMESTAMP:
+            time_unit = params.pop("unit")
+            if "timezone" not in params:
+                timezone = b""
+            else:
+                timezone = params.pop("timezone").encode("UTF-8")
+
+            result = ArrowSchemaSetTypeDateTime(out._ptr, type, time_unit, timezone)
+        elif type in CSchemaView._time_unit_types:
+            time_unit = params.pop("unit")
+            result = ArrowSchemaSetTypeDateTime(out._ptr, type, time_unit, NULL)
+        elif type == NANOARROW_TYPE_STRUCT:
             children = params.pop("fields")
             result = ArrowSchemaSetFormat(out._ptr, "+s")
         else:
@@ -515,7 +547,7 @@ cdef class CSchemaView:
         return self._schema_view.type
 
     @property
-    def type_id(self):
+    def storage_type_id(self):
         return self._schema_view.storage_type
 
     @property
@@ -549,6 +581,11 @@ cdef class CSchemaView:
     def decimal_scale(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_scale
+
+    @property
+    def time_unit_id(self):
+        if self._schema_view.type in CSchemaView._time_unit_types:
+            self._schema_view.time_unit
 
     @property
     def time_unit(self):
