@@ -263,8 +263,8 @@ static void ShiftAndAdd(struct ArrowStringView value, uint32_t* out, int64_t out
   }
 }
 
-ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
-                                        struct ArrowStringView value) {
+ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
+                                     struct ArrowStringView value) {
   // Check for sign
   int is_negative = value.data[0] == '-';
   int has_sign = is_negative || value.data[0] == '+';
@@ -321,8 +321,8 @@ ArrowErrorCode ArrowDecimalSetIntString(struct ArrowDecimal* decimal,
 
 // Adapted from Arrow C++ for C
 // https://github.com/apache/arrow/blob/cd3321b28b0c9703e5d7105d6146c1270bbadd7f/cpp/src/arrow/util/decimal.cc#L365
-ArrowErrorCode ArrowDecimalAppendIntStringToBuffer(const struct ArrowDecimal* decimal,
-                                                   struct ArrowBuffer* buffer) {
+ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
+                                                struct ArrowBuffer* buffer) {
   int is_negative = ArrowDecimalSign(decimal) < 0;
 
   uint64_t words_little_endian[4];

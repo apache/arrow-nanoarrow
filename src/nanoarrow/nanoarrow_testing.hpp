@@ -966,7 +966,7 @@ class TestingJSONWriter {
     } else {
       ArrowArrayViewGetDecimalUnsafe(view, i, decimal);
       tmp->size_bytes = 0;
-      NANOARROW_RETURN_NOT_OK(ArrowDecimalAppendIntStringToBuffer(decimal, tmp));
+      NANOARROW_RETURN_NOT_OK(ArrowDecimalAppendDigitsToBuffer(decimal, tmp));
       out << R"(")" << std::string(reinterpret_cast<char*>(tmp->data), tmp->size_bytes)
           << R"(")";
       return NANOARROW_OK;
@@ -2437,7 +2437,7 @@ class TestingJSONReader {
       auto item_str = item.get<std::string>();
       item_view.data = item_str.data();
       item_view.size_bytes = item_str.size();
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowDecimalSetIntString(&decimal, item_view),
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowDecimalSetDigits(&decimal, item_view),
                                          error);
       NANOARROW_RETURN_NOT_OK_WITH_ERROR(
           ArrowBufferAppend(buffer, decimal.words, decimal.n_words * sizeof(uint64_t)),
