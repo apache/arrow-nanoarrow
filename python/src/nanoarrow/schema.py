@@ -16,6 +16,7 @@
 # under the License.
 
 import enum
+from typing import Iterable, Self
 
 from nanoarrow._lib import CArrowType, CSchema, CSchemaView
 from nanoarrow.c_lib import c_schema
@@ -72,20 +73,42 @@ class Schema:
     def __init__(
         self,
         type,
-        params: dict | None = None,
         nullable=None,
+        **params,
     ) -> None:
         if isinstance(type, Type):
             self._c_schema = CSchema.create(
-                Type(type).value, {} if params is None else params, nullable
+                Type(type).value, Schema._check_params(params), nullable
             )
-        elif params is None:
+        elif not params:
             self._c_schema = c_schema(type)
         else:
-            raise ValueError("params must be None if type is not nanoarrow.Type")
+            raise ValueError("params must be empty if type is not nanoarrow.Type")
 
         self._c_schema_view = CSchemaView(self._c_schema)
 
     @property
     def type(self) -> Type:
         return Type(self._c_schema_view.type_id)
+
+    @property
+    def n_children(self) -> int:
+        return self._c_schema.n_children
+
+    def child(self, i) -> Self:
+        # TODO: Do we want to deep copy the child schema here?
+        # Possibly inefficient; however, it might be unexpected for wide struct schemas
+        # to keep all other schema fields alive if only one child was selected?
+        return Schema(self._c_schema.child(i))
+
+    @property
+    def children(self) -> Iterable[Self]:
+        for i in range(self.n_children):
+            return self.child(i)
+
+    @staticmethod
+    def _check_params(params) -> dict:
+        if "fields" in params:
+            params["fields"] = [c_schema(field) for field in params["fields"]]
+
+        return params

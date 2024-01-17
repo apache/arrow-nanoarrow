@@ -33,10 +33,19 @@ def test_schema_create_c_schema():
     assert schema_obj2.type == schema_obj2.type
     assert schema_obj2._c_schema is schema_obj._c_schema
 
+    with pytest.raises(ValueError, match="params must be empty"):
+        na.Schema(schema_obj._c_schema, some_parameter="some_value")
+
 
 def test_schema_create_no_params():
     schema_obj = na.Schema(na.Type.INT32)
     assert schema_obj.type == na.Type.INT32
 
     with pytest.raises(ValueError, match=r"^Unused parameter"):
-        na.Schema(na.Type.INT32, {"unused_param": "unused_value"})
+        na.Schema(na.Type.INT32, unused_param="unused_value")
+
+
+def test_schema_create_struct():
+    schema_obj = na.Schema(na.Type.STRUCT, fields=[na.Type.INT32])
+    assert schema_obj.type == na.Type.STRUCT
+    assert schema_obj.child(0).type == na.Type.INT32

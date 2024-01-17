@@ -306,10 +306,17 @@ cdef class CSchema:
             unused = ", ".join(f"'{item}'" for item in params.keys())
             raise ValueError(f"Unused parameters whilst constructing CSchema: {unused}")
 
+        cdef CSchema c_child
         if children:
             result = ArrowSchemaAllocateChildren(out._ptr, len(children))
             if result != NANOARROW_OK:
                 raise NanoarrowException("ArrowSchemaAllocateChildren()", result)
+
+            for i, child in enumerate(children):
+                c_child = child
+                result = ArrowSchemaDeepCopy(c_child._ptr, out._ptr.children[i])
+                if result != NANOARROW_OK:
+                    raise NanoarrowException("ArrowSchemaDeepCopy()", result)
 
         if nullable:
             out._ptr.flags |= ARROW_FLAG_NULLABLE
