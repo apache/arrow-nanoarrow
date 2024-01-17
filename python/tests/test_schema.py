@@ -15,16 +15,28 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import c_version  # noqa: F401
-from nanoarrow.c_lib import (  # noqa: F401
-    c_schema,
-    c_array,
-    c_array_stream,
-    c_schema_view,
-    c_array_view,
-    allocate_c_schema,
-    allocate_c_array,
-    allocate_c_array_stream,
-)
-from nanoarrow.schema import Schema, Type  # noqa: F401
-from nanoarrow._version import __version__  # noqa: F401
+import pytest
+
+import nanoarrow as na
+
+
+def test_type_schema_protocol():
+    c_schema = na.c_schema(na.Type.INT32)
+    assert c_schema.format == "i"
+
+
+def test_schema_create_c_schema():
+    schema_obj = na.Schema(na.Type.INT32)
+    assert schema_obj.type == na.Type.INT32
+
+    schema_obj2 = na.Schema(schema_obj._c_schema)
+    assert schema_obj2.type == schema_obj2.type
+    assert schema_obj2._c_schema is schema_obj._c_schema
+
+
+def test_schema_create_no_params():
+    schema_obj = na.Schema(na.Type.INT32)
+    assert schema_obj.type == na.Type.INT32
+
+    with pytest.raises(ValueError, match=r"^Unused parameter"):
+        na.Schema(na.Type.INT32, {"unused_param": "unused_value"})

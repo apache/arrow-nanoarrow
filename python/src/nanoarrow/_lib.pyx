@@ -220,6 +220,46 @@ cdef class Error:
         """
         raise NanoarrowException(what, code, "")
 
+cdef class CArrowType:
+    UNINITIALIZED = NANOARROW_TYPE_UNINITIALIZED
+    NA = NANOARROW_TYPE_NA
+    BOOL = NANOARROW_TYPE_BOOL
+    UINT8 = NANOARROW_TYPE_UINT8
+    INT8 = NANOARROW_TYPE_INT8
+    UINT16 = NANOARROW_TYPE_UINT16
+    INT16 = NANOARROW_TYPE_INT16
+    UINT32 = NANOARROW_TYPE_UINT32
+    INT32 = NANOARROW_TYPE_INT32
+    UINT64 = NANOARROW_TYPE_UINT64
+    INT64 = NANOARROW_TYPE_INT64
+    HALF_FLOAT = NANOARROW_TYPE_HALF_FLOAT
+    FLOAT = NANOARROW_TYPE_FLOAT
+    DOUBLE = NANOARROW_TYPE_DOUBLE
+    STRING = NANOARROW_TYPE_STRING
+    BINARY = NANOARROW_TYPE_BINARY
+    FIXED_SIZE_BINARY = NANOARROW_TYPE_FIXED_SIZE_BINARY
+    DATE32 = NANOARROW_TYPE_DATE32
+    DATE64 = NANOARROW_TYPE_DATE64
+    TIMESTAMP = NANOARROW_TYPE_TIMESTAMP
+    TIME32 = NANOARROW_TYPE_TIME32
+    TIME64 = NANOARROW_TYPE_TIME64
+    INTERVAL_MONTHS = NANOARROW_TYPE_INTERVAL_MONTHS
+    INTERVAL_DAY_TIME = NANOARROW_TYPE_INTERVAL_DAY_TIME
+    DECIMAL128 = NANOARROW_TYPE_DECIMAL128
+    DECIMAL256 = NANOARROW_TYPE_DECIMAL256
+    LIST = NANOARROW_TYPE_LIST
+    STRUCT = NANOARROW_TYPE_STRUCT
+    SPARSE_UNION = NANOARROW_TYPE_SPARSE_UNION
+    DENSE_UNION = NANOARROW_TYPE_DENSE_UNION
+    DICTIONARY = NANOARROW_TYPE_DICTIONARY
+    MAP = NANOARROW_TYPE_MAP
+    EXTENSION = NANOARROW_TYPE_EXTENSION
+    FIXED_SIZE_LIST = NANOARROW_TYPE_FIXED_SIZE_LIST
+    DURATION = NANOARROW_TYPE_DURATION
+    LARGE_STRING = NANOARROW_TYPE_LARGE_STRING
+    LARGE_BINARY = NANOARROW_TYPE_LARGE_BINARY
+    LARGE_LIST = NANOARROW_TYPE_LARGE_LIST
+    INTERVAL_MONTH_DAY_NANO = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 
 cdef class CSchema:
     """Low-level ArrowSchema wrapper
@@ -243,8 +283,38 @@ cdef class CSchema:
         return CSchema(base, <uintptr_t>(c_schema_out))
 
     def __cinit__(self, object base, uintptr_t addr):
-        self._base = base,
+        self._base = base
         self._ptr = <ArrowSchema*>addr
+
+    def create(int type, dict params, nullable):
+        cdef CSchema out = CSchema.allocate()
+        ArrowSchemaInit(out._ptr)
+
+        cdef int result
+        children = None
+
+        if type == NANOARROW_TYPE_STRUCT:
+            children = params.pop("fields")
+            result = ArrowSchemaSetFormat(out._ptr, "+s")
+        else:
+            result = ArrowSchemaSetType(out._ptr, type)
+
+        if result != NANOARROW_OK:
+            raise NanoarrowException("ArrowSchemaSetType()", result)
+
+        if params:
+            unused = ", ".join(f"'{item}'" for item in params.keys())
+            raise ValueError(f"Unused parameters whilst constructing CSchema: {unused}")
+
+        if children:
+            result = ArrowSchemaAllocateChildren(out._ptr, len(children))
+            if result != NANOARROW_OK:
+                raise NanoarrowException("ArrowSchemaAllocateChildren()", result)
+
+        if nullable:
+            out._ptr.flags |= ARROW_FLAG_NULLABLE
+
+        return out
 
     @staticmethod
     def _import_from_c_capsule(schema_capsule):
@@ -277,6 +347,23 @@ cdef class CSchema:
         if result != NANOARROW_OK:
             Error.raise_error("ArrowSchemaDeepCopy", result)
         return schema_capsule
+
+    @property
+    def _capsule(self):
+        """
+        Returns the capsule backing this CSchema or None if it does not exist
+        or points to a parent ArrowSchema.
+        """
+        cdef ArrowSchema* maybe_capsule_ptr
+        maybe_capsule_ptr = <ArrowSchema*>PyCapsule_GetPointer(self._base, 'arrow_schema')
+
+        # This will return False if this is a child CSchema whose capsule holds
+        # the parent ArrowSchema
+        if maybe_capsule_ptr == self._ptr:
+            return self._base
+
+        return None
+
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -408,6 +495,14 @@ cdef class CSchemaView:
         cdef int result = ArrowSchemaViewInit(&self._schema_view, schema._ptr, &error.c_error)
         if result != NANOARROW_OK:
             error.raise_message("ArrowSchemaViewInit()", result)
+
+    @property
+    def type_id(self):
+        return self._schema_view.type
+
+    @property
+    def type_id(self):
+        return self._schema_view.storage_type
 
     @property
     def type(self):
