@@ -102,6 +102,10 @@ class Schema:
         return self._c_schema.name
 
     @property
+    def nullable(self) -> bool:
+        return self._c_schema_view.nullable
+
+    @property
     def byte_width(self) -> Union[int, None]:
         if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_BINARY:
             return self._c_schema_view.fixed_size
@@ -111,6 +115,11 @@ class Schema:
         unit_id = self._c_schema_view.time_unit_id
         if unit_id is not None:
             return TimeUnit(unit_id)
+
+    @property
+    def timezone(self) -> Union[str, None]:
+        if self._c_schema_view.timezone:
+            return self._c_schema_view.timezone
 
     @property
     def n_children(self) -> int:
@@ -175,6 +184,7 @@ def _c_schema_from_type_and_params(type: Type, params: dict, nullable: bool):
         unused = ", ".join(f"'{item}'" for item in params.keys())
         raise ValueError(f"Unused parameters whilst constructing Schema: {unused}")
 
+    factory.set_nullable(nullable)
     return factory.finish()
 
 

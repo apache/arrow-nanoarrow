@@ -40,6 +40,10 @@ def test_schema_create_c_schema():
 def test_schema_create_no_params():
     schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32
+    assert schema_obj.nullable is True
+
+    schema_obj = na.int32(nullable=False)
+    assert schema_obj.nullable is False
 
     with pytest.raises(ValueError, match=r"^Unused parameter"):
         na.Schema(na.Type.INT32, unused_param="unused_value")
@@ -58,6 +62,10 @@ def test_schema_timestamp():
     schema_obj = na.timestamp(na.TimeUnit.SECOND)
     assert schema_obj.type == na.Type.TIMESTAMP
     assert schema_obj.unit == na.TimeUnit.SECOND
+    assert schema_obj.timezone is None
+
+    schema_obj = na.timestamp(na.TimeUnit.SECOND, timezone="America/Halifax")
+    assert schema_obj.timezone == "America/Halifax"
 
 
 def test_schema_create_struct():

@@ -458,6 +458,10 @@ cdef class CSchemaView:
     # lifetime guarantees that the pointed-to data from ArrowStringViews remains valid
     cdef object _base
     cdef ArrowSchemaView _schema_view
+    # Not part of the ArrowSchemaView (but possibly should be)
+    cdef int _dictionary_ordered
+    cdef int _nullable
+    cdef int _map_keys_sorted
 
     _fixed_size_types = (
         NANOARROW_TYPE_FIXED_SIZE_LIST,
@@ -491,6 +495,10 @@ cdef class CSchemaView:
         if result != NANOARROW_OK:
             error.raise_message("ArrowSchemaViewInit()", result)
 
+        self._dictionary_ordered = schema._ptr.flags & ARROW_FLAG_DICTIONARY_ORDERED
+        self._nullable = schema._ptr.flags & ARROW_FLAG_NULLABLE
+        self._map_keys_sorted = schema._ptr.flags & ARROW_FLAG_MAP_KEYS_SORTED
+
     @property
     def type_id(self):
         return self._schema_view.type
@@ -510,6 +518,18 @@ cdef class CSchemaView:
         cdef const char* type_str = ArrowTypeString(self._schema_view.storage_type)
         if type_str != NULL:
             return type_str.decode('UTF-8')
+
+    @property
+    def dictionary_ordered(self):
+        return self._dictionary_ordered != 0
+
+    @property
+    def nullable(self):
+        return self._nullable != 0
+
+    @property
+    def map_keys_sorted(self):
+        return self._map_keys_sorted != 0
 
     @property
     def fixed_size(self):
