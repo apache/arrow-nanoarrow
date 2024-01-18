@@ -18,13 +18,7 @@
 import enum
 from typing import Union
 
-from nanoarrow._lib import (
-    CArrowTimeUnit,
-    CArrowType,
-    CSchema,
-    CSchemaView,
-    CSchemaFactory,
-)
+from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaFactory, CSchemaView
 from nanoarrow.c_lib import c_schema
 
 
