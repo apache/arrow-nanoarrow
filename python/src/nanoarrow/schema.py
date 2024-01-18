@@ -18,7 +18,13 @@
 import enum
 from typing import Union
 
-from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchema, CSchemaView
+from nanoarrow._lib import (
+    CArrowTimeUnit,
+    CArrowType,
+    CSchema,
+    CSchemaView,
+    CSchemaFactory,
+)
 from nanoarrow.c_lib import c_schema
 
 
@@ -65,7 +71,7 @@ class Type(enum.Enum):
 
     def __arrow_c_schema__(self):
         # This will only work for parameter-free types
-        c_schema = CSchema.create(self.value, {}, True)
+        c_schema = CSchemaFactory.allocate().set_type(self.value).finish()
         return c_schema._capsule
 
 
@@ -85,9 +91,7 @@ class Schema:
         **params,
     ) -> None:
         if isinstance(type, Type):
-            self._c_schema = CSchema.create(
-                Type(type).value, Schema._check_params(params), nullable
-            )
+            self._c_schema = _c_schema_from_type_and_params(type, params, nullable)
         elif not params:
             self._c_schema = c_schema(type)
         else:
@@ -127,31 +131,6 @@ class Schema:
         for i in range(self.n_children):
             return self.child(i)
 
-    @staticmethod
-    def _check_params(params) -> dict:
-        if "fields" in params:
-            # TODO: This probably needs its own function
-            fields = params["fields"]
-            if isinstance(fields, dict):
-                params["fields"] = [(str(k), c_schema(v)) for k, v in fields.items()]
-            else:
-                fields_clean = []
-                for item in fields:
-                    if isinstance(item, tuple) and len(item) == 2:
-                        fields_clean.append((str(item[0]), c_schema(item[1])))
-                    else:
-                        fields_clean.append((None, c_schema(item)))
-
-                params["fields"] = fields_clean
-
-        if "unit" in params:
-            params["unit"] = TimeUnit(params["unit"]).value
-
-        if "timezone" in params:
-            params["timezone"] = str(params["timezone"])
-
-        return params
-
 
 def int32(nullable=True) -> Schema:
     return Schema(Type.INT32, nullable=nullable)
@@ -170,3 +149,50 @@ def timestamp(unit, timezone=None, nullable=True) -> Schema:
 
 def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
+
+
+def _c_schema_from_type_and_params(type: Type, params: dict, nullable: bool):
+    factory = CSchemaFactory.allocate()
+
+    if type == Type.STRUCT:
+        fields = _clean_fields(params.pop("fields"))
+
+        factory.set_format("+s").allocate_children(len(fields))
+        for i, item in enumerate(fields):
+            name, c_schema = item
+            factory.set_child(i, name, c_schema)
+
+    elif type.value in CSchemaView._time_unit_types:
+        time_unit = params.pop("unit")
+        if "timezone" in params:
+            timezone = params.pop("timezone")
+        else:
+            timezone = None
+
+        factory.set_type_date_time(type.value, TimeUnit(time_unit).value, timezone)
+
+    elif type == Type.FIXED_SIZE_BINARY:
+        factory.set_type_fixed_size(type.value, int(params.pop("byte_width")))
+
+    else:
+        factory.set_type(type.value)
+
+    if params:
+        unused = ", ".join(f"'{item}'" for item in params.keys())
+        raise ValueError(f"Unused parameters whilst constructing Schema: {unused}")
+
+    return factory.finish()
+
+
+def _clean_fields(fields):
+    if isinstance(fields, dict):
+        return [(str(k), c_schema(v)) for k, v in fields.items()]
+    else:
+        fields_clean = []
+        for item in fields:
+            if isinstance(item, tuple) and len(item) == 2:
+                fields_clean.append((str(item[0]), c_schema(item[1])))
+            else:
+                fields_clean.append((None, c_schema(item)))
+
+        return fields_clean

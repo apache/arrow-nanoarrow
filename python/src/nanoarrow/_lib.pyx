@@ -304,61 +304,6 @@ cdef class CSchema:
         self._base = base
         self._ptr = <ArrowSchema*>addr
 
-    def create(int type, dict params, nullable):
-        cdef CSchema out = CSchema.allocate()
-        ArrowSchemaInit(out._ptr)
-
-        cdef int result
-        children = None
-
-        if type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
-            byte_width = params.pop("byte_width")
-            result = ArrowSchemaSetTypeFixedSize(out._ptr, type, byte_width)
-        elif type == NANOARROW_TYPE_TIMESTAMP:
-            time_unit = params.pop("unit")
-            if "timezone" not in params:
-                timezone = b""
-            else:
-                timezone = params.pop("timezone").encode("UTF-8")
-
-            result = ArrowSchemaSetTypeDateTime(out._ptr, type, time_unit, timezone)
-        elif type in CSchemaView._time_unit_types:
-            time_unit = params.pop("unit")
-            result = ArrowSchemaSetTypeDateTime(out._ptr, type, time_unit, NULL)
-        elif type == NANOARROW_TYPE_STRUCT:
-            children = params.pop("fields")
-            result = ArrowSchemaSetFormat(out._ptr, "+s")
-        else:
-            result = ArrowSchemaSetType(out._ptr, type)
-
-        if result != NANOARROW_OK:
-            raise NanoarrowException("ArrowSchemaSetType()", result)
-
-        if params:
-            unused = ", ".join(f"'{item}'" for item in params.keys())
-            raise ValueError(f"Unused parameters whilst constructing CSchema: {unused}")
-
-        cdef CSchema c_child
-        if children:
-            result = ArrowSchemaAllocateChildren(out._ptr, len(children))
-            if result != NANOARROW_OK:
-                raise NanoarrowException("ArrowSchemaAllocateChildren()", result)
-
-            for i, item in enumerate(children):
-                name = item[0]
-                c_child = item[1]
-                result = ArrowSchemaDeepCopy(c_child._ptr, out._ptr.children[i])
-                if result != NANOARROW_OK:
-                    raise NanoarrowException("ArrowSchemaDeepCopy()", result)
-
-                if name is not None:
-                    result = ArrowSchemaSetName(out._ptr.children[i], name.encode("UTF-8"))
-
-        if nullable:
-            out._ptr.flags |= ARROW_FLAG_NULLABLE
-
-        return out
-
     def __deepcopy__(self):
         cdef CSchema out = CSchema.allocate()
         cdef int result = ArrowSchemaDeepCopy(self._ptr, out._ptr)
@@ -627,6 +572,123 @@ cdef class CSchemaView:
 
     def __repr__(self):
         return _lib_utils.schema_view_repr(self)
+
+
+cdef class CSchemaFactory:
+    cdef CSchema c_schema
+    cdef ArrowSchema* _ptr
+
+    def __cinit__(self, CSchema schema):
+        self.c_schema = schema
+        self._ptr = schema._ptr
+        if self._ptr.release == NULL:
+            ArrowSchemaInit(self._ptr)
+
+    @staticmethod
+    def allocate():
+        return CSchemaFactory(CSchema.allocate())
+
+    def child(self, int64_t i):
+        return CSchemaFactory(self.c_schema.child(i))
+
+    def set_type(self, int type):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetType(self._ptr, <ArrowType>type)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetType()", result)
+
+        return self
+
+    def set_type_fixed_size(self, int type, int fixed_size):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type, fixed_size)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetTypeFixedSize()", result)
+
+        return self
+
+    def set_type_date_time(self, int type, int time_unit, timezone):
+        self.c_schema._assert_valid()
+
+        cdef int result
+        if timezone is None:
+            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type, <ArrowTimeUnit>time_unit, NULL)
+        else:
+            timezone = str(timezone)
+            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type, <ArrowTimeUnit>time_unit, timezone.encode("UTF-8"))
+
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetTypeDateTime()", result)
+
+        return self
+
+    def set_format(self, str format):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetFormat(self._ptr, format.encode("UTF-8"))
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetFormat()", result)
+
+        return self
+
+    def set_name(self, name):
+        self.c_schema._assert_valid()
+
+        cdef int result
+        if name is None:
+            result = ArrowSchemaSetName(self._ptr, NULL)
+        else:
+            name = str(name)
+            result = ArrowSchemaSetName(self._ptr, name.encode("UTF-u"))
+
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetName()", result)
+
+        return self
+
+    def allocate_children(self, int n):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaAllocateChildren(self._ptr, n)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaAllocateChildren()", result)
+
+        return self
+
+    def set_child(self, int64_t i, name, CSchema child_src):
+        self.c_schema._assert_valid()
+
+        if i < 0 or i >= self._ptr.n_children:
+            raise IndexError(f"Index out of range: {i}")
+
+        if self._ptr.children[i].release != NULL:
+            ArrowSchemaRelease(self._ptr.children[i])
+
+        cdef int result = ArrowSchemaDeepCopy(child_src._ptr, self._ptr.children[i])
+        if result != NANOARROW_OK:
+            Error.raise_error("", result)
+
+        if name is not None:
+            name = str(name)
+            result = ArrowSchemaSetName(self._ptr.children[i], name.encode("UTF-8"))
+
+        return self
+
+    def set_nullable(self, nullable):
+        if nullable:
+            self._ptr.flags = self._ptr.flags | ARROW_FLAG_NULLABLE
+        else:
+            self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_NULLABLE
+
+        return self
+
+    def finish(self):
+        self.c_schema._assert_valid()
+
+        return self.c_schema
+
 
 cdef class CArray:
     """Low-level ArrowArray wrapper
