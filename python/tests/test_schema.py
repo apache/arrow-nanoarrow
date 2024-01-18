@@ -81,17 +81,27 @@ def test_schema_decimal():
 
 
 def test_schema_create_struct():
+    # Make sure we can use just a list
     schema_obj = na.struct([na.Type.INT32])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
     assert schema_obj.child(0).name is None
 
+    # Make sure we can use a list of two-tuples
     schema_obj = na.struct([("col_name", na.Type.INT32)])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
     assert schema_obj.child(0).name == "col_name"
 
+    # Make sure we can use a dictionary to specify fields
     schema_obj = na.struct({"col_name": na.Type.INT32})
+    assert schema_obj.type == na.Type.STRUCT
+    assert schema_obj.child(0).type == na.Type.INT32
+    assert schema_obj.child(0).name == "col_name"
+
+    # Make sure we can use a Schema when constructing fields (and that
+    # fild names are taken from the input)
+    schema_obj = na.struct([schema_obj.child(0)])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
     assert schema_obj.child(0).name == "col_name"

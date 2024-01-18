@@ -142,6 +142,9 @@ class Schema:
         for i in range(self.n_children):
             yield self.child(i)
 
+    def __arrow_c_schema__(self):
+        return self._c_schema.__arrow_c_schema__()
+
 
 def int32(nullable=True) -> Schema:
     return Schema(Type.INT32, nullable=nullable)
