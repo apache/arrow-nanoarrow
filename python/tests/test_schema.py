@@ -68,6 +68,18 @@ def test_schema_timestamp():
     assert schema_obj.timezone == "America/Halifax"
 
 
+def test_schema_decimal():
+    schema_obj = na.decimal128(10, 3)
+    assert schema_obj.type == na.Type.DECIMAL128
+    assert schema_obj.precision == 10
+    assert schema_obj.scale == 3
+
+    schema_obj = na.decimal256(10, 3)
+    assert schema_obj.type == na.Type.DECIMAL256
+    assert schema_obj.precision == 10
+    assert schema_obj.scale == 3
+
+
 def test_schema_create_struct():
     schema_obj = na.struct([na.Type.INT32])
     assert schema_obj.type == na.Type.STRUCT

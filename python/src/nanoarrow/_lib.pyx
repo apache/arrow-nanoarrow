@@ -594,7 +594,7 @@ cdef class CSchemaView:
         return _lib_utils.schema_view_repr(self)
 
 
-cdef class CSchemaFactory:
+cdef class CSchemaBuilder:
     cdef CSchema c_schema
     cdef ArrowSchema* _ptr
 
@@ -606,10 +606,10 @@ cdef class CSchemaFactory:
 
     @staticmethod
     def allocate():
-        return CSchemaFactory(CSchema.allocate())
+        return CSchemaBuilder(CSchema.allocate())
 
     def child(self, int64_t i):
-        return CSchemaFactory(self.c_schema.child(i))
+        return CSchemaBuilder(self.c_schema.child(i))
 
     def set_type(self, int type):
         self.c_schema._assert_valid()
@@ -619,6 +619,13 @@ cdef class CSchemaFactory:
             Error.raise_error("ArrowSchemaSetType()", result)
 
         return self
+
+    def set_type_decimal(self, int type, int precision, int scale):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type, precision, scale)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetType()", result)
 
     def set_type_fixed_size(self, int type, int fixed_size):
         self.c_schema._assert_valid()

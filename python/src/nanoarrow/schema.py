@@ -18,7 +18,7 @@
 import enum
 from typing import Union
 
-from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaFactory, CSchemaView
+from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaBuilder, CSchemaView
 from nanoarrow.c_lib import c_schema
 
 
@@ -65,7 +65,7 @@ class Type(enum.Enum):
 
     def __arrow_c_schema__(self):
         # This will only work for parameter-free types
-        c_schema = CSchemaFactory.allocate().set_type(self.value).finish()
+        c_schema = CSchemaBuilder.allocate().set_type(self.value).finish()
         return c_schema._capsule
 
 
@@ -122,6 +122,14 @@ class Schema:
             return self._c_schema_view.timezone
 
     @property
+    def precision(self) -> int:
+        return self._c_schema_view.decimal_precision
+
+    @property
+    def scale(self) -> int:
+        return self._c_schema_view.decimal_scale
+
+    @property
     def n_children(self) -> int:
         return self._c_schema.n_children
 
@@ -132,7 +140,7 @@ class Schema:
     @property
     def children(self):
         for i in range(self.n_children):
-            return self.child(i)
+            yield self.child(i)
 
 
 def int32(nullable=True) -> Schema:
@@ -150,12 +158,20 @@ def timestamp(unit, timezone=None, nullable=True) -> Schema:
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
 
+def decimal128(precision: int, scale: int) -> Schema:
+    return Schema(Type.DECIMAL128, precision=precision, scale=scale)
+
+
+def decimal256(precision: int, scale: int) -> Schema:
+    return Schema(Type.DECIMAL256, precision=precision, scale=scale)
+
+
 def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
 def _c_schema_from_type_and_params(type: Type, params: dict, nullable: bool):
-    factory = CSchemaFactory.allocate()
+    factory = CSchemaBuilder.allocate()
 
     if type == Type.STRUCT:
         fields = _clean_fields(params.pop("fields"))
@@ -164,6 +180,11 @@ def _c_schema_from_type_and_params(type: Type, params: dict, nullable: bool):
         for i, item in enumerate(fields):
             name, c_schema = item
             factory.set_child(i, name, c_schema)
+
+    elif type.value in CSchemaView._decimal_types:
+        precision = int(params.pop("precision"))
+        scale = int(params.pop("scale"))
+        factory.set_type_decimal(type.value, precision, scale)
 
     elif type.value in CSchemaView._time_unit_types:
         time_unit = params.pop("unit")

@@ -33,6 +33,8 @@ from nanoarrow.schema import (  # noqa: F401
     int32,
     binary,
     timestamp,
+    decimal128,
+    decimal256,
     struct,
 )
 from nanoarrow._version import __version__  # noqa: F401
