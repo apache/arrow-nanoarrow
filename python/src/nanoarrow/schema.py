@@ -16,6 +16,7 @@
 # under the License.
 
 import enum
+import reprlib
 from typing import Union
 
 from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaBuilder, CSchemaView
@@ -253,18 +254,18 @@ class Schema:
         return self._c_schema_view.decimal_scale
 
     @property
-    def n_children(self) -> int:
+    def n_fields(self) -> int:
         """Number of child Schemas
 
         >>> import nanoarrow as na
         >>> schema = na.struct({"col1": na.int32()})
-        >>> schema.n_children
+        >>> schema.n_fields
         1
         """
 
         return self._c_schema.n_children
 
-    def child(self, i):
+    def field(self, i):
         """Extract a child Schema
 
         >>> import nanoarrow as na
@@ -277,7 +278,7 @@ class Schema:
         return Schema(self._c_schema.child(i).__deepcopy__())
 
     @property
-    def children(self):
+    def fields(self):
         """Iterate over child Schemas
 
         >>> import nanoarrow as na
@@ -287,8 +288,11 @@ class Schema:
         ...
         col1
         """
-        for i in range(self.n_children):
-            yield self.child(i)
+        for i in range(self.n_fields):
+            yield self.field(i)
+
+    def __repr__(self) -> str:
+        return _schema_repr(self)
 
     def __arrow_c_schema__(self):
         return self._c_schema.__arrow_c_schema__()
@@ -514,3 +518,53 @@ def _clean_fields(fields):
                 fields_clean.append((None, c_schema(item)))
 
         return fields_clean
+
+
+def _schema_repr(obj):
+    out = f"Schema({_schema_param_repr('type', obj.type)}"
+
+    if obj.name is None:
+        out += ", name=False"
+    elif obj.name:
+        out += f", name={_schema_param_repr('name', obj.name)}"
+
+    if obj._c_schema_view.type_id not in _PARAM_NAMES:
+        param_names = []
+    else:
+        param_names = _PARAM_NAMES[obj._c_schema_view.type_id]
+
+    for name in param_names:
+        out += ", "
+        param_repr = f"{name}={_schema_param_repr(name, getattr(obj, name))}"
+        out += param_repr
+
+    if not obj.nullable:
+        out += ", nullable=False"
+
+    out += ")"
+    return out
+
+
+def _schema_param_repr(name, value):
+    if name == "type":
+        return f"{value.name}"
+    elif name == "unit":
+        return f"{value.name}"
+    elif name == "fields":
+        # It would be nice to indent this/get it on multiple lines since
+        # most output will be uncomfortably wide even with the abbreviated repr
+        return reprlib.Repr().repr(list(value))
+    else:
+        return reprlib.Repr().repr(value)
+
+
+_PARAM_NAMES = {
+    CArrowType.FIXED_SIZE_BINARY: ("byte_width",),
+    CArrowType.TIMESTAMP: ("unit", "timezone"),
+    CArrowType.TIME32: ("unit",),
+    CArrowType.TIME64: ("unit",),
+    CArrowType.DURATION: ("unit",),
+    CArrowType.DECIMAL128: ("precision", "scale"),
+    CArrowType.DECIMAL256: ("precision", "scale"),
+    CArrowType.STRUCT: ("fields",),
+}
