@@ -297,6 +297,59 @@ test_r() {
   popd
 }
 
+activate_or_create_venv() {
+  if [ ! -z "${NANOARROW_PYTHON_VENV}" ]; then
+    show_info "Activating virtual environment at ${NANOARROW_PYTHON_VENV}"
+    # bash on Windows needs venv/Scripts/activate instead of venv/bin/activate
+    source "${NANOARROW_PYTHON_VENV}/bin/activate" || source "${NANOARROW_PYTHON_VENV}/Scripts/activate"
+  else
+    # Try python3 first, then try regular python (e.g., Windows)
+    if [ -z "${PYTHON_BIN}" ] && python3 --version >/dev/null; then
+      PYTHON_BIN=python3
+    elif [ -z "${PYTHON_BIN}" ]; then
+      PYTHON_BIN=python
+    fi
+
+    show_info "Creating temporary virtual environment using ${PYTHON_BIN}..."
+    "${PYTHON_BIN}" -m venv "${NANOARROW_TMPDIR}/venv"
+    # bash on Windows needs venv/Scripts/activate instead of venv/bin/activate
+    source "${NANOARROW_TMPDIR}/venv/bin/activate" || source "${NANOARROW_TMPDIR}/venv/Scripts/activate"
+    python -m pip install --upgrade pip
+  fi
+}
+
+test_python() {
+  show_header "Build and test Python package"
+  activate_or_create_venv
+
+  show_info "Installing build utilities"
+  python -m pip install --upgrade build
+
+  pushd "${NANOARROW_SOURCE_DIR}/python"
+
+  show_info "Building Python package"
+  rm -rf "${NANOARROW_TMPDIR}/python"
+  python -m build --wheel --outdir "${NANOARROW_TMPDIR}/python"
+  PYTHON_WHEEL_NAME=$(ls "${NANOARROW_TMPDIR}/python" | grep -e ".whl")
+
+  # On Windows bash, pip install needs a Windows-style path
+  if uname | grep -e "_NT-" >/dev/null; then
+    pushd "${NANOARROW_TMPDIR}"
+    PYTHON_WHEEL_PATH="$(pwd -W)/python/${PYTHON_WHEEL_NAME}"
+    popd
+  else
+    PYTHON_WHEEL_PATH="${NANOARROW_TMPDIR}/python/${PYTHON_WHEEL_NAME}"
+  fi
+
+  show_info "Installing Python package"
+  python -m pip install --force-reinstall "${PYTHON_WHEEL_PATH}[verify]"
+
+  show_info "Testing wheel"
+  python -m pytest -vv
+
+  popd
+}
+
 ensure_source_directory() {
   show_header "Ensuring source directory"
 
@@ -346,6 +399,10 @@ test_source_distribution() {
     test_r
   fi
 
+  if [ ${TEST_PYTHON} -gt 0 ]; then
+    test_python
+  fi
+
   popd
 }
 
@@ -359,6 +416,7 @@ test_source_distribution() {
 : ${TEST_C:=${TEST_SOURCE}}
 : ${TEST_C_BUNDLED:=${TEST_C}}
 : ${TEST_R:=${TEST_SOURCE}}
+: ${TEST_PYTHON:=${TEST_SOURCE}}
 
 TEST_SUCCESS=no
 

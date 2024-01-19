@@ -22,15 +22,19 @@ dynamic = ["version"]
 readme = "README.md"
 description = "Python bindings to the nanoarrow C library"
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
+maintainers = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.8"
 
 [project.optional-dependencies]
 test = ["pyarrow", "pytest", "numpy"]
+verify = ["pytest", "numpy"]
 
 [project.urls]
-homepage = "https://arrow.apache.org"
-repository = "https://github.com/apache/arrow-nanoarrow"
+Homepage = "https://arrow.apache.org"
+Repository = "https://github.com/apache/arrow-nanoarrow"
+Issues = "https://github.com/apache/arrow-nanoarrow/issues"
+Changelog = "https://github.com/apache/arrow-nanoarrow/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = [
