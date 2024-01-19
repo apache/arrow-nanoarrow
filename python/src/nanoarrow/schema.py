@@ -344,22 +344,27 @@ def time64(unit, nullable=True) -> Schema:
 
 
 def timestamp(unit, timezone=None, nullable=True) -> Schema:
-    """Create an instance of a timestamp type"""
+    """Create an instance of a timestamp type."""
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
 
+def duration(unit, nullable=True):
+    """Create an instance of a timestamp type."""
+    return Schema(Type.DURATION, unit=unit, nullable=nullable)
+
+
 def decimal128(precision: int, scale: int) -> Schema:
-    """Create an instance of a 128-bit decimal type"""
+    """Create an instance of a 128-bit decimal type."""
     return Schema(Type.DECIMAL128, precision=precision, scale=scale)
 
 
 def decimal256(precision: int, scale: int) -> Schema:
-    """Create an instance of a 256-bit decimal type"""
+    """Create an instance of a 256-bit decimal type."""
     return Schema(Type.DECIMAL256, precision=precision, scale=scale)
 
 
 def struct(fields, nullable=True) -> Schema:
-    """Create a type representing a named sequence of fields"""
+    """Create a type representing a named sequence of fields."""
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 

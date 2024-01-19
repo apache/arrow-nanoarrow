@@ -48,6 +48,7 @@ from nanoarrow.schema import (  # noqa: F401
     time32,
     time64,
     timestamp,
+    duration,
     decimal128,
     decimal256,
     struct,

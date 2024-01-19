@@ -96,6 +96,12 @@ def test_schema_timestamp():
     assert schema_obj.timezone == "America/Halifax"
 
 
+def test_schema_duration():
+    schema_obj = na.duration(na.TimeUnit.SECOND)
+    assert schema_obj.type == na.Type.DURATION
+    assert schema_obj.unit == na.TimeUnit.SECOND
+
+
 def test_schema_decimal():
     schema_obj = na.decimal128(10, 3)
     assert schema_obj.type == na.Type.DECIMAL128
