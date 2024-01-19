@@ -240,6 +240,7 @@ class Schema:
     @property
     def children(self):
         """Iterate over child Schemas
+
         >>> import nanoarrow as na
         >>> schema = na.struct({"col1": na.int32()})
         >>> for child in schema.children:
@@ -255,10 +256,12 @@ class Schema:
 
 
 def int32(nullable=True) -> Schema:
+    """Create an instance of a signed 32-bit integer type."""
     return Schema(Type.INT32, nullable=nullable)
 
 
 def binary(byte_width=None, nullable=True) -> Schema:
+    """Create an instance of a variable or fixed-width binary type"""
     if byte_width is not None:
         return Schema(Type.FIXED_SIZE_BINARY, byte_width=byte_width, nullable=nullable)
     else:
@@ -266,18 +269,22 @@ def binary(byte_width=None, nullable=True) -> Schema:
 
 
 def timestamp(unit, timezone=None, nullable=True) -> Schema:
+    """Create an instance of a timestamp type"""
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
 
 def decimal128(precision: int, scale: int) -> Schema:
+    """Create an instance of a 128-bit decimal type"""
     return Schema(Type.DECIMAL128, precision=precision, scale=scale)
 
 
 def decimal256(precision: int, scale: int) -> Schema:
+    """Create an instance of a 256-bit decimal type"""
     return Schema(Type.DECIMAL256, precision=precision, scale=scale)
 
 
 def struct(fields, nullable=True) -> Schema:
+    """Create a type representing a named sequence of fields"""
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
