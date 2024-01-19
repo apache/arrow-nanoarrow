@@ -96,7 +96,7 @@ class Schema:
     ) -> None:
         """Create Schema objects
 
-        Create Schema objects from (1) a :class:`Type` or (1) any object supported by
+        Create Schema objects from (1) a :class:`Type` or (2) any object supported by
         :func:`c_schema`. When creating a class from a  a :class:`Type`, some
         parameters may be required.
 
