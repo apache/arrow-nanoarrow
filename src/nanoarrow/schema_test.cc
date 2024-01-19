@@ -233,6 +233,21 @@ TEST(SchemaTest, SchemaInitDateTime) {
             EINVAL);
 
   ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIME32,
+                                       NANOARROW_TIME_UNIT_MICRO, nullptr),
+            EINVAL);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIME64,
+                                       NANOARROW_TIME_UNIT_SECOND, "non-null timezone"),
+            EINVAL);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_TIME64,
+                                       NANOARROW_TIME_UNIT_MILLI, nullptr),
+            EINVAL);
+
+  ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeDateTime(&schema, NANOARROW_TYPE_DURATION,
                                        NANOARROW_TIME_UNIT_SECOND, "non-null timezone"),
             EINVAL);

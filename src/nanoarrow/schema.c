@@ -296,10 +296,33 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum Arrow
   int n_chars;
   switch (type) {
     case NANOARROW_TYPE_TIME32:
+      if (timezone != NULL) {
+        return EINVAL;
+      }
+
+      switch (time_unit) {
+        case NANOARROW_TIME_UNIT_MICRO:
+        case NANOARROW_TIME_UNIT_NANO:
+          return EINVAL;
+        default:
+          break;
+      }
+
+      n_chars = snprintf(buffer, sizeof(buffer), "tt%s", time_unit_str);
+      break;
     case NANOARROW_TYPE_TIME64:
       if (timezone != NULL) {
         return EINVAL;
       }
+
+      switch (time_unit) {
+        case NANOARROW_TIME_UNIT_SECOND:
+        case NANOARROW_TIME_UNIT_MILLI:
+          return EINVAL;
+        default:
+          break;
+      }
+
       n_chars = snprintf(buffer, sizeof(buffer), "tt%s", time_unit_str);
       break;
     case NANOARROW_TYPE_TIMESTAMP:
