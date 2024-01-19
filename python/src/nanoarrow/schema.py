@@ -600,6 +600,8 @@ def timestamp(
     >>> import nanoarrow as na
     >>> na.timestamp("s")
     Schema(TIMESTAMP, unit=SECOND)
+    >>> na.timestamp("s", timezone="America/Halifax")
+    Schema(TIMESTAMP, unit=SECOND, timezone='America/Halifax')
     """
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
@@ -611,6 +613,8 @@ def duration(unit, nullable: bool = True):
     --------
 
     >>> import nanoarrow as na
+    >>> na.duration("s")
+    Schema(DURATION, unit=SECOND)
     """
     return Schema(Type.DURATION, unit=unit, nullable=nullable)
 
@@ -622,6 +626,8 @@ def interval_months(nullable: bool = True):
     --------
 
     >>> import nanoarrow as na
+    >>> na.interval_months()
+    Schema(INTERVAL_MONTHS)
     """
     return Schema(Type.INTERVAL_MONTHS, nullable=nullable)
 
@@ -633,6 +639,8 @@ def interval_day_time(nullable: bool = True):
     --------
 
     >>> import nanoarrow as na
+    >>> na.interval_day_time()
+    Schema(INTERVAL_DAY_TIME)
     """
     return Schema(Type.INTERVAL_DAY_TIME, nullable=nullable)
 
@@ -645,6 +653,8 @@ def interval_month_day_nano(nullable: bool = True):
     --------
 
     >>> import nanoarrow as na
+    >>> na.interval_month_day_nano()
+    Schema(INTERVAL_MONTH_DAY_NANO)
     """
     return Schema(Type.INTERVAL_MONTH_DAY_NANO, nullable=nullable)
 
@@ -656,6 +666,8 @@ def decimal128(precision: int, scale: int, nullable: bool = True) -> Schema:
     --------
 
     >>> import nanoarrow as na
+    >>> na.decimal128(10, 3)
+    Schema(DECIMAL128, precision=10, scale=3)
     """
     return Schema(Type.DECIMAL128, precision=precision, scale=scale, nullable=nullable)
 
@@ -667,6 +679,8 @@ def decimal256(precision: int, scale: int, nullable: bool = True) -> Schema:
     --------
 
     >>> import nanoarrow as na
+    >>> na.decimal256(10, 3)
+    Schema(DECIMAL256, precision=10, scale=3)
     """
     return Schema(Type.DECIMAL256, precision=precision, scale=scale, nullable=nullable)
 
@@ -678,6 +692,12 @@ def struct(fields, nullable=True) -> Schema:
     --------
 
     >>> import nanoarrow as na
+    >>> na.struct([na.int32()])
+    Schema(STRUCT, fields=[Schema(INT32)])
+    >>> na.struct([("col1", na.int32())])
+    Schema(STRUCT, fields=[Schema(INT32, name='col1')])
+    >>> na.struct({"col1": na.int32()})
+    Schema(STRUCT, fields=[Schema(INT32, name='col1')])
     """
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
@@ -695,8 +715,8 @@ def _c_schema_from_type_and_params(
 
         factory.set_format("+s").allocate_children(len(fields))
         for i, item in enumerate(fields):
-            name, c_schema = item
-            factory.set_child(i, name, c_schema)
+            child_name, c_schema = item
+            factory.set_child(i, child_name, c_schema)
 
     elif type.value in CSchemaView._decimal_types:
         precision = int(params.pop("precision"))

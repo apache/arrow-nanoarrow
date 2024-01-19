@@ -152,7 +152,7 @@ def test_schema_decimal():
     assert "scale=3" in repr(schema_obj)
 
 
-def test_schema_create_struct():
+def test_schema_struct():
     # Make sure we can use just a list
     schema_obj = na.struct([na.Type.INT32])
     assert schema_obj.type == na.Type.STRUCT
