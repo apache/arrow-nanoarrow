@@ -200,7 +200,7 @@ class Schema:
         Returns ``None`` for types for which this property is not relevant.
 
         >>> import nanoarrow as na
-        >>> na.binary(123).byte_width
+        >>> na.fixed_size_binary(123).byte_width
         123
         """
 
@@ -302,153 +302,383 @@ class Schema:
         return self._c_schema.__arrow_c_schema__()
 
 
-def null(nullable=True) -> Schema:
-    """Create an instance of a null type."""
+def null(nullable: bool = True) -> Schema:
+    """Create an instance of a null type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.null()
+    Schema(NULL)
+    """
     return Schema(Type.NULL, nullable=nullable)
 
 
-def bool(nullable=True) -> Schema:
-    """Create an instance of a boolean type."""
+def bool(nullable: bool = True) -> Schema:
+    """Create an instance of a boolean type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.bool()
+    Schema(BOOL)
+    """
     return Schema(Type.BOOL, nullable=nullable)
 
 
-def int8(nullable=True) -> Schema:
-    """Create an instance of a signed 8-bit integer type."""
+def int8(nullable: bool = True) -> Schema:
+    """Create an instance of a signed 8-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.int8()
+    Schema(INT8)
+    """
     return Schema(Type.INT8, nullable=nullable)
 
 
-def uint8(nullable=True) -> Schema:
-    """Create an instance of an unsigned 8-bit integer type."""
+def uint8(nullable: bool = True) -> Schema:
+    """Create an instance of an unsigned 8-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.uint8()
+    Schema(UINT8)
+    """
     return Schema(Type.UINT8, nullable=nullable)
 
 
-def int16(nullable=True) -> Schema:
-    """Create an instance of a signed 16-bit integer type."""
+def int16(nullable: bool = True) -> Schema:
+    """Create an instance of a signed 16-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.int16()
+    Schema(INT16)
+    """
     return Schema(Type.INT16, nullable=nullable)
 
 
-def uint16(nullable=True) -> Schema:
-    """Create an instance of an unsigned 16-bit integer type."""
+def uint16(nullable: bool = True) -> Schema:
+    """Create an instance of an unsigned 16-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.uint16()
+    Schema(UINT16)
+    """
     return Schema(Type.UINT16, nullable=nullable)
 
 
-def int32(nullable=True) -> Schema:
-    """Create an instance of a signed 32-bit integer type."""
+def int32(nullable: bool = True) -> Schema:
+    """Create an instance of a signed 32-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.int32()
+    Schema(INT32)
+    """
     return Schema(Type.INT32, nullable=nullable)
 
 
-def uint32(nullable=True) -> Schema:
-    """Create an instance of an unsigned 32-bit integer type."""
+def uint32(nullable: bool = True) -> Schema:
+    """Create an instance of an unsigned 32-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.uint32()
+    Schema(UINT32)
+    """
     return Schema(Type.UINT32, nullable=nullable)
 
 
-def int64(nullable=True) -> Schema:
-    """Create an instance of a signed 32-bit integer type."""
+def int64(nullable: bool = True) -> Schema:
+    """Create an instance of a signed 32-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.int64()
+    Schema(INT64)
+    """
     return Schema(Type.INT64, nullable=nullable)
 
 
-def uint64(nullable=True) -> Schema:
-    """Create an instance of an unsigned 32-bit integer type."""
+def uint64(nullable: bool = True) -> Schema:
+    """Create an instance of an unsigned 32-bit integer type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.uint64()
+    Schema(UINT64)
+    """
     return Schema(Type.UINT64, nullable=nullable)
 
 
-def float16(nullable=True) -> Schema:
-    """Create an instance of a 16-bit floating-point type."""
+def float16(nullable: bool = True) -> Schema:
+    """Create an instance of a 16-bit floating-point type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.float16()
+    Schema(HALF_FLOAT)
+    """
     return Schema(Type.HALF_FLOAT, nullable=nullable)
 
 
-def float32(nullable=True) -> Schema:
-    """Create an instance of a 32-bit floating-point type."""
+def float32(nullable: bool = True) -> Schema:
+    """Create an instance of a 32-bit floating-point type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.float32()
+    Schema(FLOAT)
+    """
     return Schema(Type.FLOAT, nullable=nullable)
 
 
-def float64(nullable=True) -> Schema:
-    """Create an instance of a 64-bit floating-point type."""
+def float64(nullable: bool = True) -> Schema:
+    """Create an instance of a 64-bit floating-point type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.float64()
+    Schema(DOUBLE)
+    """
     return Schema(Type.DOUBLE, nullable=nullable)
 
 
-def string(nullable=True) -> Schema:
-    """Create an instance of a variable-length UTF-8 encoded string type."""
+def string(nullable: bool = True) -> Schema:
+    """Create an instance of a variable-length UTF-8 encoded string type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.string()
+    Schema(STRING)
+    """
     return Schema(Type.STRING, nullable=nullable)
 
 
-def large_string(nullable=True) -> Schema:
+def large_string(nullable: bool = True) -> Schema:
     """Create an instance of a variable-length UTF-8 encoded string type
-    that uses 64-bit offsets."""
+    that uses 64-bit offsets.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.large_string()
+    Schema(LARGE_STRING)
+    """
     return Schema(Type.LARGE_STRING, nullable=nullable)
 
 
-def binary(byte_width=None, nullable=True) -> Schema:
-    """Create an instance of a variable or fixed-width binary type."""
-    if byte_width is not None:
-        return Schema(Type.FIXED_SIZE_BINARY, byte_width=byte_width, nullable=nullable)
-    else:
-        return Schema(Type.BINARY, nullable=nullable)
+def binary(nullable: bool = True) -> Schema:
+    """Create an instance of a variable or fixed-width binary type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.binary()
+    Schema(BINARY)
+    """
+    return Schema(Type.BINARY, nullable=nullable)
 
 
-def large_binary(nullable=True) -> Schema:
-    """Create an instance of a variable-length binary type that uses 64-bit offsets."""
+def large_binary(nullable: bool = True) -> Schema:
+    """Create an instance of a variable-length binary type that uses 64-bit offsets.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.large_binary()
+    Schema(LARGE_BINARY)
+    """
     return Schema(Type.LARGE_BINARY, nullable=nullable)
 
 
-def date32(nullable=True) -> Schema:
-    """Create an instance of a 32-bit date type (days since 1970-01-01)."""
+def fixed_size_binary(byte_width, nullable: bool = True) -> Schema:
+    """Create an instance of a variable or fixed-width binary type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.fixed_size_binary(123)
+    Schema(FIXED_SIZE_BINARY, byte_width=123)
+    """
+    return Schema(Type.FIXED_SIZE_BINARY, byte_width=byte_width, nullable=nullable)
+
+
+def date32(nullable: bool = True) -> Schema:
+    """Create an instance of a 32-bit date type (days since 1970-01-01).
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.date32()
+    Schema(DATE32)
+    """
     return Schema(Type.DATE32, nullable=nullable)
 
 
-def date64(nullable=True) -> Schema:
-    """Create an instance of a 64-bit date type (milliseconds since 1970-01-01)."""
+def date64(nullable: bool = True) -> Schema:
+    """Create an instance of a 64-bit date type (milliseconds since 1970-01-01).
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.date64()
+    Schema(DATE64)
+    """
     return Schema(Type.DATE64, nullable=nullable)
 
 
-def time32(unit, nullable=True) -> Schema:
-    """Create an instance of a 32-bit time of day type."""
+def time32(unit: Union[str, TimeUnit], nullable: bool = True) -> Schema:
+    """Create an instance of a 32-bit time of day type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.time32("s")
+    Schema(TIME32, unit=SECOND)
+    """
     return Schema(Type.TIME32, unit=unit, nullable=nullable)
 
 
-def time64(unit, nullable=True) -> Schema:
-    """Create an instance of a 64-bit time of day type."""
+def time64(unit: Union[str, TimeUnit], nullable: bool = True) -> Schema:
+    """Create an instance of a 64-bit time of day type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.time64("us")
+    Schema(TIME64, unit=MICRO)
+    """
     return Schema(Type.TIME64, unit=unit, nullable=nullable)
 
 
-def timestamp(unit, timezone=None, nullable=True) -> Schema:
-    """Create an instance of a timestamp type."""
+def timestamp(
+    unit: Union[str, TimeUnit], timezone: Union[str, None] = None, nullable: bool = True
+) -> Schema:
+    """Create an instance of a timestamp type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.timestamp("s")
+    Schema(TIMESTAMP, unit=SECOND)
+    """
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
 
-def duration(unit, nullable=True):
-    """Create an instance of a duration type."""
+def duration(unit, nullable: bool = True):
+    """Create an instance of a duration type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    """
     return Schema(Type.DURATION, unit=unit, nullable=nullable)
 
 
-def interval_months(nullable=True):
-    """Create an instance of an interval type measured in months."""
+def interval_months(nullable: bool = True):
+    """Create an instance of an interval type measured in months.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    """
     return Schema(Type.INTERVAL_MONTHS, nullable=nullable)
 
 
-def interval_day_time(nullable=True):
-    """Create an instance of an interval type measured as a day/time pair."""
+def interval_day_time(nullable: bool = True):
+    """Create an instance of an interval type measured as a day/time pair.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    """
     return Schema(Type.INTERVAL_DAY_TIME, nullable=nullable)
 
 
-def interval_month_day_nano(nullable=True):
+def interval_month_day_nano(nullable: bool = True):
     """Create an instance of an interval type measured as a month/day/nanosecond
-    tuple."""
+    tuple.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    """
     return Schema(Type.INTERVAL_MONTH_DAY_NANO, nullable=nullable)
 
 
-def decimal128(precision: int, scale: int) -> Schema:
-    """Create an instance of a 128-bit decimal type."""
-    return Schema(Type.DECIMAL128, precision=precision, scale=scale)
+def decimal128(precision: int, scale: int, nullable: bool = True) -> Schema:
+    """Create an instance of a 128-bit decimal type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    """
+    return Schema(Type.DECIMAL128, precision=precision, scale=scale, nullable=nullable)
 
 
-def decimal256(precision: int, scale: int) -> Schema:
-    """Create an instance of a 256-bit decimal type."""
-    return Schema(Type.DECIMAL256, precision=precision, scale=scale)
+def decimal256(precision: int, scale: int, nullable: bool = True) -> Schema:
+    """Create an instance of a 256-bit decimal type.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    """
+    return Schema(Type.DECIMAL256, precision=precision, scale=scale, nullable=nullable)
 
 
 def struct(fields, nullable=True) -> Schema:
-    """Create a type representing a named sequence of fields."""
+    """Create a type representing a named sequence of fields.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    """
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
@@ -538,6 +768,9 @@ def _schema_repr(obj):
         param_names = _PARAM_NAMES[obj._c_schema_view.type_id]
 
     for name in param_names:
+        value = getattr(obj, name)
+        if value is None:
+            continue
         out += ", "
         param_repr = f"{name}={_schema_param_repr(name, getattr(obj, name))}"
         out += param_repr

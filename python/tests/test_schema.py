@@ -99,14 +99,11 @@ def test_schema_simple():
     assert na.interval_month_day_nano().type == na.Type.INTERVAL_MONTH_DAY_NANO
 
 
-def test_schema_binary():
-    schema_obj = na.binary(byte_width=123)
+def test_schema_fixed_size_binary():
+    schema_obj = na.fixed_size_binary(byte_width=123)
     assert schema_obj.type == na.Type.FIXED_SIZE_BINARY
     assert schema_obj.byte_width == 123
     assert "byte_width=123" in repr(schema_obj)
-
-    schema_obj = na.binary()
-    assert schema_obj.type == na.Type.BINARY
 
 
 def test_schema_time():

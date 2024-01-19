@@ -47,6 +47,7 @@ from nanoarrow.schema import (  # noqa: F401
     large_string,
     binary,
     large_binary,
+    fixed_size_binary,
     date32,
     date64,
     time32,
