@@ -25,6 +25,15 @@ def test_type_schema_protocol():
     assert c_schema.format == "i"
 
 
+def test_time_unit_create():
+    assert na.TimeUnit.create("s") == na.TimeUnit.SECOND
+    assert na.TimeUnit.create("ms") == na.TimeUnit.MILLI
+    assert na.TimeUnit.create("us") == na.TimeUnit.MICRO
+    assert na.TimeUnit.create("ns") == na.TimeUnit.NANO
+
+    assert na.TimeUnit.create(na.TimeUnit.SECOND) == na.TimeUnit.SECOND
+
+
 def test_schema_create_c_schema():
     schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32

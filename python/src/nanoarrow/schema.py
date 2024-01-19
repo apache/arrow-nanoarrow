@@ -81,6 +81,30 @@ class TimeUnit(enum.Enum):
     MICRO = CArrowTimeUnit.MICRO
     NANO = CArrowTimeUnit.NANO
 
+    @staticmethod
+    def create(obj):
+        """Create a TimeUnit from parameter input.
+
+        This constructor will accept the abbreviations "s", "ms", "us", and "ns"
+        and return the appropriate enumerator value.
+
+        >>> import nanoarrow as na
+        >>> na.TimeUnit.create("s")
+        <TimeUnit.SECOND: 0>
+        """
+
+        if isinstance(obj, str):
+            if obj == "s":
+                return TimeUnit.SECOND
+            elif obj == "ms":
+                return TimeUnit.MILLI
+            elif obj == "us":
+                return TimeUnit.MICRO
+            elif obj == "ns":
+                return TimeUnit.NANO
+
+        return TimeUnit(obj)
+
 
 class Schema:
     """The Schema is nanoarrow's data type representation, encompasing the role
@@ -448,7 +472,9 @@ def _c_schema_from_type_and_params(
         else:
             timezone = None
 
-        factory.set_type_date_time(type.value, TimeUnit(time_unit).value, timezone)
+        factory.set_type_date_time(
+            type.value, TimeUnit.create(time_unit).value, timezone
+        )
 
     elif type == Type.FIXED_SIZE_BINARY:
         factory.set_type_fixed_size(type.value, int(params.pop("byte_width")))
