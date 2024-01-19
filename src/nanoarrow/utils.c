@@ -24,8 +24,6 @@
 
 #include "nanoarrow.h"
 
-#define NANOARROW_UNUSED(x) (void)(x)
-
 const char* ArrowNanoarrowVersion(void) { return NANOARROW_VERSION; }
 
 int ArrowNanoarrowVersionInt(void) { return NANOARROW_VERSION_INT; }

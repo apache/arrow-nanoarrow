@@ -19,8 +19,6 @@
 
 #include "nanoarrow.h"
 
-#define NANOARROW_UNUSED(x) (void)(x)
-
 struct BasicArrayStreamPrivate {
   struct ArrowSchema schema;
   int64_t n_arrays;

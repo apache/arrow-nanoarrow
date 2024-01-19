@@ -195,6 +195,8 @@ struct ArrowArrayStream {
 #define NANOARROW_CHECK_PRINTF_ATTRIBUTE
 #endif
 
+#define NANOARROW_UNUSED(x) (void)(x)
+
 /// \brief Return code for success.
 /// \ingroup nanoarrow-errors
 #define NANOARROW_OK 0
