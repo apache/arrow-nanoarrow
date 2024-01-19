@@ -130,9 +130,12 @@ class Schema:
 
     >>> import nanoarrow as na
     >>> import pyarrow as pa
-    >>> schema = na.Schema(na.Type.INT32)
-    >>> schema = na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
-    >>> schema = na.Schema(pa.int32())
+    >>> na.Schema(na.Type.INT32)
+    Schema(INT32)
+    >>> na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
+    Schema(DURATION, unit=SECOND)
+    >>> na.Schema(pa.int32())
+    Schema(INT32)
     """
 
     def __init__(
@@ -173,7 +176,7 @@ class Schema:
 
         >>> import nanoarrow as na
         >>> schema = na.struct({"col1": na.int32()})
-        >>> schema.child(0).name
+        >>> schema.field(0).name
         'col1'
         """
         return self._c_schema.name
@@ -271,8 +274,8 @@ class Schema:
 
         >>> import nanoarrow as na
         >>> schema = na.struct({"col1": na.int32()})
-        >>> schema.child(0).type
-        <Type.INT32: 8>
+        >>> schema.field(0)
+        Schema(INT32, name='col1')
         """
 
         # Returning a copy to reduce interdependence between Schema instances
@@ -284,8 +287,8 @@ class Schema:
 
         >>> import nanoarrow as na
         >>> schema = na.struct({"col1": na.int32()})
-        >>> for child in schema.children:
-        ...     print(child.name)
+        >>> for field in schema.fields:
+        ...     print(field.name)
         ...
         col1
         """
@@ -452,7 +455,7 @@ def struct(fields, nullable=True) -> Schema:
 def _c_schema_from_type_and_params(
     type: Type,
     params: dict,
-    name: Union[bool, None, False],
+    name: Union[bool, None, bool],
     nullable: Union[bool, None],
 ):
     factory = CSchemaBuilder.allocate()
