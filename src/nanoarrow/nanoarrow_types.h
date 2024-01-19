@@ -443,7 +443,9 @@ enum ArrowType {
   NANOARROW_TYPE_LARGE_STRING,
   NANOARROW_TYPE_LARGE_BINARY,
   NANOARROW_TYPE_LARGE_LIST,
-  NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
+  NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+  NANOARROW_TYPE_BINARY_VIEW,
+  NANOARROW_TYPE_STRING_VIEW,
 };
 
 /// \brief Get a string value of an enum ArrowType value
@@ -482,10 +484,14 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
       return "double";
     case NANOARROW_TYPE_STRING:
       return "string";
+    case NANOARROW_TYPE_STRING_VIEW:
+      return "string_view";
     case NANOARROW_TYPE_BINARY:
       return "binary";
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       return "fixed_size_binary";
+    case NANOARROW_TYPE_BINARY_VIEW:
+      return "binary_view";
     case NANOARROW_TYPE_DATE32:
       return "date32";
     case NANOARROW_TYPE_DATE64:
@@ -784,6 +790,10 @@ struct ArrowArrayView {
   /// type_id == union_type_id_map[128 + child_index]. This value may be
   /// NULL in the case where child_id == type_id.
   int8_t* union_type_id_map;
+
+  int64_t n_varidic_buffers;
+  int64_t* variadic_buffer_sizes;
+  const void** variadic_buffers;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed

@@ -100,10 +100,14 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType type) {
       return "u";
     case NANOARROW_TYPE_LARGE_STRING:
       return "U";
+    case NANOARROW_TYPE_STRING_VIEW:
+      return "vu";
     case NANOARROW_TYPE_BINARY:
       return "z";
     case NANOARROW_TYPE_LARGE_BINARY:
       return "Z";
+    case NANOARROW_TYPE_BINARY_VIEW:
+      return "vz";
 
     case NANOARROW_TYPE_DATE32:
       return "tdD";
@@ -690,6 +694,25 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
       *format_end_out = format + 1;
       return NANOARROW_OK;
 
+    // view types
+    case 'v':
+      switch (format[1]) {
+        case 'z':
+          schema_view->type = NANOARROW_TYPE_BINARY_VIEW;
+          schema_view->storage_type = NANOARROW_TYPE_BINARY_VIEW;
+          *format_end_out = format + 2;
+          return NANOARROW_OK;
+        case 'u':
+          schema_view->type = NANOARROW_TYPE_STRING_VIEW;
+          schema_view->storage_type = NANOARROW_TYPE_STRING_VIEW;
+          *format_end_out = format + 2;
+          return NANOARROW_OK;
+        default:
+          ArrowErrorSet(error, "Expected 'v' or 'u' following 'z' but found '%s'",
+                        format + 1);
+          return EINVAL;
+      }
+
     // nested types
     case '+':
       switch (format[1]) {
@@ -1055,8 +1078,10 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
     case NANOARROW_TYPE_DECIMAL256:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_DATE32:
     case NANOARROW_TYPE_DATE64:
     case NANOARROW_TYPE_INTERVAL_MONTHS:

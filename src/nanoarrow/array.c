@@ -695,6 +695,13 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     }
   }
 
+  if (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW) {
+    array_view->n_varidic_buffers = array->n_buffers - 3;
+    array_view->variadic_buffer_sizes = array->buffers[array->n_buffers - 1];
+    // array_view->variadic_buffers = ...
+    buffers_required += array_view->n_varidic_buffers + 1;
+  }
+
   // Check the number of buffers
   if (buffers_required != array->n_buffers) {
     ArrowErrorSet(error, "Expected array with %d buffer(s) but found %d buffer(s)",
