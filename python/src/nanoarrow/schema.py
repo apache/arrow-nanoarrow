@@ -255,9 +255,64 @@ class Schema:
         return self._c_schema.__arrow_c_schema__()
 
 
+def int8(nullable=True) -> Schema:
+    """Create an instance of a signed 8-bit integer type."""
+    return Schema(Type.INT8, nullable=nullable)
+
+
+def uint8(nullable=True) -> Schema:
+    """Create an instance of an unsigned 8-bit integer type."""
+    return Schema(Type.UINT8, nullable=nullable)
+
+
+def int16(nullable=True) -> Schema:
+    """Create an instance of a signed 16-bit integer type."""
+    return Schema(Type.INT16, nullable=nullable)
+
+
+def uint16(nullable=True) -> Schema:
+    """Create an instance of an unsigned 16-bit integer type."""
+    return Schema(Type.UINT16, nullable=nullable)
+
+
 def int32(nullable=True) -> Schema:
     """Create an instance of a signed 32-bit integer type."""
     return Schema(Type.INT32, nullable=nullable)
+
+
+def uint32(nullable=True) -> Schema:
+    """Create an instance of an unsigned 32-bit integer type."""
+    return Schema(Type.UINT32, nullable=nullable)
+
+
+def int64(nullable=True) -> Schema:
+    """Create an instance of a signed 32-bit integer type."""
+    return Schema(Type.INT64, nullable=nullable)
+
+
+def uint64(nullable=True) -> Schema:
+    """Create an instance of an unsigned 32-bit integer type."""
+    return Schema(Type.UINT64, nullable=nullable)
+
+
+def float16(nullable=True) -> Schema:
+    """Create an instance of a 16-bit floating-point type."""
+    return Schema(Type.HALF_FLOAT, nullable=nullable)
+
+
+def float32(nullable=True) -> Schema:
+    """Create an instance of a 32-bit floating-point type."""
+    return Schema(Type.FLOAT, nullable=nullable)
+
+
+def float64(nullable=True) -> Schema:
+    """Create an instance of a 64-bit floating-point type."""
+    return Schema(Type.DOUBLE, nullable=nullable)
+
+
+def string(nullable=True) -> Schema:
+    """Create an instance of a variable-length UTF-8 encoded string type."""
+    return Schema(Type.STRING, nullable=nullable)
 
 
 def binary(byte_width=None, nullable=True) -> Schema:

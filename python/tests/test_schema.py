@@ -49,6 +49,22 @@ def test_schema_create_no_params():
         na.Schema(na.Type.INT32, unused_param="unused_value")
 
 
+def test_schema_simple():
+    assert na.int8().type == na.Type.INT8
+    assert na.uint8().type == na.Type.UINT8
+    assert na.int16().type == na.Type.INT16
+    assert na.uint16().type == na.Type.UINT16
+    assert na.int32().type == na.Type.INT32
+    assert na.uint32().type == na.Type.UINT32
+    assert na.int64().type == na.Type.INT64
+    assert na.uint64().type == na.Type.UINT64
+    assert na.float16().type == na.Type.HALF_FLOAT
+    assert na.float32().type == na.Type.FLOAT
+    assert na.float64().type == na.Type.DOUBLE
+    assert na.string().type == na.Type.STRING
+    assert na.binary().type == na.Type.BINARY
+
+
 def test_schema_binary():
     schema_obj = na.binary(byte_width=123)
     assert schema_obj.type == na.Type.FIXED_SIZE_BINARY
