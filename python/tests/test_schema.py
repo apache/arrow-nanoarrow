@@ -62,7 +62,9 @@ def test_schema_simple():
     assert na.float32().type == na.Type.FLOAT
     assert na.float64().type == na.Type.DOUBLE
     assert na.string().type == na.Type.STRING
+    assert na.large_string().type == na.Type.LARGE_STRING
     assert na.binary().type == na.Type.BINARY
+    assert na.large_binary().type == na.Type.LARGE_BINARY
     assert na.date32().type == na.Type.DATE32
     assert na.date64().type == na.Type.DATE64
     assert na.interval_months().type == na.Type.INTERVAL_MONTHS

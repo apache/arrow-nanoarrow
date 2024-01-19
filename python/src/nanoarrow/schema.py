@@ -315,12 +315,23 @@ def string(nullable=True) -> Schema:
     return Schema(Type.STRING, nullable=nullable)
 
 
+def large_string(nullable=True) -> Schema:
+    """Create an instance of a variable-length UTF-8 encoded string type
+    that uses 64-bit offsets."""
+    return Schema(Type.LARGE_STRING, nullable=nullable)
+
+
 def binary(byte_width=None, nullable=True) -> Schema:
     """Create an instance of a variable or fixed-width binary type."""
     if byte_width is not None:
         return Schema(Type.FIXED_SIZE_BINARY, byte_width=byte_width, nullable=nullable)
     else:
         return Schema(Type.BINARY, nullable=nullable)
+
+
+def large_binary(nullable=True) -> Schema:
+    """Create an instance of a variable-length binary type that uses 64-bit offsets."""
+    return Schema(Type.LARGE_BINARY, nullable=nullable)
 
 
 def date32(nullable=True) -> Schema:
