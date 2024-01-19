@@ -325,6 +325,11 @@ def schema(obj, *, name=None, nullable=None, **params):
 def null(nullable: bool = True) -> Schema:
     """Create an instance of a null type.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -337,6 +342,11 @@ def null(nullable: bool = True) -> Schema:
 
 def bool(nullable: bool = True) -> Schema:
     """Create an instance of a boolean type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -351,6 +361,11 @@ def bool(nullable: bool = True) -> Schema:
 def int8(nullable: bool = True) -> Schema:
     """Create an instance of a signed 8-bit integer type.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -363,6 +378,11 @@ def int8(nullable: bool = True) -> Schema:
 
 def uint8(nullable: bool = True) -> Schema:
     """Create an instance of an unsigned 8-bit integer type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -377,6 +397,11 @@ def uint8(nullable: bool = True) -> Schema:
 def int16(nullable: bool = True) -> Schema:
     """Create an instance of a signed 16-bit integer type.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -389,6 +414,11 @@ def int16(nullable: bool = True) -> Schema:
 
 def uint16(nullable: bool = True) -> Schema:
     """Create an instance of an unsigned 16-bit integer type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -403,6 +433,11 @@ def uint16(nullable: bool = True) -> Schema:
 def int32(nullable: bool = True) -> Schema:
     """Create an instance of a signed 32-bit integer type.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -415,6 +450,11 @@ def int32(nullable: bool = True) -> Schema:
 
 def uint32(nullable: bool = True) -> Schema:
     """Create an instance of an unsigned 32-bit integer type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -429,6 +469,11 @@ def uint32(nullable: bool = True) -> Schema:
 def int64(nullable: bool = True) -> Schema:
     """Create an instance of a signed 32-bit integer type.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -441,6 +486,11 @@ def int64(nullable: bool = True) -> Schema:
 
 def uint64(nullable: bool = True) -> Schema:
     """Create an instance of an unsigned 32-bit integer type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -455,6 +505,11 @@ def uint64(nullable: bool = True) -> Schema:
 def float16(nullable: bool = True) -> Schema:
     """Create an instance of a 16-bit floating-point type.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -467,6 +522,11 @@ def float16(nullable: bool = True) -> Schema:
 
 def float32(nullable: bool = True) -> Schema:
     """Create an instance of a 32-bit floating-point type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -481,6 +541,11 @@ def float32(nullable: bool = True) -> Schema:
 def float64(nullable: bool = True) -> Schema:
     """Create an instance of a 64-bit floating-point type.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -493,6 +558,11 @@ def float64(nullable: bool = True) -> Schema:
 
 def string(nullable: bool = True) -> Schema:
     """Create an instance of a variable-length UTF-8 encoded string type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -508,6 +578,11 @@ def large_string(nullable: bool = True) -> Schema:
     """Create an instance of a variable-length UTF-8 encoded string type
     that uses 64-bit offsets.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -520,6 +595,11 @@ def large_string(nullable: bool = True) -> Schema:
 
 def binary(nullable: bool = True) -> Schema:
     """Create an instance of a variable or fixed-width binary type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -534,6 +614,11 @@ def binary(nullable: bool = True) -> Schema:
 def large_binary(nullable: bool = True) -> Schema:
     """Create an instance of a variable-length binary type that uses 64-bit offsets.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -544,8 +629,15 @@ def large_binary(nullable: bool = True) -> Schema:
     return Schema(Type.LARGE_BINARY, nullable=nullable)
 
 
-def fixed_size_binary(byte_width, nullable: bool = True) -> Schema:
+def fixed_size_binary(byte_width: int, nullable: bool = True) -> Schema:
     """Create an instance of a variable or fixed-width binary type.
+
+    Parameters
+    ----------
+    byte_width : int
+        The width of each element in bytes.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -560,6 +652,11 @@ def fixed_size_binary(byte_width, nullable: bool = True) -> Schema:
 def date32(nullable: bool = True) -> Schema:
     """Create an instance of a 32-bit date type (days since 1970-01-01).
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -572,6 +669,11 @@ def date32(nullable: bool = True) -> Schema:
 
 def date64(nullable: bool = True) -> Schema:
     """Create an instance of a 64-bit date type (milliseconds since 1970-01-01).
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -586,6 +688,13 @@ def date64(nullable: bool = True) -> Schema:
 def time32(unit: Union[str, TimeUnit], nullable: bool = True) -> Schema:
     """Create an instance of a 32-bit time of day type.
 
+    Parameters
+    ----------
+    unit : str or :class:`TimeUnit`
+        The unit of values stored by this type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -598,6 +707,13 @@ def time32(unit: Union[str, TimeUnit], nullable: bool = True) -> Schema:
 
 def time64(unit: Union[str, TimeUnit], nullable: bool = True) -> Schema:
     """Create an instance of a 64-bit time of day type.
+
+    Parameters
+    ----------
+    unit : str or :class:`TimeUnit`
+        The unit of values stored by this type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -614,6 +730,13 @@ def timestamp(
 ) -> Schema:
     """Create an instance of a timestamp type.
 
+    Parameters
+    ----------
+    unit : str or :class:`TimeUnit`
+        The unit of values stored by this type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -629,6 +752,13 @@ def timestamp(
 def duration(unit, nullable: bool = True):
     """Create an instance of a duration type.
 
+    Parameters
+    ----------
+    unit : str or :class:`TimeUnit`
+        The unit of values stored by this type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -642,6 +772,11 @@ def duration(unit, nullable: bool = True):
 def interval_months(nullable: bool = True):
     """Create an instance of an interval type measured in months.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -654,6 +789,11 @@ def interval_months(nullable: bool = True):
 
 def interval_day_time(nullable: bool = True):
     """Create an instance of an interval type measured as a day/time pair.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -669,6 +809,11 @@ def interval_month_day_nano(nullable: bool = True):
     """Create an instance of an interval type measured as a month/day/nanosecond
     tuple.
 
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -681,6 +826,16 @@ def interval_month_day_nano(nullable: bool = True):
 
 def decimal128(precision: int, scale: int, nullable: bool = True) -> Schema:
     """Create an instance of a 128-bit decimal type.
+
+    Parameters
+    ----------
+    precision : int
+        The number of significant digits representable by this type. Must be
+        between 1 and 38.
+    scale : int
+        The number of digits after the decimal point for values of this type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
@@ -695,6 +850,16 @@ def decimal128(precision: int, scale: int, nullable: bool = True) -> Schema:
 def decimal256(precision: int, scale: int, nullable: bool = True) -> Schema:
     """Create an instance of a 256-bit decimal type.
 
+    Parameters
+    ----------
+    precision : int
+        The number of significant digits representable by this type. Must be
+        between 1 and 76.
+    scale : int
+        The number of digits after the decimal point for values of this type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
     Examples
     --------
 
@@ -707,6 +872,16 @@ def decimal256(precision: int, scale: int, nullable: bool = True) -> Schema:
 
 def struct(fields, nullable=True) -> Schema:
     """Create a type representing a named sequence of fields.
+
+    Parameters
+    ----------
+    fields :
+        * A dictionary whose keys are field names and values are schema-like objects
+        * An iterable whose items are a schema like object or a two-tuple of the
+          field name and a schema-like object. If a field name is not specified
+          from the tuple, the field name is inherited from the schema-like object.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
 
     Examples
     --------
