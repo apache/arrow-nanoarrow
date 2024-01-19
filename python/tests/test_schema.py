@@ -50,6 +50,8 @@ def test_schema_create_no_params():
 
 
 def test_schema_simple():
+    assert na.null().type == na.Type.NULL
+    assert na.bool().type == na.Type.BOOL
     assert na.int8().type == na.Type.INT8
     assert na.uint8().type == na.Type.UINT8
     assert na.int16().type == na.Type.INT16

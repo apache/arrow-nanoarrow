@@ -28,7 +28,7 @@ class Type(enum.Enum):
     :class:`Schema` instances in most places for parameter-free types."""
 
     UNINITIALIZED = CArrowType.UNINITIALIZED
-    NA = CArrowType.NA
+    NULL = CArrowType.NA
     BOOL = CArrowType.BOOL
     UINT8 = CArrowType.UINT8
     INT8 = CArrowType.INT8
@@ -89,7 +89,7 @@ class Schema:
 
     Parameters
     ----------
-    obj : 
+    obj :
         ...
     nullable : bool, optional
         ...
@@ -267,7 +267,7 @@ class Schema:
 
 def null(nullable=True) -> Schema:
     """Create an instance of a null type."""
-    return Schema(Type.NA, nullable=nullable)
+    return Schema(Type.NULL, nullable=nullable)
 
 
 def bool(nullable=True) -> Schema:
