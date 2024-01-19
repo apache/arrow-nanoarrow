@@ -69,7 +69,7 @@ class Type(enum.Enum):
 
     def __arrow_c_schema__(self):
         # This will only work for parameter-free types
-        c_schema = CSchemaBuilder.allocate().set_type(self.value).finish()
+        c_schema = CSchemaBuilder.allocate().set_type(self.value).set_name("").finish()
         return c_schema._capsule
 
 
@@ -90,39 +90,44 @@ class Schema:
     Parameters
     ----------
     obj :
-        ...
+        A :class:`Type` specifier or an schema-like object supported by
+        :func:`c_schema`.
+    name : str, optional
+        An optional name to bind to this field.
     nullable : bool, optional
-        ...
+        Explicitly specify field nullability. Fields are nullable by default.
+        Not supported of ``obj`` is anything other than a :class:`Type` object.
     **params
-        Additional keywords
+        Type-specific parameters when ``obj`` os a :class:`Type`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> import pyarrow as pa
+    >>> schema = na.Schema(na.Type.INT32)
+    >>> schema = na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
+    >>> schema = na.Schema(pa.int32())
     """
 
     def __init__(
         self,
         obj,
         *,
+        name=None,
         nullable=None,
         **params,
     ) -> None:
-        """Create Schema objects
-
-        Create Schema objects from (1) a :class:`Type` or (2) any object supported by
-        :func:`c_schema`. When creating a class from a  a :class:`Type`, some
-        parameters may be required.
-
-        >>> import nanoarrow as na
-        >>> import pyarrow as pa
-        >>> schema = na.Schema(na.Type.INT32)
-        >>> schema = na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
-        >>> schema = na.Schema(pa.int32())
-        """
-
         if isinstance(obj, Type):
-            self._c_schema = _c_schema_from_type_and_params(obj, params, nullable)
-        elif not params:
+            self._c_schema = _c_schema_from_type_and_params(obj, params, name, nullable)
+        elif not params and nullable is None and name is None:
             self._c_schema = c_schema(obj)
         else:
-            raise ValueError("params must be empty if type is not nanoarrow.Type")
+            # A future version could also deep copy the schema and update it if these
+            # values *are* specified.
+            raise ValueError(
+                "params, nullable, and name must be unspecified if type is not nanoarrow.Type"
+            )
 
         self._c_schema_view = CSchemaView(self._c_schema)
 
@@ -415,7 +420,12 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
-def _c_schema_from_type_and_params(type: Type, params: dict, nullable: bool):
+def _c_schema_from_type_and_params(
+    type: Type,
+    params: dict,
+    name: Union[bool, None, False],
+    nullable: Union[bool, None],
+):
     factory = CSchemaBuilder.allocate()
 
     if type == Type.STRUCT:
@@ -450,7 +460,19 @@ def _c_schema_from_type_and_params(type: Type, params: dict, nullable: bool):
         unused = ", ".join(f"'{item}'" for item in params.keys())
         raise ValueError(f"Unused parameters whilst constructing Schema: {unused}")
 
+    # Apply default nullability (True)
+    if nullable is None:
+        nullable = True
     factory.set_nullable(nullable)
+
+    # Apply default name (an empty string). To explicitly set a NULL
+    # name, a caller would have to specify False.
+    if name is None:
+        name = ""
+    elif name is False:
+        name = None
+    factory.set_name(name)
+
     return factory.finish()
 
 

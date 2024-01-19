@@ -33,8 +33,14 @@ def test_schema_create_c_schema():
     assert schema_obj2.type == schema_obj2.type
     assert schema_obj2._c_schema is schema_obj._c_schema
 
-    with pytest.raises(ValueError, match="params must be empty"):
+    with pytest.raises(ValueError, match="must be unspecified"):
         na.Schema(schema_obj._c_schema, some_parameter="some_value")
+
+    with pytest.raises(ValueError, match="must be unspecified"):
+        na.Schema(schema_obj._c_schema, nullable=True)
+
+    with pytest.raises(ValueError, match="must be unspecified"):
+        na.Schema(schema_obj._c_schema, name="")
 
 
 def test_schema_create_no_params():
@@ -126,7 +132,7 @@ def test_schema_create_struct():
     schema_obj = na.struct([na.Type.INT32])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.child(0).type == na.Type.INT32
-    assert schema_obj.child(0).name is None
+    assert schema_obj.child(0).name == ""
 
     # Make sure we can use a list of two-tuples
     schema_obj = na.struct([("col_name", na.Type.INT32)])

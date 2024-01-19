@@ -668,7 +668,7 @@ cdef class CSchemaBuilder:
             result = ArrowSchemaSetName(self._ptr, NULL)
         else:
             name = str(name)
-            result = ArrowSchemaSetName(self._ptr, name.encode("UTF-u"))
+            result = ArrowSchemaSetName(self._ptr, name.encode("UTF-8"))
 
         if result != NANOARROW_OK:
             Error.raise_error("ArrowSchemaSetName()", result)
