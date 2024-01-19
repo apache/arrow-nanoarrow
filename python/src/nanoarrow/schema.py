@@ -265,6 +265,16 @@ class Schema:
         return self._c_schema.__arrow_c_schema__()
 
 
+def null(nullable=True) -> Schema:
+    """Create an instance of a null type."""
+    return Schema(Type.NA, nullable=nullable)
+
+
+def bool(nullable=True) -> Schema:
+    """Create an instance of a boolean type."""
+    return Schema(Type.BOOL, nullable=nullable)
+
+
 def int8(nullable=True) -> Schema:
     """Create an instance of a signed 8-bit integer type."""
     return Schema(Type.INT8, nullable=nullable)
