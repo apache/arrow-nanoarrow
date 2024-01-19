@@ -151,7 +151,8 @@ class Schema:
             # A future version could also deep copy the schema and update it if these
             # values *are* specified.
             raise ValueError(
-                "params, nullable, and name must be unspecified if type is not nanoarrow.Type"
+                "params, nullable, and name must be unspecified if type is not "
+                "nanoarrow.Type"
             )
 
         self._c_schema_view = CSchemaView(self._c_schema)
