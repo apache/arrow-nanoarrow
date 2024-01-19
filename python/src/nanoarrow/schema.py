@@ -349,8 +349,24 @@ def timestamp(unit, timezone=None, nullable=True) -> Schema:
 
 
 def duration(unit, nullable=True):
-    """Create an instance of a timestamp type."""
+    """Create an instance of a duration type."""
     return Schema(Type.DURATION, unit=unit, nullable=nullable)
+
+
+def interval_months(nullable=True):
+    """Create an instance of an interval type measured in months."""
+    return Schema(Type.INTERVAL_MONTHS, nullable=nullable)
+
+
+def interval_day_time(nullable=True):
+    """Create an instance of an interval type measured as a day/time pair."""
+    return Schema(Type.INTERVAL_DAY_TIME, nullable=nullable)
+
+
+def interval_month_day_nano(nullable=True):
+    """Create an instance of an interval type measured as a month/day/nanosecond
+    tuple."""
+    return Schema(Type.INTERVAL_MONTH_DAY_NANO, nullable=nullable)
 
 
 def decimal128(precision: int, scale: int) -> Schema:

@@ -65,6 +65,9 @@ def test_schema_simple():
     assert na.binary().type == na.Type.BINARY
     assert na.date32().type == na.Type.DATE32
     assert na.date64().type == na.Type.DATE64
+    assert na.interval_months().type == na.Type.INTERVAL_MONTHS
+    assert na.interval_day_time().type == na.Type.INTERVAL_DAY_TIME
+    assert na.interval_month_day_nano().type == na.Type.INTERVAL_MONTH_DAY_NANO
 
 
 def test_schema_binary():
