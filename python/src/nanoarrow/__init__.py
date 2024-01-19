@@ -30,6 +30,7 @@ from nanoarrow.schema import (  # noqa: F401
     Schema,
     Type,
     TimeUnit,
+    schema,
     null,
     bool,
     int8,
