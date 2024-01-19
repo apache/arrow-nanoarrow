@@ -316,11 +316,31 @@ def string(nullable=True) -> Schema:
 
 
 def binary(byte_width=None, nullable=True) -> Schema:
-    """Create an instance of a variable or fixed-width binary type"""
+    """Create an instance of a variable or fixed-width binary type."""
     if byte_width is not None:
         return Schema(Type.FIXED_SIZE_BINARY, byte_width=byte_width, nullable=nullable)
     else:
-        return Schema(Type.BINARY)
+        return Schema(Type.BINARY, nullable=nullable)
+
+
+def date32(nullable=True) -> Schema:
+    """Create an instance of a 32-bit date type (days since 1970-01-01)."""
+    return Schema(Type.DATE32, nullable=nullable)
+
+
+def date64(nullable=True) -> Schema:
+    """Create an instance of a 64-bit date type (milliseconds since 1970-01-01)."""
+    return Schema(Type.DATE64, nullable=nullable)
+
+
+def time32(unit, nullable=True) -> Schema:
+    """Create an instance of a 32-bit time of day type."""
+    return Schema(Type.TIME32, unit=unit, nullable=nullable)
+
+
+def time64(unit, nullable=True) -> Schema:
+    """Create an instance of a 64-bit time of day type."""
+    return Schema(Type.TIME64, unit=unit, nullable=nullable)
 
 
 def timestamp(unit, timezone=None, nullable=True) -> Schema:

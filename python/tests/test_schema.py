@@ -63,6 +63,8 @@ def test_schema_simple():
     assert na.float64().type == na.Type.DOUBLE
     assert na.string().type == na.Type.STRING
     assert na.binary().type == na.Type.BINARY
+    assert na.date32().type == na.Type.DATE32
+    assert na.date64().type == na.Type.DATE64
 
 
 def test_schema_binary():
@@ -72,6 +74,16 @@ def test_schema_binary():
 
     schema_obj = na.binary()
     assert schema_obj.type == na.Type.BINARY
+
+
+def test_schema_time():
+    schema_obj = na.time32(na.TimeUnit.SECOND)
+    assert schema_obj.type == na.Type.TIME32
+    assert schema_obj.unit == na.TimeUnit.SECOND
+
+    schema_obj = na.time64(na.TimeUnit.SECOND)
+    assert schema_obj.type == na.Type.TIME32
+    assert schema_obj.unit == na.TimeUnit.SECOND
 
 
 def test_schema_timestamp():
