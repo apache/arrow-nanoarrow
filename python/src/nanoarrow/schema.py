@@ -85,7 +85,17 @@ class TimeUnit(enum.Enum):
 class Schema:
     """The Schema is nanoarrow's data type representation, encompasing the role
     of PyArrow's ``Schema``, ``Field``, and ``DataType``. This scope maps to
-    that of the ArrowSchema in the Arrow C Data interface."""
+    that of the ArrowSchema in the Arrow C Data interface.
+
+    Parameters
+    ----------
+    obj : 
+        ...
+    nullable : bool, optional
+        ...
+    **params
+        Additional keywords
+    """
 
     def __init__(
         self,
