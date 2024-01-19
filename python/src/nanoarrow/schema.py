@@ -23,6 +23,10 @@ from nanoarrow.c_lib import c_schema
 
 
 class Type(enum.Enum):
+    """The Type enumerator provides a means by which the various type
+    categories can be identified. Type values can be used in place of
+    :class:`Schema` instances in most places for parameter-free types."""
+
     UNINITIALIZED = CArrowType.UNINITIALIZED
     NA = CArrowType.NA
     BOOL = CArrowType.BOOL
@@ -70,6 +74,8 @@ class Type(enum.Enum):
 
 
 class TimeUnit(enum.Enum):
+    """Unit enumerator for timestamp, duration, and time types."""
+
     SECOND = CArrowTimeUnit.SECOND
     MILLI = CArrowTimeUnit.MILLI
     MICRO = CArrowTimeUnit.MICRO
@@ -77,17 +83,34 @@ class TimeUnit(enum.Enum):
 
 
 class Schema:
+    """The Schema is nanoarrow's data type representation, encompasing the role
+    of PyArrow's ``Schema``, ``Field``, and ``DataType``. This scope maps to
+    that of the ArrowSchema in the Arrow C Data interface."""
+
     def __init__(
         self,
-        type,
+        obj,
         *,
         nullable=None,
         **params,
     ) -> None:
-        if isinstance(type, Type):
-            self._c_schema = _c_schema_from_type_and_params(type, params, nullable)
+        """Create Schema objects
+
+        Create Schema objects from (1) a :class:`Type` or (1) any object supported by
+        :func:`c_schema`. When creating a class from a  a :class:`Type`, some
+        parameters may be required.
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> schema = na.Schema(na.Type.INT32)
+        >>> schema = na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
+        >>> schema = na.Schema(pa.int32())
+        """
+
+        if isinstance(obj, Type):
+            self._c_schema = _c_schema_from_type_and_params(obj, params, nullable)
         elif not params:
-            self._c_schema = c_schema(type)
+            self._c_schema = c_schema(obj)
         else:
             raise ValueError("params must be empty if type is not nanoarrow.Type")
 
@@ -95,50 +118,135 @@ class Schema:
 
     @property
     def type(self) -> Type:
+        """Type enumerator value of this Schema
+
+        >>> import nanoarrow as na
+        >>> na.int32().type
+        <Type.INT32: 8>
+        """
         return Type(self._c_schema_view.type_id)
 
     @property
     def name(self) -> Union[str, None]:
+        """Field name of this Schema
+
+        >>> import nanoarrow as na
+        >>> schema = na.struct({"col1": na.int32()})
+        >>> schema.child(0).name
+        'col1'
+        """
         return self._c_schema.name
 
     @property
     def nullable(self) -> bool:
+        """Nullability of this field
+
+        >>> import nanoarrow as na
+        >>> na.int32().nullable
+        True
+        >>> na.int32(nullable=False).nullable
+        False
+        """
         return self._c_schema_view.nullable
 
     @property
     def byte_width(self) -> Union[int, None]:
+        """Element byte width for fixed-size binary type
+
+        Returns ``None`` for types for which this property is not relevant.
+
+        >>> import nanoarrow as na
+        >>> na.binary(123).byte_width
+        123
+        """
+
         if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_BINARY:
             return self._c_schema_view.fixed_size
 
     @property
     def unit(self) -> Union[TimeUnit, None]:
+        """TimeUnit for timestamp, time, and duration types
+
+        Returns ``None`` for types for which this property is not relevant.
+
+        >>> import nanoarrow as na
+        >>> na.timestamp(na.TimeUnit.SECOND).unit
+        <TimeUnit.SECOND: 0>
+        """
+
         unit_id = self._c_schema_view.time_unit_id
         if unit_id is not None:
             return TimeUnit(unit_id)
 
     @property
     def timezone(self) -> Union[str, None]:
+        """Timezone for timestamp types
+
+        Returns ``None`` for types for which this property is not relevant or
+        for timezone types for which the timezone is not set.
+
+        >>> import nanoarrow as na
+        >>> na.timestamp(na.TimeUnit.SECOND, timezone="America/Halifax").timezone
+        'America/Halifax'
+        """
         if self._c_schema_view.timezone:
             return self._c_schema_view.timezone
 
     @property
     def precision(self) -> int:
+        """Decimal precision
+
+        >>> import nanoarrow as na
+        >>> na.decimal128(10, 3).precision
+        10
+        """
         return self._c_schema_view.decimal_precision
 
     @property
     def scale(self) -> int:
+        """Decimal scale
+
+        >>> import nanoarrow as na
+        >>> na.decimal128(10, 3).scale
+        3
+        """
+
         return self._c_schema_view.decimal_scale
 
     @property
     def n_children(self) -> int:
+        """Number of child Schemas
+
+        >>> import nanoarrow as na
+        >>> schema = na.struct({"col1": na.int32()})
+        >>> schema.n_children
+        1
+        """
+
         return self._c_schema.n_children
 
     def child(self, i):
+        """Extract a child Schema
+
+        >>> import nanoarrow as na
+        >>> schema = na.struct({"col1": na.int32()})
+        >>> schema.child(0).type
+        <Type.INT32: 8>
+        """
+
         # Returning a copy to reduce interdependence between Schema instances
         return Schema(self._c_schema.child(i).__deepcopy__())
 
     @property
     def children(self):
+        """Iterate over child Schemas
+        >>> import nanoarrow as na
+        >>> schema = na.struct({"col1": na.int32()})
+        >>> for child in schema.children:
+        ...     print(child.name)
+        ...
+        col1
+        """
         for i in range(self.n_children):
             yield self.child(i)
 
