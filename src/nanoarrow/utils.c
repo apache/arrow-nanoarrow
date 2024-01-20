@@ -192,11 +192,15 @@ void ArrowFree(void* ptr) { free(ptr); }
 static uint8_t* ArrowBufferAllocatorMallocReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
     int64_t new_size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(old_size);
   return (uint8_t*)ArrowRealloc(ptr, new_size);
 }
 
 static void ArrowBufferAllocatorMallocFree(struct ArrowBufferAllocator* allocator,
                                            uint8_t* ptr, int64_t size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(size);
   ArrowFree(ptr);
 }
 
@@ -210,6 +214,10 @@ struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void) {
 static uint8_t* ArrowBufferAllocatorNeverReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
     int64_t new_size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(old_size);
+  NANOARROW_UNUSED(new_size);
   return NULL;
 }
 
