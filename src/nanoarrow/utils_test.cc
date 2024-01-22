@@ -235,15 +235,20 @@ TEST(DecimalTest, Decimal128Test) {
 
 TEST(DecimalTest, DecimalNegateTest) {
   struct ArrowDecimal decimal;
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
 
   for (auto bitwidth : {128, 256}) {
-    ArrowDecimalInit(&decimal, bitwidth, 10, 3);
+    ArrowDecimalInit(&decimal, bitwidth, 39, 0);
+
+    // Check with a value whose value is contained entirely in the least significant digit
     ArrowDecimalSetInt(&decimal, 12345);
     ArrowDecimalNegate(&decimal);
     EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -12345);
     ArrowDecimalNegate(&decimal);
     EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
 
+    // Check with a value whose negative value will carry into a more significant digit
     memset(decimal.words, 0, sizeof(decimal.words));
     decimal.words[decimal.low_word_index] = std::numeric_limits<uint64_t>::max();
     ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
@@ -253,7 +258,34 @@ TEST(DecimalTest, DecimalNegateTest) {
     ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
     EXPECT_EQ(decimal.words[decimal.low_word_index],
               std::numeric_limits<uint64_t>::max());
+
+    // Check with a large value that fits in the 128 bit size
+    ASSERT_EQ(ArrowDecimalSetDigits(
+                  &decimal, ArrowCharView("123456789012345678901234567890123456789")),
+              NANOARROW_OK);
+    ArrowDecimalNegate(&decimal);
+
+    buffer.size_bytes = 0;
+    ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+    EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+              "-123456789012345678901234567890123456789");
   }
+
+  // Check with a large value that only fits in the 256 bit range
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal,
+                                  ArrowCharView("1234567890123456789012345678901234567890"
+                                                "12345678901234567890123456789012345")),
+            NANOARROW_OK);
+  ArrowDecimalNegate(&decimal);
+
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(
+      std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+      "-123456789012345678901234567890123456789012345678901234567890123456789012345");
+
+  ArrowBufferReset(&buffer);
 }
 
 TEST(DecimalTest, Decimal256Test) {
@@ -342,7 +374,7 @@ TEST(DecimalTest, DecimalStringTestBasic) {
   EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
             "18446744073709551615");
 
-  // Check with the maximum value of a 128-bit integer
+  // Check with the maximum value of a signed 128-bit integer
   ASSERT_EQ(ArrowDecimalSetDigits(
                 &decimal, ArrowCharView("170141183460469231731687303715884105727")),
             NANOARROW_OK);
@@ -353,6 +385,21 @@ TEST(DecimalTest, DecimalStringTestBasic) {
   ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
   EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
             "170141183460469231731687303715884105727");
+
+  // Check with the maximum value of a signed 256-bit integer
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal,
+                                  ArrowCharView("5789604461865809771178549250434395392663"
+                                                "4992332820282019728792003956564819967")),
+            NANOARROW_OK);
+  EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(decimal.words[decimal.high_word_index], std::numeric_limits<int64_t>::max());
+
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(
+      std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+      "57896044618658097711785492504343953926634992332820282019728792003956564819967");
 
   ArrowBufferReset(&buffer);
 }
