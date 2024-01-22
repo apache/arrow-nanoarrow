@@ -295,6 +295,7 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
   // Use 32-bit words for portability
   uint32_t words32[8];
   int n_words32 = decimal->n_words * 2;
+  NANOARROW_DCHECK(n_words32 <= 8);
   memset(words32, 0, sizeof(words32));
 
   ShiftAndAdd(value, words32, n_words32);
@@ -345,6 +346,7 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
     }
   }
 
+  // Find the most significant word that is non-zero
   int most_significant_elem_idx = -1;
   for (int i = decimal->n_words - 1; i >= 0; i--) {
     if (words_little_endian[i] != 0) {
@@ -353,11 +355,17 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
     }
   }
 
+  // If they are all zero, the output is just '0'
   if (most_significant_elem_idx == -1) {
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(buffer, '0'));
     return NANOARROW_OK;
   }
 
+  // Define segments such that each segment represents 9 digits with the
+  // least significant group of 9 digits first. For example, if the input represents
+  // 9876543210123456789, then segments will be [123456789, 876543210, 9].
+  // We handle at most a signed 256 bit integer, whose maximum value occupies 77
+  // characters. Thus, we need at most 9 segments.
   const uint32_t k1e9 = 1000000000U;
   int num_segments = 0;
   uint32_t segments[9];
@@ -365,9 +373,15 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
   uint64_t* most_significant_elem = words_little_endian + most_significant_elem_idx;
 
   do {
+    // Compute remainder = words_little_endian % 1e9 and words_little_endian =
+    // words_little_endian / 1e9.
     uint32_t remainder = 0;
     uint64_t* elem = most_significant_elem;
+
     do {
+      // Compute dividend = (remainder << 32) | *elem  (a virtual 96-bit integer);
+      // *elem = dividend / 1e9;
+      // remainder = dividend % 1e9.
       uint32_t hi = (uint32_t)(*elem >> 32);
       uint32_t lo = (uint32_t)(*elem & 0xFFFFFFFFULL);
       uint64_t dividend_hi = ((uint64_t)(remainder) << 32) | hi;
@@ -384,8 +398,9 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
   } while (*most_significant_elem != 0 || most_significant_elem-- != words_little_endian);
 
   // We know our output has no more than 9 digits per segment, plus a negative sign,
-  // plus any further digits between our output of 9 digits and the maximum theoretical
-  // number of digits in an unsigned long, including the null terminator.
+  // plus any further digits between our output of 9 digits plus enough
+  // extra characters to ensure that snprintf() with n = 21 (maximum length of %lu
+  // including a the null terminator) is bounded properly.
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, num_segments * 9 + 1 + 21 - 9));
   if (is_negative) {
     buffer->data[buffer->size_bytes++] = '-';
@@ -402,6 +417,7 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
     int n_chars = snprintf((char*)buffer->data + buffer->size_bytes, 21, "%09lu",
                            (unsigned long)segments[i]);
     buffer->size_bytes += n_chars;
+    NANOARROW_DCHECK(buffer->size_bytes <= buffer->capacity_bytes);
   }
 
   return NANOARROW_OK;
