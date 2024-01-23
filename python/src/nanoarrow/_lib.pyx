@@ -459,9 +459,9 @@ cdef class CSchemaView:
     cdef object _base
     cdef ArrowSchemaView _schema_view
     # Not part of the ArrowSchemaView (but possibly should be)
-    cdef int _dictionary_ordered
-    cdef int _nullable
-    cdef int _map_keys_sorted
+    cdef bint _dictionary_ordered
+    cdef bint _nullable
+    cdef bint _map_keys_sorted
 
     _fixed_size_types = (
         NANOARROW_TYPE_FIXED_SIZE_LIST,
@@ -611,40 +611,40 @@ cdef class CSchemaBuilder:
     def child(self, int64_t i):
         return CSchemaBuilder(self.c_schema.child(i))
 
-    def set_type(self, int type):
+    def set_type(self, int type_id):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaSetType(self._ptr, <ArrowType>type)
+        cdef int result = ArrowSchemaSetType(self._ptr, <ArrowType>type_id)
         if result != NANOARROW_OK:
             Error.raise_error("ArrowSchemaSetType()", result)
 
         return self
 
-    def set_type_decimal(self, int type, int precision, int scale):
+    def set_type_decimal(self, int type_id, int precision, int scale):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type, precision, scale)
+        cdef int result = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type_id, precision, scale)
         if result != NANOARROW_OK:
             Error.raise_error("ArrowSchemaSetType()", result)
 
-    def set_type_fixed_size(self, int type, int fixed_size):
+    def set_type_fixed_size(self, int type_id, int fixed_size):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type, fixed_size)
+        cdef int result = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type_id, fixed_size)
         if result != NANOARROW_OK:
             Error.raise_error("ArrowSchemaSetTypeFixedSize()", result)
 
         return self
 
-    def set_type_date_time(self, int type, int time_unit, timezone):
+    def set_type_date_time(self, int type_id, int time_unit, timezone):
         self.c_schema._assert_valid()
 
         cdef int result
         if timezone is None:
-            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type, <ArrowTimeUnit>time_unit, NULL)
+            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, NULL)
         else:
             timezone = str(timezone)
-            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type, <ArrowTimeUnit>time_unit, timezone.encode("UTF-8"))
+            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, timezone.encode("UTF-8"))
 
         if result != NANOARROW_OK:
             Error.raise_error("ArrowSchemaSetTypeDateTime()", result)
