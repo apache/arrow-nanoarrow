@@ -220,6 +220,11 @@ cdef class Error:
         """
         raise NanoarrowException(what, code, "")
 
+
+# This could in theory use cpdef enum, but an initial attempt to do so
+# resulted Cython duplicating some function definitions. For now, we resort
+# to a more manual trampoline of values to make them accessible from
+# schema.py.
 cdef class CArrowType:
     """
     Wrapper around ArrowType to provide implementations in Python access
