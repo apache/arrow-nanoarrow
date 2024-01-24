@@ -70,7 +70,7 @@ main() {
        --skip-existing
 
     header "Adding release notes"
-    local -r release_notes=$(cz ch --dry-run "${tag}" --unreleased-version "nanoarrow ${version}")
+    local -r release_notes=$(python3 ${source_dir}/update-changelog.py)
     echo "${release_notes}"
     gh release edit \
        "${tag}" \

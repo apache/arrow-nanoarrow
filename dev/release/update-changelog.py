@@ -123,7 +123,7 @@ def parse_changelog(path):
     return header, version_content
 
 
-def render_new_changelog(changelog_file, unreleased_version):
+def render_new_changelog(unreleased_version=None, changelog_file=None):
     sha = find_last_release_sha()
     commits = find_commits_since(sha)
     parsed = parse_commits(commits)
@@ -131,9 +131,17 @@ def render_new_changelog(changelog_file, unreleased_version):
     for category in grouped:
         grouped[category] = group_commits_by_top_level_component(grouped[category])
 
+    latest_version_content = render_version_content(grouped)
+
+    if changelog_file is None and unreleased_version is None:
+        return latest_version_content
+
+    if changelog_file is None:
+        return f"## nanoarrow {unreleased_version}\n\n" + latest_version_content
+
     header, version_content = parse_changelog(changelog_file)
 
-    version_content[unreleased_version] = render_version_content(grouped)
+    version_content[unreleased_version] = latest_version_content
 
     out_lines = []
     out_lines.append(header)
@@ -153,7 +161,14 @@ def render_new_changelog(changelog_file, unreleased_version):
 if __name__ == "__main__":
     import sys
 
-    changelog_file = sys.argv[1]
-    unreleased_version = sys.argv[2]
+    if len(sys.argv) >= 3:
+        changelog_file = sys.argv[2]
+        unreleased_version = sys.argv[1]
+    elif len(sys.argv) >= 2:
+        changelog_file = None
+        unreleased_version = sys.argv[1]
+    else:
+        changelog_file = None
+        unreleased_version = None
 
-    print(render_new_changelog(changelog_file, unreleased_version))
+    print(render_new_changelog(unreleased_version, changelog_file))
