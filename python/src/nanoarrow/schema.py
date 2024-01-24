@@ -305,7 +305,7 @@ def schema(obj, *, name=None, nullable=None, **params):
         Only supported if ``obj`` is a :class:`Type` object (for any other input, the nullability is preserved from the passed object).
 
     **params
-        Type-specific parameters when ``obj`` os a :class:`Type`.
+        Type-specific parameters when ``obj`` is a :class:`Type`.
 
     Examples
     --------
