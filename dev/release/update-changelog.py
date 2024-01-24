@@ -1,6 +1,5 @@
 import re
 import subprocess
-import sys
 
 """
 A Python script to update CHANGELOG.md
