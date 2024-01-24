@@ -302,7 +302,8 @@ def schema(obj, *, name=None, nullable=None, **params):
 
     nullable : bool, optional
         Explicitly specify field nullability. Fields are nullable by default.
-        Only supported if ``obj`` is a :class:`Type` object (for any other input, the nullability is preserved from the passed object).
+        Only supported if ``obj`` is a :class:`Type` object (for any other input,
+        the nullability is preserved from the passed object).
 
     **params
         Type-specific parameters when ``obj`` is a :class:`Type`.
