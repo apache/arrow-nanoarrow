@@ -290,7 +290,7 @@ def schema(obj, *, name=None, nullable=None, **params):
     Parameters
     ----------
     obj :
-        A :class:`Type` specifier or an schema-like object. A schema-like object
+        A :class:`Type` specifier or a schema-like object. A schema-like object
         includes:
         * A ``pyarrow.Schema``, `pyarrow.Field``, or ``pyarrow.DataType``
         * A nanoarrow :class:`Schema`, :class:`CSchema`, or :class:`Type`
