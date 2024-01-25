@@ -15,9 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import re
 import tempfile
-import os
 
 import changelog
 
@@ -162,20 +162,6 @@ def test_parse_changelog():
 
 
 def test_render_new_changelog():
-    changelog_lines = [
-        "<!-- header stuff we want untouched -->",
-        "",
-        "# nanoarrow Changelog",
-        "",
-        "## nanoarrow <some version information we want untouched>",
-        "",
-        "content we want untouched for each previous version",
-        "",
-        "## nanoarrow <some other version information we want untouched>",
-        "",
-        "other content we want untouched for each previous version",
-    ]
-
     with tempfile.TemporaryDirectory() as tempdir:
         changes_no_version = changelog.render_new_changelog()
         assert re.match(r"^## nanoarrow", changes_no_version) is None
