@@ -25,7 +25,8 @@ This is similar to cz changelog except is specific to the nanoarrow/Apache
 release/tag format. The usage is:
 
 mv CHANGELOG.md CHANGELOG.md.bak
-python changelog.py CHANGELOG.md.bak <new version> > CHANGELOG.md
+python changelog.py <new version> CHANGELOG.md.bak > CHANGELOG.md
+rm CHANGELOG.md.bak
 
 This can be run more than once (e.g., for multiple release candidates) and will
 overwrite the changelog section for <new version>. It always has one newline

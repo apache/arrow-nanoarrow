@@ -57,7 +57,7 @@ echo "Updating changelog for $version"
 # Update changelog
 CHANGELOG="${SOURCE_DIR}/../../CHANGELOG.md"
 mv ${CHANGELOG} ${CHANGELOG}.bak
-python3 ${SOURCE_DIR}/update-changelog.py ${version} ${CHANGELOG}.bak > ${CHANGELOG}
+python3 ${SOURCE_DIR}/changelog.py ${version} ${CHANGELOG}.bak > ${CHANGELOG}
 rm ${CHANGELOG}.bak
 
 git add ${CHANGELOG}
