@@ -233,6 +233,61 @@ TEST(DecimalTest, Decimal128Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 }
 
+TEST(DecimalTest, DecimalNegateTest) {
+  struct ArrowDecimal decimal;
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  for (auto bitwidth : {128, 256}) {
+    ArrowDecimalInit(&decimal, bitwidth, 39, 0);
+
+    // Check with a value whose value is contained entirely in the least significant digit
+    ArrowDecimalSetInt(&decimal, 12345);
+    ArrowDecimalNegate(&decimal);
+    EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -12345);
+    ArrowDecimalNegate(&decimal);
+    EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
+
+    // Check with a value whose negative value will carry into a more significant digit
+    memset(decimal.words, 0, sizeof(decimal.words));
+    decimal.words[decimal.low_word_index] = std::numeric_limits<uint64_t>::max();
+    ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
+    ArrowDecimalNegate(&decimal);
+    ASSERT_EQ(ArrowDecimalSign(&decimal), -1);
+    ArrowDecimalNegate(&decimal);
+    ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
+    EXPECT_EQ(decimal.words[decimal.low_word_index],
+              std::numeric_limits<uint64_t>::max());
+
+    // Check with a large value that fits in the 128 bit size
+    ASSERT_EQ(ArrowDecimalSetDigits(
+                  &decimal, ArrowCharView("123456789012345678901234567890123456789")),
+              NANOARROW_OK);
+    ArrowDecimalNegate(&decimal);
+
+    buffer.size_bytes = 0;
+    ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+    EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+              "-123456789012345678901234567890123456789");
+  }
+
+  // Check with a large value that only fits in the 256 bit range
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal,
+                                  ArrowCharView("1234567890123456789012345678901234567890"
+                                                "12345678901234567890123456789012345")),
+            NANOARROW_OK);
+  ArrowDecimalNegate(&decimal);
+
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(
+      std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+      "-123456789012345678901234567890123456789012345678901234567890123456789012345");
+
+  ArrowBufferReset(&buffer);
+}
+
 TEST(DecimalTest, Decimal256Test) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 256, 10, 3);
@@ -268,4 +323,170 @@ TEST(DecimalTest, Decimal256Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+}
+
+TEST(DecimalTest, DecimalStringTestBasic) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 128, 39, 0);
+
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  // Only spans one 32-bit word
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("123456")), NANOARROW_OK);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 123456);
+
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "123456");
+
+  // Negative value
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("-123456")), NANOARROW_OK);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -123456);
+
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "-123456");
+
+  // Spans >1 32-bit word
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("1234567899")), NANOARROW_OK);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 1234567899L);
+
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "1234567899");
+
+  // Check maximum value of a 64-bit integer
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("18446744073709551615")),
+            NANOARROW_OK);
+  EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(decimal.words[decimal.high_word_index], 0);
+
+  // Check roundtrip to string
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "18446744073709551615");
+
+  // Check with the maximum value of a signed 128-bit integer
+  ASSERT_EQ(ArrowDecimalSetDigits(
+                &decimal, ArrowCharView("170141183460469231731687303715884105727")),
+            NANOARROW_OK);
+  EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(decimal.words[decimal.high_word_index], std::numeric_limits<int64_t>::max());
+
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+            "170141183460469231731687303715884105727");
+
+  // Check with the maximum value of a signed 256-bit integer
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal,
+                                  ArrowCharView("5789604461865809771178549250434395392663"
+                                                "4992332820282019728792003956564819967")),
+            NANOARROW_OK);
+  EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
+  EXPECT_EQ(decimal.words[decimal.high_word_index], std::numeric_limits<int64_t>::max());
+
+  buffer.size_bytes = 0;
+  ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+  EXPECT_EQ(
+      std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+      "57896044618658097711785492504343953926634992332820282019728792003956564819967");
+
+  ArrowBufferReset(&buffer);
+}
+
+TEST(DecimalTest, DecimalStringTestInvalid) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 128, 39, 0);
+  EXPECT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("this is not an integer")),
+            EINVAL);
+}
+
+TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  // Generate test strings with positive and negative powers of 10 and check
+  // roundtrip back to string.
+  std::stringstream ss;
+
+  for (const auto& sign : {"", "-"}) {
+    for (int i = 0; i < 76; i++) {
+      ss.str("");
+      ss << sign;
+      ss << "1";
+      for (int j = 0; j < i; j++) {
+        ss << "0";
+      }
+
+      SCOPED_TRACE(ss.str());
+      ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView(ss.str().c_str())),
+                NANOARROW_OK);
+
+      buffer.size_bytes = 0;
+      ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+      EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+                ss.str());
+    }
+  }
+
+  ArrowBufferReset(&buffer);
+}
+
+TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 256, 76, 0);
+
+  struct ArrowDecimal decimal2;
+  ArrowDecimalInit(&decimal2, 256, 76, 0);
+
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+
+  struct ArrowStringView str;
+
+  // Generate test decimals by bitshifting powers of two and check roundtrip
+  // through string back to decimal.
+  for (const auto is_negative : {false, true}) {
+    for (int i = 0; i < 255; i++) {
+      SCOPED_TRACE("1 << " + std::to_string(i));
+
+      memset(decimal.words, 0, sizeof(decimal.words));
+      int word = i / (8 * sizeof(uint64_t));
+      int shift = i % (8 * sizeof(uint64_t));
+      if (decimal.low_word_index == 0) {
+        decimal.words[word] = 1ULL << shift;
+      } else {
+        decimal.words[decimal.low_word_index - word] = 1ULL << shift;
+      }
+
+      if (is_negative) {
+        ArrowDecimalNegate(&decimal);
+      }
+
+      buffer.size_bytes = 0;
+      ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+      str.data = reinterpret_cast<char*>(buffer.data);
+      str.size_bytes = buffer.size_bytes;
+
+      ASSERT_EQ(ArrowDecimalSetDigits(&decimal2, str), NANOARROW_OK);
+
+      ASSERT_EQ(memcmp(decimal2.words, decimal.words, decimal.n_words * sizeof(uint64_t)),
+                0);
+    }
+  }
+
+  ArrowBufferReset(&buffer);
 }

@@ -47,6 +47,9 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
+#define ArrowDecimalSetDigits NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetDigits)
+#define ArrowDecimalAppendDigitsToBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalAppendDigitsToBuffer)
 #define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
 #define ArrowSchemaInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFromType)
@@ -279,6 +282,14 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type);
 
 /// \brief Create a string view from a null-terminated string
 static inline struct ArrowStringView ArrowCharView(const char* value);
+
+/// \brief Sets the integer value of an ArrowDecimal from a string
+ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
+                                     struct ArrowStringView value);
+
+/// \brief Get the integer value of an ArrowDecimal as string
+ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
+                                                struct ArrowBuffer* buffer);
 
 /// @}
 
