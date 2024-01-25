@@ -59,7 +59,7 @@ def find_commits_since(begin_sha, end_sha="HEAD"):
 def parse_commits(lines):
     commit_pattern = (
         r"^(?P<sha>[a-z0-9]{40}) (?P<type>[a-z]+)"
-        r"(\((?P<component>[a-zA-Z0-9_-]+)\))?:\s*"
+        r"(\((?P<component>[a-zA-Z0-9/_-]+)\))?:\s*"
         r"(?P<message>.*)$"
     )
 
@@ -98,7 +98,11 @@ def group_commits_by_top_level_component(parsed):
     return grouped
 
 
-def render_version_content(grouped):
+def render_version_content(parsed):
+    grouped = group_commits_by_type(parsed)
+    for category in grouped:
+        grouped[category] = group_commits_by_top_level_component(grouped[category])
+
     out_lines = []
     for category in sorted(grouped):
         if category in ("chore", "ci"):
@@ -121,15 +125,12 @@ def render_version_content(grouped):
     return "\n".join(out_lines)
 
 
-def parse_changelog(path):
-    with open(path) as f:
-        content = f.read()
-
+def parse_changelog(content):
     header, content = re.split(r"# nanoarrow Changelog", content)
     header += "# nanoarrow Changelog"
     content = content.strip()
 
-    version_split = re.split(r"(^|\n)##\s+nanoarrow (.*)\n", content)
+    version_split = re.split(r"(^|\n)##\s+nanoarrow ([^\n]*)", content)
     version_split.pop(0)
 
     version_content = {}
@@ -143,11 +144,8 @@ def render_new_changelog(unreleased_version=None, changelog_file=None):
     sha = find_last_release_sha()
     commits = find_commits_since(sha)
     parsed = parse_commits(commits)
-    grouped = group_commits_by_type(parsed)
-    for category in grouped:
-        grouped[category] = group_commits_by_top_level_component(grouped[category])
 
-    latest_version_content = render_version_content(grouped)
+    latest_version_content = render_version_content(parsed)
 
     if changelog_file is None and unreleased_version is None:
         return latest_version_content
@@ -155,7 +153,10 @@ def render_new_changelog(unreleased_version=None, changelog_file=None):
     if changelog_file is None:
         return f"## nanoarrow {unreleased_version}\n\n" + latest_version_content
 
-    header, version_content = parse_changelog(changelog_file)
+    with open(changelog_file) as f:
+        changelog_content = f.read()
+
+    header, version_content = parse_changelog(changelog_content)
 
     version_content[unreleased_version] = latest_version_content
 
