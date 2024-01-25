@@ -32,7 +32,7 @@ update_versions() {
     snapshot)
       local version=${next_version}-SNAPSHOT
       local docs_version="${next_version} (dev)"
-      local python_version="${next_version}dev"
+      local python_version="${next_version}.dev0"
       local r_version="${base_version}.9000"
       ;;
   esac
