@@ -46,9 +46,6 @@ main() {
     cp -R -L "${base_name}.tmp" "${base_name}"
     rm -rf "${base_name}.tmp/"
 
-    # Remove components that are not yet ready for packaging
-    rm -rf "${base_name}/python"
-
     # Create new tarball
     tar czf "${tar_ball}" "${base_name}/"
     rm -rf "${base_name}/"
