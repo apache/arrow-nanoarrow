@@ -66,6 +66,9 @@ class NanoarrowPxdGenerator:
             output.write(b"    ctypedef int ArrowErrorCode\n")
             output.write(b"    cdef int NANOARROW_OK\n")
             output.write(b"    cdef int NANOARROW_MAX_FIXED_BUFFERS\n")
+            output.write(b"    cdef int ARROW_FLAG_DICTIONARY_ORDERED\n")
+            output.write(b"    cdef int ARROW_FLAG_NULLABLE\n")
+            output.write(b"    cdef int ARROW_FLAG_MAP_KEYS_SORTED\n")
             output.write(b"\n")
 
             for type in types_cython:

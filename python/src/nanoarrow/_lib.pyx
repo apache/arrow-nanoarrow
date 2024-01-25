@@ -221,6 +221,69 @@ cdef class Error:
         raise NanoarrowException(what, code, "")
 
 
+# This could in theory use cpdef enum, but an initial attempt to do so
+# resulted Cython duplicating some function definitions. For now, we resort
+# to a more manual trampoline of values to make them accessible from
+# schema.py.
+cdef class CArrowType:
+    """
+    Wrapper around ArrowType to provide implementations in Python access
+    to the values.
+    """
+
+    UNINITIALIZED = NANOARROW_TYPE_UNINITIALIZED
+    NA = NANOARROW_TYPE_NA
+    BOOL = NANOARROW_TYPE_BOOL
+    UINT8 = NANOARROW_TYPE_UINT8
+    INT8 = NANOARROW_TYPE_INT8
+    UINT16 = NANOARROW_TYPE_UINT16
+    INT16 = NANOARROW_TYPE_INT16
+    UINT32 = NANOARROW_TYPE_UINT32
+    INT32 = NANOARROW_TYPE_INT32
+    UINT64 = NANOARROW_TYPE_UINT64
+    INT64 = NANOARROW_TYPE_INT64
+    HALF_FLOAT = NANOARROW_TYPE_HALF_FLOAT
+    FLOAT = NANOARROW_TYPE_FLOAT
+    DOUBLE = NANOARROW_TYPE_DOUBLE
+    STRING = NANOARROW_TYPE_STRING
+    BINARY = NANOARROW_TYPE_BINARY
+    FIXED_SIZE_BINARY = NANOARROW_TYPE_FIXED_SIZE_BINARY
+    DATE32 = NANOARROW_TYPE_DATE32
+    DATE64 = NANOARROW_TYPE_DATE64
+    TIMESTAMP = NANOARROW_TYPE_TIMESTAMP
+    TIME32 = NANOARROW_TYPE_TIME32
+    TIME64 = NANOARROW_TYPE_TIME64
+    INTERVAL_MONTHS = NANOARROW_TYPE_INTERVAL_MONTHS
+    INTERVAL_DAY_TIME = NANOARROW_TYPE_INTERVAL_DAY_TIME
+    DECIMAL128 = NANOARROW_TYPE_DECIMAL128
+    DECIMAL256 = NANOARROW_TYPE_DECIMAL256
+    LIST = NANOARROW_TYPE_LIST
+    STRUCT = NANOARROW_TYPE_STRUCT
+    SPARSE_UNION = NANOARROW_TYPE_SPARSE_UNION
+    DENSE_UNION = NANOARROW_TYPE_DENSE_UNION
+    DICTIONARY = NANOARROW_TYPE_DICTIONARY
+    MAP = NANOARROW_TYPE_MAP
+    EXTENSION = NANOARROW_TYPE_EXTENSION
+    FIXED_SIZE_LIST = NANOARROW_TYPE_FIXED_SIZE_LIST
+    DURATION = NANOARROW_TYPE_DURATION
+    LARGE_STRING = NANOARROW_TYPE_LARGE_STRING
+    LARGE_BINARY = NANOARROW_TYPE_LARGE_BINARY
+    LARGE_LIST = NANOARROW_TYPE_LARGE_LIST
+    INTERVAL_MONTH_DAY_NANO = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
+
+
+cdef class CArrowTimeUnit:
+    """
+    Wrapper around ArrowTimeUnit to provide implementations in Python access
+    to the values.
+    """
+
+    SECOND = NANOARROW_TIME_UNIT_SECOND
+    MILLI = NANOARROW_TIME_UNIT_MILLI
+    MICRO = NANOARROW_TIME_UNIT_MICRO
+    NANO = NANOARROW_TIME_UNIT_NANO
+
+
 cdef class CSchema:
     """Low-level ArrowSchema wrapper
 
@@ -243,8 +306,15 @@ cdef class CSchema:
         return CSchema(base, <uintptr_t>(c_schema_out))
 
     def __cinit__(self, object base, uintptr_t addr):
-        self._base = base,
+        self._base = base
         self._ptr = <ArrowSchema*>addr
+
+    def __deepcopy__(self):
+        cdef CSchema out = CSchema.allocate()
+        cdef int result = ArrowSchemaDeepCopy(self._ptr, out._ptr)
+        if result != NANOARROW_OK:
+            raise NanoarrowException("ArrowSchemaDeepCopy()", result)
+        return out
 
     @staticmethod
     def _import_from_c_capsule(schema_capsule):
@@ -277,6 +347,23 @@ cdef class CSchema:
         if result != NANOARROW_OK:
             Error.raise_error("ArrowSchemaDeepCopy", result)
         return schema_capsule
+
+    @property
+    def _capsule(self):
+        """
+        Returns the capsule backing this CSchema or None if it does not exist
+        or points to a parent ArrowSchema.
+        """
+        cdef ArrowSchema* maybe_capsule_ptr
+        maybe_capsule_ptr = <ArrowSchema*>PyCapsule_GetPointer(self._base, 'arrow_schema')
+
+        # This will return False if this is a child CSchema whose capsule holds
+        # the parent ArrowSchema
+        if maybe_capsule_ptr == self._ptr:
+            return self._base
+
+        return None
+
 
     def _addr(self):
         return <uintptr_t>self._ptr
@@ -376,6 +463,10 @@ cdef class CSchemaView:
     # lifetime guarantees that the pointed-to data from ArrowStringViews remains valid
     cdef object _base
     cdef ArrowSchemaView _schema_view
+    # Not part of the ArrowSchemaView (but possibly should be)
+    cdef bint _dictionary_ordered
+    cdef bint _nullable
+    cdef bint _map_keys_sorted
 
     _fixed_size_types = (
         NANOARROW_TYPE_FIXED_SIZE_LIST,
@@ -409,6 +500,18 @@ cdef class CSchemaView:
         if result != NANOARROW_OK:
             error.raise_message("ArrowSchemaViewInit()", result)
 
+        self._dictionary_ordered = schema._ptr.flags & ARROW_FLAG_DICTIONARY_ORDERED
+        self._nullable = schema._ptr.flags & ARROW_FLAG_NULLABLE
+        self._map_keys_sorted = schema._ptr.flags & ARROW_FLAG_MAP_KEYS_SORTED
+
+    @property
+    def type_id(self):
+        return self._schema_view.type
+
+    @property
+    def storage_type_id(self):
+        return self._schema_view.storage_type
+
     @property
     def type(self):
         cdef const char* type_str = ArrowTypeString(self._schema_view.type)
@@ -420,6 +523,18 @@ cdef class CSchemaView:
         cdef const char* type_str = ArrowTypeString(self._schema_view.storage_type)
         if type_str != NULL:
             return type_str.decode('UTF-8')
+
+    @property
+    def dictionary_ordered(self):
+        return self._dictionary_ordered != 0
+
+    @property
+    def nullable(self):
+        return self._nullable != 0
+
+    @property
+    def map_keys_sorted(self):
+        return self._map_keys_sorted != 0
 
     @property
     def fixed_size(self):
@@ -440,6 +555,11 @@ cdef class CSchemaView:
     def decimal_scale(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_scale
+
+    @property
+    def time_unit_id(self):
+        if self._schema_view.type in CSchemaView._time_unit_types:
+            return self._schema_view.time_unit
 
     @property
     def time_unit(self):
@@ -477,6 +597,130 @@ cdef class CSchemaView:
 
     def __repr__(self):
         return _lib_utils.schema_view_repr(self)
+
+
+cdef class CSchemaBuilder:
+    cdef CSchema c_schema
+    cdef ArrowSchema* _ptr
+
+    def __cinit__(self, CSchema schema):
+        self.c_schema = schema
+        self._ptr = schema._ptr
+        if self._ptr.release == NULL:
+            ArrowSchemaInit(self._ptr)
+
+    @staticmethod
+    def allocate():
+        return CSchemaBuilder(CSchema.allocate())
+
+    def child(self, int64_t i):
+        return CSchemaBuilder(self.c_schema.child(i))
+
+    def set_type(self, int type_id):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetType(self._ptr, <ArrowType>type_id)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetType()", result)
+
+        return self
+
+    def set_type_decimal(self, int type_id, int precision, int scale):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type_id, precision, scale)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetType()", result)
+
+    def set_type_fixed_size(self, int type_id, int fixed_size):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type_id, fixed_size)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetTypeFixedSize()", result)
+
+        return self
+
+    def set_type_date_time(self, int type_id, int time_unit, timezone):
+        self.c_schema._assert_valid()
+
+        cdef int result
+        if timezone is None:
+            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, NULL)
+        else:
+            timezone = str(timezone)
+            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, timezone.encode("UTF-8"))
+
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetTypeDateTime()", result)
+
+        return self
+
+    def set_format(self, str format):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaSetFormat(self._ptr, format.encode("UTF-8"))
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetFormat()", result)
+
+        return self
+
+    def set_name(self, name):
+        self.c_schema._assert_valid()
+
+        cdef int result
+        if name is None:
+            result = ArrowSchemaSetName(self._ptr, NULL)
+        else:
+            name = str(name)
+            result = ArrowSchemaSetName(self._ptr, name.encode("UTF-8"))
+
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaSetName()", result)
+
+        return self
+
+    def allocate_children(self, int n):
+        self.c_schema._assert_valid()
+
+        cdef int result = ArrowSchemaAllocateChildren(self._ptr, n)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaAllocateChildren()", result)
+
+        return self
+
+    def set_child(self, int64_t i, name, CSchema child_src):
+        self.c_schema._assert_valid()
+
+        if i < 0 or i >= self._ptr.n_children:
+            raise IndexError(f"Index out of range: {i}")
+
+        if self._ptr.children[i].release != NULL:
+            ArrowSchemaRelease(self._ptr.children[i])
+
+        cdef int result = ArrowSchemaDeepCopy(child_src._ptr, self._ptr.children[i])
+        if result != NANOARROW_OK:
+            Error.raise_error("", result)
+
+        if name is not None:
+            name = str(name)
+            result = ArrowSchemaSetName(self._ptr.children[i], name.encode("UTF-8"))
+
+        return self
+
+    def set_nullable(self, nullable):
+        if nullable:
+            self._ptr.flags = self._ptr.flags | ARROW_FLAG_NULLABLE
+        else:
+            self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_NULLABLE
+
+        return self
+
+    def finish(self):
+        self.c_schema._assert_valid()
+
+        return self.c_schema
+
 
 cdef class CArray:
     """Low-level ArrowArray wrapper
