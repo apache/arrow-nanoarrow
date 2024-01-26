@@ -15,7 +15,12 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-nanoarrow for Python
-====================
+Getting Started
+===============
 
-Placeholder
+.. toctree::
+   :maxdepth: 2
+
+   C/C++ <cpp>
+   Python <python>
+   R <r>

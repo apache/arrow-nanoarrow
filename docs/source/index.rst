@@ -23,7 +23,6 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   Getting Started <getting-started>
+   Getting Started <getting-started/index>
    Roadmap <roadmap>
    API Reference <reference/index>
-   Python <python>
