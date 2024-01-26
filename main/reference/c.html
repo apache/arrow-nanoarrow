@@ -48,7 +48,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="C++ API Reference" href="cpp.html" />
-    <link rel="prev" title="R API Reference" href="r.html" />
+    <link rel="prev" title="Python API reference" href="python.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -160,7 +160,7 @@ document.write(`
   <ul class="bd-navbar-elements navbar-nav">
     
                     <li class="nav-item">
-                      <a class="nav-link nav-internal" href="../getting-started.html">
+                      <a class="nav-link nav-internal" href="../getting-started/index.html">
                         Getting Started
                       </a>
                     </li>
@@ -262,7 +262,7 @@ document.write(`
   <ul class="bd-navbar-elements navbar-nav">
     
                     <li class="nav-item">
-                      <a class="nav-link nav-internal" href="../getting-started.html">
+                      <a class="nav-link nav-internal" href="../getting-started/index.html">
                         Getting Started
                       </a>
                     </li>
@@ -330,6 +330,7 @@ document.write(`
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="r.html">R API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="python.html">Python API Reference</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">C API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cpp.html">C++ API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing API Reference</a></li>
@@ -1673,8 +1674,8 @@ document.write(`
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
 <dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-errors_1gaf6477f634051b45478945d4ba38274ef"></span><span class="sig-name descname"><span class="pre">NANOARROW_CHECK_PRINTF_ATTRIBUTE</span> <span class="pre">int</span> <span class="pre">ArrowErrorSet</span> <span class="pre">(struct</span> <span class="pre">ArrowError</span> <span class="pre">*error,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*fmt,...)</span></span></dt>
+<dt class="sig sig-object cpp" id="_CPPv413ArrowErrorSetP10ArrowErrorPKcz">
+<span id="_CPPv313ArrowErrorSetP10ArrowErrorPKcz"></span><span id="_CPPv213ArrowErrorSetP10ArrowErrorPKcz"></span><span id="ArrowErrorSet__ArrowErrorP.cCP.z"></span><span class="target" id="group__nanoarrow-errors_1gaf6477f634051b45478945d4ba38274ef"></span><span class="pre">NANOARROW_CHECK_PRINTF_ATTRIBUTE</span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowErrorSet</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">fmt</span></span>, <span class="p"><span class="pre">...</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv413ArrowErrorSetP10ArrowErrorPKcz" title="Link to this definition">#</a><br /></dt>
 <dd><p>Set the contents of an error using printf syntax. </p>
 <p>If error is NULL, this function does nothing and returns NANOARROW_OK. </p>
 </dd></dl>
@@ -2474,12 +2475,12 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="r.html"
+       href="python.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">R API Reference</p>
+        <p class="prev-next-title">Python API reference</p>
       </div>
     </a>
     <a class="right-next"
@@ -2718,6 +2719,7 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#error-handling">Error handling</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowErrorCode"><code class="docutils literal notranslate"><span class="pre">ArrowErrorCode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413ArrowErrorSetP10ArrowErrorPKcz"><code class="docutils literal notranslate"><span class="pre">ArrowErrorSet()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowErrorInitP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowErrorInit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417ArrowErrorMessageP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowErrorMessage()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowErrorSetStringP10ArrowErrorPKc"><code class="docutils literal notranslate"><span class="pre">ArrowErrorSetString()</span></code></a></li>

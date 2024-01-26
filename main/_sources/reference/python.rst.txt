@@ -15,16 +15,8 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-API Reference
-=============
+Python API reference
+====================
 
-.. toctree::
-   :maxdepth: 2
-
-   R API Reference <r>
-   Python API Reference <python>
-   C API Reference <c>
-   C++ API Reference <cpp>
-   Testing API Reference <testing>
-   IPC Extension Reference <ipc>
-   Device Extension Reference <device>
+.. automodule:: nanoarrow
+   :members:

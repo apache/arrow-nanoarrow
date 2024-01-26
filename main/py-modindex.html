@@ -6,9 +6,8 @@
 
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <title>Roadmap &#8212; nanoarrow  documentation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Python Module Index &#8212; nanoarrow  documentation</title>
   
   
   
@@ -38,7 +37,7 @@
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'roadmap';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'py-modindex';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.15.2';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://arrow.apache.org/nanoarrow/switcher.json';
@@ -47,10 +46,15 @@
         </script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API Reference" href="reference/index.html" />
-    <link rel="prev" title="nanoarrow" href="getting-started/r.html" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
+
+    <script>
+      DOCUMENTATION_OPTIONS.COLLAPSE_INDEX = true;
+    </script>
+
+
   </head>
   
   
@@ -166,8 +170,8 @@ document.write(`
                     </li>
                 
 
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="roadmap.html">
                         Roadmap
                       </a>
                     </li>
@@ -234,10 +238,6 @@ document.write(`
   
 
   
-    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
-      <span class="fa-solid fa-outdent"></span>
-    </label>
-  
 </div>
 
     </header>
@@ -247,6 +247,8 @@ document.write(`
     <div class="bd-container__inner bd-page-width">
       
       
+      
+        
       
       <div class="bd-sidebar-primary bd-sidebar">
         
@@ -268,8 +270,8 @@ document.write(`
                     </li>
                 
 
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="roadmap.html">
                         Roadmap
                       </a>
                     </li>
@@ -324,12 +326,6 @@ document.write(`
          spellcheck="false"/>
   <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
 </form></div>
-        <div class="sidebar-primary-item">
-<nav class="bd-docs-nav bd-links"
-     aria-label="Section Navigation">
-  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"></div>
-</nav></div>
     </div>
   
   
@@ -347,33 +343,7 @@ document.write(`
           <div class="bd-content">
             <div class="bd-article-container">
               
-              <div class="bd-header-article">
-<div class="header-article-items header-article__inner">
-  
-    <div class="header-article-items__start">
-      
-        <div class="header-article-item">
-
-
-
-<nav aria-label="Breadcrumb">
-  <ul class="bd-breadcrumbs">
-    
-    <li class="breadcrumb-item breadcrumb-home">
-      <a href="index.html" class="nav-link" aria-label="Home">
-        <i class="fa-solid fa-home"></i>
-      </a>
-    </li>
-    <li class="breadcrumb-item active" aria-current="page">Roadmap</li>
-  </ul>
-</nav>
-</div>
-      
-    </div>
-  
-  
-</div>
-</div>
+              <div class="bd-header-article"></div>
               
               
               
@@ -381,109 +351,23 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <!---
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   <h1>Python Module Index</h1>
 
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
---><section id="roadmap">
-<h1>Roadmap<a class="headerlink" href="#roadmap" title="Link to this heading">#</a></h1>
-<p>Apache Arrow nanoarrow is a relatively new library and is under active
-development. Maintaining the balance between useful and minimal is
-difficult to do; however, there are a number of features that fit
-comforably within the scope of nanoarrow that have not yet been
-scheduled for implementation.</p>
-<section id="c-library">
-<h2>C library<a class="headerlink" href="#c-library" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p><strong>Type coverage</strong>: The C library currently provides support for all
-types that are available via the Arrow C Data interface. When the
-recently-added run-end encoded (REE) types and potentially
-forthcoming string view/list view types are available via the Arrow C
-Data interface, support should be added in nanoarrow as well.</p></li>
-<li><p><strong>Array append</strong>: The <code class="docutils literal notranslate"><span class="pre">ArrowArrayAppend*()</span></code> family of functions
-provide a means by which to incrementally build arrays; however,
-there is no built-in way to append an <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code>, potentially
-more efficiently appending multiple values at once. Among other
-things, this would provide a route to an unoptimized filter/take
-implementation.</p></li>
-<li><p><strong>Remove Arrow C++ dependency for tests</strong>: The C library and IPC
-extension rely on Arrow C++ for some test code that was written early
-in the library’s development. These tests are valuable to ensure
-compatibility between nanoarrow and Arrow C++; however, including
-them in the default test suite complicates release verification for
-some users and prevents testing in environments where Arrow C++ does
-not currently build (e.g., WASM, compilers without C++17 support).</p></li>
-<li><p><strong>C++ integration</strong>: The existing C++ integration is intentionally
-minimal; however, there are likely improvements that could be made to
-better integrate nanoarrow into existing C++ projects.</p></li>
-<li><p><strong>Documentation</strong>: As the C library and its user base evolves,
-documentation needs to be refined and expanded to support the current
-set of use cases.</p></li>
-</ul>
-</section>
-<section id="ipc-extension">
-<h2>IPC extension<a class="headerlink" href="#ipc-extension" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p><strong>Write support</strong>: The IPC extension currently provides support for
-reading IPC streams but not writing them.</p></li>
-<li><p><strong>Dictionary support</strong>: The IPC extension does not currently support
-reading dictionary messages an IPC stream.</p></li>
-<li><p><strong>Compression</strong>: The IPC extension does not currently support
-compressed streams.</p></li>
-</ul>
-</section>
-<section id="device-extension">
-<h2>Device extension<a class="headerlink" href="#device-extension" title="Link to this heading">#</a></h2>
-<p>This entire extension is currently experimental and awaiting use-cases
-that will drive future development.</p>
-</section>
-<section id="r-bindings">
-<h2>R bindings<a class="headerlink" href="#r-bindings" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p><strong>Type support</strong>: The R bindings currently do not provide support for
-extension types and relies on Arrow C++ for some dictionary-encoded
-types.</p></li>
-<li><p><strong>ALTREP support</strong>: A recent R release added enhanced ALTREP support
-such that types that convert to <code class="docutils literal notranslate"><span class="pre">list()</span></code> can defer materialization
-cost/allocation. Arrow sources that arrive in chunks (e.g., from a
-<code class="docutils literal notranslate"><span class="pre">Table</span></code> or <code class="docutils literal notranslate"><span class="pre">ChunkedArray</span></code>) currently can’t be converted via any
-ALTREP mechanism and support could be added.</p></li>
-<li><p><strong>IPC support</strong>: The IPC reader is not currently exposed in the R
-bindings.</p></li>
-</ul>
-</section>
-<section id="python-bindings">
-<h2>Python bindings<a class="headerlink" href="#python-bindings" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p><strong>Packaging</strong>: The Python bindings are currently unpublished (pypi or
-conda) and are not included in release verification.</p></li>
-<li><p><strong>Element conversion</strong>: There is currently no mechanism to extract an
-element of an <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code> as a Python object (e.g., an <code class="docutils literal notranslate"><span class="pre">int</span></code>
-or <code class="docutils literal notranslate"><span class="pre">str</span></code>).</p></li>
-<li><p><strong>numpy/Pandas conversion</strong>: The Python bindings currently expose the
-<code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code> but do not provide a means by which to convert to
-popular packages such as numpy or Pandas.</p></li>
-<li><p><strong>Creating arrays</strong>: The Python bindings do not currently provide a
-means by which to create an <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> from buffers or
-incrementally.</p></li>
-<li><p><strong>IPC support</strong>: The IPC reader is not currently exposed in the
-Python bindings.</p></li>
-</ul>
-</section>
-</section>
+   <div class="modindex-jumpbox">
+   <a href="#cap-n"><strong>n</strong></a>
+   </div>
+
+   <table class="indextable modindextable">
+     <tr class="pcap"><td></td><td>&#160;</td><td></td></tr>
+     <tr class="cap" id="cap-n"><td></td><td>
+       <strong>n</strong></td><td></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="reference/python.html#module-nanoarrow"><code class="xref">nanoarrow</code></a></td><td>
+       <em></em></td></tr>
+   </table>
 
 
                 </article>
@@ -495,24 +379,6 @@ Python bindings.</p></li>
                 <footer class="prev-next-footer">
                   
 <div class="prev-next-area">
-    <a class="left-prev"
-       href="getting-started/r.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">nanoarrow</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="reference/index.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">API Reference</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
 </div>
                 </footer>
               
@@ -520,51 +386,7 @@ Python bindings.</p></li>
             
             
               
-                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
-
-
-  <div class="sidebar-secondary-item">
-<div
-    id="pst-page-navigation-heading-2"
-    class="page-toc tocsection onthispage">
-    <i class="fa-solid fa-list"></i> On this page
-  </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-library">C library</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ipc-extension">IPC extension</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#device-extension">Device extension</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#r-bindings">R bindings</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-bindings">Python bindings</a></li>
-</ul>
-  </nav></div>
-
-  <div class="sidebar-secondary-item">
-
-  
-  <div class="tocsection editthispage">
-    <a href="https://github.com/apache/arrow-nanoarrow/edit/main/docs/source/roadmap.rst">
-      <i class="fa-solid fa-pencil"></i>
-      
-      
-        
-          Edit on GitHub
-        
-      
-    </a>
-  </div>
-</div>
-
-  <div class="sidebar-secondary-item">
-
-  <div class="tocsection sourcelink">
-    <a href="_sources/roadmap.rst.txt">
-      <i class="fa-solid fa-file-lines"></i> Show Source
-    </a>
-  </div>
-</div>
-
-</div></div>
+                <div class="bd-sidebar-secondary bd-toc"></div>
               
             
           </div>
