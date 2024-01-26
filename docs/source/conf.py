@@ -61,6 +61,8 @@ extensions = [
     "sphinx.ext.autodoc",
 ]
 
+cpp_id_attributes = ["NANOARROW_CHECK_PRINTF_ATTRIBUTE"]
+
 # Breathe configuration
 breathe_projects = {
     "nanoarrow_c": "../../src/apidoc/xml",

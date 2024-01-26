@@ -294,8 +294,7 @@ def schema(obj, *, name=None, nullable=None, **params):
         includes:
         * A ``pyarrow.Schema``, `pyarrow.Field``, or ``pyarrow.DataType``
         * A nanoarrow :class:`Schema`, :class:`CSchema`, or :class:`Type`
-        * Any object implementing the Arrow PyCapsule interface
-          ``__arrow_c_schema__()`` protocol method.
+        * Any object implementing the Arrow PyCapsule interface protocol method.
 
     name : str, optional
         An optional name to bind to this field.
@@ -305,7 +304,7 @@ def schema(obj, *, name=None, nullable=None, **params):
         Only supported if ``obj`` is a :class:`Type` object (for any other input,
         the nullability is preserved from the passed object).
 
-    **params
+    params :
         Type-specific parameters when ``obj`` is a :class:`Type`.
 
     Examples

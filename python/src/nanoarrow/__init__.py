@@ -15,8 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import c_version  # noqa: F401
-from nanoarrow.c_lib import (  # noqa: F401
+"""Python bindings to the nanoarrow C library
+
+EXPERIMNETAL
+
+The nanoarrow Python package provides bindings to the nanoarrow C library. Like
+the nanoarrow C library, it provides tools to facilitate the use of the
+Arrow C Data and Arrow C Stream interfaces.
+"""
+
+from nanoarrow._lib import c_version
+from nanoarrow.c_lib import (
     c_schema,
     c_array,
     c_array_stream,
@@ -26,7 +35,7 @@ from nanoarrow.c_lib import (  # noqa: F401
     allocate_c_array,
     allocate_c_array_stream,
 )
-from nanoarrow.schema import (  # noqa: F401
+from nanoarrow.schema import (
     Schema,
     Type,
     TimeUnit,
@@ -63,3 +72,50 @@ from nanoarrow.schema import (  # noqa: F401
     struct,
 )
 from nanoarrow._version import __version__  # noqa: F401
+
+__all__ = [
+    "Schema",
+    "TimeUnit",
+    "Type",
+    "allocate_c_array",
+    "allocate_c_array_stream",
+    "allocate_c_schema",
+    "binary",
+    "bool",
+    "c_array",
+    "c_array_stream",
+    "c_array_view",
+    "c_lib",
+    "c_schema",
+    "c_schema_view",
+    "c_version",
+    "date32",
+    "date64",
+    "decimal128",
+    "decimal256",
+    "duration",
+    "fixed_size_binary",
+    "float16",
+    "float32",
+    "float64",
+    "int16",
+    "int32",
+    "int64",
+    "int8",
+    "interval_day_time",
+    "interval_month_day_nano",
+    "interval_months",
+    "large_binary",
+    "large_string",
+    "null",
+    "schema",
+    "string",
+    "struct",
+    "time32",
+    "time64",
+    "timestamp",
+    "uint16",
+    "uint32",
+    "uint64",
+    "uint8",
+]

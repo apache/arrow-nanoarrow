@@ -26,3 +26,4 @@ Contents
    Getting Started <getting-started>
    Roadmap <roadmap>
    API Reference <reference/index>
+   Python <python>
