@@ -850,6 +850,13 @@ class TestingJSONWriter {
         break;
       }
 
+      case NANOARROW_TYPE_DECIMAL128:
+        NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 128));
+        break;
+      case NANOARROW_TYPE_DECIMAL256:
+        NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 256));
+        break;
+
       default:
         // Not supported
         return ENOTSUP;
@@ -932,6 +939,37 @@ class TestingJSONWriter {
       ArrowArrayViewGetIntervalUnsafe(view, i, interval);
       out << R"({"months": )" << interval->months << R"(, "days": )" << interval->days
           << R"(, "nanoseconds": ")" << interval->ns << R"("})";
+    }
+  }
+
+  ArrowErrorCode WriteDecimalData(std::ostream& out, const ArrowArrayView* view,
+                                  int bitwidth) {
+    ArrowDecimal value;
+    ArrowDecimalInit(&value, bitwidth, 0, 0);
+    nanoarrow::UniqueBuffer tmp;
+
+    NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, 0, &value, tmp.get()));
+    for (int64_t i = 1; i < view->length; i++) {
+      out << ", ";
+      NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, i, &value, tmp.get()));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode WriteDecimalMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                       int64_t i, ArrowDecimal* decimal,
+                                       ArrowBuffer* tmp) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << R"("0")";
+      return NANOARROW_OK;
+    } else {
+      ArrowArrayViewGetDecimalUnsafe(view, i, decimal);
+      tmp->size_bytes = 0;
+      NANOARROW_RETURN_NOT_OK(ArrowDecimalAppendDigitsToBuffer(decimal, tmp));
+      out << R"(")" << std::string(reinterpret_cast<char*>(tmp->data), tmp->size_bytes)
+          << R"(")";
+      return NANOARROW_OK;
     }
   }
 
@@ -2115,6 +2153,10 @@ class TestingJSONReader {
             return SetBufferIntervalDayTime(data, buffer, error);
           case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
             return SetBufferIntervalMonthDayNano(data, buffer, error);
+          case NANOARROW_TYPE_DECIMAL128:
+            return SetBufferDecimal(data, buffer, 128, error);
+          case NANOARROW_TYPE_DECIMAL256:
+            return SetBufferDecimal(data, buffer, 256, error);
           default:
             ArrowErrorSet(error, "storage type %s DATA buffer not supported",
                           ArrowTypeString(array_view->storage_type));
@@ -2374,6 +2416,32 @@ class TestingJSONReader {
       NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
       NANOARROW_RETURN_NOT_OK(
           SetBufferIntItem<int64_t>(item["nanoseconds"], buffer, error));
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* buffer, int bitwidth,
+                                  ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(value.is_array(), error, "decimal buffer must be array"));
+
+    ArrowDecimal decimal;
+    ArrowDecimalInit(&decimal, bitwidth, 0, 0);
+
+    ArrowStringView item_view;
+
+    for (const auto& item : value) {
+      NANOARROW_RETURN_NOT_OK(
+          Check(item.is_string(), error, "decimal buffer item must be string"));
+      auto item_str = item.get<std::string>();
+      item_view.data = item_str.data();
+      item_view.size_bytes = item_str.size();
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowDecimalSetDigits(&decimal, item_view),
+                                         error);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(buffer, decimal.words, decimal.n_words * sizeof(uint64_t)),
+          error);
     }
 
     return NANOARROW_OK;
