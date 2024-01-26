@@ -331,7 +331,7 @@ At this point the release candidate is suitable for a vote on the Apache Arrow d
 ```
 Hello,
 
-I would like to propose the following release candidate (rc0) of Apache Arrow nanoarrow [0] version 0.4.0. This is an initial release consisting of 42 resolved GitHub issues from 4 contributors [1].
+I would like to propose the following release candidate (rc0) of Apache Arrow nanoarrow [0] version 0.4.0. This is an initial release consisting of 44 resolved GitHub issues from 5 contributors [1].
 
 This release candidate is based on commit: {rc_commit} [2]
 
@@ -347,7 +347,7 @@ The vote will be open for at least 72 hours.
 [ ] -1 Do not release this as Apache Arrow nanoarrow 0.4.0 because...
 
 [0] https://github.com/apache/arrow-nanoarrow
-[1] https://github.com/apache/arrow-nanoarrow/milestone/3?closed=1
+[1] https://github.com/apache/arrow-nanoarrow/milestone/4?closed=1
 [2] https://github.com/apache/arrow-nanoarrow/tree/apache-arrow-nanoarrow-0.4.0-rc0
 [3] https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.4.0-rc0/
 [4] https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.4.0-rc0/CHANGELOG.md
@@ -364,6 +364,8 @@ After a passing release vote, the following tasks must be completed:
 [ ] Uploaded artifacts to Subversion
 [ ] Created GitHub release
 [ ] Submit R package to CRAN
+[ ] Submit Python package to PyPI
+[ ] Update Python package on conda-forge
 [ ] Release blog post at https://github.com/apache/arrow-site/pull/288
 [ ] Sent announcement to announce@apache.org
 [ ] Removed old artifacts from SVN
@@ -434,7 +436,7 @@ Email template:
 ```
 [ANNOUNCE] Apache Arrow nanoarrow 0.4.0 Released
 
-The Apache Arrow community is pleased to announce the 0.4.0 release of Apache Arrow nanoarrow. This initial release covers 42 resolved issues from 4 contributors[1].
+The Apache Arrow community is pleased to announce the 0.4.0 release of Apache Arrow nanoarrow. This initial release covers 44 resolved issues from 5 contributors[1].
 
 The release is available now from [2].
 
@@ -478,7 +480,7 @@ svn rm --username=$APACHE_USERNAME -m "Clean up svn artifacts" https://dist.apac
 ### Bumped versions on main
 
 This is handled by
-[post-02-bump-versions.sh](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/post-02-bump-versions.sh):
+[post-02-bump-versions.sh](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/post-02-bump-versions.sh). Create a branch and then run:
 
 ```bash
 dev/release/post-02-bump-versions.sh . 0.4.0 0.5.0
