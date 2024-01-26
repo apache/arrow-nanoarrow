@@ -55,14 +55,12 @@ fi
 
 echo "Updating changelog for $version"
 # Update changelog
-# XXX: commitizen doesn't respect --tag-format with --incremental, so mimic
-# it by hand.
-(
-    echo ;
-    # Strip trailing blank line
-    printf '%s\n' "$(cz ch --dry-run --unreleased-version "nanoarrow ${version}")"
-) >> ${SOURCE_DIR}/../../CHANGELOG.md
-git add ${SOURCE_DIR}/../../CHANGELOG.md
+CHANGELOG="${SOURCE_DIR}/../../CHANGELOG.md"
+mv ${CHANGELOG} ${CHANGELOG}.bak
+python3 ${SOURCE_DIR}/changelog.py ${version} ${CHANGELOG}.bak > ${CHANGELOG}
+rm ${CHANGELOG}.bak
+
+git add ${CHANGELOG}
 git commit -m "chore: update CHANGELOG.md for $version"
 
 echo "Prepare release ${version} on tag ${release_candidate_tag}"
