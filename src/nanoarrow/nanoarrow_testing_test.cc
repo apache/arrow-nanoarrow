@@ -1370,9 +1370,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   AssertSchemasCompareEqual(actual.get(), expected.get());
 
   // With different top-level flags
-  actual->flags = ARROW_FLAG_MAP_KEYS_SORTED;
+  actual->flags = 0;
   AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
-                              "Path: \n- .flags: 4\n+ .flags: 2\n\n");
+                              "Path: \n- .flags: 0\n+ .flags: 2\n\n");
   actual->flags = expected->flags;
 
   // With different top-level metadata

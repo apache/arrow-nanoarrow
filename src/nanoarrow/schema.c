@@ -1178,16 +1178,31 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
     schema_view->type = NANOARROW_TYPE_DICTIONARY;
   }
 
-  result = ArrowSchemaViewValidate(schema_view, schema_view->storage_type, error);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
+  NANOARROW_RETURN_NOT_OK(
+      ArrowSchemaViewValidate(schema_view, schema_view->storage_type, error));
 
   if (schema_view->storage_type != schema_view->type) {
-    result = ArrowSchemaViewValidate(schema_view, schema_view->type, error);
-    if (result != NANOARROW_OK) {
-      return result;
-    }
+    NANOARROW_RETURN_NOT_OK(
+        ArrowSchemaViewValidate(schema_view, schema_view->type, error));
+  }
+
+  int64_t unknown_flags = schema->flags & ~NANOARROW_FLAG_ALL_SUPPORTED;
+  if (unknown_flags != 0) {
+    ArrowErrorSet(error, "Unknown ArrowSchema flag");
+    return EINVAL;
+  }
+
+  if (schema->flags & ARROW_FLAG_DICTIONARY_ORDERED &&
+      schema_view->type != NANOARROW_TYPE_DICTIONARY) {
+    ArrowErrorSet(error,
+                  "ARROW_FLAG_DICTIONARY_ORDERED is only relevant for dictionaries");
+    return EINVAL;
+  }
+
+  if (schema->flags & ARROW_FLAG_MAP_KEYS_SORTED &&
+      schema_view->type != NANOARROW_TYPE_MAP) {
+    ArrowErrorSet(error, "ARROW_FLAG_MAP_KEYS_SORTED is only relevant for a map type");
+    return EINVAL;
   }
 
   ArrowLayoutInit(&schema_view->layout, schema_view->storage_type);

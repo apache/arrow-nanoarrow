@@ -280,9 +280,10 @@ test_that("schema modify can modify name", {
 
 test_that("schema modify can modify flags", {
   schema <- na_int32()
+  expect_identical(schema$flags, 2L)
 
-  schema2 <- nanoarrow_schema_modify(schema, list(flags = 1))
-  expect_identical(schema2$flags, 1L)
+  schema2 <- nanoarrow_schema_modify(schema, list(flags = 0))
+  expect_identical(schema2$flags, 0L)
   expect_identical(schema2$format, schema$format)
   expect_identical(schema2$name, schema$name)
 

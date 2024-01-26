@@ -574,6 +574,24 @@ TEST(SchemaViewTest, SchemaViewInitErrors) {
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Error parsing schema->format 'n*': parsed 1/2 characters");
 
+  ASSERT_EQ(ArrowSchemaSetFormat(&schema, "n"), NANOARROW_OK);
+  schema.flags = 0;
+  schema.flags |= ARROW_FLAG_DICTIONARY_ORDERED;
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "ARROW_FLAG_DICTIONARY_ORDERED is only relevant for dictionaries");
+
+  schema.flags = 0;
+  schema.flags |= ARROW_FLAG_MAP_KEYS_SORTED;
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "ARROW_FLAG_MAP_KEYS_SORTED is only relevant for a map type");
+
+  schema.flags = 0;
+  schema.flags |= ~NANOARROW_FLAG_ALL_SUPPORTED;
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error), "Unknown ArrowSchema flag");
+
   ArrowSchemaRelease(&schema);
 }
 
