@@ -21,6 +21,7 @@
 # - cmake >= 3.14
 # - R >= 3.5.0
 # - Arrow C++ >= 9.0.0
+# - Python >= 3.8
 #
 # Environment Variables
 # - CMAKE_BIN: Command to use for cmake (e.g., cmake3 on Centos7)
@@ -35,12 +36,18 @@
 #   "gpg --import KEYS" returns an error. In general, we should not use this
 #   to ensure importing all GPG keys. But newer algorithms such as ed25519 may
 #   not be supported in old GPG such as GPG on CentOS 7.
+# - NANOARROW_PYTHON_VENV: An absolute path to a virtual environment, into which
+#   nanoarrow Python build and/or test dependencies may be installed. If empty,
+#   a temporary virtual environment will be created using Python from PYTHON_BIN
+#   or python3 if PYTHON_BIN is empty.
 # - TEST_SOURCE: Set to 0 to selectively run component verification.
 # - TEST_C: Builds C libraries and tests using the default CMake
 #   configuration. Defaults to the value of TEST_SOURCE.
 # - TEST_C_BUNDLED: Tests the bundled version of the C libraries.
 # - TEST_R: Builds the R package source tarball and runs R CMD check.
 #   Defaults to the value of TEST_SOURCE.
+# - TEST_PYTHON: Builds the Python package and runs tests. Defaults to the value
+#   of TEST_SOURCE.
 # - TEST_WITH_MEMCHECK: Set to a nonzero value to additionally run tests
 #   with memcheck. This requires valgrind on PATH.
 
