@@ -588,7 +588,7 @@ TEST(SchemaViewTest, SchemaViewInitErrors) {
                "ARROW_FLAG_MAP_KEYS_SORTED is only relevant for a map type");
 
   schema.flags = 0;
-  schema.flags |= (ARROW_FLAG_MAP_KEYS_SORTED << 1);
+  schema.flags |= ~NANOARROW_FLAG_ALL_SUPPORTED;
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error), "Unknown ArrowSchema flag");
 
