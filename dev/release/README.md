@@ -53,7 +53,7 @@ The verification script itself is written in `bash` and requires the `curl`, `gp
 `shasum`/`sha512sum` commands. These are typically available from a package
 manager except on Windows (see below).
 
-To run only C library verification (requires CMake and Arrow C++ but not R):
+To run only C library verification (requires CMake and Arrow C++ but not R or Python):
 
 ```bash
 TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.4.0 0
@@ -63,6 +63,12 @@ To run only R package verification (requires R but not CMake or Arrow C++):
 
 ```bash
 TEST_DEFAULT=0 TEST_R=1 ./verify-release-candidate.sh 0.4.0 0
+```
+
+To run only Python verification (requires Python but not CMake or Arrow C++):
+
+```bash
+TEST_DEFAULT=0 TEST_PYTHON=1 ./verify-release-candidate.sh 0.4.0 0
 ```
 
 ### MacOS
@@ -98,6 +104,9 @@ export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow -DCMAKE
 
 You can install R using the instructions provided on the
 [R Project Download page](https://cloud.r-project.org/bin/macosx/).
+
+The system `python3` provided by MacOS is sufficient to verify the release
+candidate.
 
 ### Conda (Linux and MacOS)
 
@@ -157,7 +166,7 @@ export R_HOME="/c/Program Files/R/R-4.2.2"
 On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install prerequisites using `apt`.
 
 ```bash
-apt-get update && apt-get install -y git g++ cmake r-base gnupg curl
+apt-get update && apt-get install -y git g++ cmake r-base gnupg curl python3-dev python3-venv
 
 # For Arrow C++
 apt-get install -y -V ca-certificates lsb-release wget
@@ -178,7 +187,7 @@ On recent Fedora (e.g., `docker run --rm -it fedora:latest`), you can install al
 using `dnf`:
 
 ```bash
-dnf install -y git cmake R gnupg curl libarrow-devel
+dnf install -y git cmake R gnupg curl libarrow-devel python3-devel python3-virtualenv
 ```
 
 ### Arch Linux
@@ -207,7 +216,8 @@ https://dl-cdn.alpinelinux.org/alpine/edge/testing/
 EOF
 apk update
 
-apk add bash linux-headers git cmake R R-dev g++ gnupg curl apache-arrow-dev
+apk add bash linux-headers git cmake R R-dev g++ gnupg curl apache-arrow-dev \
+  python3-dev
 ```
 
 ### Centos7
@@ -238,7 +248,7 @@ curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar
     make install
 
 # Pass location of Arrow, cmake, and ctest to the verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow"
+export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib64/cmake/arrow"
 export CMAKE_BIN=cmake3
 export CTEST_BIN=ctest3
 
@@ -246,6 +256,9 @@ export CTEST_BIN=ctest3
 # not skip verifying signatures, just allows errors for unsupported entries in
 # the global Arrow KEYS file.
 export NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR=1
+
+# System Python on centos7 is not new enough to support the Python package
+export TEST_PYTHON=0
 ```
 
 ### Big endian
