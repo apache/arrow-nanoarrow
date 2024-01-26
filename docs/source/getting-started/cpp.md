@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# Getting started with nanoarrow
+# Getting started with nanoarrow in C/C++
 
 This tutorial provides a short example of writing a C++ library that exposes
 an Arrow-based API and uses nanoarrow to implement a simple text file reader/writer.

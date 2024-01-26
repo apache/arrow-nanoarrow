@@ -82,15 +82,27 @@ main() {
    doxygen
    popd
 
-   pushd docs
+   show_header "Build nanoarrow Python"
+
+   pushd python
+   pip install .
+   popd
 
    show_header "Build Sphinx project"
+   pushd docs
+
 
    # Use the README as the docs homepage
    pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
 
+   # Use R README as the getting started guide for R
+   pandoc ../r/README.md --from markdown --to rst -s -o source/getting-started/r.rst
+
+   # Use Python README as the getting started guide for Python
+   pandoc ../python/README.md --from markdown --to rst -s -o source/getting-started/python.rst
+
    # Do some Markdown -> reST conversion
-   for f in source/*.md; do
+   for f in $(find source -name "*.md"); do
      fout=$(echo $f | sed -e s/.md/.rst/)
      pandoc $f --from markdown --to rst -s -o $fout
    done
@@ -104,7 +116,7 @@ main() {
    R CMD INSTALL ../r --preclean
 
    # Build R documentation
-   Rscript -e 'pkgdown::build_site_github_pages("../r", dest_dir = "../docs/_build/html/r", new_process = FALSE, install = FALSE)'
+   Rscript -e 'pkgdown::build_site("../r", override = list(destination = "../docs/_build/html/r"), new_process = FALSE, install = FALSE)'
 
    popd
 

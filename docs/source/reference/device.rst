@@ -39,8 +39,3 @@ Arrow C Device Interface
    :project: nanoarrow_device
    :members:
    :undoc-members:
-
-.. doxygengroup:: arrow-device-types
-   :project: nanoarrow_device
-   :members:
-   :undoc-members:
