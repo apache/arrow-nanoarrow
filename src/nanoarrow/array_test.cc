@@ -968,16 +968,26 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
   EXPECT_EQ(ArrowArrayAppendInterval(&array, &interval), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
 
+  struct ArrowInterval second;
+  ArrowIntervalInit(&second, ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO);
+  second.months = 1;
+  second.days = 1;
+  second.ns = 1;
+  EXPECT_EQ(ArrowArrayAppendInterval(&array, &second), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
-  EXPECT_EQ(array.length, 2);
-  EXPECT_EQ(array.null_count, 1);
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
 
   auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
 
-  EXPECT_EQ(memcmp(data_buffer, &interval.months, 4), 0);
-  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.months), &interval.days, 4), 0);
+  EXPECT_EQ(memcmp(data_buffer, &interval.months, sizeof(interval.months)), 0);
+  EXPECT_EQ(memcmp(data_buffer + sizeof(interval.months), &interval.days,
+                   sizeof(interval.days)),
+            0);
   EXPECT_EQ(memcmp(data_buffer + sizeof(interval.months) + sizeof(interval.days),
-                   &interval.ns, 8),
+                   &interval.ns, sizeof(interval.ns)),
             0);
 
   auto arrow_array = ImportArray(&array, month_day_nano_interval());
@@ -986,6 +996,9 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
   auto builder = MonthDayNanoIntervalBuilder();
   MonthDayNanoIntervalType::MonthDayNanos mdn = {2, 12, 42};
   ARROW_EXPECT_OK(builder.Append(mdn));
+  ARROW_EXPECT_OK(builder.AppendNulls(1));
+  MonthDayNanoIntervalType::MonthDayNanos ones = {1, 1, 1};
+  ARROW_EXPECT_OK(builder.Append(ones));
   ARROW_EXPECT_OK(builder.AppendNulls(1));
   auto expected_array = builder.Finish();
 
