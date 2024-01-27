@@ -241,6 +241,11 @@ typedef int ArrowErrorCode;
 #define ArrowErrorCode NANOARROW_CHECK_RETURN_ATTRIBUTE ArrowErrorCode
 #endif
 
+/// \brief Flags supported by ArrowSchemaViewInit()
+/// \ingroup nanoarrow-schema-view
+#define NANOARROW_FLAG_ALL_SUPPORTED \
+  (ARROW_FLAG_DICTIONARY_ORDERED | ARROW_FLAG_NULLABLE | ARROW_FLAG_MAP_KEYS_SORTED)
+
 /// \brief Error type containing a UTF-8 encoded message.
 /// \ingroup nanoarrow-errors
 struct ArrowError {
