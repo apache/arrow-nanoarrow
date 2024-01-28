@@ -3318,6 +3318,10 @@ static inline ArrowErrorCode ArrowArrayAppendInterval(struct ArrowArray* array,
       return EINVAL;
   }
 
+  if (private_data->bitmap.buffer.data != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
+  }
+
   array->length++;
   return NANOARROW_OK;
 }
