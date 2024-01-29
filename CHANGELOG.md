@@ -135,3 +135,49 @@
 
 - **r**: Use `basic_array_stream()` to improve array stream to data.frame conversion (#279)
 - **python**: Cleaner strategy for `__iter__()` on an `ArrowArrayStream` (#263)
+
+## nanoarrow 0.4.0
+
+### Docs
+
+- **r**: fix source links from pkgdown site (#315)
+
+### Feat
+
+- Check flags field of ArrowSchema on ArrowSchemaViewInit (#368)
+- Add decimal support to integration tester (#361)
+- Add support for datetime types in integration tester (#356)
+- Add dictionary support in integration test utility (#342)
+- Add C Data integration test shared library (#337)
+- Add Array/Schema/ArrayStream comparison utility to testing helpers (#330)
+- Add batch reader and data file read/write to/from ArrowArrayStream (#328)
+- Add integration testing reader for Column (#325)
+- Add integration testing JSON reader (#322)
+- Add Type/Field/Schema JSON writer for integration testing JSON (#321)
+- **extensions/nanoarrow_testing**: Add nanoarrow_testing extension with testing JSON writer (#317)
+- **python**: Implement user-facing Schema class (#366)
+- **python**: basic export through PyCapsules (#320)
+- **python**: Add ArrowDeviceArray extension to Python bindings (#313)
+- **python**: Support the PyCapsule protocol (#318)
+- **r**: Provide LinkingTo headers for extension packages (#332)
+- **r**: Add more `nanoarrow_array_stream` generics (#349)
+- **r**: Add conversion from integer type to `character()` (#345)
+
+### Fix
+
+- Issue with appending NULLs to IntervalArray (#376)
+- Suppress unused parameter warnings (#365)
+- Add `const` qualifier where appropriate in struct fields and declarations (#327)
+- **docs**: Correct typo in testing.rst (#348)
+- **r**: Ensure simple `list()`s can be converted without arrow installed (#344)
+- **r**: Ensure wrapper array stream eagerly releases the wrapped array stream (#333)
+
+### Perf
+
+- Improved Bit (Un)packing Performance (#280)
+
+### Refactor
+
+- Add wrappers around callbacks to improve syntax and debuggability (#338)
+- Improve syntax for implementing `ArrowArrayStream` from C++ (#336)
+- **python**: Document, prefix, and add reprs for C-wrapping classes (#340)
