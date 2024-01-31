@@ -991,7 +991,8 @@ cdef class CArrayView:
         cdef ArrowBufferView* buffer_view = &(self._ptr.buffer_views[i])
         return CBufferView(
             self._base,
-            <uintptr_t>buffer_view,
+            <uintptr_t>buffer_view.data.data,
+            buffer_view.size_bytes,
             self._ptr.layout.buffer_type[i],
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
@@ -1075,7 +1076,7 @@ cdef class CBufferView:
     this buffer content does not apply any parent offset.
     """
     cdef object _base
-    cdef ArrowBufferView* _ptr
+    cdef ArrowBufferView _ptr
     cdef ArrowBufferType _buffer_type
     cdef ArrowType _buffer_data_type
     cdef CDevice _device
@@ -1084,11 +1085,12 @@ cdef class CBufferView:
     cdef Py_ssize_t _strides
     cdef char _format[128]
 
-    def __cinit__(self, object base, uintptr_t addr,
+    def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
                   ArrowBufferType buffer_type, ArrowType buffer_data_type,
                   Py_ssize_t element_size_bits, CDevice device):
         self._base = base
-        self._ptr = <ArrowBufferView*>addr
+        self._ptr.data.data = <void*>addr
+        self._ptr.size_bytes = size_bytes
         self._buffer_type = buffer_type
         self._buffer_data_type = buffer_data_type
         self._device = device
