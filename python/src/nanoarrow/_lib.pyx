@@ -284,6 +284,57 @@ cdef class CArrowTimeUnit:
     NANO = NANOARROW_TIME_UNIT_NANO
 
 
+
+cdef class CDevice:
+    """ArrowDevice wrapper
+
+    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
+    not ABI stable) that contains callbacks for device operations
+    beyond its type and identifier (e.g., copy buffers to or from
+    a device).
+    """
+
+    cdef object _base
+    cdef ArrowDevice* _ptr
+
+    def __cinit__(self, object base, uintptr_t addr):
+        self._base = base,
+        self._ptr = <ArrowDevice*>addr
+
+    def _array_init(self, uintptr_t array_addr, CSchema schema):
+        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
+        cdef ArrowDeviceArray* device_array_ptr
+        holder = alloc_c_device_array(&device_array_ptr)
+        cdef int result = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowDevice::init_array", result)
+
+        return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
+
+    def __repr__(self):
+        return _lib_utils.device_repr(self)
+
+    @property
+    def device_type(self):
+        return self._ptr.device_type
+
+    @property
+    def device_id(self):
+        return self._ptr.device_id
+
+    @staticmethod
+    def resolve(ArrowDeviceType device_type, int64_t device_id):
+        if device_type == ARROW_DEVICE_CPU:
+            return CDEVICE_CPU
+        else:
+            raise ValueError(f"Device not found for type {device_type}/{device_id}")
+
+
+# Cache the CPU device
+# The CPU device is statically allocated (so base is None)
+CDEVICE_CPU = CDevice(None, <uintptr_t>ArrowDeviceCpu())
+
+
 cdef class CSchema:
     """Low-level ArrowSchema wrapper
 
@@ -880,12 +931,12 @@ cdef class CArrayView:
     """
     cdef object _base
     cdef ArrowArrayView* _ptr
-    cdef ArrowDevice* _device
+    cdef CDevice _device
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._device = ArrowDeviceCpu()
+        self._device = CDEVICE_CPU
 
     @property
     def storage_type(self):
@@ -944,7 +995,7 @@ cdef class CArrayView:
             self._ptr.layout.buffer_type[i],
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
-            <uintptr_t>self._device
+            <uintptr_t>self._device._ptr
         )
 
     @property
@@ -1311,55 +1362,6 @@ cdef class CArrayStream:
 
     def __repr__(self):
         return _lib_utils.array_stream_repr(self)
-
-
-cdef class Device:
-    """ArrowDevice wrapper
-
-    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
-    not ABI stable) that contains callbacks for device operations
-    beyond its type and identifier (e.g., copy buffers to or from
-    a device).
-    """
-    cdef object _base
-    cdef ArrowDevice* _ptr
-
-    def __cinit__(self, object base, uintptr_t addr):
-        self._base = base,
-        self._ptr = <ArrowDevice*>addr
-
-    def _array_init(self, uintptr_t array_addr, CSchema schema):
-        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
-        cdef ArrowDeviceArray* device_array_ptr
-        holder = alloc_c_device_array(&device_array_ptr)
-        cdef int result = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowDevice::init_array", result)
-
-        return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
-
-    def __repr__(self):
-        return _lib_utils.device_repr(self)
-
-    @property
-    def device_type(self):
-        return self._ptr.device_type
-
-    @property
-    def device_id(self):
-        return self._ptr.device_id
-
-    @staticmethod
-    def resolve(ArrowDeviceType device_type, int64_t device_id):
-        if device_type == ARROW_DEVICE_CPU:
-            return Device.cpu()
-        else:
-            raise ValueError(f"Device not found for type {device_type}/{device_id}")
-
-    @staticmethod
-    def cpu():
-        # The CPU device is statically allocated (so base is None)
-        return Device(None, <uintptr_t>ArrowDeviceCpu())
 
 
 cdef class CDeviceArray:

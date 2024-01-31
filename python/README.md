@@ -23,8 +23,8 @@
 
 The nanoarrow Python package provides bindings to the nanoarrow C library. Like
 the nanoarrow C library, it provides tools to facilitate the use of the
-[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html) 
-and [Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html) 
+[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html)
+and [Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html)
 interfaces.
 
 ## Installation
