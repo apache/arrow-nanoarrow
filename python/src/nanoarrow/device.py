@@ -15,12 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CDEVICE_CPU, CDeviceArray
+from nanoarrow._lib import CDEVICE_CPU, CDevice, CDeviceArray
 from nanoarrow.c_lib import c_array
 
 
 def cpu():
     return CDEVICE_CPU
+
+
+def resolve(device_type, device_id):
+    return CDevice.resolve(device_type, device_id)
 
 
 def c_device_array(obj):

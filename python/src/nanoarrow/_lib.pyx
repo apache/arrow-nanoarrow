@@ -995,7 +995,7 @@ cdef class CArrayView:
             self._ptr.layout.buffer_type[i],
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
-            <uintptr_t>self._device._ptr
+            self._device
         )
 
     @property
@@ -1078,7 +1078,7 @@ cdef class CBufferView:
     cdef ArrowBufferView* _ptr
     cdef ArrowBufferType _buffer_type
     cdef ArrowType _buffer_data_type
-    cdef ArrowDevice* _device
+    cdef CDevice _device
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
@@ -1086,12 +1086,12 @@ cdef class CBufferView:
 
     def __cinit__(self, object base, uintptr_t addr,
                   ArrowBufferType buffer_type, ArrowType buffer_data_type,
-                  Py_ssize_t element_size_bits, uintptr_t device):
+                  Py_ssize_t element_size_bits, CDevice device):
         self._base = base
         self._ptr = <ArrowBufferView*>addr
         self._buffer_type = buffer_type
         self._buffer_data_type = buffer_data_type
-        self._device = <ArrowDevice*>device
+        self._device = device
         self._element_size_bits = element_size_bits
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
@@ -1156,6 +1156,19 @@ cdef class CBufferView:
             return value
 
     def __iter__(self):
+        # memoryview's implementation is very fast but not always possible (half float, fixed-size binary, interval)
+        if self._buffer_data_type in (
+            NANOARROW_TYPE_HALF_FLOAT,
+            NANOARROW_TYPE_INTERVAL_DAY_TIME,
+            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
+        ) or (
+            self._buffer_data_type == NANOARROW_TYPE_BINARY and self._element_size_bits != 0
+        ):
+            return self._iter_struct()
+        else:
+            return iter(memoryview(self))
+
+    def _iter_struct(self):
         for value in iter_unpack(self.format, self):
             if len(value) == 1:
                 yield value[0]
@@ -1185,27 +1198,27 @@ cdef class CBufferView:
         elif self._buffer_data_type == NANOARROW_TYPE_UINT8:
             format_const = "B"
         elif self._buffer_data_type == NANOARROW_TYPE_INT16:
-            format_const = "=h"
+            format_const = "h"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT16:
-            format_const = "=H"
+            format_const = "H"
         elif self._buffer_data_type == NANOARROW_TYPE_INT32:
-            format_const = "=i"
+            format_const = "i"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT32:
-            format_const = "=I"
+            format_const = "I"
         elif self._buffer_data_type == NANOARROW_TYPE_INT64:
-            format_const = "=q"
+            format_const = "q"
         elif self._buffer_data_type == NANOARROW_TYPE_UINT64:
-            format_const = "=Q"
+            format_const = "Q"
         elif self._buffer_data_type == NANOARROW_TYPE_HALF_FLOAT:
-            format_const = "=e"
+            format_const = "e"
         elif self._buffer_data_type == NANOARROW_TYPE_FLOAT:
-            format_const = "=f"
+            format_const = "f"
         elif self._buffer_data_type == NANOARROW_TYPE_DOUBLE:
-            format_const = "=d"
+            format_const = "d"
         elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_DAY_TIME:
-            format_const = "=ii"
+            format_const = "ii"
         elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-            format_const = "=iiq"
+            format_const = "iiq"
 
         if format_const != NULL:
             snprintf(self._format, sizeof(self._format), "%s", format_const)
@@ -1213,7 +1226,7 @@ cdef class CBufferView:
             snprintf(self._format, sizeof(self._format), "%ds", <int>(self._element_size_bits // 8))
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        if self._device.device_type != ARROW_DEVICE_CPU:
+        if self._device is not CDEVICE_CPU:
             raise RuntimeError("nanoarrow.c_lib.CBufferView is not a CPU buffer")
 
         buffer.buf = <void*>self._ptr.data.data

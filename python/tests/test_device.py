@@ -28,7 +28,7 @@ def test_cpu_device():
     assert cpu.device_id == 0
     assert "device_type: 1" in repr(cpu)
 
-    cpu = device.CDevice.resolve(1, 0)
+    cpu = device.resolve(1, 0)
     assert cpu.device_type == 1
 
     pa_array = pa.array([1, 2, 3])
