@@ -23,8 +23,8 @@
 
 The nanoarrow Python package provides bindings to the nanoarrow C library. Like
 the nanoarrow C library, it provides tools to facilitate the use of the
-[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html)
-and [Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html)
+[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html) 
+and [Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html) 
 interfaces.
 
 ## Installation
@@ -87,6 +87,11 @@ na.c_schema_view(schema)
     - decimal_bitwidth: 128
     - decimal_precision: 10
     - decimal_scale: 3
+    - dictionary_ordered: False
+    - map_keys_sorted: False
+    - nullable: True
+    - storage_type_id: 24
+    - type_id: 24
 
 
 
@@ -131,7 +136,7 @@ array
     - length: 4
     - offset: 0
     - null_count: 1
-    - buffers: (2939032895680, 2939032895616, 2939032895744)
+    - buffers: (5209191547072, 5209191547008, 5209191547136)
     - dictionary: NULL
     - children[0]:
 
@@ -194,20 +199,7 @@ array_stream
 
 
     <nanoarrow.c_lib.CArrayStream>
-    - get_schema(): <nanoarrow.c_lib.CSchema struct>
-      - format: '+s'
-      - name: ''
-      - flags: 0
-      - metadata: NULL
-      - dictionary: NULL
-      - children[1]:
-        'some_column': <nanoarrow.c_lib.CSchema int32>
-          - format: 'i'
-          - name: 'some_column'
-          - flags: 2
-          - metadata: NULL
-          - dictionary: NULL
-          - children[0]:
+    - get_schema(): struct<some_column: int32>
 
 
 
@@ -219,7 +211,7 @@ for array in array_stream:
     print(array)
 ```
 
-    <nanoarrow.c_lib.CArray struct>
+    <nanoarrow.c_lib.CArray struct<some_column: int32>>
     - length: 3
     - offset: 0
     - null_count: 0
@@ -230,7 +222,7 @@ for array in array_stream:
         - length: 3
         - offset: 0
         - null_count: 0
-        - buffers: (0, 2939033026688)
+        - buffers: (0, 5209191678080)
         - dictionary: NULL
         - children[0]:
 
@@ -248,20 +240,7 @@ array_stream
 
 
     <nanoarrow.c_lib.CArrayStream>
-    - get_schema(): <nanoarrow.c_lib.CSchema struct>
-      - format: '+s'
-      - name: ''
-      - flags: 0
-      - metadata: NULL
-      - dictionary: NULL
-      - children[1]:
-        'some_column': <nanoarrow.c_lib.CSchema int32>
-          - format: 'i'
-          - name: 'some_column'
-          - flags: 2
-          - metadata: NULL
-          - dictionary: NULL
-          - children[0]:
+    - get_schema(): struct<some_column: int32>
 
 
 
@@ -284,4 +263,10 @@ pip install -e .[test]
 
 # Run tests
 pytest -vvx
+```
+
+If you need to debug or edit any .c files used to build the native extension, you can generate the `compile_commands.json` usable by most IDEs/clang tools using [Bear](https://github.com/rizsotto/Bear).
+
+```shell
+bear -- python setup.py build_ext --inplace && mv compile_commands.json build
 ```
