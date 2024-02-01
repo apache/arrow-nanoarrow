@@ -29,7 +29,7 @@ The goal of nanoarrow is to provide minimal useful bindings to the
 and [Arrow C
 Stream](https://arrow.apache.org/docs/format/CStreamInterface.html)
 interfaces using the [nanoarrow C
-library](https://arrow.apache.org/nanoarrow).
+library](https://arrow.apache.org/nanoarrow/).
 
 ## Installation
 
