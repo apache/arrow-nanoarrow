@@ -218,7 +218,7 @@ def test_c_array_view():
 
     assert view.storage_type == "int32"
     assert "- storage_type: 'int32'" in repr(view)
-    assert "<int32 data[12 b] 1 2 3>" in repr(view)
+    assert "data <int32[12 b] 1 2 3>" in repr(view)
 
     data_buffer = memoryview(view.buffer(1))
     data_buffer_copy = bytes(data_buffer)

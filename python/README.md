@@ -136,7 +136,7 @@ array
     - length: 4
     - offset: 0
     - null_count: 1
-    - buffers: (5209191547072, 5209191547008, 5209191547136)
+    - buffers: (3678035706048, 3678035705984, 3678035706112)
     - dictionary: NULL
     - children[0]:
 
@@ -158,9 +158,9 @@ na.c_array_view(array)
     - offset: 0
     - null_count: 1
     - buffers[3]:
-      - <bool validity[1 b] 11100000>
-      - <int32 data_offset[20 b] 0 3 6 11 11>
-      - <string data[11 b] b'onetwothree'>
+      - validity <bool[1 b] 11100000>
+      - data_offset <int32[20 b] 0 3 6 11 11>
+      - data <string[11 b] b'onetwothree'>
     - dictionary: NULL
     - children[0]:
 
@@ -222,7 +222,7 @@ for array in array_stream:
         - length: 3
         - offset: 0
         - null_count: 0
-        - buffers: (0, 5209191678080)
+        - buffers: (0, 3678035837056)
         - dictionary: NULL
         - children[0]:
 
@@ -263,10 +263,4 @@ pip install -e .[test]
 
 # Run tests
 pytest -vvx
-```
-
-If you need to debug or edit any .c files used to build the native extension, you can generate the `compile_commands.json` usable by most IDEs/clang tools using [Bear](https://github.com/rizsotto/Bear).
-
-```shell
-bear -- python setup.py build_ext --inplace && mv compile_commands.json build
 ```

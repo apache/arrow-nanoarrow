@@ -984,6 +984,24 @@ cdef class CArrayView:
                 return i
         return 3
 
+    def buffer_type(self, int64_t i):
+        if i < 0 or i >= self.n_buffers:
+            raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
+
+        buffer_type = self._ptr.layout.buffer_type[i]
+        if buffer_type == NANOARROW_BUFFER_TYPE_VALIDITY:
+            return "validity"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_TYPE_ID:
+            return "type_id"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+            return "union_offset"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+            return "data_offset"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_DATA:
+            return "data"
+        else:
+            return "none"
+
     def buffer(self, int64_t i):
         if i < 0 or i >= self.n_buffers:
             raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
@@ -993,7 +1011,6 @@ cdef class CArrayView:
             self._base,
             <uintptr_t>buffer_view.data.data,
             buffer_view.size_bytes,
-            self._ptr.layout.buffer_type[i],
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
             self._device
@@ -1077,7 +1094,6 @@ cdef class CBufferView:
     """
     cdef object _base
     cdef ArrowBufferView _ptr
-    cdef ArrowBufferType _buffer_type
     cdef ArrowType _buffer_data_type
     cdef CDevice _device
     cdef Py_ssize_t _element_size_bits
@@ -1086,12 +1102,11 @@ cdef class CBufferView:
     cdef char _format[128]
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
-                  ArrowBufferType buffer_type, ArrowType buffer_data_type,
+                  ArrowType buffer_data_type,
                   Py_ssize_t element_size_bits, CDevice device):
         self._base = base
         self._ptr.data.data = <void*>addr
         self._ptr.size_bytes = size_bytes
-        self._buffer_type = buffer_type
         self._buffer_data_type = buffer_data_type
         self._device = device
         self._element_size_bits = element_size_bits
@@ -1118,19 +1133,6 @@ cdef class CBufferView:
     @property
     def size_bytes(self):
         return self._ptr.size_bytes
-
-    @property
-    def type(self):
-        if self._buffer_type == NANOARROW_BUFFER_TYPE_VALIDITY:
-            return "validity"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_TYPE_ID:
-            return "type_id"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-            return "union_offset"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_DATA_OFFSET:
-            return "data_offset"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_DATA:
-            return "data"
 
     @property
     def data_type(self):

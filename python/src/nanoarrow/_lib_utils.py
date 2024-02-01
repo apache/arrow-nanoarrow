@@ -117,9 +117,11 @@ def array_view_repr(array_view, max_char_width=80, indent=0):
         lines.append(f"{indent_str}- {attr}: {attr_repr}")
 
     lines.append(f"{indent_str}- buffers[{array_view.n_buffers}]:")
-    for buffer in array_view.buffers:
+    for i, buffer in enumerate(array_view.buffers):
+        buffer_type = array_view.buffer_type(i)
         lines.append(
-            f"{indent_str}  - <{buffer_view_repr(buffer, max_char_width - indent - 4)}>"
+            f"{indent_str}  - {buffer_type} "
+            f"<{buffer_view_repr(buffer, max_char_width - indent - 4 - len(buffer))}>"
         )
 
     if array_view.dictionary:
@@ -144,7 +146,7 @@ def buffer_view_repr(buffer_view, max_char_width=80):
     if max_char_width < 20:
         max_char_width = 20
 
-    prefix = f"{buffer_view.data_type} {buffer_view.type}"
+    prefix = f"{buffer_view.data_type}"
     prefix += f"[{buffer_view.size_bytes} b]"
 
     if buffer_view.device_type == 1:
