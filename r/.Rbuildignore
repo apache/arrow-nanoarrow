@@ -10,3 +10,4 @@
 ^\.covrignore$
 ^cran-comments\.md$
 ^bootstrap\.R$
+^\.cache$
