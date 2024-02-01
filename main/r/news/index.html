@@ -45,9 +45,58 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nanoarrow-development-version">nanoarrow (development version)<a class="anchor" aria-label="anchor" href="#nanoarrow-development-version"></a></h2>
-<ul><li>Added a <code>NEWS.md</code> file to track changes to the package.</li></ul></div>
-  </main></div>
+<h2 class="pkg-version" data-toc-text="0.4.0" id="nanoarrow-040">nanoarrow 0.4.0<a class="anchor" aria-label="anchor" href="#nanoarrow-040"></a></h2>
+<ul><li>Fix source links from pkgdown site (<a href="https://github.com/apache/arrow-nanoarrow/issues/315" class="external-link">#315</a>).</li>
+<li>Provide LinkingTo headers for extension packages (<a href="https://github.com/apache/arrow-nanoarrow/issues/332" class="external-link">#332</a>).</li>
+<li>Add more <code>nanoarrow_array_stream</code> generics (<a href="https://github.com/apache/arrow-nanoarrow/issues/349" class="external-link">#349</a>).</li>
+<li>Add conversion from integer type to <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> (<a href="https://github.com/apache/arrow-nanoarrow/issues/345" class="external-link">#345</a>).</li>
+<li>Ensure simple <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>s can be converted without arrow installed (<a href="https://github.com/apache/arrow-nanoarrow/issues/344" class="external-link">#344</a>).</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0.1" id="nanoarrow-0301">nanoarrow 0.3.0.1<a class="anchor" aria-label="anchor" href="#nanoarrow-0301"></a></h2><p class="text-muted">CRAN release: 2023-12-08</p>
+<ul><li>Ensure wrapper array stream eagerly releases the wrapped array stream (<a href="https://github.com/apache/arrow-nanoarrow/issues/333" class="external-link">#333</a>).</li></ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="nanoarrow-030">nanoarrow 0.3.0<a class="anchor" aria-label="anchor" href="#nanoarrow-030"></a></h2><p class="text-muted">CRAN release: 2023-09-29</p>
+<ul><li>Use classed warnings to signal that a lossy conversion occurred (<a href="https://github.com/apache/arrow-nanoarrow/issues/298" class="external-link">#298</a>)</li>
+<li>Add support for <code><a href="https://rdrr.io/pkg/bit64/man/bit64-package.html" class="external-link">bit64::integer64()</a></code> conversions (<a href="https://github.com/apache/arrow-nanoarrow/issues/293" class="external-link">#293</a>)</li>
+<li>Implement extension type registration/conversion (<a href="https://github.com/apache/arrow-nanoarrow/issues/288" class="external-link">#288</a>)</li>
+<li>Implement dictionary conversion (<a href="https://github.com/apache/arrow-nanoarrow/issues/285" class="external-link">#285</a>)</li>
+<li>Ensure <code>ordered</code> is reflected in <code><a href="../reference/na_type.html">na_dictionary()</a></code> (<a href="https://github.com/apache/arrow-nanoarrow/issues/299" class="external-link">#299</a>)</li>
+<li>Warn for possibly out of range int64 -&gt; double conversions (<a href="https://github.com/apache/arrow-nanoarrow/issues/294" class="external-link">#294</a>)</li>
+<li>Support map conversion to R vector (<a href="https://github.com/apache/arrow-nanoarrow/issues/282" class="external-link">#282</a>)</li>
+<li>Don’t link to arrow package R6 class pages (<a href="https://github.com/apache/arrow-nanoarrow/issues/269" class="external-link">#269</a>)</li>
+<li>Use <code><a href="../reference/basic_array_stream.html">basic_array_stream()</a></code> to improve array stream to data.frame conversion (<a href="https://github.com/apache/arrow-nanoarrow/issues/279" class="external-link">#279</a>)</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0-1" id="nanoarrow-020-1">nanoarrow 0.2.0-1<a class="anchor" aria-label="anchor" href="#nanoarrow-020-1"></a></h2>
+<ul><li>Don’t link to arrow package R6 class pages (<a href="https://github.com/apache/arrow-nanoarrow/issues/269" class="external-link">#269</a>)</li></ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="nanoarrow-020">nanoarrow 0.2.0<a class="anchor" aria-label="anchor" href="#nanoarrow-020"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
+<ul><li>Improve printing and conversion of buffers (<a href="https://github.com/apache/arrow-nanoarrow/issues/208" class="external-link">#208</a>)</li>
+<li>Add <code>enum ArrowType buffer_data_type</code> member to <code>struct ArrowLayout</code> (<a href="https://github.com/apache/arrow-nanoarrow/issues/207" class="external-link">#207</a>)</li>
+<li>Implement ListChildOffset function (<a href="https://github.com/apache/arrow-nanoarrow/issues/197" class="external-link">#197</a>)</li>
+<li>Add ability to deterministically run a finalizer on an array stream (<a href="https://github.com/apache/arrow-nanoarrow/issues/196" class="external-link">#196</a>)</li>
+<li>Union array support (<a href="https://github.com/apache/arrow-nanoarrow/issues/195" class="external-link">#195</a>)</li>
+<li>Add ArrowArrayStream implementation to support keeping a dependent object in scope (<a href="https://github.com/apache/arrow-nanoarrow/issues/194" class="external-link">#194</a>)</li>
+<li>Add <code><a href="../reference/as_nanoarrow_array.html">as_nanoarrow_array()</a></code> implementation that does not fall back on <code><a href="https://arrow.apache.org/docs/r/reference/as_arrow_array.html" class="external-link">arrow::as_arrow_array()</a></code> everywhere (<a href="https://github.com/apache/arrow-nanoarrow/issues/108" class="external-link">#108</a>)</li>
+<li>Create nanoarrow_array objects from buffers (<a href="https://github.com/apache/arrow-nanoarrow/issues/105" class="external-link">#105</a>)</li>
+<li>Implement infer schema methods (<a href="https://github.com/apache/arrow-nanoarrow/issues/104" class="external-link">#104</a>)</li>
+<li>Create and modify nanoarrow_schema objects (<a href="https://github.com/apache/arrow-nanoarrow/issues/101" class="external-link">#101</a>)</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bugfixes-0-2-0">Bugfixes<a class="anchor" aria-label="anchor" href="#bugfixes-0-2-0"></a></h3>
+<ul><li>Fix <code><a href="../reference/convert_array_stream.html">convert_array_stream()</a></code> for non-record batch stream with zero batches (<a href="https://github.com/apache/arrow-nanoarrow/issues/212" class="external-link">#212</a>)</li>
+<li>clear <code>release</code> in <code>EmptyArrayStream::release_wrapper</code> (<a href="https://github.com/apache/arrow-nanoarrow/issues/204" class="external-link">#204</a>)</li>
+<li>Release streams when calling <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> or <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> (<a href="https://github.com/apache/arrow-nanoarrow/issues/202" class="external-link">#202</a>)</li>
+<li>Don’t invoke undefined behaviour in conversions to/from Arrow (<a href="https://github.com/apache/arrow-nanoarrow/issues/167" class="external-link">#167</a>)</li>
+<li>Use strict prototypes in all internal C functions (<a href="https://github.com/apache/arrow-nanoarrow/issues/151" class="external-link">#151</a>)</li>
+<li>Don’t memcpy NULL when converting buffer to raw (<a href="https://github.com/apache/arrow-nanoarrow/issues/149" class="external-link">#149</a>)</li>
+</ul></div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

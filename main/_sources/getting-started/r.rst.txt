@@ -40,7 +40,7 @@ Data <https://arrow.apache.org/docs/format/CDataInterface.html>`__ and
 `Arrow C
 Stream <https://arrow.apache.org/docs/format/CStreamInterface.html>`__
 interfaces using the `nanoarrow C
-library <https://arrow.apache.org/nanoarrow>`__.
+library <https://arrow.apache.org/nanoarrow/>`__.
 
 Installation
 ------------
