@@ -31,18 +31,19 @@ by default (i.e., classes, methods, and functions implemented in Python
 generally have better autocomplete + documentation available to IDEs).
 """
 
-from libc.stdint cimport uintptr_t, int64_t
+from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy, strlen
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, PyBuffer_SizeFromFormat, PyBUF_ANY_CONTIGUOUS, PyBUF_FORMAT
+from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, PyBuffer_SizeFromFormat, \
+                     PyBUF_ANY_CONTIGUOUS, PyBUF_FORMAT, PyBUF_WRITABLE
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
 from sys import byteorder as sys_byteorder
-from struct import unpack_from, iter_unpack
+from struct import unpack_from, iter_unpack, calcsize
 from nanoarrow import _lib_utils
 
 def c_version():
@@ -212,17 +213,20 @@ cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
     return ArrowBufferDeallocator(<ArrowBufferDeallocatorCallback>&c_deallocate_pybuffer, allocator_private)
 
 
-cdef c_arrow_type_from_format(const char* format_c) noexcept:
+cdef c_arrow_type_from_format(const char* format_c):
     if format_c == NULL:
         return 0, NANOARROW_TYPE_BINARY
 
     format = format_c.decode("UTF-8")
+    # PyBuffer_SizeFromFormat() was added in Python 3.9 (potentially faster)
+    item_size = calcsize(format)
+
+    # Strip endian modifiers that don't affect the interpretation based on
+    # item_size below.
     if sys_byteorder == "little":
         format = format.strip("=@<")
     else:
         format = format.strip("=@>")
-
-    item_size = PyBuffer_SizeFromFormat(format_c)
 
     if format == "c":
         return 0, NANOARROW_TYPE_STRING
@@ -268,7 +272,11 @@ cdef object alloc_c_buffer_from_pybuffer(object obj):
         raise BufferError()
 
     # Parse the buffer's format string to get the ArrowType and element size
-    element_size_bytes, data_type = c_arrow_type_from_format(buffer.format)
+    try:
+        element_size_bytes, data_type = c_arrow_type_from_format(buffer.format)
+    except Exception as e:
+        PyBuffer_Release(&buffer)
+        raise e
 
     # Transfers ownership of buffer to c_buffer, whose finalizer will be called by
     # the capsule when the capsule is deleted or garbage collected
@@ -1337,8 +1345,15 @@ cdef class CBufferView:
         if self._device is not CDEVICE_CPU:
             raise RuntimeError("nanoarrow.c_lib.CBufferView is not a CPU buffer")
 
+        if flags & PyBUF_WRITABLE:
+            raise BufferError("nanoarrow.CBufferView does not support writable")
+
         buffer.buf = <void*>self._ptr.data.data
-        buffer.format = self._format
+
+        if flags & PyBUF_FORMAT:
+            buffer.format = self._format
+        else:
+            buffer.format = NULL
         buffer.internal = NULL
         buffer.itemsize = self._strides
         buffer.len = self._ptr.size_bytes
