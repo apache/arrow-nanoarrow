@@ -42,11 +42,13 @@ class NanoarrowPxdGenerator:
         # Replace NANOARROW_MAX_FIXED_BUFFERS with its value
         content = self.re_max_buffers.sub("3", content)
 
-        # Find types and function definitions
+        # Find typedefs, types, and function definitions
+        typedefs = self._find_typedefs(content)
         types = self._find_types(content)
         func_defs = self._find_func_defs(content)
 
         # Make corresponding cython definitions
+        typedefs_cython = [self._typdef_to_cython(t, "    ") for t in typedefs]
         types_cython = [self._type_to_cython(t, "    ") for t in types]
         func_defs_cython = [self._func_def_to_cython(d, "    ") for d in func_defs]
 
@@ -63,7 +65,6 @@ class NanoarrowPxdGenerator:
 
             # A few things we add in manually
             output.write(b"\n")
-            output.write(b"    ctypedef int ArrowErrorCode\n")
             output.write(b"    cdef int NANOARROW_OK\n")
             output.write(b"    cdef int NANOARROW_MAX_FIXED_BUFFERS\n")
             output.write(b"    cdef int ARROW_FLAG_DICTIONARY_ORDERED\n")
@@ -75,6 +76,11 @@ class NanoarrowPxdGenerator:
                 output.write(type.encode("UTF-8"))
                 output.write(b"\n\n")
 
+            for typedef in typedefs_cython:
+                output.write(typedef.encode("UTF-8"))
+                output.write(b"\n")
+            output.write(b"\n")
+
             for func_def in func_defs_cython:
                 output.write(func_def.encode("UTF-8"))
                 output.write(b"\n")
@@ -82,11 +88,12 @@ class NanoarrowPxdGenerator:
     def _define_regexes(self):
         self.re_comment = re.compile(r"\s*//[^\n]*")
         self.re_max_buffers = re.compile(r"NANOARROW_MAX_FIXED_BUFFERS")
+        self.re_typedef = re.compile(r"typedef(?P<typedef>[^;]+)")
         self.re_type = re.compile(
             r"(?P<type>struct|union|enum) (?P<name>Arrow[^ ]+) {(?P<body>[^}]*)}"
         )
         self.re_func_def = re.compile(
-            r"\n(static inline )?(?P<const>const )?(struct|enum )?"
+            r"\n(static inline )?(?P<const>const )?(struct |enum )?"
             r"(?P<return_type>[A-Za-z0-9_*]+) "
             r"(?P<name>Arrow[A-Za-z]+)\((?P<args>[^\)]*)\);"
         )
@@ -101,11 +108,19 @@ class NanoarrowPxdGenerator:
     def _strip_comments(self, content):
         return self.re_comment.sub("", content)
 
+    def _find_typedefs(self, content):
+        return [m.groupdict() for m in self.re_typedef.finditer(content)]
+
     def _find_types(self, content):
         return [m.groupdict() for m in self.re_type.finditer(content)]
 
     def _find_func_defs(self, content):
         return [m.groupdict() for m in self.re_func_def.finditer(content)]
+
+    def _typdef_to_cython(self, t, indent=""):
+        typedef = t["typedef"]
+        typedef = self.re_tagged_type.sub(r"\2", typedef)
+        return f"{indent}ctypedef {typedef}"
 
     def _type_to_cython(self, t, indent=""):
         type = t["type"]

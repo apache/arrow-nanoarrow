@@ -36,7 +36,7 @@ from libc.string cimport memcpy
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from cpython cimport Py_buffer
+from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
@@ -174,6 +174,62 @@ cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) n
     c_array_out.release = arrow_array_release
 
     return array_capsule
+
+
+cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
+    cdef ArrowBuffer* buffer = <ArrowBuffer*>PyCapsule_GetPointer(
+        stream_capsule, 'nanoarrow_buffer'
+    )
+
+    ArrowBufferReset(buffer)
+    ArrowFree(buffer)
+
+
+cdef object alloc_c_buffer(ArrowBuffer** c_buffer) noexcept:
+    c_buffer[0] = <ArrowBuffer*> ArrowMalloc(sizeof(ArrowBuffer))
+    ArrowBufferInit(c_buffer[0])
+    return PyCapsule_New(c_buffer[0], 'nanoarrow_buffer', &pycapsule_buffer_deleter)
+
+cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept:
+    cdef Py_buffer* buffer = <Py_buffer*>allocator.private_data
+    PyBuffer_Release(buffer)
+    ArrowFree(buffer)
+
+cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
+    # This should probably be changed in nanoarrow C; however, currently, the deallocator
+    # won't get called if buffer.buf is NULL.
+    if buffer.buf == NULL:
+        PyBuffer_Release(buffer)
+        return ArrowBufferAllocatorDefault()
+
+    cdef Py_buffer* allocator_private = <Py_buffer*>ArrowMalloc(sizeof(Py_buffer))
+    if allocator_private == NULL:
+        PyBuffer_Release(buffer)
+        raise MemoryError()
+
+    memcpy(allocator_private, buffer, sizeof(Py_buffer))
+    return ArrowBufferDeallocator(<ArrowBufferDeallocatorCallback>&c_deallocate_pybuffer, allocator_private)
+
+
+cdef object alloc_c_buffer_from_pybuffer(object obj):
+    cdef ArrowBuffer* c_buffer
+    buffer_capsule = alloc_c_buffer(&c_buffer)
+
+    cdef Py_buffer buffer
+    cdef int rc = PyObject_GetBuffer(obj, &buffer, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+    if rc != 0:
+        raise BufferError()
+
+    # Transfers ownership of buffer to c_buffer, whose finalizer will be called by
+    # the capsule when the capsule is deleted or garbage collected
+    c_buffer.data = <uint8_t*>buffer.buf
+    c_buffer.size_bytes = <int64_t>buffer.len
+    c_buffer.allocator = c_pybuffer_deallocator(&buffer)
+
+    # TODO: Parse the buffer's format string to get the ArrowType and element size
+
+    # Wrap in a CBuffer
+    return CBuffer(buffer_capsule, <uintptr_t>c_buffer, NANOARROW_TYPE_BINARY, 0, CDEVICE_CPU)
 
 
 class NanoarrowException(RuntimeError):
@@ -1250,6 +1306,34 @@ cdef class CBufferView:
 
     def __repr__(self):
         return f"<nanoarrow.c_lib.CBufferView>\n  {_lib_utils.buffer_view_repr(self)[1:]}"
+
+
+cdef class CBuffer:
+    cdef object _base
+    cdef CDevice _device
+    cdef ArrowBuffer* _ptr
+    cdef ArrowType _data_type
+    cdef int _element_size_bits
+
+    def __cinit__(self, object base, uintptr_t addr, ArrowType data_type, int element_size_bits,
+                  CDevice device):
+        self._base = base
+        self._device = device
+        self._ptr = <ArrowBuffer*>addr
+        self._data_type = data_type
+        self._element_size_bits = element_size_bits
+
+    def view(self):
+        return CBufferView(self._base, self._ptr.data,
+                           self._ptr.size_bytes, self._data_type, self._element_size_bits,
+                           self._device)
+
+    def __repr__(self):
+        return _lib_utils.buffer_repr(self)
+
+    @staticmethod
+    def from_pybuffer(obj):
+        return alloc_c_buffer_from_pybuffer(obj)
 
 
 cdef class CArrayStream:

@@ -689,6 +689,9 @@ struct ArrowBufferAllocator {
   void* private_data;
 };
 
+typedef void (*ArrowBufferDeallocatorCallback)(struct ArrowBufferAllocator* allocator,
+                                               uint8_t* ptr, int64_t size);
+
 /// \brief An owning mutable view of a buffer
 /// \ingroup nanoarrow-buffer
 struct ArrowBuffer {
