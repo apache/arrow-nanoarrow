@@ -5,6 +5,10 @@
     },
     {
         "version": "0.4.0",
+        "url": "https://arrow.apache.org/nanoarrow/latest/"
+    },
+    {
+        "version": "0.4.0",
         "url": "https://arrow.apache.org/nanoarrow/0.4.0/"
     },
     {

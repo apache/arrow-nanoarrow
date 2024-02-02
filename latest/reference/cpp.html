@@ -1,0 +1,1009 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>C++ API Reference &#8212; nanoarrow  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'reference/cpp';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.2';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://arrow.apache.org/nanoarrow/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.4.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Testing API Reference" href="testing.html" />
+    <link rel="prev" title="C API Reference" href="c.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">nanoarrow  documentation</p>
+  
+</a></div>
+    
+      <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting-started/index.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../roadmap.html">
+                        Roadmap
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting-started/index.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../roadmap.html">
+                        Roadmap
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="r.html">R API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="python.html">Python API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="c.html">C API Reference</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">C++ API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ipc.html">IPC Extension Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="device.html">Device Extension Reference</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">C++ API Reference</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="c-api-reference">
+<h1>C++ API Reference<a class="headerlink" href="#c-api-reference" title="Link to this heading">#</a></h1>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__hpp"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp</span></span></dt>
+<dd><p>The utilities provided in this file are intended to support C++ users of the nanoarrow C library such that C++-style resource allocation and error handling can be used with nanoarrow data structures. These utilities are not intended to mirror the nanoarrow C API. </p>
+</dd></dl>
+
+<section id="error-handling">
+<h2>Error handling<a class="headerlink" href="#error-handling" title="Link to this heading">#</a></h2>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__hpp-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-errors</span></span></dt>
+<dd><p>Most functions in the C API return an ArrowErrorCode to communicate possible failure. Except where documented, it is usually not safe to continue after a non-zero value has been returned. While the nanoarrow C++ helpers do not throw any exceptions of their own, these helpers are provided to facilitate using the nanoarrow C++ helpers in frameworks where this is a useful error handling idiom. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c._NANOARROW_THROW_NOT_OK_IMPL">
+<span class="target" id="group__nanoarrow__hpp-errors_1gaafcc7dac6fcd1f00addabc7e248806c2"></span><span class="sig-name descname"><span class="n"><span class="pre">_NANOARROW_THROW_NOT_OK_IMPL</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">NAME</span></span>, <span class="n"><span class="pre">EXPR</span></span>, <span class="n"><span class="pre">EXPR_STR</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._NANOARROW_THROW_NOT_OK_IMPL" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.NANOARROW_THROW_NOT_OK">
+<span class="target" id="group__nanoarrow__hpp-errors_1ga4b10c1b6dd5ccbe52087f1cf59475203"></span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_THROW_NOT_OK</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">EXPR</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.NANOARROW_THROW_NOT_OK" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow9ExceptionE">
+<span id="_CPPv3N9nanoarrow9ExceptionE"></span><span id="_CPPv2N9nanoarrow9ExceptionE"></span><span id="nanoarrow::Exception"></span><span class="target" id="classnanoarrow_1_1_exception"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Exception</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">exception</span></span><a class="headerlink" href="#_CPPv4N9nanoarrow9ExceptionE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="owning-object-wrappers">
+<h2>Owning object wrappers<a class="headerlink" href="#owning-object-wrappers" title="Link to this heading">#</a></h2>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-unique</span></span></dt>
+<dd><p>The Arrow C Data interface, the Arrow C Stream interface, and the nanoarrow C library use stack-allocatable objects, some of which require initialization or cleanup. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv412UniqueSchema">
+<span id="_CPPv312UniqueSchema"></span><span id="_CPPv212UniqueSchema"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga912b1e6bbdeb87941b95cb4659e6ee6e"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueSchema</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueSchema" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv411UniqueArray">
+<span id="_CPPv311UniqueArray"></span><span id="_CPPv211UniqueArray"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga93f47526e4b64c67ac0c2120cdd5a32a"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueArray</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv411UniqueArray" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv417UniqueArrayStream">
+<span id="_CPPv317UniqueArrayStream"></span><span id="_CPPv217UniqueArrayStream"></span><span class="target" id="group__nanoarrow__hpp-unique_1gaf77a45c6e828bc32ad9dda17467e2de6"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueArrayStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv417UniqueArrayStream" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv412UniqueBuffer">
+<span id="_CPPv312UniqueBuffer"></span><span id="_CPPv212UniqueBuffer"></span><span class="target" id="group__nanoarrow__hpp-unique_1gabc8af265788a5845e13ee5e7f2aaeb6d"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueBuffer</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueBuffer" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="c.html#struct_arrow_buffer"><span class="std std-ref">ArrowBuffer</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv412UniqueBitmap">
+<span id="_CPPv312UniqueBitmap"></span><span id="_CPPv212UniqueBitmap"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga363de46854c2455c5849df0495f9a88b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueBitmap</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBitmap" title="ArrowBitmap"><span class="n"><span class="pre">ArrowBitmap</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueBitmap" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="c.html#struct_arrow_bitmap"><span class="std std-ref">ArrowBitmap</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv415UniqueArrayView">
+<span id="_CPPv315UniqueArrayView"></span><span id="_CPPv215UniqueArrayView"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga7171390b0258c15dee585010f9358e5b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueArrayView</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowArrayView" title="ArrowArrayView"><span class="n"><span class="pre">ArrowArrayView</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv415UniqueArrayView" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="c.html#struct_arrow_array_view"><span class="std std-ref">ArrowArrayView</span></a>. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="array-stream-utilities">
+<h2>Array Stream utilities<a class="headerlink" href="#array-stream-utilities" title="Link to this heading">#</a></h2>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__hpp-array-stream"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-array-stream</span></span></dt>
+<dd><p>These classes provide simple <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> implementations that can be extended to help simplify the process of creating a valid <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> implementation or used as-is for testing. </p>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE">
+<span id="_CPPv3I0EN9nanoarrow18ArrayStreamFactoryE"></span><span id="_CPPv2I0EN9nanoarrow18ArrayStreamFactoryE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classnanoarrow_1_1_array_stream_factory"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrayStreamFactory</span></span></span><a class="headerlink" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow.hpp&gt;</em></div>
+<p>Export an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> from a standard C++ class. </p>
+<p>
+This class allows a standard C++ class to be exported to a generic <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer by mapping C callback invocations to method calls on an instance of the object whose lifecycle is owned by the <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. See <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> for minimal useful example of this pattern.</p>
+<p>The methods must be accessible to the <a class="reference internal" href="#classnanoarrow_1_1_array_stream_factory"><span class="std std-ref">ArrayStreamFactory</span></a>, either as public methods or by declaring ArrayStreamFactory&lt;ImplClass&gt; a friend. Implementors are encouraged (but not required) to implement a ToArrayStream(ArrowArrayStream*) that creates a new instance owned by the <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> and moves the relevant data to that instance.</p>
+<p>An example implementation might be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">StreamImpl</span> <span class="p">{</span>
+ <span class="n">public</span><span class="p">:</span>
+  <span class="o">//</span> <span class="n">Public</span> <span class="n">methods</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="p">,</span> <span class="n">constructor</span><span class="p">)</span> <span class="n">used</span> <span class="kn">from</span> <span class="nn">C</span><span class="o">++</span> <span class="n">to</span> <span class="n">initialize</span> <span class="n">relevant</span> <span class="n">data</span>
+
+  <span class="o">//</span> <span class="n">Idiomatic</span> <span class="n">exporter</span> <span class="n">to</span> <span class="n">move</span> <span class="n">data</span> <span class="o">+</span> <span class="n">lifecycle</span> <span class="n">responsibility</span> <span class="n">to</span> <span class="n">an</span> <span class="n">instance</span>
+  <span class="o">//</span> <span class="n">managed</span> <span class="n">by</span> <span class="n">the</span> <span class="n">ArrowArrayStream</span> <span class="n">callbacks</span>
+  <span class="n">void</span> <span class="n">ToArrayStream</span><span class="p">(</span><span class="n">struct</span> <span class="n">ArrowArrayStream</span><span class="o">*</span> <span class="n">out</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">ArrayStreamFactory</span><span class="o">&lt;</span><span class="n">StreamImpl</span><span class="o">&gt;</span><span class="p">::</span><span class="n">InitArrayStream</span><span class="p">(</span><span class="n">new</span> <span class="n">StreamImpl</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">out</span><span class="p">);</span>
+  <span class="p">}</span>
+
+ <span class="n">private</span><span class="p">:</span>
+  <span class="o">//</span> <span class="n">Make</span> <span class="n">relevant</span> <span class="n">methods</span> <span class="n">available</span> <span class="n">to</span> <span class="n">the</span> <span class="n">ArrayStreamFactory</span>
+  <span class="n">friend</span> <span class="k">class</span> <span class="nc">ArrayStreamFactory</span><span class="o">&lt;</span><span class="n">StreamImpl</span><span class="o">&gt;</span><span class="p">;</span>
+
+  <span class="o">//</span> <span class="n">Method</span> <span class="n">implementations</span> <span class="p">(</span><span class="n">called</span> <span class="kn">from</span> <span class="nn">C</span><span class="p">,</span> <span class="ow">not</span> <span class="n">normally</span> <span class="n">interacted</span> <span class="k">with</span> <span class="kn">from</span> <span class="nn">C</span><span class="o">++</span><span class="p">)</span>
+  <span class="nb">int</span> <span class="n">GetSchema</span><span class="p">(</span><span class="n">struct</span> <span class="n">ArrowSchema</span><span class="o">*</span> <span class="n">schema</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">ENOTSUP</span><span class="p">;</span> <span class="p">}</span>
+  <span class="nb">int</span> <span class="n">GetNext</span><span class="p">(</span><span class="n">struct</span> <span class="n">ArrowArray</span><span class="o">*</span> <span class="n">array</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">ENOTSUP</span><span class="p">;</span> <span class="p">}</span>
+  <span class="n">const</span> <span class="n">char</span><span class="o">*</span> <span class="n">GetLastError</span><span class="p">()</span> <span class="p">{</span> <span class="n">nullptr</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>An example usage might be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">//</span> <span class="n">Call</span> <span class="n">constructor</span> <span class="ow">and</span><span class="o">/</span><span class="ow">or</span> <span class="n">public</span> <span class="n">methods</span> <span class="n">to</span> <span class="n">initialize</span> <span class="n">relevant</span> <span class="n">data</span>
+<span class="n">StreamImpl</span> <span class="n">impl</span><span class="p">;</span>
+
+<span class="o">//</span> <span class="n">Export</span> <span class="n">to</span> <span class="n">ArrowArrayStream</span> <span class="n">after</span> <span class="n">data</span> <span class="n">are</span> <span class="n">finalized</span>
+<span class="n">UniqueArrayStream</span> <span class="n">stream</span><span class="p">;</span>
+<span class="n">impl</span><span class="o">.</span><span class="n">ToArrayStream</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">get</span><span class="p">());</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>T</strong> – A class with methods <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">GetSchema(ArrowSchema*)</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">GetNext(ArrowArray*)</span></code>, and <code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char*</span> <span class="pre">GetLastError()</span></code></p>
+</dd>
+</dl>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream">
+<span id="_CPPv3N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"></span><span id="_CPPv2N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"></span><span id="nanoarrow::ArrayStreamFactory::InitArrayStream__TP.ArrowArrayStreamP"></span><span class="target" id="classnanoarrow_1_1_array_stream_factory_1ab0ac9ace734408c74557f5520e381c02"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">InitArrayStream</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE" title="nanoarrow::ArrayStreamFactory::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">instance</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
+<dd><p>Take ownership of instance and populate callbacks of out. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStreamE">
+<span id="_CPPv3N9nanoarrow16EmptyArrayStreamE"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStreamE"></span><span id="nanoarrow::EmptyArrayStream"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EmptyArrayStream</span></span></span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStreamE" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow.hpp&gt;</em></div>
+<p>An empty array stream. </p>
+<p>This class can be constructed from an struct <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> and implements a default get_next() method that always marks the output <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> as released.</p>
+<p>DEPRECATED (0.4.0): Early versions of nanoarrow allowed subclasses to override get_schema(), get_next(), and get_last_error(). This functionality will be removed in a future release: use the pattern documented in <a class="reference internal" href="#classnanoarrow_1_1_array_stream_factory"><span class="std std-ref">ArrayStreamFactory</span></a> to create custom <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> implementations. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema">
+<span id="_CPPv3N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"></span><span id="nanoarrow::EmptyArrayStream::EmptyArrayStream__ArrowSchemaP"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream_1a062ae763ff644a1ecd73bb9a0639022a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EmptyArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create an <a class="reference internal" href="#classnanoarrow_1_1_empty_array_stream"><span class="std std-ref">EmptyArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. </p>
+<p>Takes ownership of schema. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream">
+<span id="_CPPv3N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="nanoarrow::EmptyArrayStream::ToArrayStream__ArrowArrayStreamP"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream_1a3ba24ecff6e00bed4418e76087967a61"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ToArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
+<dd><p>Export to <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema">
+<span id="_CPPv3N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema"></span><span id="nanoarrow::EmptyArrayStream::MakeUnique__ArrowSchemaP"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream_1abeb0b129442c5a78db5cf95fa380f066"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv417UniqueArrayStream" title="UniqueArrayStream"><span class="n"><span class="pre">UniqueArrayStream</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MakeUnique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create an empty UniqueArrayStream from a struct <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. </p>
+<p>DEPRECATED (0.4.0): Use the constructor + <a class="reference internal" href="#classnanoarrow_1_1_empty_array_stream_1a3ba24ecff6e00bed4418e76087967a61"><span class="std std-ref">ToArrayStream()</span></a> to export an <a class="reference internal" href="#classnanoarrow_1_1_empty_array_stream"><span class="std std-ref">EmptyArrayStream</span></a> to an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStreamE">
+<span id="_CPPv3N9nanoarrow17VectorArrayStreamE"></span><span id="_CPPv2N9nanoarrow17VectorArrayStreamE"></span><span id="nanoarrow::VectorArrayStream"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStreamE" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow.hpp&gt;</em></div>
+<p>Implementation of an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> backed by a vector of UniqueArray objects. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE">
+<span id="_CPPv3N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="nanoarrow::VectorArrayStream::VectorArrayStream__ArrowSchemaP.std::vector:UniqueArray:"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1a04d3b0219bae57ee9d0f0cb427640763"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv411UniqueArray" title="UniqueArray"><span class="n"><span class="pre">UniqueArray</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">arrays</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create a <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> + vector of UniqueArray. </p>
+<p>Takes ownership of schema and moves arrays if possible. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray">
+<span id="_CPPv3N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"></span><span id="nanoarrow::VectorArrayStream::VectorArrayStream__ArrowSchemaP.ArrowArrayP"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1af428b4ae37a39df9c6151c82302af99d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create a one-shot <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> + <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>. </p>
+<p>Takes ownership of schema and array. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream">
+<span id="_CPPv3N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="nanoarrow::VectorArrayStream::ToArrayStream__ArrowArrayStreamP"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1a3636ab1f8e1f5e0ccc163c2e90a523bd"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ToArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
+<dd><p>Export to <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray">
+<span id="_CPPv3N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray"></span><span id="nanoarrow::VectorArrayStream::MakeUnique__ArrowSchemaP.ArrowArrayP"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1ada8ae27d26108887f3ca63bf1db7c87a"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv417UniqueArrayStream" title="UniqueArrayStream"><span class="n"><span class="pre">UniqueArrayStream</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MakeUnique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create a UniqueArrowArrayStream from an existing array. </p>
+<p>DEPRECATED (0.4.0): Use the constructors + <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream_1a3636ab1f8e1f5e0ccc163c2e90a523bd"><span class="std std-ref">ToArrayStream()</span></a> to export a <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> to an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE">
+<span id="_CPPv3N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="nanoarrow::VectorArrayStream::MakeUnique__ArrowSchemaP.std::vector:UniqueArray:"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1a59fbc6edd7957bed81f5b82f791d8668"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv417UniqueArrayStream" title="UniqueArrayStream"><span class="n"><span class="pre">UniqueArrayStream</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MakeUnique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv411UniqueArray" title="UniqueArray"><span class="n"><span class="pre">UniqueArray</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">arrays</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create a UniqueArrowArrayStream from existing arrays. </p>
+<p>DEPRECATED (0.4.0): Use the constructor + <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream_1a3636ab1f8e1f5e0ccc163c2e90a523bd"><span class="std std-ref">ToArrayStream()</span></a> to export a <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> to an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="base-classes-and-utilities">
+<h2>Base classes and utilities<a class="headerlink" href="#base-classes-and-utilities" title="Link to this heading">#</a></h2>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__hpp-unique__base"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-unique_base</span></span></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0E12init_pointervP1T">
+<span id="_CPPv3I0E12init_pointerP1T"></span><span id="_CPPv2I0E12init_pointerP1T"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga61b07284d4f69daac68fa5efa72a859c"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_pointer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0E12init_pointervP1T" title="init_pointer::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0E12init_pointervP1T" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0E12move_pointervP1TP1T">
+<span id="_CPPv3I0E12move_pointerP1TP1T"></span><span id="_CPPv2I0E12move_pointerP1TP1T"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga01d3bbf88f41128227dd98f7dd2920d7"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move_pointer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0E12move_pointervP1TP1T" title="move_pointer::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <a class="reference internal" href="#_CPPv4I0E12move_pointervP1TP1T" title="move_pointer::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0E12move_pointervP1TP1T" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4I0E15release_pointervP1T">
+<span id="_CPPv3I0E15release_pointerP1T"></span><span id="_CPPv2I0E15release_pointerP1T"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga4eef99de3ea0ef722a42fddac8bc1148"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">release_pointer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0E15release_pointervP1T" title="release_pointer::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0E15release_pointervP1T" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12init_pointervP11ArrowSchema">
+<span id="_CPPv3IE12init_pointerP11ArrowSchema"></span><span id="_CPPv2IE12init_pointerP11ArrowSchema"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga2108463f41c5194ed6d8de5b7afb70e9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12init_pointervP11ArrowSchema" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12move_pointervP11ArrowSchemaP11ArrowSchema">
+<span id="_CPPv3IE12move_pointerP11ArrowSchemaP11ArrowSchema"></span><span id="_CPPv2IE12move_pointerP11ArrowSchemaP11ArrowSchema"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1gabddcc19d48d276eb84714f4afb16e95a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12move_pointervP11ArrowSchemaP11ArrowSchema" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE15release_pointervP11ArrowSchema">
+<span id="_CPPv3IE15release_pointerP11ArrowSchema"></span><span id="_CPPv2IE15release_pointerP11ArrowSchema"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga3c607d81d88c74dc7c9a05c85aec5298"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">release_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE15release_pointervP11ArrowSchema" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12init_pointervP10ArrowArray">
+<span id="_CPPv3IE12init_pointerP10ArrowArray"></span><span id="_CPPv2IE12init_pointerP10ArrowArray"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1gaad138a716aea9514cc852184d6fab3f2"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12init_pointervP10ArrowArray" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12move_pointervP10ArrowArrayP10ArrowArray">
+<span id="_CPPv3IE12move_pointerP10ArrowArrayP10ArrowArray"></span><span id="_CPPv2IE12move_pointerP10ArrowArrayP10ArrowArray"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga9ebf203ef8a63a1beb67cb353f45caa7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12move_pointervP10ArrowArrayP10ArrowArray" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE15release_pointervP10ArrowArray">
+<span id="_CPPv3IE15release_pointerP10ArrowArray"></span><span id="_CPPv2IE15release_pointerP10ArrowArray"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga72eb6664a9efcb2ffa7f8a0f1ad82215"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">release_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE15release_pointervP10ArrowArray" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12init_pointervP16ArrowArrayStream">
+<span id="_CPPv3IE12init_pointerP16ArrowArrayStream"></span><span id="_CPPv2IE12init_pointerP16ArrowArrayStream"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1gaf476e7a1d55d7bb30f51333b20a0a7e4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12init_pointervP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12move_pointervP16ArrowArrayStreamP16ArrowArrayStream">
+<span id="_CPPv3IE12move_pointerP16ArrowArrayStreamP16ArrowArrayStream"></span><span id="_CPPv2IE12move_pointerP16ArrowArrayStreamP16ArrowArrayStream"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga4a785b3b8d5c7fd9957222aa4f90b2ab"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12move_pointervP16ArrowArrayStreamP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE15release_pointervP16ArrowArrayStream">
+<span id="_CPPv3IE15release_pointerP16ArrowArrayStream"></span><span id="_CPPv2IE15release_pointerP16ArrowArrayStream"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga380c98f7638832563dcc67e5826caed4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">release_pointer</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE15release_pointervP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12init_pointervP11ArrowBuffer">
+<span id="_CPPv3IE12init_pointerP11ArrowBuffer"></span><span id="_CPPv2IE12init_pointerP11ArrowBuffer"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1gab6bbef8996d5bfb7dc0745bc8965c0bd"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12init_pointervP11ArrowBuffer" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12move_pointervP11ArrowBufferP11ArrowBuffer">
+<span id="_CPPv3IE12move_pointerP11ArrowBufferP11ArrowBuffer"></span><span id="_CPPv2IE12move_pointerP11ArrowBufferP11ArrowBuffer"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga4d3b062c93e357c1f52801c22b4c8b99"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12move_pointervP11ArrowBufferP11ArrowBuffer" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE15release_pointervP11ArrowBuffer">
+<span id="_CPPv3IE15release_pointerP11ArrowBuffer"></span><span id="_CPPv2IE15release_pointerP11ArrowBuffer"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1gaa9c5e4a07fdc6e7a33eb78ae5d359abe"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">release_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE15release_pointervP11ArrowBuffer" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12init_pointervP11ArrowBitmap">
+<span id="_CPPv3IE12init_pointerP11ArrowBitmap"></span><span id="_CPPv2IE12init_pointerP11ArrowBitmap"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga2cb3bac1d43e121d6539570cc9b244d7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBitmap" title="ArrowBitmap"><span class="n"><span class="pre">ArrowBitmap</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12init_pointervP11ArrowBitmap" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12move_pointervP11ArrowBitmapP11ArrowBitmap">
+<span id="_CPPv3IE12move_pointerP11ArrowBitmapP11ArrowBitmap"></span><span id="_CPPv2IE12move_pointerP11ArrowBitmapP11ArrowBitmap"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga0ac7c4e0b44a0703188dffa835c15d28"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBitmap" title="ArrowBitmap"><span class="n"><span class="pre">ArrowBitmap</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBitmap" title="ArrowBitmap"><span class="n"><span class="pre">ArrowBitmap</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12move_pointervP11ArrowBitmapP11ArrowBitmap" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE15release_pointervP11ArrowBitmap">
+<span id="_CPPv3IE15release_pointerP11ArrowBitmap"></span><span id="_CPPv2IE15release_pointerP11ArrowBitmap"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1gab4fcd03e201064fbc1137639e05d4954"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">release_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBitmap" title="ArrowBitmap"><span class="n"><span class="pre">ArrowBitmap</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE15release_pointervP11ArrowBitmap" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12init_pointervP14ArrowArrayView">
+<span id="_CPPv3IE12init_pointerP14ArrowArrayView"></span><span id="_CPPv2IE12init_pointerP14ArrowArrayView"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga1ee06440e43395f54f3fef5535b5ae8d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowArrayView" title="ArrowArrayView"><span class="n"><span class="pre">ArrowArrayView</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12init_pointervP14ArrowArrayView" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE12move_pointervP14ArrowArrayViewP14ArrowArrayView">
+<span id="_CPPv3IE12move_pointerP14ArrowArrayViewP14ArrowArrayView"></span><span id="_CPPv2IE12move_pointerP14ArrowArrayViewP14ArrowArrayView"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1ga2a729620d1b1f80d9376bb14c368a99f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowArrayView" title="ArrowArrayView"><span class="n"><span class="pre">ArrowArrayView</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowArrayView" title="ArrowArrayView"><span class="n"><span class="pre">ArrowArrayView</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE12move_pointervP14ArrowArrayViewP14ArrowArrayView" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IE15release_pointervP14ArrowArrayView">
+<span id="_CPPv3IE15release_pointerP14ArrowArrayView"></span><span id="_CPPv2IE15release_pointerP14ArrowArrayView"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-unique__base_1gad2e5f80a5452e13af9cad3c279c5386b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">release_pointer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowArrayView" title="ArrowArrayView"><span class="n"><span class="pre">ArrowArrayView</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IE15release_pointervP14ArrowArrayView" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN9nanoarrow8internal6UniqueE">
+<span id="_CPPv3I0EN9nanoarrow8internal6UniqueE"></span><span id="_CPPv2I0EN9nanoarrow8internal6UniqueE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classnanoarrow_1_1internal_1_1_unique"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Unique</span></span></span><a class="headerlink" href="#_CPPv4I0EN9nanoarrow8internal6UniqueE" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow.hpp&gt;</em></div>
+<p>A unique_ptr-like base class for stack-allocatable objects. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>T</strong> – The object type </p>
+</dd>
+</dl>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6Unique6UniqueEv">
+<span id="_CPPv3N9nanoarrow8internal6Unique6UniqueEv"></span><span id="_CPPv2N9nanoarrow8internal6Unique6UniqueEv"></span><span id="nanoarrow::internal::Unique::Unique"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1a004ae4a4a8deaaca56f73d33b13318da"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Unique</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6Unique6UniqueEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Construct an invalid instance of T holding no resources. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6Unique6UniqueEP1T">
+<span id="_CPPv3N9nanoarrow8internal6Unique6UniqueEP1T"></span><span id="_CPPv2N9nanoarrow8internal6Unique6UniqueEP1T"></span><span id="nanoarrow::internal::Unique::Unique__TP"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1a6903dc88ef1791497cfbe9c63ef974ca"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Unique</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN9nanoarrow8internal6UniqueE" title="nanoarrow::internal::Unique::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6Unique6UniqueEP1T" title="Link to this definition">#</a><br /></dt>
+<dd><p>Move and take ownership of data. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6Unique6UniqueERR6Unique">
+<span id="_CPPv3N9nanoarrow8internal6Unique6UniqueERR6Unique"></span><span id="_CPPv2N9nanoarrow8internal6Unique6UniqueERR6Unique"></span><span id="nanoarrow::internal::Unique::Unique__UniqueRR"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1a8bd291672a60ebf756a1ef6eca9240b6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Unique</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9nanoarrow8internal6Unique6UniqueERR6Unique" title="nanoarrow::internal::Unique::Unique"><span class="n"><span class="pre">Unique</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">rhs</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6Unique6UniqueERR6Unique" title="Link to this definition">#</a><br /></dt>
+<dd><p>Move and take ownership of data wrapped by rhs. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6Unique3getEv">
+<span id="_CPPv3N9nanoarrow8internal6Unique3getEv"></span><span id="_CPPv2N9nanoarrow8internal6Unique3getEv"></span><span id="nanoarrow::internal::Unique::get"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1ae3a985823191b160cb83b84b4a7e2464"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9nanoarrow8internal6UniqueE" title="nanoarrow::internal::Unique::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">get</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6Unique3getEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Get a pointer to the data owned by this object. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6UniqueptEv">
+<span id="_CPPv3N9nanoarrow8internal6UniqueptEv"></span><span id="_CPPv2N9nanoarrow8internal6UniqueptEv"></span><span id="nanoarrow::internal::Unique::pointer-operator"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1a20965c000838d6b7440ab46b3b2741f2"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4I0EN9nanoarrow8internal6UniqueE" title="nanoarrow::internal::Unique::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">-&gt;</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6UniqueptEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Use the pointer operator to access fields of this object. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6Unique5resetEv">
+<span id="_CPPv3N9nanoarrow8internal6Unique5resetEv"></span><span id="_CPPv2N9nanoarrow8internal6Unique5resetEv"></span><span id="nanoarrow::internal::Unique::reset"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1aa1f589b25d78be96d1d82bd52e9f78f7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">reset</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6Unique5resetEv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Call data’s release callback if valid. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6Unique5resetEP1T">
+<span id="_CPPv3N9nanoarrow8internal6Unique5resetEP1T"></span><span id="_CPPv2N9nanoarrow8internal6Unique5resetEP1T"></span><span id="nanoarrow::internal::Unique::reset__TP"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1a4fdcf72051df5b44b249d4916043057e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">reset</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN9nanoarrow8internal6UniqueE" title="nanoarrow::internal::Unique::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6Unique5resetEP1T" title="Link to this definition">#</a><br /></dt>
+<dd><p>Call data’s release callback if valid and move ownership of the data pointed to by data. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow8internal6Unique4moveEP1T">
+<span id="_CPPv3N9nanoarrow8internal6Unique4moveEP1T"></span><span id="_CPPv2N9nanoarrow8internal6Unique4moveEP1T"></span><span id="nanoarrow::internal::Unique::move__TP"></span><span class="target" id="classnanoarrow_1_1internal_1_1_unique_1a38b63f427f4e78b3d14f8bb1c8ce6574"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">move</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN9nanoarrow8internal6UniqueE" title="nanoarrow::internal::Unique::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow8internal6Unique4moveEP1T" title="Link to this definition">#</a><br /></dt>
+<dd><p>Move ownership of this object to the data pointed to by out. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="c.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">C API Reference</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="testing.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Testing API Reference</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#error-handling">Error handling</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow9ExceptionE"><code class="docutils literal notranslate"><span class="pre">Exception</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#owning-object-wrappers">Owning object wrappers</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueSchema"><code class="docutils literal notranslate"><span class="pre">UniqueSchema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv411UniqueArray"><code class="docutils literal notranslate"><span class="pre">UniqueArray</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueArrayStream"><code class="docutils literal notranslate"><span class="pre">UniqueArrayStream</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueBuffer"><code class="docutils literal notranslate"><span class="pre">UniqueBuffer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueBitmap"><code class="docutils literal notranslate"><span class="pre">UniqueBitmap</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415UniqueArrayView"><code class="docutils literal notranslate"><span class="pre">UniqueArrayView</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#array-stream-utilities">Array Stream utilities</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory::InitArrayStream()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStreamE"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::EmptyArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::ToArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::MakeUnique()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStreamE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::VectorArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::VectorArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::ToArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::MakeUnique()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::MakeUnique()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#base-classes-and-utilities">Base classes and utilities</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0E12init_pointervP1T"><code class="docutils literal notranslate"><span class="pre">init_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0E12move_pointervP1TP1T"><code class="docutils literal notranslate"><span class="pre">move_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0E15release_pointervP1T"><code class="docutils literal notranslate"><span class="pre">release_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12init_pointervP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">init_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12move_pointervP11ArrowSchemaP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">move_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE15release_pointervP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">release_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12init_pointervP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">init_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12move_pointervP10ArrowArrayP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">move_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE15release_pointervP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">release_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12init_pointervP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">init_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12move_pointervP16ArrowArrayStreamP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">move_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE15release_pointervP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">release_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12init_pointervP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">init_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12move_pointervP11ArrowBufferP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">move_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE15release_pointervP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">release_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12init_pointervP11ArrowBitmap"><code class="docutils literal notranslate"><span class="pre">init_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12move_pointervP11ArrowBitmapP11ArrowBitmap"><code class="docutils literal notranslate"><span class="pre">move_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE15release_pointervP11ArrowBitmap"><code class="docutils literal notranslate"><span class="pre">release_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12init_pointervP14ArrowArrayView"><code class="docutils literal notranslate"><span class="pre">init_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE12move_pointervP14ArrowArrayViewP14ArrowArrayView"><code class="docutils literal notranslate"><span class="pre">move_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4IE15release_pointervP14ArrowArrayView"><code class="docutils literal notranslate"><span class="pre">release_pointer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN9nanoarrow8internal6UniqueE"><code class="docutils literal notranslate"><span class="pre">Unique</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6Unique6UniqueEv"><code class="docutils literal notranslate"><span class="pre">Unique::Unique()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6Unique6UniqueEP1T"><code class="docutils literal notranslate"><span class="pre">Unique::Unique()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6Unique6UniqueERR6Unique"><code class="docutils literal notranslate"><span class="pre">Unique::Unique()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6Unique3getEv"><code class="docutils literal notranslate"><span class="pre">Unique::get()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6UniqueptEv"><code class="docutils literal notranslate"><span class="pre">Unique::operator-&gt;()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6Unique5resetEv"><code class="docutils literal notranslate"><span class="pre">Unique::reset()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6Unique5resetEP1T"><code class="docutils literal notranslate"><span class="pre">Unique::reset()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow8internal6Unique4moveEP1T"><code class="docutils literal notranslate"><span class="pre">Unique::move()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/apache/arrow-nanoarrow/edit/main/docs/source/reference/cpp.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/reference/cpp.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2016-2024 Apache Software Foundation.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.2.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
