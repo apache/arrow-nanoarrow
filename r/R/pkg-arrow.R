@@ -110,7 +110,7 @@ as_record_batch_reader.nanoarrow_array_stream <- function(x, ..., schema = NULL)
   stopifnot(is.null(schema))
 
   # Export stream to ensure self-containedness
-  stream_out <- nanoarrow::nanoarrow_allocate_array_stream()
+  stream_out <- nanoarrow_allocate_array_stream()
   nanoarrow_pointer_export(x, stream_out)
 
   arrow::RecordBatchReader$import_from_c(stream_out)
