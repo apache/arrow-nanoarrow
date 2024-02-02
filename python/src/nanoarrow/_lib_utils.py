@@ -189,6 +189,10 @@ def buffer_view_preview_cpu(buffer_view, max_char_width):
         return joined
 
 
+def buffer_repr(buffer):
+    return buffer_view_repr(buffer.view())
+
+
 def array_stream_repr(array_stream, max_char_width=80):
     if array_stream._addr() == 0:
         return "<NULL nanoarrow.c_lib.CArrayStream>"

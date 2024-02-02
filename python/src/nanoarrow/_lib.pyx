@@ -32,15 +32,16 @@ generally have better autocomplete + documentation available to IDEs).
 """
 
 from libc.stdint cimport uintptr_t, int64_t
-from libc.string cimport memcpy
+from libc.string cimport memcpy, strlen
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
+from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, PyBuffer_SizeFromFormat, PyBUF_ANY_CONTIGUOUS, PyBUF_FORMAT
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
+from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack
 from nanoarrow import _lib_utils
 
@@ -211,25 +212,72 @@ cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
     return ArrowBufferDeallocator(<ArrowBufferDeallocatorCallback>&c_deallocate_pybuffer, allocator_private)
 
 
+cdef c_arrow_type_from_format(const char* format_c) noexcept:
+    if format_c == NULL:
+        return 0, NANOARROW_TYPE_BINARY
+
+    format = format_c.decode("UTF-8")
+    if sys_byteorder == "little":
+        format = format.strip("=@<")
+    else:
+        format = format.strip("=@>")
+
+    item_size = PyBuffer_SizeFromFormat(format_c)
+
+    if format == "c":
+        return 0, NANOARROW_TYPE_STRING
+    elif format == "e":
+        return item_size, NANOARROW_TYPE_HALF_FLOAT
+    elif format == "f":
+        return item_size, NANOARROW_TYPE_FLOAT
+    elif format == "d":
+        return item_size, NANOARROW_TYPE_DOUBLE
+
+    # Check for signed integers
+    if format in ("b", "?", "h", "i", "l", "q", "n"):
+        if item_size == 1:
+            return item_size, NANOARROW_TYPE_INT8
+        elif item_size == 2:
+            return item_size, NANOARROW_TYPE_INT16
+        elif item_size == 4:
+            return item_size, NANOARROW_TYPE_INT32
+        elif item_size == 8:
+            return item_size, NANOARROW_TYPE_INT64
+
+    # Check for unsinged integers
+    if format in ("B", "H", "I", "L", "Q", "N"):
+        if item_size == 1:
+            return item_size, NANOARROW_TYPE_UINT8
+        elif item_size == 2:
+            return item_size, NANOARROW_TYPE_UINT16
+        elif item_size == 4:
+            return item_size, NANOARROW_TYPE_UINT32
+        elif item_size == 8:
+            return item_size, NANOARROW_TYPE_UINT64
+
+    # If all else failes, return opaque fixed-size binary
+    return item_size, NANOARROW_TYPE_BINARY
+
 cdef object alloc_c_buffer_from_pybuffer(object obj):
     cdef ArrowBuffer* c_buffer
     buffer_capsule = alloc_c_buffer(&c_buffer)
 
     cdef Py_buffer buffer
-    cdef int rc = PyObject_GetBuffer(obj, &buffer, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+    cdef int rc = PyObject_GetBuffer(obj, &buffer, PyBUF_FORMAT | PyBUF_ANY_CONTIGUOUS)
     if rc != 0:
         raise BufferError()
 
+    # Parse the buffer's format string to get the ArrowType and element size
+    element_size_bytes, data_type = c_arrow_type_from_format(buffer.format)
+
     # Transfers ownership of buffer to c_buffer, whose finalizer will be called by
     # the capsule when the capsule is deleted or garbage collected
+    c_buffer.allocator = c_pybuffer_deallocator(&buffer)
     c_buffer.data = <uint8_t*>buffer.buf
     c_buffer.size_bytes = <int64_t>buffer.len
-    c_buffer.allocator = c_pybuffer_deallocator(&buffer)
-
-    # TODO: Parse the buffer's format string to get the ArrowType and element size
 
     # Wrap in a CBuffer
-    return CBuffer(buffer_capsule, <uintptr_t>c_buffer, NANOARROW_TYPE_BINARY, 0, CDEVICE_CPU)
+    return CBuffer(buffer_capsule, <uintptr_t>c_buffer, data_type, element_size_bytes * 8, CDEVICE_CPU)
 
 
 class NanoarrowException(RuntimeError):
@@ -1324,7 +1372,7 @@ cdef class CBuffer:
         self._element_size_bits = element_size_bits
 
     def view(self):
-        return CBufferView(self._base, self._ptr.data,
+        return CBufferView(self._base, <uintptr_t>self._ptr.data,
                            self._ptr.size_bytes, self._data_type, self._element_size_bits,
                            self._device)
 
