@@ -11,8 +11,8 @@ nanoarrow_version(runtime = TRUE)
 possible ABI mismatch.}
 }
 \value{
-A string identifying the version of nanoarrow this package
-was compiled against.
+An 'package_version' object identifying the version of
+nanoarrow this package was compiled against.
 }
 \description{
 Underlying 'nanoarrow' C library build

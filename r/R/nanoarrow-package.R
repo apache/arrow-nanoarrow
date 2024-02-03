@@ -29,8 +29,8 @@ NULL
 #' @param runtime Compare TRUE and FALSE values to detect a
 #'   possible ABI mismatch.
 #'
-#' @return A string identifying the version of nanoarrow this package
-#'   was compiled against.
+#' @return An 'package_version' object identifying the version of
+#'   nanoarrow this package was compiled against.
 #' @export
 #'
 #' @examples
@@ -38,8 +38,8 @@ NULL
 #'
 nanoarrow_version <- function(runtime = TRUE) {
   if (runtime) {
-    .Call(nanoarrow_c_version_runtime)
+    as.package_version(.Call(nanoarrow_c_version_runtime))
   } else {
-    .Call(nanoarrow_c_version)
+    as.package_version(.Call(nanoarrow_c_version))
   }
 }
