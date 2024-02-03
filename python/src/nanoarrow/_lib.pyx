@@ -214,11 +214,7 @@ cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
     return ArrowBufferDeallocator(<ArrowBufferDeallocatorCallback>&c_deallocate_pybuffer, allocator_private)
 
 
-cdef c_arrow_type_from_format(const char* format_c):
-    if format_c == NULL:
-        return 0, NANOARROW_TYPE_BINARY
-
-    format = format_c.decode("UTF-8")
+cdef c_arrow_type_from_format(format):
     # PyBuffer_SizeFromFormat() was added in Python 3.9 (potentially faster)
     item_size = calcsize(format)
 
@@ -273,7 +269,10 @@ cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
 
     # Parse the buffer's format string to get the ArrowType and element size
     try:
-        element_size_bytes, data_type = c_arrow_type_from_format(buffer.format)
+        if buffer.format == NULL:
+            format = "B"
+        else:
+            format = buffer.format.decode("UTF-8")
     except Exception as e:
         PyBuffer_Release(&buffer)
         raise e
@@ -283,9 +282,10 @@ cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
     c_buffer[0].allocator = c_pybuffer_deallocator(&buffer)
     c_buffer[0].data = <uint8_t*>buffer.buf
     c_buffer[0].size_bytes = <int64_t>buffer.len
+    c_buffer[0].capacity_bytes = 0
 
     # Return the calculated components
-    return data_type, element_size_bytes * 8
+    return format
 
 
 class NanoarrowException(RuntimeError):
@@ -1343,10 +1343,10 @@ cdef class CBufferView:
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         if self._device is not CDEVICE_CPU:
-            raise RuntimeError("nanoarrow.c_lib.CBufferView is not a CPU buffer")
+            raise RuntimeError("CBufferView is not a CPU buffer")
 
         if flags & PyBUF_WRITABLE:
-            raise BufferError("nanoarrow.CBufferView does not support writable")
+            raise BufferError("CBufferView does not support PyBUF_WRITABLE")
 
         buffer.buf = <void*>self._ptr.data.data
 
@@ -1354,6 +1354,7 @@ cdef class CBufferView:
             buffer.format = self._format
         else:
             buffer.format = NULL
+
         buffer.internal = NULL
         buffer.itemsize = self._strides
         buffer.len = self._ptr.size_bytes
@@ -1368,7 +1369,7 @@ cdef class CBufferView:
         pass
 
     def __repr__(self):
-        return f"<nanoarrow.c_lib.CBufferView>\n  {_lib_utils.buffer_view_repr(self)[1:]}"
+        return f"CBufferView({_lib_utils.buffer_view_repr(self)})"
 
 
 cdef class CBuffer:
@@ -1408,12 +1409,19 @@ cdef class CBuffer:
         if self._ptr == NULL:
             self._base = alloc_c_buffer(&self._ptr)
 
-        self._data_type, self._element_size_bits = c_buffer_set_pybuffer(
-            obj,
-            &self._ptr
-        )
-
+        self.set_format(c_buffer_set_pybuffer(obj, &self._ptr))
         self._device = CDEVICE_CPU
+        return self
+
+    def set_format(self, format):
+        if format is None:
+            self._data_type = NANOARROW_TYPE_BINARY
+            self._element_size_bits = 0
+        else:
+            element_size_bytes, data_type = c_arrow_type_from_format(format)
+            self._data_type = data_type
+            self._element_size_bits = element_size_bytes * 8
+
         return self
 
     def _addr(self):
