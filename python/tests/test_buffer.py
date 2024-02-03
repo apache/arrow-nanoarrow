@@ -77,6 +77,37 @@ def test_buffer_integer():
         assert list(view) == [0, 1, 2]
 
 
+def test_numpy_buffer_numeric():
+    np = pytest.importorskip("numpy")
+
+    dtypes = [
+        np.int8(),
+        np.uint8(),
+        np.int16(),
+        np.uint16(),
+        np.int32(),
+        np.uint32(),
+        np.int64(),
+        np.uint64(),
+        np.float16(),
+        np.float32(),
+        np.float64(),
+        "|S1",
+    ]
+
+    for dtype in dtypes:
+        array = np.array([0, 1, 2], dtype)
+        buffer = CBuffer().set_pybuffer(array)
+        view = buffer.data
+        assert list(view) == list(array)
+
+        array_roundtrip = np.array(view, copy=False)
+        np.testing.assert_array_equal(array_roundtrip, array)
+
+        buffer_roundtrip = CBuffer().set_pybuffer(array_roundtrip)
+        assert buffer_roundtrip._addr() == buffer._addr()
+
+
 def test_buffer_float():
     formats = ["e", "f", "d"]
     values = [0.0, 1.0, 2.0]
