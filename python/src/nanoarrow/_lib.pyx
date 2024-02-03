@@ -1454,6 +1454,94 @@ cdef class CBuffer:
         return _lib_utils.buffer_repr(self)
 
 
+cdef class CBufferBuilder(CBuffer):
+    """Wrapper around writable owned buffer CPU content"""
+
+    def reserve_bytes(self, int64_t additional_bytes):
+        self._assert_valid()
+        cdef int result = ArrowBufferReserve(self._ptr, additional_bytes)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowBufferReserve()", result)
+
+        return self
+
+
+cdef class CArrayBuilder:
+    cdef CArray c_array
+    cdef ArrowArray* _ptr
+
+    def __cinit__(self, CArray array):
+        self.c_array = array
+        self._ptr = array._ptr
+
+    def init_from_type(self, int type_id):
+        if self._ptr.release != NULL:
+            raise RuntimeError("CArrayBuilder is already initialized")
+
+        cdef int result = ArrowArrayInitFromType(self._ptr, <ArrowType>type_id)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowArrayInitFromType()", result)
+
+        return self
+
+    def init_from_schema(self, CSchema schema):
+        if self._ptr.release != NULL:
+            raise RuntimeError("CArrayBuilder is already initialized")
+
+        cdef Error error = Error()
+        cdef int result = ArrowArrayInitFromSchema(self._ptr, schema._ptr, &error.c_error)
+        if result != NANOARROW_OK:
+            Error.raise_message("ArrowArrayInitFromType()", result)
+
+        return self
+
+    def set_offset(self, int64_t offset):
+        self._ptr.offset = offset
+        return self
+
+    def set_length(self, int64_t length):
+        self._ptr.length = length
+        return self
+
+    def set_null_count(self, int64_t null_count):
+        self._ptr.null_count = null_count
+
+    def allocate_children(self, int n):
+        self.c_array._assert_valid()
+
+        cdef int result = ArrowArrayAllocateChildren(self._ptr, n)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowArrayAllocateChildren()", result)
+
+        return self
+
+    def buffer(self, int64_t i):
+        self.c_array._assert_valid()
+        cdef CBufferBuilder c_buffer = CBufferBuilder()
+        c_buffer._ptr = ArrowArrayBuffer(self._ptr, i)
+        c_buffer._base = self
+
+    @property
+    def n_children(self):
+        return self.c_array.n_children
+
+    def child(self, int64_t i):
+        return CArrayBuilder(self.c_array.child(i))
+
+    @property
+    def children(self):
+        for child in self.c_array.children:
+            yield CArrayBuilder(child)
+
+    @property
+    def dictionary(self):
+        dictionary = self.c_array.dictionary
+        if dictionary:
+            return CArrayBuilder(self.c_array.dictionary)
+        else:
+            return None
+
+
 cdef class CArrayStream:
     """Low-level ArrowArrayStream wrapper
 
