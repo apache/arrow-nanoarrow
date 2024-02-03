@@ -1247,6 +1247,10 @@ cdef class CBufferView:
         return self._ptr.size_bytes
 
     @property
+    def data_type_id(self):
+        return self._buffer_data_type
+
+    @property
     def data_type(self):
         return ArrowTypeString(self._buffer_data_type).decode("UTF-8")
 
@@ -1474,6 +1478,10 @@ cdef class CArrayBuilder:
         self.c_array = array
         self._ptr = array._ptr
 
+    @staticmethod
+    def allocate():
+        return CArrayBuilder(CArray.allocate(CSchema.allocate()))
+
     def init_from_type(self, int type_id):
         if self._ptr.release != NULL:
             raise RuntimeError("CArrayBuilder is already initialized")
@@ -1481,6 +1489,10 @@ cdef class CArrayBuilder:
         cdef int result = ArrowArrayInitFromType(self._ptr, <ArrowType>type_id)
         if result != NANOARROW_OK:
             Error.raise_error("ArrowArrayInitFromType()", result)
+
+        result = ArrowSchemaInitFromType(self.c_array._schema._ptr, <ArrowType>type_id)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowSchemaInitFromType()", result)
 
         return self
 
@@ -1493,26 +1505,22 @@ cdef class CArrayBuilder:
         if result != NANOARROW_OK:
             Error.raise_message("ArrowArrayInitFromType()", result)
 
+        self.c_array._schema = schema
         return self
 
     def set_offset(self, int64_t offset):
+        self.c_array._assert_valid()
         self._ptr.offset = offset
         return self
 
     def set_length(self, int64_t length):
+        self.c_array._assert_valid()
         self._ptr.length = length
         return self
 
     def set_null_count(self, int64_t null_count):
-        self._ptr.null_count = null_count
-
-    def allocate_children(self, int n):
         self.c_array._assert_valid()
-
-        cdef int result = ArrowArrayAllocateChildren(self._ptr, n)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowArrayAllocateChildren()", result)
-
+        self._ptr.null_count = null_count
         return self
 
     def buffer(self, int64_t i):
@@ -1520,6 +1528,12 @@ cdef class CArrayBuilder:
         cdef CBufferBuilder c_buffer = CBufferBuilder()
         c_buffer._ptr = ArrowArrayBuffer(self._ptr, i)
         c_buffer._base = self
+
+    def set_buffer(self, int64_t i, CBuffer buffer):
+        cdef int result = ArrowArraySetBuffer(self._ptr, i, buffer._ptr)
+        if result != NANOARROW_OK:
+            Error.raise_error("ArrowArraySetBuffer()", result)
+        return self
 
     @property
     def n_children(self):
@@ -1540,6 +1554,15 @@ cdef class CArrayBuilder:
             return CArrayBuilder(self.c_array.dictionary)
         else:
             return None
+
+    def finish(self):
+        self.c_array._assert_valid()
+        cdef Error error = Error()
+        cdef int result = ArrowArrayFinishBuildingDefault(self._ptr, &error.c_error)
+        if result != NANOARROW_OK:
+            error.raise_message("ArrowArrayFinishBuildingDefault()", result)
+
+        return self.c_array
 
 
 cdef class CArrayStream:
