@@ -192,10 +192,11 @@ cdef object alloc_c_buffer(ArrowBuffer** c_buffer) noexcept:
     ArrowBufferInit(c_buffer[0])
     return PyCapsule_New(c_buffer[0], 'nanoarrow_buffer', &pycapsule_buffer_deleter)
 
-cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept:
+cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
     cdef Py_buffer* buffer = <Py_buffer*>allocator.private_data
     PyBuffer_Release(buffer)
     ArrowFree(buffer)
+
 
 cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
     # This should probably be changed in nanoarrow C; however, currently, the deallocator
@@ -262,9 +263,8 @@ cdef c_arrow_type_from_format(const char* format_c):
     # If all else failes, return opaque fixed-size binary
     return item_size, NANOARROW_TYPE_BINARY
 
-cdef object alloc_c_buffer_from_pybuffer(object obj):
-    cdef ArrowBuffer* c_buffer
-    buffer_capsule = alloc_c_buffer(&c_buffer)
+cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
+    ArrowBufferReset(c_buffer[0])
 
     cdef Py_buffer buffer
     cdef int rc = PyObject_GetBuffer(obj, &buffer, PyBUF_FORMAT | PyBUF_ANY_CONTIGUOUS)
@@ -280,12 +280,12 @@ cdef object alloc_c_buffer_from_pybuffer(object obj):
 
     # Transfers ownership of buffer to c_buffer, whose finalizer will be called by
     # the capsule when the capsule is deleted or garbage collected
-    c_buffer.allocator = c_pybuffer_deallocator(&buffer)
-    c_buffer.data = <uint8_t*>buffer.buf
-    c_buffer.size_bytes = <int64_t>buffer.len
+    c_buffer[0].allocator = c_pybuffer_deallocator(&buffer)
+    c_buffer[0].data = <uint8_t*>buffer.buf
+    c_buffer[0].size_bytes = <int64_t>buffer.len
 
-    # Wrap in a CBuffer
-    return CBuffer(buffer_capsule, <uintptr_t>c_buffer, data_type, element_size_bytes * 8, CDEVICE_CPU)
+    # Return the calculated components
+    return data_type, element_size_bytes * 8
 
 
 class NanoarrowException(RuntimeError):
@@ -1372,31 +1372,78 @@ cdef class CBufferView:
 
 
 cdef class CBuffer:
+    """Wrapper around readable owned buffer content
+
+    Like the CBufferView, the CBuffer represents readable buffer content; however,
+    unlike the CBufferView, the CBuffer always represents a valid ArrowBuffer C object.
+    """
     cdef object _base
-    cdef CDevice _device
     cdef ArrowBuffer* _ptr
     cdef ArrowType _data_type
     cdef int _element_size_bits
+    cdef CDevice _device
 
-    def __cinit__(self, object base, uintptr_t addr, ArrowType data_type, int element_size_bits,
-                  CDevice device):
-        self._base = base
-        self._device = device
-        self._ptr = <ArrowBuffer*>addr
-        self._data_type = data_type
-        self._element_size_bits = element_size_bits
+    def __cinit__(self):
+        self._base = None
+        self._ptr = NULL
+        self._data_type = NANOARROW_TYPE_BINARY
+        self._element_size_bits = 0
+        self._device = CDEVICE_CPU
 
-    def view(self):
-        return CBufferView(self._base, <uintptr_t>self._ptr.data,
-                           self._ptr.size_bytes, self._data_type, self._element_size_bits,
-                           self._device)
+    cdef _assert_valid(self):
+        if self._ptr == NULL:
+            raise RuntimeError("CBuffer is not valid")
+
+    def set_empty(self):
+        if self._ptr == NULL:
+            self._base = alloc_c_buffer(&self._ptr)
+        ArrowBufferReset(self._ptr)
+
+        self._data_type = NANOARROW_TYPE_BINARY
+        self._element_size_bits = 0
+        self._device = CDEVICE_CPU
+        return self
+
+    def set_pybuffer(self, obj):
+        if self._ptr == NULL:
+            self._base = alloc_c_buffer(&self._ptr)
+
+        self._data_type, self._element_size_bits = c_buffer_set_pybuffer(
+            obj,
+            &self._ptr
+        )
+
+        self._device = CDEVICE_CPU
+        return self
+
+    def _addr(self):
+        self._assert_valid()
+        return <uintptr_t>self._ptr.data
+
+    @property
+    def size_bytes(self):
+        self._assert_valid()
+        return self._ptr.size_bytes
+
+    @property
+    def capacity_bytes(self):
+        self._assert_valid()
+        return self._ptr.capacity_bytes
+
+    @property
+    def data(self):
+        self._assert_valid()
+        return CBufferView(
+            self._base, <uintptr_t>self._ptr.data,
+            self._ptr.size_bytes, self._data_type, self._element_size_bits,
+            self._device
+        )
 
     def __repr__(self):
-        return _lib_utils.buffer_repr(self)
+        if self._ptr == NULL:
+            return "CBuffer(<invalid>)"
 
-    @staticmethod
-    def from_pybuffer(obj):
-        return alloc_c_buffer_from_pybuffer(obj)
+        return _lib_utils.buffer_repr(self)
 
 
 cdef class CArrayStream:

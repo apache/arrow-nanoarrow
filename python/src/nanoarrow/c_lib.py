@@ -25,7 +25,14 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
-from nanoarrow._lib import CArray, CArrayStream, CArrayView, CSchema, CSchemaView
+from nanoarrow._lib import (  # noqa: F401
+    CArray,
+    CArrayStream,
+    CArrayView,
+    CBuffer,
+    CSchema,
+    CSchemaView,
+)
 
 
 def c_schema(obj=None) -> CSchema:

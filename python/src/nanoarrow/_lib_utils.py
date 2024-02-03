@@ -190,7 +190,8 @@ def buffer_view_preview_cpu(buffer_view, max_char_width):
 
 
 def buffer_repr(buffer):
-    return buffer_view_repr(buffer.view())
+    view_repr = buffer_view_repr(buffer.data)
+    return f"CBuffer({view_repr})"
 
 
 def array_stream_repr(array_stream, max_char_width=80):
