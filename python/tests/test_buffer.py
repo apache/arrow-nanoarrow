@@ -18,7 +18,7 @@
 import struct
 
 import pytest
-from nanoarrow.c_lib import CBuffer
+from nanoarrow.c_lib import CBuffer, CBufferBuilder
 
 
 def test_buffer_invalid():
@@ -149,3 +149,23 @@ def test_buffer_fixed_size_binary():
     assert view[1] == b"efgh"
     assert view[2] == b"ijkl"
     assert list(view) == items
+
+
+def test_buffer_builder():
+    builder = CBufferBuilder().set_empty()
+    assert builder.size_bytes == 0
+    assert builder.capacity_bytes == 0
+
+    builder.reserve_bytes(123)
+    assert builder.size_bytes == 0
+    assert builder.capacity_bytes == 123
+
+    builder.write(b"abcde")
+    assert builder.size_bytes == 5
+    assert builder.capacity_bytes == 123
+
+    builder.write(b"fghij")
+    assert builder.size_bytes == 10
+    assert builder.capacity_bytes == 123
+
+    assert bytes(builder.data) == b"abcdefghij"

@@ -30,6 +30,7 @@ from nanoarrow._lib import (  # noqa: F401
     CArrayStream,
     CArrayView,
     CBuffer,
+    CBufferBuilder,
     CSchema,
     CSchemaView,
 )

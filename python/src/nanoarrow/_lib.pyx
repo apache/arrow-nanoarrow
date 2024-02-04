@@ -37,7 +37,7 @@ from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, PyBuffer_SizeFromFormat, \
-                     PyBUF_ANY_CONTIGUOUS, PyBUF_FORMAT, PyBUF_WRITABLE
+                     PyBuffer_ToContiguous, PyBUF_ANY_CONTIGUOUS, PyBUF_FORMAT, PyBUF_WRITABLE
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
@@ -1469,6 +1469,34 @@ cdef class CBufferBuilder(CBuffer):
 
         return self
 
+    def write(self, content):
+        self._assert_valid()
+
+        cdef Py_buffer buffer
+        cdef int64_t out
+        PyObject_GetBuffer(content, &buffer, PyBUF_ANY_CONTIGUOUS)
+
+        cdef int result = ArrowBufferReserve(self._ptr, buffer.len)
+        if result != NANOARROW_OK:
+            PyBuffer_Release(&buffer)
+            Error.raise_error("ArrowBufferReserve()", result)
+
+        result = PyBuffer_ToContiguous(
+            self._ptr.data + self._ptr.size_bytes,
+            &buffer,
+            buffer.len,
+            # 'C' (not sure how to pass a character literal here)
+            43
+        )
+        out = buffer.len
+        PyBuffer_Release(&buffer)
+
+        if result != 0:
+            Error.raise_error("PyBuffer_ToContiguous()", result)
+
+        self._ptr.size_bytes += out
+        return out
+
 
 cdef class CArrayBuilder:
     cdef CArray c_array
@@ -1506,6 +1534,12 @@ cdef class CArrayBuilder:
             Error.raise_message("ArrowArrayInitFromType()", result)
 
         self.c_array._schema = schema
+        return self
+
+    def start_appending(self):
+        cdef int result = ArrowArrayStartAppending(self._ptr)
+        if result != NANOARROW_OK:
+            Error.raise_message("ArrowArrayStartAppending()", result)
         return self
 
     def set_offset(self, int64_t offset):
