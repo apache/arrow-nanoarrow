@@ -1119,10 +1119,16 @@ cdef class CArrayView:
             raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
 
         cdef ArrowBufferView* buffer_view = &(self._ptr.buffer_views[i])
+        cdef int64_t size_bytes = buffer_view.size_bytes
+
+        # This is rare but is true when an ArrayView is uninitialized
+        if size_bytes < 0:
+            size_bytes = 0
+
         return CBufferView(
             self._base,
             <uintptr_t>buffer_view.data.data,
-            buffer_view.size_bytes,
+            size_bytes,
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
             self._device
