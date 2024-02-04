@@ -52,3 +52,10 @@ def c_array_from_pybuffer(obj):
     array_builder.set_offset(0)
 
     return array_builder.finish()
+
+
+def c_array_empty(c_schema):
+    array_builder = CArrayBuilder.allocate()
+    array_builder.init_from_schema(c_schema)
+    array_builder.start_appending()
+    return array_builder.finish()

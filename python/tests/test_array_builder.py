@@ -15,10 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import struct
 
-import pytest
-from nanoarrow.array_builder import c_array_from_pybuffer
+from nanoarrow.array_builder import c_array_empty, c_array_from_pybuffer
 from nanoarrow.c_lib import CBuffer
 
 import nanoarrow as na
@@ -63,3 +61,11 @@ def test_c_array_from_pybuffer_fixed_size_binary():
 
     c_array_view = na.c_array_view(c_array)
     assert list(c_array_view.buffer(1)) == items
+
+
+def test_c_array_empty():
+    empty_string = c_array_empty(na.c_schema(na.string()))
+    assert empty_string.length == 0
+    assert empty_string.null_count == 0
+    assert empty_string.offset == 0
+    assert empty_string.n_buffers == 3
