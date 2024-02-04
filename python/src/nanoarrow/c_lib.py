@@ -146,7 +146,7 @@ def c_array(obj=None, requested_schema=None) -> CArray:
         ) from e
 
 
-def c_array_from_pybuffer(obj):
+def c_array_from_pybuffer(obj) -> CArray:
     """Create an ArrowArray wrapper from the Python buffer protocol
 
     Invokes the Python buffer protocol to wrap the buffer represented by obj
@@ -205,7 +205,7 @@ def c_array_from_pybuffer(obj):
     return array_builder.finish()
 
 
-def c_array_empty(schema):
+def c_array_empty(schema) -> CArray:
     """Create an empty ArrowArray wrapper
 
     Creates an ArrowArray wrapper with length zero.
@@ -360,7 +360,7 @@ def c_array_view(obj, requested_schema=None) -> CArrayView:
     return CArrayView.from_cpu_array(c_array(obj, requested_schema))
 
 
-def allocate_c_schema():
+def allocate_c_schema() -> CSchema:
     """Allocate an uninitialized ArrowSchema wrapper
 
     Examples
@@ -374,7 +374,7 @@ def allocate_c_schema():
     return CSchema.allocate()
 
 
-def allocate_c_array(requested_schema=None):
+def allocate_c_array(requested_schema=None) -> CArray:
     """Allocate an uninitialized ArrowArray
 
     Examples
@@ -393,7 +393,7 @@ def allocate_c_array(requested_schema=None):
     )
 
 
-def allocate_c_array_stream():
+def allocate_c_array_stream() -> CArrayStream:
     """Allocate an uninitialized ArrowArrayStream wrapper
 
     Examples

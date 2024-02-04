@@ -18,7 +18,6 @@
 import struct
 
 import pytest
-
 from nanoarrow.c_lib import (
     CBuffer,
     CBufferBuilder,
@@ -226,3 +225,8 @@ def test_c_array_empty():
     assert empty_string.null_count == 0
     assert empty_string.offset == 0
     assert empty_string.n_buffers == 3
+
+    array_view = na.c_array_view(empty_string)
+    assert len(array_view.buffer(0)) == 0
+    assert len(array_view.buffer(1)) == 0
+    assert len(array_view.buffer(2)) == 0
