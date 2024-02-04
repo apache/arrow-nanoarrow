@@ -27,11 +27,14 @@ Python objects.
 
 from nanoarrow._lib import (  # noqa: F401
     CArray,
+    CArrayBuilder,
     CArrayStream,
     CArrayView,
+    CArrowType,
     CBuffer,
     CBufferBuilder,
     CSchema,
+    CSchemaBuilder,
     CSchemaView,
 )
 
@@ -91,7 +94,7 @@ def c_array(obj=None, requested_schema=None) -> CArray:
     :class:`CSchema` that can be used to safely deserialize the content.
 
     These objects are created using :func:`c_array`, which accepts any array-like
-    object according to the Arrow PyCapsule interface.
+    object according to the Arrow PyCapsule interface or Python buffer protocol.
 
     This Python wrapper allows access to array fields but does not automatically
     deserialize their content: use :func:`c_array_view` to validate and deserialize
@@ -133,10 +136,102 @@ def c_array(obj=None, requested_schema=None) -> CArray:
         out = CArray.allocate(CSchema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
-    else:
+
+    # Try buffer protocol (e.g., numpy arrays)
+    try:
+        return c_array_from_pybuffer(obj)
+    except Exception as e:
         raise TypeError(
             f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
+        ) from e
+
+
+def c_array_from_pybuffer(obj):
+    """Create an ArrowArray wrapper from the Python buffer protocol
+
+    Invokes the Python buffer protocol to wrap the buffer represented by obj
+    if possible.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow.c_lib import c_array_from_pybuffer
+    >>> na.c_array_view(c_array_from_pybuffer(b"1234")))
+    <nanoarrow.c_lib.CArrayView>
+    - storage_type: 'uint8'
+    - length: 4
+    - offset: 0
+    - null_count: 0
+    - buffers[2]:
+    - validity <bool[0 b] >
+    - data <uint8[4 b] 49 50 51 52>
+    - dictionary: NULL
+    - children[0]:
+    """
+
+    buffer = CBuffer().set_pybuffer(obj)
+    view = buffer.data
+    type_id = view.data_type_id
+    element_size_bits = view.element_size_bits
+
+    array_builder = CArrayBuilder.allocate()
+
+    # Fixed-size binary needs a schema
+    if type_id == CArrowType.BINARY and element_size_bits != 0:
+        c_schema = (
+            CSchemaBuilder.allocate()
+            .set_type_fixed_size(CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8)
+            .finish()
         )
+        array_builder.init_from_schema(c_schema)
+    elif type_id == CArrowType.STRING:
+        array_builder.init_from_type(int(CArrowType.INT8))
+    elif type_id == CArrowType.BINARY:
+        array_builder.init_from_type(int(CArrowType.UINT8))
+    else:
+        array_builder.init_from_type(int(type_id))
+
+    # Set the length
+    array_builder.set_length(len(view))
+
+    # Move ownership of the ArrowBuffer wrapped by buffer to array_builder.buffer(1)
+    array_builder.set_buffer(1, buffer)
+
+    # No nulls or offset from a PyBuffer
+    array_builder.set_null_count(0)
+    array_builder.set_offset(0)
+
+    return array_builder.finish()
+
+
+def c_array_empty(schema):
+    """Create an empty ArrowArray wrapper
+
+    Creates an ArrowArray wrapper with length zero.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow.c_lib import c_array_empty
+    >>> na.c_array_view(c_array_empty(na.int32()))
+    <nanoarrow.c_lib.CArrayView>
+    - storage_type: 'int32'
+    - length: 0
+    - offset: 0
+    - null_count: 0
+    - buffers[2]:
+    - validity <bool[0 b] >
+    - data <int32[0 b] >
+    - dictionary: NULL
+    - children[0]:
+    """
+
+    array_builder = CArrayBuilder.allocate()
+    array_builder.init_from_schema(c_schema(schema))
+    array_builder.start_appending()
+    return array_builder.finish()
 
 
 def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
