@@ -18,9 +18,11 @@
 import struct
 
 import pytest
-import nanoarrow as na
-from nanoarrow.c_lib import CBuffer
 from nanoarrow.array_builder import c_array_from_pybuffer
+from nanoarrow.c_lib import CBuffer
+
+import nanoarrow as na
+
 
 def test_c_array_from_pybuffer_uint8():
     data = b"abcdefg"
@@ -32,6 +34,20 @@ def test_c_array_from_pybuffer_uint8():
 
     c_array_view = na.c_array_view(c_array)
     assert list(c_array_view.buffer(1)) == list(data)
+
+
+def test_c_array_from_pybuffer_string():
+    data = b"abcdefg"
+    buffer = CBuffer().set_pybuffer(data).set_format("c")
+    c_array = c_array_from_pybuffer(buffer.data)
+    assert c_array.length == len(data)
+    assert c_array.null_count == 0
+    assert c_array.offset == 0
+    assert na.c_schema_view(c_array.schema).type == "int8"
+
+    c_array_view = na.c_array_view(c_array)
+    assert list(c_array_view.buffer(1)) == list(data)
+
 
 def test_c_array_from_pybuffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]

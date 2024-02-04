@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CBuffer, CArrayBuilder, CArrowType, CSchemaBuilder
+from nanoarrow._lib import CArrayBuilder, CArrowType, CBuffer, CSchemaBuilder
 
 
 def c_array_from_pybuffer(obj):
@@ -26,10 +26,13 @@ def c_array_from_pybuffer(obj):
 
     array_builder = CArrayBuilder.allocate()
 
+    # Fixed-size binary needs a schema
     if type_id == CArrowType.BINARY and element_size_bits != 0:
-        c_schema = CSchemaBuilder.allocate().set_type_fixed_size(
-            CArrowType.FIXED_SIZE_BINARY, element_size_bits
-        ).finish()
+        c_schema = (
+            CSchemaBuilder.allocate()
+            .set_type_fixed_size(CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8)
+            .finish()
+        )
         array_builder.init_from_schema(c_schema)
     elif type_id == CArrowType.STRING:
         array_builder.init_from_type(int(CArrowType.INT8))
@@ -41,8 +44,7 @@ def c_array_from_pybuffer(obj):
     # Set the length
     array_builder.set_length(len(view))
 
-    # Set buffer(1) to buffer. We could also pack a "bool" buffer (format '?')
-    # into a bitmap
+    # Move ownership of the ArrowBuffer wrapped by buffer to array_builder.buffer(1)
     array_builder.set_buffer(1, buffer)
 
     # No nulls or offset from a PyBuffer
