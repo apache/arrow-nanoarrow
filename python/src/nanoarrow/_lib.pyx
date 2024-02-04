@@ -1119,16 +1119,18 @@ cdef class CArrayView:
             raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
 
         cdef ArrowBufferView* buffer_view = &(self._ptr.buffer_views[i])
-        cdef int64_t size_bytes = buffer_view.size_bytes
 
-        # This is rare but is true when an ArrayView is uninitialized
-        if size_bytes < 0:
-            size_bytes = 0
+        # Check the buffer size here because the error later is cryptic.
+        # Buffer sizes are set to -1 when they are "unknown", so because of errors
+        # in nanoarrow/C or because the array is on a non-CPU device, that -1 value
+        # could leak its way here.
+        if buffer_view.size_bytes < 0:
+            raise RuntimeError(f"ArrowArrayView buffer {i} has size_bytes < 0")
 
         return CBufferView(
             self._base,
             <uintptr_t>buffer_view.data.data,
-            size_bytes,
+            buffer_view.size_bytes,
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
             self._device
