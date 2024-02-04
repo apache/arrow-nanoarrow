@@ -1662,6 +1662,18 @@ TEST(ArrayTest, ArrayViewTestString) {
 
   struct ArrowArray array;
 
+  // Build + check zero length using append mode
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
+  EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
+  EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
+  ArrowArrayRelease(&array);
+
   // Build + check zero length
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   array.null_count = 0;
@@ -1744,8 +1756,20 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
 
   struct ArrowArray array;
 
+  // Build + check zero length using append mode
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
+  EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
+  EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
+  ArrowArrayRelease(&array);
+
   // Build + check zero length
-  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_STRING), NANOARROW_OK);
   array.null_count = 0;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
