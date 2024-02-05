@@ -22,7 +22,9 @@ from nanoarrow.c_lib import (
     CBuffer,
     CBufferBuilder,
     c_array_empty,
+    c_array_from_buffers,
     c_array_from_pybuffer,
+    c_buffer,
 )
 
 import nanoarrow as na
@@ -56,7 +58,7 @@ def test_buffer_empty():
 
 def test_buffer_pybuffer():
     data = bytes(b"abcdefghijklmnopqrstuvwxyz")
-    buffer = CBuffer().set_pybuffer(data)
+    buffer = c_buffer(data)
 
     assert buffer.size_bytes == len(data)
     assert buffer.capacity_bytes == 0
@@ -73,7 +75,7 @@ def test_buffer_integer():
         packed = b""
         for value in values:
             packed += struct.pack(format, value)
-        buffer = CBuffer().set_pybuffer(packed).set_format(format)
+        buffer = c_buffer(packed).set_format(format)
         assert buffer.size_bytes == len(packed)
 
         view = buffer.data
@@ -104,14 +106,14 @@ def test_numpy_buffer_numeric():
 
     for dtype in dtypes:
         array = np.array([0, 1, 2], dtype)
-        buffer = CBuffer().set_pybuffer(array)
+        buffer = c_buffer(array)
         view = buffer.data
         assert list(view) == list(array)
 
         array_roundtrip = np.array(view, copy=False)
         np.testing.assert_array_equal(array_roundtrip, array)
 
-        buffer_roundtrip = CBuffer().set_pybuffer(array_roundtrip)
+        buffer_roundtrip = c_buffer(array_roundtrip)
         assert buffer_roundtrip._addr() == buffer._addr()
 
 
@@ -123,7 +125,7 @@ def test_buffer_float():
         packed = b""
         for value in values:
             packed += struct.pack(format, value)
-        buffer = CBuffer().set_pybuffer(packed).set_format(format)
+        buffer = c_buffer(packed).set_format(format)
         assert buffer.size_bytes == len(packed)
 
         view = buffer.data
@@ -136,7 +138,7 @@ def test_buffer_float():
 
 def test_buffer_string():
     packed = b"abcdefg"
-    buffer = CBuffer().set_pybuffer(packed).set_format("c")
+    buffer = c_buffer(packed).set_format("c")
     assert buffer.size_bytes == len(packed)
 
     view = buffer.data
@@ -147,7 +149,7 @@ def test_buffer_string():
 def test_buffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]
     packed = b"".join(items)
-    buffer = CBuffer().set_pybuffer(packed).set_format("4s")
+    buffer = c_buffer(packed).set_format("4s")
     assert buffer.size_bytes == len(packed)
 
     view = buffer.data
@@ -192,7 +194,7 @@ def test_c_array_from_pybuffer_uint8():
 
 def test_c_array_from_pybuffer_string():
     data = b"abcdefg"
-    buffer = CBuffer().set_pybuffer(data).set_format("c")
+    buffer = c_buffer(data).set_format("c")
     c_array = c_array_from_pybuffer(buffer.data)
     assert c_array.length == len(data)
     assert c_array.null_count == 0
@@ -206,7 +208,7 @@ def test_c_array_from_pybuffer_string():
 def test_c_array_from_pybuffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]
     packed = b"".join(items)
-    buffer = CBuffer().set_pybuffer(packed).set_format("4s")
+    buffer = c_buffer(packed).set_format("4s")
 
     c_array = c_array_from_pybuffer(buffer.data)
     assert c_array.length == len(items)
@@ -230,3 +232,54 @@ def test_c_array_empty():
     assert len(array_view.buffer(0)) == 0
     assert len(array_view.buffer(1)) == 0
     assert len(array_view.buffer(2)) == 0
+
+
+def test_c_array_from_buffers():
+    c_array = c_array_from_buffers(na.uint8(), 5, [None, b"12345"])
+    assert c_array.length == 5
+    assert c_array.null_count == 0
+    assert c_array.offset == 0
+
+    array_view = na.c_array_view(c_array)
+    assert array_view.storage_type == "uint8"
+    assert bytes(array_view.buffer(0)) == b""
+    assert bytes(array_view.buffer(1)) == b"12345"
+
+
+def test_c_array_from_buffers_null_count():
+    # Ensure null_count is not calculated if explicitly set
+    c_array = c_array_from_buffers(na.uint8(), 7, [b"\xff", b"12345678"], null_count=1)
+    assert c_array.null_count == 1
+
+    # Zero nulls, explicit bitmap
+    c_array = c_array_from_buffers(na.uint8(), 8, [b"\xff", b"12345678"])
+    assert c_array.null_count == 0
+
+    # All nulls, explicit bitmap
+    c_array = c_array_from_buffers(na.uint8(), 8, [b"\x00", b"12345678"])
+    assert c_array.null_count == 8
+
+    # Ensure offset is considered in null count calculation
+    c_array = c_array_from_buffers(na.uint8(), 7, [b"\xff", b"12345678"], offset=1)
+    assert c_array.null_count == 0
+
+    c_array = c_array_from_buffers(na.uint8(), 7, [b"\x00", b"12345678"], offset=1)
+    assert c_array.null_count == 7
+
+    # Ensure we don't access out-of-bounds memory to calculate the bitmap
+    with pytest.raises(ValueError, match="Expected validity bitmap >= 2 bytes"):
+        c_array_from_buffers(na.uint8(), 9, [b"\x00", b"123456789"])
+
+
+def test_c_array_from_buffers_recursive():
+    c_array = c_array_from_buffers(
+        na.struct([na.uint8()]), 5, [None], children=[b"12345"]
+    )
+    assert c_array.length == 5
+    assert c_array.n_children == 1
+
+    array_view = na.c_array_view(c_array)
+    assert bytes(array_view.child(0).buffer(1)) == b"12345"
+
+    with pytest.raises(ValueError, match="Expected 1 children but got 0"):
+        c_array_from_buffers(na.struct([na.uint8()]), 5, [], children=[])

@@ -175,7 +175,7 @@ def c_array_from_pybuffer(obj) -> CArray:
     type_id = view.data_type_id
     element_size_bits = view.element_size_bits
 
-    array_builder = CArrayBuilder.allocate()
+    builder = CArrayBuilder.allocate()
 
     # Fixed-size binary needs a schema
     if type_id == CArrowType.BINARY and element_size_bits != 0:
@@ -184,25 +184,25 @@ def c_array_from_pybuffer(obj) -> CArray:
             .set_type_fixed_size(CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8)
             .finish()
         )
-        array_builder.init_from_schema(c_schema)
+        builder.init_from_schema(c_schema)
     elif type_id == CArrowType.STRING:
-        array_builder.init_from_type(int(CArrowType.INT8))
+        builder.init_from_type(int(CArrowType.INT8))
     elif type_id == CArrowType.BINARY:
-        array_builder.init_from_type(int(CArrowType.UINT8))
+        builder.init_from_type(int(CArrowType.UINT8))
     else:
-        array_builder.init_from_type(int(type_id))
+        builder.init_from_type(int(type_id))
 
     # Set the length
-    array_builder.set_length(len(view))
+    builder.set_length(len(view))
 
-    # Move ownership of the ArrowBuffer wrapped by buffer to array_builder.buffer(1)
-    array_builder.set_buffer(1, buffer)
+    # Move ownership of the ArrowBuffer wrapped by buffer to builder.buffer(1)
+    builder.set_buffer(1, buffer)
 
     # No nulls or offset from a PyBuffer
-    array_builder.set_null_count(0)
-    array_builder.set_offset(0)
+    builder.set_null_count(0)
+    builder.set_offset(0)
 
-    return array_builder.finish()
+    return builder.finish()
 
 
 def c_array_empty(schema) -> CArray:
@@ -228,10 +228,59 @@ def c_array_empty(schema) -> CArray:
     - children[0]:
     """
 
-    array_builder = CArrayBuilder.allocate()
-    array_builder.init_from_schema(c_schema(schema))
-    array_builder.start_appending()
-    return array_builder.finish()
+    builder = CArrayBuilder.allocate()
+    builder.init_from_schema(c_schema(schema))
+    builder.start_appending()
+    return builder.finish()
+
+
+def c_array_from_buffers(
+    schema,
+    length,
+    buffers,
+    null_count=-1,
+    offset=0,
+    children=(),
+    dictionary=None,
+    validation_level="default",
+):
+    schema = c_schema(schema)
+    builder = CArrayBuilder.allocate()
+
+    # This is slightly wasteful: it will allocate arrays recursively and we are about
+    # to immediately release them and replace them with another value. We could also
+    # create an ArrowArrayView from the buffers, which would make it more
+    # straightforward to check the buffer types and avoid the extra structure
+    # allocation.
+    builder.init_from_schema(schema)
+
+    # Set buffers. This moves ownership of the buffers as well (i.e., the objects
+    # in the input buffers are replaced with an empty ArrowBuffer)
+    for i, buffer in enumerate(buffers):
+        if buffer is None:
+            continue
+        builder.set_buffer(i, c_buffer(buffer))
+
+    # Set children. This moves ownership of the children as well (i.e., the objects
+    # in the input children are invalidated).
+    n_children = 0
+    for child_src in children:
+        builder.set_child(n_children, c_array(child_src))
+        n_children += 1
+
+    if n_children != schema.n_children:
+        raise ValueError(f"Expected {schema.n_children} children but got {n_children}")
+
+    # Set array fields
+    builder.set_length(length)
+    builder.set_offset(offset)
+    builder.set_null_count(null_count)
+
+    # Calculates the null count if -1 (and if applicable)
+    builder.resolve_null_count()
+
+    # Validate + finish
+    return builder.finish(validation_level=validation_level)
 
 
 def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
@@ -358,6 +407,24 @@ def c_array_view(obj, requested_schema=None) -> CArrayView:
         return obj
 
     return CArrayView.from_cpu_array(c_array(obj, requested_schema))
+
+
+def c_buffer(obj) -> CBuffer:
+    """Owning, read-only ArrowBuffer wrapper
+
+    Wraps obj in nanoarrow's owning buffer structure, the ArrowBuffer,
+    such that it can be used to construct arrays.
+
+    Examples
+    --------
+
+    >>> from nanoarrow.c_lib import c_buffer
+    >>> c_buffer(b"1234")
+    CBuffer(uint8[4 b] 49 50 51 52)
+    """
+    if isinstance(obj, CBuffer):
+        return obj
+    return CBuffer().set_pybuffer(obj)
 
 
 def allocate_c_schema() -> CSchema:

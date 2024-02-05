@@ -1555,6 +1555,44 @@ cdef class CArrayBuilder:
         self._ptr.null_count = null_count
         return self
 
+    def resolve_null_count(self):
+        self.c_array._assert_valid()
+
+        # This doesn't apply to unions. We currently don't have a schema view
+        # or array view we can use to query the type ID, so just use the format
+        # string for now.
+        format = self.c_array.schema.format
+        if format.startswith("+us:") or format.startswith("+ud:"):
+            return self
+
+        # Don't overwrite an explicit null count
+        if self._ptr.null_count != -1:
+            return self
+
+        cdef ArrowBuffer* validity_buffer = ArrowArrayBuffer(self._ptr, 0)
+        if validity_buffer.size_bytes == 0:
+            self._ptr.null_count = 0
+            return self
+
+        # From _ArrowBytesForBits(), which is not included in nanoarrow_c.pxd
+        # because it's an internal inline function.
+        cdef int64_t bits = self._ptr.offset + self._ptr.length
+        cdef int64_t bytes_required = (bits >> 3) + ((bits & 7) != 0)
+
+        if validity_buffer.size_bytes < bytes_required:
+            raise ValueError(
+                f"Expected validity bitmap >= {bytes_required} bytes "
+                f"but got validity bitmap with {validity_buffer.size_bytes} bytes"
+            )
+
+        cdef int64_t count = ArrowBitCountSet(
+            validity_buffer.data,
+            self._ptr.offset,
+            self._ptr.length
+        )
+        self._ptr.null_count = self._ptr.length - count
+        return self
+
     def buffer(self, int64_t i):
         self.c_array._assert_valid()
         cdef CBufferBuilder c_buffer = CBufferBuilder()
@@ -1562,6 +1600,7 @@ cdef class CArrayBuilder:
         c_buffer._base = self
 
     def set_buffer(self, int64_t i, CBuffer buffer):
+        self.c_array._assert_valid()
         cdef int code = ArrowArraySetBuffer(self._ptr, i, buffer._ptr)
         Error.raise_error_not_ok("ArrowArraySetBuffer()", code)
         return self
@@ -1570,21 +1609,12 @@ cdef class CArrayBuilder:
     def n_children(self):
         return self.c_array.n_children
 
-    def child(self, int64_t i):
-        return CArrayBuilder(self.c_array.child(i))
-
-    @property
-    def children(self):
-        for child in self.c_array.children:
-            yield CArrayBuilder(child)
-
-    @property
-    def dictionary(self):
-        dictionary = self.c_array.dictionary
-        if dictionary:
-            return CArrayBuilder(self.c_array.dictionary)
-        else:
-            return None
+    def set_child(self, int64_t i, CArray c_array):
+        cdef CArray child = self.c_array.child(i)
+        if child._ptr.release != NULL:
+            ArrowArrayRelease(child._ptr)
+        ArrowArrayMove(c_array._ptr, child._ptr)
+        return self
 
     def finish(self, validation_level="default"):
         self.c_array._assert_valid()
