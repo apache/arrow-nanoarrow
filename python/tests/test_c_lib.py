@@ -25,6 +25,7 @@ from nanoarrow.c_lib import (
     c_array_from_buffers,
     c_array_from_pybuffer,
     c_buffer,
+    c_buffer_from_iterable,
 )
 
 import nanoarrow as na
@@ -178,6 +179,14 @@ def test_buffer_builder():
     assert builder.capacity_bytes == 123
 
     assert bytes(builder.data) == b"abcdefghij"
+
+
+def test_c_buffer_from_iterable():
+    buffer = c_buffer_from_iterable(na.int32(), [1, 2, 3])
+    assert buffer.size_bytes == 12
+    assert buffer.data.data_type == "int32"
+    assert buffer.data.element_size_bits == 32
+    assert list(buffer.data) == [1, 2, 3]
 
 
 def test_c_array_from_pybuffer_uint8():

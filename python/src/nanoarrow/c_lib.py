@@ -25,7 +25,7 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
-from typing import Iterable, Any
+from typing import Any, Iterable
 
 from nanoarrow._lib import (  # noqa: F401
     CArray,
@@ -481,6 +481,19 @@ def c_buffer(obj) -> CBuffer:
     if isinstance(obj, CBuffer):
         return obj
     return CBuffer().set_pybuffer(obj)
+
+
+def c_buffer_from_iterable(schema, obj) -> CBuffer:
+    builder = CBufferBuilder().set_empty()
+
+    schema_view = c_schema_view(schema)
+    if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
+        builder.set_data_type(CArrowType.FIXED_SIZE_BINARY, schema_view.fixed_size)
+    else:
+        builder.set_data_type(schema_view.storage_type_id)
+
+    builder.write_values(obj)
+    return builder.finish()
 
 
 def allocate_c_schema() -> CSchema:

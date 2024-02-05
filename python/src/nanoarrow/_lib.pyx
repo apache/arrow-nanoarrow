@@ -43,7 +43,7 @@ from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
 from sys import byteorder as sys_byteorder
-from struct import unpack_from, iter_unpack, calcsize
+from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _lib_utils
 
 def c_version():
@@ -218,9 +218,8 @@ cdef c_arrow_type_from_format(format):
     # PyBuffer_SizeFromFormat() was added in Python 3.9 (potentially faster)
     item_size = calcsize(format)
 
-    # Strip endian modifiers that don't affect the interpretation based on
-    # item_size below.
-    if sys_byteorder == "little" and ">" in format:
+    # Don't allow non-native endian values
+    if sys_byteorder == "little" and (">" in format or "!" in format):
         raise ValueError(f"Can't convert format '{format}' to Arrow type")
     elif sys_byteorder == "big" and  "<" in format:
         raise ValueError(f"Can't convert format '{format}' to Arrow type")
@@ -263,53 +262,73 @@ cdef c_arrow_type_from_format(format):
     return item_size, NANOARROW_TYPE_BINARY
 
 
-cdef c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size_t out_size, char* out):
+cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size_t out_size, char* out):
     if type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY) and element_size_bits > 0:
         snprintf(out, out_size, "%ds", <int>(element_size_bits // 8))
-        return
+        return element_size_bits
 
     cdef const char* format_const = ""
+    cdef int element_size_bits_calc = 0
     if type_id == NANOARROW_TYPE_STRING:
         format_const = "c"
+        element_size_bits_calc = 0
     elif type_id == NANOARROW_TYPE_BINARY:
         format_const = "B"
+        element_size_bits_calc = 0
     elif type_id == NANOARROW_TYPE_BOOL:
         # Bitmaps export as unspecified binary
         format_const = "B"
+        element_size_bits_calc = 1
     elif type_id == NANOARROW_TYPE_INT8:
         format_const = "b"
+        element_size_bits_calc = 8
     elif type_id == NANOARROW_TYPE_UINT8:
         format_const = "B"
+        element_size_bits_calc = 8
     elif type_id == NANOARROW_TYPE_INT16:
         format_const = "h"
+        element_size_bits_calc = 16
     elif type_id == NANOARROW_TYPE_UINT16:
         format_const = "H"
+        element_size_bits_calc = 16
     elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS):
         format_const = "i"
+        element_size_bits_calc = 32
     elif type_id == NANOARROW_TYPE_UINT32:
         format_const = "I"
+        element_size_bits_calc = 32
     elif type_id == NANOARROW_TYPE_INT64:
         format_const = "q"
+        element_size_bits_calc = 64
     elif type_id == NANOARROW_TYPE_UINT64:
         format_const = "Q"
+        element_size_bits_calc = 64
     elif type_id == NANOARROW_TYPE_HALF_FLOAT:
         format_const = "e"
+        element_size_bits_calc = 16
     elif type_id == NANOARROW_TYPE_FLOAT:
         format_const = "f"
+        element_size_bits_calc = 32
     elif type_id == NANOARROW_TYPE_DOUBLE:
         format_const = "d"
+        element_size_bits_calc = 64
     elif type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
         format_const = "ii"
+        element_size_bits_calc = 64
     elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
         format_const = "iiq"
+        element_size_bits_calc = 128
     elif type_id == NANOARROW_TYPE_DECIMAL128:
         format_const = "16s"
+        element_size_bits_calc = 128
     elif type_id == NANOARROW_TYPE_DECIMAL256:
         format_const = "32s"
+        element_size_bits_calc = 256
     else:
         raise ValueError(f"Unsupported Arrow type_id for format conversion: {type_id}")
 
     snprintf(out, out_size, "%s", format_const)
+    return element_size_bits_calc
 
 
 cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
@@ -1279,16 +1298,15 @@ cdef class CBufferView:
         self._ptr.size_bytes = size_bytes
         self._buffer_data_type = buffer_data_type
         self._device = device
-        self._element_size_bits = element_size_bits
-        self._strides = self._item_size()
-        self._shape = self._ptr.size_bytes // self._strides
         self._format[0] = 0
-        c_format_from_arrow_type(
+        self._element_size_bits = c_format_from_arrow_type(
             self._buffer_data_type,
-            self._element_size_bits,
+            element_size_bits,
             sizeof(self._format),
             self._format
         )
+        self._strides = self._item_size()
+        self._shape = self._ptr.size_bytes // self._strides
 
     def _addr(self):
         return <uintptr_t>self._ptr.data.data
@@ -1405,6 +1423,7 @@ cdef class CBuffer:
     cdef ArrowBuffer* _ptr
     cdef ArrowType _data_type
     cdef int _element_size_bits
+    cdef char _format[32]
     cdef CDevice _device
 
     def __cinit__(self):
@@ -1413,6 +1432,7 @@ cdef class CBuffer:
         self._data_type = NANOARROW_TYPE_BINARY
         self._element_size_bits = 0
         self._device = CDEVICE_CPU
+        self._format[0] = 0
 
     cdef _assert_valid(self):
         if self._ptr == NULL:
@@ -1438,12 +1458,23 @@ cdef class CBuffer:
 
     def set_format(self, format):
         if format is None:
-            self._data_type = NANOARROW_TYPE_BINARY
-            self._element_size_bits = 0
+            return self.set_data_type(NANOARROW_TYPE_BINARY, 0)
         else:
             element_size_bytes, data_type = c_arrow_type_from_format(format)
             self._data_type = data_type
             self._element_size_bits = element_size_bytes * 8
+            format_bytes = format.encode("UTF-8")
+            snprintf(self._format, sizeof(self._format), "%s", <const char*>format_bytes)
+            return self
+
+    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
+        self._element_size_bits = c_format_from_arrow_type(
+            type_id,
+            element_size_bits,
+            sizeof(self._format),
+            self._format
+        )
+        self._data_type = type_id
 
         return self
 
@@ -1484,7 +1515,6 @@ cdef class CBufferBuilder(CBuffer):
         self._assert_valid()
         cdef int code = ArrowBufferReserve(self._ptr, additional_bytes)
         Error.raise_error_not_ok("ArrowBufferReserve()", code)
-
         return self
 
     def write(self, content):
@@ -1512,6 +1542,20 @@ cdef class CBufferBuilder(CBuffer):
 
         self._ptr.size_bytes += out
         return out
+
+    def write_values(self, obj):
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            raise NotImplementedError()
+
+        struct_obj = Struct(self._format)
+        pack = struct_obj.pack
+        write = self.write
+
+        for item in obj:
+            write(pack(item))
+
+    def finish(self):
+        return self
 
 
 cdef class CArrayBuilder:
