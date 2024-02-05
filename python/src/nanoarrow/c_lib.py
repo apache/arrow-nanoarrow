@@ -25,6 +25,8 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
+from typing import Iterable, Any
+
 from nanoarrow._lib import (  # noqa: F401
     CArray,
     CArrayBuilder,
@@ -236,14 +238,68 @@ def c_array_empty(schema) -> CArray:
 
 def c_array_from_buffers(
     schema,
-    length,
-    buffers,
-    null_count=-1,
-    offset=0,
-    children=(),
-    dictionary=None,
-    validation_level="default",
-):
+    length: int,
+    buffers: Iterable[Any],
+    null_count: int = -1,
+    offset: int = 0,
+    children: Iterable[Any] = (),
+    validation_level: str = "default",
+) -> CArray:
+    """Create an ArrowArray wrapper from components
+
+    Given a schema, build an ArrowArray buffer-wise. This allows almost any array
+    to be assembled; however, requires some knowledge of the Arrow Columnar
+    specification. This function will do its best to validate the sizes and
+    content of buffers according to ``validation_level``, which can be set
+    to ``"full""`` for maximum safety.
+
+    Parameters
+    ----------
+
+    schema : schema-like
+        The data type of the desired array as sanitized by :func:`c_schema`.
+    length : int
+        The length of the output array.
+    buffers : Iterable of buffer-like or None
+        An iterable of buffers as sanitized by :func:`c_buffer`. Any object
+        supporting the Python Buffer protocol is accepted. Buffer data types
+        are not checked. A buffer value of ``None`` will skip setting a buffer
+        (i.e., that buffer will be of length zero and its pointer will
+        be ``NULL``).
+    null_count : int, optional
+        The number of null values, if known in advance. If -1 (the default),
+        the null count will be calculated based on the validity bitmap. If
+        the validity bitmap was set to ``None``, the calculated null count
+        will be zero.
+    offset : int, optional
+        The logical offset from the start of the array.
+    children : Iterable of array-like
+        An iterable of arrays used to set child fields of the array. Can contain
+        any object accepted by :func:`c_array`. Must contain the exact number of
+        required children as specifed by ``schema``.
+    validation_level: str, optional
+        One of "none" (no check), "minimal" (check buffer sizes that do not require
+        dereferencing buffer content), "default" (check all buffer sizes), or "full"
+        (check all buffer sizes and all buffer content).
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow.c_lib import c_array_from_buffers
+    >>> c_array = c_array_from_buffers(na.uint8(), 5, [None, b"12345"])
+    >>> na.c_array_view(c_array)
+    <nanoarrow.c_lib.CArrayView>
+    - storage_type: 'uint8'
+    - length: 5
+    - offset: 0
+    - null_count: 0
+    - buffers[2]:
+      - validity <bool[0 b] >
+      - data <uint8[5 b] 49 50 51 52 53>
+    - dictionary: NULL
+    - children[0]:
+    """
     schema = c_schema(schema)
     builder = CArrayBuilder.allocate()
 
