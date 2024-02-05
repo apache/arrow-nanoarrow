@@ -157,15 +157,15 @@ def c_array_from_pybuffer(obj) -> CArray:
 
     >>> import nanoarrow as na
     >>> from nanoarrow.c_lib import c_array_from_pybuffer
-    >>> na.c_array_view(c_array_from_pybuffer(b"1234")))
+    >>> na.c_array_view(c_array_from_pybuffer(b"1234"))
     <nanoarrow.c_lib.CArrayView>
     - storage_type: 'uint8'
     - length: 4
     - offset: 0
     - null_count: 0
     - buffers[2]:
-    - validity <bool[0 b] >
-    - data <uint8[4 b] 49 50 51 52>
+      - validity <bool[0 b] >
+      - data <uint8[4 b] 49 50 51 52>
     - dictionary: NULL
     - children[0]:
     """
@@ -222,8 +222,8 @@ def c_array_empty(schema) -> CArray:
     - offset: 0
     - null_count: 0
     - buffers[2]:
-    - validity <bool[0 b] >
-    - data <int32[0 b] >
+      - validity <bool[0 b] >
+      - data <int32[0 b] >
     - dictionary: NULL
     - children[0]:
     """
