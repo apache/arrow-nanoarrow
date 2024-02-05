@@ -220,10 +220,13 @@ cdef c_arrow_type_from_format(format):
 
     # Strip endian modifiers that don't affect the interpretation based on
     # item_size below.
-    if sys_byteorder == "little":
-        format = format.strip("=@<")
-    else:
-        format = format.strip("=@>")
+    if sys_byteorder == "little" and ">" in format:
+        raise ValueError(f"Can't convert format '{format}' to Arrow type")
+    elif sys_byteorder == "big" and  "<" in format:
+        raise ValueError(f"Can't convert format '{format}' to Arrow type")
+
+    # Strip system endian specifiers
+    format = format.strip("=@")
 
     if format == "c":
         return 0, NANOARROW_TYPE_STRING
@@ -258,6 +261,56 @@ cdef c_arrow_type_from_format(format):
 
     # If all else failes, return opaque fixed-size binary
     return item_size, NANOARROW_TYPE_BINARY
+
+
+cdef c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size_t out_size, char* out):
+    if type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY) and element_size_bits > 0:
+        snprintf(out, out_size, "%ds", <int>(element_size_bits // 8))
+        return
+
+    cdef const char* format_const = ""
+    if type_id == NANOARROW_TYPE_STRING:
+        format_const = "c"
+    elif type_id == NANOARROW_TYPE_BINARY:
+        format_const = "B"
+    elif type_id == NANOARROW_TYPE_BOOL:
+        # Bitmaps export as unspecified binary
+        format_const = "B"
+    elif type_id == NANOARROW_TYPE_INT8:
+        format_const = "b"
+    elif type_id == NANOARROW_TYPE_UINT8:
+        format_const = "B"
+    elif type_id == NANOARROW_TYPE_INT16:
+        format_const = "h"
+    elif type_id == NANOARROW_TYPE_UINT16:
+        format_const = "H"
+    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS):
+        format_const = "i"
+    elif type_id == NANOARROW_TYPE_UINT32:
+        format_const = "I"
+    elif type_id == NANOARROW_TYPE_INT64:
+        format_const = "q"
+    elif type_id == NANOARROW_TYPE_UINT64:
+        format_const = "Q"
+    elif type_id == NANOARROW_TYPE_HALF_FLOAT:
+        format_const = "e"
+    elif type_id == NANOARROW_TYPE_FLOAT:
+        format_const = "f"
+    elif type_id == NANOARROW_TYPE_DOUBLE:
+        format_const = "d"
+    elif type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
+        format_const = "ii"
+    elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+        format_const = "iiq"
+    elif type_id == NANOARROW_TYPE_DECIMAL128:
+        format_const = "16s"
+    elif type_id == NANOARROW_TYPE_DECIMAL256:
+        format_const = "32s"
+    else:
+        raise ValueError(f"Unsupported Arrow type_id for format conversion: {type_id}")
+
+    snprintf(out, out_size, "%s", format_const)
+
 
 cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
     ArrowBufferReset(c_buffer[0])
@@ -1230,7 +1283,12 @@ cdef class CBufferView:
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
         self._format[0] = 0
-        self._populate_format()
+        c_format_from_arrow_type(
+            self._buffer_data_type,
+            self._element_size_bits,
+            sizeof(self._format),
+            self._format
+        )
 
     def _addr(self):
         return <uintptr_t>self._ptr.data.data
@@ -1305,50 +1363,6 @@ cdef class CBufferView:
             return 1
         else:
             return self._element_size_bits // 8
-
-    cdef void _populate_format(self):
-        cdef const char* format_const = NULL
-        if self._element_size_bits == 0:
-            # Variable-size elements (e.g., data buffer for string or binary) export as
-            # one byte per element (character if string, unspecified binary otherwise)
-            if self._buffer_data_type == NANOARROW_TYPE_STRING:
-                format_const = "c"
-            else:
-                format_const = "B"
-        elif self._element_size_bits < 8:
-            # Bitmaps export as unspecified binary
-            format_const = "B"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT8:
-            format_const = "b"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT8:
-            format_const = "B"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT16:
-            format_const = "h"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT16:
-            format_const = "H"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT32:
-            format_const = "i"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT32:
-            format_const = "I"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT64:
-            format_const = "q"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT64:
-            format_const = "Q"
-        elif self._buffer_data_type == NANOARROW_TYPE_HALF_FLOAT:
-            format_const = "e"
-        elif self._buffer_data_type == NANOARROW_TYPE_FLOAT:
-            format_const = "f"
-        elif self._buffer_data_type == NANOARROW_TYPE_DOUBLE:
-            format_const = "d"
-        elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_DAY_TIME:
-            format_const = "ii"
-        elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-            format_const = "iiq"
-
-        if format_const != NULL:
-            snprintf(self._format, sizeof(self._format), "%s", format_const)
-        else:
-            snprintf(self._format, sizeof(self._format), "%ds", <int>(self._element_size_bits // 8))
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         if self._device is not CDEVICE_CPU:
