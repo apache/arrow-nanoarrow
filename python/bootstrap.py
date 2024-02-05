@@ -95,7 +95,7 @@ class NanoarrowPxdGenerator:
         self.re_func_def = re.compile(
             r"\n(static inline )?(?P<const>const )?(struct |enum )?"
             r"(?P<return_type>[A-Za-z0-9_*]+) "
-            r"(?P<name>Arrow[A-Za-z]+)\((?P<args>[^\)]*)\);"
+            r"(?P<name>Arrow[A-Za-z0-9]+)\((?P<args>[^\)]*)\);"
         )
         self.re_tagged_type = re.compile(
             r"(?P<type>struct|union|enum) (?P<name>Arrow[A-Za-z]+)"

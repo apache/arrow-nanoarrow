@@ -1544,8 +1544,10 @@ cdef class CBufferBuilder(CBuffer):
         return out
 
     def write_values(self, obj):
+        self._assert_valid()
+
         if self._data_type == NANOARROW_TYPE_BOOL:
-            raise NotImplementedError()
+            return self._write_bits(obj)
 
         struct_obj = Struct(self._format)
         pack = struct_obj.pack
@@ -1553,6 +1555,29 @@ cdef class CBufferBuilder(CBuffer):
 
         for item in obj:
             write(pack(item))
+
+    cdef _write_bits(self, obj):
+        if self._ptr.size_bytes != 0:
+            raise NotImplementedError("Append to bitmap that has already been appended to")
+
+        cdef char buffer_item = 0
+        cdef int buffer_item_i = 0
+        cdef int code
+        for item in obj:
+            if item:
+                buffer_item |= (<char>1 << buffer_item_i)
+
+            buffer_item_i += 1
+            if buffer_item_i == 8:
+                code = ArrowBufferAppendInt8(self._ptr, buffer_item)
+                Error.raise_error_not_ok("ArrowBufferAppendInt8()", code)
+                buffer_item = 0
+                buffer_item_i = 0
+
+        if buffer_item_i != 0:
+            code = ArrowBufferAppendInt8(self._ptr, buffer_item)
+            Error.raise_error_not_ok("ArrowBufferAppendInt8()", code)
+
 
     def finish(self):
         return self

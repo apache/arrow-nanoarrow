@@ -189,6 +189,25 @@ def test_c_buffer_from_iterable():
     assert list(buffer.data) == [1, 2, 3]
 
 
+def test_c_buffer_bitmap_from_iterable():
+    # Check something less than one byte
+    buffer = c_buffer_from_iterable(na.bool(), [True, False, False, True])
+    assert "10010000" in repr(buffer)
+    assert buffer.size_bytes == 1
+    assert buffer.data.data_type == "bool"
+    assert buffer.data.element_size_bits == 1
+
+    # Check something exactly one byte
+    buffer = c_buffer_from_iterable(na.bool(), [True, False, False, True] * 2)
+    assert "10011001" in repr(buffer)
+    assert buffer.size_bytes == 1
+
+    # Check something more than one byte
+    buffer = c_buffer_from_iterable(na.bool(), [True, False, False, True] * 3)
+    assert "1001100110010000" in repr(buffer)
+    assert buffer.size_bytes == 2
+
+
 def test_c_array_from_pybuffer_uint8():
     data = b"abcdefg"
     c_array = c_array_from_pybuffer(data)
