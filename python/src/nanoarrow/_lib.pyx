@@ -32,11 +32,11 @@ generally have better autocomplete + documentation available to IDEs).
 """
 
 from libc.stdint cimport uintptr_t, uint8_t, int64_t
-from libc.string cimport memcpy, strlen
+from libc.string cimport memcpy
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, PyBuffer_SizeFromFormat, \
+from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, \
                      PyBuffer_ToContiguous, PyBUF_ANY_CONTIGUOUS, PyBUF_FORMAT, PyBUF_WRITABLE
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
@@ -326,11 +326,22 @@ cdef class Error:
         """
         raise NanoarrowException(what, code, self.c_error.message.decode("UTF-8"))
 
+    def raise_message_not_ok(self, what, code):
+        if code == NANOARROW_OK:
+            return
+        self.raise_message(what, code)
+
     @staticmethod
     def raise_error(what, code):
         """Raise a NanoarrowException without a message
         """
         raise NanoarrowException(what, code, "")
+
+    @staticmethod
+    def raise_error_not_ok(what, code):
+        if code == NANOARROW_OK:
+            return
+        Error.raise_error(what, code)
 
 
 # This could in theory use cpdef enum, but an initial attempt to do so
@@ -418,8 +429,7 @@ cdef class CDevice:
         cdef ArrowDeviceArray* device_array_ptr
         holder = alloc_c_device_array(&device_array_ptr)
         cdef int result = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowDevice::init_array", result)
+        Error.raise_error_not_ok("ArrowDevice::init_array", result)
 
         return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
 
@@ -507,8 +517,7 @@ cdef class CSchema:
 
         schema_capsule = alloc_c_schema(&c_schema_out)
         result = ArrowSchemaDeepCopy(self._ptr, c_schema_out)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaDeepCopy", result)
+        Error.raise_error_not_ok("ArrowSchemaDeepCopy", result)
         return schema_capsule
 
     @property
@@ -660,8 +669,7 @@ cdef class CSchemaView:
 
         cdef Error error = Error()
         cdef int result = ArrowSchemaViewInit(&self._schema_view, schema._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowSchemaViewInit()", result)
+        error.raise_message_not_ok("ArrowSchemaViewInit()", result)
 
         self._dictionary_ordered = schema._ptr.flags & ARROW_FLAG_DICTIONARY_ORDERED
         self._nullable = schema._ptr.flags & ARROW_FLAG_NULLABLE
@@ -783,8 +791,7 @@ cdef class CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int result = ArrowSchemaSetType(self._ptr, <ArrowType>type_id)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetType()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetType()", result)
 
         return self
 
@@ -792,15 +799,13 @@ cdef class CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int result = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type_id, precision, scale)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetType()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetType()", result)
 
     def set_type_fixed_size(self, int type_id, int fixed_size):
         self.c_schema._assert_valid()
 
         cdef int result = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type_id, fixed_size)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetTypeFixedSize()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetTypeFixedSize()", result)
 
         return self
 
@@ -814,8 +819,7 @@ cdef class CSchemaBuilder:
             timezone = str(timezone)
             result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, timezone.encode("UTF-8"))
 
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetTypeDateTime()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetTypeDateTime()", result)
 
         return self
 
@@ -823,8 +827,7 @@ cdef class CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int result = ArrowSchemaSetFormat(self._ptr, format.encode("UTF-8"))
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetFormat()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetFormat()", result)
 
         return self
 
@@ -838,8 +841,7 @@ cdef class CSchemaBuilder:
             name = str(name)
             result = ArrowSchemaSetName(self._ptr, name.encode("UTF-8"))
 
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetName()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetName()", result)
 
         return self
 
@@ -847,8 +849,7 @@ cdef class CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int result = ArrowSchemaAllocateChildren(self._ptr, n)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaAllocateChildren()", result)
+        Error.raise_error_not_ok("ArrowSchemaAllocateChildren()", result)
 
         return self
 
@@ -862,8 +863,7 @@ cdef class CSchemaBuilder:
             ArrowSchemaRelease(self._ptr.children[i])
 
         cdef int result = ArrowSchemaDeepCopy(child_src._ptr, self._ptr.children[i])
-        if result != NANOARROW_OK:
-            Error.raise_error("", result)
+        Error.raise_error_not_ok("", result)
 
         if name is not None:
             name = str(name)
@@ -1162,12 +1162,10 @@ cdef class CArrayView:
         cdef Error error = Error()
         cdef int result = ArrowArrayViewInitFromSchema(c_array_view,
                                                        array._schema._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewInitFromSchema()", result)
+        error.raise_message_not_ok("ArrowArrayViewInitFromSchema()", result)
 
         result = ArrowArrayViewSetArray(c_array_view, array._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewSetArray()", result)
+        error.raise_message_not_ok("ArrowArrayViewSetArray()", result)
 
         return CArrayView((base, array), <uintptr_t>c_array_view)
 
@@ -1186,8 +1184,7 @@ cdef class SchemaMetadata:
 
     def _init_reader(self):
         cdef int result = ArrowMetadataReaderInit(&self._reader, self._metadata)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowMetadataReaderInit()", result)
+        Error.raise_error_not_ok("ArrowMetadataReaderInit()", result)
 
     def __len__(self):
         self._init_reader()
@@ -1472,8 +1469,7 @@ cdef class CBufferBuilder(CBuffer):
     def reserve_bytes(self, int64_t additional_bytes):
         self._assert_valid()
         cdef int result = ArrowBufferReserve(self._ptr, additional_bytes)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowBufferReserve()", result)
+        Error.raise_error_not_ok("ArrowBufferReserve()", result)
 
         return self
 
@@ -1498,9 +1494,7 @@ cdef class CBufferBuilder(CBuffer):
         )
         out = buffer.len
         PyBuffer_Release(&buffer)
-
-        if result != 0:
-            Error.raise_error("PyBuffer_ToContiguous()", result)
+        Error.raise_error_not_ok("PyBuffer_ToContiguous()", result)
 
         self._ptr.size_bytes += out
         return out
@@ -1523,12 +1517,10 @@ cdef class CArrayBuilder:
             raise RuntimeError("CArrayBuilder is already initialized")
 
         cdef int result = ArrowArrayInitFromType(self._ptr, <ArrowType>type_id)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowArrayInitFromType()", result)
+        Error.raise_error_not_ok("ArrowArrayInitFromType()", result)
 
         result = ArrowSchemaInitFromType(self.c_array._schema._ptr, <ArrowType>type_id)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaInitFromType()", result)
+        Error.raise_error_not_ok("ArrowSchemaInitFromType()", result)
 
         return self
 
@@ -1538,16 +1530,14 @@ cdef class CArrayBuilder:
 
         cdef Error error = Error()
         cdef int result = ArrowArrayInitFromSchema(self._ptr, schema._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            Error.raise_message("ArrowArrayInitFromType()", result)
+        error.raise_message_not_ok("ArrowArrayInitFromType()", result)
 
         self.c_array._schema = schema
         return self
 
     def start_appending(self):
         cdef int result = ArrowArrayStartAppending(self._ptr)
-        if result != NANOARROW_OK:
-            Error.raise_message("ArrowArrayStartAppending()", result)
+        Error.raise_error_not_ok("ArrowArrayStartAppending()", result)
         return self
 
     def set_offset(self, int64_t offset):
@@ -1573,8 +1563,7 @@ cdef class CArrayBuilder:
 
     def set_buffer(self, int64_t i, CBuffer buffer):
         cdef int result = ArrowArraySetBuffer(self._ptr, i, buffer._ptr)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowArraySetBuffer()", result)
+        Error.raise_error_not_ok("ArrowArraySetBuffer()", result)
         return self
 
     @property
@@ -1597,12 +1586,19 @@ cdef class CArrayBuilder:
         else:
             return None
 
-    def finish(self):
+    def finish(self, validation_level="default"):
         self.c_array._assert_valid()
+        cdef ArrowValidationLevel c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
+        if validation_level == "full":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
+        elif validation_level == "minimal":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
+        elif validation_level == "none":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
+
         cdef Error error = Error()
-        cdef int result = ArrowArrayFinishBuildingDefault(self._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayFinishBuildingDefault()", result)
+        cdef int result = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
+        error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", result)
 
         return self.c_array
 
@@ -1688,8 +1684,7 @@ cdef class CArrayStream:
         self._assert_valid()
         cdef Error error = Error()
         cdef int code = self._ptr.get_schema(self._ptr, schema._ptr)
-        if code != NANOARROW_OK:
-            error.raise_error("ArrowArrayStream::get_schema()", code)
+        Error.raise_error_not_ok("ArrowArrayStream::get_schema()", code)
 
         self._cached_schema = schema
 
@@ -1718,8 +1713,7 @@ cdef class CArrayStream:
         cdef Error error = Error()
         cdef CArray array = CArray.allocate(self._cached_schema)
         cdef int code = ArrowArrayStreamGetNext(self._ptr, array._ptr, &error.c_error)
-        if code != NANOARROW_OK:
-            error.raise_error("ArrowArrayStream::get_next()", code)
+        Error.raise_error_not_ok("ArrowArrayStream::get_next()", code)
 
         if not array.is_valid():
             raise StopIteration()
