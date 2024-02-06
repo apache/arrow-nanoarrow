@@ -49,6 +49,15 @@ def test_buffer_invalid():
     assert repr(invalid) == "CBuffer(<invalid>)"
 
 
+def test_c_buffer_constructor():
+    invalid = CBuffer()
+    assert c_buffer(invalid) is invalid
+
+    buffer = c_buffer(b"1234")
+    assert isinstance(buffer, CBuffer)
+    assert bytes(buffer.data) == b"1234"
+
+
 def test_buffer_unsupported_format():
     empty = CBuffer().set_empty()
 
@@ -213,6 +222,25 @@ def test_c_buffer_from_iterable():
     assert buffer.data.element_size_bits == 32
     assert buffer.data.item_size == 4
     assert list(buffer.data) == [1, 2, 3]
+
+    # An Arrow type that does not make sense as a buffer type will error
+    with pytest.raises(ValueError, match="Unsupported Arrow type_id"):
+        c_buffer_from_iterable(na.struct([]), [])
+
+    # An Arrow type whose storage type is not the same as its top-level
+    # type will error.
+    with pytest.raises(ValueError, match="Can't create buffer from type"):
+        c_buffer_from_iterable(na.date32(), [1, 2, 3])
+
+
+def test_c_buffer_from_fixed_size_binary_iterable():
+    items = [b"abcd", b"efgh", b"ijkl"]
+    buffer = c_buffer_from_iterable(na.fixed_size_binary(4), items)
+    assert buffer.data.data_type == "binary"
+    assert buffer.data.element_size_bits == 32
+    assert buffer.data.item_size == 4
+    assert bytes(buffer.data) == b"".join(items)
+    assert list(buffer.data) == items
 
 
 def test_c_buffer_from_day_time_iterable():

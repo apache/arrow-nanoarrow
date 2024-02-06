@@ -471,6 +471,13 @@ def c_buffer(obj) -> CBuffer:
     Wraps obj in nanoarrow's owning buffer structure, the ArrowBuffer,
     such that it can be used to construct arrays.
 
+    Parameters
+    ----------
+
+    obj : buffer-like
+        A Python object that supports the Python buffer protocol. This includes
+        bytes, memoryview, bytearray, bulit-in types as well as numpy arrays.
+
     Examples
     --------
 
@@ -483,12 +490,41 @@ def c_buffer(obj) -> CBuffer:
     return CBuffer().set_pybuffer(obj)
 
 
-def c_buffer_from_iterable(schema, obj) -> CBuffer:
+def c_buffer_from_iterable(schema, obj: Iterable[Any]) -> CBuffer:
+    """Owning, read-only ArrowBuffer wrapper from a Python iterable
+
+    Given an Arrow type, build a buffer from an iterable of Python
+    objects. This is useful for creating buffers for testing purposes
+    (i.e., it has not been optimized for general use).
+
+    Parameters
+    ----------
+
+    schema : schema-like
+        The data type of the desired buffer as sanitized by :func:`c_schema`.
+        Only values that make sense as buffer types are allowed (e.g., integer types,
+        floating-point types, interval types, decimal types, binary, string,
+        fixed-size binary).
+    obj : iterable
+        An iterable of Python objects. The Python ``struct`` module is currently
+        used to pack values into binary form.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow.c_lib import c_buffer_from_iterable
+    >>> c_buffer_from_iterable(na.int32(), [0, 1, 2, 3])
+    CBuffer(int32[16 b] 0 1 2 3)
+    """
     builder = CBufferBuilder().set_empty()
 
     schema_view = c_schema_view(schema)
+    if schema_view.storage_type_id != schema_view.type_id:
+        raise ValueError(f"Can't create buffer from type {schema}")
+
     if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
-        builder.set_data_type(CArrowType.FIXED_SIZE_BINARY, schema_view.fixed_size)
+        builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
     else:
         builder.set_data_type(schema_view.storage_type_id)
 
