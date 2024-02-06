@@ -258,7 +258,7 @@ cdef c_arrow_type_from_format(format):
         elif item_size == 8:
             return item_size, NANOARROW_TYPE_UINT64
 
-    # If all else failes, return opaque fixed-size binary
+    # If all else fails, return opaque fixed-size binary
     return item_size, NANOARROW_TYPE_BINARY
 
 
@@ -351,10 +351,10 @@ cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
 
     # Transfers ownership of buffer to c_buffer, whose finalizer will be called by
     # the capsule when the capsule is deleted or garbage collected
-    c_buffer[0].allocator = c_pybuffer_deallocator(&buffer)
     c_buffer[0].data = <uint8_t*>buffer.buf
     c_buffer[0].size_bytes = <int64_t>buffer.len
     c_buffer[0].capacity_bytes = 0
+    c_buffer[0].allocator = c_pybuffer_deallocator(&buffer)
 
     # Return the calculated components
     return format
@@ -1361,7 +1361,9 @@ cdef class CBufferView:
         if self._buffer_data_type in (
             NANOARROW_TYPE_HALF_FLOAT,
             NANOARROW_TYPE_INTERVAL_DAY_TIME,
-            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
+            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+            NANOARROW_TYPE_DECIMAL128,
+            NANOARROW_TYPE_DECIMAL256
         ) or (
             self._buffer_data_type == NANOARROW_TYPE_BINARY and self._element_size_bits != 0
         ):

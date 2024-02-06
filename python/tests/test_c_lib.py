@@ -16,6 +16,7 @@
 # under the License.
 
 import struct
+import sys
 
 import pytest
 from nanoarrow.c_lib import (
@@ -46,6 +47,19 @@ def test_buffer_invalid():
     assert repr(invalid) == "CBuffer(<invalid>)"
 
 
+def test_buffer_unsupported_format():
+    empty = CBuffer().set_empty()
+
+    with pytest.raises(ValueError, match="Can't convert format '>i' to Arrow type"):
+        if sys.byteorder == "little":
+            empty.set_format(">i")
+        else:
+            empty.set_format("<i")
+
+    with pytest.raises(ValueError, match=r"Unsupported Arrow type_id"):
+        empty.set_data_type(na.Type.SPARSE_UNION.value)
+
+
 def test_buffer_empty():
     empty = CBuffer().set_empty()
 
@@ -55,6 +69,15 @@ def test_buffer_empty():
     assert bytes(empty.data) == b""
 
     assert repr(empty) == "CBuffer(binary[0 b] b'')"
+
+    # Export it via the Python buffer protocol wrapped in a new CBuffer
+    empty_roundtrip = c_buffer(empty.data)
+    assert empty_roundtrip.size_bytes == 0
+    assert empty_roundtrip.capacity_bytes == 0
+
+    view_roundtrip = empty_roundtrip.data
+    assert view_roundtrip._addr() == 0
+    assert view_roundtrip.size_bytes == 0
 
 
 def test_buffer_pybuffer():
@@ -186,14 +209,54 @@ def test_c_buffer_from_iterable():
     assert buffer.size_bytes == 12
     assert buffer.data.data_type == "int32"
     assert buffer.data.element_size_bits == 32
+    assert buffer.data.item_size == 4
     assert list(buffer.data) == [1, 2, 3]
 
 
-def test_c_buffer_from_tuple_iterable():
+def test_c_buffer_from_day_time_iterable():
     buffer = c_buffer_from_iterable(na.interval_day_time(), [(1, 2), (3, 4), (5, 6)])
     assert buffer.data.data_type == "interval_day_time"
     assert buffer.data.element_size_bits == 64
+    assert buffer.data.item_size == 8
     assert list(buffer.data) == [(1, 2), (3, 4), (5, 6)]
+
+
+def test_c_buffer_from_month_day_nano_iterable():
+    buffer = c_buffer_from_iterable(
+        na.interval_month_day_nano(), [(1, 2, 3), (4, 5, 6)]
+    )
+    assert buffer.data.data_type == "interval_month_day_nano"
+    assert buffer.data.element_size_bits == 128
+    assert buffer.data.item_size == 16
+    assert list(buffer.data) == [(1, 2, 3), (4, 5, 6)]
+
+
+def test_c_buffer_from_decimal128_iterable():
+    bytes64 = bytes(range(64))
+    buffer = c_buffer_from_iterable(
+        na.decimal128(10, 3),
+        [bytes64[0:16], bytes64[16:32], bytes64[32:48], bytes64[48:64]],
+    )
+    assert buffer.data.data_type == "decimal128"
+    assert buffer.data.element_size_bits == 128
+    assert buffer.data.item_size == 16
+    assert list(buffer.data) == [
+        bytes64[0:16],
+        bytes64[16:32],
+        bytes64[32:48],
+        bytes64[48:64],
+    ]
+
+
+def test_c_buffer_from_decimal256_iterable():
+    bytes64 = bytes(range(64))
+    buffer = c_buffer_from_iterable(
+        na.decimal256(10, 3), [bytes64[0:32], bytes64[32:64]]
+    )
+    assert buffer.data.data_type == "decimal256"
+    assert buffer.data.element_size_bits == 256
+    assert buffer.data.item_size == 32
+    assert list(buffer.data) == [bytes64[0:32], bytes64[32:64]]
 
 
 def test_c_buffer_bitmap_from_iterable():
@@ -202,6 +265,7 @@ def test_c_buffer_bitmap_from_iterable():
     assert "10010000" in repr(buffer)
     assert buffer.size_bytes == 1
     assert buffer.data.data_type == "bool"
+    assert buffer.data.item_size == 1
     assert buffer.data.element_size_bits == 1
 
     # Check something exactly one byte
