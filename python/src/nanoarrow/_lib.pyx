@@ -1553,8 +1553,13 @@ cdef class CBufferBuilder(CBuffer):
         pack = struct_obj.pack
         write = self.write
 
-        for item in obj:
-            write(pack(item))
+        if self._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
+                               NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
+            for item in obj:
+                write(pack(*item))
+        else:
+            for item in obj:
+                write(pack(item))
 
     cdef _write_bits(self, obj):
         if self._ptr.size_bytes != 0:

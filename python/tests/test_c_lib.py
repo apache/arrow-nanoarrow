@@ -189,6 +189,13 @@ def test_c_buffer_from_iterable():
     assert list(buffer.data) == [1, 2, 3]
 
 
+def test_c_buffer_from_tuple_iterable():
+    buffer = c_buffer_from_iterable(na.interval_day_time(), [(1, 2), (3, 4), (5, 6)])
+    assert buffer.data.data_type == "interval_day_time"
+    assert buffer.data.element_size_bits == 64
+    assert list(buffer.data) == [(1, 2), (3, 4), (5, 6)]
+
+
 def test_c_buffer_bitmap_from_iterable():
     # Check something less than one byte
     buffer = c_buffer_from_iterable(na.bool(), [True, False, False, True])
