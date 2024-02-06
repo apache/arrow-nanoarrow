@@ -1458,16 +1458,13 @@ cdef class CBuffer:
         self._device = CDEVICE_CPU
         return self
 
-    def set_format(self, format):
-        if format is None:
-            return self.set_data_type(NANOARROW_TYPE_BINARY, 0)
-        else:
-            element_size_bytes, data_type = c_arrow_type_from_format(format)
-            self._data_type = data_type
-            self._element_size_bits = element_size_bytes * 8
-            format_bytes = format.encode("UTF-8")
-            snprintf(self._format, sizeof(self._format), "%s", <const char*>format_bytes)
-            return self
+    def set_format(self, str format):
+        element_size_bytes, data_type = c_arrow_type_from_format(format)
+        self._data_type = data_type
+        self._element_size_bits = element_size_bytes * 8
+        format_bytes = format.encode("UTF-8")
+        snprintf(self._format, sizeof(self._format), "%s", <const char*>format_bytes)
+        return self
 
     def set_data_type(self, ArrowType type_id, int element_size_bits=0):
         self._element_size_bits = c_format_from_arrow_type(
@@ -1683,21 +1680,11 @@ cdef class CArrayBuilder:
         self._ptr.null_count = self._ptr.length - count
         return self
 
-    def buffer(self, int64_t i):
-        self.c_array._assert_valid()
-        cdef CBufferBuilder c_buffer = CBufferBuilder()
-        c_buffer._ptr = ArrowArrayBuffer(self._ptr, i)
-        c_buffer._base = self
-
     def set_buffer(self, int64_t i, CBuffer buffer):
         self.c_array._assert_valid()
         cdef int code = ArrowArraySetBuffer(self._ptr, i, buffer._ptr)
         Error.raise_error_not_ok("ArrowArraySetBuffer()", code)
         return self
-
-    @property
-    def n_children(self):
-        return self.c_array.n_children
 
     def set_child(self, int64_t i, CArray c_array):
         cdef CArray child = self.c_array.child(i)

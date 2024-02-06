@@ -25,7 +25,7 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
 
 from nanoarrow._lib import (  # noqa: F401
     CArray,
@@ -243,7 +243,7 @@ def c_array_from_buffers(
     null_count: int = -1,
     offset: int = 0,
     children: Iterable[Any] = (),
-    validation_level: str = "default",
+    validation_level: Literal["full", "default", "minimal", "none"] = "default",
 ) -> CArray:
     """Create an ArrowArray wrapper from components
 

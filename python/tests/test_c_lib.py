@@ -19,7 +19,9 @@ import struct
 import sys
 
 import pytest
+from nanoarrow._lib import NanoarrowException
 from nanoarrow.c_lib import (
+    CArrayBuilder,
     CBuffer,
     CBufferBuilder,
     c_array_empty,
@@ -278,6 +280,21 @@ def test_c_buffer_bitmap_from_iterable():
     assert "1001100110010000" in repr(buffer)
     assert buffer.size_bytes == 2
 
+    # Check that appending in more than one batch is an error
+    with pytest.raises(NotImplementedError, match="Append to bitmap"):
+        buffer.write_values([True])
+
+
+def test_c_array_builder_init():
+    builder = CArrayBuilder.allocate()
+    builder.init_from_type(na.Type.INT32.value)
+
+    with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
+        builder.init_from_type(na.Type.INT32.value)
+
+    with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
+        builder.init_from_schema(na.c_schema(na.int32()))
+
 
 def test_c_array_from_pybuffer_uint8():
     data = b"abcdefg"
@@ -382,3 +399,63 @@ def test_c_array_from_buffers_recursive():
 
     with pytest.raises(ValueError, match="Expected 1 children but got 0"):
         c_array_from_buffers(na.struct([na.uint8()]), 5, [], children=[])
+
+
+def test_c_array_from_buffers_validation():
+    # Should fail with all validation levels except none
+    for validation_level in ("full", "default", "minimal"):
+        with pytest.raises(
+            NanoarrowException,
+            match="Expected int32 array buffer 1 to have size >= 4 bytes",
+        ):
+            c_array_from_buffers(
+                na.int32(), 1, [None, b"123"], validation_level=validation_level
+            )
+
+    c_array = c_array_from_buffers(
+        na.int32(), 1, [None, b"123"], validation_level="none"
+    )
+    assert c_array.length == 1
+
+    # Should only fail with validation levels of "full", and "default"
+    for validation_level in ("full", "default"):
+        with pytest.raises(
+            NanoarrowException,
+            match="Expected string array buffer 2 to have size >= 2 bytes",
+        ):
+            c_array_from_buffers(
+                na.string(),
+                2,
+                [None, c_buffer_from_iterable(na.int32(), [0, 1, 2]), c_buffer(b"a")],
+                validation_level=validation_level,
+            )
+
+    for validation_level in ("minimal", "none"):
+        c_array = c_array_from_buffers(
+            na.string(),
+            2,
+            [None, c_buffer_from_iterable(na.int32(), [0, 1, 2]), c_buffer(b"a")],
+            validation_level=validation_level,
+        )
+        assert c_array.length == 2
+
+    # Should only fail with validation level "full"
+    with pytest.raises(
+        NanoarrowException,
+        match="Expected element size >= 0",
+    ):
+        c_array_from_buffers(
+            na.string(),
+            2,
+            [None, c_buffer_from_iterable(na.int32(), [0, 100, 2]), c_buffer(b"ab")],
+            validation_level="full",
+        )
+
+    for validation_level in ("minimal", "none"):
+        c_array = c_array_from_buffers(
+            na.string(),
+            2,
+            [None, c_buffer_from_iterable(na.int32(), [0, 100, 2]), c_buffer(b"ab")],
+            validation_level=validation_level,
+        )
+        assert c_array.length == 2
