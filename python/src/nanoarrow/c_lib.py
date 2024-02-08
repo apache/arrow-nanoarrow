@@ -469,7 +469,9 @@ def c_buffer(obj) -> CBuffer:
     """Owning, read-only ArrowBuffer wrapper
 
     Wraps obj in nanoarrow's owning buffer structure, the ArrowBuffer,
-    such that it can be used to construct arrays.
+    such that it can be used to construct arrays. The ownership of the
+    underlying buffer is handled by the Python buffer protocol
+    (i.e., ``PyObject_GetBuffer()`` and ``PyBuffer_Release()``).
 
     Parameters
     ----------
