@@ -82,7 +82,7 @@ test_that("released nanoarrow_array_stream format, print, and str methods work",
   expect_output(expect_identical(print(array_stream), array_stream), "nanoarrow_array_stream")
 })
 
-test_that("as_nanoarrow_array_stream() works for nanoarow_array_stream", {
+test_that("as_nanoarrow_array_stream() works for nanoarrow_array_stream", {
   stream <- as_nanoarrow_array_stream(data.frame(x = 1:5))
   expect_identical(as_nanoarrow_array_stream(stream), stream)
 
@@ -98,7 +98,7 @@ test_that("as_nanoarrow_array_stream() works for nanoarow_array_stream", {
   )
 })
 
-test_that("as_nanoarrow_array_stream() works for nanoarow_array", {
+test_that("as_nanoarrow_array_stream() works for nanoarrow_array", {
   array <- as_nanoarrow_array(data.frame(x = 1:5))
 
   stream <- as_nanoarrow_array_stream(array)

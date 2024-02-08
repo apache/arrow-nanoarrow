@@ -31,7 +31,7 @@ SEXP nanoarrow_c_allocate_schema(void) { return nanoarrow_schema_owning_xptr(); 
 SEXP nanoarrow_c_allocate_array(void) { return nanoarrow_array_owning_xptr(); }
 
 SEXP nanoarrow_c_allocate_array_stream(void) {
-  return nanoarow_array_stream_owning_xptr();
+  return nanoarrow_array_stream_owning_xptr();
 }
 
 SEXP nanoarrow_c_pointer(SEXP obj_sexp) {

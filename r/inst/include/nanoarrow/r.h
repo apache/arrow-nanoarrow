@@ -171,7 +171,7 @@ static inline SEXP nanoarrow_array_owning_xptr(void);
 /// Allocate an external pointer to an uninitialized ArrowArrayStream with a finalizer
 /// that ensures that any non-null release callback in a pointed-to structure will be
 /// called when the external pointer is garbage collected.
-static inline SEXP nanoarow_array_stream_owning_xptr(void);
+static inline SEXP nanoarrow_array_stream_owning_xptr(void);
 
 /// \brief Ensure an input SEXP points to an initialized ArrowSchema
 ///
@@ -304,7 +304,7 @@ static inline SEXP nanoarrow_array_owning_xptr(void) {
   return array_xptr;
 }
 
-static inline SEXP nanoarow_array_stream_owning_xptr(void) {
+static inline SEXP nanoarrow_array_stream_owning_xptr(void) {
   struct ArrowArrayStream* array_stream =
       (struct ArrowArrayStream*)malloc(sizeof(struct ArrowArrayStream));
   array_stream->release = NULL;

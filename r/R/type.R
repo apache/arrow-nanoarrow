@@ -17,7 +17,7 @@
 
 #' Create type objects
 #'
-#' In nanoarow, types, fields, and schemas are all represented by a
+#' In nanoarrow, types, fields, and schemas are all represented by a
 #' [nanoarrow_schema][as_nanoarrow_schema]. These functions are convenience
 #' constructors to create these objects in a readable way. Use [na_type()] to
 #' construct types based on the constructor name, which is also the name that

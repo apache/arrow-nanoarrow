@@ -96,7 +96,7 @@ SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
   struct ArrowSchema* schema_copy = nanoarrow_output_schema_from_xptr(schema_copy_xptr);
   schema_export(schema_xptr, schema_copy);
 
-  SEXP array_stream_xptr = PROTECT(nanoarow_array_stream_owning_xptr());
+  SEXP array_stream_xptr = PROTECT(nanoarrow_array_stream_owning_xptr());
   struct ArrowArrayStream* array_stream =
       nanoarrow_output_array_stream_from_xptr(array_stream_xptr);
 
@@ -198,7 +198,7 @@ void array_stream_export(SEXP parent_array_stream_xptr,
 
   // Allocate a new external pointer for an array stream (for consistency:
   // we always move an array stream when exporting)
-  SEXP parent_array_stream_xptr_new = PROTECT(nanoarow_array_stream_owning_xptr());
+  SEXP parent_array_stream_xptr_new = PROTECT(nanoarrow_array_stream_owning_xptr());
   struct ArrowArrayStream* parent_array_stream_new =
       (struct ArrowArrayStream*)R_ExternalPtrAddr(parent_array_stream_xptr_new);
   ArrowArrayStreamMove(parent_array_stream, parent_array_stream_new);
