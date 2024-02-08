@@ -183,7 +183,7 @@ convert_buffer <- function(buffer, to = NULL) {
 #' @export
 as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
   if (!is.null(schema)) {
-    stop("as_nanoarrow_array(<nanoarow_buffer>) with non-NULL schema is not supported")
+    stop("as_nanoarrow_array(<nanoarrow_buffer>) with non-NULL schema is not supported")
   }
 
   info <- nanoarrow_buffer_info(x)
