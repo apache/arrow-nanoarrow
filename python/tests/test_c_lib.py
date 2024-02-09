@@ -25,9 +25,9 @@ from nanoarrow.c_lib import (
     CBuffer,
     CBufferBuilder,
     _c_array_from_pybuffer,
-    c_array_empty,
     c_array_from_buffers,
     c_buffer,
+    c_array,
 )
 
 import nanoarrow as na
@@ -361,7 +361,7 @@ def test_c_array_from_pybuffer_fixed_size_binary():
 
 
 def test_c_array_empty():
-    empty_string = c_array_empty(na.c_schema(na.string()))
+    empty_string = c_array([], na.c_schema(na.string()))
     assert empty_string.length == 0
     assert empty_string.null_count == 0
     assert empty_string.offset == 0

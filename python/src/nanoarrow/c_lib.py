@@ -89,7 +89,7 @@ def c_schema(obj=None) -> CSchema:
         )
 
 
-def c_array(obj=None, requested_schema=None) -> CArray:
+def c_array(obj, requested_schema=None) -> CArray:
     """ArrowArray wrapper
 
     This class provides a user-facing interface to access the fields of an ArrowArray
@@ -150,38 +150,13 @@ def c_array(obj=None, requested_schema=None) -> CArray:
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
 
+    # Try import of iterable
+    if _is_iterable(obj):
+        return _c_array_from_iterable(obj, requested_schema)
+
     raise TypeError(
         f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
     )
-
-
-def c_array_empty(schema) -> CArray:
-    """Create an empty ArrowArray wrapper
-
-    Creates an ArrowArray wrapper with length zero.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> from nanoarrow.c_lib import c_array_empty
-    >>> na.c_array_view(c_array_empty(na.int32()))
-    <nanoarrow.c_lib.CArrayView>
-    - storage_type: 'int32'
-    - length: 0
-    - offset: 0
-    - null_count: 0
-    - buffers[2]:
-      - validity <bool[0 b] >
-      - data <int32[0 b] >
-    - dictionary: NULL
-    - children[0]:
-    """
-
-    builder = CArrayBuilder.allocate()
-    builder.init_from_schema(c_schema(schema))
-    builder.start_appending()
-    return builder.finish()
 
 
 def c_array_from_buffers(
@@ -459,7 +434,8 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
         return CBuffer().set_pybuffer(obj)
 
     if _is_iterable(obj):
-        return _c_buffer_from_iterable(obj, requested_schema)
+        buffer, _ = _c_buffer_from_iterable(obj, requested_schema)
+        return buffer
 
     raise TypeError(
         f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
@@ -538,6 +514,10 @@ def _is_buffer(obj):
     return ctypes.pythonapi.PyObject_CheckBuffer(ctypes.py_object(obj)) == 1
 
 
+def _is_empty_list(obj):
+    return isinstance(obj, list) and len(obj) == 0
+
+
 def _is_iterable(obj):
     return hasattr(obj, "__iter__")
 
@@ -584,7 +564,33 @@ def _c_array_from_pybuffer(obj, requested_schema=None) -> CArray:
     return builder.finish()
 
 
-def _c_buffer_from_iterable(obj: Iterable[Any], requested_schema=None) -> CBuffer:
+def _c_array_from_iterable(obj, requested_schema=None):
+    if requested_schema is None:
+        raise ValueError("requested_schema is required for CArray import from iterable")
+
+    obj_len = -1
+    if hasattr(obj, "__len__"):
+        obj_len = len(obj)
+
+    # We can always create an array from an empty iterable, even for types
+    # not supported by _c_buffer_from_iterable()
+    if obj_len == 0:
+        builder = CArrayBuilder.allocate()
+        builder.init_from_schema(requested_schema)
+        builder.start_appending()
+        return builder.finish()
+
+    # Use buffer create for crude support of array from iterable
+    buffer, n_values = _c_buffer_from_iterable(
+        obj,
+    )
+
+    return c_array_from_buffers(
+        requested_schema, n_values, buffers=(None, buffer), null_count=0
+    )
+
+
+def _c_buffer_from_iterable(obj, requested_schema=None) -> CBuffer:
     if requested_schema is None:
         raise ValueError("CBuffer from iterable requires requested_schema")
 
@@ -599,5 +605,5 @@ def _c_buffer_from_iterable(obj: Iterable[Any], requested_schema=None) -> CBuffe
     else:
         builder.set_data_type(schema_view.storage_type_id)
 
-    builder.write_values(obj)
-    return builder.finish()
+    n_values_written = builder.write_values(obj)
+    return builder.finish(), n_values_written

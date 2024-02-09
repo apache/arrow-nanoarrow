@@ -1548,6 +1548,7 @@ cdef class CBufferBuilder(CBuffer):
         if self._data_type == NANOARROW_TYPE_BOOL:
             return self._write_bits(obj)
 
+        cdef int64_t n_values = 0
         struct_obj = Struct(self._format)
         pack = struct_obj.pack
         write = self.write
@@ -1555,10 +1556,14 @@ cdef class CBufferBuilder(CBuffer):
         if self._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
                                NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
             for item in obj:
+                n_values += 1
                 write(pack(*item))
         else:
             for item in obj:
+                n_values += 1
                 write(pack(item))
+
+        return n_values
 
     cdef _write_bits(self, obj):
         if self._ptr.size_bytes != 0:
@@ -1567,7 +1572,9 @@ cdef class CBufferBuilder(CBuffer):
         cdef char buffer_item = 0
         cdef int buffer_item_i = 0
         cdef int code
+        cdef int64_t n_values = 0
         for item in obj:
+            n_values += 1
             if item:
                 buffer_item |= (<char>1 << buffer_item_i)
 
@@ -1582,6 +1589,7 @@ cdef class CBufferBuilder(CBuffer):
             code = ArrowBufferAppendInt8(self._ptr, buffer_item)
             Error.raise_error_not_ok("ArrowBufferAppendInt8()", code)
 
+        return n_values
 
     def finish(self):
         return self
