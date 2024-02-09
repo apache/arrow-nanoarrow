@@ -413,7 +413,7 @@ def c_array_view(obj, requested_schema=None) -> CArrayView:
     return CArrayView.from_cpu_array(c_array(obj, requested_schema))
 
 
-def c_buffer(obj) -> CBuffer:
+def c_buffer(obj, requested_schema=None) -> CBuffer:
     """Owning, read-only ArrowBuffer wrapper
 
     Wraps obj in nanoarrow's owning buffer structure, the ArrowBuffer,
@@ -437,49 +437,20 @@ def c_buffer(obj) -> CBuffer:
     """
     if isinstance(obj, CBuffer):
         return obj
-    return CBuffer().set_pybuffer(obj)
 
+    if _is_buffer(obj):
+        if requested_schema is not None:
+            raise ValueError(
+                "requested_schema not supported for CBuffer import from buffer protocol"
+            )
+        return CBuffer().set_pybuffer(obj)
 
-def c_buffer_from_iterable(schema, obj: Iterable[Any]) -> CBuffer:
-    """Owning, read-only ArrowBuffer wrapper from a Python iterable
+    if _is_iterable(obj):
+        return _c_buffer_from_iterable(obj, requested_schema)
 
-    Given an Arrow type, build a buffer from an iterable of Python
-    objects. This is useful for creating buffers for testing purposes
-    (i.e., it has not been optimized for general use).
-
-    Parameters
-    ----------
-
-    schema : schema-like
-        The data type of the desired buffer as sanitized by :func:`c_schema`.
-        Only values that make sense as buffer types are allowed (e.g., integer types,
-        floating-point types, interval types, decimal types, binary, string,
-        fixed-size binary).
-    obj : iterable
-        An iterable of Python objects. The Python ``struct`` module is currently
-        used to pack values into binary form.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> from nanoarrow.c_lib import c_buffer_from_iterable
-    >>> c_buffer_from_iterable(na.int32(), [0, 1, 2, 3])
-    CBuffer(int32[16 b] 0 1 2 3)
-    """
-    builder = CBufferBuilder().set_empty()
-
-    schema_view = c_schema_view(schema)
-    if schema_view.storage_type_id != schema_view.type_id:
-        raise ValueError(f"Can't create buffer from type {schema}")
-
-    if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
-        builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
-    else:
-        builder.set_data_type(schema_view.storage_type_id)
-
-    builder.write_values(obj)
-    return builder.finish()
+    raise TypeError(
+        f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
+    )
 
 
 def allocate_c_schema() -> CSchema:
@@ -554,6 +525,10 @@ def _is_buffer(obj):
     return ctypes.pythonapi.PyObject_CheckBuffer(ctypes.py_object(obj)) == 1
 
 
+def _is_iterable(obj):
+    return hasattr(obj, "__iter__")
+
+
 # Invokes the buffer protocol on obj
 def _c_array_from_pybuffer(obj, requested_schema=None) -> CArray:
     if requested_schema is not None:
@@ -593,4 +568,49 @@ def _c_array_from_pybuffer(obj, requested_schema=None) -> CArray:
     builder.set_null_count(0)
     builder.set_offset(0)
 
+    return builder.finish()
+
+
+def _c_buffer_from_iterable(obj: Iterable[Any], requested_schema=None) -> CBuffer:
+    """Owning, read-only ArrowBuffer wrapper from a Python iterable
+
+    Given an Arrow type, build a buffer from an iterable of Python
+    objects. This is useful for creating buffers for testing purposes
+    (i.e., it has not been optimized for general use).
+
+    Parameters
+    ----------
+
+    schema : schema-like
+        The data type of the desired buffer as sanitized by :func:`c_schema`.
+        Only values that make sense as buffer types are allowed (e.g., integer types,
+        floating-point types, interval types, decimal types, binary, string,
+        fixed-size binary).
+    obj : iterable
+        An iterable of Python objects. The Python ``struct`` module is currently
+        used to pack values into binary form.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow.c_lib import c_buffer_from_iterable
+    >>> c_buffer_from_iterable(na.int32(), [0, 1, 2, 3])
+    CBuffer(int32[16 b] 0 1 2 3)
+    """
+    if requested_schema is None:
+        raise ValueError("CBuffer from iterable requires requested_schema")
+
+    builder = CBufferBuilder().set_empty()
+
+    schema_view = c_schema_view(requested_schema)
+    if schema_view.storage_type_id != schema_view.type_id:
+        raise ValueError(f"Can't create buffer from type {requested_schema}")
+
+    if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
+        builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
+    else:
+        builder.set_data_type(schema_view.storage_type_id)
+
+    builder.write_values(obj)
     return builder.finish()
