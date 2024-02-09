@@ -25,9 +25,9 @@ from nanoarrow.c_lib import (
     CBuffer,
     CBufferBuilder,
     _c_array_from_pybuffer,
+    c_array,
     c_array_from_buffers,
     c_buffer,
-    c_array,
 )
 
 import nanoarrow as na
