@@ -35,9 +35,17 @@ from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from cpython cimport Py_buffer, PyObject_GetBuffer, PyBuffer_Release, \
-                     PyBuffer_ToContiguous, PyBUF_ANY_CONTIGUOUS, PyBUF_FORMAT, PyBUF_WRITABLE
+from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
+from cpython cimport (
+    Py_buffer,
+    PyObject_CheckBuffer,
+    PyObject_GetBuffer,
+    PyBuffer_Release,
+    PyBuffer_ToContiguous,
+    PyBUF_ANY_CONTIGUOUS,
+    PyBUF_FORMAT,
+    PyBUF_WRITABLE
+)
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
@@ -50,6 +58,16 @@ def c_version():
     """Return the nanoarrow C library version string
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
+
+
+# CPython utilities that are helpful in Python and not available in all
+# implementations of ctypes (e.g., early Python versions, pypy)
+def _obj_is_capsule(obj, str name):
+    return PyCapsule_IsValid(obj, name.encode()) == 1
+
+
+def _obj_is_buffer(obj):
+    return PyObject_CheckBuffer(obj) == 1
 
 
 # PyCapsule utilities

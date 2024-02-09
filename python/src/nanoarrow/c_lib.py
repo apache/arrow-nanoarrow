@@ -28,7 +28,7 @@ Python objects.
 import ctypes
 from typing import Any, Iterable, Literal
 
-from nanoarrow._lib import (  # noqa: F401
+from nanoarrow._lib import (
     CArray,
     CArrayBuilder,
     CArrayStream,
@@ -39,6 +39,8 @@ from nanoarrow._lib import (  # noqa: F401
     CSchema,
     CSchemaBuilder,
     CSchemaView,
+    _obj_is_capsule,
+    _obj_is_buffer,
 )
 
 
@@ -147,28 +149,23 @@ def c_array(obj, requested_schema=None) -> CArray:
         )
 
     # Try buffer protocol (e.g., numpy arrays or a c_buffer())
-    # PyObject_CheckBuffer() would be cleaner, available as of Python 3.9
-    try:
+    if _obj_is_buffer(obj):
         return _c_array_from_pybuffer(obj)
-    except BufferError:
-        pass
-    except TypeError:
-        pass
 
     # Try import of bare capsule
-    if _is_capsule(obj, "arrow_array"):
+    if _obj_is_capsule(obj, "arrow_array"):
         if requested_schema is None:
             requested_schema = CSchema.allocate()
         return CArray._import_from_c_capsule(obj, requested_schema.__arrow_c_schema__())
 
     # Try _export_to_c for Array/RecordBatch objects if pyarrow < 14.0
-    if _is_pyarrow_array(obj):
+    if _obj_is_pyarrow_array(obj):
         out = CArray.allocate(CSchema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
 
     # Try import of iterable
-    if _is_iterable(obj):
+    if _obj_is_iterable(obj):
         return _c_array_from_iterable(obj, requested_schema)
 
     raise TypeError(
@@ -446,16 +443,10 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
     if isinstance(obj, CBuffer) and requested_schema is None:
         return obj
 
-    if requested_schema is None:
-        # PyObject_CheckBuffer() would be cleaner, available as of Python 3.9
-        try:
-            return CBuffer().set_pybuffer(obj)
-        except BufferError:
-            pass
-        except TypeError:
-            pass
+    if _obj_is_buffer(obj) and requested_schema is None:
+        return CBuffer().set_pybuffer(obj)
 
-    if _is_iterable(obj):
+    if _obj_is_iterable(obj):
         buffer, _ = _c_buffer_from_iterable(obj, requested_schema)
         return buffer
 
@@ -518,7 +509,7 @@ def allocate_c_array_stream() -> CArrayStream:
 # for pyarrow < 14.0.0, after which the the __arrow_c_array__ protocol
 # is sufficient to detect such an array. This check can't use isinstance()
 # to avoid importing pyarrow unnecessarily.
-def _is_pyarrow_array(obj):
+def _obj_is_pyarrow_array(obj):
     obj_type = type(obj)
     if obj_type.__module__ != "pyarrow.lib":
         return False
@@ -528,11 +519,11 @@ def _is_pyarrow_array(obj):
     return hasattr(obj, "_export_to_c")
 
 
-def _is_capsule(obj, name):
+def _obj_is_capsule(obj, name):
     return ctypes.pythonapi.PyCapsule_IsValid(ctypes.py_object(obj), name) == 1
 
 
-def _is_iterable(obj):
+def _obj_is_iterable(obj):
     return hasattr(obj, "__iter__")
 
 
