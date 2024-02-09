@@ -97,15 +97,27 @@ def c_array(obj, requested_schema=None) -> CArray:
     :class:`CSchema` that can be used to safely deserialize the content.
 
     These objects are created using :func:`c_array`, which accepts any array-like
-    object according to the Arrow PyCapsule interface or Python buffer protocol.
+    object according to the Arrow PyCapsule interface, Python buffer protocol,
+    or iterable of Python objects.
 
     This Python wrapper allows access to array fields but does not automatically
     deserialize their content: use :func:`c_array_view` to validate and deserialize
     the content into a more easily inspectable object.
 
     Note that the :class:`CArray` objects returned by ``.child()`` hold strong
-    references to the original ``ArrowSchema`` to avoid copies while inspecting an
+    references to the original ``ArrowArray`` to avoid copies while inspecting an
     imported structure.
+
+    Parameters
+    ----------
+    obj : array-like
+        An object supporting the Arrow PyCapsule interface, the Python
+        protocol, or an iterable of Python objects.
+    requested_schema : schema-like or None
+        A schema-like object as sanitized by :func:`c_schema` or None. This value
+        will be used to request a data type from ``obj``; however, the conversion
+        is best-effort (i.e., the data type of the returned ``CArray`` may be
+        different than ``requested_schema``.
 
     Examples
     --------
@@ -135,6 +147,7 @@ def c_array(obj, requested_schema=None) -> CArray:
         )
 
     # Try buffer protocol (e.g., numpy arrays or a c_buffer())
+    # PyObject_CheckBuffer() would be cleaner, available as of Python 3.9
     try:
         return _c_array_from_pybuffer(obj)
     except BufferError:
@@ -407,6 +420,9 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
     a Python iterable. The ``struct`` module is currently used to encode
     values from obj into binary form.
 
+    Unlike with :func:`c_array`, ``requested_schema`` is explicitly
+    honoured (or an error will be raised).
+
     Parameters
     ----------
 
@@ -427,10 +443,11 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
     >>> na.c_buffer([1, 2, 3], na.int32())
     CBuffer(int32[12 b] 1 2 3)
     """
-    if isinstance(obj, CBuffer):
+    if isinstance(obj, CBuffer) and requested_schema is None:
         return obj
 
     if requested_schema is None:
+        # PyObject_CheckBuffer() would be cleaner, available as of Python 3.9
         try:
             return CBuffer().set_pybuffer(obj)
         except BufferError:
