@@ -25,7 +25,6 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
-import ctypes
 from typing import Any, Iterable, Literal
 
 from nanoarrow._lib import (
@@ -39,8 +38,8 @@ from nanoarrow._lib import (
     CSchema,
     CSchemaBuilder,
     CSchemaView,
-    _obj_is_capsule,
     _obj_is_buffer,
+    _obj_is_capsule,
 )
 
 
@@ -517,10 +516,6 @@ def _obj_is_pyarrow_array(obj):
         return False
 
     return hasattr(obj, "_export_to_c")
-
-
-def _obj_is_capsule(obj, name):
-    return ctypes.pythonapi.PyCapsule_IsValid(ctypes.py_object(obj), name) == 1
 
 
 def _obj_is_iterable(obj):
