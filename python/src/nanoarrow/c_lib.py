@@ -416,24 +416,37 @@ def c_array_view(obj, requested_schema=None) -> CArrayView:
 def c_buffer(obj, requested_schema=None) -> CBuffer:
     """Owning, read-only ArrowBuffer wrapper
 
-    Wraps obj in nanoarrow's owning buffer structure, the ArrowBuffer,
+    If obj implement the Python buffer protocol, ``c_buffer()`` Wraps
+    obj in nanoarrow's owning buffer structure, the ArrowBuffer,
     such that it can be used to construct arrays. The ownership of the
     underlying buffer is handled by the Python buffer protocol
     (i.e., ``PyObject_GetBuffer()`` and ``PyBuffer_Release()``).
 
+    If obj is iterable, a buffer will be allocated and populated with
+    the contents of obj according to ``requested_schema``. The
+    ``requested_schema`` parameter is required to create a buffer from
+    a Python iterable. The ``struct`` module is currently used to encode
+    values from obj into binary form.
+
     Parameters
     ----------
 
-    obj : buffer-like
+    obj : buffer-like or iterable
         A Python object that supports the Python buffer protocol. This includes
         bytes, memoryview, bytearray, bulit-in types as well as numpy arrays.
+    requested_schema : The data type of the desired buffer as sanitized by
+        :func:`c_schema`. Only values that make sense as buffer types are
+        allowed (e.g., integer types, floating-point types, interval types,
+        decimal types, binary, string, fixed-size binary).
 
     Examples
     --------
 
-    >>> from nanoarrow.c_lib import c_buffer
-    >>> c_buffer(b"1234")
+    >>> import nanoarrow as na
+    >>> na.c_buffer(b"1234")
     CBuffer(uint8[4 b] 49 50 51 52)
+    >>> na.c_buffer([1, 2, 3], na.int32())
+    CBuffer(int32[12 b] 1 2 3)
     """
     if isinstance(obj, CBuffer):
         return obj
@@ -572,32 +585,6 @@ def _c_array_from_pybuffer(obj, requested_schema=None) -> CArray:
 
 
 def _c_buffer_from_iterable(obj: Iterable[Any], requested_schema=None) -> CBuffer:
-    """Owning, read-only ArrowBuffer wrapper from a Python iterable
-
-    Given an Arrow type, build a buffer from an iterable of Python
-    objects. This is useful for creating buffers for testing purposes
-    (i.e., it has not been optimized for general use).
-
-    Parameters
-    ----------
-
-    schema : schema-like
-        The data type of the desired buffer as sanitized by :func:`c_schema`.
-        Only values that make sense as buffer types are allowed (e.g., integer types,
-        floating-point types, interval types, decimal types, binary, string,
-        fixed-size binary).
-    obj : iterable
-        An iterable of Python objects. The Python ``struct`` module is currently
-        used to pack values into binary form.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> from nanoarrow.c_lib import c_buffer_from_iterable
-    >>> c_buffer_from_iterable(na.int32(), [0, 1, 2, 3])
-    CBuffer(int32[16 b] 0 1 2 3)
-    """
     if requested_schema is None:
         raise ValueError("CBuffer from iterable requires requested_schema")
 

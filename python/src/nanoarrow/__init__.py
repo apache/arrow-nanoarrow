@@ -31,6 +31,7 @@ from nanoarrow.c_lib import (
     c_array_stream,
     c_schema_view,
     c_array_view,
+    c_buffer,
     allocate_c_schema,
     allocate_c_array,
     allocate_c_array_stream,
@@ -73,6 +74,7 @@ from nanoarrow.schema import (
 )
 from nanoarrow._version import __version__  # noqa: F401
 
+# Helps Sphinx automatically populate an API reference section
 __all__ = [
     "Schema",
     "TimeUnit",
@@ -85,6 +87,7 @@ __all__ = [
     "c_array",
     "c_array_stream",
     "c_array_view",
+    "c_buffer",
     "c_lib",
     "c_schema",
     "c_schema_view",

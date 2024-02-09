@@ -28,7 +28,6 @@ from nanoarrow.c_lib import (
     c_array_empty,
     c_array_from_buffers,
     c_buffer,
-    _c_buffer_from_iterable,
 )
 
 import nanoarrow as na
@@ -216,7 +215,7 @@ def test_buffer_builder():
 
 
 def test_c_buffer_from_iterable():
-    buffer = _c_buffer_from_iterable([1, 2, 3], na.int32())
+    buffer = c_buffer([1, 2, 3], na.int32())
     assert buffer.size_bytes == 12
     assert buffer.data.data_type == "int32"
     assert buffer.data.element_size_bits == 32
@@ -225,17 +224,17 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type that does not make sense as a buffer type will error
     with pytest.raises(ValueError, match="Unsupported Arrow type_id"):
-        _c_buffer_from_iterable([], na.struct([]))
+        c_buffer([], na.struct([]))
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
     with pytest.raises(ValueError, match="Can't create buffer from type"):
-        _c_buffer_from_iterable([1, 2, 3], na.date32())
+        c_buffer([1, 2, 3], na.date32())
 
 
 def test_c_buffer_from_fixed_size_binary_iterable():
     items = [b"abcd", b"efgh", b"ijkl"]
-    buffer = _c_buffer_from_iterable(items, na.fixed_size_binary(4))
+    buffer = c_buffer(items, na.fixed_size_binary(4))
     assert buffer.data.data_type == "binary"
     assert buffer.data.element_size_bits == 32
     assert buffer.data.item_size == 4
@@ -244,7 +243,7 @@ def test_c_buffer_from_fixed_size_binary_iterable():
 
 
 def test_c_buffer_from_day_time_iterable():
-    buffer = _c_buffer_from_iterable([(1, 2), (3, 4), (5, 6)], na.interval_day_time())
+    buffer = c_buffer([(1, 2), (3, 4), (5, 6)], na.interval_day_time())
     assert buffer.data.data_type == "interval_day_time"
     assert buffer.data.element_size_bits == 64
     assert buffer.data.item_size == 8
@@ -252,9 +251,7 @@ def test_c_buffer_from_day_time_iterable():
 
 
 def test_c_buffer_from_month_day_nano_iterable():
-    buffer = _c_buffer_from_iterable(
-        [(1, 2, 3), (4, 5, 6)], na.interval_month_day_nano()
-    )
+    buffer = c_buffer([(1, 2, 3), (4, 5, 6)], na.interval_month_day_nano())
     assert buffer.data.data_type == "interval_month_day_nano"
     assert buffer.data.element_size_bits == 128
     assert buffer.data.item_size == 16
@@ -263,7 +260,7 @@ def test_c_buffer_from_month_day_nano_iterable():
 
 def test_c_buffer_from_decimal128_iterable():
     bytes64 = bytes(range(64))
-    buffer = _c_buffer_from_iterable(
+    buffer = c_buffer(
         [bytes64[0:16], bytes64[16:32], bytes64[32:48], bytes64[48:64]],
         na.decimal128(10, 3),
     )
@@ -280,9 +277,7 @@ def test_c_buffer_from_decimal128_iterable():
 
 def test_c_buffer_from_decimal256_iterable():
     bytes64 = bytes(range(64))
-    buffer = _c_buffer_from_iterable(
-        [bytes64[0:32], bytes64[32:64]], na.decimal256(10, 3)
-    )
+    buffer = c_buffer([bytes64[0:32], bytes64[32:64]], na.decimal256(10, 3))
     assert buffer.data.data_type == "decimal256"
     assert buffer.data.element_size_bits == 256
     assert buffer.data.item_size == 32
@@ -291,7 +286,7 @@ def test_c_buffer_from_decimal256_iterable():
 
 def test_c_buffer_bitmap_from_iterable():
     # Check something less than one byte
-    buffer = _c_buffer_from_iterable([True, False, False, True], na.bool())
+    buffer = c_buffer([True, False, False, True], na.bool())
     assert "10010000" in repr(buffer)
     assert buffer.size_bytes == 1
     assert buffer.data.data_type == "bool"
@@ -299,12 +294,12 @@ def test_c_buffer_bitmap_from_iterable():
     assert buffer.data.element_size_bits == 1
 
     # Check something exactly one byte
-    buffer = _c_buffer_from_iterable([True, False, False, True] * 2, na.bool())
+    buffer = c_buffer([True, False, False, True] * 2, na.bool())
     assert "10011001" in repr(buffer)
     assert buffer.size_bytes == 1
 
     # Check something more than one byte
-    buffer = _c_buffer_from_iterable([True, False, False, True] * 3, na.bool())
+    buffer = c_buffer([True, False, False, True] * 3, na.bool())
     assert "1001100110010000" in repr(buffer)
     assert buffer.size_bytes == 2
 
@@ -454,7 +449,7 @@ def test_c_array_from_buffers_validation():
             c_array_from_buffers(
                 na.string(),
                 2,
-                [None, _c_buffer_from_iterable([0, 1, 2], na.int32()), c_buffer(b"a")],
+                [None, c_buffer([0, 1, 2], na.int32()), c_buffer(b"a")],
                 validation_level=validation_level,
             )
 
@@ -462,7 +457,7 @@ def test_c_array_from_buffers_validation():
         c_array = c_array_from_buffers(
             na.string(),
             2,
-            [None, _c_buffer_from_iterable([0, 1, 2], na.int32()), c_buffer(b"a")],
+            [None, c_buffer([0, 1, 2], na.int32()), c_buffer(b"a")],
             validation_level=validation_level,
         )
         assert c_array.length == 2
@@ -475,7 +470,7 @@ def test_c_array_from_buffers_validation():
         c_array_from_buffers(
             na.string(),
             2,
-            [None, _c_buffer_from_iterable([0, 100, 2], na.int32()), c_buffer(b"ab")],
+            [None, c_buffer([0, 100, 2], na.int32()), c_buffer(b"ab")],
             validation_level="full",
         )
 
@@ -483,7 +478,7 @@ def test_c_array_from_buffers_validation():
         c_array = c_array_from_buffers(
             na.string(),
             2,
-            [None, _c_buffer_from_iterable([0, 100, 2], na.int32()), c_buffer(b"ab")],
+            [None, c_buffer([0, 100, 2], na.int32()), c_buffer(b"ab")],
             validation_level=validation_level,
         )
         assert c_array.length == 2
