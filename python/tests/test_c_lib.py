@@ -55,7 +55,7 @@ def test_c_buffer_constructor():
     assert bytes(buffer.data) == b"1234"
 
 
-def test_buffer_unsupported_format():
+def test_c_buffer_unsupported_format():
     empty = CBuffer().set_empty()
 
     with pytest.raises(ValueError, match="Can't convert format '>i' to Arrow type"):
@@ -68,7 +68,7 @@ def test_buffer_unsupported_format():
         empty.set_data_type(na.Type.SPARSE_UNION.value)
 
 
-def test_buffer_empty():
+def test_c_buffer_empty():
     empty = CBuffer().set_empty()
 
     assert empty._addr() == 0
@@ -88,7 +88,7 @@ def test_buffer_empty():
     assert view_roundtrip.size_bytes == 0
 
 
-def test_buffer_pybuffer():
+def test_c_buffer_pybuffer():
     data = bytes(b"abcdefghijklmnopqrstuvwxyz")
     buffer = c_buffer(data)
 
@@ -99,7 +99,19 @@ def test_buffer_pybuffer():
     assert repr(buffer).startswith("CBuffer(uint8[26 b] 97 98")
 
 
-def test_buffer_integer():
+def test_c_buffer_unsupported_type():
+    with pytest.raises(TypeError, match="Can't convert object of type NoneType"):
+        na.c_buffer(None, na.int32())
+
+
+def test_c_buffer_missing_requested_schema():
+    with pytest.raises(
+        ValueError, match="CBuffer from iterable requires requested_schema"
+    ):
+        na.c_buffer([1, 2, 3])
+
+
+def test_c_buffer_integer():
     formats = ["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q", "n", "N"]
     values = [0, 1, 2]
 
@@ -118,7 +130,7 @@ def test_buffer_integer():
         assert list(view) == [0, 1, 2]
 
 
-def test_numpy_buffer_numeric():
+def test_numpy_c_buffer_numeric():
     np = pytest.importorskip("numpy")
 
     dtypes = [
@@ -149,7 +161,7 @@ def test_numpy_buffer_numeric():
         assert buffer_roundtrip._addr() == buffer._addr()
 
 
-def test_buffer_float():
+def test_c_buffer_float():
     formats = ["e", "f", "d"]
     values = [0.0, 1.0, 2.0]
 
@@ -168,7 +180,7 @@ def test_buffer_float():
         assert list(view) == [0.0, 1.0, 2.0]
 
 
-def test_buffer_string():
+def test_c_buffer_string():
     packed = b"abcdefg"
     buffer = c_buffer(packed).set_format("c")
     assert buffer.size_bytes == len(packed)
@@ -178,7 +190,7 @@ def test_buffer_string():
     assert list(view) == [c.encode("UTF-8") for c in "abcdefg"]
 
 
-def test_buffer_fixed_size_binary():
+def test_c_buffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]
     packed = b"".join(items)
     buffer = c_buffer(packed).set_format("4s")
@@ -192,7 +204,7 @@ def test_buffer_fixed_size_binary():
     assert list(view) == items
 
 
-def test_buffer_builder():
+def test_c_buffer_builder():
     builder = CBufferBuilder().set_empty()
     assert builder.size_bytes == 0
     assert builder.capacity_bytes == 0
@@ -358,6 +370,13 @@ def test_c_array_from_old_pyarrow():
     c_array = na.c_array(array)
     assert c_array.length == 3
     assert c_array.schema.format == "i"
+
+    # Make sure that this heuristic won't result in trying to import
+    # something else that has an _export_to_c method
+    with pytest.raises(TypeError, match="Can't convert object of type DataType"):
+        not_array = pa.int32()
+        assert hasattr(not_array, "_export_to_c")
+        na.c_array(not_array)
 
 
 def test_c_array_from_bare_capsule():

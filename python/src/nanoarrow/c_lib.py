@@ -462,7 +462,7 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
         return buffer
 
     raise TypeError(
-        f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
+        f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_buffer"
     )
 
 
