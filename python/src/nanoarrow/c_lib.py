@@ -135,8 +135,12 @@ def c_array(obj, requested_schema=None) -> CArray:
         )
 
     # Try buffer protocol (e.g., numpy arrays or a c_buffer())
-    if _is_buffer(obj):
-        return _c_array_from_pybuffer(obj, requested_schema)
+    try:
+        return _c_array_from_pybuffer(obj)
+    except BufferError:
+        pass
+    except TypeError:
+        pass
 
     # Try import of bare capsule
     if _is_capsule(obj, "arrow_array"):
@@ -426,12 +430,13 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
     if isinstance(obj, CBuffer):
         return obj
 
-    if _is_buffer(obj):
-        if requested_schema is not None:
-            raise ValueError(
-                "requested_schema not supported for CBuffer import from buffer protocol"
-            )
-        return CBuffer().set_pybuffer(obj)
+    if requested_schema is None:
+        try:
+            return CBuffer().set_pybuffer(obj)
+        except BufferError:
+            pass
+        except TypeError:
+            pass
 
     if _is_iterable(obj):
         buffer, _ = _c_buffer_from_iterable(obj, requested_schema)
@@ -510,25 +515,12 @@ def _is_capsule(obj, name):
     return ctypes.pythonapi.PyCapsule_IsValid(ctypes.py_object(obj), name) == 1
 
 
-def _is_buffer(obj):
-    return ctypes.pythonapi.PyObject_CheckBuffer(ctypes.py_object(obj)) == 1
-
-
-def _is_empty_list(obj):
-    return isinstance(obj, list) and len(obj) == 0
-
-
 def _is_iterable(obj):
     return hasattr(obj, "__iter__")
 
 
 # Invokes the buffer protocol on obj
-def _c_array_from_pybuffer(obj, requested_schema=None) -> CArray:
-    if requested_schema is not None:
-        raise ValueError(
-            "requested_schema not supported for CArray import from buffer protocol"
-        )
-
+def _c_array_from_pybuffer(obj) -> CArray:
     buffer = CBuffer().set_pybuffer(obj)
     view = buffer.data
     type_id = view.data_type_id
