@@ -118,19 +118,25 @@ def c_array(obj, requested_schema=None) -> CArray:
         A schema-like object as sanitized by :func:`c_schema` or None. This value
         will be used to request a data type from ``obj``; however, the conversion
         is best-effort (i.e., the data type of the returned ``CArray`` may be
-        different than ``requested_schema``.
+        different than ``requested_schema``).
 
     Examples
     --------
 
-    >>> import pyarrow as pa
-    >>> import numpy as np
     >>> import nanoarrow as na
-    >>> array = na.c_array(pa.array(["one", "two", "three", None]))
+    >>> # Create from iterable
+    >>> array = na.c_array([1, 2, 3], na.int32())
+    >>> # Create from Python buffer (e.g., numpy array)
+    >>> import numpy as np
+    >>> array = na.c_array(np.array([1, 2, 3]))
+    >>> # Create from Arrow PyCapsule (e.g., pyarrow array)
+    >>> import pyarrow as pa
+    >>> array = na.c_array(pa.array([1, 2, 3]))
+    >>> # Access array fields
     >>> array.length
-    4
+    3
     >>> array.null_count
-    1
+    0
     """
 
     if requested_schema is not None:
@@ -222,8 +228,7 @@ def c_array_from_buffers(
     --------
 
     >>> import nanoarrow as na
-    >>> from nanoarrow.c_lib import c_array_from_buffers
-    >>> c_array = c_array_from_buffers(na.uint8(), 5, [None, b"12345"])
+    >>> c_array = na.c_array_from_buffers(na.uint8(), 5, [None, b"12345"])
     >>> na.c_array_view(c_array)
     <nanoarrow.c_lib.CArrayView>
     - storage_type: 'uint8'
@@ -578,6 +583,7 @@ def _c_array_from_iterable(obj, requested_schema=None):
     # Use buffer create for crude support of array from iterable
     buffer, n_values = _c_buffer_from_iterable(
         obj,
+        requested_schema
     )
 
     return c_array_from_buffers(
