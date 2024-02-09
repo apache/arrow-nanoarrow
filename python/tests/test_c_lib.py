@@ -24,8 +24,6 @@ from nanoarrow.c_lib import (
     CArrayBuilder,
     CBuffer,
     CBufferBuilder,
-    _c_array_from_pybuffer,
-    c_array,
     c_array_from_buffers,
     c_buffer,
 )
@@ -319,9 +317,74 @@ def test_c_array_builder_init():
         builder.init_from_schema(na.c_schema(na.int32()))
 
 
+def test_c_array_from_c_array():
+    c_array = na.c_array([1, 2, 3], na.int32())
+    c_array_from_c_array = na.c_array(c_array)
+    assert c_array_from_c_array.length == c_array.length
+    assert c_array_from_c_array.buffers == c_array.buffers
+
+
+def test_c_array_from_capsule_protocol():
+    class CArrayWrapper:
+
+        def __init__(self, obj):
+            self.obj = obj
+
+        def __arrow_c_array__(self, *args, **kwargs):
+            return self.obj.__arrow_c_array__(*args, **kwargs)
+
+    c_array = na.c_array([1, 2, 3], na.int32())
+    c_array_wrapper = CArrayWrapper(c_array)
+    c_array_from_protocol = na.c_array(c_array_wrapper)
+    assert c_array_from_protocol.length == c_array.length
+    assert c_array_from_protocol.buffers == c_array.buffers
+
+
+def test_c_array_from_old_pyarrow():
+    # Simulate a pyarrow Array with no __arrow_c_array__
+    class MockLegacyPyarrowArray:
+
+        def __init__(self, obj):
+            self.obj = obj
+
+        def _export_to_c(self, *args):
+            return self.obj._export_to_c(*args)
+
+    MockLegacyPyarrowArray.__module__ = "pyarrow.lib"
+
+    pa = pytest.importorskip("pyarrow")
+    array = MockLegacyPyarrowArray(pa.array([1, 2, 3], pa.int32()))
+
+    c_array = na.c_array(array)
+    assert c_array.length == 3
+    assert c_array.schema.format == "i"
+
+
+def test_c_array_from_bare_capsule():
+    c_array = na.c_array([1, 2, 3], na.int32())
+
+    # Check from bare capsule without supplying a schema
+    schema_capsule, array_capsule = c_array.__arrow_c_array__()
+    del schema_capsule
+    c_array_from_capsule = na.c_array(array_capsule)
+    assert c_array_from_capsule.length == c_array.length
+    assert c_array_from_capsule.buffers == c_array.buffers
+
+    # Check from bare capsule supplying a schema
+    schema_capsule, array_capsule = c_array.__arrow_c_array__()
+    c_array_from_capsule = na.c_array(array_capsule, schema_capsule)
+    assert c_array_from_capsule.length == c_array.length
+    assert c_array_from_capsule.buffers == c_array.buffers
+
+
+def test_c_array_type_not_supported():
+    with pytest.raises(TypeError, match="Can't convert object of type NoneType"):
+        na.c_array(None)
+
+
 def test_c_array_from_pybuffer_uint8():
     data = b"abcdefg"
-    c_array = _c_array_from_pybuffer(data)
+    c_array = na.c_array(data)
     assert c_array.length == len(data)
     assert c_array.null_count == 0
     assert c_array.offset == 0
@@ -334,7 +397,7 @@ def test_c_array_from_pybuffer_uint8():
 def test_c_array_from_pybuffer_string():
     data = b"abcdefg"
     buffer = c_buffer(data).set_format("c")
-    c_array = _c_array_from_pybuffer(buffer.data)
+    c_array = na.c_array(buffer.data)
     assert c_array.length == len(data)
     assert c_array.null_count == 0
     assert c_array.offset == 0
@@ -349,7 +412,7 @@ def test_c_array_from_pybuffer_fixed_size_binary():
     packed = b"".join(items)
     buffer = c_buffer(packed).set_format("4s")
 
-    c_array = _c_array_from_pybuffer(buffer.data)
+    c_array = na.c_array(buffer.data)
     assert c_array.length == len(items)
     assert c_array.null_count == 0
     assert c_array.offset == 0
@@ -360,8 +423,22 @@ def test_c_array_from_pybuffer_fixed_size_binary():
     assert list(c_array_view.buffer(1)) == items
 
 
-def test_c_array_empty():
-    empty_string = c_array([], na.c_schema(na.string()))
+def test_c_array_from_pybuffer_numpy():
+    np = pytest.importorskip("numpy")
+
+    data = np.array([1, 2, 3], dtype=np.int32)
+    c_array = na.c_array(data)
+    assert c_array.length == len(data)
+    assert c_array.null_count == 0
+    assert c_array.offset == 0
+    assert na.c_schema_view(c_array.schema).type == "int32"
+
+    c_array_view = na.c_array_view(c_array)
+    assert list(c_array_view.buffer(1)) == list(data)
+
+
+def test_c_array_from_iterable_empty():
+    empty_string = na.c_array([], na.c_schema(na.string()))
     assert empty_string.length == 0
     assert empty_string.null_count == 0
     assert empty_string.offset == 0
@@ -371,6 +448,20 @@ def test_c_array_empty():
     assert len(array_view.buffer(0)) == 0
     assert len(array_view.buffer(1)) == 0
     assert len(array_view.buffer(2)) == 0
+
+
+def test_c_array_from_iterable_non_empty():
+    c_array = na.c_array([1, 2, 3], na.int32())
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(1)) == [1, 2, 3]
+
+
+def test_c_array_from_iterable_error():
+    with pytest.raises(ValueError, match="requested_schema is required"):
+        na.c_array([1, 2, 3])
 
 
 def test_c_array_from_buffers():

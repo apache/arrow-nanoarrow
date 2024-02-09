@@ -79,6 +79,9 @@ def c_schema(obj=None) -> CSchema:
     if hasattr(obj, "__arrow_c_schema__"):
         return CSchema._import_from_c_capsule(obj.__arrow_c_schema__())
 
+    if _obj_is_capsule(obj, "arrow_schema"):
+        return CSchema._import_from_c_capsule(obj)
+
     # for pyarrow < 14.0
     if hasattr(obj, "_export_to_c"):
         out = CSchema.allocate()
@@ -145,6 +148,7 @@ def c_array(obj, requested_schema=None) -> CArray:
     if isinstance(obj, CArray) and requested_schema is None:
         return obj
 
+    # Try Arrow PyCapsule protocol
     if hasattr(obj, "__arrow_c_array__"):
         requested_schema_capsule = (
             None if requested_schema is None else requested_schema.__arrow_c_schema__()
@@ -160,8 +164,11 @@ def c_array(obj, requested_schema=None) -> CArray:
     # Try import of bare capsule
     if _obj_is_capsule(obj, "arrow_array"):
         if requested_schema is None:
-            requested_schema = CSchema.allocate()
-        return CArray._import_from_c_capsule(obj, requested_schema.__arrow_c_schema__())
+            requested_schema_capsule = CSchema.allocate()._capsule
+        else:
+            requested_schema_capsule = requested_schema.__arrow_c_schema__()
+
+        return CArray._import_from_c_capsule(requested_schema_capsule, obj)
 
     # Try _export_to_c for Array/RecordBatch objects if pyarrow < 14.0
     if _obj_is_pyarrow_array(obj):
@@ -517,6 +524,7 @@ def _obj_is_pyarrow_array(obj):
     obj_type = type(obj)
     if obj_type.__module__ != "pyarrow.lib":
         return False
+
     if not obj_type.__name__.endswith("Array") and obj_type.__name__ != "RecordBatch":
         return False
 
@@ -581,10 +589,7 @@ def _c_array_from_iterable(obj, requested_schema=None):
         return builder.finish()
 
     # Use buffer create for crude support of array from iterable
-    buffer, n_values = _c_buffer_from_iterable(
-        obj,
-        requested_schema
-    )
+    buffer, n_values = _c_buffer_from_iterable(obj, requested_schema)
 
     return c_array_from_buffers(
         requested_schema, n_values, buffers=(None, buffer), null_count=0
