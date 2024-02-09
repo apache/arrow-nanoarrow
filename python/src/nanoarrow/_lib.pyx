@@ -1299,7 +1299,7 @@ cdef class CBufferView:
     """
     cdef object _base
     cdef ArrowBufferView _ptr
-    cdef ArrowType _buffer_data_type
+    cdef ArrowType _data_type
     cdef CDevice _device
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
@@ -1307,16 +1307,16 @@ cdef class CBufferView:
     cdef char _format[128]
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
-                  ArrowType buffer_data_type,
+                  ArrowType data_type,
                   Py_ssize_t element_size_bits, CDevice device):
         self._base = base
         self._ptr.data.data = <void*>addr
         self._ptr.size_bytes = size_bytes
-        self._buffer_data_type = buffer_data_type
+        self._data_type = data_type
         self._device = device
         self._format[0] = 0
         self._element_size_bits = c_format_from_arrow_type(
-            self._buffer_data_type,
+            self._data_type,
             element_size_bits,
             sizeof(self._format),
             self._format
@@ -1328,12 +1328,8 @@ cdef class CBufferView:
         return <uintptr_t>self._ptr.data.data
 
     @property
-    def device_type(self):
-        return self._device.device_type
-
-    @property
-    def device_id(self):
-        return self._device.device_id
+    def device(self):
+        return self._device
 
     @property
     def element_size_bits(self):
@@ -1345,11 +1341,11 @@ cdef class CBufferView:
 
     @property
     def data_type_id(self):
-        return self._buffer_data_type
+        return self._data_type
 
     @property
     def data_type(self):
-        return ArrowTypeString(self._buffer_data_type).decode("UTF-8")
+        return ArrowTypeString(self._data_type).decode("UTF-8")
 
     @property
     def format(self):
@@ -1374,14 +1370,14 @@ cdef class CBufferView:
 
     def __iter__(self):
         # memoryview's implementation is very fast but not always possible (half float, fixed-size binary, interval)
-        if self._buffer_data_type in (
+        if self._data_type in (
             NANOARROW_TYPE_HALF_FLOAT,
             NANOARROW_TYPE_INTERVAL_DAY_TIME,
             NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
             NANOARROW_TYPE_DECIMAL128,
             NANOARROW_TYPE_DECIMAL256
         ) or (
-            self._buffer_data_type == NANOARROW_TYPE_BINARY and self._element_size_bits != 0
+            self._data_type == NANOARROW_TYPE_BINARY and self._element_size_bits != 0
         ):
             return self._iter_struct()
         else:
@@ -1400,7 +1396,16 @@ cdef class CBufferView:
         else:
             return self._element_size_bits // 8
 
+    # These are special methods, which can't be cdef and we can't
+    # call them from elsewhere. We implement the logic for the buffer
+    # protocol separately so we can re-use it in the CBuffer.
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        self._do_getbuffer(buffer, flags)
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        self._do_releasebuffer(buffer)
+
+    cdef _do_getbuffer(self, Py_buffer *buffer, int flags):
         if self._device is not CDEVICE_CPU:
             raise RuntimeError("CBufferView is not a CPU buffer")
 
@@ -1424,7 +1429,7 @@ cdef class CBufferView:
         buffer.strides = &self._strides
         buffer.suboffsets = NULL
 
-    def __releasebuffer__(self, Py_buffer *buffer):
+    cdef _do_releasebuffer(self, Py_buffer* buffer):
         pass
 
     def __repr__(self):
@@ -1443,6 +1448,8 @@ cdef class CBuffer:
     cdef int _element_size_bits
     cdef char _format[32]
     cdef CDevice _device
+    cdef CBufferView _view
+    cdef int _get_buffer_count
 
     def __cinit__(self):
         self._base = None
@@ -1451,12 +1458,47 @@ cdef class CBuffer:
         self._element_size_bits = 0
         self._device = CDEVICE_CPU
         self._format[0] = 0
+        self._get_buffer_count = 0
+        self._reset_view()
 
     cdef _assert_valid(self):
         if self._ptr == NULL:
             raise RuntimeError("CBuffer is not valid")
 
+    cdef _assert_buffer_count_zero(self):
+        if self._get_buffer_count != 0:
+            raise RuntimeError(
+                f"CBuffer already open ({self._get_buffer_count} ",
+                f"references, {self._writable_get_buffer_count} writable)")
+
+    cdef _reset_view(self):
+        self._view = CBufferView(None, 0, 0, NANOARROW_TYPE_BINARY, 8, self._device)
+
+    cdef _populate_view(self):
+        self._assert_valid()
+        self._assert_buffer_count_zero()
+        self._view = CBufferView(
+            self._base, <uintptr_t>self._ptr.data,
+            self._ptr.size_bytes, self._data_type, self._element_size_bits,
+            self._device
+        )
+
+    cdef _refresh_view_if_needed(self):
+        if self._get_buffer_count > 0:
+            return
+
+        self._assert_valid()
+        cdef int addr_equal = self._ptr.data == self._view._ptr.data.as_uint8
+        cdef int size_equal = self._ptr.size_bytes == self._view._ptr.size_bytes
+        cdef int types_equal = self._data_type == self._view._data_type
+        cdef int element_size_equal = self._element_size_bits == self._view.element_size_bits
+        if addr_equal and size_equal and types_equal and element_size_equal:
+            return
+
+        self._populate_view()
+
     def set_empty(self):
+        self._assert_buffer_count_zero()
         if self._ptr == NULL:
             self._base = alloc_c_buffer(&self._ptr)
         ArrowBufferReset(self._ptr)
@@ -1464,17 +1506,21 @@ cdef class CBuffer:
         self._data_type = NANOARROW_TYPE_BINARY
         self._element_size_bits = 0
         self._device = CDEVICE_CPU
+        self._reset_view()
         return self
 
     def set_pybuffer(self, obj):
+        self._assert_buffer_count_zero()
         if self._ptr == NULL:
             self._base = alloc_c_buffer(&self._ptr)
 
         self.set_format(c_buffer_set_pybuffer(obj, &self._ptr))
         self._device = CDEVICE_CPU
+        self._reset_view()
         return self
 
     def set_format(self, str format):
+        self._assert_buffer_count_zero()
         element_size_bytes, data_type = c_arrow_type_from_format(format)
         self._data_type = data_type
         self._element_size_bits = element_size_bytes * 8
@@ -1483,6 +1529,7 @@ cdef class CBuffer:
         return self
 
     def set_data_type(self, ArrowType type_id, int element_size_bits=0):
+        self._assert_buffer_count_zero()
         self._element_size_bits = c_format_from_arrow_type(
             type_id,
             element_size_bits,
@@ -1508,19 +1555,56 @@ cdef class CBuffer:
         return self._ptr.capacity_bytes
 
     @property
-    def data(self):
-        self._assert_valid()
-        return CBufferView(
-            self._base, <uintptr_t>self._ptr.data,
-            self._ptr.size_bytes, self._data_type, self._element_size_bits,
-            self._device
-        )
+    def data_type(self):
+        return ArrowTypeString(self._data_type).decode("UTF-8")
+
+    @property
+    def data_type_id(self):
+        return self._data_type
+
+    @property
+    def element_size_bits(self):
+        return self._element_size_bits
+
+    @property
+    def item_size(self):
+        self._refresh_view_if_needed()
+        return self._view.item_size
+
+    @property
+    def format(self):
+        return self._format.decode("UTF-8")
+
+    def __len__(self):
+        self._refresh_view_if_needed()
+        return len(self._view)
+
+    def __getitem__(self, k):
+        self._refresh_view_if_needed()
+        return self._view[k]
+
+    def __iter__(self):
+        self._refresh_view_if_needed()
+        return iter(self._view)
+
+    def __getbuffer__(self, Py_buffer* buffer, int flags):
+        self._refresh_view_if_needed()
+        self._view._do_getbuffer(buffer, flags)
+        self._get_buffer_count += 1
+
+    def __releasebuffer__(self, Py_buffer* buffer):
+        if self._get_buffer_count <= 0:
+            raise RuntimeError("CBuffer buffer reference count underflow (releasebuffer)")
+
+        self._view._do_releasebuffer(buffer)
+        self._get_buffer_count -= 1
 
     def __repr__(self):
         if self._ptr == NULL:
             return "CBuffer(<invalid>)"
 
-        return _lib_utils.buffer_repr(self)
+        self._refresh_view_if_needed()
+        return f"CBuffer({_lib_utils.buffer_view_repr(self._view)})"
 
 
 cdef class CBufferBuilder(CBuffer):
@@ -1528,12 +1612,14 @@ cdef class CBufferBuilder(CBuffer):
 
     def reserve_bytes(self, int64_t additional_bytes):
         self._assert_valid()
+        self._assert_buffer_count_zero()
         cdef int code = ArrowBufferReserve(self._ptr, additional_bytes)
         Error.raise_error_not_ok("ArrowBufferReserve()", code)
         return self
 
     def write(self, content):
         self._assert_valid()
+        self._assert_buffer_count_zero()
 
         cdef Py_buffer buffer
         cdef int64_t out

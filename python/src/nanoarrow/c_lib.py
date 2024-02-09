@@ -538,9 +538,8 @@ def _obj_is_iterable(obj):
 # Invokes the buffer protocol on obj
 def _c_array_from_pybuffer(obj) -> CArray:
     buffer = CBuffer().set_pybuffer(obj)
-    view = buffer.data
-    type_id = view.data_type_id
-    element_size_bits = view.element_size_bits
+    type_id = buffer.data_type_id
+    element_size_bits = buffer.element_size_bits
 
     builder = CArrayBuilder.allocate()
 
@@ -560,7 +559,7 @@ def _c_array_from_pybuffer(obj) -> CArray:
         builder.init_from_type(int(type_id))
 
     # Set the length
-    builder.set_length(len(view))
+    builder.set_length(len(buffer))
 
     # Move ownership of the ArrowBuffer wrapped by buffer to builder.buffer(1)
     builder.set_buffer(1, buffer)

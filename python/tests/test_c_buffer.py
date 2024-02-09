@@ -34,7 +34,7 @@ def test_buffer_invalid():
     with pytest.raises(RuntimeError, match="CBuffer is not valid"):
         invalid.capacity_bytes
     with pytest.raises(RuntimeError, match="CBuffer is not valid"):
-        invalid.data
+        memoryview(invalid)
 
     assert repr(invalid) == "CBuffer(<invalid>)"
 
@@ -45,7 +45,7 @@ def test_c_buffer_constructor():
 
     buffer = na.c_buffer(b"1234")
     assert isinstance(buffer, CBuffer)
-    assert bytes(buffer.data) == b"1234"
+    assert bytes(buffer) == b"1234"
 
 
 def test_c_buffer_unsupported_format():
@@ -67,18 +67,17 @@ def test_c_buffer_empty():
     assert empty._addr() == 0
     assert empty.size_bytes == 0
     assert empty.capacity_bytes == 0
-    assert bytes(empty.data) == b""
+    assert bytes(empty) == b""
 
     assert repr(empty) == "CBuffer(binary[0 b] b'')"
 
     # Export it via the Python buffer protocol wrapped in a new CBuffer
-    empty_roundtrip = na.c_buffer(empty.data)
+    empty_roundtrip = na.c_buffer(empty)
     assert empty_roundtrip.size_bytes == 0
     assert empty_roundtrip.capacity_bytes == 0
 
-    view_roundtrip = empty_roundtrip.data
-    assert view_roundtrip._addr() == 0
-    assert view_roundtrip.size_bytes == 0
+    assert empty_roundtrip._addr() == 0
+    assert empty_roundtrip.size_bytes == 0
 
 
 def test_c_buffer_pybuffer():
@@ -87,7 +86,7 @@ def test_c_buffer_pybuffer():
 
     assert buffer.size_bytes == len(data)
     assert buffer.capacity_bytes == 0
-    assert bytes(buffer.data) == b"abcdefghijklmnopqrstuvwxyz"
+    assert bytes(buffer) == b"abcdefghijklmnopqrstuvwxyz"
 
     assert repr(buffer).startswith("CBuffer(uint8[26 b] 97 98")
 
@@ -115,12 +114,11 @@ def test_c_buffer_integer():
         buffer = na.c_buffer(packed).set_format(format)
         assert buffer.size_bytes == len(packed)
 
-        view = buffer.data
-        assert len(view) == 3
-        assert view[0] == 0
-        assert view[1] == 1
-        assert view[2] == 2
-        assert list(view) == [0, 1, 2]
+        assert len(buffer) == 3
+        assert buffer[0] == 0
+        assert buffer[1] == 1
+        assert buffer[2] == 2
+        assert list(buffer) == [0, 1, 2]
 
 
 def test_numpy_c_buffer_numeric():
@@ -144,10 +142,9 @@ def test_numpy_c_buffer_numeric():
     for dtype in dtypes:
         array = np.array([0, 1, 2], dtype)
         buffer = na.c_buffer(array)
-        view = buffer.data
-        assert list(view) == list(array)
+        assert list(buffer) == list(array)
 
-        array_roundtrip = np.array(view, copy=False)
+        array_roundtrip = np.array(buffer, copy=False)
         np.testing.assert_array_equal(array_roundtrip, array)
 
         buffer_roundtrip = na.c_buffer(array_roundtrip)
@@ -165,12 +162,11 @@ def test_c_buffer_float():
         buffer = na.c_buffer(packed).set_format(format)
         assert buffer.size_bytes == len(packed)
 
-        view = buffer.data
-        assert len(view) == 3
-        assert view[0] == 0.0
-        assert view[1] == 1.0
-        assert view[2] == 2.0
-        assert list(view) == [0.0, 1.0, 2.0]
+        assert len(buffer) == 3
+        assert buffer[0] == 0.0
+        assert buffer[1] == 1.0
+        assert buffer[2] == 2.0
+        assert list(buffer) == [0.0, 1.0, 2.0]
 
 
 def test_c_buffer_string():
@@ -178,9 +174,8 @@ def test_c_buffer_string():
     buffer = na.c_buffer(packed).set_format("c")
     assert buffer.size_bytes == len(packed)
 
-    view = buffer.data
-    assert len(view) == len(packed)
-    assert list(view) == [c.encode("UTF-8") for c in "abcdefg"]
+    assert len(buffer) == len(packed)
+    assert list(buffer) == [c.encode("UTF-8") for c in "abcdefg"]
 
 
 def test_c_buffer_fixed_size_binary():
@@ -189,12 +184,11 @@ def test_c_buffer_fixed_size_binary():
     buffer = na.c_buffer(packed).set_format("4s")
     assert buffer.size_bytes == len(packed)
 
-    view = buffer.data
-    assert len(view) == 3
-    assert view[0] == b"abcd"
-    assert view[1] == b"efgh"
-    assert view[2] == b"ijkl"
-    assert list(view) == items
+    assert len(buffer) == 3
+    assert buffer[0] == b"abcd"
+    assert buffer[1] == b"efgh"
+    assert buffer[2] == b"ijkl"
+    assert list(buffer) == items
 
 
 def test_c_buffer_builder():
@@ -214,16 +208,16 @@ def test_c_buffer_builder():
     assert builder.size_bytes == 10
     assert builder.capacity_bytes == 123
 
-    assert bytes(builder.data) == b"abcdefghij"
+    assert bytes(builder) == b"abcdefghij"
 
 
 def test_c_buffer_from_iterable():
     buffer = na.c_buffer([1, 2, 3], na.int32())
     assert buffer.size_bytes == 12
-    assert buffer.data.data_type == "int32"
-    assert buffer.data.element_size_bits == 32
-    assert buffer.data.item_size == 4
-    assert list(buffer.data) == [1, 2, 3]
+    assert buffer.data_type == "int32"
+    assert buffer.element_size_bits == 32
+    assert buffer.item_size == 4
+    assert list(buffer) == [1, 2, 3]
 
     # An Arrow type that does not make sense as a buffer type will error
     with pytest.raises(ValueError, match="Unsupported Arrow type_id"):
@@ -238,27 +232,27 @@ def test_c_buffer_from_iterable():
 def test_c_buffer_from_fixed_size_binary_iterable():
     items = [b"abcd", b"efgh", b"ijkl"]
     buffer = na.c_buffer(items, na.fixed_size_binary(4))
-    assert buffer.data.data_type == "binary"
-    assert buffer.data.element_size_bits == 32
-    assert buffer.data.item_size == 4
-    assert bytes(buffer.data) == b"".join(items)
-    assert list(buffer.data) == items
+    assert buffer.data_type == "binary"
+    assert buffer.element_size_bits == 32
+    assert buffer.item_size == 4
+    assert bytes(buffer) == b"".join(items)
+    assert list(buffer) == items
 
 
 def test_c_buffer_from_day_time_iterable():
     buffer = na.c_buffer([(1, 2), (3, 4), (5, 6)], na.interval_day_time())
-    assert buffer.data.data_type == "interval_day_time"
-    assert buffer.data.element_size_bits == 64
-    assert buffer.data.item_size == 8
-    assert list(buffer.data) == [(1, 2), (3, 4), (5, 6)]
+    assert buffer.data_type == "interval_day_time"
+    assert buffer.element_size_bits == 64
+    assert buffer.item_size == 8
+    assert list(buffer) == [(1, 2), (3, 4), (5, 6)]
 
 
 def test_c_buffer_from_month_day_nano_iterable():
     buffer = na.c_buffer([(1, 2, 3), (4, 5, 6)], na.interval_month_day_nano())
-    assert buffer.data.data_type == "interval_month_day_nano"
-    assert buffer.data.element_size_bits == 128
-    assert buffer.data.item_size == 16
-    assert list(buffer.data) == [(1, 2, 3), (4, 5, 6)]
+    assert buffer.data_type == "interval_month_day_nano"
+    assert buffer.element_size_bits == 128
+    assert buffer.item_size == 16
+    assert list(buffer) == [(1, 2, 3), (4, 5, 6)]
 
 
 def test_c_buffer_from_decimal128_iterable():
@@ -267,10 +261,10 @@ def test_c_buffer_from_decimal128_iterable():
         [bytes64[0:16], bytes64[16:32], bytes64[32:48], bytes64[48:64]],
         na.decimal128(10, 3),
     )
-    assert buffer.data.data_type == "decimal128"
-    assert buffer.data.element_size_bits == 128
-    assert buffer.data.item_size == 16
-    assert list(buffer.data) == [
+    assert buffer.data_type == "decimal128"
+    assert buffer.element_size_bits == 128
+    assert buffer.item_size == 16
+    assert list(buffer) == [
         bytes64[0:16],
         bytes64[16:32],
         bytes64[32:48],
@@ -281,10 +275,10 @@ def test_c_buffer_from_decimal128_iterable():
 def test_c_buffer_from_decimal256_iterable():
     bytes64 = bytes(range(64))
     buffer = na.c_buffer([bytes64[0:32], bytes64[32:64]], na.decimal256(10, 3))
-    assert buffer.data.data_type == "decimal256"
-    assert buffer.data.element_size_bits == 256
-    assert buffer.data.item_size == 32
-    assert list(buffer.data) == [bytes64[0:32], bytes64[32:64]]
+    assert buffer.data_type == "decimal256"
+    assert buffer.element_size_bits == 256
+    assert buffer.item_size == 32
+    assert list(buffer) == [bytes64[0:32], bytes64[32:64]]
 
 
 def test_c_buffer_bitmap_from_iterable():
@@ -292,9 +286,9 @@ def test_c_buffer_bitmap_from_iterable():
     buffer = na.c_buffer([True, False, False, True], na.bool())
     assert "10010000" in repr(buffer)
     assert buffer.size_bytes == 1
-    assert buffer.data.data_type == "bool"
-    assert buffer.data.item_size == 1
-    assert buffer.data.element_size_bits == 1
+    assert buffer.data_type == "bool"
+    assert buffer.item_size == 1
+    assert buffer.element_size_bits == 1
 
     # Check something exactly one byte
     buffer = na.c_buffer([True, False, False, True] * 2, na.bool())

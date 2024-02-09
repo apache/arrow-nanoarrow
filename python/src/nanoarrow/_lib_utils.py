@@ -149,7 +149,7 @@ def buffer_view_repr(buffer_view, max_char_width=80):
     prefix = f"{buffer_view.data_type}"
     prefix += f"[{buffer_view.size_bytes} b]"
 
-    if buffer_view.device_type == 1:
+    if buffer_view.device.device_type == 1:
         return (
             prefix
             + " "
@@ -187,11 +187,6 @@ def buffer_view_preview_cpu(buffer_view, max_char_width):
         return joined[: (max_char_width - 3)] + "..."
     else:
         return joined
-
-
-def buffer_repr(buffer):
-    view_repr = buffer_view_repr(buffer.data)
-    return f"CBuffer({view_repr})"
 
 
 def array_stream_repr(array_stream, max_char_width=80):
