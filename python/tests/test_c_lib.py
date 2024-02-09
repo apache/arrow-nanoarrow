@@ -24,9 +24,9 @@ from nanoarrow.c_lib import (
     CArrayBuilder,
     CBuffer,
     CBufferBuilder,
+    _c_array_from_pybuffer,
     c_array_empty,
     c_array_from_buffers,
-    c_array_from_pybuffer,
     c_buffer,
     c_buffer_from_iterable,
 )
@@ -326,7 +326,7 @@ def test_c_array_builder_init():
 
 def test_c_array_from_pybuffer_uint8():
     data = b"abcdefg"
-    c_array = c_array_from_pybuffer(data)
+    c_array = _c_array_from_pybuffer(data)
     assert c_array.length == len(data)
     assert c_array.null_count == 0
     assert c_array.offset == 0
@@ -339,7 +339,7 @@ def test_c_array_from_pybuffer_uint8():
 def test_c_array_from_pybuffer_string():
     data = b"abcdefg"
     buffer = c_buffer(data).set_format("c")
-    c_array = c_array_from_pybuffer(buffer.data)
+    c_array = _c_array_from_pybuffer(buffer.data)
     assert c_array.length == len(data)
     assert c_array.null_count == 0
     assert c_array.offset == 0
@@ -354,7 +354,7 @@ def test_c_array_from_pybuffer_fixed_size_binary():
     packed = b"".join(items)
     buffer = c_buffer(packed).set_format("4s")
 
-    c_array = c_array_from_pybuffer(buffer.data)
+    c_array = _c_array_from_pybuffer(buffer.data)
     assert c_array.length == len(items)
     assert c_array.null_count == 0
     assert c_array.offset == 0

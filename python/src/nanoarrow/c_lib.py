@@ -25,6 +25,7 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
+import ctypes
 from typing import Any, Iterable, Literal
 
 from nanoarrow._lib import (  # noqa: F401
@@ -133,78 +134,25 @@ def c_array(obj=None, requested_schema=None) -> CArray:
             *obj.__arrow_c_array__(requested_schema=requested_schema_capsule)
         )
 
-    # for pyarrow < 14.0
-    if hasattr(obj, "_export_to_c"):
+    # Try buffer protocol (e.g., numpy arrays or a c_buffer())
+    if _is_buffer(obj):
+        return _c_array_from_pybuffer(obj, requested_schema)
+
+    # Try import of bare capsule
+    if _is_capsule(obj, "arrow_array"):
+        if requested_schema is None:
+            requested_schema = CSchema.allocate()
+        return CArray._import_from_c_capsule(obj, requested_schema.__arrow_c_schema__())
+
+    # Try _export_to_c for Array/RecordBatch objects if pyarrow < 14.0
+    if _is_pyarrow_array(obj):
         out = CArray.allocate(CSchema.allocate())
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
 
-    # Try buffer protocol (e.g., numpy arrays)
-    try:
-        return c_array_from_pybuffer(obj)
-    except Exception as e:
-        raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
-        ) from e
-
-
-def c_array_from_pybuffer(obj) -> CArray:
-    """Create an ArrowArray wrapper from the Python buffer protocol
-
-    Invokes the Python buffer protocol to wrap the buffer represented by obj
-    if possible.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> from nanoarrow.c_lib import c_array_from_pybuffer
-    >>> na.c_array_view(c_array_from_pybuffer(b"1234"))
-    <nanoarrow.c_lib.CArrayView>
-    - storage_type: 'uint8'
-    - length: 4
-    - offset: 0
-    - null_count: 0
-    - buffers[2]:
-      - validity <bool[0 b] >
-      - data <uint8[4 b] 49 50 51 52>
-    - dictionary: NULL
-    - children[0]:
-    """
-
-    buffer = CBuffer().set_pybuffer(obj)
-    view = buffer.data
-    type_id = view.data_type_id
-    element_size_bits = view.element_size_bits
-
-    builder = CArrayBuilder.allocate()
-
-    # Fixed-size binary needs a schema
-    if type_id == CArrowType.BINARY and element_size_bits != 0:
-        c_schema = (
-            CSchemaBuilder.allocate()
-            .set_type_fixed_size(CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8)
-            .finish()
-        )
-        builder.init_from_schema(c_schema)
-    elif type_id == CArrowType.STRING:
-        builder.init_from_type(int(CArrowType.INT8))
-    elif type_id == CArrowType.BINARY:
-        builder.init_from_type(int(CArrowType.UINT8))
-    else:
-        builder.init_from_type(int(type_id))
-
-    # Set the length
-    builder.set_length(len(view))
-
-    # Move ownership of the ArrowBuffer wrapped by buffer to builder.buffer(1)
-    builder.set_buffer(1, buffer)
-
-    # No nulls or offset from a PyBuffer
-    builder.set_null_count(0)
-    builder.set_offset(0)
-
-    return builder.finish()
+    raise TypeError(
+        f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
+    )
 
 
 def c_array_empty(schema) -> CArray:
@@ -582,3 +530,67 @@ def allocate_c_array_stream() -> CArrayStream:
     >>> pa_reader._export_to_c(array_stream._addr())
     """
     return CArrayStream.allocate()
+
+
+# This is a heuristic for detecting a pyarrow.Array or pyarrow.RecordBatch
+# for pyarrow < 14.0.0, after which the the __arrow_c_array__ protocol
+# is sufficient to detect such an array. This check can't use isinstance()
+# to avoid importing pyarrow unnecessarily.
+def _is_pyarrow_array(obj):
+    obj_type = type(obj)
+    if obj_type.__module__ != "pyarrow.lib":
+        return False
+    if not obj_type.__name__.endswith("Array") and obj_type.__name__ != "RecordBatch":
+        return False
+
+    return hasattr(obj, "_export_to_c")
+
+
+def _is_capsule(obj, name):
+    return ctypes.pythonapi.PyCapsule_IsValid(ctypes.py_object(obj), name) == 1
+
+
+def _is_buffer(obj):
+    return ctypes.pythonapi.PyObject_CheckBuffer(ctypes.py_object(obj)) == 1
+
+
+# Invokes the buffer protocol on obj
+def _c_array_from_pybuffer(obj, requested_schema=None) -> CArray:
+    if requested_schema is not None:
+        raise ValueError(
+            "requested_schema not supported for CArray import from buffer protocol"
+        )
+
+    buffer = CBuffer().set_pybuffer(obj)
+    view = buffer.data
+    type_id = view.data_type_id
+    element_size_bits = view.element_size_bits
+
+    builder = CArrayBuilder.allocate()
+
+    # Fixed-size binary needs a schema
+    if type_id == CArrowType.BINARY and element_size_bits != 0:
+        c_schema = (
+            CSchemaBuilder.allocate()
+            .set_type_fixed_size(CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8)
+            .finish()
+        )
+        builder.init_from_schema(c_schema)
+    elif type_id == CArrowType.STRING:
+        builder.init_from_type(int(CArrowType.INT8))
+    elif type_id == CArrowType.BINARY:
+        builder.init_from_type(int(CArrowType.UINT8))
+    else:
+        builder.init_from_type(int(type_id))
+
+    # Set the length
+    builder.set_length(len(view))
+
+    # Move ownership of the ArrowBuffer wrapped by buffer to builder.buffer(1)
+    builder.set_buffer(1, buffer)
+
+    # No nulls or offset from a PyBuffer
+    builder.set_null_count(0)
+    builder.set_offset(0)
+
+    return builder.finish()
