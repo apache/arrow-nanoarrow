@@ -24,8 +24,6 @@ from nanoarrow.c_lib import (
     CArrayBuilder,
     CBuffer,
     CBufferBuilder,
-    c_array_from_buffers,
-    c_buffer,
 )
 
 import nanoarrow as na
@@ -48,9 +46,9 @@ def test_buffer_invalid():
 
 def test_c_buffer_constructor():
     invalid = CBuffer()
-    assert c_buffer(invalid) is invalid
+    assert na.c_buffer(invalid) is invalid
 
-    buffer = c_buffer(b"1234")
+    buffer = na.c_buffer(b"1234")
     assert isinstance(buffer, CBuffer)
     assert bytes(buffer.data) == b"1234"
 
@@ -79,7 +77,7 @@ def test_c_buffer_empty():
     assert repr(empty) == "CBuffer(binary[0 b] b'')"
 
     # Export it via the Python buffer protocol wrapped in a new CBuffer
-    empty_roundtrip = c_buffer(empty.data)
+    empty_roundtrip = na.c_buffer(empty.data)
     assert empty_roundtrip.size_bytes == 0
     assert empty_roundtrip.capacity_bytes == 0
 
@@ -90,7 +88,7 @@ def test_c_buffer_empty():
 
 def test_c_buffer_pybuffer():
     data = bytes(b"abcdefghijklmnopqrstuvwxyz")
-    buffer = c_buffer(data)
+    buffer = na.c_buffer(data)
 
     assert buffer.size_bytes == len(data)
     assert buffer.capacity_bytes == 0
@@ -119,7 +117,7 @@ def test_c_buffer_integer():
         packed = b""
         for value in values:
             packed += struct.pack(format, value)
-        buffer = c_buffer(packed).set_format(format)
+        buffer = na.c_buffer(packed).set_format(format)
         assert buffer.size_bytes == len(packed)
 
         view = buffer.data
@@ -150,14 +148,14 @@ def test_numpy_c_buffer_numeric():
 
     for dtype in dtypes:
         array = np.array([0, 1, 2], dtype)
-        buffer = c_buffer(array)
+        buffer = na.c_buffer(array)
         view = buffer.data
         assert list(view) == list(array)
 
         array_roundtrip = np.array(view, copy=False)
         np.testing.assert_array_equal(array_roundtrip, array)
 
-        buffer_roundtrip = c_buffer(array_roundtrip)
+        buffer_roundtrip = na.c_buffer(array_roundtrip)
         assert buffer_roundtrip._addr() == buffer._addr()
 
 
@@ -169,7 +167,7 @@ def test_c_buffer_float():
         packed = b""
         for value in values:
             packed += struct.pack(format, value)
-        buffer = c_buffer(packed).set_format(format)
+        buffer = na.c_buffer(packed).set_format(format)
         assert buffer.size_bytes == len(packed)
 
         view = buffer.data
@@ -182,7 +180,7 @@ def test_c_buffer_float():
 
 def test_c_buffer_string():
     packed = b"abcdefg"
-    buffer = c_buffer(packed).set_format("c")
+    buffer = na.c_buffer(packed).set_format("c")
     assert buffer.size_bytes == len(packed)
 
     view = buffer.data
@@ -193,7 +191,7 @@ def test_c_buffer_string():
 def test_c_buffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]
     packed = b"".join(items)
-    buffer = c_buffer(packed).set_format("4s")
+    buffer = na.c_buffer(packed).set_format("4s")
     assert buffer.size_bytes == len(packed)
 
     view = buffer.data
@@ -225,7 +223,7 @@ def test_c_buffer_builder():
 
 
 def test_c_buffer_from_iterable():
-    buffer = c_buffer([1, 2, 3], na.int32())
+    buffer = na.c_buffer([1, 2, 3], na.int32())
     assert buffer.size_bytes == 12
     assert buffer.data.data_type == "int32"
     assert buffer.data.element_size_bits == 32
@@ -234,17 +232,17 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type that does not make sense as a buffer type will error
     with pytest.raises(ValueError, match="Unsupported Arrow type_id"):
-        c_buffer([], na.struct([]))
+        na.c_buffer([], na.struct([]))
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
     with pytest.raises(ValueError, match="Can't create buffer from type"):
-        c_buffer([1, 2, 3], na.date32())
+        na.c_buffer([1, 2, 3], na.date32())
 
 
 def test_c_buffer_from_fixed_size_binary_iterable():
     items = [b"abcd", b"efgh", b"ijkl"]
-    buffer = c_buffer(items, na.fixed_size_binary(4))
+    buffer = na.c_buffer(items, na.fixed_size_binary(4))
     assert buffer.data.data_type == "binary"
     assert buffer.data.element_size_bits == 32
     assert buffer.data.item_size == 4
@@ -253,7 +251,7 @@ def test_c_buffer_from_fixed_size_binary_iterable():
 
 
 def test_c_buffer_from_day_time_iterable():
-    buffer = c_buffer([(1, 2), (3, 4), (5, 6)], na.interval_day_time())
+    buffer = na.c_buffer([(1, 2), (3, 4), (5, 6)], na.interval_day_time())
     assert buffer.data.data_type == "interval_day_time"
     assert buffer.data.element_size_bits == 64
     assert buffer.data.item_size == 8
@@ -261,7 +259,7 @@ def test_c_buffer_from_day_time_iterable():
 
 
 def test_c_buffer_from_month_day_nano_iterable():
-    buffer = c_buffer([(1, 2, 3), (4, 5, 6)], na.interval_month_day_nano())
+    buffer = na.c_buffer([(1, 2, 3), (4, 5, 6)], na.interval_month_day_nano())
     assert buffer.data.data_type == "interval_month_day_nano"
     assert buffer.data.element_size_bits == 128
     assert buffer.data.item_size == 16
@@ -270,7 +268,7 @@ def test_c_buffer_from_month_day_nano_iterable():
 
 def test_c_buffer_from_decimal128_iterable():
     bytes64 = bytes(range(64))
-    buffer = c_buffer(
+    buffer = na.c_buffer(
         [bytes64[0:16], bytes64[16:32], bytes64[32:48], bytes64[48:64]],
         na.decimal128(10, 3),
     )
@@ -287,7 +285,7 @@ def test_c_buffer_from_decimal128_iterable():
 
 def test_c_buffer_from_decimal256_iterable():
     bytes64 = bytes(range(64))
-    buffer = c_buffer([bytes64[0:32], bytes64[32:64]], na.decimal256(10, 3))
+    buffer = na.c_buffer([bytes64[0:32], bytes64[32:64]], na.decimal256(10, 3))
     assert buffer.data.data_type == "decimal256"
     assert buffer.data.element_size_bits == 256
     assert buffer.data.item_size == 32
@@ -296,7 +294,7 @@ def test_c_buffer_from_decimal256_iterable():
 
 def test_c_buffer_bitmap_from_iterable():
     # Check something less than one byte
-    buffer = c_buffer([True, False, False, True], na.bool())
+    buffer = na.c_buffer([True, False, False, True], na.bool())
     assert "10010000" in repr(buffer)
     assert buffer.size_bytes == 1
     assert buffer.data.data_type == "bool"
@@ -304,12 +302,12 @@ def test_c_buffer_bitmap_from_iterable():
     assert buffer.data.element_size_bits == 1
 
     # Check something exactly one byte
-    buffer = c_buffer([True, False, False, True] * 2, na.bool())
+    buffer = na.c_buffer([True, False, False, True] * 2, na.bool())
     assert "10011001" in repr(buffer)
     assert buffer.size_bytes == 1
 
     # Check something more than one byte
-    buffer = c_buffer([True, False, False, True] * 3, na.bool())
+    buffer = na.c_buffer([True, False, False, True] * 3, na.bool())
     assert "1001100110010000" in repr(buffer)
     assert buffer.size_bytes == 2
 
@@ -415,7 +413,7 @@ def test_c_array_from_pybuffer_uint8():
 
 def test_c_array_from_pybuffer_string():
     data = b"abcdefg"
-    buffer = c_buffer(data).set_format("c")
+    buffer = na.c_buffer(data).set_format("c")
     c_array = na.c_array(buffer.data)
     assert c_array.length == len(data)
     assert c_array.null_count == 0
@@ -429,7 +427,7 @@ def test_c_array_from_pybuffer_string():
 def test_c_array_from_pybuffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]
     packed = b"".join(items)
-    buffer = c_buffer(packed).set_format("4s")
+    buffer = na.c_buffer(packed).set_format("4s")
 
     c_array = na.c_array(buffer.data)
     assert c_array.length == len(items)
@@ -484,7 +482,7 @@ def test_c_array_from_iterable_error():
 
 
 def test_c_array_from_buffers():
-    c_array = c_array_from_buffers(na.uint8(), 5, [None, b"12345"])
+    c_array = na.c_array_from_buffers(na.uint8(), 5, [None, b"12345"])
     assert c_array.length == 5
     assert c_array.null_count == 0
     assert c_array.offset == 0
@@ -497,31 +495,33 @@ def test_c_array_from_buffers():
 
 def test_c_array_from_buffers_null_count():
     # Ensure null_count is not calculated if explicitly set
-    c_array = c_array_from_buffers(na.uint8(), 7, [b"\xff", b"12345678"], null_count=1)
+    c_array = na.c_array_from_buffers(
+        na.uint8(), 7, [b"\xff", b"12345678"], null_count=1
+    )
     assert c_array.null_count == 1
 
     # Zero nulls, explicit bitmap
-    c_array = c_array_from_buffers(na.uint8(), 8, [b"\xff", b"12345678"])
+    c_array = na.c_array_from_buffers(na.uint8(), 8, [b"\xff", b"12345678"])
     assert c_array.null_count == 0
 
     # All nulls, explicit bitmap
-    c_array = c_array_from_buffers(na.uint8(), 8, [b"\x00", b"12345678"])
+    c_array = na.c_array_from_buffers(na.uint8(), 8, [b"\x00", b"12345678"])
     assert c_array.null_count == 8
 
     # Ensure offset is considered in null count calculation
-    c_array = c_array_from_buffers(na.uint8(), 7, [b"\xff", b"12345678"], offset=1)
+    c_array = na.c_array_from_buffers(na.uint8(), 7, [b"\xff", b"12345678"], offset=1)
     assert c_array.null_count == 0
 
-    c_array = c_array_from_buffers(na.uint8(), 7, [b"\x00", b"12345678"], offset=1)
+    c_array = na.c_array_from_buffers(na.uint8(), 7, [b"\x00", b"12345678"], offset=1)
     assert c_array.null_count == 7
 
     # Ensure we don't access out-of-bounds memory to calculate the bitmap
     with pytest.raises(ValueError, match="Expected validity bitmap >= 2 bytes"):
-        c_array_from_buffers(na.uint8(), 9, [b"\x00", b"123456789"])
+        na.c_array_from_buffers(na.uint8(), 9, [b"\x00", b"123456789"])
 
 
 def test_c_array_from_buffers_recursive():
-    c_array = c_array_from_buffers(
+    c_array = na.c_array_from_buffers(
         na.struct([na.uint8()]), 5, [None], children=[b"12345"]
     )
     assert c_array.length == 5
@@ -531,7 +531,7 @@ def test_c_array_from_buffers_recursive():
     assert bytes(array_view.child(0).buffer(1)) == b"12345"
 
     with pytest.raises(ValueError, match="Expected 1 children but got 0"):
-        c_array_from_buffers(na.struct([na.uint8()]), 5, [], children=[])
+        na.c_array_from_buffers(na.struct([na.uint8()]), 5, [], children=[])
 
 
 def test_c_array_from_buffers_validation():
@@ -541,11 +541,11 @@ def test_c_array_from_buffers_validation():
             NanoarrowException,
             match="Expected int32 array buffer 1 to have size >= 4 bytes",
         ):
-            c_array_from_buffers(
+            na.c_array_from_buffers(
                 na.int32(), 1, [None, b"123"], validation_level=validation_level
             )
 
-    c_array = c_array_from_buffers(
+    c_array = na.c_array_from_buffers(
         na.int32(), 1, [None, b"123"], validation_level="none"
     )
     assert c_array.length == 1
@@ -556,18 +556,18 @@ def test_c_array_from_buffers_validation():
             NanoarrowException,
             match="Expected string array buffer 2 to have size >= 2 bytes",
         ):
-            c_array_from_buffers(
+            na.c_array_from_buffers(
                 na.string(),
                 2,
-                [None, c_buffer([0, 1, 2], na.int32()), c_buffer(b"a")],
+                [None, na.c_buffer([0, 1, 2], na.int32()), na.c_buffer(b"a")],
                 validation_level=validation_level,
             )
 
     for validation_level in ("minimal", "none"):
-        c_array = c_array_from_buffers(
+        c_array = na.c_array_from_buffers(
             na.string(),
             2,
-            [None, c_buffer([0, 1, 2], na.int32()), c_buffer(b"a")],
+            [None, na.c_buffer([0, 1, 2], na.int32()), na.c_buffer(b"a")],
             validation_level=validation_level,
         )
         assert c_array.length == 2
@@ -577,18 +577,18 @@ def test_c_array_from_buffers_validation():
         NanoarrowException,
         match="Expected element size >= 0",
     ):
-        c_array_from_buffers(
+        na.c_array_from_buffers(
             na.string(),
             2,
-            [None, c_buffer([0, 100, 2], na.int32()), c_buffer(b"ab")],
+            [None, na.c_buffer([0, 100, 2], na.int32()), na.c_buffer(b"ab")],
             validation_level="full",
         )
 
     for validation_level in ("minimal", "none"):
-        c_array = c_array_from_buffers(
+        c_array = na.c_array_from_buffers(
             na.string(),
             2,
-            [None, c_buffer([0, 100, 2], na.int32()), c_buffer(b"ab")],
+            [None, na.c_buffer([0, 100, 2], na.int32()), na.c_buffer(b"ab")],
             validation_level=validation_level,
         )
         assert c_array.length == 2
