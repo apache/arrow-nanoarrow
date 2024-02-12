@@ -49,6 +49,12 @@ endif()
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(coverage_config INTERFACE)
 
+# Avoids a warning about timestamps on downloaded files (prefer new policy
+# if available))
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
+  cmake_policy(SET CMP0135 NEW)
+endif()
+
 configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
 
 if(NANOARROW_BUNDLE)
@@ -157,13 +163,7 @@ endif()
 
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
-  include(FetchContent)
-
-  fetchcontent_declare(nlohmann_json
-                       URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
-                       URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
-  )
-  fetchcontent_makeavailable(nlohmann_json)
+  add_subdirectory("thirdparty/nlohmann_json")
 
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
@@ -183,6 +183,13 @@ if(NANOARROW_BUILD_TESTS)
   message(STATUS "Arrow version: ${ARROW_VERSION}")
   message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
+  # Give caller the option to link a static version of Arrow C++
+  if(NANOARROW_ARROW_STATIC)
+    set(NANOARROW_ARROW_TARGET arrow_static)
+  else()
+    set(NANOARROW_ARROW_TARGET arrow_shared)
+  endif()
+
   # Arrow >= 10.0.0 requires C++17; GTest requires C++11.
   # Leave the option open to use an older version of Arrow
   # to make it easier to test on old Linux (e.g., Centos7)
@@ -193,34 +200,7 @@ if(NANOARROW_BUILD_TESTS)
   endif()
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-  # Avoids a warning about timestamps on downloaded files (prefer new policy
-  # if available))
-  if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
-    cmake_policy(SET CMP0135 NEW)
-  endif()
-
-  # Give caller the option to link a static version of Arrow C++
-  if(NANOARROW_ARROW_STATIC)
-    set(NANOARROW_ARROW_TARGET arrow_static)
-  else()
-    set(NANOARROW_ARROW_TARGET arrow_shared)
-  endif()
-
-  # Use an old version of googletest if we have to to support gcc 4.8
-  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION
-                                                 VERSION_GREATER_EQUAL "5.0.0")
-    fetchcontent_declare(googletest
-                         URL https://github.com/google/googletest/archive/release-1.11.0.zip
-                         URL_HASH SHA256=353571c2440176ded91c2de6d6cd88ddd41401d14692ec1f99e35d013feda55a
-    )
-  else()
-    fetchcontent_declare(googletest
-                         URL https://github.com/google/googletest/archive/release-1.10.0.zip
-                         URL_HASH SHA256=94c634d499558a76fa649edb13721dce6e98fb1e7018dfaeba3cd7a083945e91
-    )
-  endif()
-
-  fetchcontent_makeavailable(googletest)
+  add_subdirectory("thirdparty/googletest")
 
   add_executable(utils_test src/nanoarrow/utils_test.cc)
   add_executable(buffer_test src/nanoarrow/buffer_test.cc)
