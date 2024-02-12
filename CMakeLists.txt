@@ -259,7 +259,7 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 10)
 endif()
 
-if (NANOARROW_BUILD_BENCHMARKS)
+if(NANOARROW_BUILD_BENCHMARKS)
   add_subdirectory("thirdparty/benchmark")
 
 endif()
