@@ -32,6 +32,7 @@ set(NANOARROW_VERSION_MINOR "${nanoarrow_VERSION_MINOR}")
 set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
+option(NANOARROW_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(NANOARROW_BUILD_INTEGRATION_TESTS
        "Build cross-implementation Arrow integration tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
@@ -256,4 +257,9 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 10)
+endif()
+
+if (NANOARROW_BUILD_BENCHMARKS)
+  add_subdirectory("thirdparty/benchmark")
+
 endif()
