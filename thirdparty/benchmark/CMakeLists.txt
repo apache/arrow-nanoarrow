@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set(BENCHMARK_ENABLE_TESTING OFF)
+
 fetchcontent_declare(benchmark
                      URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.zip
                      URL_HASH SHA256=abfc22e33e3594d0edf8eaddaf4d84a2ffc491ad74b6a7edc6e7a608f690e691
