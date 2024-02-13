@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+include(FetchContent)
+
 # Use an old version of googletest if we have to to support gcc 4.8
 if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION
                                                VERSION_GREATER_EQUAL "5.0.0")

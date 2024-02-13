@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+include(FetchContent)
+
 set(BENCHMARK_ENABLE_TESTING OFF)
 
 fetchcontent_declare(benchmark
