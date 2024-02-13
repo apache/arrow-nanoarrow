@@ -30,7 +30,7 @@ on:
       - 'src/**/*_benchmark.cc'
 
 jobs:
-  test-c:
+  benchmarks:
 
     runs-on: ubuntu-latest
 
@@ -39,6 +39,7 @@ jobs:
 
     - name: Build nanoarrow
       run: |
+        mkdir build && cd build
         cmake .. -DNANOARROW_BUILD_BENCHMARKS=ON
         cmake --build .
 
