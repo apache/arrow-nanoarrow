@@ -47,10 +47,7 @@ jobs:
           - {label: bundled-cpp-build, cmake_args: "-DNANOARROW_BUNDLE=ON -DNANOARROW_BUNDLE_AS_CPP=ON"}
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
