@@ -41,17 +41,13 @@ jobs:
       matrix:
         config:
           - {label: default-build, cmake_args: "-DCMAKE_BUILD_TYPE=Debug"}
-          - {label: benchmarks, cmake_args: "-DNANOARROW_BUILD_BENCHMARKS=ON"}
           - {label: release-build}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
           - {label: bundled-cpp-build, cmake_args: "-DNANOARROW_BUNDLE=ON -DNANOARROW_BUNDLE_AS_CPP=ON"}
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -95,14 +91,6 @@ jobs:
           sudo ldconfig
           cd build
           ctest -T test --output-on-failure .
-
-      - name: Run benchmarks
-        run: |
-          cd build
-          for f in $(ls | grep -e "_benchmark"); do
-            echo "::group::$(basename ${f})"
-            ./${f}
-          done
 
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build'
