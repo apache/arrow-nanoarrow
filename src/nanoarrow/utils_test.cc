@@ -18,7 +18,6 @@
 #include <cstring>
 #include <string>
 
-#include <arrow/memory_pool.h>
 #include <arrow/util/decimal.h>
 #include <gtest/gtest.h>
 
@@ -97,28 +96,44 @@ TEST(ErrorTest, ErrorTestAssertNotOkDebug) {
 TEST(ErrorTest, ErrorTestAssertNotOkRelease) { NANOARROW_ASSERT_OK(EINVAL); }
 #endif
 
+class CustomMemoryPool {
+ public:
+  CustomMemoryPool() : bytes_allocated(0), num_reallocations(0), num_frees(0) {}
+  int64_t bytes_allocated;
+  int64_t num_reallocations;
+  int64_t num_frees;
+
+  static CustomMemoryPool* GetInstance() {
+    static CustomMemoryPool pool;
+    return &pool;
+  }
+};
+
 static uint8_t* MemoryPoolReallocate(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                      int64_t old_size, int64_t new_size) {
-  MemoryPool* pool = reinterpret_cast<MemoryPool*>(allocator->private_data);
-  uint8_t* out = ptr;
-  if (pool->Reallocate(old_size, new_size, &out).ok()) {
-    return out;
-  } else {
-    return nullptr;
+  auto pool = reinterpret_cast<CustomMemoryPool*>(allocator->private_data);
+  pool->bytes_allocated -= old_size;
+  pool->num_reallocations += 1;
+
+  void* out = ArrowRealloc(ptr, new_size);
+  if (out != nullptr) {
+    pool->bytes_allocated += new_size;
   }
+
+  return reinterpret_cast<uint8_t*>(out);
 }
 
 static void MemoryPoolFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                            int64_t size) {
-  MemoryPool* pool = reinterpret_cast<MemoryPool*>(allocator->private_data);
-  pool->Free(ptr, size);
+  auto pool = reinterpret_cast<CustomMemoryPool*>(allocator->private_data);
+  pool->bytes_allocated -= size;
+  ArrowFree(ptr);
 }
 
-static void MemoryPoolAllocatorInit(MemoryPool* pool,
-                                    struct ArrowBufferAllocator* allocator) {
+static void MemoryPoolAllocatorInit(struct ArrowBufferAllocator* allocator) {
   allocator->reallocate = &MemoryPoolReallocate;
   allocator->free = &MemoryPoolFree;
-  allocator->private_data = pool;
+  allocator->private_data = CustomMemoryPool::GetInstance();
 }
 
 TEST(AllocatorTest, AllocatorTestDefault) {
@@ -146,6 +161,7 @@ TEST(AllocatorTest, AllocatorTestDefault) {
 // that keeps the buffer from being garbage collected (e.g., an SEXP in R)
 struct CustomFreeData {
   void* pointer_proxy;
+  int64_t num_frees;
 };
 
 static void CustomFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
@@ -153,39 +169,71 @@ static void CustomFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
   auto data = reinterpret_cast<struct CustomFreeData*>(allocator->private_data);
   ArrowFree(data->pointer_proxy);
   data->pointer_proxy = nullptr;
+  data->num_frees++;
 }
 
 TEST(AllocatorTest, AllocatorTestDeallocator) {
   struct CustomFreeData data;
-  data.pointer_proxy = reinterpret_cast<uint8_t*>(ArrowMalloc(12));
+  data.pointer_proxy = nullptr;
+  data.num_frees = 0;
 
-  struct ArrowBufferAllocator deallocator = ArrowBufferDeallocator(&CustomFree, &data);
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
 
-  EXPECT_EQ(deallocator.reallocate(&deallocator, nullptr, 0, 12), nullptr);
-  EXPECT_EQ(deallocator.reallocate(&deallocator, nullptr, 0, 12), nullptr);
-  deallocator.free(&deallocator, nullptr, 12);
-  EXPECT_EQ(data.pointer_proxy, nullptr);
+  // Check that a zero-size, nullptr buffer is freed exactly once
+  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, ArrowBufferDeallocator(&CustomFree, &data)),
+            NANOARROW_OK);
+  ASSERT_EQ(buffer.allocator.private_data, &data);
+
+  ArrowBufferReset(&buffer);
+  EXPECT_EQ(data.num_frees, 1);
+  EXPECT_NE(buffer.allocator.private_data, &data);
+
+  // Check reallocate behaviour
+  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, ArrowBufferDeallocator(&CustomFree, &data)),
+            NANOARROW_OK);
+  data.num_frees = 0;
+
+  // In debug mode, an attempt to reallocate will crash with a message;
+  // in release mode it should result in ENOMEM.
+#if !defined(NANOARROW_DEBUG)
+  ASSERT_EQ(ArrowBufferAppendUInt8(&buffer, 0), ENOMEM);
+#endif
+  //  Either way we should get exactly one free
+  ArrowBufferReset(&buffer);
+  EXPECT_EQ(data.num_frees, 1);
+
+  // Check wrapping an actual buffer
+  ASSERT_EQ(ArrowBufferSetAllocator(&buffer, ArrowBufferDeallocator(&CustomFree, &data)),
+            NANOARROW_OK);
+  buffer.data = reinterpret_cast<uint8_t*>(ArrowMalloc(12));
+  buffer.size_bytes = 12;
+  data.pointer_proxy = buffer.data;
+  data.num_frees = 0;
+
+  ArrowBufferReset(&buffer);
+  EXPECT_EQ(data.num_frees, 1);
 }
 
 TEST(AllocatorTest, AllocatorTestMemoryPool) {
   struct ArrowBufferAllocator arrow_allocator;
-  MemoryPoolAllocatorInit(system_memory_pool(), &arrow_allocator);
+  MemoryPoolAllocatorInit(&arrow_allocator);
 
-  int64_t allocated0 = system_memory_pool()->bytes_allocated();
+  int64_t allocated0 = CustomMemoryPool::GetInstance()->bytes_allocated;
 
   uint8_t* buffer = arrow_allocator.reallocate(&arrow_allocator, nullptr, 0, 10);
-  EXPECT_EQ(system_memory_pool()->bytes_allocated() - allocated0, 10);
+  EXPECT_EQ(CustomMemoryPool::GetInstance()->bytes_allocated - allocated0, 10);
   memset(buffer, 0, 10);
 
   const char* test_str = "abcdefg";
   memcpy(buffer, test_str, strlen(test_str) + 1);
 
   buffer = arrow_allocator.reallocate(&arrow_allocator, buffer, 10, 100);
-  EXPECT_EQ(system_memory_pool()->bytes_allocated() - allocated0, 100);
+  EXPECT_EQ(CustomMemoryPool::GetInstance()->bytes_allocated - allocated0, 100);
   EXPECT_STREQ(reinterpret_cast<const char*>(buffer), test_str);
 
   arrow_allocator.free(&arrow_allocator, buffer, 100);
-  EXPECT_EQ(system_memory_pool()->bytes_allocated(), allocated0);
+  EXPECT_EQ(CustomMemoryPool::GetInstance()->bytes_allocated, allocated0);
 
   buffer = arrow_allocator.reallocate(&arrow_allocator, nullptr, 0,
                                       std::numeric_limits<int64_t>::max());
