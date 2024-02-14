@@ -21,10 +21,15 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "nanoarrow.h"
+
+#define NANOARROW_DEBUG_PRESERVE
 
 // Without this infrastructure, it's possible to check that all objects
 // are released by running devtools::test(); gc() in a fresh session and
@@ -109,8 +114,12 @@ class PreservedSEXPRegistry {
 #if defined(NANOARROW_DEBUG_PRESERVE)
       if (tracebacks_.find(obj) != tracebacks_.end()) {
         tracebacks_[obj].first--;
-        if (tracebacks_[obj].first == 0) {
-          tracebacks_.erase(obj);
+
+        // Check for a situation where we've released more than we've preserved
+        if (tracebacks_[obj].first < 0) {
+          Rprintf("----%p---- (%ld reference(s) remaining)\nFirst preserved at\n%s\n\n",
+                  obj, tracebacks_[obj].first, tracebacks_[obj].second.c_str());
+          Rprintf("----%p----");
         }
       }
 #endif
@@ -190,6 +199,84 @@ extern "C" int64_t nanoarrow_preserved_empty(void) {
   } catch (std::exception& e) {
     return 0;
   }
+}
+
+static void ReleaseSharedArray(ArrowArray* array) {
+  auto shared_array = reinterpret_cast<std::shared_ptr<ArrowArray>*>(array->private_data);
+  delete shared_array;
+  array->release = nullptr;
+}
+
+extern "C" void nanoarrow_array_shallow_copy(struct ArrowArray* src,
+                                             struct ArrowArray* dst) {
+  auto shared_array =
+      std::shared_ptr<ArrowArray>(new ArrowArray(), [](ArrowArray* value) {
+        if (value && value->release) {
+          value->release(value);
+        }
+      });
+
+  ArrowArrayMove(src, shared_array.get());
+
+  std::memcpy(shared_array.get(), src, sizeof(ArrowArray));
+  src->private_data = new std::shared_ptr<ArrowArray>(shared_array);
+  src->release = &ReleaseSharedArray;
+
+  if (dst != nullptr) {
+    std::memcpy(shared_array.get(), dst, sizeof(ArrowArray));
+    dst->private_data = new std::shared_ptr<ArrowArray>(shared_array);
+    dst->release = &ReleaseSharedArray;
+  }
+}
+
+static void DeallocateBorrowedBuffer(ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                     int64_t size) {
+  auto shared_array =
+      reinterpret_cast<std::shared_ptr<ArrowArray>*>(allocator->private_data);
+  delete shared_array;
+}
+
+static ArrowErrorCode BorrowBuffer(const std::shared_ptr<ArrowArray>& shared_array,
+                                   const void* addr, ArrowBuffer* buffer) {
+  NANOARROW_RETURN_NOT_OK(ArrowBufferSetAllocator(
+      buffer, ArrowBufferDeallocator(&DeallocateBorrowedBuffer,
+                                     new std::shared_ptr<ArrowArray>(shared_array))));
+  buffer->data = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(addr));
+  buffer->size_bytes = 0;
+  buffer->capacity_bytes = 0;
+  return NANOARROW_OK;
+}
+
+extern "C" ArrowErrorCode nanoarrow_array_editable_copy(struct ArrowArray* src,
+                                                        struct ArrowArray* dst) {
+  nanoarrow_array_shallow_copy(src, nullptr);
+  auto shared_array = std::shared_ptr<ArrowArray>(
+      *reinterpret_cast<std::shared_ptr<ArrowArray>*>(src->private_data));
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(dst, NANOARROW_TYPE_UNINITIALIZED));
+
+  for (int64_t i = 0; i < src->n_buffers; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        BorrowBuffer(shared_array, src->buffers[i], ArrowArrayBuffer(dst, i)));
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateChildren(dst, src->n_children));
+  for (int64_t i = 0; i < src->n_children; i++) {
+    nanoarrow_array_shallow_copy(src->children[i], dst->children[i]);
+  }
+
+  if (src->dictionary) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
+    nanoarrow_array_shallow_copy(src->dictionary, dst->dictionary);
+  }
+
+  dst->length = src->length;
+  dst->offset = src->offset;
+  dst->n_buffers = src->n_buffers;
+
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayFinishBuilding(dst, NANOARROW_VALIDATION_LEVEL_NONE, nullptr));
+  return NANOARROW_OK;
 }
 
 extern "C" int nanoarrow_is_main_thread(void) {

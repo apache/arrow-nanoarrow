@@ -51,7 +51,8 @@ static inline void buffer_borrowed(struct ArrowBuffer* buffer, const void* addr,
     return;
   }
 
-  int result = ArrowBufferSetAllocator(buffer, ArrowBufferDeallocator(&nanoarrow_sexp_deallocator, shelter));
+  int result = ArrowBufferSetAllocator(
+      buffer, ArrowBufferDeallocator(&nanoarrow_sexp_deallocator, shelter));
   if (result != NANOARROW_OK) {
     Rf_error("Failed to set buffer deallocator");
   }

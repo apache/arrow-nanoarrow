@@ -34,6 +34,7 @@ extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
 extern SEXP nanoarrow_c_array_list_total_length(SEXP list_of_array_xptr);
 extern SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr);
 extern SEXP nanoarrow_c_array_init(SEXP schema_xptr);
+extern SEXP nanoarrow_c_array_editable_copy(SEXP array_xptr);
 extern SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp);
 extern SEXP nanoarrow_c_array_set_null_count(SEXP array_xptr, SEXP null_count_sexp);
 extern SEXP nanoarrow_c_array_set_offset(SEXP array_xptr, SEXP offset_sexp);
@@ -46,7 +47,7 @@ extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr,
 extern SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr);
 extern SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr,
                                     SEXP recursive_sexp);
-extern SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_sexp);
+extern SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_xptr);
 extern SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp);
 extern SEXP nanoarrow_c_buffer_append(SEXP buffer_xptr, SEXP new_buffer_xptr);
 extern SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr);
@@ -107,6 +108,7 @@ static const R_CallMethodDef CallEntries[] = {
      1},
     {"nanoarrow_c_array_view", (DL_FUNC)&nanoarrow_c_array_view, 2},
     {"nanoarrow_c_array_init", (DL_FUNC)&nanoarrow_c_array_init, 1},
+    {"nanoarrow_c_array_editable_copy", (DL_FUNC)&nanoarrow_c_array_editable_copy, 1},
     {"nanoarrow_c_array_set_length", (DL_FUNC)&nanoarrow_c_array_set_length, 2},
     {"nanoarrow_c_array_set_null_count", (DL_FUNC)&nanoarrow_c_array_set_null_count, 2},
     {"nanoarrow_c_array_set_offset", (DL_FUNC)&nanoarrow_c_array_set_offset, 2},

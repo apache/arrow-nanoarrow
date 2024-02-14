@@ -27,6 +27,11 @@
 #include "schema.h"
 #include "util.h"
 
+void nanoarrow_release_sexp_wrapped_array(struct ArrowArray* array) {
+  nanoarrow_release_sexp((SEXP)array->private_data);
+  array->release = NULL;
+}
+
 SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
   struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
 
@@ -42,6 +47,23 @@ SEXP nanoarrow_c_array_init(SEXP schema_xptr) {
   array_xptr_set_schema(array_xptr, schema_xptr);
   UNPROTECT(1);
   return array_xptr;
+}
+
+ArrowErrorCode nanoarrow_array_editable_copy(struct ArrowArray* src,
+                                                        struct ArrowArray* dst);
+
+SEXP nanoarrow_c_array_editable_copy(SEXP array_xptr) {
+  SEXP out_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+  struct ArrowArray* out = nanoarrow_output_array_from_xptr(out_xptr);
+
+  int result = nanoarrow_array_editable_copy(array, out);
+  if (result != NANOARROW_OK) {
+    Rf_error("nanoarrow_array_editable_copy() failed");
+  }
+
+  UNPROTECT(1);
+  return out_xptr;
 }
 
 SEXP nanoarrow_c_array_set_length(SEXP array_xptr, SEXP length_sexp) {
