@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "nanoarrow.h"
+#include "nanoarrow/nanoarrow_types.h"
 
 const char* ArrowNanoarrowVersion(void) { return NANOARROW_VERSION; }
 
