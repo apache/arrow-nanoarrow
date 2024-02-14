@@ -46,10 +46,19 @@ static inline SEXP buffer_owning_xptr(void) {
 // the buffer is no longer needed.
 static inline void buffer_borrowed(struct ArrowBuffer* buffer, const void* addr,
                                    int64_t size_bytes, SEXP shelter) {
-  buffer->allocator = ArrowBufferDeallocator(&nanoarrow_sexp_deallocator, shelter);
+  ArrowBufferReset(buffer);
+  if (addr == NULL) {
+    return;
+  }
+
+  int result = ArrowBufferSetAllocator(buffer, ArrowBufferDeallocator(&nanoarrow_sexp_deallocator, shelter));
+  if (result != NANOARROW_OK) {
+    Rf_error("Failed to set buffer deallocator");
+  }
+
   buffer->data = (uint8_t*)addr;
   buffer->size_bytes = size_bytes;
-  buffer->capacity_bytes = size_bytes;
+  buffer->capacity_bytes = 0;
   nanoarrow_preserve_sexp(shelter);
 }
 

@@ -413,11 +413,14 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-    case NANOARROW_TYPE_LARGE_STRING:
-      if (ArrowArrayBuffer(array, 2)->data == NULL) {
-        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(ArrowArrayBuffer(array, 2), 0));
+    case NANOARROW_TYPE_LARGE_STRING: {
+      struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 2);
+      if (data_buffer->data == NULL) {
+        ArrowBufferReset(data_buffer);
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(data_buffer, 0));
       }
       break;
+    }
     default:
       break;
   }

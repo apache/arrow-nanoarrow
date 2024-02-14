@@ -97,8 +97,8 @@ SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp) {
     Rf_error("length(array$buffers) must be <= 3");
   }
 
-  // Release any buffers that aren't about to be replaced
-  for (int64_t i = n_buffers; i < array->n_buffers; i++) {
+  // Release existing buffers
+  for (int64_t i = n_buffers; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     ArrowBufferReset(ArrowArrayBuffer(array, i));
   }
 
@@ -106,23 +106,10 @@ SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp) {
   for (int64_t i = 0; i < n_buffers; i++) {
     SEXP buffer_xptr = VECTOR_ELT(buffers_sexp, i);
     struct ArrowBuffer* src = buffer_from_xptr(buffer_xptr);
+    struct ArrowBuffer* dst = ArrowArrayBuffer(array, i);
 
-    // We can't necessarily ArrowBufferMove(src) because that buffer might
-    // have been pointed at by something else. So, we do this slightly awkward
-    // dance to make sure buffer_xptr stays valid after this call.
-    SEXP buffer_xptr_clone =
-        PROTECT(buffer_borrowed_xptr(src->data, src->size_bytes, buffer_xptr));
-    struct ArrowBuffer* src_clone =
-        (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr_clone);
-
-    // Release whatever buffer is currently there and replace it with src_clone
-    ArrowBufferReset(ArrowArrayBuffer(array, i));
-    int result = ArrowArraySetBuffer(array, i, src_clone);
-    if (result != NANOARROW_OK) {
-      Rf_error("ArrowArraySetBuffer() failed");
-    }
-
-    UNPROTECT(1);
+    // Export a shallow copy of buffer_xptr into dst
+    buffer_borrowed(dst, src->data, src->size_bytes, buffer_xptr);
   }
 
   return R_NilValue;
