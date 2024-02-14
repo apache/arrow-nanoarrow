@@ -276,7 +276,7 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
   # children are modifiable; however, it's a shallow copy in the sense that
   # none of the buffers are copied.
   schema <- .Call(nanoarrow_c_infer_schema_array, array)
-  array_copy <- array_shallow_copy(array, schema, validate = validate)
+  array_copy <- array_shallow_copy2(array, schema, validate = validate)
 
   for (i in seq_along(new_values)) {
     nm <- new_names[i]
@@ -293,7 +293,7 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
       },
       children = {
         value <- lapply(value, as_nanoarrow_array)
-        value_copy <- lapply(value, array_shallow_copy, validate = validate)
+        value_copy <- lapply(value, array_shallow_copy2, validate = validate)
         .Call(nanoarrow_c_array_set_children, array_copy, value_copy)
 
         if (!is.null(schema)) {
@@ -307,7 +307,7 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
       dictionary = {
         if (!is.null(value)) {
           value <- as_nanoarrow_array(value)
-          value_copy <- array_shallow_copy(value, validate = validate)
+          value_copy <- array_shallow_copy2(value, validate = validate)
         } else {
           value_copy <- NULL
         }
@@ -340,6 +340,12 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
     nanoarrow_array_set_schema(array_copy, schema, validate = validate)
   }
 
+  array_copy
+}
+
+array_shallow_copy2 <- function(array, schema = NULL, validate = TRUE) {
+  array_copy <- .Call(nanoarrow_c_array_editable_copy, array)
+  schema <- schema %||% .Call(nanoarrow_c_infer_schema_array, array)
   array_copy
 }
 
