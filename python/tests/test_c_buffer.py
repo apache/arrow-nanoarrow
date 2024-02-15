@@ -97,9 +97,7 @@ def test_c_buffer_unsupported_type():
 
 
 def test_c_buffer_missing_requested_schema():
-    with pytest.raises(
-        ValueError, match="CBuffer from iterable requires requested_schema"
-    ):
+    with pytest.raises(ValueError, match="CBuffer from iterable requires schema"):
         na.c_buffer([1, 2, 3])
 
 

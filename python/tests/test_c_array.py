@@ -181,7 +181,7 @@ def test_c_array_from_iterable_non_empty():
 
 
 def test_c_array_from_iterable_error():
-    with pytest.raises(ValueError, match="requested_schema is required"):
+    with pytest.raises(ValueError, match="schema is required"):
         na.c_array([1, 2, 3])
 
 

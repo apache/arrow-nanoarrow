@@ -83,7 +83,7 @@ def test_array():
 
 def test_array_requested_schema():
     pa_arr = pa.array([1, 2, 3], pa.int32())
-    array = na.c_array(pa_arr, requested_schema=pa.int64())
+    array = na.c_array(pa_arr, schema=pa.int64())
     assert array.schema.format == "l"
 
 
@@ -118,7 +118,7 @@ def test_array_stream_requested_schema():
 
     # Not implemented in pyarrow yet
     with pytest.raises(NotImplementedError):
-        na.c_array_stream(pa_table, requested_schema=schema2)
+        na.c_array_stream(pa_table, schema=schema2)
 
 
 def test_export_invalid():

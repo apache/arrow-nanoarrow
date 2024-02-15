@@ -93,7 +93,7 @@ def c_schema(obj=None) -> CSchema:
         )
 
 
-def c_array(obj, requested_schema=None) -> CArray:
+def c_array(obj, schema=None) -> CArray:
     """ArrowArray wrapper
 
     This class provides a user-facing interface to access the fields of an ArrowArray
@@ -117,11 +117,11 @@ def c_array(obj, requested_schema=None) -> CArray:
     obj : array-like
         An object supporting the Arrow PyCapsule interface, the Python buffer
         protocol, or an iterable of Python objects.
-    requested_schema : schema-like or None
+    schema : schema-like or None
         A schema-like object as sanitized by :func:`c_schema` or None. This value
         will be used to request a data type from ``obj``; however, the conversion
         is best-effort (i.e., the data type of the returned ``CArray`` may be
-        different than ``requested_schema``).
+        different than ``schema``).
 
     Examples
     --------
@@ -142,19 +142,17 @@ def c_array(obj, requested_schema=None) -> CArray:
     0
     """
 
-    if requested_schema is not None:
-        requested_schema = c_schema(requested_schema)
+    if schema is not None:
+        schema = c_schema(schema)
 
-    if isinstance(obj, CArray) and requested_schema is None:
+    if isinstance(obj, CArray) and schema is None:
         return obj
 
     # Try Arrow PyCapsule protocol
     if hasattr(obj, "__arrow_c_array__"):
-        requested_schema_capsule = (
-            None if requested_schema is None else requested_schema.__arrow_c_schema__()
-        )
+        schema_capsule = None if schema is None else schema.__arrow_c_schema__()
         return CArray._import_from_c_capsule(
-            *obj.__arrow_c_array__(requested_schema=requested_schema_capsule)
+            *obj.__arrow_c_array__(requested_schema=schema_capsule)
         )
 
     # Try buffer protocol (e.g., numpy arrays or a c_buffer())
@@ -163,12 +161,12 @@ def c_array(obj, requested_schema=None) -> CArray:
 
     # Try import of bare capsule
     if _obj_is_capsule(obj, "arrow_array"):
-        if requested_schema is None:
-            requested_schema_capsule = CSchema.allocate()._capsule
+        if schema is None:
+            schema_capsule = CSchema.allocate()._capsule
         else:
-            requested_schema_capsule = requested_schema.__arrow_c_schema__()
+            schema_capsule = schema.__arrow_c_schema__()
 
-        return CArray._import_from_c_capsule(requested_schema_capsule, obj)
+        return CArray._import_from_c_capsule(schema_capsule, obj)
 
     # Try _export_to_c for Array/RecordBatch objects if pyarrow < 14.0
     if _obj_is_pyarrow_array(obj):
@@ -178,7 +176,7 @@ def c_array(obj, requested_schema=None) -> CArray:
 
     # Try import of iterable
     if _obj_is_iterable(obj):
-        return _c_array_from_iterable(obj, requested_schema)
+        return _c_array_from_iterable(obj, schema)
 
     raise TypeError(
         f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
@@ -287,7 +285,7 @@ def c_array_from_buffers(
     return builder.finish(validation_level=validation_level)
 
 
-def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
+def c_array_stream(obj=None, schema=None) -> CArrayStream:
     """ArrowArrayStream wrapper
 
     This class provides a user-facing interface to access the fields of
@@ -326,18 +324,16 @@ def c_array_stream(obj=None, requested_schema=None) -> CArrayStream:
     StopIteration
     """
 
-    if requested_schema is not None:
-        requested_schema = c_schema(requested_schema)
+    if schema is not None:
+        schema = c_schema(schema)
 
-    if isinstance(obj, CArrayStream) and requested_schema is None:
+    if isinstance(obj, CArrayStream) and schema is None:
         return obj
 
     if hasattr(obj, "__arrow_c_stream__"):
-        requested_schema_capsule = (
-            None if requested_schema is None else requested_schema.__arrow_c_schema__()
-        )
+        schema_capsule = None if schema is None else schema.__arrow_c_schema__()
         return CArrayStream._import_from_c_capsule(
-            obj.__arrow_c_stream__(requested_schema=requested_schema_capsule)
+            obj.__arrow_c_stream__(requested_schema=schema_capsule)
         )
 
     # for pyarrow < 14.0
@@ -382,7 +378,7 @@ def c_schema_view(obj) -> CSchemaView:
     return CSchemaView(c_schema(obj))
 
 
-def c_array_view(obj, requested_schema=None) -> CArrayView:
+def c_array_view(obj, schema=None) -> CArrayView:
     """ArrowArrayView wrapper
 
     The ``ArrowArrayView`` is a nanoarrow C library structure that provides
@@ -407,10 +403,10 @@ def c_array_view(obj, requested_schema=None) -> CArrayView:
           dtype='|S1')
     """
 
-    if isinstance(obj, CArrayView) and requested_schema is None:
+    if isinstance(obj, CArrayView) and schema is None:
         return obj
 
-    return CArrayView.from_cpu_array(c_array(obj, requested_schema))
+    return CArrayView.from_cpu_array(c_array(obj, schema))
 
 
 def c_buffer(obj, schema=None) -> CBuffer:
@@ -423,12 +419,12 @@ def c_buffer(obj, schema=None) -> CBuffer:
     (i.e., ``PyObject_GetBuffer()`` and ``PyBuffer_Release()``).
 
     If obj is iterable, a buffer will be allocated and populated with
-    the contents of obj according to ``requested_schema``. The
-    ``requested_schema`` parameter is required to create a buffer from
+    the contents of obj according to ``schema``. The
+    ``schema`` parameter is required to create a buffer from
     a Python iterable. The ``struct`` module is currently used to encode
     values from obj into binary form.
 
-    Unlike with :func:`c_array`, ``requested_schema`` is explicitly
+    Unlike with :func:`c_array`, ``schema`` is explicitly
     honoured (or an error will be raised).
 
     Parameters
@@ -437,7 +433,7 @@ def c_buffer(obj, schema=None) -> CBuffer:
     obj : buffer-like or iterable
         A Python object that supports the Python buffer protocol. This includes
         bytes, memoryview, bytearray, bulit-in types as well as numpy arrays.
-    requested_schema :  schema-like, optional
+    schema :  schema-like, optional
         The data type of the desired buffer as sanitized by
         :func:`c_schema`. Only values that make sense as buffer types are
         allowed (e.g., integer types, floating-point types, interval types,
@@ -452,14 +448,14 @@ def c_buffer(obj, schema=None) -> CBuffer:
     >>> na.c_buffer([1, 2, 3], na.int32())
     CBuffer(int32[12 b] 1 2 3)
     """
-    if isinstance(obj, CBuffer) and requested_schema is None:
+    if isinstance(obj, CBuffer) and schema is None:
         return obj
 
-    if _obj_is_buffer(obj) and requested_schema is None:
+    if _obj_is_buffer(obj) and schema is None:
         return CBuffer.from_pybuffer(obj)
 
     if _obj_is_iterable(obj):
-        buffer, _ = _c_buffer_from_iterable(obj, requested_schema)
+        buffer, _ = _c_buffer_from_iterable(obj, schema)
         return buffer
 
     raise TypeError(
@@ -481,7 +477,7 @@ def allocate_c_schema() -> CSchema:
     return CSchema.allocate()
 
 
-def allocate_c_array(requested_schema=None) -> CArray:
+def allocate_c_array(schema=None) -> CArray:
     """Allocate an uninitialized ArrowArray
 
     Examples
@@ -492,12 +488,10 @@ def allocate_c_array(requested_schema=None) -> CArray:
     >>> schema = na.allocate_c_schema()
     >>> pa.int32()._export_to_c(schema._addr())
     """
-    if requested_schema is not None:
-        requested_schema = c_schema(requested_schema)
+    if schema is not None:
+        schema = c_schema(schema)
 
-    return CArray.allocate(
-        CSchema.allocate() if requested_schema is None else requested_schema
-    )
+    return CArray.allocate(CSchema.allocate() if schema is None else schema)
 
 
 def allocate_c_array_stream() -> CArrayStream:
@@ -572,9 +566,9 @@ def _c_array_from_pybuffer(obj) -> CArray:
     return builder.finish()
 
 
-def _c_array_from_iterable(obj, requested_schema=None):
-    if requested_schema is None:
-        raise ValueError("requested_schema is required for CArray import from iterable")
+def _c_array_from_iterable(obj, schema=None):
+    if schema is None:
+        raise ValueError("schema is required for CArray import from iterable")
 
     obj_len = -1
     if hasattr(obj, "__len__"):
@@ -584,27 +578,25 @@ def _c_array_from_iterable(obj, requested_schema=None):
     # not supported by _c_buffer_from_iterable()
     if obj_len == 0:
         builder = CArrayBuilder.allocate()
-        builder.init_from_schema(requested_schema)
+        builder.init_from_schema(schema)
         builder.start_appending()
         return builder.finish()
 
     # Use buffer create for crude support of array from iterable
-    buffer, n_values = _c_buffer_from_iterable(obj, requested_schema)
+    buffer, n_values = _c_buffer_from_iterable(obj, schema)
 
-    return c_array_from_buffers(
-        requested_schema, n_values, buffers=(None, buffer), null_count=0
-    )
+    return c_array_from_buffers(schema, n_values, buffers=(None, buffer), null_count=0)
 
 
-def _c_buffer_from_iterable(obj, requested_schema=None) -> CBuffer:
-    if requested_schema is None:
-        raise ValueError("CBuffer from iterable requires requested_schema")
+def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
+    if schema is None:
+        raise ValueError("CBuffer from iterable requires schema")
 
     builder = CBufferBuilder.empty()
 
-    schema_view = c_schema_view(requested_schema)
+    schema_view = c_schema_view(schema)
     if schema_view.storage_type_id != schema_view.type_id:
-        raise ValueError(f"Can't create buffer from type {requested_schema}")
+        raise ValueError(f"Can't create buffer from type {schema}")
 
     if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
         builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
