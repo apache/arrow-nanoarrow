@@ -49,7 +49,7 @@ def test_c_buffer_constructor():
 
 
 def test_c_buffer_unsupported_format():
-    empty = CBuffer().set_empty()
+    empty = CBuffer.empty()
 
     with pytest.raises(ValueError, match="Can't convert format '>i' to Arrow type"):
         if sys.byteorder == "little":
@@ -62,7 +62,7 @@ def test_c_buffer_unsupported_format():
 
 
 def test_c_buffer_empty():
-    empty = CBuffer().set_empty()
+    empty = CBuffer.empty()
 
     assert empty._addr() == 0
     assert empty.size_bytes == 0
@@ -192,7 +192,7 @@ def test_c_buffer_fixed_size_binary():
 
 
 def test_c_buffer_builder():
-    builder = CBufferBuilder().set_empty()
+    builder = CBufferBuilder.empty()
     assert builder.size_bytes == 0
     assert builder.capacity_bytes == 0
 

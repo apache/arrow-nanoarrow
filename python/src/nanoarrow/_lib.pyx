@@ -1497,27 +1497,20 @@ cdef class CBuffer:
 
         self._populate_view()
 
-    def set_empty(self):
-        self._assert_buffer_count_zero()
-        if self._ptr == NULL:
-            self._base = alloc_c_buffer(&self._ptr)
-        ArrowBufferReset(self._ptr)
+    @staticmethod
+    def empty():
+        cdef CBuffer out = CBuffer()
+        out._base = alloc_c_buffer(&out._ptr)
+        ArrowBufferReset(out._ptr)
+        return out
 
-        self._data_type = NANOARROW_TYPE_BINARY
-        self._element_size_bits = 0
-        self._device = CDEVICE_CPU
-        self._reset_view()
-        return self
-
-    def set_pybuffer(self, obj):
-        self._assert_buffer_count_zero()
-        if self._ptr == NULL:
-            self._base = alloc_c_buffer(&self._ptr)
-
-        self.set_format(c_buffer_set_pybuffer(obj, &self._ptr))
-        self._device = CDEVICE_CPU
-        self._reset_view()
-        return self
+    @staticmethod
+    def from_pybuffer(obj):
+        cdef CBuffer out = CBuffer()
+        out._base = alloc_c_buffer(&out._ptr)
+        out.set_format(c_buffer_set_pybuffer(obj, &out._ptr))
+        out._device = CDEVICE_CPU
+        return out
 
     def set_format(self, str format):
         self._assert_buffer_count_zero()
@@ -1609,6 +1602,13 @@ cdef class CBuffer:
 
 cdef class CBufferBuilder(CBuffer):
     """Wrapper around writable owned buffer CPU content"""
+
+    @staticmethod
+    def empty():
+        cdef CBufferBuilder out = CBufferBuilder()
+        out._base = alloc_c_buffer(&out._ptr)
+        ArrowBufferReset(out._ptr)
+        return out
 
     def reserve_bytes(self, int64_t additional_bytes):
         self._assert_valid()

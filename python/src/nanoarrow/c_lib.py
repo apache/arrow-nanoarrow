@@ -455,7 +455,7 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
         return obj
 
     if _obj_is_buffer(obj) and requested_schema is None:
-        return CBuffer().set_pybuffer(obj)
+        return CBuffer.from_pybuffer(obj)
 
     if _obj_is_iterable(obj):
         buffer, _ = _c_buffer_from_iterable(obj, requested_schema)
@@ -537,7 +537,7 @@ def _obj_is_iterable(obj):
 
 # Invokes the buffer protocol on obj
 def _c_array_from_pybuffer(obj) -> CArray:
-    buffer = CBuffer().set_pybuffer(obj)
+    buffer = CBuffer.from_pybuffer(obj)
     type_id = buffer.data_type_id
     element_size_bits = buffer.element_size_bits
 
@@ -599,7 +599,7 @@ def _c_buffer_from_iterable(obj, requested_schema=None) -> CBuffer:
     if requested_schema is None:
         raise ValueError("CBuffer from iterable requires requested_schema")
 
-    builder = CBufferBuilder().set_empty()
+    builder = CBufferBuilder.empty()
 
     schema_view = c_schema_view(requested_schema)
     if schema_view.storage_type_id != schema_view.type_id:
