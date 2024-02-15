@@ -202,7 +202,6 @@ def c_array_from_buffers(
 
     Parameters
     ----------
-
     schema : schema-like
         The data type of the desired array as sanitized by :func:`c_schema`.
     length : int
