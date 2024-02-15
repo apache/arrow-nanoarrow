@@ -248,10 +248,10 @@ def c_array_from_buffers(
     schema = c_schema(schema)
     builder = CArrayBuilder.allocate()
 
-    # This is slightly wasteful: it will allocate arrays recursively and we are about
-    # to immediately release them and replace them with another value. We could also
-    # create an ArrowArrayView from the buffers, which would make it more
-    # straightforward to check the buffer types and avoid the extra structure
+    # This is slightly wasteful: it will initialize child arrays recursively and
+    # we are about to release then children and replace them with the caller-specified
+    # values. We could also create an ArrowArrayView from the buffers, which would make
+    # it more straightforward to check the buffer types and avoid the extra structure
     # allocation.
     builder.init_from_schema(schema)
 
