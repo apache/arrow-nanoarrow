@@ -437,7 +437,8 @@ def c_buffer(obj, requested_schema=None) -> CBuffer:
     obj : buffer-like or iterable
         A Python object that supports the Python buffer protocol. This includes
         bytes, memoryview, bytearray, bulit-in types as well as numpy arrays.
-    requested_schema : The data type of the desired buffer as sanitized by
+    requested_schema :  schema-like, optional
+        The data type of the desired buffer as sanitized by
         :func:`c_schema`. Only values that make sense as buffer types are
         allowed (e.g., integer types, floating-point types, interval types,
         decimal types, binary, string, fixed-size binary).
