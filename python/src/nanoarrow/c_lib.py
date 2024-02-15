@@ -115,7 +115,7 @@ def c_array(obj, requested_schema=None) -> CArray:
     Parameters
     ----------
     obj : array-like
-        An object supporting the Arrow PyCapsule interface, the Python
+        An object supporting the Arrow PyCapsule interface, the Python buffer
         protocol, or an iterable of Python objects.
     requested_schema : schema-like or None
         A schema-like object as sanitized by :func:`c_schema` or None. This value
