@@ -413,7 +413,7 @@ def c_array_view(obj, requested_schema=None) -> CArrayView:
     return CArrayView.from_cpu_array(c_array(obj, requested_schema))
 
 
-def c_buffer(obj, requested_schema=None) -> CBuffer:
+def c_buffer(obj, schema=None) -> CBuffer:
     """Owning, read-only ArrowBuffer wrapper
 
     If obj implement the Python buffer protocol, ``c_buffer()`` Wraps
