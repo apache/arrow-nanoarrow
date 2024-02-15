@@ -119,6 +119,9 @@ def test_c_buffer_integer():
         assert buffer[1] == 1
         assert buffer[2] == 2
         assert list(buffer) == [0, 1, 2]
+        assert list(buffer.elements) == [0, 1, 2]
+        assert buffer.n_elements == len(buffer)
+        assert [buffer.element(i) for i in range(buffer.n_elements)] == list(buffer)
 
 
 def test_numpy_c_buffer_numeric():
@@ -143,6 +146,7 @@ def test_numpy_c_buffer_numeric():
         array = np.array([0, 1, 2], dtype)
         buffer = na.c_buffer(array)
         assert list(buffer) == list(array)
+        assert list(buffer.elements) == list(array)
 
         array_roundtrip = np.array(buffer, copy=False)
         np.testing.assert_array_equal(array_roundtrip, array)
