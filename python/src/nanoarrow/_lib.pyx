@@ -1045,6 +1045,9 @@ cdef class CArray:
         """
         self._assert_valid()
 
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
         # Export a shallow copy pointing to the same data in a way
         # that ensures this object stays valid.
         # TODO optimize this to export a version where children are reference
@@ -1926,6 +1929,9 @@ cdef class CArrayStream:
         PyCapsule
         """
         self._assert_valid()
+
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
 
         cdef:
             ArrowArrayStream* c_array_stream_out
