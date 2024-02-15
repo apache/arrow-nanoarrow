@@ -607,5 +607,5 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
     else:
         builder.set_data_type(schema_view.storage_type_id)
 
-    n_values_written = builder.write_values(obj)
+    n_values_written = builder.write_elements(obj)
     return builder.finish(), n_values_written

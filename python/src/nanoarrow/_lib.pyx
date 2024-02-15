@@ -1391,6 +1391,35 @@ cdef class CBufferView:
             else:
                 yield value
 
+    @property
+    def n_elements(self):
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            return self._shape * 8
+        else:
+            return self._shape
+
+    def element(self, i):
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            if i < 0 or i >= self.n_elements:
+                raise IndexError(f"Index {i} out of range")
+            return ArrowBitGet(self._ptr.data.as_uint8, i)
+        else:
+            return self[i]
+
+    @property
+    def elements(self):
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            return self._iter_bitmap()
+        else:
+            return self.__iter__()
+
+    def _iter_bitmap(self):
+        cdef uint8_t item
+        for i in range(self._shape):
+            item = self._ptr.data.as_uint8[i]
+            for j in range(8):
+                yield (item & (<uint8_t>1 << j)) != 0
+
     cdef Py_ssize_t _item_size(self):
         if self._element_size_bits < 8:
             return 1
@@ -1569,6 +1598,20 @@ cdef class CBuffer:
         self._assert_valid()
         return iter(self._view)
 
+    @property
+    def n_elements(self):
+        self._assert_valid()
+        return self._view.n_elements
+
+    def element(self, i):
+        self._assert_valid()
+        return self._view.element(i)
+
+    @property
+    def elements(self):
+        self._assert_valid()
+        return self._view.elements
+
     def __getbuffer__(self, Py_buffer* buffer, int flags):
         self._assert_valid()
         self._view._do_getbuffer(buffer, flags)
@@ -1636,7 +1679,7 @@ cdef class CBufferBuilder:
         self._buffer._ptr.size_bytes += out
         return out
 
-    def write_values(self, obj):
+    def write_elements(self, obj):
         if self._buffer._data_type == NANOARROW_TYPE_BOOL:
             return self._write_bits(obj)
 
@@ -1789,8 +1832,8 @@ cdef class CArrayBuilder:
             raise IndexError("i must be >= 0 and <= 3")
 
         self.c_array._assert_valid()
-        # if not move:
-        #     buffer = CBuffer.from_pybuffer(buffer)
+        if not move:
+            buffer = CBuffer.from_pybuffer(buffer)
 
         ArrowBufferMove(buffer._ptr, ArrowArrayBuffer(self._ptr, i))
         return self
@@ -1800,10 +1843,11 @@ cdef class CArrayBuilder:
         if child._ptr.release != NULL:
             ArrowArrayRelease(child._ptr)
 
-        if not move:
-            c_array_shallow_copy(c_array, c_array._ptr, child._ptr)
-        else:
-            ArrowArrayMove(c_array._ptr, child._ptr)
+        # Results in intermittent segfaults at the moment
+        # if not move:
+        #     c_array_shallow_copy(c_array, c_array._ptr, child._ptr)
+        # else:
+        ArrowArrayMove(c_array._ptr, child._ptr)
 
         return self
 

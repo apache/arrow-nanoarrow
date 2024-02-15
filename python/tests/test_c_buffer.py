@@ -289,19 +289,39 @@ def test_c_buffer_bitmap_from_iterable():
     assert buffer.data_type == "bool"
     assert buffer.item_size == 1
     assert buffer.element_size_bits == 1
+    assert list(buffer.elements) == [
+        True,
+        False,
+        False,
+        True,
+        False,
+        False,
+        False,
+        False,
+    ]
+    assert [buffer.element(i) for i in range(buffer.n_elements)] == list(
+        buffer.elements
+    )
 
     # Check something exactly one byte
     buffer = na.c_buffer([True, False, False, True] * 2, na.bool())
     assert "10011001" in repr(buffer)
     assert buffer.size_bytes == 1
+    assert list(buffer.elements) == [True, False, False, True] * 2
 
     # Check something more than one byte
     buffer = na.c_buffer([True, False, False, True] * 3, na.bool())
     assert "1001100110010000" in repr(buffer)
     assert buffer.size_bytes == 2
+    assert list(buffer.elements) == [True, False, False, True] * 3 + [
+        False,
+        False,
+        False,
+        False,
+    ]
 
     # Check that appending in more than one batch is an error
     builder = CBufferBuilder().set_data_type(na.Type.BOOL.value)
-    builder.write_values([True, False])
+    builder.write_elements([True, False])
     with pytest.raises(NotImplementedError, match="Append to bitmap"):
-        builder.write_values([True])
+        builder.write_elements([True])
