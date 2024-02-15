@@ -1544,11 +1544,6 @@ cdef class CBuffer:
         return self._ptr.size_bytes
 
     @property
-    def capacity_bytes(self):
-        self._assert_valid()
-        return self._ptr.capacity_bytes
-
-    @property
     def data_type(self):
         return ArrowTypeString(self._data_type).decode("UTF-8")
 
@@ -1601,38 +1596,42 @@ cdef class CBuffer:
         return f"CBuffer({_lib_utils.buffer_view_repr(self._view)})"
 
 
-cdef class CBufferBuilder(CBuffer):
+cdef class CBufferBuilder:
     """Wrapper around writable owned buffer CPU content"""
+    cdef CBuffer _buffer
 
-    @staticmethod
-    def empty():
-        cdef CBufferBuilder out = CBufferBuilder()
-        out._base = alloc_c_buffer(&out._ptr)
-        ArrowBufferReset(out._ptr)
-        return out
+    def __cinit__(self):
+        self._buffer = CBuffer.empty()
+
+    @property
+    def size_bytes(self):
+        return self._buffer.size_bytes
+
+    @property
+    def capacity_bytes(self):
+        return self._buffer._ptr.capacity_bytes
+
+    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
+        self._buffer._set_data_type(type_id, element_size_bits)
+        return self
 
     def reserve_bytes(self, int64_t additional_bytes):
-        self._assert_valid()
-        self._assert_buffer_count_zero()
-        cdef int code = ArrowBufferReserve(self._ptr, additional_bytes)
+        cdef int code = ArrowBufferReserve(self._buffer._ptr, additional_bytes)
         Error.raise_error_not_ok("ArrowBufferReserve()", code)
         return self
 
     def write(self, content):
-        self._assert_valid()
-        self._assert_buffer_count_zero()
-
         cdef Py_buffer buffer
         cdef int64_t out
         PyObject_GetBuffer(content, &buffer, PyBUF_ANY_CONTIGUOUS)
 
-        cdef int code = ArrowBufferReserve(self._ptr, buffer.len)
+        cdef int code = ArrowBufferReserve(self._buffer._ptr, buffer.len)
         if code != NANOARROW_OK:
             PyBuffer_Release(&buffer)
             Error.raise_error("ArrowBufferReserve()", code)
 
         code = PyBuffer_ToContiguous(
-            self._ptr.data + self._ptr.size_bytes,
+            self._buffer._ptr.data + self._buffer._ptr.size_bytes,
             &buffer,
             buffer.len,
             # 'C' (not sure how to pass a character literal here)
@@ -1642,21 +1641,19 @@ cdef class CBufferBuilder(CBuffer):
         PyBuffer_Release(&buffer)
         Error.raise_error_not_ok("PyBuffer_ToContiguous()", code)
 
-        self._ptr.size_bytes += out
+        self._buffer._ptr.size_bytes += out
         return out
 
     def write_values(self, obj):
-        self._assert_valid()
-
-        if self._data_type == NANOARROW_TYPE_BOOL:
+        if self._buffer._data_type == NANOARROW_TYPE_BOOL:
             return self._write_bits(obj)
 
         cdef int64_t n_values = 0
-        struct_obj = Struct(self._format)
+        struct_obj = Struct(self._buffer._format)
         pack = struct_obj.pack
         write = self.write
 
-        if self._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
+        if self._buffer._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
                                NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
             for item in obj:
                 n_values += 1
@@ -1669,7 +1666,7 @@ cdef class CBufferBuilder(CBuffer):
         return n_values
 
     cdef _write_bits(self, obj):
-        if self._ptr.size_bytes != 0:
+        if self._buffer._ptr.size_bytes != 0:
             raise NotImplementedError("Append to bitmap that has already been appended to")
 
         cdef char buffer_item = 0
@@ -1683,19 +1680,21 @@ cdef class CBufferBuilder(CBuffer):
 
             buffer_item_i += 1
             if buffer_item_i == 8:
-                code = ArrowBufferAppendInt8(self._ptr, buffer_item)
+                code = ArrowBufferAppendInt8(self._buffer._ptr, buffer_item)
                 Error.raise_error_not_ok("ArrowBufferAppendInt8()", code)
                 buffer_item = 0
                 buffer_item_i = 0
 
         if buffer_item_i != 0:
-            code = ArrowBufferAppendInt8(self._ptr, buffer_item)
+            code = ArrowBufferAppendInt8(self._buffer._ptr, buffer_item)
             Error.raise_error_not_ok("ArrowBufferAppendInt8()", code)
 
         return n_values
 
     def finish(self):
-        return self
+        cdef CBuffer out = self._buffer
+        self._buffer = CBuffer.empty()
+        return out
 
 
 cdef class CArrayBuilder:

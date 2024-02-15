@@ -592,16 +592,16 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
     if schema is None:
         raise ValueError("CBuffer from iterable requires schema")
 
-    builder = CBufferBuilder.empty()
+    builder = CBufferBuilder()
 
     schema_view = c_schema_view(schema)
     if schema_view.storage_type_id != schema_view.type_id:
         raise ValueError(f"Can't create buffer from type {schema}")
 
     if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
-        builder._set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
+        builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
     else:
-        builder._set_data_type(schema_view.storage_type_id)
+        builder.set_data_type(schema_view.storage_type_id)
 
     n_values_written = builder.write_values(obj)
     return builder.finish(), n_values_written

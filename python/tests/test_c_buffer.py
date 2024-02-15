@@ -32,8 +32,6 @@ def test_buffer_invalid():
     with pytest.raises(RuntimeError, match="CBuffer is not valid"):
         invalid.size_bytes
     with pytest.raises(RuntimeError, match="CBuffer is not valid"):
-        invalid.capacity_bytes
-    with pytest.raises(RuntimeError, match="CBuffer is not valid"):
         memoryview(invalid)
 
     assert repr(invalid) == "CBuffer(<invalid>)"
@@ -66,7 +64,6 @@ def test_c_buffer_empty():
 
     assert empty._addr() == 0
     assert empty.size_bytes == 0
-    assert empty.capacity_bytes == 0
     assert bytes(empty) == b""
 
     assert repr(empty) == "CBuffer(binary[0 b] b'')"
@@ -74,7 +71,6 @@ def test_c_buffer_empty():
     # Export it via the Python buffer protocol wrapped in a new CBuffer
     empty_roundtrip = na.c_buffer(empty)
     assert empty_roundtrip.size_bytes == 0
-    assert empty_roundtrip.capacity_bytes == 0
 
     assert empty_roundtrip._addr() == 0
     assert empty_roundtrip.size_bytes == 0
@@ -85,7 +81,6 @@ def test_c_buffer_pybuffer():
     buffer = na.c_buffer(data)
 
     assert buffer.size_bytes == len(data)
-    assert buffer.capacity_bytes == 0
     assert bytes(buffer) == b"abcdefghijklmnopqrstuvwxyz"
 
     assert repr(buffer).startswith("CBuffer(uint8[26 b] 97 98")
@@ -190,7 +185,7 @@ def test_c_buffer_fixed_size_binary():
 
 
 def test_c_buffer_builder():
-    builder = CBufferBuilder.empty()
+    builder = CBufferBuilder()
     assert builder.size_bytes == 0
     assert builder.capacity_bytes == 0
 
@@ -206,7 +201,7 @@ def test_c_buffer_builder():
     assert builder.size_bytes == 10
     assert builder.capacity_bytes == 123
 
-    assert bytes(builder) == b"abcdefghij"
+    assert bytes(builder.finish()) == b"abcdefghij"
 
 
 def test_c_buffer_from_iterable():
@@ -299,5 +294,7 @@ def test_c_buffer_bitmap_from_iterable():
     assert buffer.size_bytes == 2
 
     # Check that appending in more than one batch is an error
+    builder = CBufferBuilder().set_data_type(na.Type.BOOL.value)
+    builder.write_values([True, False])
     with pytest.raises(NotImplementedError, match="Append to bitmap"):
-        buffer.write_values([True])
+        builder.write_values([True])
