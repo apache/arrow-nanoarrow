@@ -169,20 +169,8 @@ cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
     array.release = NULL
 
 
-cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
-    """Make a shallow copy of an ArrowArray
-
-    To more safely implement export of an ArrowArray whose address may be
-    depended on by some other Python object, we implement a shallow copy
-    whose constructor calls Py_INCREF() on a Python object responsible
-    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
-    the same object.
-    """
-    cdef:
-        ArrowArray* c_array_out
-
-    array_capsule = alloc_c_array(&c_array_out)
-
+cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
+                                 ArrowArray* c_array_out) noexcept:
     # shallow copy
     memcpy(c_array_out, c_array, sizeof(ArrowArray))
     c_array_out.release = NULL
@@ -193,6 +181,19 @@ cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) n
     Py_INCREF(base)
     c_array_out.release = arrow_array_release
 
+
+cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
+    """Make a shallow copy of an ArrowArray
+
+    To more safely implement export of an ArrowArray whose address may be
+    depended on by some other Python object, we implement a shallow copy
+    whose constructor calls Py_INCREF() on a Python object responsible
+    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
+    the same object.
+    """
+    cdef ArrowArray* c_array_out
+    array_capsule = alloc_c_array(&c_array_out)
+    c_array_shallow_copy(base, c_array, c_array_out)
     return array_capsule
 
 
@@ -1457,9 +1458,11 @@ cdef class CBuffer:
         self._data_type = NANOARROW_TYPE_BINARY
         self._element_size_bits = 0
         self._device = CDEVICE_CPU
-        self._format[0] = 0
+        # Set initial format to "B" (Cython makes this hard)
+        self._format[0] = 66
+        self._format[1] = 0
         self._get_buffer_count = 0
-        self._reset_view()
+        self._view = CBufferView(None, 0, 0, NANOARROW_TYPE_BINARY, 0, self._device)
 
     cdef _assert_valid(self):
         if self._ptr == NULL:
@@ -1471,9 +1474,6 @@ cdef class CBuffer:
                 f"CBuffer already open ({self._get_buffer_count} ",
                 f"references, {self._writable_get_buffer_count} writable)")
 
-    cdef _reset_view(self):
-        self._view = CBufferView(None, 0, 0, NANOARROW_TYPE_BINARY, 8, self._device)
-
     cdef _populate_view(self):
         self._assert_valid()
         self._assert_buffer_count_zero()
@@ -1483,25 +1483,10 @@ cdef class CBuffer:
             self._device
         )
 
-    cdef _refresh_view_if_needed(self):
-        if self._get_buffer_count > 0:
-            return
-
-        self._assert_valid()
-        cdef int addr_equal = self._ptr.data == self._view._ptr.data.as_uint8
-        cdef int size_equal = self._ptr.size_bytes == self._view._ptr.size_bytes
-        cdef int types_equal = self._data_type == self._view._data_type
-        cdef int element_size_equal = self._element_size_bits == self._view.element_size_bits
-        if addr_equal and size_equal and types_equal and element_size_equal:
-            return
-
-        self._populate_view()
-
     @staticmethod
     def empty():
         cdef CBuffer out = CBuffer()
         out._base = alloc_c_buffer(&out._ptr)
-        ArrowBufferReset(out._ptr)
         return out
 
     @staticmethod
@@ -1510,20 +1495,23 @@ cdef class CBuffer:
         out._base = alloc_c_buffer(&out._ptr)
         out._set_format(c_buffer_set_pybuffer(obj, &out._ptr))
         out._device = CDEVICE_CPU
-
+        out._populate_view()
         return out
 
     def _set_format(self, str format):
         self._assert_buffer_count_zero()
+
         element_size_bytes, data_type = c_arrow_type_from_format(format)
         self._data_type = data_type
         self._element_size_bits = element_size_bytes * 8
         format_bytes = format.encode("UTF-8")
         snprintf(self._format, sizeof(self._format), "%s", <const char*>format_bytes)
+        self._populate_view()
         return self
 
     def _set_data_type(self, ArrowType type_id, int element_size_bits=0):
         self._assert_buffer_count_zero()
+
         self._element_size_bits = c_format_from_arrow_type(
             type_id,
             element_size_bits,
@@ -1532,11 +1520,16 @@ cdef class CBuffer:
         )
         self._data_type = type_id
 
+        self._populate_view()
         return self
 
     def _addr(self):
         self._assert_valid()
         return <uintptr_t>self._ptr.data
+
+    @property
+    def _get_buffer_count(self):
+        return self._get_buffer_count
 
     @property
     def size_bytes(self):
@@ -1557,7 +1550,7 @@ cdef class CBuffer:
 
     @property
     def item_size(self):
-        self._refresh_view_if_needed()
+        self._assert_valid()
         return self._view.item_size
 
     @property
@@ -1565,19 +1558,19 @@ cdef class CBuffer:
         return self._format.decode("UTF-8")
 
     def __len__(self):
-        self._refresh_view_if_needed()
+        self._assert_valid()
         return len(self._view)
 
     def __getitem__(self, k):
-        self._refresh_view_if_needed()
+        self._assert_valid()
         return self._view[k]
 
     def __iter__(self):
-        self._refresh_view_if_needed()
+        self._assert_valid()
         return iter(self._view)
 
     def __getbuffer__(self, Py_buffer* buffer, int flags):
-        self._refresh_view_if_needed()
+        self._assert_valid()
         self._view._do_getbuffer(buffer, flags)
         self._get_buffer_count += 1
 
@@ -1592,7 +1585,6 @@ cdef class CBuffer:
         if self._ptr == NULL:
             return "CBuffer(<invalid>)"
 
-        self._refresh_view_if_needed()
         return f"CBuffer({_lib_utils.buffer_view_repr(self._view)})"
 
 
@@ -1693,6 +1685,8 @@ cdef class CBufferBuilder:
 
     def finish(self):
         cdef CBuffer out = self._buffer
+        out._populate_view()
+
         self._buffer = CBuffer.empty()
         return out
 
@@ -1790,17 +1784,27 @@ cdef class CArrayBuilder:
         self._ptr.null_count = self._ptr.length - count
         return self
 
-    def set_buffer(self, int64_t i, CBuffer buffer):
+    def set_buffer(self, int64_t i, CBuffer buffer, move=False):
+        if i < 0 or i > 3:
+            raise IndexError("i must be >= 0 and <= 3")
+
         self.c_array._assert_valid()
-        cdef int code = ArrowArraySetBuffer(self._ptr, i, buffer._ptr)
-        Error.raise_error_not_ok("ArrowArraySetBuffer()", code)
+        # if not move:
+        #     buffer = CBuffer.from_pybuffer(buffer)
+
+        ArrowBufferMove(buffer._ptr, ArrowArrayBuffer(self._ptr, i))
         return self
 
-    def set_child(self, int64_t i, CArray c_array):
+    def set_child(self, int64_t i, CArray c_array, move=False):
         cdef CArray child = self.c_array.child(i)
         if child._ptr.release != NULL:
             ArrowArrayRelease(child._ptr)
-        ArrowArrayMove(c_array._ptr, child._ptr)
+
+        if not move:
+            c_array_shallow_copy(c_array, c_array._ptr, child._ptr)
+        else:
+            ArrowArrayMove(c_array._ptr, child._ptr)
+
         return self
 
     def finish(self, validation_level="default"):
@@ -1817,7 +1821,10 @@ cdef class CArrayBuilder:
         cdef int code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
         error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
 
-        return self.c_array
+        out = self.c_array
+        self.c_array = CArray.allocate(CSchema.allocate())
+        self._ptr = self.c_array._ptr
+        return out
 
 
 cdef class CArrayStream:
