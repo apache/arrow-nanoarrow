@@ -522,7 +522,7 @@ def allocate_c_array_stream() -> CArrayStream:
 # to avoid importing pyarrow unnecessarily.
 def _obj_is_pyarrow_array(obj):
     obj_type = type(obj)
-    if obj_type.__module__ != "pyarrow.lib":
+    if not obj_type.__module__.startswith("pyarrow"):
         return False
 
     if not obj_type.__name__.endswith("Array") and obj_type.__name__ != "RecordBatch":
