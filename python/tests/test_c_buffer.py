@@ -96,6 +96,13 @@ def test_c_buffer_missing_requested_schema():
         na.c_buffer([1, 2, 3])
 
 
+def test_c_buffer_pybuffer_with_schema():
+    with pytest.raises(
+        NotImplementedError, match="schema for pybuffer is not implemented"
+    ):
+        na.c_buffer(b"1234", na.int32())
+
+
 def test_c_buffer_integer():
     formats = ["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q", "n", "N"]
     values = [0, 1, 2]

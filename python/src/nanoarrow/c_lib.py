@@ -451,7 +451,11 @@ def c_buffer(obj, schema=None) -> CBuffer:
     if isinstance(obj, CBuffer) and schema is None:
         return obj
 
-    if _obj_is_buffer(obj) and schema is None:
+    if _obj_is_buffer(obj):
+        if schema is not None:
+            raise NotImplementedError(
+                "c_buffer() with schema for pybuffer is not implemented"
+            )
         return CBuffer.from_pybuffer(obj)
 
     if _obj_is_iterable(obj):
