@@ -237,6 +237,18 @@ def test_c_array_from_buffers_recursive():
     with pytest.raises(ValueError, match="Expected 1 children but got 0"):
         na.c_array_from_buffers(na.struct([na.uint8()]), 5, [], children=[])
 
+    with pytest.raises(
+        NotImplementedError,
+        match="Validation for array with children is not implemented",
+    ):
+        na.c_array_from_buffers(
+            na.struct([na.uint8()]),
+            5,
+            [None],
+            children=[b"12345"],
+            validation_level="minimal",
+        )
+
 
 def test_c_array_from_buffers_validation():
     # Should fail with all validation levels except none

@@ -1740,10 +1740,12 @@ cdef class CBufferBuilder:
 cdef class CArrayBuilder:
     cdef CArray c_array
     cdef ArrowArray* _ptr
+    cdef bint _can_validate
 
     def __cinit__(self, CArray array):
         self.c_array = array
         self._ptr = array._ptr
+        self._can_validate = True
 
     @staticmethod
     def allocate():
@@ -1839,6 +1841,10 @@ cdef class CArrayBuilder:
             buffer = CBuffer.from_pybuffer(buffer)
 
         ArrowBufferMove(buffer._ptr, ArrowArrayBuffer(self._ptr, i))
+
+        # Flush the buffer address from the buffer into the ArrowArray struct
+        self._ptr.buffers[i] = ArrowArrayBuffer(self._ptr, i).data
+
         return self
 
     def set_child(self, int64_t i, CArray c_array, move=False):
@@ -1846,31 +1852,44 @@ cdef class CArrayBuilder:
         if child._ptr.release != NULL:
             ArrowArrayRelease(child._ptr)
 
-        # Results in intermittent segfaults at the moment
-        # if not move:
-        #     c_array_shallow_copy(c_array, c_array._ptr, child._ptr)
-        # else:
-        ArrowArrayMove(c_array._ptr, child._ptr)
+        if not move:
+            c_array_shallow_copy(c_array._base, c_array._ptr, child._ptr)
+        else:
+            ArrowArrayMove(c_array._ptr, child._ptr)
+
+        # After setting children, we can't use the built-in validation done by
+        # ArrowArrayFinishBuilding() because it assumes that the private_data of
+        # each array (recursively) is one that was initialized by ArrowArrayInit()
+        self._can_validate = False
 
         return self
 
-    def finish(self, validation_level="default"):
+    def finish(self, validation_level=None):
         self.c_array._assert_valid()
-        cdef ArrowValidationLevel c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
-        if validation_level == "full":
-            c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
-        elif validation_level == "minimal":
-            c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
-        elif validation_level == "none":
-            c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
-
+        cdef ArrowValidationLevel c_validation_level
         cdef Error error = Error()
-        cdef int code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
-        error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
+        cdef int code
+
+        if self._can_validate:
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
+            if validation_level == "full":
+                c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
+            elif validation_level == "minimal":
+                c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
+            elif validation_level == "none":
+                c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
+
+            code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
+            error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
+
+        elif validation_level not in (None, "none"):
+            raise NotImplementedError("Validation for array with children is not implemented")
 
         out = self.c_array
         self.c_array = CArray.allocate(CSchema.allocate())
         self._ptr = self.c_array._ptr
+        self._can_validate = True
+
         return out
 
 

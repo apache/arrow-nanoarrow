@@ -190,15 +190,16 @@ def c_array_from_buffers(
     null_count: int = -1,
     offset: int = 0,
     children: Iterable[Any] = (),
-    validation_level: Literal["full", "default", "minimal", "none"] = "default",
+    validation_level: Literal[None, "full", "default", "minimal", "none"] = None,
+    move: bool = False,
 ) -> CArray:
     """Create an ArrowArray wrapper from components
 
     Given a schema, build an ArrowArray buffer-wise. This allows almost any array
     to be assembled; however, requires some knowledge of the Arrow Columnar
     specification. This function will do its best to validate the sizes and
-    content of buffers according to ``validation_level``, which can be set
-    to ``"full""`` for maximum safety.
+    content of buffers according to ``validation_level``; however, not all
+    types of arrays can currently be validated when constructed in this way.
 
     Parameters
     ----------
@@ -223,10 +224,14 @@ def c_array_from_buffers(
         An iterable of arrays used to set child fields of the array. Can contain
         any object accepted by :func:`c_array`. Must contain the exact number of
         required children as specifed by ``schema``.
-    validation_level: str, optional
+    validation_level: None or str, optional
         One of "none" (no check), "minimal" (check buffer sizes that do not require
         dereferencing buffer content), "default" (check all buffer sizes), or "full"
-        (check all buffer sizes and all buffer content).
+        (check all buffer sizes and all buffer content). The default, ``None``,
+        will validate at the "default" level where possible.
+    move : bool, optional
+        Use ``True`` to move ownership of any input buffers or children to the
+        output array.
 
     Examples
     --------
@@ -248,25 +253,22 @@ def c_array_from_buffers(
     schema = c_schema(schema)
     builder = CArrayBuilder.allocate()
 
-    # This is slightly wasteful: it will initialize child arrays recursively and
-    # we are about to release then children and replace them with the caller-specified
-    # values. We could also create an ArrowArrayView from the buffers, which would make
-    # it more straightforward to check the buffer types and avoid the extra structure
-    # allocation.
+    # Ensures that the output array->n_buffers is set and that the correct number
+    # of children have been initialized.
     builder.init_from_schema(schema)
 
-    # Set buffers. This moves ownership of the buffers as well (i.e., the objects
-    # in the input buffers are replaced with an empty ArrowBuffer)
+    # Set buffers, optionally moving ownership of the buffers as well (i.e.,
+    # the objects in the input buffers would be replaced with an empty ArrowBuffer)
     for i, buffer in enumerate(buffers):
         if buffer is None:
             continue
-        builder.set_buffer(i, c_buffer(buffer))
+        builder.set_buffer(i, c_buffer(buffer), move=move)
 
-    # Set children. This moves ownership of the children as well (i.e., the objects
-    # in the input children are invalidated).
+    # Set children, optionally moving ownership of the children as well (i.e.,
+    # the objects in the input children would be marked released).
     n_children = 0
     for child_src in children:
-        builder.set_child(n_children, c_array(child_src))
+        builder.set_child(n_children, c_array(child_src), move=move)
         n_children += 1
 
     if n_children != schema.n_children:
