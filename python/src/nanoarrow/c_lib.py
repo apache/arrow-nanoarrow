@@ -411,7 +411,7 @@ def c_array_view(obj, schema=None) -> CArrayView:
 def c_buffer(obj, schema=None) -> CBuffer:
     """Owning, read-only ArrowBuffer wrapper
 
-    If obj implement the Python buffer protocol, ``c_buffer()`` Wraps
+    If obj implements the Python buffer protocol, ``c_buffer()`` wraps
     obj in nanoarrow's owning buffer structure, the ArrowBuffer,
     such that it can be used to construct arrays. The ownership of the
     underlying buffer is handled by the Python buffer protocol
