@@ -53,12 +53,12 @@ def test_c_buffer_unsupported_format():
 
     with pytest.raises(ValueError, match="Can't convert format '>i' to Arrow type"):
         if sys.byteorder == "little":
-            empty.set_format(">i")
+            empty._set_format(">i")
         else:
-            empty.set_format("<i")
+            empty._set_format("<i")
 
     with pytest.raises(ValueError, match=r"Unsupported Arrow type_id"):
-        empty.set_data_type(na.Type.SPARSE_UNION.value)
+        empty._set_data_type(na.Type.SPARSE_UNION.value)
 
 
 def test_c_buffer_empty():
@@ -109,7 +109,7 @@ def test_c_buffer_integer():
         packed = b""
         for value in values:
             packed += struct.pack(format, value)
-        buffer = na.c_buffer(packed).set_format(format)
+        buffer = na.c_buffer(packed)._set_format(format)
         assert buffer.size_bytes == len(packed)
 
         assert len(buffer) == 3
@@ -157,7 +157,7 @@ def test_c_buffer_float():
         packed = b""
         for value in values:
             packed += struct.pack(format, value)
-        buffer = na.c_buffer(packed).set_format(format)
+        buffer = na.c_buffer(packed)._set_format(format)
         assert buffer.size_bytes == len(packed)
 
         assert len(buffer) == 3
@@ -169,7 +169,7 @@ def test_c_buffer_float():
 
 def test_c_buffer_string():
     packed = b"abcdefg"
-    buffer = na.c_buffer(packed).set_format("c")
+    buffer = na.c_buffer(packed)._set_format("c")
     assert buffer.size_bytes == len(packed)
 
     assert len(buffer) == len(packed)
@@ -179,7 +179,7 @@ def test_c_buffer_string():
 def test_c_buffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]
     packed = b"".join(items)
-    buffer = na.c_buffer(packed).set_format("4s")
+    buffer = na.c_buffer(packed)._set_format("4s")
     assert buffer.size_bytes == len(packed)
 
     assert len(buffer) == 3

@@ -1508,11 +1508,12 @@ cdef class CBuffer:
     def from_pybuffer(obj):
         cdef CBuffer out = CBuffer()
         out._base = alloc_c_buffer(&out._ptr)
-        out.set_format(c_buffer_set_pybuffer(obj, &out._ptr))
+        out._set_format(c_buffer_set_pybuffer(obj, &out._ptr))
         out._device = CDEVICE_CPU
+
         return out
 
-    def set_format(self, str format):
+    def _set_format(self, str format):
         self._assert_buffer_count_zero()
         element_size_bytes, data_type = c_arrow_type_from_format(format)
         self._data_type = data_type
@@ -1521,7 +1522,7 @@ cdef class CBuffer:
         snprintf(self._format, sizeof(self._format), "%s", <const char*>format_bytes)
         return self
 
-    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
+    def _set_data_type(self, ArrowType type_id, int element_size_bits=0):
         self._assert_buffer_count_zero()
         self._element_size_bits = c_format_from_arrow_type(
             type_id,

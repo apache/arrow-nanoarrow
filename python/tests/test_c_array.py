@@ -117,7 +117,7 @@ def test_c_array_from_pybuffer_uint8():
 
 def test_c_array_from_pybuffer_string():
     data = b"abcdefg"
-    buffer = na.c_buffer(data).set_format("c")
+    buffer = na.c_buffer(data)._set_format("c")
     c_array = na.c_array(buffer)
     assert c_array.length == len(data)
     assert c_array.null_count == 0
@@ -131,7 +131,7 @@ def test_c_array_from_pybuffer_string():
 def test_c_array_from_pybuffer_fixed_size_binary():
     items = [b"abcd", b"efgh", b"ijkl"]
     packed = b"".join(items)
-    buffer = na.c_buffer(packed).set_format("4s")
+    buffer = na.c_buffer(packed)._set_format("4s")
 
     c_array = na.c_array(buffer)
     assert c_array.length == len(items)
