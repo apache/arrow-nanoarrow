@@ -220,7 +220,7 @@ TEST(NanoarrowHppTest, NanoarrowHppBufferInitSequenceTest) {
   EXPECT_EQ(buffer->data[2], 3);
   EXPECT_EQ(buffer->data[3], 4);
 
-  // Check templating magic with std::vector
+  // Check templating magic with std::array
   buffer.reset();
   nanoarrow::BufferInitSequence(buffer.get(), std::array<uint8_t, 4>({1, 2, 3, 4}));
   EXPECT_EQ(buffer->size_bytes, 4);
