@@ -15,12 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CArrayStream
 from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
+from nanoarrow._lib import CArrayStream
 
 
 class IpcStream:
-
     def __init__(self, obj):
         self._stream = CIpcInputStream.from_readable(obj)
 

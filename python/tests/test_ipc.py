@@ -16,14 +16,15 @@
 # under the License.
 
 import os
-import pytest
 
-import nanoarrow as na
+import pytest
 from nanoarrow.ipc import IpcStream
 
-os.environ["NANOARROW_ARROW_TESTING_DIR"] = (
-    "/Users/deweydunnington/Desktop/rscratch/arrow-testing"
-)
+import nanoarrow as na
+
+os.environ[
+    "NANOARROW_ARROW_TESTING_DIR"
+] = "/Users/deweydunnington/Desktop/rscratch/arrow-testing"
 
 
 def get_test_ipc_filename(name):
