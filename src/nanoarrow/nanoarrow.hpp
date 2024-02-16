@@ -290,12 +290,14 @@ using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
 /// \brief Initialize a buffer wrapping an arbitrary C++ object
 ///
 /// Initializes a buffer with a release callback that deletes the moved obj
-/// when ArrowBufferReset is called. T must be movable.
+/// when ArrowBufferReset is called. This version is useful for wrapping
+/// an object whose .data() member is missing or unrelated to the buffer
+/// value that is destined for a the buffer of an ArrowArray. T must be movable.
 template <typename T>
-static inline void BufferInitWrapped(struct ArrowBuffer* buffer, T obj, const void* ptr,
+static inline void BufferInitWrapped(struct ArrowBuffer* buffer, T obj, const uint8_t* data,
                                      int64_t size_bytes) {
   T* obj_moved = new T(std::move(obj));
-  buffer->data = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(ptr));
+  buffer->data = const_cast<uint8_t*>(data);
   buffer->size_bytes = size_bytes;
   buffer->capacity_bytes = 0;
   buffer->allocator =
