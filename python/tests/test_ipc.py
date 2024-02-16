@@ -22,10 +22,6 @@ from nanoarrow.ipc import IpcStream
 
 import nanoarrow as na
 
-os.environ[
-    "NANOARROW_ARROW_TESTING_DIR"
-] = "/Users/deweydunnington/Desktop/rscratch/arrow-testing"
-
 
 def get_test_ipc_filename(name):
     testing_dir = os.environ.get("NANOARROW_ARROW_TESTING_DIR")
