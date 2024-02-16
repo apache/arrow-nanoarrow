@@ -11,3 +11,4 @@
 ^cran-comments\.md$
 ^bootstrap\.R$
 ^\.cache$
+^compile_commands\.json$
