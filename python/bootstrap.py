@@ -217,6 +217,9 @@ def copy_or_generate_nanoarrow_c():
     # The C library, IPC extension, and Device extension all currently have slightly
     # different methods of bundling (hopefully this can be unified)
 
+    if not os.path.exists(vendor_dir):
+        os.mkdir(vendor_dir)
+
     # Copy device files
     device_ext_src = os.path.join(
         source_dir, "extensions/nanoarrow_device/src/nanoarrow"
