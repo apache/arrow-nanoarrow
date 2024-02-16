@@ -1833,6 +1833,13 @@ cdef class CArrayBuilder:
         return self
 
     def set_buffer(self, int64_t i, CBuffer buffer, move=False):
+        """Sets a buffer of this ArrowArray such the pointer at array->buffers[i] is
+        equal to buffer->data and such that the buffer's lifcycle is managed by
+        the array. If move is True, the input Python object that previously wrapped
+        the ArrowBuffer will be invalidated, which is usually the desired behaviour
+        if you built or imported a buffer specifically to build this array. If move
+        is False (the default), this function will a make a shallow copy via another
+        layer of Python object wrapping."""
         if i < 0 or i > 3:
             raise IndexError("i must be >= 0 and <= 3")
 
@@ -1842,7 +1849,9 @@ cdef class CArrayBuilder:
 
         ArrowBufferMove(buffer._ptr, ArrowArrayBuffer(self._ptr, i))
 
-        # Flush the buffer address from the buffer into the ArrowArray struct
+        # The buffer's lifecycle is now owned by the array; however, we need
+        # array->buffers[i] to be updated such that it equals
+        # ArrowArrayBuffer(array, i)->data.
         self._ptr.buffers[i] = ArrowArrayBuffer(self._ptr, i).data
 
         return self

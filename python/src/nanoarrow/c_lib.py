@@ -262,12 +262,19 @@ def c_array_from_buffers(
     for i, buffer in enumerate(buffers):
         if buffer is None:
             continue
+
+        # If we're setting a CBuffer from something else, we can avoid an extra
+        # level of Python wrapping by using move=True
+        move = move or not isinstance(buffer, CBuffer)
         builder.set_buffer(i, c_buffer(buffer), move=move)
 
     # Set children, optionally moving ownership of the children as well (i.e.,
     # the objects in the input children would be marked released).
     n_children = 0
     for child_src in children:
+        # If we're setting a CArray from something else, we can avoid an extra
+        # level of Python wrapping by using move=True
+        move = move or not isinstance(child_src, CArray)
         builder.set_child(n_children, c_array(child_src), move=move)
         n_children += 1
 
@@ -590,7 +597,9 @@ def _c_array_from_iterable(obj, schema=None):
     # Use buffer create for crude support of array from iterable
     buffer, n_values = _c_buffer_from_iterable(obj, schema)
 
-    return c_array_from_buffers(schema, n_values, buffers=(None, buffer), null_count=0)
+    return c_array_from_buffers(
+        schema, n_values, buffers=(None, buffer), null_count=0, move=True
+    )
 
 
 def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
