@@ -307,7 +307,7 @@ static inline void BufferInitWrapped(struct ArrowBuffer* buffer, T obj, const vo
 /// Specifically, this uses obj.data() to set the buffer address and
 /// obj.size() * sizeof(T::value_type) to set the buffer size. This works
 /// for STL containers like std::vector, std::array, and std::string.
-/// This funciton moves obj and ensures it is deleted when ArrowBufferReset
+/// This function moves obj and ensures it is deleted when ArrowBufferReset
 /// is called.
 template <typename T>
 void BufferInitSequence(struct ArrowBuffer* buffer, T obj) {
