@@ -1,4 +1,3 @@
-
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,38 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-src/nanoarrow/vendor
-src/nanoarrow/_lib.c
-src/nanoarrow/_ipc_lib.c
+from nanoarrow._lib import CArrayStream
+from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
 
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
 
-# C extensions
-*.so
+class IpcStream:
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+    def __init__(self, obj):
+        self._stream = CIpcInputStream.from_readable(obj)
 
-# Unit test / coverage reports
-.pytest_cache/
+    def __arrow_c_stream__(self, requested_schema=None):
+        array_stream = CArrayStream.allocate()
+        init_array_stream(self._stream, array_stream._addr())
+        return array_stream.__arrow_c_stream__(requested_schema=requested_schema)
