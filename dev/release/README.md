@@ -449,7 +449,7 @@ Apache Arrow is a columnar in-memory analytics layer designed to accelerate big 
 
 What is Apache Arrow nanoarrow?
 --------------------------
-Apache Arrow nanoarrow is a small C library for building and interpreting Arrow C Data interface structures with bindings for users of the R programming language. The vision of nanoarrow is that it should be trivial for a library or application to implement an Arrow-based interface. The library provides helpers to create types, schemas, and metadata, an API for building arrays element-wise,
+Apache Arrow nanoarrow is a C library for building and interpreting Arrow C Data interface structures with bindings for users of R and Python. The vision of nanoarrow is that it should be trivial for a library or application to implement an Arrow-based interface. The library provides helpers to create types, schemas, and metadata, an API for building arrays element-wise,
 and an API to extract elements element-wise from an array. For a more detailed description of the features nanoarrow provides and motivation for its development, see [3].
 
 Please report any feedback to the mailing lists ([4], [5]).
