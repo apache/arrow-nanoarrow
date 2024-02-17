@@ -21,7 +21,14 @@ from nanoarrow._lib import CArrayStream
 
 class IpcStream:
     def __init__(self, obj):
-        self._stream = CIpcInputStream.from_readable(obj)
+        if hasattr(obj, "readinto"):
+            self._stream = CIpcInputStream.from_readable(obj)
+        elif isinstance(obj, str):
+            self._stream = CIpcInputStream.from_readable(
+                open(obj, "rb"), close_stream=True
+            )
+        else:
+            raise TypeError(f"Can't create IpcStream from object of type {type(obj).__name__}")
 
     def __arrow_c_stream__(self, requested_schema=None):
         array_stream = CArrayStream.allocate()

@@ -20,6 +20,7 @@
 
 from libc.stdint cimport uint8_t, int64_t, uintptr_t
 from libc.errno cimport EIO
+from libc.stdio cimport snprintf
 from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
 from cpython cimport Py_buffer, PyBuffer_FillInfo
 
@@ -50,20 +51,23 @@ cdef extern from "nanoarrow_ipc.h" nogil:
 
 cdef class PyInputStreamPrivate:
     cdef object obj
+    cdef object obj_method
     cdef void* addr
     cdef Py_ssize_t size_bytes
+    cdef int close_stream
 
-    def __cinit__(self, obj):
+    def __cinit__(self, obj, close_stream=False):
         self.obj = obj
+        self.obj_method = obj.readinto
         self.addr = NULL
         self.size_bytes = 0
+        self.close_stream = close_stream
 
     def __getbuffer__(self, Py_buffer* buffer, int flags):
         PyBuffer_FillInfo(buffer, self, self.addr, self.size_bytes, 0, flags)
 
     def __releasebuffer__(self, Py_buffer* buffer):
         pass
-
 
 
 cdef ArrowErrorCode py_input_stream_read(ArrowIpcInputStream* stream, uint8_t* buf,
@@ -74,15 +78,26 @@ cdef ArrowErrorCode py_input_stream_read(ArrowIpcInputStream* stream, uint8_t* b
     stream_private.size_bytes = buf_size_bytes
 
     try:
-        size_read_out[0] = stream_private.obj.readinto(stream_private)
+        size_read_out[0] = stream_private.obj_method(stream_private)
         return NANOARROW_OK
     except Exception as e:
-        raise e
+        cls = type(e).__name__.encode()
+        msg = str(e).encode()
+        snprintf(
+            error.message,
+            sizeof(error.message),
+            "%s: %s",
+            <const char*>cls,
+            <const char*>msg
+        )
         return EIO
 
 
 cdef void py_input_stream_release(ArrowIpcInputStream* stream) noexcept:
     cdef PyInputStreamPrivate stream_private = <object>stream.private_data
+    if stream_private.close_stream:
+        stream_private.obj.close()
+
     Py_DECREF(stream_private)
     stream.private_data = NULL
     stream.release = NULL
@@ -98,11 +113,9 @@ cdef class CIpcInputStream:
         if self._stream.release != NULL:
             self._stream.release(&self._stream)
 
-
-    def from_readable(obj):
+    def from_readable(obj, close_stream=False):
         cdef CIpcInputStream stream = CIpcInputStream()
-
-        cdef PyInputStreamPrivate private_data = PyInputStreamPrivate(obj)
+        cdef PyInputStreamPrivate private_data = PyInputStreamPrivate(obj, close_stream)
 
         stream._stream.private_data = <PyObject*>private_data
         Py_INCREF(private_data)
