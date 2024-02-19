@@ -32,7 +32,7 @@ class Stream:
     does a better job maintaining type fidelity.
 
     Use :staticmethod:`from_readable`, :staticmethod:`from_path`, or
-    :staticmethod:`from_url`
+    :staticmethod:`from_url` to construct these streams.
 
     Parameters
     ----------
@@ -43,11 +43,20 @@ class Stream:
 
     def __init__(self):
         self._stream = None
+        self._desc = None
 
-    def _is_valid(self):
+    def _is_valid(self) -> bool:
         return self._stream is not None and self._stream.is_valid()
 
     def __arrow_c_stream__(self, requested_schema=None):
+        """Export this stream as an ArrowArrayStream
+
+        Implements the Arrow PyCapsule interface by transferring ownership of this
+        input stream to an ArrowArrayStream wrapped by a PyCapsule.
+        """
+        if not self._is_valid():
+            raise RuntimeError("nanoarrow.ipc.Stream is no longer valid")
+
         array_stream = CArrayStream.allocate()
         init_array_stream(self._stream, array_stream._addr())
         return array_stream.__arrow_c_stream__(requested_schema=requested_schema)
@@ -61,35 +70,90 @@ class Stream:
 
     @staticmethod
     def from_readable(obj):
+        """Wrap an open readable object as an Arrow stream
+
+        Wraps a readable object (specificially, an object that implements a
+        ``readinto()`` method) as a non-owning Stream. Closing ``obj`` remains
+        the caller's responsibility: neither this stream nor the resulting array
+        stream will call ``obj.close()``.
+
+        Parameters
+        ----------
+        obj : readable file-like
+            An object implementing ``readinto()``.
+        """
         out = Stream()
         out._stream = CIpcInputStream.from_readable(obj)
+        out._desc = repr(obj)
         return out
 
     @staticmethod
     def from_path(obj, *args, **kwargs):
+        """Wrap an open readable object as an Arrow stream
+
+        Wraps a pathlike object (specificially, one that can be passed to ``open()``)
+        as an owning Stream. The file will be opened in binary mode and will be closed
+        when this stream or the resulting array stream is released.
+
+        Parameters
+        ----------
+        obj : path-like
+            A string or path-like object that can be passed to ``open()``
+        """
         out = Stream()
         out._stream = CIpcInputStream.from_readable(
             open(obj, "rb", *args, **kwargs), close_stream=True
         )
+        out._desc = repr(obj)
         return out
 
     @staticmethod
     def from_url(obj, *args, **kwargs):
+        """Wrap a URL as an Arrow stream
+
+        Wraps a URL (specificially, one that can be passed to
+        ``urllib.request.urlopen()``) as an owning Stream. The URL will be
+        closed when this stream or the resulting array stream is released.
+
+        Parameters
+        ----------
+        obj : str
+            A URL that can be passed to ``urllib.request.urlopen()``
+        """
         import urllib.request
 
         out = Stream()
         out._stream = CIpcInputStream.from_readable(
             urllib.request.urlopen(obj, *args, **kwargs), close_stream=True
         )
+        out._desc = repr(obj)
         return out
 
     @staticmethod
     def example():
+        """Example Stream
+
+        A self-contained example whose value is the serialized verison of
+        ``DataFrame({"some_col": [1, 2, 3]})``. This may be used for testing
+        and documentation and is useful because nanoarrow does not implement
+        a writer to generate test data.
+        """
         return Stream.from_readable(io.BytesIO(Stream.example_bytes()))
 
     @staticmethod
     def example_bytes():
+        """Example stream bytes
+
+        The underlying bytes of the :staticmethod:`example` Stream. This is useful
+        for writing files or creating other types of test input.
+        """
         return _EXAMPLE_IPC_SCHEMA + _EXAMPLE_IPC_BATCH
+
+    def __repr__(self) -> str:
+        if self._is_valid():
+            return f"<nanoarrow.ipc.Stream {self._desc}>"
+        else:
+            return "<invalid nanoarrow.ipc.Stream>"
 
 
 # A self-contained example whose value is the serialized verison of

@@ -18,6 +18,8 @@
 import os
 import tempfile
 
+import pytest
+
 import nanoarrow as na
 from nanoarrow.ipc import Stream
 
@@ -25,9 +27,15 @@ from nanoarrow.ipc import Stream
 def test_ipc_stream_example():
 
     with Stream.example() as input:
+        assert input._is_valid() is True
+        assert "BytesIO object" in repr(input)
+
         stream = na.c_array_stream(input)
         assert input._is_valid() is False
         assert stream.is_valid() is True
+        assert repr(input) == "<invalid nanoarrow.ipc.Stream>"
+        with pytest.raises(RuntimeError, match="no longer valid"):
+            stream = na.c_array_stream(input)
 
         with stream:
             schema = stream.get_schema()
@@ -49,6 +57,7 @@ def test_ipc_stream_from_path():
             f.write(Stream.example_bytes())
 
         with Stream.from_path(path) as input:
+            assert repr(path) in repr(input)
             stream = na.c_array_stream(input)
             batches = list(stream)
             assert len(batches) == 1
