@@ -65,6 +65,11 @@ def test_ipc_stream_from_path():
 
 
 def test_ipc_stream_from_url():
+    # It's unclear exactly how file:// URLs are supposed to work on Windows
+    # so skip for now
+    if os.name == 'nt':
+        pytest.skip("On Windows")
+
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "test.arrows")
         with open(path, "wb") as f:
