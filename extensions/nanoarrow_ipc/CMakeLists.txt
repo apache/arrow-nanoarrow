@@ -171,7 +171,7 @@ else()
 endif()
 
 # Don't add extra warning flags when bundling, since we treat flatcc
-# as a part of the nanoarrow_ipc target and we hvae no control over the
+# as a part of the nanoarrow_ipc target and we have no control over the
 # warnings it produces.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT NANOARROW_IPC_BUNDLE)
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
