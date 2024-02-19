@@ -106,6 +106,10 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
     return EINVAL;
   }
 
+  // Workaround for an unused flatbuffers header value that is only unused in the
+  // bundled version of the library.
+  NANOARROW_UNUSED(flatbuffers_end);
+
   return NANOARROW_OK;
 }
 
