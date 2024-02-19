@@ -24,20 +24,20 @@
 #' @export
 #'
 #' @examples
-#' read_array_stream(example_ipc_stream())
+#' read_nanoarrow(example_ipc_stream())
 #'
-read_array_stream <- function(x, ...) {
-  UseMethod("read_array_stream")
+read_nanoarrow <- function(x, ...) {
+  UseMethod("read_nanoarrow")
 }
 
 #' @export
-read_array_stream.raw <- function(x, ...) {
+read_nanoarrow.raw <- function(x, ...) {
   buffer <- as_nanoarrow_buffer(x)
   .Call(nanoarrow_c_ipc_array_reader_buffer, buffer)
 }
 
 #' @export
-read_array_stream.character <- function(x, ...) {
+read_nanoarrow.character <- function(x, ...) {
   if (length(x) != 1) {
     stop(sprintf("Can't interpret character(%d) as file path", length(x)))
   }
@@ -49,11 +49,11 @@ read_array_stream.character <- function(x, ...) {
     con <- do.call(con_type, list(x))
   }
 
-  read_array_stream(con)
+  read_nanoarrow(con)
 }
 
 #' @export
-read_array_stream.connection <- function(x, ...) {
+read_nanoarrow.connection <- function(x, ...) {
   if (!isOpen(x)) {
     # Unopened connections should be opened in binary mode
     open(x, "rb")
@@ -68,11 +68,11 @@ read_array_stream.connection <- function(x, ...) {
 
     # Close the connection when the array stream is released
     stream_finalizer <- function() {
-      close(con)
+      close(x)
     }
 
     finalizer_env <- new.env(parent = baseenv())
-    finalizer_env$con <- x
+    finalizer_env$x <- x
     environment(stream_finalizer) <- finalizer_env
 
     array_stream_set_finalizer(stream, stream_finalizer)
@@ -81,7 +81,7 @@ read_array_stream.connection <- function(x, ...) {
   }
 }
 
-#' @rdname read_array_stream
+#' @rdname read_nanoarrow
 #' @export
 example_ipc_stream <- function() {
   # data.frame(some_col = c(1L, 2L, 3L)) as a serialized schema/batch
@@ -150,7 +150,7 @@ guess_connection_type <- function(x) {
 }
 
 guess_zip_filename <- function(x) {
-  files <- unzip(x, list = TRUE)[[1]]
+  files <- utils::unzip(x, list = TRUE)[[1]]
   if (length(files) != 1) {
     stop(
       sprintf(

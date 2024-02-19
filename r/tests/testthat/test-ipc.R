@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-test_that("read_array_stream() works for raw vectors", {
-  stream <- read_array_stream(example_ipc_stream())
+test_that("read_nanoarrow() works for raw vectors", {
+  stream <- read_nanoarrow(example_ipc_stream())
   expect_s3_class(stream, "nanoarrow_array_stream")
   expect_identical(
     as.data.frame(stream),
@@ -24,11 +24,11 @@ test_that("read_array_stream() works for raw vectors", {
   )
 })
 
-test_that("read_array_stream() works for open connections", {
+test_that("read_nanoarrow() works for open connections", {
   con <- rawConnection(example_ipc_stream())
   on.exit(close(con))
 
-  stream <- read_array_stream(con)
+  stream <- read_nanoarrow(con)
   expect_s3_class(stream, "nanoarrow_array_stream")
   expect_identical(
     as.data.frame(stream),
@@ -36,7 +36,7 @@ test_that("read_array_stream() works for open connections", {
   )
 })
 
-test_that("read_array_stream() works for unopened connections", {
+test_that("read_nanoarrow() works for unopened connections", {
   tf <- tempfile()
   on.exit(unlink(tf))
 
@@ -47,7 +47,7 @@ test_that("read_array_stream() works for unopened connections", {
   con <- file(tf)
   # Don't close on exit, because we're supposed to do that
 
-  stream <- read_array_stream(con)
+  stream <- read_nanoarrow(con)
   expect_true(isOpen(con))
   stream$release()
   expect_error(
@@ -56,7 +56,7 @@ test_that("read_array_stream() works for unopened connections", {
   )
 })
 
-test_that("read_array_stream() works for file paths", {
+test_that("read_nanoarrow() works for file paths", {
   tf <- tempfile()
   on.exit(unlink(tf))
 
@@ -64,14 +64,14 @@ test_that("read_array_stream() works for file paths", {
   writeBin(example_ipc_stream(), con)
   close(con)
 
-  stream <- read_array_stream(tf)
+  stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
     data.frame(some_col = c(1L, 2L, 3L))
   )
 })
 
-test_that("read_array_stream() works for URLs", {
+test_that("read_nanoarrow() works for URLs", {
   tf <- tempfile()
   on.exit(unlink(tf))
 
@@ -79,14 +79,14 @@ test_that("read_array_stream() works for URLs", {
   writeBin(example_ipc_stream(), con)
   close(con)
 
-  stream <- read_array_stream(paste0("file://", tf))
+  stream <- read_nanoarrow(paste0("file://", tf))
   expect_identical(
     as.data.frame(stream),
     data.frame(some_col = c(1L, 2L, 3L))
   )
 })
 
-test_that("read_array_stream() works for compressed .gz file paths", {
+test_that("read_nanoarrow() works for compressed .gz file paths", {
   tf <- tempfile(fileext = ".gz")
   on.exit(unlink(tf))
 
@@ -94,14 +94,14 @@ test_that("read_array_stream() works for compressed .gz file paths", {
   writeBin(example_ipc_stream(), con)
   close(con)
 
-  stream <- read_array_stream(tf)
+  stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
     data.frame(some_col = c(1L, 2L, 3L))
   )
 })
 
-test_that("read_array_stream() works for compressed .bz2 file paths", {
+test_that("read_nanoarrow() works for compressed .bz2 file paths", {
   tf <- tempfile(fileext = ".bz2")
   on.exit(unlink(tf))
 
@@ -109,14 +109,14 @@ test_that("read_array_stream() works for compressed .bz2 file paths", {
   writeBin(example_ipc_stream(), con)
   close(con)
 
-  stream <- read_array_stream(tf)
+  stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
     data.frame(some_col = c(1L, 2L, 3L))
   )
 })
 
-test_that("read_array_stream() works for compressed .zip file paths", {
+test_that("read_nanoarrow() works for compressed .zip file paths", {
   tf <- tempfile(fileext = ".zip")
   tdir <- tempfile()
   on.exit(unlink(c(tf, tdir), recursive = TRUE))
@@ -134,28 +134,28 @@ test_that("read_array_stream() works for compressed .zip file paths", {
     zip(tf, "file.arrows", extras = "-q")
   })
 
-  stream <- read_array_stream(tf)
+  stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
     data.frame(some_col = c(1L, 2L, 3L))
   )
 })
 
-test_that("read_array_stream() errors for compressed URL paths", {
+test_that("read_nanoarrow() errors for compressed URL paths", {
   expect_error(
-    read_array_stream("https://something.zip"),
+    read_nanoarrow("https://something.zip"),
     "Reading compressed streams from URLs"
   )
 })
 
-test_that("read_array_stream() errors for input with length != 1", {
+test_that("read_nanoarrow() errors for input with length != 1", {
   expect_error(
-    read_array_stream(character(0)),
+    read_nanoarrow(character(0)),
     "Can't interpret character"
   )
 })
 
-test_that("read_array_stream() errors zip archives that contain files != 1", {
+test_that("read_nanoarrow() errors zip archives that contain files != 1", {
   tf <- tempfile(fileext = ".zip")
   tdir <- tempfile()
   on.exit(unlink(c(tf, tdir), recursive = TRUE))
@@ -170,12 +170,12 @@ test_that("read_array_stream() errors zip archives that contain files != 1", {
   })
 
   expect_error(
-    read_array_stream(tf),
+    read_nanoarrow(tf),
     "Unzip only supported of archives with exactly one file"
   )
 })
 
-test_that("read_array_stream() reports errors from readBin", {
+test_that("read_nanoarrow() reports errors from readBin", {
   tf <- tempfile()
   on.exit(unlink(tf))
   writeLines("this is not a binary file", tf)
@@ -183,7 +183,7 @@ test_that("read_array_stream() reports errors from readBin", {
   con <- file(tf, open = "r")
   on.exit(close(con))
 
-  stream <- read_array_stream(con)
+  stream <- read_nanoarrow(con)
   expect_error(
     stream$get_next(),
     "can only read from a binary connection"
