@@ -23,3 +23,15 @@ test_that("read_nanoarrow_array_stream() works for raw vectors", {
     data.frame(some_col = c(1L, 2L, 3L))
   )
 })
+
+test_that("read_nanoarrow_array_stream() works for open connections", {
+  con <- rawConnection(example_ipc_stream())
+  on.exit(close(con))
+
+  stream <- read_nanoarrow_array_stream(con)
+  expect_s3_class(stream, "nanoarrow_array_stream")
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(1L, 2L, 3L))
+  )
+})

@@ -19,9 +19,11 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "nanoarrow_ipc.h"
+
 #include "buffer.h"
 #include "nanoarrow/r.h"
-#include "nanoarrow_ipc.h"
+#include "util.h"
 
 static void finalize_input_stream_xptr(SEXP input_stream_xptr) {
   struct ArrowIpcInputStream* input_stream =
@@ -63,6 +65,87 @@ SEXP nanoarrow_c_ipc_array_reader_buffer(SEXP buffer_xptr) {
   }
 
   code = ArrowIpcArrayStreamReaderInit(array_stream, input_stream, NULL);
+  if (code != NANOARROW_OK) {
+    Rf_error("ArrowIpcArrayStreamReaderInit() failed");
+  }
+
+  UNPROTECT(2);
+  return array_stream_xptr;
+}
+
+struct ConnectionInputStreamHandler {
+  SEXP con;
+  uint8_t* buf;
+  int64_t buf_size_bytes;
+  int64_t* size_read_out;
+  struct ArrowError* error;
+  int return_code;
+};
+
+static SEXP handle_readbin_error(SEXP cond, void* hdata) {
+  Rf_PrintValue(cond);
+  struct ConnectionInputStreamHandler* data = (struct ConnectionInputStreamHandler*)hdata;
+  data->return_code = EIO;
+  ArrowErrorSet(data->error, "R execution error: <not implemented>");
+  return R_NilValue;
+}
+
+static SEXP call_readbin(void* hdata) {
+  struct ConnectionInputStreamHandler* data = (struct ConnectionInputStreamHandler*)hdata;
+  SEXP fun = PROTECT(Rf_install("readBin"));
+  SEXP what = PROTECT(Rf_allocVector(RAWSXP, 0));
+  SEXP n = PROTECT(Rf_ScalarInteger((int)data->buf_size_bytes));
+  SEXP call = PROTECT(Rf_lang4(fun, data->con, what, n));
+
+  SEXP result = PROTECT(Rf_eval(call, R_BaseEnv));
+  R_xlen_t bytes_read = Rf_xlength(result);
+  memcpy(data->buf, RAW(result), bytes_read);
+  *(data->size_read_out) = bytes_read;
+
+  UNPROTECT(5);
+  return R_NilValue;
+}
+
+static ArrowErrorCode read_con_input_stream(struct ArrowIpcInputStream* stream,
+                                            uint8_t* buf, int64_t buf_size_bytes,
+                                            int64_t* size_read_out,
+                                            struct ArrowError* error) {
+  if (buf_size_bytes > INT_MAX) {
+    ArrowErrorSet(error, "Can't read > INT_MAX bytes from an R connection");
+    return EIO;
+  }
+
+  struct ConnectionInputStreamHandler data;
+  data.con = (SEXP)stream->private_data;
+  data.buf = buf;
+  data.buf_size_bytes = buf_size_bytes;
+  data.size_read_out = size_read_out;
+  data.error = error;
+  data.return_code = NANOARROW_OK;
+
+  R_tryCatchError(&call_readbin, &data, &handle_readbin_error, &data);
+  return data.return_code;
+}
+
+static void release_con_input_stream(struct ArrowIpcInputStream* stream) {
+  nanoarrow_release_sexp((SEXP)stream->private_data);
+}
+
+SEXP nanoarrow_c_ipc_array_reader_connection(SEXP con) {
+  SEXP array_stream_xptr = PROTECT(nanoarrow_array_stream_owning_xptr());
+  struct ArrowArrayStream* array_stream =
+      nanoarrow_output_array_stream_from_xptr(array_stream_xptr);
+
+  SEXP input_stream_xptr = PROTECT(input_stream_owning_xptr());
+  struct ArrowIpcInputStream* input_stream =
+      (struct ArrowIpcInputStream*)R_ExternalPtrAddr(input_stream_xptr);
+
+  input_stream->read = &read_con_input_stream;
+  input_stream->release = &release_con_input_stream;
+  input_stream->private_data = (SEXP)con;
+  nanoarrow_preserve_sexp(con);
+
+  int code = ArrowIpcArrayStreamReaderInit(array_stream, input_stream, NULL);
   if (code != NANOARROW_OK) {
     Rf_error("ArrowIpcArrayStreamReaderInit() failed");
   }

@@ -36,9 +36,15 @@ read_nanoarrow_array_stream.raw <- function(x, ...) {
   .Call(nanoarrow_c_ipc_array_reader_buffer, buffer)
 }
 
+#' @export
+read_nanoarrow_array_stream.connection <- function(x, ...) {
+  .Call(nanoarrow_c_ipc_array_reader_connection, x)
+}
+
 #' @rdname read_nanoarrow_array_stream
 #' @export
 example_ipc_stream <- function() {
+  # data.frame(some_col = c(1L, 2L, 3L)) as a serialized schema/batch
   schema <- as.raw(c(
     0xff, 0xff, 0xff, 0xff, 0x10, 0x01, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x0a, 0x00, 0x0e, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0a, 0x00, 0x00, 0x00,
