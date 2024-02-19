@@ -181,7 +181,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                                    -Wmaybe-uninitialized
                                    -Wunused-result
                                    -Wconversion
-                                   -Wno-sign-conversion)
+                                   -Wno-sign-conversion
+                                   -Wno-misleading-indentation)
   elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
                                                       "Clang")
     target_compile_options(nanoarrow_ipc
