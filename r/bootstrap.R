@@ -92,7 +92,6 @@ if (all(file.exists(files_to_vendor))) {
     }
   }
 
-
   # Post-process headers for CMD check
   f <- "src/flatcc/portable/pdiagnostic.h"
   lines <- readLines(f)

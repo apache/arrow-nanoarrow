@@ -51,7 +51,7 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-pandoc@v2
       - uses: r-lib/actions/setup-r@v2
@@ -59,6 +59,12 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+
+      - name: Run bootstrap.R
+        run: |
+          cd r
+          Rscript bootstrap.R
+        shell: bash
 
       # Check package install with extra warning flags except on Windows,
       # where the R headers cause some problems
@@ -73,7 +79,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, arrow=?ignore-before-r=4.0.0, github::r-lib/pkgbuild@v1.4.0
+          extra-packages: any::rcmdcheck, arrow=?ignore-before-r=4.0.0
           needs: check
           working-directory: r
 
