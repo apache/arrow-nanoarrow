@@ -218,7 +218,7 @@ def test_c_array_view():
 
     assert view.storage_type == "int32"
     assert "- storage_type: 'int32'" in repr(view)
-    assert "<int32 data[12 b] 1 2 3>" in repr(view)
+    assert "data <int32[12 b] 1 2 3>" in repr(view)
 
     data_buffer = memoryview(view.buffer(1))
     data_buffer_copy = bytes(data_buffer)
@@ -368,6 +368,18 @@ def test_buffers_bool():
 
     # Check via buffer get_item interface
     assert [data_buffer[i] for i in range(len(data_buffer))] == list(data_buffer)
+
+    # Check via element interface
+    assert data_buffer.n_elements == 8
+    assert list(data_buffer.elements) == [True] * 3 + [False] * 5
+    assert [data_buffer.element(i) for i in range(data_buffer.n_elements)] == list(
+        data_buffer.elements
+    )
+
+    with pytest.raises(IndexError):
+        data_buffer[8]
+    with pytest.raises(IndexError):
+        data_buffer[-1]
 
     # Check repr
     assert "11100000" in repr(data_buffer)

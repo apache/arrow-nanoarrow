@@ -31,23 +31,43 @@ by default (i.e., classes, methods, and functions implemented in Python
 generally have better autocomplete + documentation available to IDEs).
 """
 
-from libc.stdint cimport uintptr_t, int64_t
+from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from cpython cimport Py_buffer
+from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
+from cpython cimport (
+    Py_buffer,
+    PyObject_CheckBuffer,
+    PyObject_GetBuffer,
+    PyBuffer_Release,
+    PyBuffer_ToContiguous,
+    PyBUF_ANY_CONTIGUOUS,
+    PyBUF_FORMAT,
+    PyBUF_WRITABLE
+)
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
-from struct import unpack_from, iter_unpack
+from sys import byteorder as sys_byteorder
+from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _lib_utils
 
 def c_version():
     """Return the nanoarrow C library version string
     """
     return ArrowNanoarrowVersion().decode("UTF-8")
+
+
+# CPython utilities that are helpful in Python and not available in all
+# implementations of ctypes (e.g., early Python versions, pypy)
+def _obj_is_capsule(obj, str name):
+    return PyCapsule_IsValid(obj, name.encode()) == 1
+
+
+def _obj_is_buffer(obj):
+    return PyObject_CheckBuffer(obj) == 1
 
 
 # PyCapsule utilities
@@ -149,20 +169,8 @@ cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
     array.release = NULL
 
 
-cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
-    """Make a shallow copy of an ArrowArray
-
-    To more safely implement export of an ArrowArray whose address may be
-    depended on by some other Python object, we implement a shallow copy
-    whose constructor calls Py_INCREF() on a Python object responsible
-    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
-    the same object.
-    """
-    cdef:
-        ArrowArray* c_array_out
-
-    array_capsule = alloc_c_array(&c_array_out)
-
+cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
+                                 ArrowArray* c_array_out) noexcept:
     # shallow copy
     memcpy(c_array_out, c_array, sizeof(ArrowArray))
     c_array_out.release = NULL
@@ -173,7 +181,202 @@ cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) n
     Py_INCREF(base)
     c_array_out.release = arrow_array_release
 
+
+cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
+    """Make a shallow copy of an ArrowArray
+
+    To more safely implement export of an ArrowArray whose address may be
+    depended on by some other Python object, we implement a shallow copy
+    whose constructor calls Py_INCREF() on a Python object responsible
+    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
+    the same object.
+    """
+    cdef ArrowArray* c_array_out
+    array_capsule = alloc_c_array(&c_array_out)
+    c_array_shallow_copy(base, c_array, c_array_out)
     return array_capsule
+
+
+cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
+    cdef ArrowBuffer* buffer = <ArrowBuffer*>PyCapsule_GetPointer(
+        stream_capsule, 'nanoarrow_buffer'
+    )
+
+    ArrowBufferReset(buffer)
+    ArrowFree(buffer)
+
+
+cdef object alloc_c_buffer(ArrowBuffer** c_buffer) noexcept:
+    c_buffer[0] = <ArrowBuffer*> ArrowMalloc(sizeof(ArrowBuffer))
+    ArrowBufferInit(c_buffer[0])
+    return PyCapsule_New(c_buffer[0], 'nanoarrow_buffer', &pycapsule_buffer_deleter)
+
+cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
+    cdef Py_buffer* buffer = <Py_buffer*>allocator.private_data
+    PyBuffer_Release(buffer)
+    ArrowFree(buffer)
+
+
+cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
+    # This should probably be changed in nanoarrow C; however, currently, the deallocator
+    # won't get called if buffer.buf is NULL.
+    if buffer.buf == NULL:
+        PyBuffer_Release(buffer)
+        return ArrowBufferAllocatorDefault()
+
+    cdef Py_buffer* allocator_private = <Py_buffer*>ArrowMalloc(sizeof(Py_buffer))
+    if allocator_private == NULL:
+        PyBuffer_Release(buffer)
+        raise MemoryError()
+
+    memcpy(allocator_private, buffer, sizeof(Py_buffer))
+    return ArrowBufferDeallocator(<ArrowBufferDeallocatorCallback>&c_deallocate_pybuffer, allocator_private)
+
+
+cdef c_arrow_type_from_format(format):
+    # PyBuffer_SizeFromFormat() was added in Python 3.9 (potentially faster)
+    item_size = calcsize(format)
+
+    # Don't allow non-native endian values
+    if sys_byteorder == "little" and (">" in format or "!" in format):
+        raise ValueError(f"Can't convert format '{format}' to Arrow type")
+    elif sys_byteorder == "big" and  "<" in format:
+        raise ValueError(f"Can't convert format '{format}' to Arrow type")
+
+    # Strip system endian specifiers
+    format = format.strip("=@")
+
+    if format == "c":
+        return 0, NANOARROW_TYPE_STRING
+    elif format == "e":
+        return item_size, NANOARROW_TYPE_HALF_FLOAT
+    elif format == "f":
+        return item_size, NANOARROW_TYPE_FLOAT
+    elif format == "d":
+        return item_size, NANOARROW_TYPE_DOUBLE
+
+    # Check for signed integers
+    if format in ("b", "?", "h", "i", "l", "q", "n"):
+        if item_size == 1:
+            return item_size, NANOARROW_TYPE_INT8
+        elif item_size == 2:
+            return item_size, NANOARROW_TYPE_INT16
+        elif item_size == 4:
+            return item_size, NANOARROW_TYPE_INT32
+        elif item_size == 8:
+            return item_size, NANOARROW_TYPE_INT64
+
+    # Check for unsinged integers
+    if format in ("B", "H", "I", "L", "Q", "N"):
+        if item_size == 1:
+            return item_size, NANOARROW_TYPE_UINT8
+        elif item_size == 2:
+            return item_size, NANOARROW_TYPE_UINT16
+        elif item_size == 4:
+            return item_size, NANOARROW_TYPE_UINT32
+        elif item_size == 8:
+            return item_size, NANOARROW_TYPE_UINT64
+
+    # If all else fails, return opaque fixed-size binary
+    return item_size, NANOARROW_TYPE_BINARY
+
+
+cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size_t out_size, char* out):
+    if type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY) and element_size_bits > 0:
+        snprintf(out, out_size, "%ds", <int>(element_size_bits // 8))
+        return element_size_bits
+
+    cdef const char* format_const = ""
+    cdef int element_size_bits_calc = 0
+    if type_id == NANOARROW_TYPE_STRING:
+        format_const = "c"
+        element_size_bits_calc = 0
+    elif type_id == NANOARROW_TYPE_BINARY:
+        format_const = "B"
+        element_size_bits_calc = 0
+    elif type_id == NANOARROW_TYPE_BOOL:
+        # Bitmaps export as unspecified binary
+        format_const = "B"
+        element_size_bits_calc = 1
+    elif type_id == NANOARROW_TYPE_INT8:
+        format_const = "b"
+        element_size_bits_calc = 8
+    elif type_id == NANOARROW_TYPE_UINT8:
+        format_const = "B"
+        element_size_bits_calc = 8
+    elif type_id == NANOARROW_TYPE_INT16:
+        format_const = "h"
+        element_size_bits_calc = 16
+    elif type_id == NANOARROW_TYPE_UINT16:
+        format_const = "H"
+        element_size_bits_calc = 16
+    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS):
+        format_const = "i"
+        element_size_bits_calc = 32
+    elif type_id == NANOARROW_TYPE_UINT32:
+        format_const = "I"
+        element_size_bits_calc = 32
+    elif type_id == NANOARROW_TYPE_INT64:
+        format_const = "q"
+        element_size_bits_calc = 64
+    elif type_id == NANOARROW_TYPE_UINT64:
+        format_const = "Q"
+        element_size_bits_calc = 64
+    elif type_id == NANOARROW_TYPE_HALF_FLOAT:
+        format_const = "e"
+        element_size_bits_calc = 16
+    elif type_id == NANOARROW_TYPE_FLOAT:
+        format_const = "f"
+        element_size_bits_calc = 32
+    elif type_id == NANOARROW_TYPE_DOUBLE:
+        format_const = "d"
+        element_size_bits_calc = 64
+    elif type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
+        format_const = "ii"
+        element_size_bits_calc = 64
+    elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+        format_const = "iiq"
+        element_size_bits_calc = 128
+    elif type_id == NANOARROW_TYPE_DECIMAL128:
+        format_const = "16s"
+        element_size_bits_calc = 128
+    elif type_id == NANOARROW_TYPE_DECIMAL256:
+        format_const = "32s"
+        element_size_bits_calc = 256
+    else:
+        raise ValueError(f"Unsupported Arrow type_id for format conversion: {type_id}")
+
+    snprintf(out, out_size, "%s", format_const)
+    return element_size_bits_calc
+
+
+cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
+    ArrowBufferReset(c_buffer[0])
+
+    cdef Py_buffer buffer
+    cdef int rc = PyObject_GetBuffer(obj, &buffer, PyBUF_FORMAT | PyBUF_ANY_CONTIGUOUS)
+    if rc != 0:
+        raise BufferError()
+
+    # Parse the buffer's format string to get the ArrowType and element size
+    try:
+        if buffer.format == NULL:
+            format = "B"
+        else:
+            format = buffer.format.decode("UTF-8")
+    except Exception as e:
+        PyBuffer_Release(&buffer)
+        raise e
+
+    # Transfers ownership of buffer to c_buffer, whose finalizer will be called by
+    # the capsule when the capsule is deleted or garbage collected
+    c_buffer[0].data = <uint8_t*>buffer.buf
+    c_buffer[0].size_bytes = <int64_t>buffer.len
+    c_buffer[0].capacity_bytes = 0
+    c_buffer[0].allocator = c_pybuffer_deallocator(&buffer)
+
+    # Return the calculated components
+    return format
 
 
 class NanoarrowException(RuntimeError):
@@ -214,11 +417,22 @@ cdef class Error:
         """
         raise NanoarrowException(what, code, self.c_error.message.decode("UTF-8"))
 
+    def raise_message_not_ok(self, what, code):
+        if code == NANOARROW_OK:
+            return
+        self.raise_message(what, code)
+
     @staticmethod
     def raise_error(what, code):
         """Raise a NanoarrowException without a message
         """
         raise NanoarrowException(what, code, "")
+
+    @staticmethod
+    def raise_error_not_ok(what, code):
+        if code == NANOARROW_OK:
+            return
+        Error.raise_error(what, code)
 
 
 # This could in theory use cpdef enum, but an initial attempt to do so
@@ -284,6 +498,56 @@ cdef class CArrowTimeUnit:
     NANO = NANOARROW_TIME_UNIT_NANO
 
 
+
+cdef class CDevice:
+    """ArrowDevice wrapper
+
+    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
+    not ABI stable) that contains callbacks for device operations
+    beyond its type and identifier (e.g., copy buffers to or from
+    a device).
+    """
+
+    cdef object _base
+    cdef ArrowDevice* _ptr
+
+    def __cinit__(self, object base, uintptr_t addr):
+        self._base = base,
+        self._ptr = <ArrowDevice*>addr
+
+    def _array_init(self, uintptr_t array_addr, CSchema schema):
+        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
+        cdef ArrowDeviceArray* device_array_ptr
+        holder = alloc_c_device_array(&device_array_ptr)
+        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
+        Error.raise_error_not_ok("ArrowDevice::init_array", code)
+
+        return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
+
+    def __repr__(self):
+        return _lib_utils.device_repr(self)
+
+    @property
+    def device_type(self):
+        return self._ptr.device_type
+
+    @property
+    def device_id(self):
+        return self._ptr.device_id
+
+    @staticmethod
+    def resolve(ArrowDeviceType device_type, int64_t device_id):
+        if device_type == ARROW_DEVICE_CPU:
+            return CDEVICE_CPU
+        else:
+            raise ValueError(f"Device not found for type {device_type}/{device_id}")
+
+
+# Cache the CPU device
+# The CPU device is statically allocated (so base is None)
+CDEVICE_CPU = CDevice(None, <uintptr_t>ArrowDeviceCpu())
+
+
 cdef class CSchema:
     """Low-level ArrowSchema wrapper
 
@@ -311,9 +575,9 @@ cdef class CSchema:
 
     def __deepcopy__(self):
         cdef CSchema out = CSchema.allocate()
-        cdef int result = ArrowSchemaDeepCopy(self._ptr, out._ptr)
-        if result != NANOARROW_OK:
-            raise NanoarrowException("ArrowSchemaDeepCopy()", result)
+        cdef int code = ArrowSchemaDeepCopy(self._ptr, out._ptr)
+        Error.raise_error_not_ok("ArrowSchemaDeepCopy()", code)
+
         return out
 
     @staticmethod
@@ -343,9 +607,8 @@ cdef class CSchema:
             int result
 
         schema_capsule = alloc_c_schema(&c_schema_out)
-        result = ArrowSchemaDeepCopy(self._ptr, c_schema_out)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaDeepCopy", result)
+        code = ArrowSchemaDeepCopy(self._ptr, c_schema_out)
+        Error.raise_error_not_ok("ArrowSchemaDeepCopy", code)
         return schema_capsule
 
     @property
@@ -496,9 +759,8 @@ cdef class CSchemaView:
         self._schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED
 
         cdef Error error = Error()
-        cdef int result = ArrowSchemaViewInit(&self._schema_view, schema._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowSchemaViewInit()", result)
+        cdef int code = ArrowSchemaViewInit(&self._schema_view, schema._ptr, &error.c_error)
+        error.raise_message_not_ok("ArrowSchemaViewInit()", code)
 
         self._dictionary_ordered = schema._ptr.flags & ARROW_FLAG_DICTIONARY_ORDERED
         self._nullable = schema._ptr.flags & ARROW_FLAG_NULLABLE
@@ -619,73 +881,66 @@ cdef class CSchemaBuilder:
     def set_type(self, int type_id):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaSetType(self._ptr, <ArrowType>type_id)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetType()", result)
+        cdef int code = ArrowSchemaSetType(self._ptr, <ArrowType>type_id)
+        Error.raise_error_not_ok("ArrowSchemaSetType()", code)
 
         return self
 
     def set_type_decimal(self, int type_id, int precision, int scale):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type_id, precision, scale)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetType()", result)
+        cdef int code = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type_id, precision, scale)
+        Error.raise_error_not_ok("ArrowSchemaSetType()", code)
 
     def set_type_fixed_size(self, int type_id, int fixed_size):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type_id, fixed_size)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetTypeFixedSize()", result)
+        cdef int code = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type_id, fixed_size)
+        Error.raise_error_not_ok("ArrowSchemaSetTypeFixedSize()", code)
 
         return self
 
     def set_type_date_time(self, int type_id, int time_unit, timezone):
         self.c_schema._assert_valid()
 
-        cdef int result
+        cdef int code
         if timezone is None:
-            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, NULL)
+            code = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, NULL)
         else:
             timezone = str(timezone)
-            result = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, timezone.encode("UTF-8"))
+            code = ArrowSchemaSetTypeDateTime(self._ptr, <ArrowType>type_id, <ArrowTimeUnit>time_unit, timezone.encode("UTF-8"))
 
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetTypeDateTime()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetTypeDateTime()", code)
 
         return self
 
     def set_format(self, str format):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaSetFormat(self._ptr, format.encode("UTF-8"))
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetFormat()", result)
+        cdef int code = ArrowSchemaSetFormat(self._ptr, format.encode("UTF-8"))
+        Error.raise_error_not_ok("ArrowSchemaSetFormat()", code)
 
         return self
 
     def set_name(self, name):
         self.c_schema._assert_valid()
 
-        cdef int result
+        cdef int code
         if name is None:
-            result = ArrowSchemaSetName(self._ptr, NULL)
+            code = ArrowSchemaSetName(self._ptr, NULL)
         else:
             name = str(name)
-            result = ArrowSchemaSetName(self._ptr, name.encode("UTF-8"))
+            code = ArrowSchemaSetName(self._ptr, name.encode("UTF-8"))
 
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaSetName()", result)
+        Error.raise_error_not_ok("ArrowSchemaSetName()", code)
 
         return self
 
     def allocate_children(self, int n):
         self.c_schema._assert_valid()
 
-        cdef int result = ArrowSchemaAllocateChildren(self._ptr, n)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowSchemaAllocateChildren()", result)
+        cdef int code = ArrowSchemaAllocateChildren(self._ptr, n)
+        Error.raise_error_not_ok("ArrowSchemaAllocateChildren()", code)
 
         return self
 
@@ -698,13 +953,12 @@ cdef class CSchemaBuilder:
         if self._ptr.children[i].release != NULL:
             ArrowSchemaRelease(self._ptr.children[i])
 
-        cdef int result = ArrowSchemaDeepCopy(child_src._ptr, self._ptr.children[i])
-        if result != NANOARROW_OK:
-            Error.raise_error("", result)
+        cdef int code = ArrowSchemaDeepCopy(child_src._ptr, self._ptr.children[i])
+        Error.raise_error_not_ok("ArrowSchemaDeepCopy()", code)
 
         if name is not None:
             name = str(name)
-            result = ArrowSchemaSetName(self._ptr.children[i], name.encode("UTF-8"))
+            code = ArrowSchemaSetName(self._ptr.children[i], name.encode("UTF-8"))
 
         return self
 
@@ -790,6 +1044,7 @@ cdef class CArray:
             respectively.
         """
         self._assert_valid()
+
         if requested_schema is not None:
             raise NotImplementedError("requested_schema")
 
@@ -880,12 +1135,12 @@ cdef class CArrayView:
     """
     cdef object _base
     cdef ArrowArrayView* _ptr
-    cdef ArrowDevice* _device
+    cdef CDevice _device
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._device = ArrowDeviceCpu()
+        self._device = CDEVICE_CPU
 
     @property
     def storage_type(self):
@@ -933,18 +1188,44 @@ cdef class CArrayView:
                 return i
         return 3
 
+    def buffer_type(self, int64_t i):
+        if i < 0 or i >= self.n_buffers:
+            raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
+
+        buffer_type = self._ptr.layout.buffer_type[i]
+        if buffer_type == NANOARROW_BUFFER_TYPE_VALIDITY:
+            return "validity"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_TYPE_ID:
+            return "type_id"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+            return "union_offset"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+            return "data_offset"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_DATA:
+            return "data"
+        else:
+            return "none"
+
     def buffer(self, int64_t i):
         if i < 0 or i >= self.n_buffers:
             raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
 
         cdef ArrowBufferView* buffer_view = &(self._ptr.buffer_views[i])
+
+        # Check the buffer size here because the error later is cryptic.
+        # Buffer sizes are set to -1 when they are "unknown", so because of errors
+        # in nanoarrow/C or because the array is on a non-CPU device, that -1 value
+        # could leak its way here.
+        if buffer_view.size_bytes < 0:
+            raise RuntimeError(f"ArrowArrayView buffer {i} has size_bytes < 0")
+
         return CBufferView(
             self._base,
-            <uintptr_t>buffer_view,
-            self._ptr.layout.buffer_type[i],
+            <uintptr_t>buffer_view.data.data,
+            buffer_view.size_bytes,
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
-            <uintptr_t>self._device
+            self._device
         )
 
     @property
@@ -971,14 +1252,12 @@ cdef class CArrayView:
         base = alloc_c_array_view(&c_array_view)
 
         cdef Error error = Error()
-        cdef int result = ArrowArrayViewInitFromSchema(c_array_view,
+        cdef int code = ArrowArrayViewInitFromSchema(c_array_view,
                                                        array._schema._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewInitFromSchema()", result)
+        error.raise_message_not_ok("ArrowArrayViewInitFromSchema()", code)
 
-        result = ArrowArrayViewSetArray(c_array_view, array._ptr, &error.c_error)
-        if result != NANOARROW_OK:
-            error.raise_message("ArrowArrayViewSetArray()", result)
+        code = ArrowArrayViewSetArray(c_array_view, array._ptr, &error.c_error)
+        error.raise_message_not_ok("ArrowArrayViewSetArray()", code)
 
         return CArrayView((base, array), <uintptr_t>c_array_view)
 
@@ -996,9 +1275,8 @@ cdef class SchemaMetadata:
         self._metadata = <const char*>ptr
 
     def _init_reader(self):
-        cdef int result = ArrowMetadataReaderInit(&self._reader, self._metadata)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowMetadataReaderInit()", result)
+        cdef int code = ArrowMetadataReaderInit(&self._reader, self._metadata)
+        Error.raise_error_not_ok("ArrowMetadataReaderInit()", code)
 
     def __len__(self):
         self._init_reader()
@@ -1024,39 +1302,38 @@ cdef class CBufferView:
     this buffer content does not apply any parent offset.
     """
     cdef object _base
-    cdef ArrowBufferView* _ptr
-    cdef ArrowBufferType _buffer_type
-    cdef ArrowType _buffer_data_type
-    cdef ArrowDevice* _device
+    cdef ArrowBufferView _ptr
+    cdef ArrowType _data_type
+    cdef CDevice _device
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
     cdef char _format[128]
 
-    def __cinit__(self, object base, uintptr_t addr,
-                  ArrowBufferType buffer_type, ArrowType buffer_data_type,
-                  Py_ssize_t element_size_bits, uintptr_t device):
+    def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
+                  ArrowType data_type,
+                  Py_ssize_t element_size_bits, CDevice device):
         self._base = base
-        self._ptr = <ArrowBufferView*>addr
-        self._buffer_type = buffer_type
-        self._buffer_data_type = buffer_data_type
-        self._device = <ArrowDevice*>device
-        self._element_size_bits = element_size_bits
+        self._ptr.data.data = <void*>addr
+        self._ptr.size_bytes = size_bytes
+        self._data_type = data_type
+        self._device = device
+        self._format[0] = 0
+        self._element_size_bits = c_format_from_arrow_type(
+            self._data_type,
+            element_size_bits,
+            sizeof(self._format),
+            self._format
+        )
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
-        self._format[0] = 0
-        self._populate_format()
 
     def _addr(self):
         return <uintptr_t>self._ptr.data.data
 
     @property
-    def device_type(self):
-        return self._device.device_type
-
-    @property
-    def device_id(self):
-        return self._device.device_id
+    def device(self):
+        return self._device
 
     @property
     def element_size_bits(self):
@@ -1067,21 +1344,12 @@ cdef class CBufferView:
         return self._ptr.size_bytes
 
     @property
-    def type(self):
-        if self._buffer_type == NANOARROW_BUFFER_TYPE_VALIDITY:
-            return "validity"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_TYPE_ID:
-            return "type_id"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-            return "union_offset"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_DATA_OFFSET:
-            return "data_offset"
-        elif self._buffer_type == NANOARROW_BUFFER_TYPE_DATA:
-            return "data"
+    def data_type_id(self):
+        return self._data_type
 
     @property
     def data_type(self):
-        return ArrowTypeString(self._buffer_data_type).decode("UTF-8")
+        return ArrowTypeString(self._data_type).decode("UTF-8")
 
     @property
     def format(self):
@@ -1105,11 +1373,55 @@ cdef class CBufferView:
             return value
 
     def __iter__(self):
+        # memoryview's implementation is very fast but not always possible (half float, fixed-size binary, interval)
+        if self._data_type in (
+            NANOARROW_TYPE_HALF_FLOAT,
+            NANOARROW_TYPE_INTERVAL_DAY_TIME,
+            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+            NANOARROW_TYPE_DECIMAL128,
+            NANOARROW_TYPE_DECIMAL256
+        ) or (
+            self._data_type == NANOARROW_TYPE_BINARY and self._element_size_bits != 0
+        ):
+            return self._iter_struct()
+        else:
+            return iter(memoryview(self))
+
+    def _iter_struct(self):
         for value in iter_unpack(self.format, self):
             if len(value) == 1:
                 yield value[0]
             else:
                 yield value
+
+    @property
+    def n_elements(self):
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            return self._shape * 8
+        else:
+            return self._shape
+
+    def element(self, i):
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            if i < 0 or i >= self.n_elements:
+                raise IndexError(f"Index {i} out of range")
+            return ArrowBitGet(self._ptr.data.as_uint8, i)
+        else:
+            return self[i]
+
+    @property
+    def elements(self):
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            return self._iter_bitmap()
+        else:
+            return self.__iter__()
+
+    def _iter_bitmap(self):
+        cdef uint8_t item
+        for i in range(self._shape):
+            item = self._ptr.data.as_uint8[i]
+            for j in range(8):
+                yield (item & (<uint8_t>1 << j)) != 0
 
     cdef Py_ssize_t _item_size(self):
         if self._element_size_bits < 8:
@@ -1117,56 +1429,29 @@ cdef class CBufferView:
         else:
             return self._element_size_bits // 8
 
-    cdef void _populate_format(self):
-        cdef const char* format_const = NULL
-        if self._element_size_bits == 0:
-            # Variable-size elements (e.g., data buffer for string or binary) export as
-            # one byte per element (character if string, unspecified binary otherwise)
-            if self._buffer_data_type == NANOARROW_TYPE_STRING:
-                format_const = "c"
-            else:
-                format_const = "B"
-        elif self._element_size_bits < 8:
-            # Bitmaps export as unspecified binary
-            format_const = "B"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT8:
-            format_const = "b"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT8:
-            format_const = "B"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT16:
-            format_const = "=h"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT16:
-            format_const = "=H"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT32:
-            format_const = "=i"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT32:
-            format_const = "=I"
-        elif self._buffer_data_type == NANOARROW_TYPE_INT64:
-            format_const = "=q"
-        elif self._buffer_data_type == NANOARROW_TYPE_UINT64:
-            format_const = "=Q"
-        elif self._buffer_data_type == NANOARROW_TYPE_HALF_FLOAT:
-            format_const = "=e"
-        elif self._buffer_data_type == NANOARROW_TYPE_FLOAT:
-            format_const = "=f"
-        elif self._buffer_data_type == NANOARROW_TYPE_DOUBLE:
-            format_const = "=d"
-        elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_DAY_TIME:
-            format_const = "=ii"
-        elif self._buffer_data_type == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-            format_const = "=iiq"
-
-        if format_const != NULL:
-            snprintf(self._format, sizeof(self._format), "%s", format_const)
-        else:
-            snprintf(self._format, sizeof(self._format), "%ds", <int>(self._element_size_bits // 8))
-
+    # These are special methods, which can't be cdef and we can't
+    # call them from elsewhere. We implement the logic for the buffer
+    # protocol separately so we can re-use it in the CBuffer.
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        if self._device.device_type != ARROW_DEVICE_CPU:
-            raise RuntimeError("nanoarrow.c_lib.CBufferView is not a CPU buffer")
+        self._do_getbuffer(buffer, flags)
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        self._do_releasebuffer(buffer)
+
+    cdef _do_getbuffer(self, Py_buffer *buffer, int flags):
+        if self._device is not CDEVICE_CPU:
+            raise RuntimeError("CBufferView is not a CPU buffer")
+
+        if flags & PyBUF_WRITABLE:
+            raise BufferError("CBufferView does not support PyBUF_WRITABLE")
 
         buffer.buf = <void*>self._ptr.data.data
-        buffer.format = self._format
+
+        if flags & PyBUF_FORMAT:
+            buffer.format = self._format
+        else:
+            buffer.format = NULL
+
         buffer.internal = NULL
         buffer.itemsize = self._strides
         buffer.len = self._ptr.size_bytes
@@ -1177,11 +1462,444 @@ cdef class CBufferView:
         buffer.strides = &self._strides
         buffer.suboffsets = NULL
 
-    def __releasebuffer__(self, Py_buffer *buffer):
+    cdef _do_releasebuffer(self, Py_buffer* buffer):
         pass
 
     def __repr__(self):
-        return f"<nanoarrow.c_lib.CBufferView>\n  {_lib_utils.buffer_view_repr(self)[1:]}"
+        return f"CBufferView({_lib_utils.buffer_view_repr(self)})"
+
+
+cdef class CBuffer:
+    """Wrapper around readable owned buffer content
+
+    Like the CBufferView, the CBuffer represents readable buffer content; however,
+    unlike the CBufferView, the CBuffer always represents a valid ArrowBuffer C object.
+    """
+    cdef object _base
+    cdef ArrowBuffer* _ptr
+    cdef ArrowType _data_type
+    cdef int _element_size_bits
+    cdef char _format[32]
+    cdef CDevice _device
+    cdef CBufferView _view
+    cdef int _get_buffer_count
+
+    def __cinit__(self):
+        self._base = None
+        self._ptr = NULL
+        self._data_type = NANOARROW_TYPE_BINARY
+        self._element_size_bits = 0
+        self._device = CDEVICE_CPU
+        # Set initial format to "B" (Cython makes this hard)
+        self._format[0] = 66
+        self._format[1] = 0
+        self._get_buffer_count = 0
+        self._view = CBufferView(None, 0, 0, NANOARROW_TYPE_BINARY, 0, self._device)
+
+    cdef _assert_valid(self):
+        if self._ptr == NULL:
+            raise RuntimeError("CBuffer is not valid")
+
+    cdef _assert_buffer_count_zero(self):
+        if self._get_buffer_count != 0:
+            raise RuntimeError(
+                f"CBuffer already open ({self._get_buffer_count} ",
+                f"references, {self._writable_get_buffer_count} writable)")
+
+    cdef _populate_view(self):
+        self._assert_valid()
+        self._assert_buffer_count_zero()
+        self._view = CBufferView(
+            self._base, <uintptr_t>self._ptr.data,
+            self._ptr.size_bytes, self._data_type, self._element_size_bits,
+            self._device
+        )
+
+    @staticmethod
+    def empty():
+        cdef CBuffer out = CBuffer()
+        out._base = alloc_c_buffer(&out._ptr)
+        return out
+
+    @staticmethod
+    def from_pybuffer(obj):
+        cdef CBuffer out = CBuffer()
+        out._base = alloc_c_buffer(&out._ptr)
+        out._set_format(c_buffer_set_pybuffer(obj, &out._ptr))
+        out._device = CDEVICE_CPU
+        out._populate_view()
+        return out
+
+    def _set_format(self, str format):
+        self._assert_buffer_count_zero()
+
+        element_size_bytes, data_type = c_arrow_type_from_format(format)
+        self._data_type = data_type
+        self._element_size_bits = element_size_bytes * 8
+        format_bytes = format.encode("UTF-8")
+        snprintf(self._format, sizeof(self._format), "%s", <const char*>format_bytes)
+        self._populate_view()
+        return self
+
+    def _set_data_type(self, ArrowType type_id, int element_size_bits=0):
+        self._assert_buffer_count_zero()
+
+        self._element_size_bits = c_format_from_arrow_type(
+            type_id,
+            element_size_bits,
+            sizeof(self._format),
+            self._format
+        )
+        self._data_type = type_id
+
+        self._populate_view()
+        return self
+
+    def _addr(self):
+        self._assert_valid()
+        return <uintptr_t>self._ptr.data
+
+    @property
+    def _get_buffer_count(self):
+        return self._get_buffer_count
+
+    @property
+    def size_bytes(self):
+        self._assert_valid()
+        return self._ptr.size_bytes
+
+    @property
+    def data_type(self):
+        return ArrowTypeString(self._data_type).decode("UTF-8")
+
+    @property
+    def data_type_id(self):
+        return self._data_type
+
+    @property
+    def element_size_bits(self):
+        return self._element_size_bits
+
+    @property
+    def item_size(self):
+        self._assert_valid()
+        return self._view.item_size
+
+    @property
+    def format(self):
+        return self._format.decode("UTF-8")
+
+    def __len__(self):
+        self._assert_valid()
+        return len(self._view)
+
+    def __getitem__(self, k):
+        self._assert_valid()
+        return self._view[k]
+
+    def __iter__(self):
+        self._assert_valid()
+        return iter(self._view)
+
+    @property
+    def n_elements(self):
+        self._assert_valid()
+        return self._view.n_elements
+
+    def element(self, i):
+        self._assert_valid()
+        return self._view.element(i)
+
+    @property
+    def elements(self):
+        self._assert_valid()
+        return self._view.elements
+
+    def __getbuffer__(self, Py_buffer* buffer, int flags):
+        self._assert_valid()
+        self._view._do_getbuffer(buffer, flags)
+        self._get_buffer_count += 1
+
+    def __releasebuffer__(self, Py_buffer* buffer):
+        if self._get_buffer_count <= 0:
+            raise RuntimeError("CBuffer buffer reference count underflow (releasebuffer)")
+
+        self._view._do_releasebuffer(buffer)
+        self._get_buffer_count -= 1
+
+    def __repr__(self):
+        if self._ptr == NULL:
+            return "CBuffer(<invalid>)"
+
+        return f"CBuffer({_lib_utils.buffer_view_repr(self._view)})"
+
+
+cdef class CBufferBuilder:
+    """Wrapper around writable owned buffer CPU content"""
+    cdef CBuffer _buffer
+
+    def __cinit__(self):
+        self._buffer = CBuffer.empty()
+
+    @property
+    def size_bytes(self):
+        return self._buffer.size_bytes
+
+    @property
+    def capacity_bytes(self):
+        return self._buffer._ptr.capacity_bytes
+
+    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
+        self._buffer._set_data_type(type_id, element_size_bits)
+        return self
+
+    def reserve_bytes(self, int64_t additional_bytes):
+        cdef int code = ArrowBufferReserve(self._buffer._ptr, additional_bytes)
+        Error.raise_error_not_ok("ArrowBufferReserve()", code)
+        return self
+
+    def write(self, content):
+        cdef Py_buffer buffer
+        cdef int64_t out
+        PyObject_GetBuffer(content, &buffer, PyBUF_ANY_CONTIGUOUS)
+
+        cdef int code = ArrowBufferReserve(self._buffer._ptr, buffer.len)
+        if code != NANOARROW_OK:
+            PyBuffer_Release(&buffer)
+            Error.raise_error("ArrowBufferReserve()", code)
+
+        code = PyBuffer_ToContiguous(
+            self._buffer._ptr.data + self._buffer._ptr.size_bytes,
+            &buffer,
+            buffer.len,
+            # 'C' (not sure how to pass a character literal here)
+            43
+        )
+        out = buffer.len
+        PyBuffer_Release(&buffer)
+        Error.raise_error_not_ok("PyBuffer_ToContiguous()", code)
+
+        self._buffer._ptr.size_bytes += out
+        return out
+
+    def write_elements(self, obj):
+        if self._buffer._data_type == NANOARROW_TYPE_BOOL:
+            return self._write_bits(obj)
+
+        cdef int64_t n_values = 0
+        struct_obj = Struct(self._buffer._format)
+        pack = struct_obj.pack
+        write = self.write
+
+        if self._buffer._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
+                               NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
+            for item in obj:
+                n_values += 1
+                write(pack(*item))
+        else:
+            for item in obj:
+                n_values += 1
+                write(pack(item))
+
+        return n_values
+
+    cdef _write_bits(self, obj):
+        if self._buffer._ptr.size_bytes != 0:
+            raise NotImplementedError("Append to bitmap that has already been appended to")
+
+        cdef char buffer_item = 0
+        cdef int buffer_item_i = 0
+        cdef int code
+        cdef int64_t n_values = 0
+        for item in obj:
+            n_values += 1
+            if item:
+                buffer_item |= (<char>1 << buffer_item_i)
+
+            buffer_item_i += 1
+            if buffer_item_i == 8:
+                code = ArrowBufferAppendInt8(self._buffer._ptr, buffer_item)
+                Error.raise_error_not_ok("ArrowBufferAppendInt8()", code)
+                buffer_item = 0
+                buffer_item_i = 0
+
+        if buffer_item_i != 0:
+            code = ArrowBufferAppendInt8(self._buffer._ptr, buffer_item)
+            Error.raise_error_not_ok("ArrowBufferAppendInt8()", code)
+
+        return n_values
+
+    def finish(self):
+        cdef CBuffer out = self._buffer
+        out._populate_view()
+
+        self._buffer = CBuffer.empty()
+        return out
+
+
+cdef class CArrayBuilder:
+    cdef CArray c_array
+    cdef ArrowArray* _ptr
+    cdef bint _can_validate
+
+    def __cinit__(self, CArray array):
+        self.c_array = array
+        self._ptr = array._ptr
+        self._can_validate = True
+
+    @staticmethod
+    def allocate():
+        return CArrayBuilder(CArray.allocate(CSchema.allocate()))
+
+    def init_from_type(self, int type_id):
+        if self._ptr.release != NULL:
+            raise RuntimeError("CArrayBuilder is already initialized")
+
+        cdef int code = ArrowArrayInitFromType(self._ptr, <ArrowType>type_id)
+        Error.raise_error_not_ok("ArrowArrayInitFromType()", code)
+
+        code = ArrowSchemaInitFromType(self.c_array._schema._ptr, <ArrowType>type_id)
+        Error.raise_error_not_ok("ArrowSchemaInitFromType()", code)
+
+        return self
+
+    def init_from_schema(self, CSchema schema):
+        if self._ptr.release != NULL:
+            raise RuntimeError("CArrayBuilder is already initialized")
+
+        cdef Error error = Error()
+        cdef int code = ArrowArrayInitFromSchema(self._ptr, schema._ptr, &error.c_error)
+        error.raise_message_not_ok("ArrowArrayInitFromType()", code)
+
+        self.c_array._schema = schema
+        return self
+
+    def start_appending(self):
+        cdef int code = ArrowArrayStartAppending(self._ptr)
+        Error.raise_error_not_ok("ArrowArrayStartAppending()", code)
+        return self
+
+    def set_offset(self, int64_t offset):
+        self.c_array._assert_valid()
+        self._ptr.offset = offset
+        return self
+
+    def set_length(self, int64_t length):
+        self.c_array._assert_valid()
+        self._ptr.length = length
+        return self
+
+    def set_null_count(self, int64_t null_count):
+        self.c_array._assert_valid()
+        self._ptr.null_count = null_count
+        return self
+
+    def resolve_null_count(self):
+        self.c_array._assert_valid()
+
+        # This doesn't apply to unions. We currently don't have a schema view
+        # or array view we can use to query the type ID, so just use the format
+        # string for now.
+        format = self.c_array.schema.format
+        if format.startswith("+us:") or format.startswith("+ud:"):
+            return self
+
+        # Don't overwrite an explicit null count
+        if self._ptr.null_count != -1:
+            return self
+
+        cdef ArrowBuffer* validity_buffer = ArrowArrayBuffer(self._ptr, 0)
+        if validity_buffer.size_bytes == 0:
+            self._ptr.null_count = 0
+            return self
+
+        # From _ArrowBytesForBits(), which is not included in nanoarrow_c.pxd
+        # because it's an internal inline function.
+        cdef int64_t bits = self._ptr.offset + self._ptr.length
+        cdef int64_t bytes_required = (bits >> 3) + ((bits & 7) != 0)
+
+        if validity_buffer.size_bytes < bytes_required:
+            raise ValueError(
+                f"Expected validity bitmap >= {bytes_required} bytes "
+                f"but got validity bitmap with {validity_buffer.size_bytes} bytes"
+            )
+
+        cdef int64_t count = ArrowBitCountSet(
+            validity_buffer.data,
+            self._ptr.offset,
+            self._ptr.length
+        )
+        self._ptr.null_count = self._ptr.length - count
+        return self
+
+    def set_buffer(self, int64_t i, CBuffer buffer, move=False):
+        """Sets a buffer of this ArrowArray such the pointer at array->buffers[i] is
+        equal to buffer->data and such that the buffer's lifcycle is managed by
+        the array. If move is True, the input Python object that previously wrapped
+        the ArrowBuffer will be invalidated, which is usually the desired behaviour
+        if you built or imported a buffer specifically to build this array. If move
+        is False (the default), this function will a make a shallow copy via another
+        layer of Python object wrapping."""
+        if i < 0 or i > 3:
+            raise IndexError("i must be >= 0 and <= 3")
+
+        self.c_array._assert_valid()
+        if not move:
+            buffer = CBuffer.from_pybuffer(buffer)
+
+        ArrowBufferMove(buffer._ptr, ArrowArrayBuffer(self._ptr, i))
+
+        # The buffer's lifecycle is now owned by the array; however, we need
+        # array->buffers[i] to be updated such that it equals
+        # ArrowArrayBuffer(array, i)->data.
+        self._ptr.buffers[i] = ArrowArrayBuffer(self._ptr, i).data
+
+        return self
+
+    def set_child(self, int64_t i, CArray c_array, move=False):
+        cdef CArray child = self.c_array.child(i)
+        if child._ptr.release != NULL:
+            ArrowArrayRelease(child._ptr)
+
+        if not move:
+            c_array_shallow_copy(c_array._base, c_array._ptr, child._ptr)
+        else:
+            ArrowArrayMove(c_array._ptr, child._ptr)
+
+        # After setting children, we can't use the built-in validation done by
+        # ArrowArrayFinishBuilding() because it assumes that the private_data of
+        # each array (recursively) is one that was initialized by ArrowArrayInit()
+        self._can_validate = False
+
+        return self
+
+    def finish(self, validation_level=None):
+        self.c_array._assert_valid()
+        cdef ArrowValidationLevel c_validation_level
+        cdef Error error = Error()
+        cdef int code
+
+        if self._can_validate:
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
+            if validation_level == "full":
+                c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
+            elif validation_level == "minimal":
+                c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
+            elif validation_level == "none":
+                c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
+
+            code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
+            error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
+
+        elif validation_level not in (None, "none"):
+            raise NotImplementedError("Validation for array with children is not implemented")
+
+        out = self.c_array
+        self.c_array = CArray.allocate(CSchema.allocate())
+        self._ptr = self.c_array._ptr
+        self._can_validate = True
+
+        return out
 
 
 cdef class CArrayStream:
@@ -1239,6 +1957,7 @@ cdef class CArrayStream:
         PyCapsule
         """
         self._assert_valid()
+
         if requested_schema is not None:
             raise NotImplementedError("requested_schema")
 
@@ -1265,8 +1984,7 @@ cdef class CArrayStream:
         self._assert_valid()
         cdef Error error = Error()
         cdef int code = self._ptr.get_schema(self._ptr, schema._ptr)
-        if code != NANOARROW_OK:
-            error.raise_error("ArrowArrayStream::get_schema()", code)
+        Error.raise_error_not_ok("ArrowArrayStream::get_schema()", code)
 
         self._cached_schema = schema
 
@@ -1295,8 +2013,7 @@ cdef class CArrayStream:
         cdef Error error = Error()
         cdef CArray array = CArray.allocate(self._cached_schema)
         cdef int code = ArrowArrayStreamGetNext(self._ptr, array._ptr, &error.c_error)
-        if code != NANOARROW_OK:
-            error.raise_error("ArrowArrayStream::get_next()", code)
+        Error.raise_error_not_ok("ArrowArrayStream::get_next()", code)
 
         if not array.is_valid():
             raise StopIteration()
@@ -1311,55 +2028,6 @@ cdef class CArrayStream:
 
     def __repr__(self):
         return _lib_utils.array_stream_repr(self)
-
-
-cdef class Device:
-    """ArrowDevice wrapper
-
-    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
-    not ABI stable) that contains callbacks for device operations
-    beyond its type and identifier (e.g., copy buffers to or from
-    a device).
-    """
-    cdef object _base
-    cdef ArrowDevice* _ptr
-
-    def __cinit__(self, object base, uintptr_t addr):
-        self._base = base,
-        self._ptr = <ArrowDevice*>addr
-
-    def _array_init(self, uintptr_t array_addr, CSchema schema):
-        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
-        cdef ArrowDeviceArray* device_array_ptr
-        holder = alloc_c_device_array(&device_array_ptr)
-        cdef int result = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
-        if result != NANOARROW_OK:
-            Error.raise_error("ArrowDevice::init_array", result)
-
-        return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
-
-    def __repr__(self):
-        return _lib_utils.device_repr(self)
-
-    @property
-    def device_type(self):
-        return self._ptr.device_type
-
-    @property
-    def device_id(self):
-        return self._ptr.device_id
-
-    @staticmethod
-    def resolve(ArrowDeviceType device_type, int64_t device_id):
-        if device_type == ARROW_DEVICE_CPU:
-            return Device.cpu()
-        else:
-            raise ValueError(f"Device not found for type {device_type}/{device_id}")
-
-    @staticmethod
-    def cpu():
-        # The CPU device is statically allocated (so base is None)
-        return Device(None, <uintptr_t>ArrowDeviceCpu())
 
 
 cdef class CDeviceArray:

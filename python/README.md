@@ -87,6 +87,11 @@ na.c_schema_view(schema)
     - decimal_bitwidth: 128
     - decimal_precision: 10
     - decimal_scale: 3
+    - dictionary_ordered: False
+    - map_keys_sorted: False
+    - nullable: True
+    - storage_type_id: 24
+    - type_id: 24
 
 
 
@@ -131,7 +136,7 @@ array
     - length: 4
     - offset: 0
     - null_count: 1
-    - buffers: (2939032895680, 2939032895616, 2939032895744)
+    - buffers: (3678035706048, 3678035705984, 3678035706112)
     - dictionary: NULL
     - children[0]:
 
@@ -153,9 +158,9 @@ na.c_array_view(array)
     - offset: 0
     - null_count: 1
     - buffers[3]:
-      - <bool validity[1 b] 11100000>
-      - <int32 data_offset[20 b] 0 3 6 11 11>
-      - <string data[11 b] b'onetwothree'>
+      - validity <bool[1 b] 11100000>
+      - data_offset <int32[20 b] 0 3 6 11 11>
+      - data <string[11 b] b'onetwothree'>
     - dictionary: NULL
     - children[0]:
 
@@ -194,20 +199,7 @@ array_stream
 
 
     <nanoarrow.c_lib.CArrayStream>
-    - get_schema(): <nanoarrow.c_lib.CSchema struct>
-      - format: '+s'
-      - name: ''
-      - flags: 0
-      - metadata: NULL
-      - dictionary: NULL
-      - children[1]:
-        'some_column': <nanoarrow.c_lib.CSchema int32>
-          - format: 'i'
-          - name: 'some_column'
-          - flags: 2
-          - metadata: NULL
-          - dictionary: NULL
-          - children[0]:
+    - get_schema(): struct<some_column: int32>
 
 
 
@@ -219,7 +211,7 @@ for array in array_stream:
     print(array)
 ```
 
-    <nanoarrow.c_lib.CArray struct>
+    <nanoarrow.c_lib.CArray struct<some_column: int32>>
     - length: 3
     - offset: 0
     - null_count: 0
@@ -230,7 +222,7 @@ for array in array_stream:
         - length: 3
         - offset: 0
         - null_count: 0
-        - buffers: (0, 2939033026688)
+        - buffers: (0, 3678035837056)
         - dictionary: NULL
         - children[0]:
 
@@ -248,20 +240,7 @@ array_stream
 
 
     <nanoarrow.c_lib.CArrayStream>
-    - get_schema(): <nanoarrow.c_lib.CSchema struct>
-      - format: '+s'
-      - name: ''
-      - flags: 0
-      - metadata: NULL
-      - dictionary: NULL
-      - children[1]:
-        'some_column': <nanoarrow.c_lib.CSchema int32>
-          - format: 'i'
-          - name: 'some_column'
-          - flags: 2
-          - metadata: NULL
-          - dictionary: NULL
-          - children[0]:
+    - get_schema(): struct<some_column: int32>
 
 
 
