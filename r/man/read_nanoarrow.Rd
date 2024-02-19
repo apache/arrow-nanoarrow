@@ -10,15 +10,31 @@ read_nanoarrow(x, ...)
 example_ipc_stream()
 }
 \arguments{
-\item{x}{A \code{raw()} vector or connection from which to read binary data}
+\item{x}{A \code{raw()} vector, connection, or file path from which to read
+binary data. Common extensions indicating compression (.gz, .bz2, .zip)
+are automatically uncompressed.}
 
-\item{...}{Passed to S3 methods}
+\item{...}{Currently unused.}
 }
 \value{
 A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}
 }
 \description{
-Read serialized streams of Arrow data
+Reads connections, file paths, URLs, or raw vectors of serialized Arrow
+data. Arrow documentation typically refers to this format as "Arrow IPC",
+since its origin was as a means to transmit tables between processes
+(e.g., multiple R sessions). This format can also be written to and read
+from files or URLs and is essentially a high performance equivalent of
+a CSV file that does a better job maintaining types.
+}
+\details{
+The nanoarrow package does not currently have the ability to write serialized
+IPC data: use \code{\link[arrow:write_ipc_stream]{arrow::write_ipc_stream()}} to write data from R, or use
+the equivalent writer from another Arrow implementation in Python, C++,
+Rust, JavaScript, Julia, C#, and beyond.
+
+The media type of an Arrow stream is \code{application/vnd.apache.arrow.stream}
+and the recommended file extension is \code{.arrows}.
 }
 \examples{
 read_nanoarrow(example_ipc_stream())

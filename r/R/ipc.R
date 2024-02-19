@@ -17,8 +17,25 @@
 
 #' Read serialized streams of Arrow data
 #'
-#' @param x A `raw()` vector or connection from which to read binary data
-#' @param ... Passed to S3 methods
+#' Reads connections, file paths, URLs, or raw vectors of serialized Arrow
+#' data. Arrow documentation typically refers to this format as "Arrow IPC",
+#' since its origin was as a means to transmit tables between processes
+#' (e.g., multiple R sessions). This format can also be written to and read
+#' from files or URLs and is essentially a high performance equivalent of
+#' a CSV file that does a better job maintaining types.
+#'
+#' The nanoarrow package does not currently have the ability to write serialized
+#' IPC data: use [arrow::write_ipc_stream()] to write data from R, or use
+#' the equivalent writer from another Arrow implementation in Python, C++,
+#' Rust, JavaScript, Julia, C#, and beyond.
+#'
+#' The media type of an Arrow stream is `application/vnd.apache.arrow.stream`
+#' and the recommended file extension is `.arrows`.
+#'
+#' @param x A `raw()` vector, connection, or file path from which to read
+#'   binary data. Common extensions indicating compression (.gz, .bz2, .zip)
+#'   are automatically uncompressed.
+#' @param ... Currently unused.
 #'
 #' @return A [nanoarrow_array_stream][as_nanoarrow_array_stream]
 #' @export
