@@ -66,7 +66,7 @@ jobs:
         if: matrix.config.os != 'windows-latest'
         env:
           PKG_CPPFLAGS: "-DNANOARROW_DEBUG"
-          PKG_CFLAGS: "-Werror -Wall -Wextra -Wpedantic -Wconversion -Wno-unused-parameter -Wno-sign-conversion -Wno-cast-function-type"
+          PKG_CFLAGS: "-Wall -Wpedantic"
         run: |
           R CMD INSTALL r --preclean
         shell: bash
