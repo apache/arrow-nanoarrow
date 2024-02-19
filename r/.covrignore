@@ -17,3 +17,6 @@
 
 src/nanoarrow.c
 src/nanoarrow.h
+src/nanoarrow_ipc.h
+src/nanoarrow_ipc.c
+src/flatcc*

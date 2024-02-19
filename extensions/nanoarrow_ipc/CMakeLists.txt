@@ -170,6 +170,31 @@ else()
 
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(nanoarrow_ipc
+                           PRIVATE -Wall
+                                   -Werror
+                                   -Wextra
+                                   -Wpedantic
+                                   -Wno-type-limits
+                                   -Wmaybe-uninitialized
+                                   -Wunused-result
+                                   -Wconversion
+                                   -Wno-sign-conversion)
+  elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
+                                                      "Clang")
+    target_compile_options(nanoarrow_ipc
+                           PRIVATE -Wall
+                                   -Werror
+                                   -Wextra
+                                   -Wpedantic
+                                   -Wdocumentation
+                                   -Wconversion
+                                   -Wno-sign-conversion)
+  endif()
+endif()
+
 if(NANOARROW_IPC_BUILD_TESTS)
   set(MEMORYCHECK_COMMAND_OPTIONS
       "--leak-check=full --suppressions=${CMAKE_CURRENT_LIST_DIR}/../../valgrind.supp --error-exitcode=1"
