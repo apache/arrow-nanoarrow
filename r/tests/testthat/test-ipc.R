@@ -56,6 +56,125 @@ test_that("read_array_stream() works for unopened connections", {
   )
 })
 
+test_that("read_array_stream() works for file paths", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  con <- file(tf, "wb")
+  writeBin(example_ipc_stream(), con)
+  close(con)
+
+  stream <- read_array_stream(tf)
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(1L, 2L, 3L))
+  )
+})
+
+test_that("read_array_stream() works for URLs", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  con <- file(tf, "wb")
+  writeBin(example_ipc_stream(), con)
+  close(con)
+
+  stream <- read_array_stream(paste0("file://", tf))
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(1L, 2L, 3L))
+  )
+})
+
+test_that("read_array_stream() works for compressed .gz file paths", {
+  tf <- tempfile(fileext = ".gz")
+  on.exit(unlink(tf))
+
+  con <- gzfile(tf, "wb")
+  writeBin(example_ipc_stream(), con)
+  close(con)
+
+  stream <- read_array_stream(tf)
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(1L, 2L, 3L))
+  )
+})
+
+test_that("read_array_stream() works for compressed .bz2 file paths", {
+  tf <- tempfile(fileext = ".bz2")
+  on.exit(unlink(tf))
+
+  con <- bzfile(tf, "wb")
+  writeBin(example_ipc_stream(), con)
+  close(con)
+
+  stream <- read_array_stream(tf)
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(1L, 2L, 3L))
+  )
+})
+
+test_that("read_array_stream() works for compressed .zip file paths", {
+  tf <- tempfile(fileext = ".zip")
+  tdir <- tempfile()
+  on.exit(unlink(c(tf, tdir), recursive = TRUE))
+
+  dir.create(tdir)
+  uncompressed <- file.path(tdir, "file.arrows")
+  con <- file(uncompressed, "wb")
+  writeBin(example_ipc_stream(), con)
+  close(con)
+
+  local({
+    wd <- getwd()
+    on.exit(setwd(wd))
+    setwd(tdir)
+    zip(tf, "file.arrows", extras = "-q")
+  })
+
+  stream <- read_array_stream(tf)
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(1L, 2L, 3L))
+  )
+})
+
+test_that("read_array_stream() errors for compressed URL paths", {
+  expect_error(
+    read_array_stream("https://something.zip"),
+    "Reading compressed streams from URLs"
+  )
+})
+
+test_that("read_array_stream() errors for input with length != 1", {
+  expect_error(
+    read_array_stream(character(0)),
+    "Can't interpret character"
+  )
+})
+
+test_that("read_array_stream() errors zip archives that contain files != 1", {
+  tf <- tempfile(fileext = ".zip")
+  tdir <- tempfile()
+  on.exit(unlink(c(tf, tdir), recursive = TRUE))
+
+  dir.create(tdir)
+  file.create(file.path(tdir, c("file1", "file2")))
+  local({
+    wd <- getwd()
+    on.exit(setwd(wd))
+    setwd(tdir)
+    zip(tf, c("file1", "file2"), extras = "-q")
+  })
+
+  expect_error(
+    read_array_stream(tf),
+    "Unzip only supported of archives with exactly one file"
+  )
+})
+
 test_that("read_array_stream() reports errors from readBin", {
   tf <- tempfile()
   on.exit(unlink(tf))

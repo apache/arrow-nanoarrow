@@ -37,11 +37,26 @@ read_array_stream.raw <- function(x, ...) {
 }
 
 #' @export
+read_array_stream.character <- function(x, ...) {
+  if (length(x) != 1) {
+    stop(sprintf("Can't interpret character(%d) as file path", length(x)))
+  }
+
+  con_type <- guess_connection_type(x)
+  if (con_type == "unz") {
+    con <- do.call(con_type, list(x, filename = guess_zip_filename(x)))
+  } else {
+    con <- do.call(con_type, list(x))
+  }
+
+  read_array_stream(con)
+}
+
+#' @export
 read_array_stream.connection <- function(x, ...) {
   if (!isOpen(x)) {
     # Unopened connections should be opened in binary mode
     open(x, "rb")
-
 
     stream <- tryCatch(
       .Call(nanoarrow_c_ipc_array_reader_connection, x),
@@ -109,4 +124,41 @@ example_ipc_stream <- function() {
   ))
 
   c(schema, batch)
+}
+
+guess_connection_type <- function(x) {
+  is_url <- grepl("://", x)
+
+  compressed_con <- switch(
+    tools::file_ext(x),
+    "gz" = "gzfile",
+    "bz2" = "bzfile",
+    "zip" = "unz"
+  )
+
+  if (is_url && !is.null(compressed_con)) {
+    stop("Reading compressed streams from URLs is not supported")
+  }
+
+  if (is_url) {
+    "url"
+  } else if (is.null(compressed_con)) {
+    "file"
+  } else {
+    compressed_con
+  }
+}
+
+guess_zip_filename <- function(x) {
+  files <- unzip(x, list = TRUE)[[1]]
+  if (length(files) != 1) {
+    stop(
+      sprintf(
+        "Unzip only supported of archives with exactly one file (found %d)",
+        length(files)
+      )
+    )
+  }
+
+  files
 }
