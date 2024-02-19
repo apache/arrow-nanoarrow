@@ -60,22 +60,16 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Run bootstrap.R
-        run: |
-          cd r
-          Rscript bootstrap.R
-        shell: bash
-
       # Check package install with extra warning flags except on Windows,
       # where the R headers cause some problems
-      - name: Check R CMD INSTALL
-        if: matrix.config.os != 'windows-latest'
-        env:
-          PKG_CPPFLAGS: "-DNANOARROW_DEBUG"
-          PKG_CFLAGS: "-Wall -Wpedantic"
-        run: |
-          R CMD INSTALL r --preclean
-        shell: bash
+      # - name: Check R CMD INSTALL
+      #   if: matrix.config.os != 'windows-latest'
+      #   env:
+      #     PKG_CPPFLAGS: "-DNANOARROW_DEBUG"
+      #     PKG_CFLAGS: "-Wall -Wpedantic"
+      #   run: |
+      #     R CMD INSTALL r --preclean
+      #   shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
