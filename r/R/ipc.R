@@ -24,24 +24,49 @@
 #' @export
 #'
 #' @examples
-#' read_nanoarrow_array_stream(example_ipc_stream())
+#' read_array_stream(example_ipc_stream())
 #'
-read_nanoarrow_array_stream <- function(x, ...) {
-  UseMethod("read_nanoarrow_array_stream")
+read_array_stream <- function(x, ...) {
+  UseMethod("read_array_stream")
 }
 
 #' @export
-read_nanoarrow_array_stream.raw <- function(x, ...) {
+read_array_stream.raw <- function(x, ...) {
   buffer <- as_nanoarrow_buffer(x)
   .Call(nanoarrow_c_ipc_array_reader_buffer, buffer)
 }
 
 #' @export
-read_nanoarrow_array_stream.connection <- function(x, ...) {
-  .Call(nanoarrow_c_ipc_array_reader_connection, x)
+read_array_stream.connection <- function(x, ...) {
+  if (!isOpen(x)) {
+    # Unopened connections should be opened in binary mode
+    open(x, "rb")
+
+
+    stream <- tryCatch(
+      .Call(nanoarrow_c_ipc_array_reader_connection, x),
+      error = function(e) {
+        close(x)
+        stop(e)
+      }
+    )
+
+    # Close the connection when the array stream is released
+    stream_finalizer <- function() {
+      close(con)
+    }
+
+    finalizer_env <- new.env(parent = baseenv())
+    finalizer_env$con <- x
+    environment(stream_finalizer) <- finalizer_env
+
+    array_stream_set_finalizer(stream, stream_finalizer)
+  } else {
+    .Call(nanoarrow_c_ipc_array_reader_connection, x)
+  }
 }
 
-#' @rdname read_nanoarrow_array_stream
+#' @rdname read_array_stream
 #' @export
 example_ipc_stream <- function() {
   # data.frame(some_col = c(1L, 2L, 3L)) as a serialized schema/batch

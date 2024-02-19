@@ -83,10 +83,18 @@ struct ConnectionInputStreamHandler {
 };
 
 static SEXP handle_readbin_error(SEXP cond, void* hdata) {
-  Rf_PrintValue(cond);
   struct ConnectionInputStreamHandler* data = (struct ConnectionInputStreamHandler*)hdata;
+
+  SEXP fun = PROTECT(Rf_install("conditionMessage"));
+  SEXP call = PROTECT(Rf_lang2(fun, cond));
+  SEXP result = PROTECT(Rf_eval(call, R_BaseEnv));
+  SEXP result0 = STRING_ELT(result, 0);
+  const char* cond_msg = Rf_translateCharUTF8(result0);
+
+  ArrowErrorSet(data->error, "R execution error: %s", cond_msg);
   data->return_code = EIO;
-  ArrowErrorSet(data->error, "R execution error: <not implemented>");
+
+  UNPROTECT(3);
   return R_NilValue;
 }
 
@@ -94,7 +102,7 @@ static SEXP call_readbin(void* hdata) {
   struct ConnectionInputStreamHandler* data = (struct ConnectionInputStreamHandler*)hdata;
   SEXP fun = PROTECT(Rf_install("readBin"));
   SEXP what = PROTECT(Rf_allocVector(RAWSXP, 0));
-  SEXP n = PROTECT(Rf_ScalarInteger((int)data->buf_size_bytes));
+  SEXP n = PROTECT(Rf_ScalarReal((double)data->buf_size_bytes));
   SEXP call = PROTECT(Rf_lang4(fun, data->con, what, n));
 
   SEXP result = PROTECT(Rf_eval(call, R_BaseEnv));
@@ -110,8 +118,8 @@ static ArrowErrorCode read_con_input_stream(struct ArrowIpcInputStream* stream,
                                             uint8_t* buf, int64_t buf_size_bytes,
                                             int64_t* size_read_out,
                                             struct ArrowError* error) {
-  if (buf_size_bytes > INT_MAX) {
-    ArrowErrorSet(error, "Can't read > INT_MAX bytes from an R connection");
+  if (!nanoarrow_is_main_thread()) {
+    ArrowErrorSet(error, "Can't read from R connection on a non-R thread");
     return EIO;
   }
 
