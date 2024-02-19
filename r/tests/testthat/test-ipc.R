@@ -189,3 +189,27 @@ test_that("read_nanoarrow() reports errors from readBin", {
     "can only read from a binary connection"
   )
 })
+
+test_that("read_nanoarrow() from connection errors when called from another thread", {
+  skip_if_not_installed("arrow")
+  skip_if_not("dataset" %in% names(arrow::arrow_info()$capabilities))
+
+  tf <- tempfile()
+  tf_out <- tempfile()
+  on.exit(unlink(c(tf, tf_out), recursive = TRUE))
+
+  con <- file(tf, "wb")
+  writeBin(example_ipc_stream(), con)
+  close(con)
+
+  stream <- read_nanoarrow(tf)
+  reader <- arrow::as_record_batch_reader(stream)
+
+  # There is an internal MakeSafeRecordBatchReader that ensures all read
+  # calls happen on the R thread (used in DuckDB integration), but for now
+  # this should at least error and not crash.
+  expect_error(
+    arrow::write_dataset(reader, tf_out),
+    "Can't read from R connection on a non-R thread"
+  )
+})
