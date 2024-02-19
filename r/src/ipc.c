@@ -100,17 +100,15 @@ static SEXP handle_readbin_error(SEXP cond, void* hdata) {
 
 static SEXP call_readbin(void* hdata) {
   struct ConnectionInputStreamHandler* data = (struct ConnectionInputStreamHandler*)hdata;
-  SEXP fun = PROTECT(Rf_install("readBin"));
-  SEXP what = PROTECT(Rf_allocVector(RAWSXP, 0));
   SEXP n = PROTECT(Rf_ScalarReal((double)data->buf_size_bytes));
-  SEXP call = PROTECT(Rf_lang4(fun, data->con, what, n));
+  SEXP call = PROTECT(Rf_lang4(nanoarrow_sym_readbin, data->con, nanoarrow_ptype_raw, n));
 
   SEXP result = PROTECT(Rf_eval(call, R_BaseEnv));
   R_xlen_t bytes_read = Rf_xlength(result);
   memcpy(data->buf, RAW(result), bytes_read);
   *(data->size_read_out) = bytes_read;
 
-  UNPROTECT(5);
+  UNPROTECT(3);
   return R_NilValue;
 }
 
