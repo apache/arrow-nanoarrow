@@ -53,7 +53,7 @@
 
 // A more readable expression way to refer to the fact that there are 8 bytes
 // at the beginning of every message header.
-const static int64_t kMessageHeaderPrefixSize = 8;
+static const int32_t kMessageHeaderPrefixSize = 8;
 
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
