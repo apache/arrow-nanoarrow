@@ -466,6 +466,11 @@ parse it into a view to extract deserialized parameters.</p>
 <span class="o">-</span> <span class="n">decimal_bitwidth</span><span class="p">:</span> <span class="mi">128</span>
 <span class="o">-</span> <span class="n">decimal_precision</span><span class="p">:</span> <span class="mi">10</span>
 <span class="o">-</span> <span class="n">decimal_scale</span><span class="p">:</span> <span class="mi">3</span>
+<span class="o">-</span> <span class="n">dictionary_ordered</span><span class="p">:</span> <span class="kc">False</span>
+<span class="o">-</span> <span class="n">map_keys_sorted</span><span class="p">:</span> <span class="kc">False</span>
+<span class="o">-</span> <span class="n">nullable</span><span class="p">:</span> <span class="kc">True</span>
+<span class="o">-</span> <span class="n">storage_type_id</span><span class="p">:</span> <span class="mi">24</span>
+<span class="o">-</span> <span class="n">type_id</span><span class="p">:</span> <span class="mi">24</span>
 </pre></div>
 </div>
 <p>Advanced users can allocate an empty <code class="docutils literal notranslate"><span class="pre">CSchema</span></code> and populate its
@@ -503,7 +508,7 @@ Interface</a>
 <span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">4</span>
 <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
 <span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">1</span>
-<span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">2939032895680</span><span class="p">,</span> <span class="mi">2939032895616</span><span class="p">,</span> <span class="mi">2939032895744</span><span class="p">)</span>
+<span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">3678035706048</span><span class="p">,</span> <span class="mi">3678035705984</span><span class="p">,</span> <span class="mi">3678035706112</span><span class="p">)</span>
 <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
 <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
 </pre></div>
@@ -519,9 +524,9 @@ into a view to extract deserialized content:</p>
 <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
 <span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">1</span>
 <span class="o">-</span> <span class="n">buffers</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span>
-  <span class="o">-</span> <span class="o">&lt;</span><span class="nb">bool</span> <span class="n">validity</span><span class="p">[</span><span class="mi">1</span> <span class="n">b</span><span class="p">]</span> <span class="mi">11100000</span><span class="o">&gt;</span>
-  <span class="o">-</span> <span class="o">&lt;</span><span class="n">int32</span> <span class="n">data_offset</span><span class="p">[</span><span class="mi">20</span> <span class="n">b</span><span class="p">]</span> <span class="mi">0</span> <span class="mi">3</span> <span class="mi">6</span> <span class="mi">11</span> <span class="mi">11</span><span class="o">&gt;</span>
-  <span class="o">-</span> <span class="o">&lt;</span><span class="n">string</span> <span class="n">data</span><span class="p">[</span><span class="mi">11</span> <span class="n">b</span><span class="p">]</span> <span class="sa">b</span><span class="s1">&#39;onetwothree&#39;</span><span class="o">&gt;</span>
+  <span class="o">-</span> <span class="n">validity</span> <span class="o">&lt;</span><span class="nb">bool</span><span class="p">[</span><span class="mi">1</span> <span class="n">b</span><span class="p">]</span> <span class="mi">11100000</span><span class="o">&gt;</span>
+  <span class="o">-</span> <span class="n">data_offset</span> <span class="o">&lt;</span><span class="n">int32</span><span class="p">[</span><span class="mi">20</span> <span class="n">b</span><span class="p">]</span> <span class="mi">0</span> <span class="mi">3</span> <span class="mi">6</span> <span class="mi">11</span> <span class="mi">11</span><span class="o">&gt;</span>
+  <span class="o">-</span> <span class="n">data</span> <span class="o">&lt;</span><span class="n">string</span><span class="p">[</span><span class="mi">11</span> <span class="n">b</span><span class="p">]</span> <span class="sa">b</span><span class="s1">&#39;onetwothree&#39;</span><span class="o">&gt;</span>
 <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
 <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
 </pre></div>
@@ -553,20 +558,7 @@ Interface</a>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArrayStream</span><span class="o">&gt;</span>
-<span class="o">-</span> <span class="n">get_schema</span><span class="p">():</span> <span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CSchema</span> <span class="n">struct</span><span class="o">&gt;</span>
-  <span class="o">-</span> <span class="nb">format</span><span class="p">:</span> <span class="s1">&#39;+s&#39;</span>
-  <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;&#39;</span>
-  <span class="o">-</span> <span class="n">flags</span><span class="p">:</span> <span class="mi">0</span>
-  <span class="o">-</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">NULL</span>
-  <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
-  <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-    <span class="s1">&#39;some_column&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CSchema</span> <span class="n">int32</span><span class="o">&gt;</span>
-      <span class="o">-</span> <span class="nb">format</span><span class="p">:</span> <span class="s1">&#39;i&#39;</span>
-      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;some_column&#39;</span>
-      <span class="o">-</span> <span class="n">flags</span><span class="p">:</span> <span class="mi">2</span>
-      <span class="o">-</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">NULL</span>
-      <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
-      <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+<span class="o">-</span> <span class="n">get_schema</span><span class="p">():</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">some_column</span><span class="p">:</span> <span class="n">int32</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 <p>You can pull the next array from the stream using <code class="docutils literal notranslate"><span class="pre">.get_next()</span></code> or use
@@ -576,7 +568,7 @@ it like an iterator. The <code class="docutils literal notranslate"><span class=
     <span class="nb">print</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArray</span> <span class="n">struct</span><span class="o">&gt;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArray</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">some_column</span><span class="p">:</span> <span class="n">int32</span><span class="o">&gt;&gt;</span>
 <span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">3</span>
 <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
 <span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">0</span>
@@ -587,7 +579,7 @@ it like an iterator. The <code class="docutils literal notranslate"><span class=
     <span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">3</span>
     <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
     <span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">0</span>
-    <span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2939033026688</span><span class="p">)</span>
+    <span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3678035837056</span><span class="p">)</span>
     <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
     <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
 </pre></div>
@@ -600,20 +592,7 @@ suitable exporting function:</p>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArrayStream</span><span class="o">&gt;</span>
-<span class="o">-</span> <span class="n">get_schema</span><span class="p">():</span> <span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CSchema</span> <span class="n">struct</span><span class="o">&gt;</span>
-  <span class="o">-</span> <span class="nb">format</span><span class="p">:</span> <span class="s1">&#39;+s&#39;</span>
-  <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;&#39;</span>
-  <span class="o">-</span> <span class="n">flags</span><span class="p">:</span> <span class="mi">0</span>
-  <span class="o">-</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">NULL</span>
-  <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
-  <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-    <span class="s1">&#39;some_column&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CSchema</span> <span class="n">int32</span><span class="o">&gt;</span>
-      <span class="o">-</span> <span class="nb">format</span><span class="p">:</span> <span class="s1">&#39;i&#39;</span>
-      <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;some_column&#39;</span>
-      <span class="o">-</span> <span class="n">flags</span><span class="p">:</span> <span class="mi">2</span>
-      <span class="o">-</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">NULL</span>
-      <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
-      <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+<span class="o">-</span> <span class="n">get_schema</span><span class="p">():</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">some_column</span><span class="p">:</span> <span class="n">int32</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 </section>
