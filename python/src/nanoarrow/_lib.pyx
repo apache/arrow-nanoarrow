@@ -1926,6 +1926,10 @@ cdef class CArrayStream:
         self._ptr = <ArrowArrayStream*>addr
         self._cached_schema = None
 
+    def release(self):
+        if self.is_valid():
+            self._ptr.release(self._ptr)
+
     @staticmethod
     def _import_from_c_capsule(stream_capsule):
         """
@@ -2025,6 +2029,12 @@ cdef class CArrayStream:
 
     def __next__(self):
         return self.get_next()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.release()
 
     def __repr__(self):
         return _lib_utils.array_stream_repr(self)

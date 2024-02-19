@@ -109,10 +109,20 @@ cdef class CIpcInputStream:
     def __cinit__(self):
         self._stream.release = NULL
 
+    def is_valid(self):
+        return self._stream.release != NULL
+
     def __dealloc__(self):
+        self.release()
+
+    def release(self):
         if self._stream.release != NULL:
             self._stream.release(&self._stream)
+            return True
+        else:
+            return False
 
+    @staticmethod
     def from_readable(obj, close_stream=False):
         cdef CIpcInputStream stream = CIpcInputStream()
         cdef PyInputStreamPrivate private_data = PyInputStreamPrivate(obj, close_stream)

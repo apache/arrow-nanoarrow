@@ -16,33 +16,53 @@
 # under the License.
 
 import os
-
-import pytest
-from nanoarrow.ipc import IpcStream
+import tempfile
 
 import nanoarrow as na
+from nanoarrow.ipc import Stream
 
 
-def get_test_ipc_filename(name):
-    testing_dir = os.environ.get("NANOARROW_ARROW_TESTING_DIR")
-    if not testing_dir:
-        pytest.skip("NANOARROW_ARROW_TESTING_DIR not set")
+def test_ipc_stream_example():
 
-    return os.path.join(
-        testing_dir,
-        "data",
-        "arrow-ipc-stream",
-        "integration",
-        "1.0.0-littleendian",
-        f"generated_{name}.stream",
-    )
+    with Stream.example() as input:
+        stream = na.c_array_stream(input)
+        assert input._is_valid() is False
+        assert stream.is_valid() is True
+
+        with stream:
+            schema = stream.get_schema()
+            assert schema.format == "+s"
+            assert schema.child(0).format == "i"
+            batches = list(stream)
+            assert stream.is_valid() is True
+
+        assert stream.is_valid() is False
+        assert len(batches) == 1
+        batch = na.c_array_view(batches[0])
+        assert list(batch.child(0).buffer(1)) == [1, 2, 3]
 
 
-def test_ipc_from_readable():
-    filename = get_test_ipc_filename("null")
-    input = IpcStream(open(filename, "rb"))
-    stream = na.c_array_stream(input)
-    schema = stream.get_schema()
-    assert schema.format == "+s"
-    for array in stream:
-        assert array.n_buffers == 1
+def test_ipc_stream_from_path():
+    with tempfile.TemporaryDirectory() as td:
+        path = os.path.join(td, "test.arrows")
+        with open(path, "wb") as f:
+            f.write(Stream.example_bytes())
+
+        with Stream.from_path(path) as input:
+            stream = na.c_array_stream(input)
+            batches = list(stream)
+            assert len(batches) == 1
+            assert batches[0].length == 3
+
+
+def test_ipc_stream_from_url():
+    with tempfile.TemporaryDirectory() as td:
+        path = os.path.join(td, "test.arrows")
+        with open(path, "wb") as f:
+            f.write(Stream.example_bytes())
+
+        with Stream.from_url(f"file://{path}") as input:
+            stream = na.c_array_stream(input)
+            batches = list(stream)
+            assert len(batches) == 1
+            assert batches[0].length == 3
