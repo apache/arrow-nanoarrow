@@ -58,10 +58,10 @@ def test_ipc_stream_from_path():
 
         with Stream.from_path(path) as input:
             assert repr(path) in repr(input)
-            stream = na.c_array_stream(input)
-            batches = list(stream)
-            assert len(batches) == 1
-            assert batches[0].length == 3
+            with na.c_array_stream(input) as stream:
+                batches = list(stream)
+                assert len(batches) == 1
+                assert batches[0].length == 3
 
 
 def test_ipc_stream_from_url():
@@ -76,7 +76,7 @@ def test_ipc_stream_from_url():
             f.write(Stream.example_bytes())
 
         with Stream.from_url(f"file://{path}") as input:
-            stream = na.c_array_stream(input)
-            batches = list(stream)
-            assert len(batches) == 1
-            assert batches[0].length == 3
+            with na.c_array_stream(input) as stream:
+                batches = list(stream)
+                assert len(batches) == 1
+                assert batches[0].length == 3
