@@ -18,15 +18,19 @@
 from nanoarrow.c_lib import c_array_view, CArrowType
 
 
-def _storage_iter(view, child_factory=None):
+def _storage_iter(view):
     view = c_array_view(view)
+    if view.offset != 0:
+        raise NotImplementedError("offset != 0 is not yet supported")
+
     nullable = _array_view_nullable(view)
-    if (nullable, view.storage_type_id) not in _LOOKUP:
+    key = nullable, view.storage_type_id
+    if key not in _LOOKUP:
         raise KeyError(
             f"Can't resolve iterator factory for storage type '{view.storage_type}'"
         )
 
-    factory = _LOOKUP[nullable, view.storage_type_id]
+    factory = _LOOKUP[key]
     return factory(view.buffers, view.children, _storage_iter)
 
 
