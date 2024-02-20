@@ -1431,7 +1431,7 @@ cdef class CBufferView:
         if offset < 0 or length < 0 or (offset + length) > self.n_elements:
             raise IndexError(
                 f"offset {offset} and length {length} do not describe a valid slice "
-                f"of bitmap with {self.n_elements} elements"
+                f"of buffer with {self.n_elements} elements"
             )
 
         if self._data_type == NANOARROW_TYPE_BOOL:
