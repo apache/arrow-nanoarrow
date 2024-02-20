@@ -22,7 +22,7 @@ from nanoarrow._lib import CArrayStream
 
 
 class Stream:
-    """Stream of serialize Arrow data
+    """Stream of serialized Arrow data
 
     Reads file paths or otherwise readable file objects that contain
     serialized Arrow data. Arrow documentation typically refers to this format
@@ -33,12 +33,6 @@ class Stream:
 
     Use :staticmethod:`from_readable`, :staticmethod:`from_path`, or
     :staticmethod:`from_url` to construct these streams.
-
-    Parameters
-    ----------
-    obj : readable file or path-like
-        A path to a file or
-
     """
 
     def __init__(self):
@@ -157,7 +151,8 @@ class Stream:
 
 
 # A self-contained example whose value is the serialized verison of
-# DataFrame({"some_col": [1, 2, 3]})
+# DataFrame({"some_col": [1, 2, 3]}). Used to make the tests self-contained
+# since we don't have an IPC writer.
 _EXAMPLE_IPC_SCHEMA = (
     b"\xff\xff\xff\xff\x10\x01\x00\x00\x10\x00\x00\x00\x00\x00\x0a\x00\x0e\x00\x06"
     b"\x00\x05\x00\x08\x00\x0a\x00\x00\x00\x00\x01\x04\x00\x10\x00\x00\x00\x00\x00"
