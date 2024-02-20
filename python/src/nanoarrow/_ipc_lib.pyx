@@ -113,7 +113,9 @@ cdef class CIpcInputStream:
         return self._stream.release != NULL
 
     def __dealloc__(self):
-        self.release()
+        # Duplicating release() to avoid Python API calls in the deallocator
+        if self._stream.release != NULL:
+            self._stream.release(&self._stream)
 
     def release(self):
         if self._stream.release != NULL:
