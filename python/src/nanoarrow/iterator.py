@@ -18,11 +18,11 @@
 from nanoarrow.c_lib import c_array_view, CArrowType
 
 
-def _storage_iter(array, child_factory=None):
+def storage(view, child_factory=None):
     if child_factory is None:
-        child_factory = _storage_iter
+        child_factory = storage
 
-    view = c_array_view(array)
+    view = c_array_view(view)
     if view.offset != 0:
         raise NotImplementedError("Offset != 0 not implemented")
 
@@ -35,7 +35,7 @@ def _storage_iter(array, child_factory=None):
         )
 
     factory = _LOOKUP[key]
-    return factory(view, _storage_iter)
+    return factory(view, storage)
 
 
 def _struct_iter(view, child_factory):
