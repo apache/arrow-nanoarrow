@@ -78,3 +78,14 @@ def test_storage_nullable_binary():
     )
 
     assert list(storage(array)) == [b"ab", b"cde", None]
+
+
+def test_storage_struct():
+    array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        length=3,
+        buffers=[None],
+        children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
+    )
+
+    assert list(storage(array)) == [(1, True), (2, False), (3, True)]

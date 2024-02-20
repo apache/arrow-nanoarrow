@@ -86,7 +86,7 @@ def _nullable_binary_iter(view, child_factory):
 
 
 def _primitive_storage_iter(view, child_factory):
-    return iter(view.buffer(1))
+    return iter(view.buffer(1).elements)
 
 
 def _nullable_primitive_storage_iter(view, child_factory):
