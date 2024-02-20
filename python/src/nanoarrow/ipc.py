@@ -83,7 +83,7 @@ class Stream:
 
     @staticmethod
     def from_path(obj, *args, **kwargs):
-        """Wrap an open readable object as an Arrow stream
+        """Wrap a local file as an Arrow stream
 
         Wraps a pathlike object (specificially, one that can be passed to ``open()``)
         as an owning Stream. The file will be opened in binary mode and will be closed
