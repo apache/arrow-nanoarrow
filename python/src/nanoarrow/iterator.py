@@ -18,44 +18,46 @@
 from nanoarrow.c_lib import c_array_view, CArrowType
 
 
-def _storage_iter(view):
-    view = c_array_view(view)
+def _storage_iter(array, child_factory=None):
+    if child_factory is None:
+        child_factory = _storage_iter
+
+    view = c_array_view(array)
     if view.offset != 0:
-        raise NotImplementedError("offset != 0 is not yet supported")
+        raise NotImplementedError("Offset != 0 not implemented")
 
     nullable = _array_view_nullable(view)
-    key = nullable, view.storage_type_id
+    type_id = view.storage_type_id
+    key = nullable, type_id
     if key not in _LOOKUP:
         raise KeyError(
             f"Can't resolve iterator factory for storage type '{view.storage_type}'"
         )
 
     factory = _LOOKUP[key]
-    return factory(view.buffers, view.children, _storage_iter)
+    return factory(view, _storage_iter)
 
 
-def _struct_iter(buffers, children, child_factory):
-    return zip(*(child_factory(child) for child in children))
+def _struct_iter(view, child_factory):
+    return zip(*(child_factory(child, child_factory) for child in view.children))
 
 
-def _nullable_struct_iter(buffers, children, child_factory):
-    (validity,) = buffers
+def _nullable_struct_iter(view, child_factory):
     for is_valid, item in zip(
-        validity.elements, _struct_iter(None, children, child_factory)
+        view.buffer(0).elements, _struct_iter(view, child_factory)
     ):
         yield item if is_valid else None
 
 
-def _string_iter(buffers, children, child_factory):
-    _, offsets, data = buffers
-    offsets = memoryview(offsets)
-    data = memoryview(data)
+def _string_iter(view, child_factory):
+    offsets = memoryview(view.buffer(1))
+    data = memoryview(view.buffer(2))
     for start, end in zip(offsets[:-1], offsets[1:]):
         yield str(data[start:end], "UTF-8")
 
 
-def _nullable_string_iter(buffers, children, child_factory):
-    validity, offsets, data = buffers
+def _nullable_string_iter(view, child_factory):
+    validity, offsets, data = view.buffers
     offsets = memoryview(offsets)
     data = memoryview(data)
     for is_valid, start, end in zip(validity.elements, offsets[:-1], offsets[1:]):
@@ -65,16 +67,15 @@ def _nullable_string_iter(buffers, children, child_factory):
             yield None
 
 
-def _binary_iter(buffers, children, child_factory):
-    _, offsets, data = buffers
-    offsets = memoryview(offsets)
-    data = memoryview(data)
+def _binary_iter(view, child_factory):
+    offsets = memoryview(view.buffer(1))
+    data = memoryview(view.buffer(2))
     for start, end in zip(offsets[:-1], offsets[1:]):
         yield bytes(data[start:end])
 
 
-def _nullable_binary_iter(buffers, children, child_factory):
-    validity, offsets, data = buffers
+def _nullable_binary_iter(view, child_factory):
+    validity, offsets, data = view.buffers
     offsets = memoryview(offsets)
     data = memoryview(data)
     for is_valid, start, end in zip(validity.elements, offsets[:-1], offsets[1:]):
@@ -84,13 +85,12 @@ def _nullable_binary_iter(buffers, children, child_factory):
             yield None
 
 
-def _primitive_storage_iter(buffers, children, child_factory):
-    _, data = buffers
-    return iter(data)
+def _primitive_storage_iter(view, child_factory):
+    return iter(view.buffer(1))
 
 
-def _nullable_primitive_storage_iter(buffers, children, child_factory):
-    is_valid, data = buffers
+def _nullable_primitive_storage_iter(view, child_factory):
+    is_valid, data = view.buffers
     for is_valid, item in zip(is_valid.elements, data.elements):
         yield item if is_valid else None
 
