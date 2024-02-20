@@ -1143,6 +1143,10 @@ cdef class CArrayView:
         self._device = CDEVICE_CPU
 
     @property
+    def storage_type_id(self):
+        return self._ptr.storage_type
+
+    @property
     def storage_type(self):
         cdef const char* type_str = ArrowTypeString(self._ptr.storage_type)
         if type_str != NULL:
