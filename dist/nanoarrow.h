@@ -721,6 +721,9 @@ struct ArrowBufferAllocator {
   void* private_data;
 };
 
+typedef void (*ArrowBufferDeallocatorCallback)(struct ArrowBufferAllocator* allocator,
+                                               uint8_t* ptr, int64_t size);
+
 /// \brief An owning mutable view of a buffer
 /// \ingroup nanoarrow-buffer
 struct ArrowBuffer {
@@ -1168,10 +1171,8 @@ struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 /// attach a custom deallocator to an ArrowBuffer. This may be used to
 /// avoid copying an existing buffer that was not allocated using the
 /// infrastructure provided here (e.g., by an R or Python object).
-struct ArrowBufferAllocator ArrowBufferDeallocator(
-    void (*custom_free)(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
-                        int64_t size),
-    void* private_data);
+struct ArrowBufferAllocator ArrowBufferDeallocator(ArrowBufferDeallocatorCallback,
+                                                   void* private_data);
 
 /// @}
 

@@ -2919,6 +2919,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
                         (long)array_view->buffer_views[2].size_bytes);
           return EINVAL;
         }
+      } else if (array_view->buffer_views[2].size_bytes == -1) {
+        // If the data buffer size is unknown and there are no bytes in the offset buffer,
+        // set the data buffer size to 0.
+        array_view->buffer_views[2].size_bytes = 0;
       }
       break;
 
@@ -2945,6 +2949,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
                         (long)array_view->buffer_views[2].size_bytes);
           return EINVAL;
         }
+      } else if (array_view->buffer_views[2].size_bytes == -1) {
+        // If the data buffer size is unknown and there are no bytes in the offset
+        // buffer, set the data buffer size to 0.
+        array_view->buffer_views[2].size_bytes = 0;
       }
       break;
 
