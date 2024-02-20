@@ -1377,6 +1377,14 @@ cdef class CBufferView:
             return value
 
     def __iter__(self):
+        return self._iter_dispatch(0, len(self))
+
+    def _iter_dispatch(self, int64_t offset, int64_t length):
+        if offset < 0 or length < 0 or (offset + length) > len(self):
+            raise IndexError(
+                f"offset {offset} and length {length} do not describe a valid slice "
+                f"of buffer with length {len(self)}"
+            )
         # memoryview's implementation is very fast but not always possible (half float, fixed-size binary, interval)
         if self._data_type in (
             NANOARROW_TYPE_HALF_FLOAT,
@@ -1387,11 +1395,14 @@ cdef class CBufferView:
         ) or (
             self._data_type == NANOARROW_TYPE_BINARY and self._element_size_bits != 0
         ):
-            return self._iter_struct()
+            return self._iter_struct(offset, length)
         else:
-            return iter(memoryview(self))
+            return self._iter_memoryview(offset, length)
 
-    def _iter_struct(self):
+    def _iter_memoryview(self, int64_t offset, int64_t length):
+        return iter(memoryview(self)[offset:(offset + length)])
+
+    def _iter_struct(self, int64_t offset, int64_t length):
         for value in iter_unpack(self.format, self):
             if len(value) == 1:
                 yield value[0]
@@ -1413,19 +1424,41 @@ cdef class CBufferView:
         else:
             return self[i]
 
-    @property
-    def elements(self):
-        if self._data_type == NANOARROW_TYPE_BOOL:
-            return self._iter_bitmap()
-        else:
-            return self.__iter__()
+    def elements(self, offset=0, length=None):
+        if length is None:
+            length = self.n_elements
 
-    def _iter_bitmap(self):
+        if offset < 0 or length < 0 or (offset + length) > self.n_elements:
+            raise IndexError(
+                f"offset {offset} and length {length} do not describe a valid slice "
+                f"of bitmap with {self.n_elements} elements"
+            )
+
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            return self._iter_bitmap(offset, length)
+        else:
+            return self._iter_dispatch(offset, length)
+
+    def _iter_bitmap(self, int64_t offset, int64_t length):
         cdef uint8_t item
-        for i in range(self._shape):
-            item = self._ptr.data.as_uint8[i]
-            for j in range(8):
-                yield (item & (<uint8_t>1 << j)) != 0
+        cdef int64_t i
+
+        if offset % 8 == 0:
+            first_byte = offset // 8
+            last_byte = self._shape
+            i = 0
+
+            for byte_i in range(first_byte, last_byte):
+                item = self._ptr.data.as_uint8[byte_i]
+                for j in range(8):
+                    yield (item & (<uint8_t>1 << j)) != 0
+                    i += 1
+                    if i >= length:
+                        return
+        else:
+            for i in range(length):
+                yield ArrowBitGet(self._ptr.data.as_uint8, offset + i) != 0
+
 
     cdef Py_ssize_t _item_size(self):
         if self._element_size_bits < 8:
@@ -1615,10 +1648,9 @@ cdef class CBuffer:
         self._assert_valid()
         return self._view.element(i)
 
-    @property
-    def elements(self):
+    def elements(self, offset=0, length=None):
         self._assert_valid()
-        return self._view.elements
+        return self._view.elements(offset, length)
 
     def __getbuffer__(self, Py_buffer* buffer, int flags):
         self._assert_valid()

@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow.c_lib import c_array_view, CArrowType
+from nanoarrow.c_lib import CArrowType, c_array_view
 
 
 def storage(view, child_factory=None):
@@ -44,7 +44,7 @@ def _struct_iter(view, child_factory):
 
 def _nullable_struct_iter(view, child_factory):
     for is_valid, item in zip(
-        view.buffer(0).elements, _struct_iter(view, child_factory)
+        view.buffer(0).elements(), _struct_iter(view, child_factory)
     ):
         yield item if is_valid else None
 
@@ -60,7 +60,7 @@ def _nullable_string_iter(view, child_factory):
     validity, offsets, data = view.buffers
     offsets = memoryview(offsets)
     data = memoryview(data)
-    for is_valid, start, end in zip(validity.elements, offsets[:-1], offsets[1:]):
+    for is_valid, start, end in zip(validity.elements(), offsets[:-1], offsets[1:]):
         if is_valid:
             yield str(data[start:end], "UTF-8")
         else:
@@ -78,7 +78,7 @@ def _nullable_binary_iter(view, child_factory):
     validity, offsets, data = view.buffers
     offsets = memoryview(offsets)
     data = memoryview(data)
-    for is_valid, start, end in zip(validity.elements, offsets[:-1], offsets[1:]):
+    for is_valid, start, end in zip(validity.elements(), offsets[:-1], offsets[1:]):
         if is_valid:
             yield bytes(data[start:end])
         else:
@@ -86,12 +86,12 @@ def _nullable_binary_iter(view, child_factory):
 
 
 def _primitive_storage_iter(view, child_factory):
-    return iter(view.buffer(1).elements)
+    return iter(view.buffer(1).elements())
 
 
 def _nullable_primitive_storage_iter(view, child_factory):
     is_valid, data = view.buffers
-    for is_valid, item in zip(is_valid.elements, data.elements):
+    for is_valid, item in zip(is_valid.elements(), data.elements()):
         yield item if is_valid else None
 
 

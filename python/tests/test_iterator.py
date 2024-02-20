@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import nanoarrow as na
 from nanoarrow.iterator import storage
+
+import nanoarrow as na
 
 
 def test_storage_primitive():
