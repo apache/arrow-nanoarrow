@@ -136,14 +136,10 @@ cdef class CIpcInputStream:
         return stream
 
 
-def init_array_stream(CIpcInputStream input_stream, uintptr_t out,
-                      int field_index=-1, bint use_shared_buffers=True):
+def init_array_stream(CIpcInputStream input_stream, uintptr_t out):
     cdef ArrowArrayStream* out_ptr = <ArrowArrayStream*>out
 
-    cdef ArrowIpcArrayStreamReaderOptions options
-    options.field_index = field_index
-    options.use_shared_buffers = use_shared_buffers
-
-    cdef int code = ArrowIpcArrayStreamReaderInit(out_ptr, &input_stream._stream, &options)
+    # There are some options here that could be exposed at some point
+    cdef int code = ArrowIpcArrayStreamReaderInit(out_ptr, &input_stream._stream, NULL)
     if code != NANOARROW_OK:
         raise RuntimeError(f"ArrowIpcArrayStreamReaderInit() failed with code [{code}]")
