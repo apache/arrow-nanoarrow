@@ -72,7 +72,7 @@ def test_c_schema_basic():
     schema = na.allocate_c_schema()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
-    assert repr(schema) == "<released nanoarrow.c_lib.CSchema>"
+    assert repr(schema) == "<nanoarrow.c_lib.CSchema <released>>"
 
     schema = na.c_schema(pa.schema([pa.field("some_name", pa.int32())]))
 
@@ -175,7 +175,7 @@ def test_c_schema_view_extra_params():
 def test_c_array_empty():
     array = na.allocate_c_array()
     assert array.is_valid() is False
-    assert repr(array) == "<released nanoarrow.c_lib.CArray>"
+    assert repr(array) == "<nanoarrow.c_lib.CArray <released>>"
 
 
 def test_c_array():
@@ -467,7 +467,7 @@ def test_buffers_interval_month_day_nano():
 def test_c_array_stream():
     array_stream = na.allocate_c_array_stream()
     assert na.c_array_stream(array_stream) is array_stream
-    assert repr(array_stream) == "<released nanoarrow.c_lib.CArrayStream>"
+    assert repr(array_stream) == "<nanoarrow.c_lib.CArrayStream <released>>"
 
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):

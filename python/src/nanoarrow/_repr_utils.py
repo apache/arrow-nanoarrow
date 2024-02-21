@@ -30,9 +30,9 @@ def schema_repr(schema, indent=0):
     indent_str = " " * indent
     class_label = make_class_label(schema, module="nanoarrow.c_lib")
     if schema._addr() == 0:
-        return f"<NULL {class_label}>"
+        return f"<{class_label} <NULL>>"
     elif not schema.is_valid():
-        return f"<released {class_label}>"
+        return f"<{class_label} <released>>"
 
     lines = [f"<{class_label} {schema._to_string()}>"]
 
@@ -69,9 +69,9 @@ def array_repr(array, indent=0, max_char_width=80):
     indent_str = " " * indent
     class_label = make_class_label(array, module="nanoarrow.c_lib")
     if array._addr() == 0:
-        return f"<NULL {class_label}>"
+        return f"<{class_label} <NULL>>"
     elif not array.is_valid():
-        return f"<released {class_label}>"
+        return f"<{class_label} <released>>"
 
     schema_string = array.schema._to_string(
         max_chars=max_char_width - indent - 23, recursive=True
@@ -204,9 +204,9 @@ def array_stream_repr(array_stream, max_char_width=80):
     class_label = make_class_label(array_stream, module="nanoarrow.c_lib")
 
     if array_stream._addr() == 0:
-        return f"<NULL {class_label}>"
+        return f"<{class_label} <NULL>>"
     elif not array_stream.is_valid():
-        return f"<released {class_label}>"
+        return f"<{class_label} <released>>"
 
     lines = [f"<{class_label}>"]
     try:
