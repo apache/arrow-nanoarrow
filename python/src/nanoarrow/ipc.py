@@ -17,6 +17,7 @@
 
 import io
 
+from nanoarrow import _repr_utils
 from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
 from nanoarrow._lib import CArrayStream
 
@@ -144,15 +145,16 @@ class Stream:
         return _EXAMPLE_IPC_SCHEMA + _EXAMPLE_IPC_BATCH
 
     def __repr__(self) -> str:
+        class_label = _repr_utils.make_class_label(self)
         if self._is_valid():
-            return f"<nanoarrow.ipc.Stream {self._desc}>"
+            return f"<{class_label} {self._desc}>"
         else:
-            return "<invalid nanoarrow.ipc.Stream>"
+            return f"<{class_label} <invalid>>"
 
 
 # A self-contained example whose value is the serialized verison of
-# DataFrame({"some_col": [1, 2, 3]}). Used to make the tests self-contained
-# since we don't have an IPC writer.
+# DataFrame({"some_col": [1, 2, 3]}). Used to make the tests and documentation
+# self-contained since we don't have an IPC writer.
 _EXAMPLE_IPC_SCHEMA = (
     b"\xff\xff\xff\xff\x10\x01\x00\x00\x10\x00\x00\x00\x00\x00\x0a\x00\x0e\x00\x06"
     b"\x00\x05\x00\x08\x00\x0a\x00\x00\x00\x00\x01\x04\x00\x10\x00\x00\x00\x00\x00"

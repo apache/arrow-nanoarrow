@@ -33,7 +33,7 @@ def test_ipc_stream_example():
         stream = na.c_array_stream(input)
         assert input._is_valid() is False
         assert stream.is_valid() is True
-        assert repr(input) == "<invalid nanoarrow.ipc.Stream>"
+        assert repr(input) == "<nanoarrow.ipc.Stream <invalid>>"
         with pytest.raises(RuntimeError, match="no longer valid"):
             stream = na.c_array_stream(input)
 
