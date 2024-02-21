@@ -99,6 +99,6 @@ def test_ipc_stream_error_on_read():
 
             with pytest.raises(
                 NanoarrowException,
-                match="found 100 bytes in buffer",
+                match="Expected >= 280 bytes of remaining data",
             ):
                 na.c_array_stream(input)
