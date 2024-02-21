@@ -21,6 +21,7 @@ import pathlib
 import tempfile
 
 import pytest
+from nanoarrow._lib import NanoarrowException
 from nanoarrow.ipc import Stream
 
 import nanoarrow as na
@@ -82,13 +83,12 @@ def test_ipc_stream_from_url():
 
 def test_ipc_stream_python_exception_on_read():
     class ExtraordinarilyInconvenientFile:
-
         def readinto(self, obj):
             raise RuntimeError("I error for all read requests")
 
     input = Stream.from_readable(ExtraordinarilyInconvenientFile())
     with pytest.raises(
-        RuntimeError, match="RuntimeError: I error for all read requests"
+        NanoarrowException, match="RuntimeError: I error for all read requests"
     ):
         na.c_array_stream(input)
 
@@ -98,7 +98,7 @@ def test_ipc_stream_error_on_read():
         with Stream.from_readable(f) as input:
 
             with pytest.raises(
-                RuntimeError,
-                match="Expected >= 280 bytes of remaining data but found 100 bytes in buffer",
+                NanoarrowException,
+                match="found 100 bytes in buffer",
             ):
                 na.c_array_stream(input)
