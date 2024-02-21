@@ -63,6 +63,13 @@ cdef class PyInputStreamPrivate:
         self.size_bytes = 0
         self.close_stream = close_stream
 
+    # Implement the buffer protocol so that this object can be used as
+    # the argument to xxx.readinto(). This ensures that no extra copies
+    # (beyond any buffering done by the upstream file-like object) are held
+    # since the upstream object has access to the preallocated output buffer.
+    # In this case, the preallocation is done by the ArrowArrayStream
+    # implementation before issuing each read call (two per message, with
+    # an extra call for a RecordBatch message to get the actual buffer data).
     def __getbuffer__(self, Py_buffer* buffer, int flags):
         PyBuffer_FillInfo(buffer, self, self.addr, self.size_bytes, 0, flags)
 
