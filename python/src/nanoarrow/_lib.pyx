@@ -1163,6 +1163,7 @@ cdef class CArrayView:
     See `nanoarrow.c_array_view()` for construction and usage examples.
     """
     cdef object _base
+    cdef object _array_base
     cdef ArrowArrayView* _ptr
     cdef CDevice _device
 
@@ -1170,6 +1171,20 @@ cdef class CArrayView:
         self._base = base
         self._ptr = <ArrowArrayView*>addr
         self._device = CDEVICE_CPU
+
+    def _set_array(self, CArray array, CDevice device=CDEVICE_CPU):
+        cdef Error error = Error()
+        cdef int code
+
+        if device is CDEVICE_CPU:
+            code = ArrowArrayViewSetArray(self._ptr, array._ptr, &error.c_error)
+        else:
+            code = ArrowArrayViewSetArrayMinimal(self._ptr, array._ptr, &error.c_error)
+
+        error.raise_message_not_ok("ArrowArrayViewSetArray()", code)
+        self._array_base = array._base
+        self._device = device
+        return self
 
     @property
     def storage_type_id(self):
@@ -1257,7 +1272,7 @@ cdef class CArrayView:
             raise RuntimeError(f"ArrowArrayView buffer {i} has size_bytes < 0")
 
         return CBufferView(
-            self._base,
+            self._array_base,
             <uintptr_t>buffer_view.data.data,
             buffer_view.size_bytes,
             self._ptr.layout.buffer_data_type[i],
@@ -1284,19 +1299,21 @@ cdef class CArrayView:
         return _repr_utils.array_view_repr(self)
 
     @staticmethod
-    def from_cpu_array(CArray array):
+    def from_schema(CSchema schema):
         cdef ArrowArrayView* c_array_view
         base = alloc_c_array_view(&c_array_view)
 
         cdef Error error = Error()
         cdef int code = ArrowArrayViewInitFromSchema(c_array_view,
-                                                       array._schema._ptr, &error.c_error)
+                                                     schema._ptr, &error.c_error)
         error.raise_message_not_ok("ArrowArrayViewInitFromSchema()", code)
 
-        code = ArrowArrayViewSetArray(c_array_view, array._ptr, &error.c_error)
-        error.raise_message_not_ok("ArrowArrayViewSetArray()", code)
+        return CArrayView(base, <uintptr_t>c_array_view)
 
-        return CArrayView((base, array), <uintptr_t>c_array_view)
+    @staticmethod
+    def from_array(CArray array, CDevice device=CDEVICE_CPU):
+        out = CArrayView.from_schema(array._schema)
+        return out._set_array(array, device)
 
 
 cdef class SchemaMetadata:
@@ -1990,16 +2007,16 @@ cdef class CArrayStream:
     cdef ArrowArrayStream* _ptr
     cdef object _cached_schema
 
+    def __cinit__(self, object base, uintptr_t addr):
+        self._base = base
+        self._ptr = <ArrowArrayStream*>addr
+        self._cached_schema = None
+
     @staticmethod
     def allocate():
         cdef ArrowArrayStream* c_array_stream_out
         base = alloc_c_array_stream(&c_array_stream_out)
         return CArrayStream(base, <uintptr_t>c_array_stream_out)
-
-    def __cinit__(self, object base, uintptr_t addr):
-        self._base = base
-        self._ptr = <ArrowArrayStream*>addr
-        self._cached_schema = None
 
     def release(self):
         if self.is_valid():

@@ -15,81 +15,125 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow.c_lib import CArrowType, c_array_view
+
+from nanoarrow.c_lib import CArrowType, CArrayView, c_array, c_schema, c_schema_view
 
 
-def storage(view, child_factory=None, offset=0, length=None):
-    if child_factory is None:
-        child_factory = storage
+def storage(array):
+    array = c_array(array)
+    iterator = ArrayViewIterator(array.schema)
+    iterator._set_array(array)
+    return iter(iterator)
 
-    view = c_array_view(view)
-    if length is None:
-        length = view.length
 
-    nullable = _array_view_nullable(view)
-    type_id = view.storage_type_id
-    key = nullable, type_id
-    if key not in _LOOKUP:
-        raise KeyError(
-            f"Can't resolve iterator factory for storage type '{view.storage_type}'"
+class ArrayViewIterator:
+
+    def __init__(self, schema, *, _array_view=None):
+        self._schema = c_schema(schema)
+        self._schema_view = c_schema_view(schema)
+
+        if _array_view is None:
+            self._array_view = CArrayView.from_schema(self._schema)
+        else:
+            self._array_view = _array_view
+
+        self._children = map(
+            self._make_child, self._schema.children, self._array_view.children
         )
 
-    factory = _LOOKUP[key]
-    return factory(view, storage, offset, length)
+    def __iter__(self):
+        return self._make_iter(self)
+
+    def _make_child(self, schema, array_view):
+        return ArrayViewIterator(schema, _array_view=array_view)
+
+    def _set_array(self, array):
+        self._array_view._set_array(array)
+
+    def _make_iter(self, instance, offset=0, length=None):
+        view = instance._array_view
+        if length is None:
+            length = view.length
+
+        nullable = instance._contains_nulls()
+        type_id = view.storage_type_id
+        key = nullable, type_id
+        if key not in _LOOKUP:
+            raise KeyError(
+                f"Can't resolve iterator factory for type '{view.storage_type}'"
+            )
+
+        factory = _LOOKUP[key]
+        return factory(instance, offset, length)
+
+    @property
+    def children(self):
+        return self._children
+
+    def _contains_nulls(self):
+        return (
+            self._schema_view.nullable
+            and len(self._array_view.buffer(0))
+            and self._array_view.null_count != 0
+        )
 
 
-def _struct_iter(view, child_factory, offset, length):
+def _struct_iter(iterator, offset, length):
+    view = iterator._array_view
     offset += view.offset
     return zip(
-        *(
-            child_factory(child, child_factory, offset, length)
-            for child in view.children
-        )
+        *(iterator._make_iter(child, offset, length) for child in iterator.children)
     )
 
 
-def _nullable_struct_iter(view, child_factory, offset, length):
+def _nullable_struct_iter(iterator, offset, length):
+    view = iterator._array_view
     for is_valid, item in zip(
         view.buffer(0).elements(view.offset + offset, length),
-        _struct_iter(view, child_factory, offset, length),
+        _struct_iter(iterator, offset, length),
     ):
         yield item if is_valid else None
 
 
-def _list_iter(view, child_factory, offset, length):
+def _list_iter(iterator, offset, length):
+    view = iterator._array_view
     offset += view.offset
     offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
-    child = view.child(0)
+    child = iterator.children[0]
     for start, end in zip(offsets[:-1], offsets[1:]):
-        yield list(child_factory(child, child_factory, start, end - start))
+        yield list(iterator._make_iter(child, start, end - start))
 
 
-def _nullable_list_iter(view, child_factory, offset, length):
+def _nullable_list_iter(iterator, offset, length):
+    view = iterator._array_view
     for is_valid, item in zip(
         view.buffer(0).elements(view.offset + offset, length),
-        _list_iter(view, child_factory, offset, length),
+        _list_iter(iterator, offset, length),
     ):
         yield item if is_valid else None
 
 
-def _fixed_size_list_iter(view, child_factory, offset, length):
+def _fixed_size_list_iter(iterator, offset, length):
+    view = iterator._array_view
     offset += view.offset
-    child = view.child(0)
+    child = iterator.children[0]
     fixed_size = view.layout.child_size_elements
 
     for start in range(offset, offset + (fixed_size * length), fixed_size):
-        yield list(child_factory(child, child_factory, start, fixed_size))
+        yield list(iterator._make_iter(child, start, fixed_size))
 
 
-def _nullable_fixed_size_list_iter(view, child_factory, offset, length):
+def _nullable_fixed_size_list_iter(iterator, offset, length):
+    view = iterator._array_view
     for is_valid, item in zip(
         view.buffer(0).elements(view.offset + offset, length),
-        _fixed_size_list_iter(view, child_factory, offset, length),
+        _fixed_size_list_iter(view, offset, length),
     ):
         yield item if is_valid else None
 
 
-def _string_iter(view, child_factory, offset, length):
+def _string_iter(iterator, offset, length):
+    view = iterator._array_view
     offset += view.offset
     offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
     data = memoryview(view.buffer(2))
@@ -97,7 +141,8 @@ def _string_iter(view, child_factory, offset, length):
         yield str(data[start:end], "UTF-8")
 
 
-def _nullable_string_iter(view, child_factory, offset, length):
+def _nullable_string_iter(iterator, offset, length):
+    view = iterator._array_view
     validity, offsets, data = view.buffers
     offset += view.offset
     offsets = memoryview(offsets)[offset : (offset + length + 1)]
@@ -111,14 +156,16 @@ def _nullable_string_iter(view, child_factory, offset, length):
             yield None
 
 
-def _binary_iter(view, child_factory, offset, length):
+def _binary_iter(iterator, offset, length):
+    view = iterator._array_view
     offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
     data = memoryview(view.buffer(2))
     for start, end in zip(offsets[:-1], offsets[1:]):
         yield bytes(data[start:end])
 
 
-def _nullable_binary_iter(view, child_factory, offset, length):
+def _nullable_binary_iter(iterator, offset, length):
+    view = iterator._array_view
     validity, offsets, data = view.buffers
     offset += view.offset
     offsets = memoryview(offsets)[offset : (offset + length + 1)]
@@ -132,12 +179,14 @@ def _nullable_binary_iter(view, child_factory, offset, length):
             yield None
 
 
-def _primitive_storage_iter(view, child_factory, offset, length):
+def _primitive_storage_iter(iterator, offset, length):
+    view = iterator._array_view
     offset += view.offset
     return iter(view.buffer(1).elements(offset, length))
 
 
-def _nullable_primitive_storage_iter(view, child_factory, offset, length):
+def _nullable_primitive_storage_iter(iterator, offset, length):
+    view = iterator._array_view
     is_valid, data = view.buffers
     offset += view.offset
     for is_valid, item in zip(
@@ -145,10 +194,6 @@ def _nullable_primitive_storage_iter(view, child_factory, offset, length):
         data.elements(offset, length),
     ):
         yield item if is_valid else None
-
-
-def _array_view_nullable(array):
-    return len(array.buffer(0)) != 0 and array.null_count != 0
 
 
 _LOOKUP = {
