@@ -93,6 +93,20 @@ def test_storage_struct():
     assert list(storage(array)) == [(1, True), (2, False), (3, True)]
 
 
+def test_storage_nullable_struct():
+    array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        length=4,
+        buffers=[na.c_buffer([True, True, True, False], na.bool())],
+        children=[
+            na.c_array([1, 2, 3, 4], na.int32()),
+            na.c_array([1, 0, 1, 0], na.bool()),
+        ],
+    )
+
+    assert list(storage(array)) == [(1, True), (2, False), (3, True), None]
+
+
 def test_storage_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [0]]
@@ -110,12 +124,12 @@ def test_storage_nullable_list():
 def test_storage_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-    array = pa.array(items, pa.list_(pa.int64()))
+    array = pa.array(items, pa.list_(pa.int64(), 3))
     assert list(storage(array)) == items
 
 
 def test_storage_nullable_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], None]
-    array = pa.array(items, pa.list_(pa.int64()))
+    array = pa.array(items, pa.list_(pa.int64(), 3))
     assert list(storage(array)) == items

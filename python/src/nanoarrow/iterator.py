@@ -167,7 +167,7 @@ _LOOKUP = {
     (True, CArrowType.LARGE_LIST): _nullable_list_iter,
     (False, CArrowType.LARGE_LIST): _list_iter,
     (True, CArrowType.FIXED_SIZE_LIST): _nullable_fixed_size_list_iter,
-    (False, CArrowType.LARGE_LIST): _fixed_size_list_iter,
+    (False, CArrowType.FIXED_SIZE_LIST): _fixed_size_list_iter,
 }
 
 _PRIMITIVE = [
