@@ -34,6 +34,16 @@ class Stream:
 
     Use :staticmethod:`from_readable`, :staticmethod:`from_path`, or
     :staticmethod:`from_url` to construct these streams.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow.ipc import Stream
+    >>> with Stream.example() as inp, na.c_array_stream(inp) as stream:
+    ...     stream
+    <nanoarrow.c_lib.CArrayStream>
+    - get_schema(): struct<some_col: int32>
     """
 
     def __init__(self):
@@ -76,6 +86,18 @@ class Stream:
         ----------
         obj : readable file-like
             An object implementing ``readinto()``.
+
+        Examples
+        --------
+
+        >>> import io
+        >>> import nanoarrow as na
+        >>> from nanoarrow.ipc import Stream
+        >>> with io.BytesIO(Stream.example_bytes()) as f:
+        ...     inp = Stream.from_readable(f)
+        ...     na.c_array_stream(inp)
+        <nanoarrow.c_lib.CArrayStream>
+        - get_schema(): struct<some_col: int32>
         """
         out = Stream()
         out._stream = CIpcInputStream.from_readable(obj)
@@ -94,6 +116,23 @@ class Stream:
         ----------
         obj : path-like
             A string or path-like object that can be passed to ``open()``
+
+        Examples
+        --------
+
+        >>> import tempfile
+        >>> import os
+        >>> import nanoarrow as na
+        >>> from nanoarrow.ipc import Stream
+        >>> with tempfile.TemporaryDirectory() as td:
+        ...     path = os.path.join(td, "test.arrows")
+        ...     with open(path, "wb") as f:
+        ...         nbytes = f.write(Stream.example_bytes())
+        ...
+        ...     with Stream.from_path(path) as inp, na.c_array_stream(inp) as stream:
+        ...         stream
+        <nanoarrow.c_lib.CArrayStream>
+        - get_schema(): struct<some_col: int32>
         """
         out = Stream()
         out._stream = CIpcInputStream.from_readable(
