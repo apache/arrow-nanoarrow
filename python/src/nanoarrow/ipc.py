@@ -17,9 +17,10 @@
 
 import io
 
-from nanoarrow import _repr_utils
 from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
 from nanoarrow._lib import CArrayStream
+
+from nanoarrow import _repr_utils
 
 
 class Stream:
@@ -153,6 +154,25 @@ class Stream:
         ----------
         obj : str
             A URL that can be passed to ``urllib.request.urlopen()``
+
+        Examples
+        --------
+
+        >>> import pathlib
+        >>> import tempfile
+        >>> import os
+        >>> import nanoarrow as na
+        >>> from nanoarrow.ipc import Stream
+        >>> with tempfile.TemporaryDirectory() as td:
+        ...     path = os.path.join(td, "test.arrows")
+        ...     with open(path, "wb") as f:
+        ...         nbytes = f.write(Stream.example_bytes())
+        ...
+        ...     uri = pathlib.Path(path).as_uri()
+        ...     with Stream.from_url(uri) as inp, na.c_array_stream(inp) as stream:
+        ...         stream
+        <nanoarrow.c_lib.CArrayStream>
+        - get_schema(): struct<some_col: int32>
         """
         import urllib.request
 
@@ -171,6 +191,13 @@ class Stream:
         ``DataFrame({"some_col": [1, 2, 3]})``. This may be used for testing
         and documentation and is useful because nanoarrow does not implement
         a writer to generate test data.
+
+        Examples
+        --------
+
+        >>> from nanoarrow.ipc import Stream
+        >>> Stream.example()
+        <nanoarrow.ipc.Stream <_io.BytesIO object at ...>>
         """
         return Stream.from_readable(io.BytesIO(Stream.example_bytes()))
 
@@ -180,6 +207,18 @@ class Stream:
 
         The underlying bytes of the :staticmethod:`example` Stream. This is useful
         for writing files or creating other types of test input.
+
+        Examples
+        --------
+
+        >>> import os
+        >>> import tempfile
+        >>> from nanoarrow.ipc import Stream
+        >>> with tempfile.TemporaryDirectory() as td:
+        ...     path = os.path.join(td, "test.arrows")
+        ...     with open(path, "wb") as f:
+        ...         f.write(Stream.example_bytes())
+        440
         """
         return _EXAMPLE_IPC_SCHEMA + _EXAMPLE_IPC_BATCH
 
