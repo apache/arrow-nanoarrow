@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pytest
 from nanoarrow.iterator import storage
 
 import nanoarrow as na
@@ -90,3 +91,31 @@ def test_storage_struct():
     )
 
     assert list(storage(array)) == [(1, True), (2, False), (3, True)]
+
+
+def test_storage_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [0]]
+    array = pa.array(items)
+    assert list(storage(array)) == items
+
+
+def test_storage_nullable_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [0], None]
+    array = pa.array(items)
+    assert list(storage(array)) == items
+
+
+def test_storage_fixed_size_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    array = pa.array(items, pa.list_(pa.int64()))
+    assert list(storage(array)) == items
+
+
+def test_storage_nullable_fixed_size_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], None]
+    array = pa.array(items, pa.list_(pa.int64()))
+    assert list(storage(array)) == items

@@ -767,6 +767,10 @@ cdef class CSchemaView:
         self._map_keys_sorted = schema._ptr.flags & ARROW_FLAG_MAP_KEYS_SORTED
 
     @property
+    def layout(self):
+        return CLayout(self, <uintptr_t>&self._schema_view.layout)
+
+    @property
     def type_id(self):
         return self._schema_view.type
 
@@ -859,6 +863,31 @@ cdef class CSchemaView:
 
     def __repr__(self):
         return _repr_utils.schema_view_repr(self)
+
+
+cdef class CLayout:
+    cdef ArrowLayout* _layout
+    cdef object _base
+
+    def __cinit__(self, base, uintptr_t ptr):
+        self._base = base
+        self._layout = <ArrowLayout*>ptr
+
+    @property
+    def buffer_type(self):
+        return tuple(self._layout.buffer_type[i] for i in range(3))
+
+    @property
+    def buffer_data_type_id(self):
+        return tuple(self._layout.buffer_data_type[i] for i in range(3))
+
+    @property
+    def element_size_bits(self):
+        return tuple(self._layout.element_size_bits[i] for i in range(3))
+
+    @property
+    def child_size_elements(self):
+        return self._layout.child_size_elements
 
 
 cdef class CSchemaBuilder:
@@ -1151,6 +1180,10 @@ cdef class CArrayView:
         cdef const char* type_str = ArrowTypeString(self._ptr.storage_type)
         if type_str != NULL:
             return type_str.decode('UTF-8')
+
+    @property
+    def layout(self):
+        return CLayout(self, <uintptr_t>&self._ptr.layout)
 
     @property
     def length(self):

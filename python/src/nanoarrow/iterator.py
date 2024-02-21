@@ -56,6 +56,39 @@ def _nullable_struct_iter(view, child_factory, offset, length):
         yield item if is_valid else None
 
 
+def _list_iter(view, child_factory, offset, length):
+    offset += view.offset
+    offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+    child = view.child(0)
+    for start, end in zip(offsets[:-1], offsets[1:]):
+        yield list(child_factory(child, child_factory, start, end - start))
+
+
+def _nullable_list_iter(view, child_factory, offset, length):
+    for is_valid, item in zip(
+        view.buffer(0).elements(view.offset + offset, length),
+        _list_iter(view, child_factory, offset, length),
+    ):
+        yield item if is_valid else None
+
+
+def _fixed_size_list_iter(view, child_factory, offset, length):
+    offset += view.offset
+    child = view.child(0)
+    fixed_size = view.layout.child_size_elements
+
+    for start in range(offset, offset + (fixed_size * length), fixed_size):
+        yield list(child_factory(child, child_factory, start, fixed_size))
+
+
+def _nullable_fixed_size_list_iter(view, child_factory, offset, length):
+    for is_valid, item in zip(
+        view.buffer(0).elements(view.offset + offset, length),
+        _fixed_size_list_iter(view, child_factory, offset, length),
+    ):
+        yield item if is_valid else None
+
+
 def _string_iter(view, child_factory, offset, length):
     offset += view.offset
     offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
@@ -129,6 +162,12 @@ _LOOKUP = {
     (False, CArrowType.LARGE_STRING): _string_iter,
     (True, CArrowType.STRUCT): _nullable_struct_iter,
     (False, CArrowType.STRUCT): _struct_iter,
+    (True, CArrowType.LIST): _nullable_list_iter,
+    (False, CArrowType.LIST): _list_iter,
+    (True, CArrowType.LARGE_LIST): _nullable_list_iter,
+    (False, CArrowType.LARGE_LIST): _list_iter,
+    (True, CArrowType.FIXED_SIZE_LIST): _nullable_fixed_size_list_iter,
+    (False, CArrowType.LARGE_LIST): _fixed_size_list_iter,
 }
 
 _PRIMITIVE = [
