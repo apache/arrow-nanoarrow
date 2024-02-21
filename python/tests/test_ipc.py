@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import io
 import os
 import pathlib
 import tempfile
@@ -77,3 +78,27 @@ def test_ipc_stream_from_url():
                 batches = list(stream)
                 assert len(batches) == 1
                 assert batches[0].length == 3
+
+
+def test_ipc_stream_python_exception_on_read():
+    class ExtraordinarilyInconvenientFile:
+
+        def readinto(self, obj):
+            raise RuntimeError("I error for all read requests")
+
+    input = Stream.from_readable(ExtraordinarilyInconvenientFile())
+    with pytest.raises(
+        RuntimeError, match="RuntimeError: I error for all read requests"
+    ):
+        na.c_array_stream(input)
+
+
+def test_ipc_stream_error_on_read():
+    with io.BytesIO(Stream.example_bytes()[:100]) as f:
+        with Stream.from_readable(f) as input:
+
+            with pytest.raises(
+                RuntimeError,
+                match="Expected >= 280 bytes of remaining data but found 100 bytes in buffer",
+            ):
+                na.c_array_stream(input)

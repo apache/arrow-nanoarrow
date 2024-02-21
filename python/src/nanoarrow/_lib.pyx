@@ -1993,10 +1993,15 @@ cdef class CArrayStream:
     def _get_schema(self, CSchema schema):
         self._assert_valid()
         cdef Error error = Error()
-        cdef int code = self._ptr.get_schema(self._ptr, schema._ptr)
-        Error.raise_error_not_ok("ArrowArrayStream::get_schema()", code)
+        cdef int code = ArrowArrayStreamGetSchema(self._ptr, schema._ptr, &error.c_error)
+        error.raise_message_not_ok("ArrowArrayStream::get_schema()", code)
 
-        self._cached_schema = schema
+    def _get_cached_schema(self):
+        if self._cached_schema is None:
+            self._cached_schema = CSchema.allocate()
+            self._get_schema(self._cached_schema)
+
+        return self._cached_schema
 
     def get_schema(self):
         """Get the schema associated with this stream
@@ -2016,14 +2021,11 @@ cdef class CArrayStream:
         # Array that is returned. This is independent of get_schema(),
         # which is guaranteed to call the C object's callback and
         # faithfully pass on the returned value.
-        if self._cached_schema is None:
-            self._cached_schema = CSchema.allocate()
-            self._get_schema(self._cached_schema)
 
         cdef Error error = Error()
-        cdef CArray array = CArray.allocate(self._cached_schema)
+        cdef CArray array = CArray.allocate(self._get_cached_schema())
         cdef int code = ArrowArrayStreamGetNext(self._ptr, array._ptr, &error.c_error)
-        Error.raise_error_not_ok("ArrowArrayStream::get_next()", code)
+        error.raise_message_not_ok("ArrowArrayStream::get_next()", code)
 
         if not array.is_valid():
             raise StopIteration()

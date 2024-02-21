@@ -63,9 +63,10 @@ class Stream:
         if not self._is_valid():
             raise RuntimeError("nanoarrow.ipc.Stream is no longer valid")
 
-        array_stream = CArrayStream.allocate()
-        init_array_stream(self._stream, array_stream._addr())
-        return array_stream.__arrow_c_stream__(requested_schema=requested_schema)
+        with CArrayStream.allocate() as array_stream:
+            init_array_stream(self._stream, array_stream._addr())
+            array_stream._get_cached_schema()
+            return array_stream.__arrow_c_stream__(requested_schema=requested_schema)
 
     def __enter__(self):
         return self
