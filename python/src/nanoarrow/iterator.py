@@ -37,8 +37,8 @@ class ArrayViewIterator:
         else:
             self._array_view = _array_view
 
-        self._children = map(
-            self._make_child, self._schema.children, self._array_view.children
+        self._children = list(
+            map(self._make_child, self._schema.children, self._array_view.children)
         )
 
     def __iter__(self):
@@ -127,7 +127,7 @@ def _nullable_fixed_size_list_iter(iterator, offset, length):
     view = iterator._array_view
     for is_valid, item in zip(
         view.buffer(0).elements(view.offset + offset, length),
-        _fixed_size_list_iter(view, offset, length),
+        _fixed_size_list_iter(iterator, offset, length),
     ):
         yield item if is_valid else None
 
