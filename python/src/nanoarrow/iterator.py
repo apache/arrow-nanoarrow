@@ -81,9 +81,8 @@ class ArrayViewIterator:
 def _struct_iter(iterator, offset, length):
     view = iterator._array_view
     offset += view.offset
-    return zip(
-        *(iterator._make_iter(child, offset, length) for child in iterator.children)
-    )
+    child_factory = iterator._make_iter
+    return zip(*(child_factory(child, offset, length) for child in iterator.children))
 
 
 def _nullable_struct_iter(iterator, offset, length):
