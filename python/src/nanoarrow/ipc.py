@@ -127,7 +127,7 @@ class Stream:
     def example():
         """Example Stream
 
-        A self-contained example whose value is the serialized verison of
+        A self-contained example whose value is the serialized version of
         ``DataFrame({"some_col": [1, 2, 3]})``. This may be used for testing
         and documentation and is useful because nanoarrow does not implement
         a writer to generate test data.
