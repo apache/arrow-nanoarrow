@@ -18,11 +18,13 @@
 from nanoarrow.c_lib import CArrowType, c_array_view
 
 
-def storage(view, child_factory=None):
+def storage(view, child_factory=None, offset=0, length=None):
     if child_factory is None:
         child_factory = storage
 
     view = c_array_view(view)
+    if length is None:
+        length = view.length
 
     nullable = _array_view_nullable(view)
     type_id = view.storage_type_id
@@ -33,37 +35,42 @@ def storage(view, child_factory=None):
         )
 
     factory = _LOOKUP[key]
-    return factory(view, storage)
+    return factory(view, storage, offset, length)
 
 
-def _struct_iter(view, child_factory):
-    if view.offset != 0:
-        raise NotImplementedError("Offset != 0 not implemented")
+def _struct_iter(view, child_factory, offset, length):
+    offset += view.offset
+    return zip(
+        *(
+            child_factory(child, child_factory, offset, length)
+            for child in view.children
+        )
+    )
 
-    return zip(*(child_factory(child, child_factory) for child in view.children))
 
-
-def _nullable_struct_iter(view, child_factory):
+def _nullable_struct_iter(view, child_factory, offset, length):
     for is_valid, item in zip(
-        view.buffer(0).elements(view.offset, view.length),
-        _struct_iter(view, child_factory),
+        view.buffer(0).elements(view.offset + offset, length),
+        _struct_iter(view, child_factory, offset, length),
     ):
         yield item if is_valid else None
 
 
-def _string_iter(view, child_factory):
-    offsets = memoryview(view.buffer(1))
+def _string_iter(view, child_factory, offset, length):
+    offset += view.offset
+    offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
     data = memoryview(view.buffer(2))
     for start, end in zip(offsets[:-1], offsets[1:]):
         yield str(data[start:end], "UTF-8")
 
 
-def _nullable_string_iter(view, child_factory):
+def _nullable_string_iter(view, child_factory, offset, length):
     validity, offsets, data = view.buffers
-    offsets = memoryview(offsets)[view.offset :]
+    offset += view.offset
+    offsets = memoryview(offsets)[offset : (offset + length + 1)]
     data = memoryview(data)
     for is_valid, start, end in zip(
-        validity.elements(view.offset, view.length), offsets[:-1], offsets[1:]
+        validity.elements(offset, length), offsets[:-1], offsets[1:]
     ):
         if is_valid:
             yield str(data[start:end], "UTF-8")
@@ -71,33 +78,38 @@ def _nullable_string_iter(view, child_factory):
             yield None
 
 
-def _binary_iter(view, child_factory):
-    offsets = memoryview(view.buffer(1))[view.offset :]
+def _binary_iter(view, child_factory, offset, length):
+    offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
     data = memoryview(view.buffer(2))
     for start, end in zip(offsets[:-1], offsets[1:]):
         yield bytes(data[start:end])
 
 
-def _nullable_binary_iter(view, child_factory):
+def _nullable_binary_iter(view, child_factory, offset, length):
     validity, offsets, data = view.buffers
-    offsets = memoryview(offsets)[view.offset :]
+    offset += view.offset
+    offsets = memoryview(offsets)[offset : (offset + length + 1)]
     data = memoryview(data)
-    for is_valid, start, end in zip(validity.elements(), offsets[:-1], offsets[1:]):
+    for is_valid, start, end in zip(
+        validity.elements(offset, length), offsets[:-1], offsets[1:]
+    ):
         if is_valid:
             yield bytes(data[start:end])
         else:
             yield None
 
 
-def _primitive_storage_iter(view, child_factory):
-    return iter(view.buffer(1).elements(view.offset, view.length))
+def _primitive_storage_iter(view, child_factory, offset, length):
+    offset += view.offset
+    return iter(view.buffer(1).elements(offset, length))
 
 
-def _nullable_primitive_storage_iter(view, child_factory):
+def _nullable_primitive_storage_iter(view, child_factory, offset, length):
     is_valid, data = view.buffers
+    offset += view.offset
     for is_valid, item in zip(
-        is_valid.elements(view.offset, view.length),
-        data.elements(view.offset, view.length),
+        is_valid.elements(offset, length),
+        data.elements(offset, length),
     ):
         yield item if is_valid else None
 
