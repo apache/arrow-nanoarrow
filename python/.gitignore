@@ -16,12 +16,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-src/nanoarrow/nanoarrow.c
-src/nanoarrow/nanoarrow.h
-src/nanoarrow/nanoarrow_device.h
-src/nanoarrow/nanoarrow_testing.hpp
-src/nanoarrow/nanoarrow_c.pxd
-src/nanoarrow/*.c
+src/nanoarrow/vendor
+src/nanoarrow/_lib.c
+src/nanoarrow/_ipc_lib.c
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

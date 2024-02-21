@@ -99,11 +99,8 @@ jobs:
           python -m cibuildwheel --output-dir wheelhouse python
         env:
           CIBW_ARCHS_MACOS: x86_64 arm64
-          # Optional (test suite will pass if these are not available)
-          # Commenting this for now because not all the tests pass yet (fixes in another PR)
-          # CIBW_BEFORE_TEST: pip install --only-binary ":all:" pyarrow numpy || pip install --only-binary ":all:" numpy || true
           CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: pytest {package}/tests
+          CIBW_TEST_COMMAND: pytest {package}/tests -vv
 
       - uses: actions/upload-artifact@v4
         with:
