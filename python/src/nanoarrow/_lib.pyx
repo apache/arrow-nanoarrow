@@ -52,7 +52,7 @@ from nanoarrow_device_c cimport *
 
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
-from nanoarrow import _lib_utils
+from nanoarrow import _repr_utils
 
 def c_version():
     """Return the nanoarrow C library version string
@@ -525,7 +525,7 @@ cdef class CDevice:
         return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
 
     def __repr__(self):
-        return _lib_utils.device_repr(self)
+        return _repr_utils.device_repr(self)
 
     @property
     def device_type(self):
@@ -658,7 +658,7 @@ cdef class CSchema:
         return out_str
 
     def __repr__(self):
-        return _lib_utils.schema_repr(self)
+        return _repr_utils.schema_repr(self)
 
     @property
     def format(self):
@@ -858,7 +858,7 @@ cdef class CSchemaView:
 
 
     def __repr__(self):
-        return _lib_utils.schema_view_repr(self)
+        return _repr_utils.schema_view_repr(self)
 
 
 cdef class CSchemaBuilder:
@@ -1121,7 +1121,7 @@ cdef class CArray:
             return None
 
     def __repr__(self):
-        return _lib_utils.array_repr(self)
+        return _repr_utils.array_repr(self)
 
 
 cdef class CArrayView:
@@ -1244,7 +1244,7 @@ cdef class CArrayView:
             )
 
     def __repr__(self):
-        return _lib_utils.array_view_repr(self)
+        return _repr_utils.array_view_repr(self)
 
     @staticmethod
     def from_cpu_array(CArray array):
@@ -1466,7 +1466,8 @@ cdef class CBufferView:
         pass
 
     def __repr__(self):
-        return f"CBufferView({_lib_utils.buffer_view_repr(self)})"
+        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
+        return f"{class_label}({_repr_utils.buffer_view_repr(self)})"
 
 
 cdef class CBuffer:
@@ -1628,10 +1629,11 @@ cdef class CBuffer:
         self._get_buffer_count -= 1
 
     def __repr__(self):
+        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
         if self._ptr == NULL:
-            return "CBuffer(<invalid>)"
+            return f"{class_label}(<invalid>)"
 
-        return f"CBuffer({_lib_utils.buffer_view_repr(self._view)})"
+        return f"{class_label}({_repr_utils.buffer_view_repr(self._view)})"
 
 
 cdef class CBufferBuilder:
@@ -1735,6 +1737,10 @@ cdef class CBufferBuilder:
 
         self._buffer = CBuffer.empty()
         return out
+
+    def __repr__(self):
+        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
+        return f"{class_label}({self.size_bytes}/{self.capacity_bytes})"
 
 
 cdef class CArrayBuilder:
@@ -2037,7 +2043,7 @@ cdef class CArrayStream:
         self.release()
 
     def __repr__(self):
-        return _lib_utils.array_stream_repr(self)
+        return _repr_utils.array_stream_repr(self)
 
 
 cdef class CDeviceArray:
@@ -2063,4 +2069,4 @@ cdef class CDeviceArray:
         return CArray(self, <uintptr_t>&self._ptr.array, self._schema)
 
     def __repr__(self):
-        return _lib_utils.device_array_repr(self)
+        return _repr_utils.device_array_repr(self)
