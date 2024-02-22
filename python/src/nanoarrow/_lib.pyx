@@ -792,7 +792,8 @@ cdef class CSchemaView:
 
     @property
     def dictionary_ordered(self):
-        return self._dictionary_ordered != 0
+        if self._schema_view.type == NANOARROW_TYPE_DICTIONARY:
+            return self._dictionary_ordered != 0
 
     @property
     def nullable(self):
@@ -800,7 +801,8 @@ cdef class CSchemaView:
 
     @property
     def map_keys_sorted(self):
-        return self._map_keys_sorted != 0
+        if self._schema_view.type == NANOARROW_TYPE_MAP:
+            return self._map_keys_sorted != 0
 
     @property
     def fixed_size(self):
@@ -872,10 +874,6 @@ cdef class CLayout:
     def __cinit__(self, base, uintptr_t ptr):
         self._base = base
         self._layout = <ArrowLayout*>ptr
-
-    @property
-    def buffer_type(self):
-        return tuple(self._layout.buffer_type[i] for i in range(3))
 
     @property
     def buffer_data_type_id(self):
