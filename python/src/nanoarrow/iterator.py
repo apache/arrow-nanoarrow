@@ -26,8 +26,8 @@ from nanoarrow.c_lib import (
 )
 
 
-def iteritems(obj, schema=None):
-    return ItemsIterator.get_iterator(obj, schema=schema)
+def iterator(obj, schema=None):
+    return RowIterator.get_iterator(obj, schema=schema)
 
 
 def itertuples(obj, schema=None):
@@ -67,7 +67,7 @@ class ArrayViewIterator:
         return self
 
 
-class ItemsIterator(ArrayViewIterator):
+class RowIterator(ArrayViewIterator):
     @classmethod
     def get_iterator(cls, obj, schema=None):
         with c_array_stream(obj, schema=schema) as stream:
