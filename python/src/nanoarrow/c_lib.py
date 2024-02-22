@@ -357,7 +357,7 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
 
     try:
         array = c_array(obj, schema=schema)
-        return CArrayStream.from_arrays([array], array.schema, validate=False)
+        return CArrayStream.from_array_list([array], array.schema, validate=False)
     except Exception as e:
         raise TypeError(
             f"Can't convert object of type {type(obj).__name__} "
