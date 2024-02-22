@@ -16,17 +16,35 @@
 # under the License.
 
 
-from nanoarrow.c_lib import CArrowType, CArrayView, c_array, c_schema, c_schema_view
+from nanoarrow.c_lib import (
+    CArrowType,
+    CArrayView,
+    c_array,
+    c_schema,
+    c_schema_view,
+    c_array_stream,
+)
 
 
-def storage(array):
-    array = c_array(array)
-    iterator = ArrayViewIterator(array.schema)
-    iterator._set_array(array)
-    return iter(iterator)
+def iteritems(obj):
+    if hasattr(obj, "__arrow_c_stream__"):
+        return _iteritems_stream(obj)
+
+    obj = c_array(obj)
+    factory = Iterator(obj.schema)
+    factory._set_array(obj)
+    return factory._make_iter(factory, 0, obj.length)
 
 
-class ArrayViewIterator:
+def _iteritems_stream(obj):
+    with c_array_stream(obj) as stream:
+        factory = Iterator(stream._get_cached_schema())
+        for array in stream:
+            factory._set_array(array)
+            yield from factory._make_iter(factory, 0, array.length)
+
+
+class Iterator:
 
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
@@ -41,27 +59,21 @@ class ArrayViewIterator:
             map(self._make_child, self._schema.children, self._array_view.children)
         )
 
-    def __iter__(self):
-        return self._make_iter(self)
-
     def _make_child(self, schema, array_view):
-        return ArrayViewIterator(schema, _array_view=array_view)
+        return Iterator(schema, _array_view=array_view)
 
     def _set_array(self, array):
         self._array_view._set_array(array)
+        return self
 
-    def _make_iter(self, instance, offset=0, length=None):
-        view = instance._array_view
-        if length is None:
-            length = view.length
+    def _make_iter(self, instance, offset, length):
+        schema_view = instance._schema_view
 
         nullable = instance._contains_nulls()
-        type_id = view.storage_type_id
+        type_id = schema_view.type_id
         key = nullable, type_id
         if key not in _LOOKUP:
-            raise KeyError(
-                f"Can't resolve iterator factory for type '{view.storage_type}'"
-            )
+            raise KeyError(f"Can't resolve iterator for type '{schema_view.type}'")
 
         factory = _LOOKUP[key]
         return factory(instance, offset, length)

@@ -16,17 +16,22 @@
 # under the License.
 
 import pytest
-from nanoarrow.iterator import storage
+from nanoarrow.iterator import iteritems
+from nanoarrow.ipc import Stream
 
 import nanoarrow as na
 
 
-def test_storage_primitive():
+def test_iteritems_stream():
+    assert list(iteritems(Stream.example())) == [(1,), (2,), (3,)]
+
+
+def test_iteritems_primitive():
     array = na.c_array([1, 2, 3], na.int32())
-    assert list(storage(array)) == [1, 2, 3]
+    assert list(iteritems(array)) == [1, 2, 3]
 
 
-def test_storage_nullable_primitive():
+def test_iteritems_nullable_primitive():
     array = na.c_array_from_buffers(
         na.int32(),
         4,
@@ -35,18 +40,18 @@ def test_storage_nullable_primitive():
             na.c_buffer([1, 2, 3, 0], na.int32()),
         ],
     )
-    assert list(storage(array)) == [1, 2, 3, None]
+    assert list(iteritems(array)) == [1, 2, 3, None]
 
 
-def test_storage_string():
+def test_iteritems_string():
     array = na.c_array_from_buffers(
         na.string(), 2, buffers=[None, na.c_buffer([0, 2, 5], na.int32()), b"abcde"]
     )
 
-    assert list(storage(array)) == ["ab", "cde"]
+    assert list(iteritems(array)) == ["ab", "cde"]
 
 
-def test_storage_nullable_string():
+def test_iteritems_nullable_string():
     array = na.c_array_from_buffers(
         na.string(),
         3,
@@ -57,18 +62,18 @@ def test_storage_nullable_string():
         ],
     )
 
-    assert list(storage(array)) == ["ab", "cde", None]
+    assert list(iteritems(array)) == ["ab", "cde", None]
 
 
-def test_storage_binary():
+def test_iteritems_binary():
     array = na.c_array_from_buffers(
         na.binary(), 2, buffers=[None, na.c_buffer([0, 2, 5], na.int32()), b"abcde"]
     )
 
-    assert list(storage(array)) == [b"ab", b"cde"]
+    assert list(iteritems(array)) == [b"ab", b"cde"]
 
 
-def test_storage_nullable_binary():
+def test_iteritems_nullable_binary():
     array = na.c_array_from_buffers(
         na.binary(),
         3,
@@ -79,10 +84,10 @@ def test_storage_nullable_binary():
         ],
     )
 
-    assert list(storage(array)) == [b"ab", b"cde", None]
+    assert list(iteritems(array)) == [b"ab", b"cde", None]
 
 
-def test_storage_struct():
+def test_iteritems_struct():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool()}),
         length=3,
@@ -90,10 +95,10 @@ def test_storage_struct():
         children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
     )
 
-    assert list(storage(array)) == [(1, True), (2, False), (3, True)]
+    assert list(iteritems(array)) == [(1, True), (2, False), (3, True)]
 
 
-def test_storage_nullable_struct():
+def test_iteritems_nullable_struct():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool()}),
         length=4,
@@ -104,32 +109,32 @@ def test_storage_nullable_struct():
         ],
     )
 
-    assert list(storage(array)) == [(1, True), (2, False), (3, True), None]
+    assert list(iteritems(array)) == [(1, True), (2, False), (3, True), None]
 
 
-def test_storage_list():
+def test_iteritems_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [0]]
     array = pa.array(items)
-    assert list(storage(array)) == items
+    assert list(iteritems(array)) == items
 
 
-def test_storage_nullable_list():
+def test_iteritems_nullable_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [0], None]
     array = pa.array(items)
-    assert list(storage(array)) == items
+    assert list(iteritems(array)) == items
 
 
-def test_storage_fixed_size_list():
+def test_iteritems_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
     array = pa.array(items, pa.list_(pa.int64(), 3))
-    assert list(storage(array)) == items
+    assert list(iteritems(array)) == items
 
 
-def test_storage_nullable_fixed_size_list():
+def test_iteritems_nullable_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], None]
     array = pa.array(items, pa.list_(pa.int64(), 3))
-    assert list(storage(array)) == items
+    assert list(iteritems(array)) == items
