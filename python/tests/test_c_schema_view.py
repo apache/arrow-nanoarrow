@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import nanoarrow as na
 from nanoarrow.c_lib import c_schema_view
+
+import nanoarrow as na
 
 
 def test_schema_view_accessors_basic():
