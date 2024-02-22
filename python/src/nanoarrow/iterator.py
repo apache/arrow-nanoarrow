@@ -16,6 +16,7 @@
 # under the License.
 
 from functools import cached_property
+from itertools import islice
 
 from nanoarrow.c_lib import (
     CArrayView,
@@ -126,31 +127,33 @@ class RowIterator(ArrayViewIterator):
         starts = offsets[:-1]
         ends = offsets[1:]
         child = self._children[0]
+        child_iter = child._iter1(starts[0], ends[-1] - starts[0])
 
-        # Can probably optimize by resolving the child iterator only once
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
             for is_valid, start, end in zip(validity, starts, ends):
-                yield list(child._iter1(start, end - start)) if is_valid else None
+                item = list(islice(child_iter, end - start))
+                yield item if is_valid else None
         else:
             for start, end in zip(starts, ends):
-                yield list(child._iter1(start, end - start))
+                yield list(islice(child_iter, end - start))
 
     def _fixed_size_list_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
         child = self._children[0]
         fixed_size = view.layout.child_size_elements
-        starts = range(offset, offset + (fixed_size * length), fixed_size)
+        child_iter = child._iter1(offset * fixed_size, length * fixed_size)
 
         # Can probably optimize by resolving the child iterator only once
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
-            for is_valid, start in zip(validity, starts):
-                yield list(child._iter1(start, fixed_size)) if is_valid else None
+            for is_valid in validity:
+                item = list(islice(child_iter, fixed_size))
+                yield item if is_valid else None
         else:
-            for start in starts:
-                yield list(child._iter1(start, fixed_size))
+            for _ in range(length):
+                yield list(islice(child_iter, fixed_size))
 
     def _string_iter(self, offset, length):
         view = self._array_view
