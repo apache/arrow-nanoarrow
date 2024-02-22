@@ -23,7 +23,11 @@ import nanoarrow as na
 
 
 def test_iteritems_stream():
-    assert list(iteritems(Stream.example())) == [(1,), (2,), (3,)]
+    assert list(iteritems(Stream.example())) == [
+        {"some_col": 1},
+        {"some_col": 2},
+        {"some_col": 3},
+    ]
 
 
 def test_iteritems_primitive():
@@ -87,7 +91,7 @@ def test_iteritems_nullable_binary():
     assert list(iteritems(array)) == [b"ab", b"cde", None]
 
 
-def test_iteritems_struct():
+def test_itertuples():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool()}),
         length=3,
@@ -96,6 +100,35 @@ def test_iteritems_struct():
     )
 
     assert list(iteritems(array)) == [(1, True), (2, False), (3, True)]
+
+
+def test_itertuples_nullable():
+    array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        length=4,
+        buffers=[na.c_buffer([True, True, True, False], na.bool())],
+        children=[
+            na.c_array([1, 2, 3, 4], na.int32()),
+            na.c_array([1, 0, 1, 0], na.bool()),
+        ],
+    )
+
+    assert list(iteritems(array)) == [(1, True), (2, False), (3, True), None]
+
+
+def test_iteritems_struct():
+    array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        length=3,
+        buffers=[None],
+        children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
+    )
+
+    assert list(iteritems(array)) == [
+        {"col1": 1, "col2": True},
+        {"col1": 2, "col2": False},
+        {"col1": 3, "col2": True},
+    ]
 
 
 def test_iteritems_nullable_struct():
@@ -109,7 +142,12 @@ def test_iteritems_nullable_struct():
         ],
     )
 
-    assert list(iteritems(array)) == [(1, True), (2, False), (3, True), None]
+    assert list(iteritems(array)) == [
+        {"col1": 1, "col2": True},
+        {"col1": 2, "col2": False},
+        {"col1": 3, "col2": True},
+        None,
+    ]
 
 
 def test_iteritems_list():

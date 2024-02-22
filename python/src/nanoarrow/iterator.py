@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from functools import cached_property
 
 from nanoarrow.c_lib import (
     CArrowType,
@@ -78,6 +79,10 @@ class Iterator:
         factory = _LOOKUP[key]
         return factory(instance, offset, length)
 
+    @cached_property
+    def child_names(self):
+        return [child.name for child in self._schema.children]
+
     @property
     def children(self):
         return self._children
@@ -90,14 +95,31 @@ class Iterator:
         )
 
 
-def _struct_iter(iterator, offset, length):
+def _struct_tuple_iter(iterator, offset, length):
     view = iterator._array_view
     offset += view.offset
     child_factory = iterator._make_iter
     return zip(*(child_factory(child, offset, length) for child in iterator.children))
 
 
+def _nullable_struct_tuple_iter(iterator, offset, length):
+    view = iterator._array_view
+    for is_valid, item in zip(
+        view.buffer(0).elements(view.offset + offset, length),
+        _struct_tuple_iter(iterator, offset, length),
+    ):
+        yield item if is_valid else None
+
+
+def _struct_iter(iterator, offset, length):
+    names = iterator.child_names
+    tuples = _struct_tuple_iter(iterator, offset, length)
+    for item in tuples:
+        yield {key: val for key, val in zip(names, item)}
+
+
 def _nullable_struct_iter(iterator, offset, length):
+    names = iterator.child_names
     view = iterator._array_view
     for is_valid, item in zip(
         view.buffer(0).elements(view.offset + offset, length),
