@@ -84,148 +84,116 @@ class RowIterator(ArrayViewIterator):
                 yield from iterator._iter1(0, array.length)
 
     def _iter1(self, offset, length):
-        schema_view = self._schema_view
+        type_id = self._schema_view.type_id
+        if type_id not in _ITEMS_ITER_LOOKUP:
+            raise KeyError(f"Can't resolve iterator for type '{self.schema_view.type}'")
 
-        nullable = self._contains_nulls()
-        type_id = schema_view.type_id
-        key = nullable, type_id
-        if key not in _ITEMS_ITER_LOOKUP:
-            raise KeyError(f"Can't resolve iterator for type '{schema_view.type}'")
-
-        factory = getattr(self, _ITEMS_ITER_LOOKUP[key])
+        factory = getattr(self, _ITEMS_ITER_LOOKUP[type_id])
         return factory(offset, length)
 
     def _dictionary_iter(self, offset, length):
         dictionary = list(
             self._dictionary._iter1(0, self._dictionary._array_view.length)
         )
-        for dict_index in self._primitive_storage_iter(offset, length):
-            yield dictionary[dict_index]
-
-    def _nullable_dictionary_iter(self, offset, length):
-        dictionary = list(
-            self._dictionary._iter1(0, self._dictionary._array_view.length)
-        )
-        for dict_index in self._primitive_nullable_iter(offset, length):
+        for dict_index in self._primitive_iter(offset, length):
             yield None if dict_index is None else dictionary[dict_index]
+
+    def _wrap_iter_nullable(self, validity, items):
+        for is_valid, item in zip(validity, items):
+            yield item if is_valid else None
 
     def _struct_tuple_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
-        return zip(*(child._iter1(offset, length) for child in self._children))
+        items = zip(*(child._iter1(offset, length) for child in self._children))
 
-    def _nullable_struct_tuple_iter(self, offset, length):
-        view = self._array_view
-        for is_valid, item in zip(
-            view.buffer(0).elements(view.offset + offset, length),
-            self._struct_tuple_iter(offset, length),
-        ):
-            yield item if is_valid else None
+        if self._contains_nulls():
+            validity = view.buffer(0).elements(offset, length)
+            return self._wrap_iter_nullable(validity, items)
+        else:
+            return items
 
     def _struct_iter(self, offset, length):
         names = self._child_names
-        tuples = self._struct_tuple_iter(offset, length)
-        for item in tuples:
-            yield {key: val for key, val in zip(names, item)}
-
-    def _nullable_struct_iter(self, offset, length):
-        view = self._array_view
-        for is_valid, item in zip(
-            view.buffer(0).elements(view.offset + offset, length),
-            self._struct_iter(offset, length),
-        ):
-            yield item if is_valid else None
+        for item in self._struct_tuple_iter(offset, length):
+            yield None if item is None else {key: val for key, val in zip(names, item)}
 
     def _list_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
-        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
-        child = self._children[0]
-        for start, end in zip(offsets[:-1], offsets[1:]):
-            yield list(child._iter1(start, end - start))
 
-    def _nullable_list_iter(self, offset, length):
-        view = self._array_view
-        for is_valid, item in zip(
-            view.buffer(0).elements(view.offset + offset, length),
-            self._list_iter(offset, length),
-        ):
-            yield item if is_valid else None
+        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        starts = offsets[:-1]
+        ends = offsets[1:]
+        child = self._children[0]
+
+        # Can probably optimize by resolving the child iterator only once
+        if self._contains_nulls():
+            validity = view.buffer(0).elements(offset, length)
+            for is_valid, start, end in zip(validity, starts, ends):
+                yield list(child._iter1(start, end - start)) if is_valid else None
+        else:
+            for start, end in zip(starts, ends):
+                yield list(child._iter1(start, end - start))
 
     def _fixed_size_list_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
         child = self._children[0]
         fixed_size = view.layout.child_size_elements
+        starts = range(offset, offset + (fixed_size * length), fixed_size)
 
-        for start in range(offset, offset + (fixed_size * length), fixed_size):
-            yield list(child._iter1(start, fixed_size))
-
-    def _nullable_fixed_size_list_iter(self, offset, length):
-        view = self._array_view
-        for is_valid, item in zip(
-            view.buffer(0).elements(view.offset + offset, length),
-            self._fixed_size_list_iter(offset, length),
-        ):
-            yield item if is_valid else None
+        # Can probably optimize by resolving the child iterator only once
+        if self._contains_nulls():
+            validity = view.buffer(0).elements(offset, length)
+            for is_valid, start in zip(validity, starts):
+                yield list(child._iter1(start, fixed_size)) if is_valid else None
+        else:
+            for start in starts:
+                yield list(child._iter1(start, fixed_size))
 
     def _string_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
         offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        starts = offsets[:-1]
+        ends = offsets[1:]
         data = memoryview(view.buffer(2))
-        for start, end in zip(offsets[:-1], offsets[1:]):
-            yield str(data[start:end], "UTF-8")
 
-    def _nullable_string_iter(self, offset, length):
-        view = self._array_view
-        validity, offsets, data = view.buffers
-        offset += view.offset
-        offsets = memoryview(offsets)[offset : (offset + length + 1)]
-        data = memoryview(data)
-        for is_valid, start, end in zip(
-            validity.elements(offset, length), offsets[:-1], offsets[1:]
-        ):
-            if is_valid:
+        if self._contains_nulls():
+            validity = view.buffer(0).elements(offset, length)
+            for is_valid, start, end in zip(validity, starts, ends):
+                yield str(data[start:end], "UTF-8") if is_valid else None
+        else:
+            for start, end in zip(starts, ends):
                 yield str(data[start:end], "UTF-8")
-            else:
-                yield None
 
     def _binary_iter(self, offset, length):
         view = self._array_view
+        offset += view.offset
         offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        starts = offsets[:-1]
+        ends = offsets[1:]
         data = memoryview(view.buffer(2))
-        for start, end in zip(offsets[:-1], offsets[1:]):
-            yield bytes(data[start:end])
 
-    def _nullable_binary_iter(self, offset, length):
-        view = self._array_view
-        validity, offsets, data = view.buffers
-        offset += view.offset
-        offsets = memoryview(offsets)[offset : (offset + length + 1)]
-        data = memoryview(data)
-        for is_valid, start, end in zip(
-            validity.elements(offset, length), offsets[:-1], offsets[1:]
-        ):
-            if is_valid:
+        if self._contains_nulls():
+            validity = view.buffer(0).elements(offset, length)
+            for is_valid, start, end in zip(validity, starts, ends):
+                yield bytes(data[start:end]) if is_valid else None
+        else:
+            for start, end in zip(starts, ends):
                 yield bytes(data[start:end])
-            else:
-                yield None
 
-    def _primitive_storage_iter(self, offset, length):
+    def _primitive_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
-        return iter(view.buffer(1).elements(offset, length))
+        items = view.buffer(1).elements(offset, length)
 
-    def _nullable_primitive_storage_iter(self, offset, length):
-        view = self._array_view
-        is_valid, data = view.buffers
-        offset += view.offset
-        for is_valid, item in zip(
-            is_valid.elements(offset, length),
-            data.elements(offset, length),
-        ):
-            yield item if is_valid else None
+        if self._contains_nulls():
+            validity = view.buffer(0).elements(offset, length)
+            return self._wrap_iter_nullable(validity, items)
+        else:
+            return iter(items)
 
 
 class RowTupleIterator(RowIterator):
@@ -241,31 +209,19 @@ class RowTupleIterator(RowIterator):
         return RowIterator(schema, _array_view=array_view)
 
     def _iter1(self, offset, length):
-        if self._contains_nulls():
-            return self._nullable_struct_tuple_iter(offset, length)
-        else:
-            return self._struct_tuple_iter(offset, length)
+        return self._struct_tuple_iter(offset, length)
 
 
 _ITEMS_ITER_LOOKUP = {
-    (True, CArrowType.BINARY): "_nullable_binary_iter",
-    (False, CArrowType.BINARY): "_binary_iter",
-    (True, CArrowType.LARGE_BINARY): "_nullable_binary_iter",
-    (False, CArrowType.LARGE_BINARY): "_binary_iter",
-    (True, CArrowType.STRING): "_nullable_string_iter",
-    (False, CArrowType.STRING): "_string_iter",
-    (True, CArrowType.LARGE_STRING): "_nullable_string_iter",
-    (False, CArrowType.LARGE_STRING): "_string_iter",
-    (True, CArrowType.STRUCT): "_nullable_struct_iter",
-    (False, CArrowType.STRUCT): "_struct_iter",
-    (True, CArrowType.LIST): "_nullable_list_iter",
-    (False, CArrowType.LIST): "_list_iter",
-    (True, CArrowType.LARGE_LIST): "_nullable_list_iter",
-    (False, CArrowType.LARGE_LIST): "_list_iter",
-    (True, CArrowType.FIXED_SIZE_LIST): "_nullable_fixed_size_list_iter",
-    (False, CArrowType.FIXED_SIZE_LIST): "_fixed_size_list_iter",
-    (True, CArrowType.DICTIONARY): "_nullable_dictionary_iter",
-    (False, CArrowType.DICTIONARY): "_dictionary_iter",
+    CArrowType.BINARY: "_binary_iter",
+    CArrowType.LARGE_BINARY: "_binary_iter",
+    CArrowType.STRING: "_string_iter",
+    CArrowType.LARGE_STRING: "_string_iter",
+    CArrowType.STRUCT: "_struct_iter",
+    CArrowType.LIST: "_list_iter",
+    CArrowType.LARGE_LIST: "_list_iter",
+    CArrowType.FIXED_SIZE_LIST: "_fixed_size_list_iter",
+    CArrowType.DICTIONARY: "_dictionary_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [
@@ -291,5 +247,4 @@ _PRIMITIVE_TYPE_NAMES = [
 
 for type_name in _PRIMITIVE_TYPE_NAMES:
     type_id = getattr(CArrowType, type_name)
-    _ITEMS_ITER_LOOKUP[False, type_id] = "_primitive_storage_iter"
-    _ITEMS_ITER_LOOKUP[True, type_id] = "_nullable_primitive_storage_iter"
+    _ITEMS_ITER_LOOKUP[type_id] = "_primitive_iter"
