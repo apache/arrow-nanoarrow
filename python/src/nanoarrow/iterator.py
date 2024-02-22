@@ -81,20 +81,16 @@ class ArrayViewIterator:
 
 class ItemsIterator(ArrayViewIterator):
 
-    def __init__(self, schema, **kwargs) -> None:
-        super().__init__(schema, **kwargs)
-        self._populate_lookup()
-
     def _iter1(self, offset, length):
         schema_view = self._schema_view
 
         nullable = self._contains_nulls()
         type_id = schema_view.type_id
         key = nullable, type_id
-        if key not in self._lookup:
+        if key not in _ITEMS_ITER_LOOKUP:
             raise KeyError(f"Can't resolve iterator for type '{schema_view.type}'")
 
-        factory = self._lookup[key]
+        factory = getattr(self, _ITEMS_ITER_LOOKUP[key])
         return factory(offset, length)
 
     def _struct_tuple_iter(self, offset, length):
@@ -215,48 +211,48 @@ class ItemsIterator(ArrayViewIterator):
         ):
             yield item if is_valid else None
 
-    def _populate_lookup(self):
-        self._lookup = {
-            (True, CArrowType.BINARY): self._nullable_binary_iter,
-            (False, CArrowType.BINARY): self._binary_iter,
-            (True, CArrowType.LARGE_BINARY): self._nullable_binary_iter,
-            (False, CArrowType.LARGE_BINARY): self._binary_iter,
-            (True, CArrowType.STRING): self._nullable_string_iter,
-            (False, CArrowType.STRING): self._string_iter,
-            (True, CArrowType.LARGE_STRING): self._nullable_string_iter,
-            (False, CArrowType.LARGE_STRING): self._string_iter,
-            (True, CArrowType.STRUCT): self._nullable_struct_iter,
-            (False, CArrowType.STRUCT): self._struct_iter,
-            (True, CArrowType.LIST): self._nullable_list_iter,
-            (False, CArrowType.LIST): self._list_iter,
-            (True, CArrowType.LARGE_LIST): self._nullable_list_iter,
-            (False, CArrowType.LARGE_LIST): self._list_iter,
-            (True, CArrowType.FIXED_SIZE_LIST): self._nullable_fixed_size_list_iter,
-            (False, CArrowType.FIXED_SIZE_LIST): self._fixed_size_list_iter,
-        }
 
-        primitive_type_names = [
-            "BOOL",
-            "UINT8",
-            "INT8",
-            "UINT16",
-            "INT16",
-            "UINT32",
-            "INT32",
-            "UINT64",
-            "INT64",
-            "HALF_FLOAT",
-            "FLOAT",
-            "DOUBLE",
-            "FIXED_SIZE_BINARY",
-            "INTERVAL_MONTHS",
-            "INTERVAL_DAY_TIME",
-            "INTERVAL_MONTH_DAY_NANO",
-            "DECIMAL128",
-            "DECIMAL256",
-        ]
+_ITEMS_ITER_LOOKUP = {
+    (True, CArrowType.BINARY): "_nullable_binary_iter",
+    (False, CArrowType.BINARY): "_binary_iter",
+    (True, CArrowType.LARGE_BINARY): "_nullable_binary_iter",
+    (False, CArrowType.LARGE_BINARY): "_binary_iter",
+    (True, CArrowType.STRING): "_nullable_string_iter",
+    (False, CArrowType.STRING): "_string_iter",
+    (True, CArrowType.LARGE_STRING): "_nullable_string_iter",
+    (False, CArrowType.LARGE_STRING): "_string_iter",
+    (True, CArrowType.STRUCT): "_nullable_struct_iter",
+    (False, CArrowType.STRUCT): "_struct_iter",
+    (True, CArrowType.LIST): "_nullable_list_iter",
+    (False, CArrowType.LIST): "_list_iter",
+    (True, CArrowType.LARGE_LIST): "_nullable_list_iter",
+    (False, CArrowType.LARGE_LIST): "_list_iter",
+    (True, CArrowType.FIXED_SIZE_LIST): "_nullable_fixed_size_list_iter",
+    (False, CArrowType.FIXED_SIZE_LIST): "_fixed_size_list_iter",
+}
 
-        for type_name in primitive_type_names:
-            type_id = getattr(CArrowType, type_name)
-            self._lookup[False, type_id] = self._primitive_storage_iter
-            self._lookup[True, type_id] = self._nullable_primitive_storage_iter
+_PRIMITIVE_TYPE_NAMES = [
+    "BOOL",
+    "UINT8",
+    "INT8",
+    "UINT16",
+    "INT16",
+    "UINT32",
+    "INT32",
+    "UINT64",
+    "INT64",
+    "HALF_FLOAT",
+    "FLOAT",
+    "DOUBLE",
+    "FIXED_SIZE_BINARY",
+    "INTERVAL_MONTHS",
+    "INTERVAL_DAY_TIME",
+    "INTERVAL_MONTH_DAY_NANO",
+    "DECIMAL128",
+    "DECIMAL256",
+]
+
+for type_name in _PRIMITIVE_TYPE_NAMES:
+    type_id = getattr(CArrowType, type_name)
+    _ITEMS_ITER_LOOKUP[False, type_id] = "_primitive_storage_iter"
+    _ITEMS_ITER_LOOKUP[True, type_id] = "_nullable_primitive_storage_iter"
