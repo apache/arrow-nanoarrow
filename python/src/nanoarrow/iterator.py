@@ -20,47 +20,18 @@ from functools import cached_property
 from nanoarrow.c_lib import (
     CArrayView,
     CArrowType,
-    c_array,
     c_array_stream,
     c_schema,
     c_schema_view,
 )
 
 
-def iteritems(obj):
-    if hasattr(obj, "__arrow_c_stream__"):
-        return _iteritems_stream(obj)
-
-    obj = c_array(obj)
-    iterator = ItemsIterator(obj.schema)
-    iterator._set_array(obj)
-    return iterator._iter1(0, obj.length)
+def iteritems(obj, schema=None):
+    return ItemsIterator.get_iterator(obj, schema=schema)
 
 
-def _iteritems_stream(obj):
-    with c_array_stream(obj) as stream:
-        iterator = ItemsIterator(stream._get_cached_schema())
-        for array in stream:
-            iterator._set_array(array)
-            yield from iterator._iter1(0, array.length)
-
-
-def itertuples(obj):
-    if hasattr(obj, "__arrow_c_stream__"):
-        return _itertuples_stream(obj)
-
-    obj = c_array(obj)
-    iterator = RowTupleIterator(obj.schema)
-    iterator._set_array(obj)
-    return iterator._iter1(0, obj.length)
-
-
-def _itertuples_stream(obj):
-    with c_array_stream(obj) as stream:
-        iterator = RowTupleIterator(stream._get_cached_schema())
-        for array in stream:
-            iterator._set_array(array)
-            yield from iterator._iter1(0, array.length)
+def itertuples(obj, schema=None):
+    return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
 class ArrayViewIterator:
@@ -97,6 +68,15 @@ class ArrayViewIterator:
 
 
 class ItemsIterator(ArrayViewIterator):
+    @classmethod
+    def get_iterator(cls, obj, schema=None):
+        with c_array_stream(obj, schema=schema) as stream:
+            iterator = cls(stream._get_cached_schema())
+            for array in stream:
+                iterator._set_array(array)
+                yield from iterator._iter1(0, array.length)
+
+
     def _iter1(self, offset, length):
         schema_view = self._schema_view
 

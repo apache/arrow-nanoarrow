@@ -2018,6 +2018,34 @@ cdef class CArrayStream:
         base = alloc_c_array_stream(&c_array_stream_out)
         return CArrayStream(base, <uintptr_t>c_array_stream_out)
 
+    @staticmethod
+    def from_array_list(arrays, CSchema schema, move=False, validate=True):
+        cdef ArrowArrayStream* c_array_stream_out
+        base = alloc_c_array_stream(&c_array_stream_out)
+
+        if not move:
+            schema = schema.__deepcopy__()
+
+        cdef int code = ArrowBasicArrayStreamInit(c_array_stream_out, schema._ptr, len(arrays))
+        Error.raise_error_not_ok("ArrowBasicArrayStreamInit()", code)
+
+        cdef ArrowArray tmp
+        cdef CArray array
+        for i in range(len(arrays)):
+            array = arrays[i]
+            if not move:
+                c_array_shallow_copy(array._base, array._ptr, &tmp)
+                ArrowBasicArrayStreamSetArray(c_array_stream_out, i, &tmp)
+            else:
+                ArrowBasicArrayStreamSetArray(c_array_stream_out, i, array._ptr)
+
+        cdef Error error = Error()
+        if validate:
+            code = ArrowBasicArrayStreamValidate(c_array_stream_out, &error.c_error)
+            error.raise_message_not_ok("ArrowBasicArrayStreamValidate()", code)
+
+        return CArrayStream(base, <uintptr_t>c_array_stream_out)
+
     def release(self):
         if self.is_valid():
             self._ptr.release(self._ptr)

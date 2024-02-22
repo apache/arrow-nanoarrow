@@ -338,22 +338,31 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
     if isinstance(obj, CArrayStream) and schema is None:
         return obj
 
+    # Try capsule protocol
     if hasattr(obj, "__arrow_c_stream__"):
         schema_capsule = None if schema is None else schema.__arrow_c_schema__()
         return CArrayStream._import_from_c_capsule(
             obj.__arrow_c_stream__(requested_schema=schema_capsule)
         )
 
-    # for pyarrow < 14.0
-    if hasattr(obj, "_export_to_c"):
+    # Try import of bare capsule
+    if _obj_is_capsule(obj, "arrow_array_stream"):
+        return CArrayStream._import_from_c_capsule(obj)
+
+    # Try _export_to_c for RecordBatchReader objects if pyarrow < 14.0
+    if _obj_is_pyarrow_record_batch_reader(obj):
         out = CArrayStream.allocate()
         obj._export_to_c(out._addr())
         return out
-    else:
+
+    try:
+        array = c_array(obj, schema=schema)
+        return CArrayStream.from_arrays([array], array.schema, validate=False)
+    except Exception as e:
         raise TypeError(
             f"Can't convert object of type {type(obj).__name__} "
-            "to nanoarrow.c_array_stream"
-        )
+            "to nanoarrow.c_array_stream or nanoarrow.c_array"
+        ) from e
 
 
 def c_schema_view(obj) -> CSchemaView:
@@ -533,6 +542,17 @@ def _obj_is_pyarrow_array(obj):
         return False
 
     if not obj_type.__name__.endswith("Array") and obj_type.__name__ != "RecordBatch":
+        return False
+
+    return hasattr(obj, "_export_to_c")
+
+
+def _obj_is_pyarrow_record_batch_reader(obj):
+    obj_type = type(obj)
+    if not obj_type.__module__.startswith("pyarrow"):
+        return False
+
+    if not obj_type.__name__.endswith("RecordBatchReader"):
         return False
 
     return hasattr(obj, "_export_to_c")

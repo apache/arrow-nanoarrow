@@ -122,7 +122,7 @@ def test_itertuples_nullable():
 
 def test_itertuples_errors():
     with pytest.raises(TypeError, match="can only iterate over struct arrays"):
-        itertuples(na.c_array([1, 2, 3], na.int32()))
+        list(itertuples(na.c_array([1, 2, 3], na.int32())))
 
 
 def test_iteritems_struct():
