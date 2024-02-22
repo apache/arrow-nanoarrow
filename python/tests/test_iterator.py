@@ -120,6 +120,11 @@ def test_itertuples_nullable():
     assert list(itertuples(array)) == [(1, True), (2, False), (3, True), None]
 
 
+def test_itertuples_errors():
+    with pytest.raises(TypeError, match="can only iterate over struct arrays"):
+        itertuples(na.c_array([1, 2, 3], na.int32()))
+
+
 def test_iteritems_struct():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool()}),

@@ -233,8 +233,8 @@ class RowTupleIterator(ItemsIterator):
         super().__init__(schema, _array_view=_array_view)
         if self._schema_view.type != "struct":
             raise TypeError(
-                "RowTupleIterator can only iterate over struct arrays ",
-                f"(got '{self._schema_view.type}')",
+                "RowTupleIterator can only iterate over struct arrays "
+                f"(got '{self._schema_view.type}')"
             )
 
     def _make_child(self, schema, array_view):
