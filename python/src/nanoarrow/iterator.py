@@ -48,6 +48,13 @@ class ArrayViewIterator:
             map(self._make_child, self._schema.children, self._array_view.children)
         )
 
+        if schema.dictionary is None:
+            self._dictionary = None
+        else:
+            self._dictionary = self._make_child(
+                self._schema.dictionary, self._array_view.dictionary
+            )
+
     def _make_child(self, schema, array_view):
         return type(self)(schema, _array_view=array_view)
 
@@ -87,6 +94,20 @@ class RowIterator(ArrayViewIterator):
 
         factory = getattr(self, _ITEMS_ITER_LOOKUP[key])
         return factory(offset, length)
+
+    def _dictionary_iter(self, offset, length):
+        dictionary = list(
+            self._dictionary._iter1(0, self._dictionary._array_view.length)
+        )
+        for dict_index in self._primitive_storage_iter(offset, length):
+            yield dictionary[dict_index]
+
+    def _nullable_dictionary_iter(self, offset, length):
+        dictionary = list(
+            self._dictionary._iter1(0, self._dictionary._array_view.length)
+        )
+        for dict_index in self._primitive_nullable_iter(offset, length):
+            yield None if dict_index is None else dictionary[dict_index]
 
     def _struct_tuple_iter(self, offset, length):
         view = self._array_view
@@ -243,6 +264,8 @@ _ITEMS_ITER_LOOKUP = {
     (False, CArrowType.LARGE_LIST): "_list_iter",
     (True, CArrowType.FIXED_SIZE_LIST): "_nullable_fixed_size_list_iter",
     (False, CArrowType.FIXED_SIZE_LIST): "_fixed_size_list_iter",
+    (True, CArrowType.DICTIONARY): "_nullable_dictionary_iter",
+    (False, CArrowType.DICTIONARY): "_dictionary_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [

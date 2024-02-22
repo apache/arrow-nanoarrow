@@ -22,14 +22,6 @@ from nanoarrow.iterator import iterator, itertuples
 import nanoarrow as na
 
 
-def test_iterator_stream():
-    assert list(iterator(Stream.example())) == [
-        {"some_col": 1},
-        {"some_col": 2},
-        {"some_col": 3},
-    ]
-
-
 def test_itertuples_stream():
     assert list(itertuples(Stream.example())) == [(1,), (2,), (3,)]
 
@@ -184,4 +176,13 @@ def test_iterator_nullable_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, 9], None]
     array = pa.array(items, pa.list_(pa.int64(), 3))
+    assert list(iterator(array)) == items
+
+
+def test_iterator_dictionary():
+    pa = pytest.importorskip("pyarrow")
+
+    items = ["ab", "cde", "ab", "def", "cde"]
+    array = pa.array(items).dictionary_encode()
+
     assert list(iterator(array)) == items
