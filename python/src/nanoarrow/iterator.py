@@ -76,7 +76,6 @@ class ItemsIterator(ArrayViewIterator):
                 iterator._set_array(array)
                 yield from iterator._iter1(0, array.length)
 
-
     def _iter1(self, offset, length):
         schema_view = self._schema_view
 
