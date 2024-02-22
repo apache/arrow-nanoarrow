@@ -16,7 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow.iterator import iteritems
+from nanoarrow.iterator import iteritems, itertuples
 from nanoarrow.ipc import Stream
 
 import nanoarrow as na
@@ -28,6 +28,10 @@ def test_iteritems_stream():
         {"some_col": 2},
         {"some_col": 3},
     ]
+
+
+def test_itertuples_stream():
+    assert list(itertuples(Stream.example())) == [(1,), (2,), (3,)]
 
 
 def test_iteritems_primitive():
@@ -99,7 +103,7 @@ def test_itertuples():
         children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
     )
 
-    assert list(iteritems(array)) == [(1, True), (2, False), (3, True)]
+    assert list(itertuples(array)) == [(1, True), (2, False), (3, True)]
 
 
 def test_itertuples_nullable():
@@ -113,7 +117,7 @@ def test_itertuples_nullable():
         ],
     )
 
-    assert list(iteritems(array)) == [(1, True), (2, False), (3, True), None]
+    assert list(itertuples(array)) == [(1, True), (2, False), (3, True), None]
 
 
 def test_iteritems_struct():

@@ -45,6 +45,24 @@ def _iteritems_stream(obj):
             yield from iterator._iter1(0, array.length)
 
 
+def itertuples(obj):
+    if hasattr(obj, "__arrow_c_stream__"):
+        return _itertuples_stream(obj)
+
+    obj = c_array(obj)
+    iterator = RowTupleIterator(obj.schema)
+    iterator._set_array(obj)
+    return iterator._iter1(0, obj.length)
+
+
+def _itertuples_stream(obj):
+    with c_array_stream(obj) as stream:
+        iterator = RowTupleIterator(stream._get_cached_schema())
+        for array in stream:
+            iterator._set_array(array)
+            yield from iterator._iter1(0, array.length)
+
+
 class ArrayViewIterator:
 
     def __init__(self, schema, *, _array_view=None):
@@ -210,6 +228,25 @@ class ItemsIterator(ArrayViewIterator):
             data.elements(offset, length),
         ):
             yield item if is_valid else None
+
+
+class RowTupleIterator(ItemsIterator):
+
+    def __init__(self, schema, *, _array_view=None):
+        super().__init__(schema, _array_view=_array_view)
+        if self._schema_view.type != "struct":
+            raise TypeError(
+                f"RowTupleIterator can only iterate over struct arrays (got '{self._schema_view.type}')"
+            )
+
+    def _make_child(self, schema, array_view):
+        return ItemsIterator(schema, _array_view=array_view)
+
+    def _iter1(self, offset, length):
+        if self._contains_nulls():
+            return self._nullable_struct_tuple_iter(offset, length)
+        else:
+            return self._struct_tuple_iter(offset, length)
 
 
 _ITEMS_ITER_LOOKUP = {
