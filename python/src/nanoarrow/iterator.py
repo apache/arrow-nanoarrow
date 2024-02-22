@@ -32,20 +32,20 @@ def iteritems(obj):
         return _iteritems_stream(obj)
 
     obj = c_array(obj)
-    iterator = Iterator(obj.schema)
+    iterator = ItemsIterator(obj.schema)
     iterator._set_array(obj)
     return iterator._iter1(0, obj.length)
 
 
 def _iteritems_stream(obj):
     with c_array_stream(obj) as stream:
-        iterator = Iterator(stream._get_cached_schema())
+        iterator = ItemsIterator(stream._get_cached_schema())
         for array in stream:
             iterator._set_array(array)
             yield from iterator._iter1(0, array.length)
 
 
-class Iterator:
+class ArrayViewIterator:
 
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
@@ -60,14 +60,30 @@ class Iterator:
             map(self._make_child, self._schema.children, self._array_view.children)
         )
 
-        self._populate_lookup()
-
     def _make_child(self, schema, array_view):
-        return Iterator(schema, _array_view=array_view)
+        return type(self)(schema, _array_view=array_view)
+
+    @cached_property
+    def _child_names(self):
+        return [child.name for child in self._schema.children]
+
+    def _contains_nulls(self):
+        return (
+            self._schema_view.nullable
+            and len(self._array_view.buffer(0))
+            and self._array_view.null_count != 0
+        )
 
     def _set_array(self, array):
         self._array_view._set_array(array)
         return self
+
+
+class ItemsIterator(ArrayViewIterator):
+
+    def __init__(self, schema, **kwargs) -> None:
+        super().__init__(schema, **kwargs)
+        self._populate_lookup()
 
     def _iter1(self, offset, length):
         schema_view = self._schema_view
@@ -80,17 +96,6 @@ class Iterator:
 
         factory = self._lookup[key]
         return factory(offset, length)
-
-    @cached_property
-    def child_names(self):
-        return [child.name for child in self._schema.children]
-
-    def _contains_nulls(self):
-        return (
-            self._schema_view.nullable
-            and len(self._array_view.buffer(0))
-            and self._array_view.null_count != 0
-        )
 
     def _struct_tuple_iter(self, offset, length):
         view = self._array_view
@@ -106,7 +111,7 @@ class Iterator:
             yield item if is_valid else None
 
     def _struct_iter(self, offset, length):
-        names = self.child_names
+        names = self._child_names
         tuples = self._struct_tuple_iter(offset, length)
         for item in tuples:
             yield {key: val for key, val in zip(names, item)}
