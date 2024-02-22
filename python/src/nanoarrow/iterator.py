@@ -18,12 +18,12 @@
 from functools import cached_property
 
 from nanoarrow.c_lib import (
-    CArrowType,
     CArrayView,
+    CArrowType,
     c_array,
+    c_array_stream,
     c_schema,
     c_schema_view,
-    c_array_stream,
 )
 
 
@@ -64,7 +64,6 @@ def _itertuples_stream(obj):
 
 
 class ArrayViewIterator:
-
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
         self._schema_view = c_schema_view(schema)
@@ -98,7 +97,6 @@ class ArrayViewIterator:
 
 
 class ItemsIterator(ArrayViewIterator):
-
     def _iter1(self, offset, length):
         schema_view = self._schema_view
 
@@ -231,12 +229,12 @@ class ItemsIterator(ArrayViewIterator):
 
 
 class RowTupleIterator(ItemsIterator):
-
     def __init__(self, schema, *, _array_view=None):
         super().__init__(schema, _array_view=_array_view)
         if self._schema_view.type != "struct":
             raise TypeError(
-                f"RowTupleIterator can only iterate over struct arrays (got '{self._schema_view.type}')"
+                "RowTupleIterator can only iterate over struct arrays ",
+                f"(got '{self._schema_view.type}')",
             )
 
     def _make_child(self, schema, array_view):

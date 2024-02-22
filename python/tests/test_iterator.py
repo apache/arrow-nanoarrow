@@ -16,8 +16,8 @@
 # under the License.
 
 import pytest
-from nanoarrow.iterator import iteritems, itertuples
 from nanoarrow.ipc import Stream
+from nanoarrow.iterator import iteritems, itertuples
 
 import nanoarrow as na
 
