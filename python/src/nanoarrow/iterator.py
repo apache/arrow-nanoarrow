@@ -32,17 +32,17 @@ def iteritems(obj):
         return _iteritems_stream(obj)
 
     obj = c_array(obj)
-    factory = Iterator(obj.schema)
-    factory._set_array(obj)
-    return factory._make_iter(factory, 0, obj.length)
+    iterator = Iterator(obj.schema)
+    iterator._set_array(obj)
+    return iterator._iter1(0, obj.length)
 
 
 def _iteritems_stream(obj):
     with c_array_stream(obj) as stream:
-        factory = Iterator(stream._get_cached_schema())
+        iterator = Iterator(stream._get_cached_schema())
         for array in stream:
-            factory._set_array(array)
-            yield from factory._make_iter(factory, 0, array.length)
+            iterator._set_array(array)
+            yield from iterator._iter1(0, array.length)
 
 
 class Iterator:
@@ -60,6 +60,8 @@ class Iterator:
             map(self._make_child, self._schema.children, self._array_view.children)
         )
 
+        self._populate_lookup()
+
     def _make_child(self, schema, array_view):
         return Iterator(schema, _array_view=array_view)
 
@@ -67,25 +69,21 @@ class Iterator:
         self._array_view._set_array(array)
         return self
 
-    def _make_iter(self, instance, offset, length):
-        schema_view = instance._schema_view
+    def _iter1(self, offset, length):
+        schema_view = self._schema_view
 
-        nullable = instance._contains_nulls()
+        nullable = self._contains_nulls()
         type_id = schema_view.type_id
         key = nullable, type_id
-        if key not in _LOOKUP:
+        if key not in self._lookup:
             raise KeyError(f"Can't resolve iterator for type '{schema_view.type}'")
 
-        factory = _LOOKUP[key]
-        return factory(instance, offset, length)
+        factory = self._lookup[key]
+        return factory(offset, length)
 
     @cached_property
     def child_names(self):
         return [child.name for child in self._schema.children]
-
-    @property
-    def children(self):
-        return self._children
 
     def _contains_nulls(self):
         return (
@@ -94,182 +92,166 @@ class Iterator:
             and self._array_view.null_count != 0
         )
 
+    def _struct_tuple_iter(self, offset, length):
+        view = self._array_view
+        offset += view.offset
+        return zip(*(child._iter1(offset, length) for child in self._children))
 
-def _struct_tuple_iter(iterator, offset, length):
-    view = iterator._array_view
-    offset += view.offset
-    child_factory = iterator._make_iter
-    return zip(*(child_factory(child, offset, length) for child in iterator.children))
+    def _nullable_struct_tuple_iter(self, offset, length):
+        view = self._array_view
+        for is_valid, item in zip(
+            view.buffer(0).elements(view.offset + offset, length),
+            self._struct_tuple_iter(offset, length),
+        ):
+            yield item if is_valid else None
 
+    def _struct_iter(self, offset, length):
+        names = self.child_names
+        tuples = self._struct_tuple_iter(offset, length)
+        for item in tuples:
+            yield {key: val for key, val in zip(names, item)}
 
-def _nullable_struct_tuple_iter(iterator, offset, length):
-    view = iterator._array_view
-    for is_valid, item in zip(
-        view.buffer(0).elements(view.offset + offset, length),
-        _struct_tuple_iter(iterator, offset, length),
-    ):
-        yield item if is_valid else None
+    def _nullable_struct_iter(self, offset, length):
+        view = self._array_view
+        for is_valid, item in zip(
+            view.buffer(0).elements(view.offset + offset, length),
+            self._struct_iter(offset, length),
+        ):
+            yield item if is_valid else None
 
+    def _list_iter(self, offset, length):
+        view = self._array_view
+        offset += view.offset
+        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        child = self._children[0]
+        for start, end in zip(offsets[:-1], offsets[1:]):
+            yield list(child._iter1(start, end - start))
 
-def _struct_iter(iterator, offset, length):
-    names = iterator.child_names
-    tuples = _struct_tuple_iter(iterator, offset, length)
-    for item in tuples:
-        yield {key: val for key, val in zip(names, item)}
+    def _nullable_list_iter(self, offset, length):
+        view = self._array_view
+        for is_valid, item in zip(
+            view.buffer(0).elements(view.offset + offset, length),
+            self._list_iter(offset, length),
+        ):
+            yield item if is_valid else None
 
+    def _fixed_size_list_iter(self, offset, length):
+        view = self._array_view
+        offset += view.offset
+        child = self._children[0]
+        fixed_size = view.layout.child_size_elements
 
-def _nullable_struct_iter(iterator, offset, length):
-    names = iterator.child_names
-    view = iterator._array_view
-    for is_valid, item in zip(
-        view.buffer(0).elements(view.offset + offset, length),
-        _struct_iter(iterator, offset, length),
-    ):
-        yield item if is_valid else None
+        for start in range(offset, offset + (fixed_size * length), fixed_size):
+            yield list(child._iter1(start, fixed_size))
 
+    def _nullable_fixed_size_list_iter(self, offset, length):
+        view = self._array_view
+        for is_valid, item in zip(
+            view.buffer(0).elements(view.offset + offset, length),
+            self._fixed_size_list_iter(offset, length),
+        ):
+            yield item if is_valid else None
 
-def _list_iter(iterator, offset, length):
-    view = iterator._array_view
-    offset += view.offset
-    offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
-    child = iterator.children[0]
-    for start, end in zip(offsets[:-1], offsets[1:]):
-        yield list(iterator._make_iter(child, start, end - start))
-
-
-def _nullable_list_iter(iterator, offset, length):
-    view = iterator._array_view
-    for is_valid, item in zip(
-        view.buffer(0).elements(view.offset + offset, length),
-        _list_iter(iterator, offset, length),
-    ):
-        yield item if is_valid else None
-
-
-def _fixed_size_list_iter(iterator, offset, length):
-    view = iterator._array_view
-    offset += view.offset
-    child = iterator.children[0]
-    fixed_size = view.layout.child_size_elements
-
-    for start in range(offset, offset + (fixed_size * length), fixed_size):
-        yield list(iterator._make_iter(child, start, fixed_size))
-
-
-def _nullable_fixed_size_list_iter(iterator, offset, length):
-    view = iterator._array_view
-    for is_valid, item in zip(
-        view.buffer(0).elements(view.offset + offset, length),
-        _fixed_size_list_iter(iterator, offset, length),
-    ):
-        yield item if is_valid else None
-
-
-def _string_iter(iterator, offset, length):
-    view = iterator._array_view
-    offset += view.offset
-    offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
-    data = memoryview(view.buffer(2))
-    for start, end in zip(offsets[:-1], offsets[1:]):
-        yield str(data[start:end], "UTF-8")
-
-
-def _nullable_string_iter(iterator, offset, length):
-    view = iterator._array_view
-    validity, offsets, data = view.buffers
-    offset += view.offset
-    offsets = memoryview(offsets)[offset : (offset + length + 1)]
-    data = memoryview(data)
-    for is_valid, start, end in zip(
-        validity.elements(offset, length), offsets[:-1], offsets[1:]
-    ):
-        if is_valid:
+    def _string_iter(self, offset, length):
+        view = self._array_view
+        offset += view.offset
+        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        data = memoryview(view.buffer(2))
+        for start, end in zip(offsets[:-1], offsets[1:]):
             yield str(data[start:end], "UTF-8")
-        else:
-            yield None
 
+    def _nullable_string_iter(self, offset, length):
+        view = self._array_view
+        validity, offsets, data = view.buffers
+        offset += view.offset
+        offsets = memoryview(offsets)[offset : (offset + length + 1)]
+        data = memoryview(data)
+        for is_valid, start, end in zip(
+            validity.elements(offset, length), offsets[:-1], offsets[1:]
+        ):
+            if is_valid:
+                yield str(data[start:end], "UTF-8")
+            else:
+                yield None
 
-def _binary_iter(iterator, offset, length):
-    view = iterator._array_view
-    offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
-    data = memoryview(view.buffer(2))
-    for start, end in zip(offsets[:-1], offsets[1:]):
-        yield bytes(data[start:end])
-
-
-def _nullable_binary_iter(iterator, offset, length):
-    view = iterator._array_view
-    validity, offsets, data = view.buffers
-    offset += view.offset
-    offsets = memoryview(offsets)[offset : (offset + length + 1)]
-    data = memoryview(data)
-    for is_valid, start, end in zip(
-        validity.elements(offset, length), offsets[:-1], offsets[1:]
-    ):
-        if is_valid:
+    def _binary_iter(self, offset, length):
+        view = self._array_view
+        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        data = memoryview(view.buffer(2))
+        for start, end in zip(offsets[:-1], offsets[1:]):
             yield bytes(data[start:end])
-        else:
-            yield None
 
+    def _nullable_binary_iter(self, offset, length):
+        view = self._array_view
+        validity, offsets, data = view.buffers
+        offset += view.offset
+        offsets = memoryview(offsets)[offset : (offset + length + 1)]
+        data = memoryview(data)
+        for is_valid, start, end in zip(
+            validity.elements(offset, length), offsets[:-1], offsets[1:]
+        ):
+            if is_valid:
+                yield bytes(data[start:end])
+            else:
+                yield None
 
-def _primitive_storage_iter(iterator, offset, length):
-    view = iterator._array_view
-    offset += view.offset
-    return iter(view.buffer(1).elements(offset, length))
+    def _primitive_storage_iter(self, offset, length):
+        view = self._array_view
+        offset += view.offset
+        return iter(view.buffer(1).elements(offset, length))
 
+    def _nullable_primitive_storage_iter(self, offset, length):
+        view = self._array_view
+        is_valid, data = view.buffers
+        offset += view.offset
+        for is_valid, item in zip(
+            is_valid.elements(offset, length),
+            data.elements(offset, length),
+        ):
+            yield item if is_valid else None
 
-def _nullable_primitive_storage_iter(iterator, offset, length):
-    view = iterator._array_view
-    is_valid, data = view.buffers
-    offset += view.offset
-    for is_valid, item in zip(
-        is_valid.elements(offset, length),
-        data.elements(offset, length),
-    ):
-        yield item if is_valid else None
+    def _populate_lookup(self):
+        self._lookup = {
+            (True, CArrowType.BINARY): self._nullable_binary_iter,
+            (False, CArrowType.BINARY): self._binary_iter,
+            (True, CArrowType.LARGE_BINARY): self._nullable_binary_iter,
+            (False, CArrowType.LARGE_BINARY): self._binary_iter,
+            (True, CArrowType.STRING): self._nullable_string_iter,
+            (False, CArrowType.STRING): self._string_iter,
+            (True, CArrowType.LARGE_STRING): self._nullable_string_iter,
+            (False, CArrowType.LARGE_STRING): self._string_iter,
+            (True, CArrowType.STRUCT): self._nullable_struct_iter,
+            (False, CArrowType.STRUCT): self._struct_iter,
+            (True, CArrowType.LIST): self._nullable_list_iter,
+            (False, CArrowType.LIST): self._list_iter,
+            (True, CArrowType.LARGE_LIST): self._nullable_list_iter,
+            (False, CArrowType.LARGE_LIST): self._list_iter,
+            (True, CArrowType.FIXED_SIZE_LIST): self._nullable_fixed_size_list_iter,
+            (False, CArrowType.FIXED_SIZE_LIST): self._fixed_size_list_iter,
+        }
 
+        primitive_type_names = [
+            "BOOL",
+            "UINT8",
+            "INT8",
+            "UINT16",
+            "INT16",
+            "UINT32",
+            "INT32",
+            "UINT64",
+            "INT64",
+            "HALF_FLOAT",
+            "FLOAT",
+            "DOUBLE",
+            "FIXED_SIZE_BINARY",
+            "INTERVAL_MONTHS",
+            "INTERVAL_DAY_TIME",
+            "INTERVAL_MONTH_DAY_NANO",
+            "DECIMAL128",
+            "DECIMAL256",
+        ]
 
-_LOOKUP = {
-    (True, CArrowType.BINARY): _nullable_binary_iter,
-    (False, CArrowType.BINARY): _binary_iter,
-    (True, CArrowType.LARGE_BINARY): _nullable_binary_iter,
-    (False, CArrowType.LARGE_BINARY): _binary_iter,
-    (True, CArrowType.STRING): _nullable_string_iter,
-    (False, CArrowType.STRING): _string_iter,
-    (True, CArrowType.LARGE_STRING): _nullable_string_iter,
-    (False, CArrowType.LARGE_STRING): _string_iter,
-    (True, CArrowType.STRUCT): _nullable_struct_iter,
-    (False, CArrowType.STRUCT): _struct_iter,
-    (True, CArrowType.LIST): _nullable_list_iter,
-    (False, CArrowType.LIST): _list_iter,
-    (True, CArrowType.LARGE_LIST): _nullable_list_iter,
-    (False, CArrowType.LARGE_LIST): _list_iter,
-    (True, CArrowType.FIXED_SIZE_LIST): _nullable_fixed_size_list_iter,
-    (False, CArrowType.FIXED_SIZE_LIST): _fixed_size_list_iter,
-}
-
-_PRIMITIVE = [
-    "BOOL",
-    "UINT8",
-    "INT8",
-    "UINT16",
-    "INT16",
-    "UINT32",
-    "INT32",
-    "UINT64",
-    "INT64",
-    "HALF_FLOAT",
-    "FLOAT",
-    "DOUBLE",
-    "FIXED_SIZE_BINARY",
-    "INTERVAL_MONTHS",
-    "INTERVAL_DAY_TIME",
-    "INTERVAL_MONTH_DAY_NANO",
-    "DECIMAL128",
-    "DECIMAL256",
-]
-
-for type_name in _PRIMITIVE:
-    type_id = getattr(CArrowType, type_name)
-    _LOOKUP[False, type_id] = _primitive_storage_iter
-    _LOOKUP[True, type_id] = _nullable_primitive_storage_iter
+        for type_name in primitive_type_names:
+            type_id = getattr(CArrowType, type_name)
+            self._lookup[False, type_id] = self._primitive_storage_iter
+            self._lookup[True, type_id] = self._nullable_primitive_storage_iter
