@@ -17,6 +17,7 @@
 
 from functools import cached_property
 from itertools import islice
+from typing import Iterable, Tuple
 
 from nanoarrow.c_lib import (
     CArrayView,
@@ -27,11 +28,11 @@ from nanoarrow.c_lib import (
 )
 
 
-def iterator(obj, schema=None):
+def iterator(obj, schema=None) -> Iterable:
     return RowIterator.get_iterator(obj, schema=schema)
 
 
-def itertuples(obj, schema=None):
+def itertuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
