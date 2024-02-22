@@ -207,7 +207,7 @@ class RowIterator(ArrayViewIterator):
             yield item if is_valid else None
 
 
-class RowTupleIterator(ItemsIterator):
+class RowTupleIterator(RowIterator):
     def __init__(self, schema, *, _array_view=None):
         super().__init__(schema, _array_view=_array_view)
         if self._schema_view.type != "struct":
@@ -217,7 +217,7 @@ class RowTupleIterator(ItemsIterator):
             )
 
     def _make_child(self, schema, array_view):
-        return ItemsIterator(schema, _array_view=array_view)
+        return RowIterator(schema, _array_view=array_view)
 
     def _iter1(self, offset, length):
         if self._contains_nulls():
