@@ -5,7 +5,7 @@
 \alias{example_ipc_stream}
 \title{Read serialized streams of Arrow data}
 \usage{
-read_nanoarrow(x, ...)
+read_nanoarrow(x, ..., lazy = FALSE)
 
 example_ipc_stream()
 }
@@ -15,6 +15,11 @@ binary data. Common extensions indicating compression (.gz, .bz2, .zip)
 are automatically uncompressed.}
 
 \item{...}{Currently unused.}
+
+\item{lazy}{By default, \code{read_nanoarrow()} will read and discard a copy of
+the reader's schema to ensure that invalid streams are discovered as
+soon as possible. Use \code{lazy = TRUE} to defer this check until the reader
+is actually consumed.}
 }
 \value{
 A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}
@@ -37,6 +42,6 @@ The media type of an Arrow stream is \code{application/vnd.apache.arrow.stream}
 and the recommended file extension is \code{.arrows}.
 }
 \examples{
-read_nanoarrow(example_ipc_stream())
+as.data.frame(read_nanoarrow(example_ipc_stream()))
 
 }

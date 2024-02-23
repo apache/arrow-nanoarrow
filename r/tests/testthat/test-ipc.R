@@ -183,10 +183,52 @@ test_that("read_nanoarrow() reports errors from readBin", {
   con <- file(tf, open = "r")
   on.exit(close(con))
 
-  stream <- read_nanoarrow(con)
   expect_error(
-    stream$get_next(),
-    "can only read from a binary connection"
+    read_nanoarrow(con),
+    "R execution error"
+  )
+})
+
+test_that("read_nanoarrow() respects lazy argument", {
+  expect_error(
+    read_nanoarrow(raw(0), lazy = FALSE),
+    "No data available on stream"
+  )
+
+  reader <- read_nanoarrow(raw(0), lazy = TRUE)
+  expect_error(
+    reader$get_next(),
+    "No data available on stream"
+  )
+
+  tf <- tempfile()
+  con <- rawConnection(raw(0))
+  on.exit({
+    close(con)
+    unlink(tf)
+  })
+
+  expect_error(
+    read_nanoarrow(con, lazy = FALSE),
+    "No data available on stream"
+  )
+
+  reader <- read_nanoarrow(con, lazy = TRUE)
+  expect_error(
+    reader$get_next(),
+    "No data available on stream"
+  )
+
+  file.create(tf)
+  expect_error(
+    read_nanoarrow(tf, lazy = FALSE),
+    "No data available on stream"
+  )
+
+  reader <- read_nanoarrow(tf, lazy = TRUE)
+  expect_error(
+    reader$get_next(),
+    "No data available on stream"
   )
 })
 

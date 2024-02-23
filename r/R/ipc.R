@@ -35,26 +35,31 @@
 #' @param x A `raw()` vector, connection, or file path from which to read
 #'   binary data. Common extensions indicating compression (.gz, .bz2, .zip)
 #'   are automatically uncompressed.
+#' @param lazy By default, `read_nanoarrow()` will read and discard a copy of
+#'   the reader's schema to ensure that invalid streams are discovered as
+#'   soon as possible. Use `lazy = TRUE` to defer this check until the reader
+#'   is actually consumed.
 #' @param ... Currently unused.
 #'
 #' @return A [nanoarrow_array_stream][as_nanoarrow_array_stream]
 #' @export
 #'
 #' @examples
-#' read_nanoarrow(example_ipc_stream())
+#' as.data.frame(read_nanoarrow(example_ipc_stream()))
 #'
-read_nanoarrow <- function(x, ...) {
+read_nanoarrow <- function(x, ..., lazy = FALSE) {
   UseMethod("read_nanoarrow")
 }
 
 #' @export
-read_nanoarrow.raw <- function(x, ...) {
+read_nanoarrow.raw <- function(x, ..., lazy = FALSE) {
   buffer <- as_nanoarrow_buffer(x)
-  .Call(nanoarrow_c_ipc_array_reader_buffer, buffer)
+  reader <- .Call(nanoarrow_c_ipc_array_reader_buffer, buffer)
+  check_stream_if_requested(reader, lazy)
 }
 
 #' @export
-read_nanoarrow.character <- function(x, ...) {
+read_nanoarrow.character <- function(x, ..., lazy = FALSE) {
   if (length(x) != 1) {
     stop(sprintf("Can't interpret character(%d) as file path", length(x)))
   }
@@ -66,11 +71,13 @@ read_nanoarrow.character <- function(x, ...) {
     con <- do.call(con_type, list(x))
   }
 
-  read_nanoarrow(con)
+  # Helps with error reporting when reading invalid files
+  reader <- read_nanoarrow(con, lazy = TRUE)
+  check_stream_if_requested(reader, lazy)
 }
 
 #' @export
-read_nanoarrow.connection <- function(x, ...) {
+read_nanoarrow.connection <- function(x, ..., lazy = FALSE) {
   if (!isOpen(x)) {
     # Unopened connections should be opened in binary mode
     open(x, "rb")
@@ -92,10 +99,12 @@ read_nanoarrow.connection <- function(x, ...) {
     finalizer_env$x <- x
     environment(stream_finalizer) <- finalizer_env
 
-    array_stream_set_finalizer(stream, stream_finalizer)
+    reader <- array_stream_set_finalizer(stream, stream_finalizer)
   } else {
-    .Call(nanoarrow_c_ipc_array_reader_connection, x)
+    reader <- .Call(nanoarrow_c_ipc_array_reader_connection, x)
   }
+
+  check_stream_if_requested(reader, lazy)
 }
 
 #' @rdname read_nanoarrow
@@ -141,6 +150,23 @@ example_ipc_stream <- function() {
   ))
 
   c(schema, batch)
+}
+
+check_stream_if_requested <- function(reader, lazy) {
+  if (!lazy) {
+    # Report error as coming from read_nanoarrow() always
+    cnd_call <- sys.call(-1)
+    tryCatch(
+      reader$get_schema(),
+      error = function(e) {
+        reader$release()
+        e$call <- cnd_call
+        stop(e)
+      }
+    )
+  }
+
+  reader
 }
 
 guess_connection_type <- function(x) {
