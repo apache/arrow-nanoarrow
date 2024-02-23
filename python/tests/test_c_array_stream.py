@@ -16,10 +16,10 @@
 # under the License.
 
 import pytest
+from nanoarrow._lib import NanoarrowException
+from nanoarrow.c_lib import CArrayStream
 
 import nanoarrow as na
-from nanoarrow.c_lib import CArrayStream
-from nanoarrow._lib import NanoarrowException
 
 
 def test_array_stream_from_arrays_schema():
