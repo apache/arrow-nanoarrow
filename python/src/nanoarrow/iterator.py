@@ -29,14 +29,65 @@ from nanoarrow.c_lib import (
 
 
 def iterator(obj, schema=None) -> Iterable:
+    """Iterate over items in zero or more arrays
+
+    Returns an iterator over an array stream where each item is a
+    Python representation of the next element.
+
+    Paramters
+    ---------
+    obj : array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow import iterator
+    >>> array = na.c_array([1, 2, 3], na.int32())
+    >>> list(iterator.iterator(array))
+    [1, 2, 3]
+    """
     return RowIterator.get_iterator(obj, schema=schema)
 
 
 def itertuples(obj, schema=None) -> Iterable[Tuple]:
+    """Iterate over items in zero or more arrays
+
+    Returns an iterator over an array stream of struct arrays (e.g.,
+    record batches) where each item is a tuple of the items in each
+    row. This is different than :func:`iterator`, which encodes struct
+    columns as dictionaries.
+
+    Paramters
+    ---------
+    obj : array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow import iterator
+    >>> import pyarrow as pa
+    >>> array = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
+    >>> list(iterator.itertuples(array))
+    [(1,), (2,), (3,)]
+    """
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
 class ArrayViewIterator:
+    """Base class for iterators that use an internal ArrowArrayStream
+    as the basis for conversion to Python objects. Intended for internal use.
+    """
+
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
         self._schema_view = c_schema_view(schema)
@@ -77,6 +128,10 @@ class ArrayViewIterator:
 
 
 class RowIterator(ArrayViewIterator):
+    """Iterate over the Python object version of values in an ArrowArrayView.
+    Intended for internal use.
+    """
+
     @classmethod
     def get_iterator(cls, obj, schema=None):
         with c_array_stream(obj, schema=schema) as stream:
@@ -146,7 +201,6 @@ class RowIterator(ArrayViewIterator):
         fixed_size = view.layout.child_size_elements
         child_iter = child._iter1(offset * fixed_size, length * fixed_size)
 
-        # Can probably optimize by resolving the child iterator only once
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
             for is_valid in validity:
@@ -201,6 +255,12 @@ class RowIterator(ArrayViewIterator):
 
 
 class RowTupleIterator(RowIterator):
+    """Iterate over rows of a struct array (stream) where each row is a
+    tuple instead of a dictionary. This is ~3x faster and matches other
+    Python concepts more closely (e.g., dbapi's cursor, pandas itertuples).
+    Intended for internal use.
+    """
+
     def __init__(self, schema, *, _array_view=None):
         super().__init__(schema, _array_view=_array_view)
         if self._schema_view.type != "struct":
