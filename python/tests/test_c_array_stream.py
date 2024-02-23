@@ -80,7 +80,7 @@ def test_c_array_stream_from_bare_capsule():
     array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
     capsule = array_stream.__arrow_c_stream__()
 
-    with pytest.raises(TypeError, "Can't import c_array_stream"):
+    with pytest.raises(TypeError, match="Can't import c_array_stream"):
         na.c_array_stream(capsule, na.int32())
 
 
