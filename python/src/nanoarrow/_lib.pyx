@@ -870,18 +870,29 @@ cdef class CSchemaView:
 cdef class CLayout:
     cdef ArrowLayout* _layout
     cdef object _base
+    cdef int _n_buffers
 
     def __cinit__(self, base, uintptr_t ptr):
         self._base = base
         self._layout = <ArrowLayout*>ptr
 
+        self._n_buffers = NANOARROW_MAX_FIXED_BUFFERS
+        for i in range(NANOARROW_MAX_FIXED_BUFFERS):
+            if self._layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE:
+                self._n_buffers = i
+                break
+
+    @property
+    def n_buffers(self):
+        return self._n_buffers
+
     @property
     def buffer_data_type_id(self):
-        return tuple(self._layout.buffer_data_type[i] for i in range(3))
+        return tuple(self._layout.buffer_data_type[i] for i in range(self._n_buffers))
 
     @property
     def element_size_bits(self):
-        return tuple(self._layout.element_size_bits[i] for i in range(3))
+        return tuple(self._layout.element_size_bits[i] for i in range(self._n_buffers))
 
     @property
     def child_size_elements(self):
@@ -1233,10 +1244,7 @@ cdef class CArrayView:
 
     @property
     def n_buffers(self):
-        for i in range(3):
-            if self._ptr.layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE:
-                return i
-        return 3
+        return self.layout.n_buffers
 
     def buffer_type(self, int64_t i):
         if i < 0 or i >= self.n_buffers:

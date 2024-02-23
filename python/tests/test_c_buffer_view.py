@@ -16,9 +16,9 @@
 # under the License.
 
 import pytest
+from nanoarrow.c_lib import c_array_view
 
 import nanoarrow as na
-from nanoarrow.c_lib import c_array_view
 
 
 def test_buffer_view_bool():
@@ -33,8 +33,8 @@ def test_buffer_view_bool():
 
     # Check item interface
     assert len(view) == 1
-    assert view[0] == 1 + 8
-    assert list(view) == [1 + 8]
+    assert view[0] == 0b1001
+    assert list(view) == [0b1001]
 
     # Check against buffer protocol
     mv = memoryview(view)
@@ -51,11 +51,12 @@ def test_buffer_view_bool():
     assert list(view.elements(0, 4)) == [True, False, False, True]
     assert list(view.elements(1, 3)) == [False, False, True]
 
-    with pytest.raises(IndexError, match="do not describe a valid slice"):
+    msg = "do not describe a valid slice"
+    with pytest.raises(IndexError, match=msg):
         view.elements(-1, None)
-    with pytest.raises(IndexError, match="do not describe a valid slice"):
+    with pytest.raises(IndexError, match=msg):
         view.elements(0, -1)
-    with pytest.raises(IndexError, match="do not describe a valid slice"):
+    with pytest.raises(IndexError, match=msg):
         view.elements(0, 9)
 
     # Check repr

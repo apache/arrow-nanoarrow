@@ -68,6 +68,7 @@ def test_schema_view_accessors_non_nullable():
 
 def test_schema_view_layout_accessors():
     view = c_schema_view(na.Type.INT32)
+    assert view.layout.n_buffers == 2
     assert view.layout.buffer_data_type_id[0] == na.Type.BOOL.value
     assert view.layout.element_size_bits[0] == 1
     assert view.layout.buffer_data_type_id[1] == na.Type.INT32.value
