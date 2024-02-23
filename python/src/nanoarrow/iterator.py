@@ -55,9 +55,9 @@ def iterator(obj, schema=None) -> Iterable:
 
 
 def itertuples(obj, schema=None) -> Iterable[Tuple]:
-    """Iterate over items in zero or more arrays
+    """Iterate over rows in zero or more struct arrays
 
-    Returns an iterator over an array stream of struct arrays (e.g.,
+    Returns an iterator over an array stream of struct arrays (i.e.,
     record batches) where each item is a tuple of the items in each
     row. This is different than :func:`iterator`, which encodes struct
     columns as dictionaries.
