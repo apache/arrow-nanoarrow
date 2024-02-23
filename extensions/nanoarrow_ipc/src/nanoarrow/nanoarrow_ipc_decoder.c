@@ -1249,7 +1249,7 @@ struct ArrowIpcBufferSource {
   int64_t buffer_length_bytes;
   enum ArrowIpcCompressionType codec;
   enum ArrowType data_type;
-  int32_t element_size_bits;
+  int64_t element_size_bits;
   int swap_endian;
 };
 
@@ -1374,7 +1374,7 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
       const uint64_t* ptr_src = out_view->data.as_uint64;
       uint64_t* ptr_dst = (uint64_t*)dst->data;
       uint64_t words[4];
-      int n_words = src->element_size_bits / 64;
+      int n_words = (int)(src->element_size_bits / 64);
 
       for (int64_t i = 0; i < (dst->size_bytes / n_words / 8); i++) {
         for (int j = 0; j < n_words; j++) {
@@ -1560,7 +1560,7 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
     }
 
     setter->src.data_type = array_view->layout.buffer_data_type[i];
-    setter->src.element_size_bits = (int32_t)array_view->layout.element_size_bits[i];
+    setter->src.element_size_bits = array_view->layout.element_size_bits[i];
 
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderMakeBuffer(setter, buffer_offset, buffer_length,
