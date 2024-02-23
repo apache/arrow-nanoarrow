@@ -77,6 +77,34 @@ def test_c_array_stream_from_bare_capsule():
     from_capsule = na.c_array_stream(capsule)
     assert from_capsule.get_schema().format == "i"
 
+    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    capsule = array_stream.__arrow_c_stream__()
+
+    with pytest.raises(TypeError, "Can't import c_array_stream"):
+        na.c_array_stream(capsule, na.int32())
+
+
+def test_c_array_stream_from_c_array_fallback():
+    # Check that arrays are valid input
+    c_array = na.c_array([1, 2, 3], na.int32())
+    array_stream = na.c_array_stream(c_array)
+    assert array_stream.get_schema().format == "i"
+    arrays = list(array_stream)
+    assert len(arrays) == 1
+    assert arrays[0].buffers == c_array.buffers
+
+    # Check fallback with schema
+    array_stream = na.c_array_stream([1, 2, 3], na.int32())
+    assert array_stream.get_schema().format == "i"
+    arrays = list(array_stream)
+    assert len(arrays) == 1
+
+
+def test_c_array_stream_error():
+    msg = "Can't convert object of type NoneType"
+    with pytest.raises(TypeError, match=msg):
+        na.c_array_stream(None)
+
 
 def test_array_stream_from_arrays_schema():
     schema_in = na.c_schema(na.int32())

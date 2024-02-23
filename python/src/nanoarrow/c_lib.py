@@ -347,6 +347,10 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
 
     # Try import of bare capsule
     if _obj_is_capsule(obj, "arrow_array_stream"):
+        if schema is not None:
+            raise TypeError(
+                "Can't import c_array_stream from capsule with requested schema"
+            )
         return CArrayStream._import_from_c_capsule(obj)
 
     # Try _export_to_c for RecordBatchReader objects if pyarrow < 14.0
