@@ -22,6 +22,62 @@ from nanoarrow.c_lib import CArrayStream
 import nanoarrow as na
 
 
+def test_c_array_stream_from_c_array_stream():
+    # Wrapping an existing stream is a no-op
+    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    stream_from_stream = na.c_array_stream(array_stream)
+    assert stream_from_stream is array_stream
+
+    # With requested_schema should go through capsule
+    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    with pytest.raises(NotImplementedError):
+        na.c_array_stream(array_stream, na.int64())
+
+
+def test_c_array_stream_from_capsule_protocol():
+    # Use wrapper object to ensure this is the path taken in the constructor
+    class CArrayStreamWrapper:
+        def __init__(self, obj):
+            self.obj = obj
+
+        def __arrow_c_stream__(self, *args, **kwargs):
+            return self.obj.__arrow_c_stream__(*args, **kwargs)
+
+    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    array_stream_wrapper = CArrayStreamWrapper(array_stream)
+    from_protocol = na.c_array_stream(array_stream_wrapper)
+    assert array_stream.is_valid() is False
+    assert from_protocol.get_schema().format == "i"
+
+
+def test_c_array_stream_from_old_pyarrow():
+    # Simulate a pyarrow RecordBatchReader with no __arrow_c_stream__
+    class MockLegacyPyarrowRecordBatchReader:
+        def __init__(self, obj):
+            self.obj = obj
+
+        def _export_to_c(self, *args):
+            return self.obj._export_to_c(*args)
+
+    MockLegacyPyarrowRecordBatchReader.__module__ = "pyarrow.lib"
+
+    pa = pytest.importorskip("pyarrow")
+    reader = pa.RecordBatchReader.from_batches(pa.schema([]), [])
+    mock_reader = MockLegacyPyarrowRecordBatchReader(reader)
+
+    array_stream = na.c_array_stream(mock_reader)
+    assert array_stream.get_schema().format == "+s"
+
+
+def test_c_array_stream_from_bare_capsule():
+    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+
+    # Check from bare capsule without supplying a schema
+    capsule = array_stream.__arrow_c_stream__()
+    from_capsule = na.c_array_stream(capsule)
+    assert from_capsule.get_schema().format == "i"
+
+
 def test_array_stream_from_arrays_schema():
     schema_in = na.c_schema(na.int32())
 
