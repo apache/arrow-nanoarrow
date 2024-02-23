@@ -1065,6 +1065,36 @@ cdef class CArray:
 
         return out
 
+    def __getitem__(self, k):
+        if not isinstance(k, slice):
+            raise TypeError(
+                f"Can't slice CArray with object of type {type(k).__name__}"
+            )
+
+        if k.step is not None:
+            raise ValueError("Can't slice CArray with step")
+
+        cdef int64_t start = 0 if k.start is None else k.start
+        cdef int64_t stop = self._ptr.length if k.stop is None else k.stop
+        if start < 0:
+            start = self.length + start
+        if stop < 0:
+            stop = self.length + stop
+
+        if start > self._ptr.length or stop > self._ptr.length or stop < start:
+            raise IndexError(
+                f"{k} does not describe a valid slice of CArray "
+                f"with length {self._ptr.length}"
+            )
+
+        cdef ArrowArray* c_array_out
+        base = alloc_c_array(&c_array_out)
+        c_array_shallow_copy(self._base, self._ptr, c_array_out)
+
+        c_array_out.offset = c_array_out.offset + start
+        c_array_out.length = stop - start
+        return CArray(base, <uintptr_t>c_array_out, self._schema)
+
     def __arrow_c_array__(self, requested_schema=None):
         """
         Get a pair of PyCapsules containing a C ArrowArray representation of the object.
