@@ -26,22 +26,6 @@ if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
   exit 0
 fi
 
-# We have a situation where the package has been built via R CMD build
-# but there is no vendored nanoarrow. This occurs with
-# remotes::install_github() with the default arguments. In this case, pull
-# the latest bundled version from GitHub. To ensure commit-level consistency,
-# use remotes::install_github(build = FALSE) (which will run cmake to get
-# a fresh bundle with a specific commit).
-curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.h \
-  --output src/nanoarrow.h --silent
-curl -L https://github.com/apache/arrow-nanoarrow/raw/main/dist/nanoarrow.c \
-  --output src/nanoarrow.c --silent
-
-if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
-  echo "Fetched bundled nanoarrow from https://github.com/apache/arrow-nanoarrow/tree/main/dist"
-  exit 0
-fi
-
 echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
 echo "This source tarball was built incorrectly."
 exit 1

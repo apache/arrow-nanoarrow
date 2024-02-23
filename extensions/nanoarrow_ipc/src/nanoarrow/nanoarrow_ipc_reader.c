@@ -22,6 +22,11 @@
 #include "nanoarrow.h"
 #include "nanoarrow_ipc.h"
 
+// R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
+#if defined(_WIN32) && !defined(_MSC_VER) && !defined(ENODATA)
+#define ENODATA 120
+#endif
+
 void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
                              struct ArrowIpcInputStream* dst) {
   memcpy(dst, src, sizeof(struct ArrowIpcInputStream));
@@ -37,6 +42,8 @@ static ArrowErrorCode ArrowIpcInputStreamBufferRead(struct ArrowIpcInputStream* 
                                                     uint8_t* buf, int64_t buf_size_bytes,
                                                     int64_t* size_read_out,
                                                     struct ArrowError* error) {
+  NANOARROW_UNUSED(error);
+
   if (buf_size_bytes == 0) {
     *size_read_out = 0;
     return NANOARROW_OK;

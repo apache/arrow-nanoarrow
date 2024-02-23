@@ -46,7 +46,7 @@ extern SEXP nanoarrow_c_array_set_schema(SEXP array_xptr, SEXP schema_xptr,
 extern SEXP nanoarrow_c_infer_schema_array(SEXP array_xptr);
 extern SEXP nanoarrow_c_array_proxy(SEXP array_xptr, SEXP array_view_xptr,
                                     SEXP recursive_sexp);
-extern SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_sexp);
+extern SEXP nanoarrow_c_as_array_default(SEXP x_sexp, SEXP schema_xptr);
 extern SEXP nanoarrow_c_as_buffer_default(SEXP x_sexp);
 extern SEXP nanoarrow_c_buffer_append(SEXP buffer_xptr, SEXP new_buffer_xptr);
 extern SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr);
@@ -56,6 +56,8 @@ extern SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_
                                              SEXP size_sexp, SEXP n_sexp);
 extern SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 extern SEXP nanoarrow_c_convert_array(SEXP array_xptr, SEXP ptype_sexp);
+extern SEXP nanoarrow_c_ipc_array_reader_buffer(SEXP buffer_xptr);
+extern SEXP nanoarrow_c_ipc_array_reader_connection(SEXP con);
 extern SEXP nanoarrow_c_allocate_schema(void);
 extern SEXP nanoarrow_c_allocate_array(void);
 extern SEXP nanoarrow_c_allocate_array_stream(void);
@@ -127,6 +129,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_convert_array_stream", (DL_FUNC)&nanoarrow_c_convert_array_stream, 4},
     {"nanoarrow_c_infer_ptype", (DL_FUNC)&nanoarrow_c_infer_ptype, 1},
     {"nanoarrow_c_convert_array", (DL_FUNC)&nanoarrow_c_convert_array, 2},
+    {"nanoarrow_c_ipc_array_reader_buffer", (DL_FUNC)&nanoarrow_c_ipc_array_reader_buffer,
+     1},
+    {"nanoarrow_c_ipc_array_reader_connection",
+     (DL_FUNC)&nanoarrow_c_ipc_array_reader_connection, 1},
     {"nanoarrow_c_allocate_schema", (DL_FUNC)&nanoarrow_c_allocate_schema, 0},
     {"nanoarrow_c_allocate_array", (DL_FUNC)&nanoarrow_c_allocate_array, 0},
     {"nanoarrow_c_allocate_array_stream", (DL_FUNC)&nanoarrow_c_allocate_array_stream, 0},
