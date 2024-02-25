@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#ifndef R_NANOARROW_PRESERVE_H_INCLUDED
+#define R_NANOARROW_PRESERVE_H_INCLUDED
+
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
@@ -42,4 +45,6 @@ void nanoarrow_preserve_and_release_on_other_thread(SEXP obj);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
