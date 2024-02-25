@@ -27,12 +27,12 @@ class VctrBuilder {
  public:
   class Options {
    public:
-    int64_t num_items;
     int use_altrep;
   };
 
   // If a ptype is supplied to a VctrBuilder, it must be supplied at construction
-  // and preserved until the value is no longer needed.
+  // and preserved until the value is no longer needed. This is not an appropriate
+  // time to error.
 
   // Enable generic containers like std::vector<std::unique_ptr<VctrBuilder>>
   virtual ~VctrBuilder() {}
@@ -61,27 +61,48 @@ class VctrBuilder {
 
   // Perform any final calculations required to calculate the return value.
   // Calling this method may longjmp.
-  virtual ArrowErrorCode Finish(ArrowError* error) { return ENOTSUP; }
+  virtual ArrowErrorCode Finish(ArrowError* error) { return NANOARROW_OK; }
 
-  // Extract the final value of the builder. Calling this method may longjmp.
+  // Release the final value of the builder. Calling this method may longjmp.
   virtual SEXP GetValue() { return R_NilValue; }
 };
 
 class IntBuilder : public VctrBuilder {};
+
 class DblBuilder : public VctrBuilder {};
+
 class ChrBuilder : public VctrBuilder {};
+
 class LglBuilder : public VctrBuilder {};
+
 class RcrdBuilder : public VctrBuilder {
  public:
   explicit RcrdBuilder(SEXP ptype_sexp) {}
 };
+
 class UnspecifiedBuilder : public VctrBuilder {};
+
 class BlobBuilder : public VctrBuilder {};
-class ListOfBuilder : public VctrBuilder {};
+
+class ListOfBuilder : public VctrBuilder {
+ public:
+  explicit ListOfBuilder(SEXP ptype_sexp) {}
+};
+
 class DateBuilder : public VctrBuilder {};
+
 class HmsBuilder : public VctrBuilder {};
-class PosixctBuilder : public VctrBuilder {};
-class DifftimeBuilder : public VctrBuilder {};
+
+class PosixctBuilder : public VctrBuilder {
+ public:
+  explicit PosixctBuilder(SEXP ptype_sexp) {}
+};
+
+class DifftimeBuilder : public VctrBuilder {
+ public:
+  explicit DifftimeBuilder(SEXP ptype_sexp) {}
+};
+
 class Integer64Builder : public VctrBuilder {};
 
 class ExtensionBuilder : public VctrBuilder {
@@ -153,10 +174,10 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
       *out = new HmsBuilder();
       return NANOARROW_OK;
     } else if (Rf_inherits(ptype_sexp, "POSIXct")) {
-      *out = new PosixctBuilder();
+      *out = new PosixctBuilder(ptype_sexp);
       return NANOARROW_OK;
     } else if (Rf_inherits(ptype_sexp, "difftime")) {
-      *out = new DifftimeBuilder();
+      *out = new DifftimeBuilder(ptype_sexp);
       return NANOARROW_OK;
     } else if (Rf_inherits(ptype_sexp, "integer64")) {
       *out = new Integer64Builder();
