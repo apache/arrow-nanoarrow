@@ -64,6 +64,11 @@ struct VctrBuilder {
   virtual SEXP GetValue() { return R_NilValue; }
 };
 
+// Resolve a builder class from a schema and (optional) ptype and instantiate it
+ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
+                                  VctrBuilderOptions options, VctrBuilder** out,
+                                  ArrowError* error);
+
 class IntBuilder : public VctrBuilder {};
 
 class DblBuilder : public VctrBuilder {};
@@ -111,13 +116,13 @@ class ExtensionBuilder : public VctrBuilder {
 extern "C" enum VectorType nanoarrow_infer_vector_type(enum ArrowType type);
 extern "C" SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 
+// A base method for when we already have the VectorType and have already
+// resolved the ptype_sexp (if needed).
 static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
                                              VectorType vector_type, SEXP ptype_sexp,
                                              VctrBuilderOptions options,
                                              VctrBuilder** out, ArrowError* error) {
   switch (vector_type) {
-    case VECTOR_TYPE_NULL:
-
     case VECTOR_TYPE_LGL:
       *out = new LglBuilder();
       return NANOARROW_OK;
@@ -165,7 +170,8 @@ static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
   }
 }
 
-// Resolve a builder class
+// A version of the above but for when don't know the VectorType yet and
+// for when we're not sure if we need to pop into R to infer a ptype.
 ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
                                   VctrBuilderOptions options, VctrBuilder** out,
                                   ArrowError* error) {
@@ -206,6 +212,8 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
       vector_type = VECTOR_TYPE_DATA_FRAME;
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified")) {
       vector_type = VECTOR_TYPE_UNSPECIFIED;
+    } else if (Rf_inherits(ptype_sexp, "vctrs_list_of")) {
+      vector_type = VECTOR_TYPE_LIST_OF;
     } else if (Rf_inherits(ptype_sexp, "blob")) {
       vector_type = VECTOR_TYPE_BLOB;
     } else if (Rf_inherits(ptype_sexp, "Date")) {
@@ -219,22 +227,25 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
     } else if (Rf_inherits(ptype_sexp, "integer64")) {
       vector_type = VECTOR_TYPE_INTEGER64;
     }
-  }
-
-  // If we're here, these are non-S3 objects
-  switch (TYPEOF(ptype_sexp)) {
-    case LGLSXP:
-      vector_type = VECTOR_TYPE_CHR;
-      break;
-    case INTSXP:
-      vector_type = VECTOR_TYPE_INT;
-      break;
-    case REALSXP:
-      vector_type = VECTOR_TYPE_DBL;
-      break;
-    case STRSXP:
-      vector_type = VECTOR_TYPE_CHR;
-      break;
+  } else {
+    // If we're here, these are non-S3 objects
+    switch (TYPEOF(ptype_sexp)) {
+      case RAWSXP:
+        vector_type = VECTOR_TYPE_RAW;
+        break;
+      case LGLSXP:
+        vector_type = VECTOR_TYPE_CHR;
+        break;
+      case INTSXP:
+        vector_type = VECTOR_TYPE_INT;
+        break;
+      case REALSXP:
+        vector_type = VECTOR_TYPE_DBL;
+        break;
+      case STRSXP:
+        vector_type = VECTOR_TYPE_CHR;
+        break;
+    }
   }
 
   return InstantiateBuilderBase(schema, vector_type, ptype_sexp, options, out, error);
