@@ -23,13 +23,10 @@
 #include "nanoarrow.h"
 #include "nanoarrow/r.h"
 
-class VctrBuilder {
- public:
-  class Options {
-   public:
-    int use_altrep;
-  };
+#include "vctr_builder.h"
 
+struct VctrBuilder {
+ public:
   // If a ptype is supplied to a VctrBuilder, it must be supplied at construction
   // and preserved until the value is no longer needed. This is not an appropriate
   // time to error.
@@ -40,7 +37,7 @@ class VctrBuilder {
   // Initialize this instance with the information available to the resolver, or the
   // information that was inferred. If using the default `to`, ptype may be R_NilValue
   // with Options containing the inferred information. Calling this method may longjmp.
-  virtual ArrowErrorCode Init(const ArrowSchema* schema, const Options& options,
+  virtual ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                               ArrowError* error) {
     return ENOTSUP;
   }
@@ -114,9 +111,63 @@ class ExtensionBuilder : public VctrBuilder {
 extern "C" enum VectorType nanoarrow_infer_vector_type(enum ArrowType type);
 extern "C" SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 
+static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
+                                             VectorType vector_type, SEXP ptype_sexp,
+                                             VctrBuilderOptions options,
+                                             VctrBuilder** out, ArrowError* error) {
+  switch (vector_type) {
+    case VECTOR_TYPE_NULL:
+
+    case VECTOR_TYPE_LGL:
+      *out = new LglBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_INT:
+      *out = new IntBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_DBL:
+      *out = new DblBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_CHR:
+      *out = new LglBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_DATA_FRAME:
+      *out = new RcrdBuilder(ptype_sexp);
+      return NANOARROW_OK;
+    case VECTOR_TYPE_LIST_OF:
+      *out = new ListOfBuilder(ptype_sexp);
+      return NANOARROW_OK;
+    case VECTOR_TYPE_UNSPECIFIED:
+      *out = new UnspecifiedBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_BLOB:
+      *out = new BlobBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_DATE:
+      *out = new DateBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_HMS:
+      *out = new HmsBuilder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_POSIXCT:
+      *out = new PosixctBuilder(ptype_sexp);
+      return NANOARROW_OK;
+    case VECTOR_TYPE_DIFFTIME:
+      *out = new DifftimeBuilder(ptype_sexp);
+      return NANOARROW_OK;
+    case VECTOR_TYPE_INTEGER64:
+      *out = new Integer64Builder();
+      return NANOARROW_OK;
+    case VECTOR_TYPE_OTHER:
+      *out = new ExtensionBuilder(ptype_sexp);
+      return NANOARROW_OK;
+    default:
+      Rf_error("Unknown vector type id: %d", (int)vector_type);
+  }
+}
+
 // Resolve a builder class
 ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
-                                  const VctrBuilder::Options* options, VctrBuilder** out,
+                                  VctrBuilderOptions options, VctrBuilder** out,
                                   ArrowError* error) {
   // See if we can skip any ptype resolution at all
   if (ptype_sexp == R_NilValue) {
@@ -126,20 +177,12 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
     enum VectorType vector_type = nanoarrow_infer_vector_type(view.type);
     switch (vector_type) {
       case VECTOR_TYPE_LGL:
-        *out = new LglBuilder();
-        return NANOARROW_OK;
       case VECTOR_TYPE_INT:
-        *out = new IntBuilder();
-        return NANOARROW_OK;
       case VECTOR_TYPE_DBL:
-        *out = new DblBuilder();
-        return NANOARROW_OK;
       case VECTOR_TYPE_CHR:
-        *out = new LglBuilder();
-        return NANOARROW_OK;
       case VECTOR_TYPE_DATA_FRAME:
-        *out = new RcrdBuilder(R_NilValue);
-        return NANOARROW_OK;
+        return InstantiateBuilderBase(schema, vector_type, R_NilValue, options, out,
+                                      error);
       default:
         break;
     }
@@ -157,56 +200,42 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
 
   // Handle some S3 objects internally to avoid S3 dispatch (e.g., when looping over a
   // data frame with a lot of columns)
+  enum VectorType vector_type = VECTOR_TYPE_OTHER;
   if (Rf_isObject(ptype_sexp)) {
     if (nanoarrow_ptype_is_data_frame(ptype_sexp)) {
-      *out = new RcrdBuilder(ptype_sexp);
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_DATA_FRAME;
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified")) {
-      *out = new UnspecifiedBuilder();
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_UNSPECIFIED;
     } else if (Rf_inherits(ptype_sexp, "blob")) {
-      *out = new BlobBuilder();
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_BLOB;
     } else if (Rf_inherits(ptype_sexp, "Date")) {
-      *out = new DateBuilder();
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_DATE;
     } else if (Rf_inherits(ptype_sexp, "hms")) {
-      *out = new HmsBuilder();
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_HMS;
     } else if (Rf_inherits(ptype_sexp, "POSIXct")) {
-      *out = new PosixctBuilder(ptype_sexp);
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_POSIXCT;
     } else if (Rf_inherits(ptype_sexp, "difftime")) {
-      *out = new DifftimeBuilder(ptype_sexp);
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_DIFFTIME;
     } else if (Rf_inherits(ptype_sexp, "integer64")) {
-      *out = new Integer64Builder();
-      return NANOARROW_OK;
-    } else {
-      *out = new ExtensionBuilder(ptype_sexp);
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_INTEGER64;
     }
   }
 
   // If we're here, these are non-S3 objects
   switch (TYPEOF(ptype_sexp)) {
     case LGLSXP:
-      *out = new LglBuilder();
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_CHR;
+      break;
     case INTSXP:
-      *out = new IntBuilder();
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_INT;
+      break;
     case REALSXP:
-      *out = new DblBuilder();
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_DBL;
+      break;
     case STRSXP:
-      *out = new ChrBuilder();
-      return NANOARROW_OK;
-    default:
-      *out = new ExtensionBuilder(ptype_sexp);
-      return NANOARROW_OK;
+      vector_type = VECTOR_TYPE_CHR;
+      break;
   }
 
-  *out = nullptr;
-  return ENOTSUP;
+  return InstantiateBuilderBase(schema, vector_type, ptype_sexp, options, out, error);
 }
