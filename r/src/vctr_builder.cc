@@ -28,6 +28,7 @@
 #include "preserve.h"
 
 #include "vctr_builder.h"
+#include "vctr_builder_base.h"
 
 // These conversions are the default R-native type guesses for
 // an array that don't require extra information from the ptype (e.g.,
@@ -84,80 +85,6 @@ static SEXP call_infer_ptype_other(const ArrowSchema* schema) {
   return result;
 }
 
-struct VctrBuilder {
- public:
-  // VctrBuilder instances are always created from a vector_type or a ptype.
-  // InstantiateBuilder() takes care of picking which subclass. The base class
-  // constructor takes these two arguments to provide consumer implementations
-  // for inspecting their value. This does not validate any ptypes (that would
-  // happen in Init() if needed).
-  VctrBuilder(VectorType vector_type, SEXP ptype_sexp)
-      : vector_type_(vector_type), ptype_sexp_(R_NilValue), value_(R_NilValue) {
-    nanoarrow_preserve_sexp(ptype_sexp);
-    ptype_sexp_ = ptype_sexp;
-  }
-
-  // Enable generic containers like std::unique_ptr<VctrBuilder>
-  virtual ~VctrBuilder() {
-    nanoarrow_release_sexp(ptype_sexp_);
-    nanoarrow_release_sexp(value_);
-  }
-
-  // Initialize this instance with the information available to the resolver, or the
-  // information that was inferred. If using the default `to`, ptype may be R_NilValue
-  // with Options containing the inferred information. Calling this method may longjmp.
-  virtual ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
-                              ArrowError* error) {
-    schema_ = schema;
-    return NANOARROW_OK;
-  }
-
-  // Push an array into this builder and do not take ownership of array. This is
-  // called when the caller cannot safely relinquish ownership of an array (e.g.,
-  // convert_array()). Calling this method may longjmp.
-  virtual ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) {
-    return ENOTSUP;
-  }
-
-  // Push an array into this builder. The implementation may (but is not required) to take
-  // ownership. This is called when the caller can relinquish ownership (e.g.,
-  // convert_array_stream()). Calling this method may longjmp.
-  virtual ArrowErrorCode PushNextOwning(ArrowArray* array, ArrowError* error) {
-    return PushNext(array, error);
-  }
-
-  // Perform any final calculations required to calculate the return value.
-  // Calling this method may longjmp.
-  virtual ArrowErrorCode Finish(ArrowError* error) { return NANOARROW_OK; }
-
-  // Release the final value of the builder. Calling this method may longjmp.
-  virtual SEXP GetValue() {
-    nanoarrow_release_sexp(value_);
-    value_ = R_NilValue;
-    return value_;
-  }
-
-  // Get (or allocate if required) the SEXP ptype for this output
-  virtual SEXP GetPtype() {
-    if (ptype_sexp_ != R_NilValue) {
-      return ptype_sexp_;
-    }
-
-    SEXP result = nanoarrow_alloc_type(vector_type_, 0);
-    if (result != R_NilValue) {
-      return result;
-    }
-
-    return call_infer_ptype_other(schema_);
-  }
-
- protected:
-  VectorType vector_type_;
-  SEXP ptype_sexp_;
-  SEXP value_;
-  const ArrowSchema* schema_;
-};
-
 // Resolve a builder class from a schema and (optional) ptype and instantiate it
 ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
                                   VctrBuilderOptions options, VctrBuilder** out,
@@ -172,16 +99,22 @@ class UnspecifiedBuilder : public VctrBuilder {
 class IntBuilder : public VctrBuilder {
  public:
   explicit IntBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_INT, ptype_sexp) {}
+
+  SEXP GetPtype() override { return Rf_allocVector(INTSXP, 0); }
 };
 
 class DblBuilder : public VctrBuilder {
  public:
   explicit DblBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_DBL, ptype_sexp) {}
+
+  SEXP GetPtype() override { return Rf_allocVector(REALSXP, 0); }
 };
 
 class LglBuilder : public VctrBuilder {
  public:
   explicit LglBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_LGL, ptype_sexp) {}
+
+  SEXP GetPtype() override { return Rf_allocVector(LGLSXP, 0); }
 };
 
 class Integer64Builder : public VctrBuilder {
@@ -195,6 +128,8 @@ class ChrBuilder : public VctrBuilder {
   explicit ChrBuilder(SEXP ptype_sexp)
       : VctrBuilder(VECTOR_TYPE_CHR, ptype_sexp),
         use_altrep_(VCTR_BUILDER_USE_ALTREP_DEFAULT) {}
+
+  SEXP GetPtype() override { return Rf_allocVector(STRSXP, 0); }
 
   VctrBuilderUseAltrep use_altrep_;
 };
@@ -426,7 +361,7 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
         vector_type = VECTOR_TYPE_RAW;
         break;
       case LGLSXP:
-        vector_type = VECTOR_TYPE_CHR;
+        vector_type = VECTOR_TYPE_LGL;
         break;
       case INTSXP:
         vector_type = VECTOR_TYPE_INT;
