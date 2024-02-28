@@ -92,7 +92,6 @@ extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP diction
 extern SEXP nanoarrow_c_preserved_count(void);
 extern SEXP nanoarrow_c_preserved_empty(void);
 extern SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj);
-extern SEXP nanoarrow_c_infer_ptype_using_builder(SEXP schema_xptr);
 extern SEXP nanoarrow_c_version(void);
 extern SEXP nanoarrow_c_version_runtime(void);
 
@@ -167,8 +166,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_preserved_empty", (DL_FUNC)&nanoarrow_c_preserved_empty, 0},
     {"nanoarrow_c_preserve_and_release_on_other_thread",
      (DL_FUNC)&nanoarrow_c_preserve_and_release_on_other_thread, 1},
-    {"nanoarrow_c_infer_ptype_using_builder",
-     (DL_FUNC)&nanoarrow_c_infer_ptype_using_builder, 1},
     {"nanoarrow_c_version", (DL_FUNC)&nanoarrow_c_version, 0},
     {"nanoarrow_c_version_runtime", (DL_FUNC)&nanoarrow_c_version_runtime, 0},
     {NULL, NULL, 0}};
