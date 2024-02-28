@@ -50,7 +50,7 @@ struct VctrBuilder {
   // with Options containing the inferred information. Calling this method may longjmp.
   virtual ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                               ArrowError* error) {
-    return ENOTSUP;
+    return NANOARROW_OK;
   }
 
   // Push an array into this builder and do not take ownership of array. This is
@@ -178,7 +178,21 @@ class RcrdBuilder : public VctrBuilder {
 
 // Currently in infer_ptype.c
 extern "C" enum VectorType nanoarrow_infer_vector_type(enum ArrowType type);
-extern "C" SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
+
+// Call nanoarrow::infer_ptype_other(), which handles less common types that
+// are easier to compute in R or gives an informative error if this is
+// not possible.
+static SEXP call_infer_ptype_other(const ArrowSchema* schema) {
+  SEXP schema_xptr = PROTECT(
+      R_MakeExternalPtr(const_cast<ArrowSchema*>(schema), R_NilValue, R_NilValue));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
+
+  SEXP fun = PROTECT(Rf_install("infer_ptype_other"));
+  SEXP call = PROTECT(Rf_lang2(fun, schema_xptr));
+  SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
+  UNPROTECT(4);
+  return result;
+}
 
 // A base method for when we already have the VectorType and have already
 // resolved the ptype_sexp (if needed).
@@ -260,7 +274,14 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
     SEXP schema_xptr = PROTECT(
         R_MakeExternalPtr(const_cast<ArrowSchema*>(schema), R_NilValue, R_NilValue));
     Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
-    SEXP inferred_ptype_sexp = PROTECT(nanoarrow_c_infer_ptype(schema_xptr));
+    SEXP inferred_ptype_sexp = PROTECT(call_infer_ptype_other(schema));
+
+    // Error if it returns null, since this would put us in an infinite loop
+    if (inferred_ptype_sexp == R_NilValue) {
+      ArrowErrorSet(error, "infer_nanoarrow_ptype() returned NULL");
+      return EINVAL;
+    }
+
     int code = InstantiateBuilder(schema, inferred_ptype_sexp, options, out, error);
     UNPROTECT(1);
     return code;
@@ -354,8 +375,11 @@ SEXP nanoarrow_vctr_builder_init(SEXP schema_xptr, SEXP ptype_sexp) {
   return vctr_builder_xptr;
 }
 
-SEXP nanoarrow_c_infer_ptype_using_builder(SEXP schema_xptr, SEXP ptype_sexp) {
-  SEXP vctr_bulider_xptr = PROTECT(nanoarrow_vctr_builder_init(schema_xptr, ptype_sexp));
-  auto vctr_builder = reinterpret_cast<VctrBuilder*>(vctr_bulider_xptr);
-  return vctr_builder->GetPtype();
+SEXP nanoarrow_c_infer_ptype_using_builder(SEXP schema_xptr) {
+  SEXP vctr_bulider_xptr = PROTECT(nanoarrow_vctr_builder_init(schema_xptr, R_NilValue));
+  auto vctr_builder =
+      reinterpret_cast<VctrBuilder*>(R_ExternalPtrAddr(vctr_bulider_xptr));
+  SEXP ptype_sexp = PROTECT(vctr_builder->GetPtype());
+  UNPROTECT(2);
+  return ptype_sexp;
 }
