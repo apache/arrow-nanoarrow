@@ -29,6 +29,24 @@
 
 #include "vctr_builder.h"
 
+// Call nanoarrow::infer_ptype_other(), which handles less common types that
+// are easier to compute in R or gives an informative error if this is
+// not possible.
+static SEXP call_infer_ptype_other(const ArrowSchema* schema) {
+  SEXP schema_xptr = PROTECT(
+      R_MakeExternalPtr(const_cast<ArrowSchema*>(schema), R_NilValue, R_NilValue));
+  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
+
+  SEXP fun = PROTECT(Rf_install("infer_ptype_other"));
+  SEXP call = PROTECT(Rf_lang2(fun, schema_xptr));
+  SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
+  UNPROTECT(4);
+  return result;
+}
+
+// Currently in infer_ptype.c
+extern "C" enum VectorType nanoarrow_infer_vector_type(enum ArrowType type);
+
 struct VctrBuilder {
  public:
   // VctrBuilder instances are always created from a vector_type or a ptype.
@@ -53,6 +71,7 @@ struct VctrBuilder {
   // with Options containing the inferred information. Calling this method may longjmp.
   virtual ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                               ArrowError* error) {
+    schema_ = schema;
     return NANOARROW_OK;
   }
 
@@ -83,17 +102,23 @@ struct VctrBuilder {
 
   // Get (or allocate if required) the SEXP ptype for this output
   virtual SEXP GetPtype() {
-    if (ptype_sexp_ == R_NilValue) {
-      return nanoarrow_alloc_type(vector_type_, 0);
-    } else {
+    if (ptype_sexp_ != R_NilValue) {
       return ptype_sexp_;
     }
+
+    SEXP result = nanoarrow_alloc_type(vector_type_, 0);
+    if (result != R_NilValue) {
+      return result;
+    }
+
+    return call_infer_ptype_other(schema_);
   }
 
  protected:
   VectorType vector_type_;
   SEXP ptype_sexp_;
   SEXP value_;
+  const ArrowSchema* schema_;
 };
 
 // Resolve a builder class from a schema and (optional) ptype and instantiate it
@@ -103,33 +128,35 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
 
 class UnspecifiedBuilder : public VctrBuilder {
  public:
-  explicit UnspecifiedBuilder() : VctrBuilder(VECTOR_TYPE_UNSPECIFIED, R_NilValue) {}
+  explicit UnspecifiedBuilder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_UNSPECIFIED, ptype_sexp) {}
 };
 
 class IntBuilder : public VctrBuilder {
  public:
-  explicit IntBuilder() : VctrBuilder(VECTOR_TYPE_INT, R_NilValue) {}
+  explicit IntBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_INT, ptype_sexp) {}
 };
 
 class DblBuilder : public VctrBuilder {
  public:
-  explicit DblBuilder() : VctrBuilder(VECTOR_TYPE_DBL, R_NilValue) {}
+  explicit DblBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_DBL, ptype_sexp) {}
 };
 
 class LglBuilder : public VctrBuilder {
  public:
-  explicit LglBuilder() : VctrBuilder(VECTOR_TYPE_LGL, R_NilValue) {}
+  explicit LglBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_LGL, ptype_sexp) {}
 };
 
 class Integer64Builder : public VctrBuilder {
  public:
-  explicit Integer64Builder() : VctrBuilder(VECTOR_TYPE_INTEGER64, R_NilValue) {}
+  explicit Integer64Builder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_INTEGER64, ptype_sexp) {}
 };
 
 class ChrBuilder : public VctrBuilder {
  public:
-  explicit ChrBuilder()
-      : VctrBuilder(VECTOR_TYPE_CHR, R_NilValue),
+  explicit ChrBuilder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_CHR, ptype_sexp),
         use_altrep_(VCTR_BUILDER_USE_ALTREP_DEFAULT) {}
 
   VctrBuilderUseAltrep use_altrep_;
@@ -137,17 +164,17 @@ class ChrBuilder : public VctrBuilder {
 
 class BlobBuilder : public VctrBuilder {
  public:
-  explicit BlobBuilder() : VctrBuilder(VECTOR_TYPE_BLOB, R_NilValue) {}
+  explicit BlobBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_BLOB, ptype_sexp) {}
 };
 
 class DateBuilder : public VctrBuilder {
  public:
-  explicit DateBuilder() : VctrBuilder(VECTOR_TYPE_DATE, R_NilValue) {}
+  explicit DateBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_DATE, ptype_sexp) {}
 };
 
 class HmsBuilder : public VctrBuilder {
  public:
-  explicit HmsBuilder() : VctrBuilder(VECTOR_TYPE_HMS, R_NilValue) {}
+  explicit HmsBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_HMS, ptype_sexp) {}
 };
 
 class PosixctBuilder : public VctrBuilder {
@@ -180,7 +207,9 @@ class RcrdBuilder : public VctrBuilder {
 
   ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                       ArrowError* error) override {
-    // Check can convert here
+    NANOARROW_RETURN_NOT_OK(VctrBuilder::Init(schema, options, error));
+
+    // TODO: Check can convert here
 
     // Instantiate and initialize children
     children_.resize(schema->n_children);
@@ -217,6 +246,10 @@ class RcrdBuilder : public VctrBuilder {
       } else {
         SET_STRING_ELT(result_names, i, Rf_mkChar(""));
       }
+
+      SEXP child_sexp = PROTECT(children_[i]->GetPtype());
+      SET_VECTOR_ELT(result, i, child_sexp);
+      UNPROTECT(1);
     }
 
     Rf_setAttrib(result, R_ClassSymbol, nanoarrow_cls_data_frame);
@@ -230,27 +263,8 @@ class RcrdBuilder : public VctrBuilder {
   }
 
  private:
-  const ArrowSchema* schema_;
   std::vector<std::unique_ptr<VctrBuilder>> children_;
 };
-
-// Currently in infer_ptype.c
-extern "C" enum VectorType nanoarrow_infer_vector_type(enum ArrowType type);
-
-// Call nanoarrow::infer_ptype_other(), which handles less common types that
-// are easier to compute in R or gives an informative error if this is
-// not possible.
-static SEXP call_infer_ptype_other(const ArrowSchema* schema) {
-  SEXP schema_xptr = PROTECT(
-      R_MakeExternalPtr(const_cast<ArrowSchema*>(schema), R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
-
-  SEXP fun = PROTECT(Rf_install("infer_ptype_other"));
-  SEXP call = PROTECT(Rf_lang2(fun, schema_xptr));
-  SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
-  UNPROTECT(4);
-  return result;
-}
 
 // A base method for when we already have the VectorType and have already
 // resolved the ptype_sexp (if needed).
@@ -259,16 +273,16 @@ static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
                                              VctrBuilder** out, ArrowError* error) {
   switch (vector_type) {
     case VECTOR_TYPE_LGL:
-      *out = new LglBuilder();
+      *out = new LglBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_INT:
-      *out = new IntBuilder();
+      *out = new IntBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_DBL:
-      *out = new DblBuilder();
+      *out = new DblBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_CHR:
-      *out = new ChrBuilder();
+      *out = new ChrBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_DATA_FRAME:
       *out = new RcrdBuilder(ptype_sexp);
@@ -277,16 +291,16 @@ static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
       *out = new ListOfBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_UNSPECIFIED:
-      *out = new UnspecifiedBuilder();
+      *out = new UnspecifiedBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_BLOB:
-      *out = new BlobBuilder();
+      *out = new BlobBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_DATE:
-      *out = new DateBuilder();
+      *out = new DateBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_HMS:
-      *out = new HmsBuilder();
+      *out = new HmsBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_POSIXCT:
       *out = new PosixctBuilder(ptype_sexp);
@@ -295,7 +309,7 @@ static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
       *out = new DifftimeBuilder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_INTEGER64:
-      *out = new Integer64Builder();
+      *out = new Integer64Builder(ptype_sexp);
       return NANOARROW_OK;
     case VECTOR_TYPE_OTHER:
       *out = new OtherBuilder(ptype_sexp);
@@ -315,23 +329,23 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
     ArrowSchemaView view;
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, schema, error));
 
-    enum VectorType vector_type = nanoarrow_infer_vector_type(view.type);
-    switch (vector_type) {
-      case VECTOR_TYPE_LGL:
-      case VECTOR_TYPE_INT:
-      case VECTOR_TYPE_DBL:
-      case VECTOR_TYPE_CHR:
-      case VECTOR_TYPE_DATA_FRAME:
-        return InstantiateBuilderBase(schema, vector_type, R_NilValue, out, error);
-      default:
-        break;
+    // Ensure extension types always go through infer_ptype_other()
+    if (view.extension_name.size_bytes == 0) {
+      enum VectorType vector_type = nanoarrow_infer_vector_type(view.type);
+      switch (vector_type) {
+        case VECTOR_TYPE_LGL:
+        case VECTOR_TYPE_INT:
+        case VECTOR_TYPE_DBL:
+        case VECTOR_TYPE_CHR:
+        case VECTOR_TYPE_DATA_FRAME:
+          return InstantiateBuilderBase(schema, vector_type, R_NilValue, out, error);
+        default:
+          break;
+      }
     }
 
     // Otherwise, resolve the ptype and use it (this will error for ptypes that can't be
     // resolved)
-    SEXP schema_xptr = PROTECT(
-        R_MakeExternalPtr(const_cast<ArrowSchema*>(schema), R_NilValue, R_NilValue));
-    Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
     SEXP inferred_ptype_sexp = PROTECT(call_infer_ptype_other(schema));
 
     // Error if it returns null, since this would put us in an infinite loop
@@ -411,7 +425,7 @@ SEXP nanoarrow_vctr_builder_init(SEXP schema_xptr, SEXP ptype_sexp) {
   options.use_altrep = VCTR_BUILDER_USE_ALTREP_DEFAULT;
 
   // Wrap in an external pointer
-  SEXP vctr_builder_xptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+  SEXP vctr_builder_xptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, schema_xptr));
   R_RegisterCFinalizer(vctr_builder_xptr, &finalize_vctr_builder_xptr);
 
   // Instantiate the builder
