@@ -268,6 +268,9 @@ if(NANOARROW_BUILD_BENCHMARKS)
   add_subdirectory("thirdparty/benchmark")
 
   add_executable(schema_benchmark src/nanoarrow/schema_benchmark.cc)
+  add_executable(array_view_benchmark src/nanoarrow/array_view_benchmark.cc)
+
   target_link_libraries(schema_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
+  target_link_libraries(array_view_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
 
 endif()

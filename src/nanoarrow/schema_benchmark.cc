@@ -17,13 +17,13 @@
 
 #include <benchmark/benchmark.h>
 
-#include "nanoarrow.h"
+#include "nanoarrow.hpp"
 
 /// \brief Benchmark ArrowSchema creation for very wide tables
 ///
 /// Simulates part of the process of creating a very wide table with a
 /// simple column type (integer).
-static void BM_SchemaInitStruct10000(benchmark::State& state);
+static void BM_SchemaInitWideStruct(benchmark::State& state);
 
 static ArrowErrorCode SchemaInitStruct(struct ArrowSchema* schema, int64_t n_columns) {
   ArrowSchemaInit(schema);
@@ -35,23 +35,27 @@ static ArrowErrorCode SchemaInitStruct(struct ArrowSchema* schema, int64_t n_col
   return NANOARROW_OK;
 }
 
-static void BM_SchemaInitStruct10000(benchmark::State& state) {
+static void BM_SchemaInitWideStruct(benchmark::State& state) {
   struct ArrowSchema schema;
 
+  int64_t n_columns = 10000;
+
   for (auto _ : state) {
-    NANOARROW_ASSERT_OK(SchemaInitStruct(&schema, 10000));
+    NANOARROW_THROW_NOT_OK(SchemaInitStruct(&schema, 10000));
     ArrowSchemaRelease(&schema);
   }
+
+  state.SetItemsProcessed(n_columns * state.iterations());
 }
 
-BENCHMARK(BM_SchemaInitStruct10000);
+BENCHMARK(BM_SchemaInitWideStruct);
 
 /// \brief Benchmark ArrowSchema parsing for very wide tables
 ///
 /// Simulates part of the process of consuming a very wide table. Typically
 /// the ArrowSchemaViewInit() is done by ArrowArrayViewInit() but uses a
 /// similar pattern.
-static void BM_SchemaViewInit10000(benchmark::State& state);
+static void BM_SchemaViewInitWideStruct(benchmark::State& state);
 
 static ArrowErrorCode SchemaViewInitChildren(struct ArrowSchema* schema,
                                              struct ArrowError* error) {
@@ -64,17 +68,19 @@ static ArrowErrorCode SchemaViewInitChildren(struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
-static void BM_SchemaViewInit10000(benchmark::State& state) {
+static void BM_SchemaViewInitWideStruct(benchmark::State& state) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
-  SchemaInitStruct(&schema, 10000);
+  int64_t n_columns = 10000;
+  SchemaInitStruct(&schema, n_columns);
 
   for (auto _ : state) {
     NANOARROW_ASSERT_OK(SchemaViewInitChildren(&schema, &error));
   }
+  state.SetItemsProcessed(n_columns * state.iterations());
 
   ArrowSchemaRelease(&schema);
 }
 
-BENCHMARK(BM_SchemaViewInit10000);
+BENCHMARK(BM_SchemaViewInitWideStruct);

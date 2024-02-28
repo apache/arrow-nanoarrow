@@ -16,9 +16,7 @@
         },
         {
             "name": "default-with-tests",
-            "inherits": [
-                "default"
-            ],
+            "inherits": ["default"],
             "displayName": "Default with tests",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
@@ -27,6 +25,7 @@
         },
         {
             "name": "default-with-benchmarks",
+            "inherits": ["default"],
             "displayName": "Default with benchmarks",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
