@@ -19,12 +19,13 @@
 
 #include "nanoarrow.hpp"
 
-/// \brief Benchmark ArrowSchema creation for very wide tables
+/// \defgroup nanoarrow-benchmark-schema Schema-related benchmarks
 ///
-/// Simulates part of the process of creating a very wide table with a
-/// simple column type (integer).
-static void BM_SchemaInitWideStruct(benchmark::State& state);
+/// Benchmarks for producing and consuming ArrowSchema.
+///
+/// @{
 
+// Utility to initialize a wide struct schema
 static ArrowErrorCode SchemaInitStruct(struct ArrowSchema* schema, int64_t n_columns) {
   ArrowSchemaInit(schema);
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_columns));
@@ -34,6 +35,12 @@ static ArrowErrorCode SchemaInitStruct(struct ArrowSchema* schema, int64_t n_col
   }
   return NANOARROW_OK;
 }
+
+/// \brief Benchmark ArrowSchema creation for very wide tables
+///
+/// Simulates part of the process of creating a very wide table with a
+/// simple column type (integer).
+static void BM_SchemaInitWideStruct(benchmark::State& state);
 
 static void BM_SchemaInitWideStruct(benchmark::State& state) {
   struct ArrowSchema schema;
@@ -84,3 +91,5 @@ static void BM_SchemaViewInitWideStruct(benchmark::State& state) {
 }
 
 BENCHMARK(BM_SchemaViewInitWideStruct);
+
+/// @}

@@ -19,7 +19,13 @@
 
 #include "nanoarrow.hpp"
 
-// Utility for making
+/// \defgroup nanoarrow-benchmark-array-view ArrowArrayView-related benchmarks
+///
+/// Benchmarks for consuming ArrowArrays using the ArrowArrayViewXXX() functions.
+///
+/// @{
+
+// Utility for building primitive arrays
 template <typename CType, ArrowType type>
 ArrowErrorCode InitSchemaAndArrayPrimitive(ArrowSchema* schema, ArrowArray* array,
                                            std::vector<CType> values,
@@ -97,34 +103,27 @@ static void BaseArrayViewGetIntUnsafe(benchmark::State& state, double prop_null 
   state.SetItemsProcessed(n_values * state.iterations());
 }
 
+/// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int8 array
 static void BM_ArrayViewGetIntUnsafeInt8(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int8_t, NANOARROW_TYPE_INT8>(state);
 }
 
+/// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int16 array
 static void BM_ArrayViewGetIntUnsafeInt16(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int16_t, NANOARROW_TYPE_INT16>(state);
 }
 
+/// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int32 array
 static void BM_ArrayViewGetIntUnsafeInt32(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int32_t, NANOARROW_TYPE_INT32>(state);
 }
 
+/// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int64 array
 static void BM_ArrayViewGetIntUnsafeInt64(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int64_t, NANOARROW_TYPE_INT64>(state);
 }
 
-static void BM_ArrayViewGetIntUnsafeInt8CheckNull(benchmark::State& state) {
-  BaseArrayViewGetIntUnsafe<int8_t, NANOARROW_TYPE_INT8>(state, 0.2);
-}
-
-static void BM_ArrayViewGetIntUnsafeInt16CheckNull(benchmark::State& state) {
-  BaseArrayViewGetIntUnsafe<int16_t, NANOARROW_TYPE_INT16>(state, 0.2);
-}
-
-static void BM_ArrayViewGetIntUnsafeInt32CheckNull(benchmark::State& state) {
-  BaseArrayViewGetIntUnsafe<int32_t, NANOARROW_TYPE_INT32>(state, 0.2);
-}
-
+/// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int64 array (checking for nulls)
 static void BM_ArrayViewGetIntUnsafeInt64CheckNull(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int64_t, NANOARROW_TYPE_INT64>(state, 0.2);
 }
@@ -133,7 +132,4 @@ BENCHMARK(BM_ArrayViewGetIntUnsafeInt8);
 BENCHMARK(BM_ArrayViewGetIntUnsafeInt16);
 BENCHMARK(BM_ArrayViewGetIntUnsafeInt32);
 BENCHMARK(BM_ArrayViewGetIntUnsafeInt64);
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt8CheckNull);
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt16CheckNull);
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt32CheckNull);
 BENCHMARK(BM_ArrayViewGetIntUnsafeInt64CheckNull);
