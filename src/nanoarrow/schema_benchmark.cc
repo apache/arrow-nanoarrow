@@ -46,6 +46,13 @@ static void BM_SchemaInitStruct10000(benchmark::State& state) {
 
 BENCHMARK(BM_SchemaInitStruct10000);
 
+/// \brief Benchmark ArrowSchema parsing for very wide tables
+///
+/// Simulates part of the process of consuming a very wide table. Typically
+/// the ArrowSchemaViewInit() is done by ArrowArrayViewInit() but uses a
+/// similar pattern.
+static void BM_SchemaViewInit10000(benchmark::State& state);
+
 static ArrowErrorCode SchemaViewInitChildren(struct ArrowSchema* schema,
                                              struct ArrowError* error) {
   for (int64_t i = 0; i < schema->n_children; i++) {
