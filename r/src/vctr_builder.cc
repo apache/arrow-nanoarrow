@@ -29,6 +29,46 @@
 
 #include "vctr_builder.h"
 
+// These conversions are the default R-native type guesses for
+// an array that don't require extra information from the ptype (e.g.,
+// factor with levels). Some of these guesses may result in a conversion
+// that later warns for out-of-range values (e.g., int64 to double());
+// however, a user can use the convert_array(x, ptype = something_safer())
+// when this occurs.
+enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
+  switch (type) {
+    case NANOARROW_TYPE_BOOL:
+      return VECTOR_TYPE_LGL;
+
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+      return VECTOR_TYPE_INT;
+
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT64:
+    case NANOARROW_TYPE_FLOAT:
+    case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_DECIMAL128:
+      return VECTOR_TYPE_DBL;
+
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
+      return VECTOR_TYPE_CHR;
+
+    case NANOARROW_TYPE_DENSE_UNION:
+    case NANOARROW_TYPE_SPARSE_UNION:
+    case NANOARROW_TYPE_STRUCT:
+      return VECTOR_TYPE_DATA_FRAME;
+
+    default:
+      return VECTOR_TYPE_OTHER;
+  }
+}
+
 // Call nanoarrow::infer_ptype_other(), which handles less common types that
 // are easier to compute in R or gives an informative error if this is
 // not possible.
@@ -43,9 +83,6 @@ static SEXP call_infer_ptype_other(const ArrowSchema* schema) {
   UNPROTECT(4);
   return result;
 }
-
-// Currently in infer_ptype.c
-extern "C" enum VectorType nanoarrow_infer_vector_type(enum ArrowType type);
 
 struct VctrBuilder {
  public:
@@ -447,7 +484,7 @@ SEXP nanoarrow_vctr_builder_init(SEXP schema_xptr, SEXP ptype_sexp) {
   return vctr_builder_xptr;
 }
 
-SEXP nanoarrow_c_infer_ptype_using_builder(SEXP schema_xptr) {
+SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr) {
   SEXP vctr_bulider_xptr = PROTECT(nanoarrow_vctr_builder_init(schema_xptr, R_NilValue));
   auto vctr_builder =
       reinterpret_cast<VctrBuilder*>(R_ExternalPtrAddr(vctr_bulider_xptr));

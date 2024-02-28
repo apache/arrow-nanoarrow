@@ -56,7 +56,7 @@ infer_nanoarrow_ptype <- function(x) {
     stop("`x` must be a nanoarrow_schema(), nanoarrow_array(), or nanoarrow_array_stream()")
   }
 
-  .Call(nanoarrow_c_infer_ptype_using_builder, x)
+  .Call(nanoarrow_c_infer_ptype, x)
 }
 
 # This is called from C from nanoarrow_c_infer_ptype when all the C conversions
