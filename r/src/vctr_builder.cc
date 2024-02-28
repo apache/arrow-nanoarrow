@@ -22,17 +22,28 @@
 #include "materialize.h"
 #include "nanoarrow.h"
 #include "nanoarrow/r.h"
+#include "preserve.h"
 
 #include "vctr_builder.h"
 
 struct VctrBuilder {
  public:
-  // If a ptype is supplied to a VctrBuilder, it must be supplied at construction
-  // and preserved until the value is no longer needed. This is not an appropriate
-  // time to error.
+  // VctrBuilder instances are always created from a vector_type or a ptype.
+  // InstantiateBuilder() takes care of picking which subclass. The base class
+  // constructor takes these two arguments to provide consumer implementations
+  // for inspecting their value. This does not validate any ptypes (that would
+  // happen in Init() if needed).
+  VctrBuilder(VectorType vector_type, SEXP ptype_sexp)
+      : vector_type_(vector_type), ptype_sexp_(R_NilValue), value_(R_NilValue) {
+    nanoarrow_preserve_sexp(ptype_sexp);
+    ptype_sexp_ = ptype_sexp;
+  }
 
-  // Enable generic containers like std::vector<std::unique_ptr<VctrBuilder>>
-  virtual ~VctrBuilder() {}
+  // Enable generic containers like std::unique_ptr<VctrBuilder>
+  virtual ~VctrBuilder() {
+    nanoarrow_release_sexp(ptype_sexp_);
+    nanoarrow_release_sexp(value_);
+  }
 
   // Initialize this instance with the information available to the resolver, or the
   // information that was inferred. If using the default `to`, ptype may be R_NilValue
@@ -61,7 +72,25 @@ struct VctrBuilder {
   virtual ArrowErrorCode Finish(ArrowError* error) { return NANOARROW_OK; }
 
   // Release the final value of the builder. Calling this method may longjmp.
-  virtual SEXP GetValue() { return R_NilValue; }
+  virtual SEXP GetValue() {
+    nanoarrow_release_sexp(value_);
+    value_ = R_NilValue;
+    return value_;
+  }
+
+  // Get (or allocate if required) the SEXP ptype for this output
+  virtual SEXP GetPtype() {
+    if (ptype_sexp_ == R_NilValue) {
+      return nanoarrow_alloc_type(vector_type_, 0);
+    } else {
+      return ptype_sexp_;
+    }
+  }
+
+ protected:
+  VectorType vector_type_;
+  SEXP ptype_sexp_;
+  SEXP value_;
 };
 
 // Resolve a builder class from a schema and (optional) ptype and instantiate it
@@ -69,47 +98,82 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
                                   VctrBuilderOptions options, VctrBuilder** out,
                                   ArrowError* error);
 
-class IntBuilder : public VctrBuilder {};
-
-class DblBuilder : public VctrBuilder {};
-
-class ChrBuilder : public VctrBuilder {};
-
-class LglBuilder : public VctrBuilder {};
-
-class RcrdBuilder : public VctrBuilder {
+class UnspecifiedBuilder : public VctrBuilder {
  public:
-  explicit RcrdBuilder(SEXP ptype_sexp) {}
+  explicit UnspecifiedBuilder() : VctrBuilder(VECTOR_TYPE_UNSPECIFIED, R_NilValue) {}
 };
 
-class UnspecifiedBuilder : public VctrBuilder {};
-
-class BlobBuilder : public VctrBuilder {};
-
-class ListOfBuilder : public VctrBuilder {
+class IntBuilder : public VctrBuilder {
  public:
-  explicit ListOfBuilder(SEXP ptype_sexp) {}
+  explicit IntBuilder() : VctrBuilder(VECTOR_TYPE_INT, R_NilValue) {}
 };
 
-class DateBuilder : public VctrBuilder {};
+class DblBuilder : public VctrBuilder {
+ public:
+  explicit DblBuilder() : VctrBuilder(VECTOR_TYPE_DBL, R_NilValue) {}
+};
 
-class HmsBuilder : public VctrBuilder {};
+class LglBuilder : public VctrBuilder {
+ public:
+  explicit LglBuilder() : VctrBuilder(VECTOR_TYPE_LGL, R_NilValue) {}
+};
+
+class Integer64Builder : public VctrBuilder {
+ public:
+  explicit Integer64Builder() : VctrBuilder(VECTOR_TYPE_INTEGER64, R_NilValue) {}
+};
+
+class ChrBuilder : public VctrBuilder {
+ public:
+  explicit ChrBuilder()
+      : VctrBuilder(VECTOR_TYPE_CHR, R_NilValue),
+        use_altrep_(VCTR_BUILDER_USE_ALTREP_DEFAULT) {}
+
+  VctrBuilderUseAltrep use_altrep_;
+};
+
+class BlobBuilder : public VctrBuilder {
+ public:
+  explicit BlobBuilder() : VctrBuilder(VECTOR_TYPE_BLOB, R_NilValue) {}
+};
+
+class DateBuilder : public VctrBuilder {
+ public:
+  explicit DateBuilder() : VctrBuilder(VECTOR_TYPE_DATE, R_NilValue) {}
+};
+
+class HmsBuilder : public VctrBuilder {
+ public:
+  explicit HmsBuilder() : VctrBuilder(VECTOR_TYPE_HMS, R_NilValue) {}
+};
 
 class PosixctBuilder : public VctrBuilder {
  public:
-  explicit PosixctBuilder(SEXP ptype_sexp) {}
+  explicit PosixctBuilder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_POSIXCT, ptype_sexp) {}
 };
 
 class DifftimeBuilder : public VctrBuilder {
  public:
-  explicit DifftimeBuilder(SEXP ptype_sexp) {}
+  explicit DifftimeBuilder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_DIFFTIME, ptype_sexp) {}
 };
 
-class Integer64Builder : public VctrBuilder {};
-
-class ExtensionBuilder : public VctrBuilder {
+class OtherBuilder : public VctrBuilder {
  public:
-  explicit ExtensionBuilder(SEXP ptype_sexp) {}
+  explicit OtherBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_OTHER, ptype_sexp) {}
+};
+
+class ListOfBuilder : public VctrBuilder {
+ public:
+  explicit ListOfBuilder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_LIST_OF, ptype_sexp) {}
+};
+
+class RcrdBuilder : public VctrBuilder {
+ public:
+  explicit RcrdBuilder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_DATA_FRAME, ptype_sexp) {}
 };
 
 // Currently in infer_ptype.c
@@ -120,7 +184,6 @@ extern "C" SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 // resolved the ptype_sexp (if needed).
 static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
                                              VectorType vector_type, SEXP ptype_sexp,
-                                             VctrBuilderOptions options,
                                              VctrBuilder** out, ArrowError* error) {
   switch (vector_type) {
     case VECTOR_TYPE_LGL:
@@ -133,7 +196,7 @@ static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
       *out = new DblBuilder();
       return NANOARROW_OK;
     case VECTOR_TYPE_CHR:
-      *out = new LglBuilder();
+      *out = new ChrBuilder();
       return NANOARROW_OK;
     case VECTOR_TYPE_DATA_FRAME:
       *out = new RcrdBuilder(ptype_sexp);
@@ -163,7 +226,7 @@ static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
       *out = new Integer64Builder();
       return NANOARROW_OK;
     case VECTOR_TYPE_OTHER:
-      *out = new ExtensionBuilder(ptype_sexp);
+      *out = new OtherBuilder(ptype_sexp);
       return NANOARROW_OK;
     default:
       Rf_error("Unknown vector type id: %d", (int)vector_type);
@@ -187,8 +250,7 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
       case VECTOR_TYPE_DBL:
       case VECTOR_TYPE_CHR:
       case VECTOR_TYPE_DATA_FRAME:
-        return InstantiateBuilderBase(schema, vector_type, R_NilValue, options, out,
-                                      error);
+        return InstantiateBuilderBase(schema, vector_type, R_NilValue, out, error);
       default:
         break;
     }
@@ -248,5 +310,52 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
     }
   }
 
-  return InstantiateBuilderBase(schema, vector_type, ptype_sexp, options, out, error);
+  return InstantiateBuilderBase(schema, vector_type, ptype_sexp, out, error);
+}
+
+// C API so that we can reuse these implementations elsewhere
+
+static void finalize_vctr_builder_xptr(SEXP vctr_builder_xptr) {
+  auto ptr = reinterpret_cast<VctrBuilder*>(R_ExternalPtrAddr(vctr_builder_xptr));
+  if (ptr != nullptr) {
+    delete ptr;
+  }
+}
+
+SEXP nanoarrow_vctr_builder_init(SEXP schema_xptr, SEXP ptype_sexp) {
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
+  ArrowError error;
+  ArrowErrorInit(&error);
+
+  // For now, no configurable options
+  VctrBuilderOptions options;
+  options.use_altrep = VCTR_BUILDER_USE_ALTREP_DEFAULT;
+
+  // Wrap in an external pointer
+  SEXP vctr_builder_xptr = PROTECT(R_MakeExternalPtr(nullptr, R_NilValue, R_NilValue));
+  R_RegisterCFinalizer(vctr_builder_xptr, &finalize_vctr_builder_xptr);
+
+  // Instantiate the builder
+  VctrBuilder* vctr_builder = nullptr;
+  int code = InstantiateBuilder(schema, ptype_sexp, options, &vctr_builder, &error);
+  if (code != NANOARROW_OK) {
+    Rf_error("Failed to instantiate VctrBuilder: %s", error.message);
+  }
+
+  R_SetExternalPtrAddr(vctr_builder_xptr, vctr_builder);
+
+  // Initialize
+  code = vctr_builder->Init(schema, options, &error);
+  if (code != NANOARROW_OK) {
+    Rf_error("Failed to initialize VctrBuilder: %s", error.message);
+  }
+
+  UNPROTECT(1);
+  return vctr_builder_xptr;
+}
+
+SEXP nanoarrow_c_infer_ptype_using_builder(SEXP schema_xptr, SEXP ptype_sexp) {
+  SEXP vctr_bulider_xptr = PROTECT(nanoarrow_vctr_builder_init(schema_xptr, ptype_sexp));
+  auto vctr_builder = reinterpret_cast<VctrBuilder*>(vctr_bulider_xptr);
+  return vctr_builder->GetPtype();
 }

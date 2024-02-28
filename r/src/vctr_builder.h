@@ -50,6 +50,10 @@ struct VctrBuilderOptions {
   enum VctrBuilderUseAltrep use_altrep;
 };
 
+SEXP nanoarrow_vctr_builder_init(SEXP schema_xptr, SEXP ptype_sexp);
+
+SEXP nanoarrow_c_infer_ptype_using_builder(SEXP schema_xptr, SEXP ptype_sexp);
+
 #ifdef __cplusplus
 }
 #endif
