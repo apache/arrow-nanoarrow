@@ -35,7 +35,11 @@ struct VctrBuilder {
   // for inspecting their value. This does not validate any ptypes (that would
   // happen in Init() if needed).
   VctrBuilder(VectorType vector_type, SEXP ptype_sexp)
-      : vector_type_(vector_type), ptype_sexp_(R_NilValue), value_(R_NilValue) {
+      : schema_(nullptr),
+        vector_type_(vector_type),
+        ptype_sexp_(R_NilValue),
+        value_(R_NilValue),
+        value_size_(0) {
     nanoarrow_preserve_sexp(ptype_sexp);
     ptype_sexp_ = ptype_sexp;
   }
@@ -55,6 +59,14 @@ struct VctrBuilder {
     return NANOARROW_OK;
   }
 
+  virtual ArrowErrorCode Reserve(R_xlen_t n, ArrowError* error) {
+    if (value_ != R_NilValue) {
+      ArrowErrorSet(error, "VctrBuilder reallocation is not implemented");
+    }
+
+    return NANOARROW_OK;
+  }
+
   // Push an array into this builder and do not take ownership of array. This is
   // called when the caller cannot safely relinquish ownership of an array (e.g.,
   // convert_array()). Calling this method may longjmp.
@@ -71,7 +83,13 @@ struct VctrBuilder {
 
   // Perform any final calculations required to calculate the return value.
   // Calling this method may longjmp.
-  virtual ArrowErrorCode Finish(ArrowError* error) { return NANOARROW_OK; }
+  virtual ArrowErrorCode Finish(ArrowError* error) {
+    if (ptype_sexp_ != R_NilValue && value_ != R_NilValue) {
+      Rf_copyMostAttrib(ptype_sexp_, value_);
+    }
+
+    return NANOARROW_OK;
+  }
 
   // Release the final value of the builder. Calling this method may longjmp.
   virtual SEXP GetValue() {
@@ -84,10 +102,28 @@ struct VctrBuilder {
   virtual SEXP GetPtype() { return ptype_sexp_; }
 
  protected:
+  const ArrowSchema* schema_;
   VectorType vector_type_;
   SEXP ptype_sexp_;
   SEXP value_;
-  const ArrowSchema* schema_;
+  R_xlen_t value_size_;
+
+  // Could maybe avoid a preserve/protect
+  void SetValue(SEXP value) {
+    nanoarrow_release_sexp(value_);
+    value_ = value;
+    nanoarrow_preserve_sexp(value_);
+  }
+
+  ArrowErrorCode WarnLossyConvert(const char* msg, int64_t count) {
+    SEXP fun = PROTECT(Rf_install("warn_lossy_conversion"));
+    SEXP count_sexp = PROTECT(Rf_ScalarReal((double)count));
+    SEXP msg_sexp = PROTECT(Rf_mkString(msg));
+    SEXP call = PROTECT(Rf_lang3(fun, count_sexp, msg_sexp));
+    Rf_eval(call, nanoarrow_ns_pkg);
+    UNPROTECT(4);
+    return NANOARROW_OK;
+  }
 };
 
 // Resolve a builder class from a schema and (optional) ptype and instantiate it

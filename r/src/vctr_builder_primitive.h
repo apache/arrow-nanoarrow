@@ -28,6 +28,50 @@ class UnspecifiedBuilder : public VctrBuilder {
  public:
   explicit UnspecifiedBuilder(SEXP ptype_sexp)
       : VctrBuilder(VECTOR_TYPE_UNSPECIFIED, ptype_sexp) {}
+
+  ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
+                      ArrowError* error) override {
+    NANOARROW_RETURN_NOT_OK(VctrBuilder::Init(schema, options, error));
+    if (schema->dictionary != nullptr) {
+      ArrowErrorSet(error, "Can't convert dictionary to vctrs::unspecified()");
+      return ENOTSUP;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode Reserve(R_xlen_t n, ArrowError* error) override {
+    NANOARROW_RETURN_NOT_OK(VctrBuilder::Reserve(n, error));
+    value_ = PROTECT(Rf_allocVector(LGLSXP, n));
+    SetValue(value_);
+    UNPROTECT(1);
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
+    int64_t not_null_count;
+    if (array->null_count == -1 && array->buffers[0] == nullptr) {
+      not_null_count = array->length;
+    } else if (array->null_count == -1) {
+      not_null_count =
+          ArrowBitCountSet(reinterpret_cast<const uint8_t*>(array->buffers[0]),
+                           array->offset, array->length);
+    } else {
+      not_null_count = array->length - array->null_count;
+    }
+
+    if (not_null_count > 0 && array->length > 0) {
+      NANOARROW_RETURN_NOT_OK(
+          WarnLossyConvert("that were non-null set to NA", not_null_count));
+    }
+
+    int* value_ptr = LOGICAL(value_) + value_size_;
+    for (int64_t i = 0; i < array->length; i++) {
+      value_ptr[i] = NA_LOGICAL;
+    }
+
+    return NANOARROW_OK;
+  }
 };
 
 class IntBuilder : public VctrBuilder {
