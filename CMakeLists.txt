@@ -260,6 +260,11 @@ if(NANOARROW_BUILD_TESTS)
 endif()
 
 if(NANOARROW_BUILD_BENCHMARKS)
+  # benchmark requires at least C++11
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+  endif()
+
   add_subdirectory("thirdparty/benchmark")
 
   add_executable(schema_benchmark src/nanoarrow/schema_benchmark.cc)

@@ -19,13 +19,55 @@
 
 #include "nanoarrow.h"
 
-static void BM_SchemaInit(benchmark::State& state) {
+/// \brief Benchmark ArrowSchema creation for very wide tables
+///
+/// Simulates part of the process of creating a very wide table with a
+/// simple column type (integer).
+static void BM_SchemaInitStruct10000(benchmark::State& state);
+
+static ArrowErrorCode SchemaInitStruct(struct ArrowSchema* schema, int64_t n_columns) {
+  ArrowSchemaInit(schema);
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeStruct(schema, n_columns));
+  for (int64_t i = 0; i < n_columns; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowSchemaSetType(schema->children[i], NANOARROW_TYPE_INT32));
+  }
+  return NANOARROW_OK;
+}
+
+static void BM_SchemaInitStruct10000(benchmark::State& state) {
   struct ArrowSchema schema;
 
   for (auto _ : state) {
-    ArrowSchemaInit(&schema);
+    NANOARROW_ASSERT_OK(SchemaInitStruct(&schema, 10000));
+    ArrowSchemaRelease(&schema);
   }
 }
 
-// Register the function as a benchmark
-BENCHMARK(BM_SchemaInit);
+BENCHMARK(BM_SchemaInitStruct10000);
+
+static ArrowErrorCode SchemaViewInitChildren(struct ArrowSchema* schema,
+                                             struct ArrowError* error) {
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    struct ArrowSchemaView schema_view;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowSchemaViewInit(&schema_view, schema->children[i], error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static void BM_SchemaViewInit10000(benchmark::State& state) {
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  SchemaInitStruct(&schema, 10000);
+
+  for (auto _ : state) {
+    NANOARROW_ASSERT_OK(SchemaViewInitChildren(&schema, &error));
+  }
+
+  ArrowSchemaRelease(&schema);
+}
+
+BENCHMARK(BM_SchemaViewInit10000);
