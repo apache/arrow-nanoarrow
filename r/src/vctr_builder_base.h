@@ -90,4 +90,9 @@ struct VctrBuilder {
   const ArrowSchema* schema_;
 };
 
+// Resolve a builder class from a schema and (optional) ptype and instantiate it
+ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
+                                  VctrBuilderOptions options, VctrBuilder** out,
+                                  ArrowError* error);
+
 #endif
