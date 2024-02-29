@@ -20317,9 +20317,14 @@ static inline int org_apache_arrow_flatbuf_Tensor_verify_as_root_with_type_hash(
 #include "nanoarrow_ipc.h"
 
 
+// R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
+#if defined(_WIN32) && !defined(_MSC_VER) && !defined(ENODATA)
+#define ENODATA 120
+#endif
+
 // A more readable expression way to refer to the fact that there are 8 bytes
 // at the beginning of every message header.
-const static int64_t kMessageHeaderPrefixSize = 8;
+static const int32_t kMessageHeaderPrefixSize = 8;
 
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
@@ -20426,6 +20431,10 @@ int ArrowIpcSharedBufferIsThreadSafe(void) { return 0; }
 
 static void ArrowIpcSharedBufferFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                      int64_t size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(size);
+
   struct ArrowIpcSharedBufferPrivate* private_data =
       (struct ArrowIpcSharedBufferPrivate*)allocator->private_data;
 
@@ -20726,8 +20735,10 @@ static int ArrowIpcDecoderSetTypeFixedSizeBinary(struct ArrowSchema* schema,
                                                  struct ArrowError* error) {
   ns(FixedSizeBinary_table_t) type = (ns(FixedSizeBinary_table_t))type_generic;
   int fixed_size = ns(FixedSizeBinary_byteWidth(type));
-  return ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY,
-                                     fixed_size);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, fixed_size),
+      error);
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetTypeDate(struct ArrowSchema* schema,
@@ -20759,7 +20770,7 @@ static int ArrowIpcDecoderSetTypeTime(struct ArrowSchema* schema,
     case ns(TimeUnit_MILLISECOND):
       if (bitwidth != 32) {
         ArrowErrorSet(error, "Expected bitwidth of 32 for Time TimeUnit %s but found %d",
-                      ns(TimeUnit_name(time_unit)), bitwidth);
+                      ns(TimeUnit_name(ns(Time_unit(type)))), bitwidth);
         return EINVAL;
       }
 
@@ -20770,7 +20781,7 @@ static int ArrowIpcDecoderSetTypeTime(struct ArrowSchema* schema,
     case ns(TimeUnit_NANOSECOND):
       if (bitwidth != 64) {
         ArrowErrorSet(error, "Expected bitwidth of 64 for Time TimeUnit %s but found %d",
-                      ns(TimeUnit_name(time_unit)), bitwidth);
+                      ns(TimeUnit_name(ns(Time_unit(type)))), bitwidth);
         return EINVAL;
       }
 
@@ -20915,7 +20926,6 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
   int format_out_size = sizeof(union_types_str);
   int n_chars = 0;
 
-  const char* format_prefix;
   switch (union_mode) {
     case ns(UnionMode_Sparse):
       n_chars = snprintf(format_cursor, format_out_size, "+us:");
@@ -21097,9 +21107,6 @@ static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t
 static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
                                              flatbuffers_generic_t message_header,
                                              struct ArrowError* error) {
-  struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
-
   ns(Schema_table_t) schema = (ns(Schema_table_t))message_header;
   int endianness = ns(Schema_endianness(schema));
   switch (endianness) {
@@ -21248,9 +21255,6 @@ static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decode
 ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
                                          struct ArrowBufferView data,
                                          struct ArrowError* error) {
-  struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
-
   ArrowIpcDecoderResetHeaderInfo(decoder);
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
       decoder, &data, &decoder->header_size_bytes, error));
@@ -21322,7 +21326,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   }
 
   // Read some basic information from the message
-  int32_t metadata_version = ns(Message_version(message));
+  decoder->metadata_version = ns(Message_version(message));
   decoder->message_type = ns(Message_header_type(message));
   decoder->body_size_bytes = ns(Message_bodyLength(message));
 
@@ -21334,7 +21338,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
     case ns(MetadataVersion_V3):
     case ns(MetadataVersion_V4):
       ArrowErrorSet(error, "Expected metadata version V5 but found %s",
-                    ns(MetadataVersion_name(decoder->metadata_version)));
+                    ns(MetadataVersion_name(ns(Message_version(message)))));
       break;
     default:
       ArrowErrorSet(error, "Unexpected value for Message metadata version (%d)",
@@ -21356,7 +21360,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowErrorSet(error, "Unsupported message type: '%s'",
-                    ns(MessageHeader_type_name(decoder->message_type)));
+                    ns(MessageHeader_type_name(ns(Message_header_type(message)))));
       return ENOTSUP;
     default:
       ArrowErrorSet(error, "Unknown message type: %d", (int)(decoder->message_type));
@@ -21516,7 +21520,7 @@ struct ArrowIpcBufferSource {
   int64_t buffer_length_bytes;
   enum ArrowIpcCompressionType codec;
   enum ArrowType data_type;
-  int32_t element_size_bits;
+  int64_t element_size_bits;
   int swap_endian;
 };
 
@@ -21555,6 +21559,10 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
                                                  struct ArrowBufferView* dst_view,
                                                  struct ArrowBuffer* dst,
                                                  struct ArrowError* error) {
+  NANOARROW_UNUSED(factory);
+  NANOARROW_UNUSED(dst);
+  NANOARROW_UNUSED(error);
+
   struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
   dst_view->data.as_uint8 = body->data.as_uint8 + src->body_offset_bytes;
   dst_view->size_bytes = src->buffer_length_bytes;
@@ -21574,6 +21582,8 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
                                                    struct ArrowBufferView* dst_view,
                                                    struct ArrowBuffer* dst,
                                                    struct ArrowError* error) {
+  NANOARROW_UNUSED(error);
+
   struct ArrowIpcSharedBuffer* shared =
       (struct ArrowIpcSharedBuffer*)factory->private_data;
   ArrowBufferReset(dst);
@@ -21635,7 +21645,7 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
       const uint64_t* ptr_src = out_view->data.as_uint64;
       uint64_t* ptr_dst = (uint64_t*)dst->data;
       uint64_t words[4];
-      int n_words = src->element_size_bits / 64;
+      int n_words = (int)(src->element_size_bits / 64);
 
       for (int64_t i = 0; i < (dst->size_bytes / n_words / 8); i++) {
         for (int j = 0; j < n_words; j++) {
@@ -22005,6 +22015,11 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
 #include "nanoarrow.h"
 #include "nanoarrow_ipc.h"
 
+// R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
+#if defined(_WIN32) && !defined(_MSC_VER) && !defined(ENODATA)
+#define ENODATA 120
+#endif
+
 void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
                              struct ArrowIpcInputStream* dst) {
   memcpy(dst, src, sizeof(struct ArrowIpcInputStream));
@@ -22020,6 +22035,8 @@ static ArrowErrorCode ArrowIpcInputStreamBufferRead(struct ArrowIpcInputStream* 
                                                     uint8_t* buf, int64_t buf_size_bytes,
                                                     int64_t* size_read_out,
                                                     struct ArrowError* error) {
+  NANOARROW_UNUSED(error);
+
   if (buf_size_bytes == 0) {
     *size_read_out = 0;
     return NANOARROW_OK;
