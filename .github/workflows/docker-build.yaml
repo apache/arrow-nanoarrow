@@ -51,6 +51,10 @@ jobs:
 
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x" }
 
+    env:
+      DOCKER_CLIENT_TIMEOUT: 360
+      COMPOSE_HTTP_TIMEOUT: 360
+
     steps:
       - uses: actions/checkout@v4
         with:
