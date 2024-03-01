@@ -32,9 +32,11 @@ class UnspecifiedBuilder : public VctrBuilder {
   ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                       ArrowError* error) override {
     NANOARROW_RETURN_NOT_OK(VctrBuilder::Init(schema, options, error));
-    if (schema->dictionary != nullptr) {
-      ArrowErrorSet(error, "Can't convert dictionary to vctrs::unspecified()");
-      return ENOTSUP;
+    switch (schema_view_.type) {
+      case NANOARROW_TYPE_DICTIONARY:
+        StopCantConvert();
+      default:
+        break;
     }
 
     return NANOARROW_OK;
