@@ -34,8 +34,6 @@ class RcrdBuilder : public VctrBuilder {
 
   ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                       ArrowError* error) override {
-    NANOARROW_RETURN_NOT_OK(VctrBuilder::Init(schema, options, error));
-
     // TODO: Check can convert here
 
     // Instantiate and initialize children

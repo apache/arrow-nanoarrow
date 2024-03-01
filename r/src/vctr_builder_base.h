@@ -40,6 +40,7 @@ struct VctrBuilder {
         ptype_sexp_(R_NilValue),
         value_(R_NilValue),
         value_size_(0) {
+    ArrowArrayViewInitFromType(&array_view_, NANOARROW_TYPE_UNINITIALIZED);
     nanoarrow_preserve_sexp(ptype_sexp);
     ptype_sexp_ = ptype_sexp;
   }
@@ -48,14 +49,18 @@ struct VctrBuilder {
   virtual ~VctrBuilder() {
     nanoarrow_release_sexp(ptype_sexp_);
     nanoarrow_release_sexp(value_);
+    ArrowArrayViewReset(&array_view_);
   }
 
   // Initialize this instance with the information available to the resolver, or the
   // information that was inferred. If using the default `to`, ptype may be R_NilValue
   // with Options containing the inferred information. Calling this method may longjmp.
+  // The implementation on the base class initialized the built-in ArrowArrayView and
+  // saves a reference to `schema` (but subclass implementations need not call it).
   virtual ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                               ArrowError* error) {
     schema_ = schema;
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view_, schema, error));
     return NANOARROW_OK;
   }
 
@@ -102,6 +107,7 @@ struct VctrBuilder {
   virtual SEXP GetPtype() { return ptype_sexp_; }
 
  protected:
+  ArrowArrayView array_view_;
   const ArrowSchema* schema_;
   VectorType vector_type_;
   SEXP ptype_sexp_;
