@@ -44,8 +44,8 @@ class UnspecifiedBuilder : public VctrBuilder {
 
   ArrowErrorCode Reserve(R_xlen_t n, ArrowError* error) override {
     NANOARROW_RETURN_NOT_OK(VctrBuilder::Reserve(n, error));
-    value_ = PROTECT(Rf_allocVector(LGLSXP, n));
-    SetValue(value_);
+    SEXP value = PROTECT(Rf_allocVector(LGLSXP, n));
+    SetValue(value);
     UNPROTECT(1);
     return NANOARROW_OK;
   }
@@ -88,19 +88,21 @@ class IntBuilder : public VctrBuilder {
 
   ArrowErrorCode Reserve(R_xlen_t n, ArrowError* error) override {
     NANOARROW_RETURN_NOT_OK(VctrBuilder::Reserve(n, error));
-    value_ = PROTECT(Rf_allocVector(INTSXP, n));
-    SetValue(value_);
+    SEXP value = PROTECT(Rf_allocVector(INTSXP, n));
+    SetValue(value);
     UNPROTECT(1);
     return NANOARROW_OK;
   }
 
   ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
+    NANOARROW_RETURN_NOT_OK(VctrBuilder::PushNext(array, error));
+
     int* result = INTEGER(value_);
     int64_t n_bad_values = 0;
 
     // True for all the types supported here
     const uint8_t* is_valid = array_view_.buffer_views[0].data.as_uint8;
-    int64_t raw_src_offset = array_view_.array->offset;
+    int64_t raw_src_offset = array_view_.offset;
     R_xlen_t length = array->length;
 
     // Fill the buffer
@@ -116,7 +118,7 @@ class IntBuilder : public VctrBuilder {
                length * sizeof(int32_t));
 
         // Set any nulls to NA_INTEGER
-        if (is_valid != NULL && array_view_.array->null_count != 0) {
+        if (is_valid != NULL && array_view_.null_count != 0) {
           for (R_xlen_t i = 0; i < length; i++) {
             if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
               result[value_size_ + i] = NA_INTEGER;
@@ -129,7 +131,7 @@ class IntBuilder : public VctrBuilder {
                              raw_src_offset, length, result + value_size_);
 
         // Set any nulls to NA_LOGICAL
-        if (is_valid != NULL && array_view_.array->null_count != 0) {
+        if (is_valid != NULL && array_view_.null_count != 0) {
           for (R_xlen_t i = 0; i < length; i++) {
             if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
               result[value_size_ + i] = NA_LOGICAL;
@@ -147,7 +149,7 @@ class IntBuilder : public VctrBuilder {
         }
 
         // Set any nulls to NA_INTEGER
-        if (is_valid != NULL && array_view_.array->null_count != 0) {
+        if (is_valid != NULL && array_view_.null_count != 0) {
           for (R_xlen_t i = 0; i < length; i++) {
             if (!ArrowBitGet(is_valid, raw_src_offset + i)) {
               result[value_size_ + i] = NA_INTEGER;
@@ -162,7 +164,7 @@ class IntBuilder : public VctrBuilder {
       case NANOARROW_TYPE_DOUBLE:
         // Loop + bounds check. Because we don't know what memory might be
         // in a null slot, we have to check nulls if there are any.
-        if (is_valid != NULL && array_view_.array->null_count != 0) {
+        if (is_valid != NULL && array_view_.null_count != 0) {
           for (R_xlen_t i = 0; i < length; i++) {
             if (ArrowBitGet(is_valid, raw_src_offset + i)) {
               int64_t value = ArrowArrayViewGetIntUnsafe(&array_view_, i);

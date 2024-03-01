@@ -77,7 +77,8 @@ struct VctrBuilder {
   // called when the caller cannot safely relinquish ownership of an array (e.g.,
   // convert_array()). Calling this method may longjmp.
   virtual ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) {
-    return ENOTSUP;
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&array_view_, array, error));
+    return NANOARROW_OK;
   }
 
   // Push an array into this builder. The implementation may (but is not required) to take
@@ -99,9 +100,11 @@ struct VctrBuilder {
 
   // Release the final value of the builder. Calling this method may longjmp.
   virtual SEXP GetValue() {
+    SEXP value = PROTECT(value_);
     nanoarrow_release_sexp(value_);
     value_ = R_NilValue;
-    return value_;
+    UNPROTECT(1);
+    return value;
   }
 
   // Get (or allocate if required) the SEXP ptype for this output
