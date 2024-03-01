@@ -2281,7 +2281,7 @@ cdef class CMaterializedArrayStream:
         # When an array stream from iterable is supported, that should be used here
         # to avoid unnessary shallow copies.
         stream = CArrayStream.from_array_list(list(self), self._schema, move=False)
-        return stream.__arrow_c_stream__(self, requested_schema=requested_schema)
+        return stream.__arrow_c_stream__(requested_schema=requested_schema)
 
     @staticmethod
     def from_c_array_stream(CArrayStream stream):

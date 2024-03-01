@@ -15,12 +15,52 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pytest
 from nanoarrow.array import Array
+from nanoarrow.c_lib import CArrayStream
 
 import nanoarrow as na
 
 
-def test_array_basic():
+def test_array_empty():
+    array = Array([], na.int32())
+    assert array.schema.type == na.Type.INT32
+    assert len(array) == 0
+
+    with na.c_array_stream(array) as stream:
+        arrays = list(stream)
+        assert len(arrays) == 0
+
+    c_array = na.c_array(array)
+    assert c_array.length == 0
+    assert c_array.schema.format == "i"
+
+
+def test_array_contiguous():
     array = Array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 3
+
+    with na.c_array_stream(array) as stream:
+        arrays = list(stream)
+        assert len(arrays) == 1
+
+    c_array = na.c_array(array)
+    assert c_array.length == 3
+    assert c_array.schema.format == "i"
+
+
+def test_array_chunked():
+    src = [na.c_array([1, 2, 3], na.int32()), na.c_array([4, 5, 6], na.int32())]
+
+    array = Array(CArrayStream.from_array_list(src, na.c_schema(na.int32())))
+    assert array.schema.type == na.Type.INT32
+    assert len(array) == 6
+
+    with na.c_array_stream(array) as stream:
+        arrays = list(stream)
+        assert len(arrays) == 2
+
+    msg = "Can't export Array with 2 chunks to ArrowArray"
+    with pytest.raises(ValueError, match=msg):
+        na.c_array(array)
