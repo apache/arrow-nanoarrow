@@ -23,7 +23,7 @@ on:
   pull_request:
     paths:
       - 'ci/docker/*'
-      - '.github/workflow/docker-build.yaml'
+      - '.github/workflows/docker-build.yaml'
       - 'docker-compose.yaml'
 
 permissions:
@@ -50,6 +50,10 @@ jobs:
           - { runs_on: ["self-hosted", "arm"], platform: "centos7", arch: "arm64" }
 
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x" }
+
+    env:
+      DOCKER_CLIENT_TIMEOUT: 360
+      COMPOSE_HTTP_TIMEOUT: 360
 
     steps:
       - uses: actions/checkout@v4
