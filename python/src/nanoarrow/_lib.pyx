@@ -2198,6 +2198,120 @@ cdef class CArrayStream:
         return _repr_utils.array_stream_repr(self)
 
 
+cdef class CMaterializedArrayStream:
+    cdef CSchema _schema
+    cdef CBuffer _array_ends
+    cdef ArrowArray* _arrays
+    cdef int64_t _size_arrays
+    cdef int64_t _capacity_arrays
+    cdef int64_t _total_length
+
+    def __cinit__(self):
+        self._arrays = NULL
+        self._size_arrays = 0
+        self._capacity_arrays = 0
+        self._total_length = 0
+        self._schema = CSchema.allocate()
+
+        self._array_ends = CBuffer.empty()
+        cdef int code = ArrowBufferAppendInt64(self._array_ends._ptr, 0)
+        Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+
+    cdef _finalize(self):
+        self._array_ends._set_data_type(NANOARROW_TYPE_INT64)
+
+    cdef _reserve(self, int64_t additional_arrays):
+        cdef int64_t required_capacity_arrays = self._size_arrays + additional_arrays
+        if self._capacity_arrays >= required_capacity_arrays:
+            return
+
+        if required_capacity_arrays < (self._size_arrays * 2):
+            required_capacity_arrays = self._size_arrays * 2
+
+        cdef ArrowArray* new_arrays = <ArrowArray*>ArrowMalloc(
+            required_capacity_arrays * sizeof(ArrowArray)
+        )
+        if new_arrays == NULL:
+            raise MemoryError()
+
+        if self._size_arrays > 0:
+            memcpy(new_arrays, self._arrays, self._size_arrays * sizeof(ArrowArray))
+            ArrowFree(self._arrays)
+
+        self._arrays = new_arrays
+        self._capacity_arrays = required_capacity_arrays
+
+        cdef int code = ArrowBufferReserve(
+            self._array_ends._ptr,
+            additional_arrays * sizeof(int64_t)
+        )
+        Error.raise_error_not_ok("ArrowBufferReserve()", code)
+
+    def __dealloc__(self):
+        for i in range(self._size_arrays):
+            if self._arrays[i].release != NULL:
+                ArrowArrayRelease(&(self._arrays[i]))
+
+        if self._arrays != NULL:
+            ArrowFree(self._arrays)
+
+    @property
+    def schema(self):
+        return self._schema
+
+    @property
+    def array_ends(self):
+        return self._array_ends
+
+    def __len__(self):
+        return self._size_arrays
+
+    def array(self, int64_t i):
+        if i < 0 or i >= self._size_arrays:
+            raise IndexError(f"Index {i} out of range")
+        cdef CArray out = CArray.allocate(self._schema)
+        c_array_shallow_copy(self, &(self._arrays[i]), out._ptr)
+        return out
+
+    def __iter__(self):
+        for i in range(self._size_arrays):
+            yield self.array(i)
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        # When an array stream from iterable is supported, that should be used here
+        # to avoid unnessary shallow copies.
+        stream = CArrayStream.from_array_list(list(self), self._schema, move=False)
+        return stream.__arrow_c_stream__(self, requested_schema=requested_schema)
+
+    @staticmethod
+    def from_c_array_stream(CArrayStream stream):
+        stream._assert_valid()
+        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
+
+        cdef Error error = Error()
+        cdef int code
+        cdef ArrowArray* next_array
+        while True:
+            out._reserve(1)
+            next_array = out._arrays + out._size_arrays
+            code = ArrowArrayStreamGetNext(stream._ptr, next_array, &error.c_error)
+            error.raise_message_not_ok("ArrowArrayStreamGetNext()", code)
+
+            if next_array.release != NULL:
+                out._size_arrays += 1
+                out._total_length += next_array.length
+                code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+                Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+            else:
+                break
+
+        code = ArrowArrayStreamGetSchema(stream._ptr, out._schema._ptr, &error.c_error)
+        error.raise_message_not_ok("ArrowArrayStreamGetSchema()", code)
+
+        out._finalize()
+        return out
+
+
 cdef class CDeviceArray:
     cdef object _base
     cdef ArrowDeviceArray* _ptr
