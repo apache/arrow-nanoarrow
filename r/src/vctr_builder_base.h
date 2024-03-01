@@ -59,8 +59,9 @@ struct VctrBuilder {
   // saves a reference to `schema` (but subclass implementations need not call it).
   virtual ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                               ArrowError* error) {
-    schema_ = schema;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view_, schema, error));
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view_, schema, error));
+    schema_ = schema;
     return NANOARROW_OK;
   }
 
@@ -107,6 +108,7 @@ struct VctrBuilder {
   virtual SEXP GetPtype() { return ptype_sexp_; }
 
  protected:
+  ArrowSchemaView schema_view_;
   ArrowArrayView array_view_;
   const ArrowSchema* schema_;
   VectorType vector_type_;
@@ -129,6 +131,17 @@ struct VctrBuilder {
     Rf_eval(call, nanoarrow_ns_pkg);
     UNPROTECT(4);
     return NANOARROW_OK;
+  }
+
+  void StopCantConvert() {
+    SEXP fun = PROTECT(Rf_install("stop_cant_convert_schema"));
+    SEXP schema_xptr = PROTECT(
+        R_MakeExternalPtr(const_cast<ArrowSchema*>(schema_), R_NilValue, R_NilValue));
+    Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
+
+    SEXP call = PROTECT(Rf_lang2(fun, schema_xptr));
+    Rf_eval(call, nanoarrow_ns_pkg);
+    UNPROTECT(3);
   }
 };
 
