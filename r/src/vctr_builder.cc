@@ -22,15 +22,16 @@
 #include <memory>
 #include <vector>
 
+#include "array.h"
 #include "materialize.h"
 #include "nanoarrow.h"
 #include "nanoarrow/r.h"
 
 #include "vctr_builder.h"
 #include "vctr_builder_base.h"
+#include "vctr_builder_list_of.h"
 #include "vctr_builder_primitive.h"
 #include "vctr_builder_rcrd.h"
-#include "vctr_builder_list_of.h"
 
 // These conversions are the default R-native type guesses for
 // an array that don't require extra information from the ptype (e.g.,
@@ -275,4 +276,32 @@ SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr) {
   SEXP ptype_sexp = PROTECT(vctr_builder->GetPtype());
   UNPROTECT(2);
   return ptype_sexp;
+}
+
+SEXP nanoarrow_c_convert_array2(SEXP array_xptr, SEXP ptype_sexp) {
+  ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+  SEXP schema_xptr = PROTECT(array_xptr_get_schema(array_xptr));
+  SEXP builder_xptr = PROTECT(nanoarrow_vctr_builder_init(schema_xptr, ptype_sexp));
+  auto builder = reinterpret_cast<VctrBuilder*>(R_ExternalPtrAddr(builder_xptr));
+
+  ArrowError error;
+  ArrowErrorInit(&error);
+
+  int result = builder->Reserve(array->length, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("builder->Reserve() failed: %s", error.message);
+  }
+
+  result = builder->PushNext(array, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("builder->PushNext() failed: %s", error.message);
+  }
+
+  result = builder->Finish(&error);
+  if (result != NANOARROW_OK) {
+    Rf_error("builder->Finish() failed: %s", error.message);
+  }
+
+  UNPROTECT(2);
+  return builder->GetValue();
 }

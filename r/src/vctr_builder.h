@@ -54,6 +54,8 @@ SEXP nanoarrow_vctr_builder_init(SEXP schema_xptr, SEXP ptype_sexp);
 
 SEXP nanoarrow_c_infer_ptype(SEXP schema_xptr);
 
+SEXP nanoarrow_c_convert_array2(SEXP array_xptr, SEXP ptype_sexp);
+
 #ifdef __cplusplus
 }
 #endif
