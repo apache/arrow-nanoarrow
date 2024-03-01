@@ -23,7 +23,7 @@ on:
   pull_request:
     paths:
       - 'ci/docker/*'
-      - '.github/workflow/docker-build.yaml'
+      - '.github/workflows/docker-build.yaml'
       - 'docker-compose.yaml'
 
 permissions:
@@ -51,6 +51,10 @@ jobs:
 
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x" }
 
+    env:
+      DOCKER_CLIENT_TIMEOUT: 360
+      COMPOSE_HTTP_TIMEOUT: 360
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,9 +76,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          DOCKER_CLIENT_TIMEOUT: 360
-          COMPOSE_HTTP_TIMEOUT: 360
 
       - name: Set up QEMU
         if: matrix.config.arch == 's390x'
@@ -94,8 +95,6 @@ jobs:
           NANOARROW_ARCH: ${{ matrix.config.arch }}
           NANOARROW_PLATFORM: ${{ matrix.config.platform }}
           DOCKER_DEFAULT_PLATFORM: "linux/${{ matrix.config.arch }}"
-          DOCKER_CLIENT_TIMEOUT: 360
-          COMPOSE_HTTP_TIMEOUT: 360
         run: |
           docker-compose push verify
 
