@@ -138,10 +138,11 @@ struct VctrBuilder {
     SEXP schema_xptr = PROTECT(
         R_MakeExternalPtr(const_cast<ArrowSchema*>(schema_), R_NilValue, R_NilValue));
     Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
+    SEXP ptype_sexp = PROTECT(GetPtype());
 
-    SEXP call = PROTECT(Rf_lang2(fun, schema_xptr));
+    SEXP call = PROTECT(Rf_lang3(fun, schema_xptr, ptype_sexp));
     Rf_eval(call, nanoarrow_ns_pkg);
-    UNPROTECT(3);
+    UNPROTECT(4);
   }
 };
 
