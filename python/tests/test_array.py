@@ -26,6 +26,10 @@ def test_array_empty():
     array = Array([], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 0
+    assert array.n_chunks == 0
+    assert list(array.chunks) == []
+    with pytest.raises(IndexError, match="Index 0 out of range"):
+        array.chunk(0)
 
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
@@ -40,6 +44,9 @@ def test_array_contiguous():
     array = Array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 3
+    assert array.n_chunks == 1
+    assert len(list(array.chunks)) == 1
+    assert len(array.chunk(0)) == 3
 
     with na.c_array_stream(array) as stream:
         arrays = list(stream)

@@ -16,14 +16,23 @@
 # under the License.
 
 from functools import cached_property
+from typing import Iterable
 
-from nanoarrow._lib import CMaterializedArrayStream
+from nanoarrow._lib import CArray, CMaterializedArrayStream
 from nanoarrow.c_lib import c_array, c_array_stream
 from nanoarrow.schema import Schema
 
 
 class Array:
     def __init__(self, obj, schema=None) -> None:
+        if isinstance(obj, Array) and schema is None:
+            self._data = obj._data
+            return
+
+        if isinstance(obj, CArray) and schema is None:
+            self._data = CMaterializedArrayStream.from_c_array(obj)
+            return
+
         with c_array_stream(obj, schema=schema) as stream:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
 
@@ -36,9 +45,7 @@ class Array:
                 requested_schema=requested_schema
             )
         elif len(self._data) == 1:
-            return self._data.array(0).__arrow_c_array__(
-                requested_schema=requested_schema
-            )
+            return self._data[0].__arrow_c_array__(requested_schema=requested_schema)
 
         raise ValueError(
             f"Can't export Array with {len(self._data)} chunks to ArrowArray"
@@ -47,6 +54,18 @@ class Array:
     @cached_property
     def schema(self) -> Schema:
         return Schema(self._data.schema)
+
+    @property
+    def n_chunks(self) -> int:
+        return len(self._data)
+
+    @property
+    def chunks(self) -> Iterable:
+        for array in self._data:
+            yield Array(array)
+
+    def chunk(self, i):
+        return Array(self._data[i])
 
     def __len__(self) -> int:
         return self._data.array_ends[len(self._data)]
