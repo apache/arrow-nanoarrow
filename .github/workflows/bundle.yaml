@@ -31,14 +31,7 @@ jobs:
   bundle-dist:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y cmake
+      - uses: actions/checkout@v4
 
       - name: Bundle nanoarrow
         run: |
