@@ -15,13 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import nanoarrow as na
 from nanoarrow.array import Array
+
+import nanoarrow as na
 
 
 def test_array_basic():
     array = Array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 3
-
-

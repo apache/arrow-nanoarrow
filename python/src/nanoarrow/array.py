@@ -17,16 +17,32 @@
 
 from functools import cached_property
 
-from nanoarrow.schema import Schema
 from nanoarrow._lib import CMaterializedArrayStream
-from nanoarrow.c_lib import c_array_stream
+from nanoarrow.c_lib import c_array, c_array_stream
+from nanoarrow.schema import Schema
 
 
 class Array:
-
     def __init__(self, obj, schema=None) -> None:
         with c_array_stream(obj, schema=schema) as stream:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        return self._data.__arrow_c_stream__(requested_schema=requested_schema)
+
+    def __arrow_c_array__(self, requested_schema=None):
+        if len(self._data) == 0:
+            return c_array([], schema=self._data.schema).__arrow_c_array__(
+                requested_schema=requested_schema
+            )
+        elif len(self._data) == 1:
+            return self._data.array(0).__arrow_c_array__(
+                requested_schema=requested_schema
+            )
+
+        raise ValueError(
+            f"Can't export Array with {len(self._data)} chunks to ArrowArray"
+        )
 
     @cached_property
     def schema(self) -> Schema:
