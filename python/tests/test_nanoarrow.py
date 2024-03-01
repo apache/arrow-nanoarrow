@@ -371,15 +371,19 @@ def test_buffers_bool():
 
     # Check via element interface
     assert data_buffer.n_elements == 8
-    assert list(data_buffer.elements) == [True] * 3 + [False] * 5
+    assert list(data_buffer.elements()) == [True] * 3 + [False] * 5
     assert [data_buffer.element(i) for i in range(data_buffer.n_elements)] == list(
-        data_buffer.elements
+        data_buffer.elements()
     )
 
     with pytest.raises(IndexError):
         data_buffer[8]
     with pytest.raises(IndexError):
         data_buffer[-1]
+    with pytest.raises(IndexError):
+        next(data_buffer.elements(-1, 4))
+    with pytest.raises(IndexError):
+        next(data_buffer.elements(7, 2))
 
     # Check repr
     assert "11100000" in repr(data_buffer)

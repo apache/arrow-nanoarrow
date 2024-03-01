@@ -119,7 +119,7 @@ def test_c_buffer_integer():
         assert buffer[1] == 1
         assert buffer[2] == 2
         assert list(buffer) == [0, 1, 2]
-        assert list(buffer.elements) == [0, 1, 2]
+        assert list(buffer.elements()) == [0, 1, 2]
         assert buffer.n_elements == len(buffer)
         assert [buffer.element(i) for i in range(buffer.n_elements)] == list(buffer)
 
@@ -146,7 +146,7 @@ def test_numpy_c_buffer_numeric():
         array = np.array([0, 1, 2], dtype)
         buffer = na.c_buffer(array)
         assert list(buffer) == list(array)
-        assert list(buffer.elements) == list(array)
+        assert list(buffer.elements()) == list(array)
 
         array_roundtrip = np.array(buffer, copy=False)
         np.testing.assert_array_equal(array_roundtrip, array)
@@ -294,7 +294,7 @@ def test_c_buffer_bitmap_from_iterable():
     assert buffer.data_type == "bool"
     assert buffer.item_size == 1
     assert buffer.element_size_bits == 1
-    assert list(buffer.elements) == [
+    assert list(buffer.elements()) == [
         True,
         False,
         False,
@@ -305,20 +305,20 @@ def test_c_buffer_bitmap_from_iterable():
         False,
     ]
     assert [buffer.element(i) for i in range(buffer.n_elements)] == list(
-        buffer.elements
+        buffer.elements()
     )
 
     # Check something exactly one byte
     buffer = na.c_buffer([True, False, False, True] * 2, na.bool())
     assert "10011001" in repr(buffer)
     assert buffer.size_bytes == 1
-    assert list(buffer.elements) == [True, False, False, True] * 2
+    assert list(buffer.elements()) == [True, False, False, True] * 2
 
     # Check something more than one byte
     buffer = na.c_buffer([True, False, False, True] * 3, na.bool())
     assert "1001100110010000" in repr(buffer)
     assert buffer.size_bytes == 2
-    assert list(buffer.elements) == [True, False, False, True] * 3 + [
+    assert list(buffer.elements()) == [True, False, False, True] * 3 + [
         False,
         False,
         False,

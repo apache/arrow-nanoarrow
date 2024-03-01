@@ -103,6 +103,46 @@ def test_c_array_type_not_supported():
         na.c_array(None)
 
 
+def test_c_array_slice():
+    array = na.c_array([1, 2, 3], na.int32())
+    assert array.offset == 0
+    assert array.length == 3
+
+    array2 = array[:]
+    assert array.offset == 0
+    assert array.length == 3
+    assert array.buffers == array2.buffers
+
+    array2 = array[:2]
+    assert array2.offset == 0
+    assert array2.length == 2
+
+    array2 = array[:-1]
+    assert array2.offset == 0
+    assert array2.length == 2
+
+    array2 = array[1:]
+    assert array2.offset == 1
+    assert array2.length == 2
+
+    array2 = array[-2:]
+    assert array2.offset == 1
+    assert array2.length == 2
+
+
+def test_c_array_slice_errors():
+    array = na.c_array([1, 2, 3], na.int32())
+
+    with pytest.raises(TypeError):
+        array[0]
+    with pytest.raises(IndexError):
+        array[4:]
+    with pytest.raises(IndexError):
+        array[:4]
+    with pytest.raises(IndexError):
+        array[1:0]
+
+
 def test_c_array_from_pybuffer_uint8():
     data = b"abcdefg"
     c_array = na.c_array(data)
