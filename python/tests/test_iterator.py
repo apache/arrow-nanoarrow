@@ -16,7 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow.iterator import iterator, itertuples
+from nanoarrow.iterator import iterator, iterrepr, itertuples
 
 import nanoarrow as na
 
@@ -313,3 +313,8 @@ def test_iterator_nullable_dictionary():
 
     sliced = array[1:]
     assert list(iterator(sliced)) == ["cde", "ab", "def", "cde", None]
+
+
+def test_iterator_repr():
+    array = na.c_array([1, 2, 3], na.int32())
+    assert list(iterrepr(array)) == ["1", "2", "3"]

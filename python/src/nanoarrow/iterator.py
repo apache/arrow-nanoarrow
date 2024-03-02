@@ -16,6 +16,7 @@
 # under the License.
 
 from functools import cached_property
+from io import StringIO
 from itertools import islice
 from typing import Iterable, Tuple
 
@@ -83,6 +84,10 @@ def itertuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
+def iterrepr(obj, schema=None, max_width=80):
+    return ReprIterator.get_iterator(obj, schema, max_width=max_width)
+
+
 class ArrayViewIterator:
     """Base class for iterators that use an internal ArrowArrayStream
     as the basis for conversion to Python objects. Intended for internal use.
@@ -133,9 +138,9 @@ class RowIterator(ArrayViewIterator):
     """
 
     @classmethod
-    def get_iterator(cls, obj, schema=None):
+    def get_iterator(cls, obj, schema=None, **kwargs):
         with c_array_stream(obj, schema=schema) as stream:
-            iterator = cls(stream._get_cached_schema())
+            iterator = cls(stream._get_cached_schema(), **kwargs)
             for array in stream:
                 iterator._set_array(array)
                 yield from iterator._iter1(0, array.length)
@@ -263,25 +268,82 @@ class RowTupleIterator(RowIterator):
         return self._struct_tuple_iter(offset, length)
 
 
+class ReprLongEnough(Exception):
+    def __init__(self) -> None:
+        super().__init__()
+
+
+class ItemRepr:
+    def __init__(self, max_size) -> None:
+        self._out = StringIO()
+        self._max_size = max_size
+        self._size = 0
+
+    def write(self, content):
+        self._out.write(content)
+        self._size += len(content)
+        if self._size > self._max_size:
+            raise ReprLongEnough()
+
+    def finish(self):
+        out = self._out.getvalue()
+        self._out.seek(0)
+        if len(out) > self._max_size:
+            return out[: (self._max_size - 3)] + "..."
+        else:
+            return out
+
+
 class ReprIterator(RowIterator):
-    def __init__(self, schema, *, _array_view=None, max_width=20):
+    def __init__(self, schema, *, _array_view=None, max_width=80, out=None):
         super().__init__(schema, _array_view=_array_view)
+
         self._max_width = max_width
+        if out is None:
+            self._out = ItemRepr(max_width)
+            self._top_level = True
+        else:
+            self._out = out
+            self._top_level = False
 
     def _make_child(self, schema, array_view):
-        return ReprIterator(schema, _array_view=array_view, max_width=self._max_width)
+        return super()._make_child(schema, array_view)
 
     def _iter1(self, offset, length):
-        return super()._iter1(offset, length)
+        parent = super()._iter1(offset, length)
+        if self._top_level:
+            return self._repr_wrapper(parent)
+        else:
+            return parent
 
-    def _struct_iter(self, offset, length):
-        return super()._struct_iter(offset, length)
+    def _repr_wrapper(self, parent):
+        for item in parent:
+            try:
+                self._out.write(repr(item))
+            except ReprLongEnough:
+                pass
+            yield self._out.finish()
+
+    def _dictionary_iter(self, offset, length):
+        return super()._dictionary_iter(offset, length)
 
     def _list_iter(self, offset, length):
         return super()._list_iter(offset, length)
 
     def _fixed_size_list_iter(self, offset, length):
         return super()._fixed_size_list_iter(offset, length)
+
+    def _struct_iter(self, offset, length):
+        return super()._struct_iter(offset, length)
+
+    def _string_iter(self, offset, length):
+        return super()._string_iter(offset, length)
+
+    def _binary_iter(self, offset, length, fun=bytes):
+        return super()._binary_iter(offset, length, fun)
+
+    def _primitive_iter(self, offset, length):
+        return super()._primitive_iter(offset, length)
 
 
 _ITEMS_ITER_LOOKUP = {
