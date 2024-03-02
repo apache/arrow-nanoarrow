@@ -211,6 +211,9 @@ class RowIterator(ArrayViewIterator):
                 yield list(islice(child_iter, fixed_size))
 
     def _string_iter(self, offset, length):
+        return self._binary_iter(offset, length, lambda x: str(x, "UTF-8"))
+
+    def _binary_iter(self, offset, length, fun=bytes):
         view = self._array_view
         offset += view.offset
         offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
@@ -221,26 +224,10 @@ class RowIterator(ArrayViewIterator):
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
             for is_valid, start, end in zip(validity, starts, ends):
-                yield str(data[start:end], "UTF-8") if is_valid else None
+                yield fun(data[start:end]) if is_valid else None
         else:
             for start, end in zip(starts, ends):
-                yield str(data[start:end], "UTF-8")
-
-    def _binary_iter(self, offset, length):
-        view = self._array_view
-        offset += view.offset
-        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
-        starts = offsets[:-1]
-        ends = offsets[1:]
-        data = memoryview(view.buffer(2))
-
-        if self._contains_nulls():
-            validity = view.buffer(0).elements(offset, length)
-            for is_valid, start, end in zip(validity, starts, ends):
-                yield bytes(data[start:end]) if is_valid else None
-        else:
-            for start, end in zip(starts, ends):
-                yield bytes(data[start:end])
+                yield fun(data[start:end])
 
     def _primitive_iter(self, offset, length):
         view = self._array_view
@@ -274,6 +261,27 @@ class RowTupleIterator(RowIterator):
 
     def _iter1(self, offset, length):
         return self._struct_tuple_iter(offset, length)
+
+
+class ReprIterator(RowIterator):
+    def __init__(self, schema, *, _array_view=None, max_width=20):
+        super().__init__(schema, _array_view=_array_view)
+        self._max_width = max_width
+
+    def _make_child(self, schema, array_view):
+        return ReprIterator(schema, _array_view=array_view, max_width=self._max_width)
+
+    def _iter1(self, offset, length):
+        return super()._iter1(offset, length)
+
+    def _struct_iter(self, offset, length):
+        return super()._struct_iter(offset, length)
+
+    def _list_iter(self, offset, length):
+        return super()._list_iter(offset, length)
+
+    def _fixed_size_list_iter(self, offset, length):
+        return super()._fixed_size_list_iter(offset, length)
 
 
 _ITEMS_ITER_LOOKUP = {
