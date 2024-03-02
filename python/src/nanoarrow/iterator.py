@@ -288,6 +288,7 @@ class ItemRepr:
     def finish(self):
         out = self._out.getvalue()
         self._out.seek(0)
+        self._out.truncate()
         if len(out) > self._max_size:
             return out[: (self._max_size - 3)] + "..."
         else:
