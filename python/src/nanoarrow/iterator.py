@@ -278,6 +278,9 @@ class ItemRepr:
     def remaining_chars(self):
         return max(self._max_size - self._size, 0)
 
+    def write_null(self):
+        self.write(repr(None))
+
     def write(self, content):
         self._out.write(content)
         self._size += len(content)
@@ -286,7 +289,8 @@ class ItemRepr:
     def finish(self):
         out = self._out.getvalue()
         self._out.seek(0)
-        self._out.truncate()
+        self._out.truncate(0)
+        self._size = 0
         if len(out) > self._max_size:
             return out[: (self._max_size - 3)] + "..."
         else:
@@ -295,8 +299,6 @@ class ItemRepr:
 
 class ReprIterator(RowIterator):
     def __init__(self, schema, *, _array_view=None, max_width=80, out=None):
-        super().__init__(schema, _array_view=_array_view)
-
         self._max_width = max_width
         if out is None:
             self._out = ItemRepr(max_width)
@@ -305,8 +307,10 @@ class ReprIterator(RowIterator):
             self._out = out
             self._top_level = False
 
+        super().__init__(schema, _array_view=_array_view)
+
     def _make_child(self, schema, array_view):
-        return super()._make_child(schema, array_view)
+        return ReprIterator(schema, _array_view=array_view, out=self._out)
 
     def _iter1(self, offset, length):
         parent = super()._iter1(offset, length)
@@ -316,7 +320,7 @@ class ReprIterator(RowIterator):
             return parent
 
     def _repr_wrapper(self, parent):
-        for repr_was_truncated in parent:
+        for _ in parent:
             yield self._out.finish()
 
     def _dictionary_iter(self, offset, length):
@@ -330,8 +334,32 @@ class ReprIterator(RowIterator):
     def _fixed_size_list_iter(self, offset, length):
         return super()._fixed_size_list_iter(offset, length)
 
+    def _write_struct_item(self, offset_plus_i):
+        self._out.write("{")
+        for i, child in enumerate(self._children):
+            if i > 0:
+                self._out.write(", ")
+
+            child_name = child._schema.name
+            self._out.write(repr(child_name))
+            if self._out.remaining_chars <= 0:
+                return False
+
+            self._out.write(": ")
+
+            child_iter = child._iter1(offset_plus_i, 1)
+            if next(child_iter) is False:
+                return False
+
+        self._out.write("}")
+        return True
+
     def _struct_iter(self, offset, length):
-        return super()._struct_iter(offset, length)
+        # Be defensive about iterating over children for reasonable behaviour
+        # for very wide tables (at the expense of resolving an iterator for
+        # each child for each row)
+        for i in range(length):
+            yield self._write_struct_item(offset + i)
 
     def _string_iter(self, offset, length):
         # A variant of iterating over strings that ensures that very large
@@ -345,10 +373,13 @@ class ReprIterator(RowIterator):
         # for an incomplete repr
         max_width_slice_bytes = (self._max_width + 2) * 4
         for mv in memoryviews:
-            str_begin = bytes(mv[:max_width_slice_bytes]).decode()
-            yield self._out.write(repr(str_begin))
+            if mv is None:
+                yield self._out.write_null()
+            else:
+                str_begin = bytes(mv[:max_width_slice_bytes]).decode()
+                yield self._out.write(repr(str_begin))
 
-    def _binary_iter(self, offset, length, fun=bytes):
+    def _binary_iter(self, offset, length):
         # A variant of iterating over strings that ensures that very large
         # elements are not fully materialized as a Python object.
 
@@ -357,11 +388,17 @@ class ReprIterator(RowIterator):
         # incomplete repr.
         max_width_slice_bytes = self._max_width + 4
         for mv in memoryviews:
-            yield self._out.write(repr(bytes(mv[:max_width_slice_bytes])))
+            if mv is None:
+                yield self._out.write_null()
+            else:
+                yield self._out.write(repr(bytes(mv[:max_width_slice_bytes])))
 
     def _primitive_iter(self, offset, length):
         for item in super()._primitive_iter(offset, length):
-            yield self._out.write(repr(item))
+            if item is None:
+                yield self._out.write_null()
+            else:
+                yield self._out.write(repr(item))
 
 
 _ITEMS_ITER_LOOKUP = {
