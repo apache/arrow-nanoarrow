@@ -268,22 +268,20 @@ class RowTupleIterator(RowIterator):
         return self._struct_tuple_iter(offset, length)
 
 
-class ReprLongEnough(Exception):
-    def __init__(self) -> None:
-        super().__init__()
-
-
 class ItemRepr:
     def __init__(self, max_size) -> None:
         self._out = StringIO()
         self._max_size = max_size
         self._size = 0
 
+    @property
+    def remaining_chars(self):
+        return max(self._max_size - self._size, 0)
+
     def write(self, content):
         self._out.write(content)
         self._size += len(content)
-        if self._size > self._max_size:
-            raise ReprLongEnough()
+        return self._size <= self._max_size
 
     def finish(self):
         out = self._out.getvalue()
@@ -318,14 +316,12 @@ class ReprIterator(RowIterator):
             return parent
 
     def _repr_wrapper(self, parent):
-        for item in parent:
-            try:
-                self._out.write(repr(item))
-            except ReprLongEnough:
-                pass
+        for repr_was_truncated in parent:
             yield self._out.finish()
 
     def _dictionary_iter(self, offset, length):
+        # TODO: do not resolve the entire dictionary, just elements of it
+        # as required
         return super()._dictionary_iter(offset, length)
 
     def _list_iter(self, offset, length):
@@ -338,13 +334,34 @@ class ReprIterator(RowIterator):
         return super()._struct_iter(offset, length)
 
     def _string_iter(self, offset, length):
-        return super()._string_iter(offset, length)
+        # A variant of iterating over strings that ensures that very large
+        # elements are not fully materialized as a Python object.
+        memoryviews = super()._binary_iter(offset, length, fun=lambda x: x)
+
+        # In the end-member scenario where every code point is four bytes,
+        # ensure we still slice enough bytes to fill max_width. Give some
+        # bytes on the end in case the last byte is the beginning of a
+        # multibyte character and to ensure we never get the trailing quote
+        # for an incomplete repr
+        max_width_slice_bytes = (self._max_width + 2) * 4
+        for mv in memoryviews:
+            str_begin = bytes(mv[:max_width_slice_bytes]).decode()
+            yield self._out.write(repr(str_begin))
 
     def _binary_iter(self, offset, length, fun=bytes):
-        return super()._binary_iter(offset, length, fun)
+        # A variant of iterating over strings that ensures that very large
+        # elements are not fully materialized as a Python object.
+
+        memoryviews = super()._binary_iter(offset, length, fun=lambda x: x)
+        # Give some extra bytes to ensure we never get a trailing ' for an
+        # incomplete repr.
+        max_width_slice_bytes = self._max_width + 4
+        for mv in memoryviews:
+            yield self._out.write(repr(bytes(mv[:max_width_slice_bytes])))
 
     def _primitive_iter(self, offset, length):
-        return super()._primitive_iter(offset, length)
+        for item in super()._primitive_iter(offset, length):
+            yield self._out.write(repr(item))
 
 
 _ITEMS_ITER_LOOKUP = {

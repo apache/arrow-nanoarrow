@@ -315,6 +315,6 @@ def test_iterator_nullable_dictionary():
     assert list(iterator(sliced)) == ["cde", "ab", "def", "cde", None]
 
 
-def test_iterator_repr():
+def test_iterator_repr_primitive():
     array = na.c_array([1234567890, 12345678901, 3], na.int64())
     assert list(iterrepr(array, max_width=10)) == ["1234567890", "1234567...", "3"]
