@@ -100,7 +100,8 @@ def iterrepr(obj, schema=None, max_width: int = 120) -> Iterable[str]:
         :func:`c_array_stream`.
     schema : schema-like, optional
         An optional schema, passed to :func:`c_array_stream`.
-    max_width :
+    max_width : int, optional
+        The maximum number of characters to include for each item.
 
     Examples
     --------
