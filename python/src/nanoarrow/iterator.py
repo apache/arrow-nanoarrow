@@ -268,42 +268,6 @@ class RowTupleIterator(RowIterator):
         return self._struct_tuple_iter(offset, length)
 
 
-class ReprBuilder:
-    """Stateful string builder for building repr strings
-
-    A wrapper around io.StringIO() that keeps track of how many
-    characters have been written vs some maximum size.
-    """
-
-    def __init__(self, max_size) -> None:
-        self._out = StringIO()
-        self._max_size = max_size
-        self._size = 0
-
-    def full(self):
-        return self._size > self._max_size
-
-    def write_null(self):
-        return self.write(repr(None))
-
-    def write(self, content):
-        """Write string content. Returns True if there are not yet max_size
-        characters in this items's repr and False otherwise."""
-        self._out.write(content)
-        self._size += len(content)
-        return not self.full()
-
-    def finish(self):
-        out = self._out.getvalue()
-        self._out = StringIO()
-        self._size = 0
-
-        if len(out) > self._max_size:
-            return out[: (self._max_size - 3)] + "..."
-        else:
-            return out
-
-
 class ReprIterator(RowIterator):
     """Iterator of reprs with bounded size for each item
 
@@ -484,6 +448,42 @@ class ReprIterator(RowIterator):
                 yield self._out.write_null()
             else:
                 yield self._out.write(repr(item))
+
+
+class ReprBuilder:
+    """Stateful string builder for building repr strings
+
+    A wrapper around io.StringIO() that keeps track of how many
+    characters have been written vs some maximum size.
+    """
+
+    def __init__(self, max_size) -> None:
+        self._out = StringIO()
+        self._max_size = max_size
+        self._size = 0
+
+    def full(self):
+        return self._size > self._max_size
+
+    def write_null(self):
+        return self.write(repr(None))
+
+    def write(self, content):
+        """Write string content. Returns True if there are not yet max_size
+        characters in this items's repr and False otherwise."""
+        self._out.write(content)
+        self._size += len(content)
+        return not self.full()
+
+    def finish(self):
+        out = self._out.getvalue()
+        self._out = StringIO()
+        self._size = 0
+
+        if len(out) > self._max_size:
+            return out[: (self._max_size - 3)] + "..."
+        else:
+            return out
 
 
 _ITEMS_ITER_LOOKUP = {
