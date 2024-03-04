@@ -424,10 +424,10 @@ def test_iterrepr_struct():
     ]
 
     # Choose a max_width that results in an incomplete value
-    assert list(iterrepr(array, max_width=25)) == [
-        "{'col1': 1, 'col2': True}",
-        "{'col1': 2, 'col2': Fa...",
-        "{'col1': 3, 'col2': True}",
+    assert list(iterrepr(array, max_width=24)) == [
+        "{'col1': 1, 'col2': T...",
+        "{'col1': 2, 'col2': F...",
+        "{'col1': 3, 'col2': T...",
         "None",
     ]
 
