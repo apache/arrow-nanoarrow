@@ -84,12 +84,41 @@ def itertuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
-def iterrepr(obj, schema=None, max_width=80):
+def iterrepr(obj, schema=None, max_width: int = 120) -> Iterable[str]:
+    """Iterator of reprs with bounded size for each item
+
+    Whereas the the RowTupleIterator and the RowIterator are optimized for
+    converting the entire input to Python, this iterator is defensive
+    about materializing elements as Python objects and in most cases will
+    not materialize a value or child value in its entirity once ``max_width``
+    characters have already been materialized.
+
+    Paramters
+    ---------
+    obj : array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+    max_width :
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow import iterator
+    >>> array = na.c_array([1234567890, 123456789, 1234], na.int64())
+    >>> for item in iterator.iterrepr(array, max_width=9):
+    ...     print(item)
+    123456...
+    123456789
+    1234
+    """
     return ReprIterator.get_iterator(obj, schema, max_width=max_width)
 
 
 class ArrayViewIterator:
-    """Base class for iterators that use an internal ArrowArrayStream
+    """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
     """
 
@@ -269,18 +298,11 @@ class RowTupleIterator(RowIterator):
 
 
 class ReprIterator(RowIterator):
-    """Iterator of reprs with bounded size for each item
-
-    Whereas the the RowTupleIterator and the RowIterator are optimized for
-    converting the entire input to Python, the ReprIterator is defensive
-    about materializing elements as Python objects and in most cases will
-    not materialize a value or child value in its entirity once max_width
-    characters have already been materialized.
-
-    This is not designed to be the world's best repr() generator or be a
-    general-purpose formatter; however, it is designed to allow the
-    nanoarrow.Array class to have a reasonable repr() method that doesn't
-    overflow a console or hang when printing arbitrary input.
+    """Iterate over elements by materializing as little of each element
+    as possible. This is not designed to be a general-purpose formatter;
+    however, it is designed to allow the nanoarrow.Array class to have a
+    reasonable repr() method that doesn't overflow a console or hang when
+    printing arbitrary input.
     """
 
     def __init__(self, schema, *, _array_view=None, max_width=120, out=None):
