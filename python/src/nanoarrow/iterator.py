@@ -246,9 +246,12 @@ class RowIterator(ArrayViewIterator):
                 yield list(islice(child_iter, fixed_size))
 
     def _string_iter(self, offset, length):
-        return self._binary_iter(offset, length, lambda x: str(x, "UTF-8"))
+        return self._binary_view_iter(offset, length, lambda x: str(x, "UTF-8"))
 
-    def _binary_iter(self, offset, length, fun=bytes):
+    def _binary_iter(self, offset, length):
+        return self._binary_view_iter(offset, length, bytes)
+
+    def _binary_view_iter(self, offset, length, fun=lambda x: x):
         view = self._array_view
         offset += view.offset
         offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
@@ -433,7 +436,7 @@ class ReprIterator(RowIterator):
     def _string_iter(self, offset, length):
         # A variant of iterating over strings that ensures that very large
         # elements are not fully materialized as a Python object.
-        memoryviews = super()._binary_iter(offset, length, fun=lambda x: x)
+        memoryviews = super()._binary_view_iter(offset, length)
 
         # In the end-member scenario where every code point is four bytes,
         # ensure we still slice enough bytes to fill max_width. Give some
@@ -452,7 +455,7 @@ class ReprIterator(RowIterator):
         # A variant of iterating over strings that ensures that very large
         # elements are not fully materialized as a Python object.
 
-        memoryviews = super()._binary_iter(offset, length, fun=lambda x: x)
+        memoryviews = super()._binary_view_iter(offset, length)
         # Give some extra bytes to ensure we never get a trailing ' for an
         # incomplete repr.
         max_width_slice_bytes = self._out._max_size + 4
