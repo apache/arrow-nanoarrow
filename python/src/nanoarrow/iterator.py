@@ -84,7 +84,7 @@ def itertuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
-def iterrepr(obj, schema=None, max_width: int = 120) -> Iterable[str]:
+def iterrepr(obj, schema=None, max_width: int = 80) -> Iterable[str]:
     """Iterator of reprs with bounded size for each item
 
     Whereas the the RowTupleIterator and the RowIterator are optimized for
