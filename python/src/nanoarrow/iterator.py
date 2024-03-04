@@ -269,25 +269,29 @@ class RowTupleIterator(RowIterator):
 
 
 class ReprBuilder:
+    """Stateful string builder for building repr strings
+
+    A wrapper around io.StringIO() that keeps track of how many
+    characters have been written vs some maximum size.
+    """
+
     def __init__(self, max_size) -> None:
         self._out = StringIO()
         self._max_size = max_size
         self._size = 0
 
-    @property
-    def remaining_chars(self):
-        return self._max_size - self._size
-
     def full(self):
-        return self._size <= self._max_size
+        return self._size > self._max_size
 
     def write_null(self):
-        self.write(repr(None))
+        return self.write(repr(None))
 
     def write(self, content):
+        """Write string content. Returns True if there are not yet max_size
+        characters in this items's repr and False otherwise."""
         self._out.write(content)
         self._size += len(content)
-        return self.full()
+        return not self.full()
 
     def finish(self):
         out = self._out.getvalue()
@@ -301,7 +305,24 @@ class ReprBuilder:
 
 
 class ReprIterator(RowIterator):
-    def __init__(self, schema, *, _array_view=None, max_width=80, out=None):
+    """Iterator of reprs with bounded size for each item
+
+    Whereas the the RowTupleIterator and the RowIterator are optimized for
+    converting the entire input to Python, the ReprIterator is defensive
+    about materializing elements as Python objects and in most cases will
+    not materialize a value or child value in its entirity once max_width
+    characters have already been materialized.
+
+    This is not designed to be the world's best repr() generator or be a
+    general-purpose formatter; however, it is designed to allow the
+    nanoarrow.Array class to have a reasonable repr() method that doesn't
+    overflow a console or hang when printing arbitrary input.
+    """
+
+    def __init__(self, schema, *, _array_view=None, max_width=120, out=None):
+        # Pass the same instance of out to all children. If unspecified,
+        # this is the top-level iterator that will request the value from
+        # out for each item.
         if out is None:
             self._out = ReprBuilder(max_width)
             self._top_level = True
@@ -312,20 +333,36 @@ class ReprIterator(RowIterator):
         super().__init__(schema, _array_view=_array_view)
 
     def _make_child(self, schema, array_view):
+        # Ensure children all refer to the same instance of the ReprBuilder
         return ReprIterator(schema, _array_view=array_view, out=self._out)
 
     def _iter1(self, offset, length):
+        # The iterator resolved by the RowIterator here will yield False
+        # if self._out.full(). This pattern allows arbitrary levels of
+        # recursion for nested types while allowing child iterators to signal
+        # to higher levels that there is no need to write any further
+        # values for the top-level element.
         parent = super()._iter1(offset, length)
+
+        # If we are at the top level, yield the (potentially abbreviated)
+        # repr() string for each element. For child elements, yield
+        # False if self._out.full() or True otherwise.
         if self._top_level:
             return self._repr_wrapper(parent)
         else:
             return parent
 
     def _repr_wrapper(self, parent):
+        # A wrapper that iterates over the parent (where consuming a value of the
+        # iterator writes to self._out)
         for _ in parent:
             yield self._out.finish()
 
     def _dictionary_iter(self, offset, length):
+        # Rather than materialize the entire dictionary, materialize a single
+        # element as required. This is slower for materializing many values but
+        # typically this iterator will only materialize the number of rows on a
+        # console at most.
         for dict_index in self._primitive_iter(offset, length):
             if dict_index is None:
                 yield self._out.write_null()
@@ -334,6 +371,10 @@ class ReprIterator(RowIterator):
                 yield next(dict_iter)
 
     def _write_list_item(self, offset_plus_i, start, end):
+        # Whereas the RowIterator resolves one iterator for child and pulls
+        # end - start values from it for each element, this iterator resolves
+        # length-one child iterator for each element and consumes it. This
+        # pattern avoids materializing unnecessary elements.
         validity = self._array_view.buffer(0)
         item_is_valid = len(validity) == 0 or validity.element(offset_plus_i)
         if not item_is_valid:
@@ -366,6 +407,13 @@ class ReprIterator(RowIterator):
             )
 
     def _write_struct_item(self, offset_plus_i):
+        # Whereas the RowIterator and RowTupleIterator materialize all child
+        # iterators and always materialize a value for every child element,
+        # this pattern resolves a length-one iterator for every child, consumes
+        # it, and stops iterating if there are many columns. Very wide tables
+        # will still incur a full loop over children at the C level (e.g., in
+        # ArrowArrayViewInitFromSchema() and ArrowArrayViewSetArray()); however,
+        # should not incur any Python calls in a full loop over children.
         validity = self._array_view.buffer(0)
         item_is_valid = len(validity) == 0 or validity.element(offset_plus_i)
         if not item_is_valid:
@@ -377,8 +425,7 @@ class ReprIterator(RowIterator):
                 self._out.write(", ")
 
             child_name = child._schema.name
-            self._out.write(repr(child_name))
-            if self._out.remaining_chars <= 0:
+            if self._out.write(repr(child_name)) is False:
                 return False
 
             self._out.write(": ")
@@ -390,9 +437,6 @@ class ReprIterator(RowIterator):
         return self._out.write("}")
 
     def _struct_iter(self, offset, length):
-        # Be defensive about iterating over children for reasonable behaviour
-        # for very wide tables (at the expense of resolving an iterator for
-        # each child for each row)
         for i in range(length):
             yield self._write_struct_item(offset + i)
 
