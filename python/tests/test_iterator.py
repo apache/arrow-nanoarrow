@@ -439,34 +439,101 @@ def test_iterrepr_struct():
     ]
 
 
-# TODOs:
-# def test_iterrepr_list():
-#     pa = pytest.importorskip("pyarrow")
-#     items = [[1, 2, 3], [4, 5, 6], [7, 8, None], [0], None]
-#     array = pa.array(items)
-#     assert list(iterrepr(array)) == items
+def test_iterrepr_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, None], [0], None]
+    array = pa.array(items)
+    assert list(iterrepr(array)) == [repr(item) for item in items]
 
-#     sliced = array[1:]
-#     assert list(iterrepr(sliced)) == [[4, 5, 6], [7, 8, None], [0], None]
+    assert list(iterrepr(array, max_width=8)) == [
+        "[1, 2...",
+        "[4, 5...",
+        "[7, 8...",
+        "[0]",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=9)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8,...",
+        "[0]",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=11)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, N...",
+        "[0]",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=12)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, None]",
+        "[0]",
+        "None",
+    ]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [repr(item) for item in items[1:]]
 
 
-# def test_iterrepr_fixed_size_list():
-#     pa = pytest.importorskip("pyarrow")
-#     items = [[1, 2, 3], [4, 5, 6], [7, 8, None], None]
-#     array = pa.array(items, pa.list_(pa.int64(), 3))
-#     assert list(iterrepr(array)) == items
+def test_iterrepr_fixed_size_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, None], None]
+    array = pa.array(items, pa.list_(pa.int64(), 3))
+    assert list(iterrepr(array)) == [repr(item) for item in items]
 
-#     sliced = array[1:]
-#     assert list(iterrepr(sliced)) == [[4, 5, 6], [7, 8, None], None]
+    assert list(iterrepr(array, max_width=8)) == [
+        "[1, 2...",
+        "[4, 5...",
+        "[7, 8...",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=9)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8,...",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=11)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, N...",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=12)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, None]",
+        "None",
+    ]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [repr(item) for item in items[1:]]
 
 
-# def test_iterrepr_dictionary():
-#     pa = pytest.importorskip("pyarrow")
+def test_iterrepr_dictionary():
+    pa = pytest.importorskip("pyarrow")
 
-#     items = ["ab", "cde", "ab", "def", "cde", None]
-#     array = pa.array(items).dictionary_encode()
+    items = ["ab", "cdefghij", "ab", "def", "cde", None]
+    array = pa.array(items).dictionary_encode()
 
-#     assert list(iterrepr(array)) == items
+    assert list(iterrepr(array)) == [repr(item) for item in items]
+    assert list(iterrepr(array, max_width=9)) == [
+        "'ab'",
+        "'cdefg...",
+        "'ab'",
+        "'def'",
+        "'cde'",
+        "None",
+    ]
 
-#     sliced = array[1:]
-#     assert list(iterrepr(sliced)) == ["cde", "ab", "def", "cde", None]
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [repr(item) for item in items[1:]]

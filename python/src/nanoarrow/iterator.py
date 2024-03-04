@@ -363,7 +363,7 @@ class ReprIterator(RowIterator):
         # element as required. This is slower for materializing many values but
         # typically this iterator will only materialize the number of rows on a
         # console at most.
-        for dict_index in self._primitive_iter(offset, length):
+        for dict_index in super()._primitive_iter(offset, length):
             if dict_index is None:
                 yield self._out.write_null()
             else:
@@ -382,7 +382,7 @@ class ReprIterator(RowIterator):
 
         self._out.write("[")
         for i in range(start, end):
-            if i > 0:
+            if i > start:
                 self._out.write(", ")
 
             child_iter = self._children[0]._iter1(i, 1)
@@ -405,7 +405,7 @@ class ReprIterator(RowIterator):
         fixed_size = self._array_view.layout.child_size_elements
         for i in range(length):
             yield self._write_list_item(
-                offset + i, i * fixed_size, (i + 1) * fixed_size
+                offset + i, (offset + i) * fixed_size, (offset + i + 1) * fixed_size
             )
 
     def _write_struct_item(self, offset_plus_i):
