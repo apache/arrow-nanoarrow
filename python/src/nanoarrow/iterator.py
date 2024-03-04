@@ -268,7 +268,7 @@ class RowTupleIterator(RowIterator):
         return self._struct_tuple_iter(offset, length)
 
 
-class ItemRepr:
+class ReprBuilder:
     def __init__(self, max_size) -> None:
         self._out = StringIO()
         self._max_size = max_size
@@ -276,7 +276,10 @@ class ItemRepr:
 
     @property
     def remaining_chars(self):
-        return max(self._max_size - self._size, 0)
+        return self._max_size - self._size
+
+    def full(self):
+        return self._size <= self._max_size
 
     def write_null(self):
         self.write(repr(None))
@@ -284,13 +287,13 @@ class ItemRepr:
     def write(self, content):
         self._out.write(content)
         self._size += len(content)
-        return self._size <= self._max_size
+        return self.full()
 
     def finish(self):
         out = self._out.getvalue()
-        self._out.seek(0)
-        self._out.truncate(0)
+        self._out = StringIO()
         self._size = 0
+
         if len(out) > self._max_size:
             return out[: (self._max_size - 3)] + "..."
         else:
@@ -299,9 +302,8 @@ class ItemRepr:
 
 class ReprIterator(RowIterator):
     def __init__(self, schema, *, _array_view=None, max_width=80, out=None):
-        self._max_width = max_width
         if out is None:
-            self._out = ItemRepr(max_width)
+            self._out = ReprBuilder(max_width)
             self._top_level = True
         else:
             self._out = out
@@ -324,17 +326,51 @@ class ReprIterator(RowIterator):
             yield self._out.finish()
 
     def _dictionary_iter(self, offset, length):
-        # TODO: do not resolve the entire dictionary, just elements of it
-        # as required
-        return super()._dictionary_iter(offset, length)
+        for dict_index in self._primitive_iter(offset, length):
+            if dict_index is None:
+                yield self._out.write_null()
+            else:
+                dict_iter = self._dictionary._iter1(dict_index, 1)
+                yield next(dict_iter)
+
+    def _write_list_item(self, offset_plus_i, start, end):
+        validity = self._array_view.buffer(0)
+        item_is_valid = len(validity) == 0 or validity.element(offset_plus_i)
+        if not item_is_valid:
+            return self._out.write_null()
+
+        self._out.write("[")
+        for i in range(start, end):
+            if i > 0:
+                self._out.write(", ")
+
+            child_iter = self._children[0]._iter1(i, 1)
+            if next(child_iter) is False:
+                return False
+
+        return self._out.write("]")
 
     def _list_iter(self, offset, length):
-        return super()._list_iter(offset, length)
+        offsets = memoryview(self._array_view.buffer(1))[offset : (offset + length + 1)]
+        starts = offsets[:-1]
+        ends = offsets[1:]
+
+        for i, start, end in zip(range(length), starts, ends):
+            yield self._write_list_item(offset + i, start, end)
 
     def _fixed_size_list_iter(self, offset, length):
-        return super()._fixed_size_list_iter(offset, length)
+        fixed_size = self._array_view.layout.child_size_elements
+        for i in range(length):
+            yield self._write_list_item(
+                offset + i, i * fixed_size, (i + 1) * fixed_size
+            )
 
     def _write_struct_item(self, offset_plus_i):
+        validity = self._array_view.buffer(0)
+        item_is_valid = len(validity) == 0 or validity.element(offset_plus_i)
+        if not item_is_valid:
+            return self._out.write_null()
+
         self._out.write("{")
         for i, child in enumerate(self._children):
             if i > 0:
@@ -351,8 +387,7 @@ class ReprIterator(RowIterator):
             if next(child_iter) is False:
                 return False
 
-        self._out.write("}")
-        return True
+        return self._out.write("}")
 
     def _struct_iter(self, offset, length):
         # Be defensive about iterating over children for reasonable behaviour
@@ -371,7 +406,7 @@ class ReprIterator(RowIterator):
         # bytes on the end in case the last byte is the beginning of a
         # multibyte character and to ensure we never get the trailing quote
         # for an incomplete repr
-        max_width_slice_bytes = (self._max_width + 2) * 4
+        max_width_slice_bytes = (self._out._max_size + 2) * 4
         for mv in memoryviews:
             if mv is None:
                 yield self._out.write_null()
@@ -386,7 +421,7 @@ class ReprIterator(RowIterator):
         memoryviews = super()._binary_iter(offset, length, fun=lambda x: x)
         # Give some extra bytes to ensure we never get a trailing ' for an
         # incomplete repr.
-        max_width_slice_bytes = self._max_width + 4
+        max_width_slice_bytes = self._out._max_size + 4
         for mv in memoryviews:
             if mv is None:
                 yield self._out.write_null()
@@ -394,6 +429,9 @@ class ReprIterator(RowIterator):
                 yield self._out.write(repr(bytes(mv[:max_width_slice_bytes])))
 
     def _primitive_iter(self, offset, length):
+        # These types can have relatively long reprs (e.g., large int64) but they
+        # are never so large that they can hang the repr (with the possible
+        # exception of fixed-size binary in rare cases).
         for item in super()._primitive_iter(offset, length):
             if item is None:
                 yield self._out.write_null()
