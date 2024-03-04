@@ -392,6 +392,7 @@ class ReprIterator(RowIterator):
         return self._out.write("]")
 
     def _list_iter(self, offset, length):
+        offset += self._array_view.offset
         offsets = memoryview(self._array_view.buffer(1))[offset : (offset + length + 1)]
         starts = offsets[:-1]
         ends = offsets[1:]
@@ -400,6 +401,7 @@ class ReprIterator(RowIterator):
             yield self._write_list_item(offset + i, start, end)
 
     def _fixed_size_list_iter(self, offset, length):
+        offset += self._array_view.offset
         fixed_size = self._array_view.layout.child_size_elements
         for i in range(length):
             yield self._write_list_item(
@@ -437,6 +439,7 @@ class ReprIterator(RowIterator):
         return self._out.write("}")
 
     def _struct_iter(self, offset, length):
+        offset += self._array_view.offset
         for i in range(length):
             yield self._write_struct_item(offset + i)
 
