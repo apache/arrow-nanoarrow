@@ -42,6 +42,16 @@ class Scalar:
     def as_py(self):
         return next(iterator(self._c_scalar))
 
+    def __repr__(self) -> str:
+        width_hint = 80
+        prefix = f"Scalar<{self.schema.type.name}> "
+        width_hint -= len(prefix)
+
+        py_repr = repr(self.as_py())
+        if len(py_repr) > width_hint:
+            py_repr = py_repr[: (width_hint - 3)] + "..."
+        return f"{prefix}{py_repr}"
+
 
 class Array:
     def __init__(self, obj, schema=None) -> None:
@@ -102,3 +112,24 @@ class Array:
             scalar = Scalar(c_scalar)
             scalar._schema = self.schema
             yield scalar
+
+    def __repr__(self) -> str:
+        width_hint = 80
+        n_items = 10
+        lines = [f"Array<{self.schema.type.name}>[{len(self)}]"]
+
+        for i, item in enumerate(self):
+            if i >= n_items:
+                break
+            py_repr = repr(item.as_py())
+            if len(py_repr) > width_hint:
+                py_repr = py_repr[: (width_hint - 3)] + "..."
+            lines.append(py_repr)
+
+        n_more_items = len(self) - n_items
+        if n_more_items > 1:
+            lines.append(f"...and {n_more_items} more items")
+        elif n_more_items > 0:
+            lines.append(f"...and {n_more_items} more item")
+
+        return "\n".join(lines)

@@ -87,3 +87,46 @@ def test_array_chunked():
     msg = "Can't export Array with 2 chunks to ArrowArray"
     with pytest.raises(ValueError, match=msg):
         na.c_array(array)
+
+
+def test_scalar_repr():
+    scalar = Array([123456], na.int32())[0]
+    assert repr(scalar) == """Scalar<INT32> 123456"""
+
+
+def test_scalar_repr_long():
+    pa = pytest.importorskip("pyarrow")
+    scalar = Array(pa.array(["abcdefg" * 10]))[0]
+    assert repr(scalar).endswith("...")
+    assert len(repr(scalar)) == 80
+
+
+def test_array_repr():
+    array = Array(range(10), na.int32())
+    one_to_ten = "\n".join(str(i) for i in range(10))
+
+    assert repr(array) == f"Array<INT32>[10]\n{one_to_ten}"
+
+    array = Array(range(11), na.int32())
+    assert repr(array) == f"Array<INT32>[11]\n{one_to_ten}\n...and 1 more item"
+
+    array = Array(range(12), na.int32())
+    assert repr(array) == f"Array<INT32>[12]\n{one_to_ten}\n...and 2 more items"
+
+
+def test_array_repr_long():
+    pa = pytest.importorskip("pyarrow")
+
+    # Check that exact length is not truncated with a ...
+    array = Array(pa.array(["a" * 78]))
+    repr_lines = repr(array).splitlines()
+    assert len(repr_lines) == 2
+    assert not repr_lines[1].endswith("...")
+    assert len(repr_lines[1]) == 80
+
+    # Check that wide output is truncated with a ...
+    array = Array(pa.array(["a" * 79]))
+    repr_lines = repr(array).splitlines()
+    assert len(repr_lines) == 2
+    assert repr_lines[1].endswith("...")
+    assert len(repr_lines[1]) == 80
