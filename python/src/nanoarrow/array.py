@@ -90,7 +90,7 @@ class Array:
         return Array(self._data.array(i))
 
     def __len__(self) -> int:
-        return self._data.array_ends[self._data.n_arrays]
+        return len(self._data)
 
     def __getitem__(self, k) -> Scalar:
         scalar = Scalar(self._data[k])
