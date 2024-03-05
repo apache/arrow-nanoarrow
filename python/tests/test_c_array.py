@@ -130,6 +130,36 @@ def test_c_array_slice():
     assert array2.length == 2
 
 
+def test_c_array_get():
+    array = na.c_array([1, 2, 3], na.int32())
+
+    scalar = array[0]
+    assert scalar.schema is array.schema
+
+    array2 = na.c_array(scalar)
+    assert array2.offset == 0
+    assert array2.length == 1
+    assert array2.buffers == array.buffers
+
+    scalar = array[2]
+    array2 = na.c_array(scalar)
+    assert array2.offset == 2
+    assert array2.length == 1
+    assert array2.buffers == array.buffers
+
+    scalar = array[-1]
+    array2 = na.c_array(scalar)
+    assert array2.offset == 2
+    assert array2.length == 1
+    assert array2.buffers == array.buffers
+
+    with pytest.raises(IndexError):
+        array[-4]
+
+    with pytest.raises(IndexError):
+        array[3]
+
+
 def test_c_array_slice_errors():
     array = na.c_array([1, 2, 3], na.int32())
 

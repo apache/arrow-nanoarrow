@@ -51,6 +51,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
+from functools import cached_property
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
@@ -1067,10 +1068,15 @@ cdef class CArray:
         return out
 
     def __getitem__(self, k):
+        self._assert_valid()
+
+        cdef int64_t kint
+
         if not isinstance(k, slice):
-            raise TypeError(
-                f"Can't slice CArray with object of type {type(k).__name__}"
-            )
+            kint = k
+            if kint < 0:
+                kint += self._ptr.length
+            return CScalar(self, kint)
 
         if k.step is not None:
             raise ValueError("Can't slice CArray with step")
@@ -1191,6 +1197,51 @@ cdef class CArray:
 
     def __repr__(self):
         return _repr_utils.array_repr(self)
+
+
+cdef class CScalar:
+    """Low-level scalar implementation
+
+    This is an implementation of a "Scalar" that is a thin
+    wrapper around a (Python) CArray with the ability to
+    materialize a length-one array.
+    """
+    cdef CArray _array
+    cdef int64_t _offset
+
+    def __cinit__(self, CArray array, int64_t offset):
+        array._assert_valid()
+        if offset < 0 or offset >= array._ptr.length:
+            raise IndexError(f"Index out of range: {self._offset}")
+
+        self._array = array
+        self._offset = offset
+
+    def __arrow_c_array__(self, requested_schema=None):
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema is not implemented")
+
+        self._array._assert_valid()
+        cdef ArrowArray* out
+        out_capsule = alloc_c_array(&out)
+        c_array_shallow_copy(self._array._base, self._array._ptr, out)
+
+        out.offset += self._offset
+        out.length = 1
+
+        # We can't access buffer content because we don't know what
+        # device it will be on, but if we set the null count to -1
+        # and the validity buffer was null it can fail validity checks.
+        if out.buffers[0] != NULL:
+            out.null_count = -1
+        else:
+            out.null_count = 0
+
+        return self._array.schema.__arrow_c_schema__(), out_capsule
+
+    @property
+    def schema(self):
+        return self._array._schema
 
 
 cdef class CArrayView:
@@ -2221,7 +2272,7 @@ cdef class CMaterializedArrayStream:
     cdef _finalize(self):
         self._array_ends._set_data_type(NANOARROW_TYPE_INT64)
 
-    cdef int _reserve(self, int64_t additional_arrays) nogil:
+    cdef int _reserve(self, int64_t additional_arrays) noexcept nogil:
         cdef int64_t required_capacity_arrays = self._size_arrays + additional_arrays
         if self._capacity_arrays >= required_capacity_arrays:
             return NANOARROW_OK
