@@ -93,7 +93,7 @@ def iterrepr(obj, schema=None, max_width: int = 80) -> Iterable[str]:
     not materialize a value or child value in its entirity once ``max_width``
     characters have already been materialized.
 
-    Paramters
+    Parameters
     ---------
     obj : array stream-like
         An array-like or array stream-like object as sanitized by
