@@ -2314,18 +2314,44 @@ cdef class CMaterializedArrayStream:
     def array_ends(self):
         return self._array_ends
 
-    cdef int _resolve_chunk(self, int* sorted_offsets, int index, int start_offset_i,
-                           int end_offset_i) noexcept nogil:
+    cdef int _resolve_chunk(self, const int64_t* sorted_offsets, int64_t index, int64_t start_offset_i,
+                           int64_t end_offset_i) noexcept nogil:
         if start_offset_i >= (end_offset_i - 1):
             return start_offset_i
 
-        cdef int mid_offset_i = start_offset_i + (end_offset_i - start_offset_i) // 2
-        cdef int mid_index = sorted_offsets[mid_offset_i]
+        cdef int64_t mid_offset_i = start_offset_i + (end_offset_i - start_offset_i) // 2
+        cdef int64_t mid_index = sorted_offsets[mid_offset_i]
         if index < mid_index:
             return self._resolve_chunk(sorted_offsets, index, start_offset_i, mid_offset_i)
         else:
             return self._resolve_chunk(sorted_offsets, index, mid_offset_i, end_offset_i)
 
+    def __getitem__(self, k):
+        cdef int64_t kint
+        cdef int array_i
+        cdef const int64_t* sorted_offsets = <int64_t*>self._array_ends._ptr.data
+
+        if not isinstance(k, slice):
+            kint = k
+            if kint < 0:
+                kint += self._total_length
+            if kint < 0 or kint >= self._total_length:
+                raise IndexError(f"Index {kint} is out of range")
+
+            array_i = self._resolve_chunk(sorted_offsets, kint, 0, self._size_arrays)
+            kint -= sorted_offsets[array_i]
+            return CScalar(self.array(array_i), kint)
+
+        raise NotImplementedError("index with slice")
+
+    def __len__(self):
+        return self._array_ends[self._size_arrays]
+
+    def __iter__(self):
+        for array_i in range(self._size_arrays):
+            c_array = self.array(array_i)
+            for item_i in range(c_array.length):
+                yield CScalar(c_array, item_i)
 
     def array(self, int64_t i):
         if i < 0 or i >= self._size_arrays:

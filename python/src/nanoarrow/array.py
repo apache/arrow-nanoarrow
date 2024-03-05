@@ -18,9 +18,29 @@
 from functools import cached_property
 from typing import Iterable
 
-from nanoarrow._lib import CArray, CMaterializedArrayStream
+from nanoarrow._lib import CArray, CMaterializedArrayStream, CScalar
 from nanoarrow.c_lib import c_array, c_array_stream
+from nanoarrow.iterator import iterator
 from nanoarrow.schema import Schema
+
+
+class Scalar:
+    def __init__(self, obj):
+        if not isinstance(obj, CScalar):
+            raise TypeError(
+                f"Can't create Scalar from object of class {type(obj).__name__}"
+            )
+        self._c_scalar = obj
+        self._schema = None
+
+    @property
+    def schema(self) -> Schema:
+        if self._schema is None:
+            self._schema = Schema(self._c_scalar.schema)
+        return self._schema
+
+    def as_py(self):
+        return next(iterator(self._c_scalar))
 
 
 class Array:
@@ -71,3 +91,14 @@ class Array:
 
     def __len__(self) -> int:
         return self._data.array_ends[self._data.n_arrays]
+
+    def __getitem__(self, k) -> Scalar:
+        scalar = Scalar(self._data[k])
+        scalar._schema = self.schema
+        return scalar
+
+    def __iter__(self) -> Iterable[Scalar]:
+        for c_scalar in self._data:
+            scalar = Scalar(c_scalar)
+            scalar._schema = self.schema
+            yield scalar

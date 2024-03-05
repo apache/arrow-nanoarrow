@@ -35,6 +35,10 @@ def test_array_empty():
         arrays = list(stream)
         assert len(arrays) == 0
 
+    assert list(array) == []
+    with pytest.raises(IndexError):
+        array[0]
+
     c_array = na.c_array(array)
     assert c_array.length == 0
     assert c_array.schema.format == "i"
@@ -52,6 +56,12 @@ def test_array_contiguous():
         arrays = list(stream)
         assert len(arrays) == 1
 
+    for py_item, item in zip([1, 2, 3], array):
+        assert item.as_py() == py_item
+
+    for py_item, i in zip([1, 2, 3], range(len(array))):
+        assert array[i].as_py() == py_item
+
     c_array = na.c_array(array)
     assert c_array.length == 3
     assert c_array.schema.format == "i"
@@ -67,6 +77,12 @@ def test_array_chunked():
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
         assert len(arrays) == 2
+
+    for py_item, item in zip([1, 2, 3, 4, 5, 6], array):
+        assert item.as_py() == py_item
+
+    for py_item, i in zip([1, 2, 3, 4, 5, 6], range(len(array))):
+        assert array[i].as_py() == py_item
 
     msg = "Can't export Array with 2 chunks to ArrowArray"
     with pytest.raises(ValueError, match=msg):
