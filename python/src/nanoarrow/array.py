@@ -40,15 +40,17 @@ class Array:
         return self._data.__arrow_c_stream__(requested_schema=requested_schema)
 
     def __arrow_c_array__(self, requested_schema=None):
-        if len(self._data) == 0:
+        if self._data.n_arrays == 0:
             return c_array([], schema=self._data.schema).__arrow_c_array__(
                 requested_schema=requested_schema
             )
-        elif len(self._data) == 1:
-            return self._data[0].__arrow_c_array__(requested_schema=requested_schema)
+        elif self._data.n_arrays == 1:
+            return self._data.array(0).__arrow_c_array__(
+                requested_schema=requested_schema
+            )
 
         raise ValueError(
-            f"Can't export Array with {len(self._data)} chunks to ArrowArray"
+            f"Can't export Array with {self._data.n_arrays} chunks to ArrowArray"
         )
 
     @cached_property
@@ -57,15 +59,15 @@ class Array:
 
     @property
     def n_chunks(self) -> int:
-        return len(self._data)
+        return self._data.n_arrays
 
     @property
     def chunks(self) -> Iterable:
-        for array in self._data:
+        for array in self._data.arrays:
             yield Array(array)
 
     def chunk(self, i):
-        return Array(self._data[i])
+        return Array(self._data.array(i))
 
     def __len__(self) -> int:
-        return self._data.array_ends[len(self._data)]
+        return self._data.array_ends[self._data.n_arrays]

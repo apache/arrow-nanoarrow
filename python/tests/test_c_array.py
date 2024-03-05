@@ -164,7 +164,7 @@ def test_c_array_slice_errors():
     array = na.c_array([1, 2, 3], na.int32())
 
     with pytest.raises(TypeError):
-        array[0]
+        array[None]
     with pytest.raises(IndexError):
         array[4:]
     with pytest.raises(IndexError):

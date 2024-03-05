@@ -2314,24 +2314,39 @@ cdef class CMaterializedArrayStream:
     def array_ends(self):
         return self._array_ends
 
-    def __len__(self):
-        return self._size_arrays
+    cdef int _resolve_chunk(self, int* sorted_offsets, int index, int start_offset_i,
+                           int end_offset_i) noexcept nogil:
+        if start_offset_i >= (end_offset_i - 1):
+            return start_offset_i
 
-    def __getitem__(self, int64_t i):
+        cdef int mid_offset_i = start_offset_i + (end_offset_i - start_offset_i) // 2
+        cdef int mid_index = sorted_offsets[mid_offset_i]
+        if index < mid_index:
+            return self._resolve_chunk(sorted_offsets, index, start_offset_i, mid_offset_i)
+        else:
+            return self._resolve_chunk(sorted_offsets, index, mid_offset_i, end_offset_i)
+
+
+    def array(self, int64_t i):
         if i < 0 or i >= self._size_arrays:
             raise IndexError(f"Index {i} out of range")
         cdef CArray out = CArray.allocate(self._schema)
         c_array_shallow_copy(self, &(self._arrays[i]), out._ptr)
         return out
 
-    def __iter__(self):
+    @property
+    def n_arrays(self):
+        return self._size_arrays
+
+    @property
+    def arrays(self):
         for i in range(self._size_arrays):
-            yield self[i]
+            yield self.array(i)
 
     def __arrow_c_stream__(self, requested_schema=None):
         # When an array stream from iterable is supported, that should be used here
         # to avoid unnessary shallow copies.
-        stream = CArrayStream.from_array_list(list(self), self._schema, move=False)
+        stream = CArrayStream.from_array_list(list(self.arrays), self._schema, move=False)
         return stream.__arrow_c_stream__(requested_schema=requested_schema)
 
     @staticmethod
