@@ -18,12 +18,7 @@
 from functools import cached_property
 from typing import Iterable
 
-from nanoarrow._lib import (
-    CArray,
-    CMaterializedArrayStream,
-    CDevice,
-    CDEVICE_CPU,
-)
+from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStream
 from nanoarrow.c_lib import c_array, c_array_stream
 from nanoarrow.iterator import iterator
 from nanoarrow.schema import Schema
