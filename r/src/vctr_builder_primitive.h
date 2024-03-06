@@ -24,12 +24,6 @@
 
 #include "vctr_builder_base.h"
 
-class Integer64Builder : public VctrBuilder {
- public:
-  explicit Integer64Builder(SEXP ptype_sexp)
-      : VctrBuilder(VECTOR_TYPE_INTEGER64, ptype_sexp) {}
-};
-
 class ChrBuilder : public VctrBuilder {
  public:
   explicit ChrBuilder(SEXP ptype_sexp)
