@@ -18,7 +18,12 @@
 from functools import cached_property
 from typing import Iterable
 
-from nanoarrow._lib import CArray, CMaterializedArrayStream, CScalar
+from nanoarrow._lib import (
+    CArray,
+    CMaterializedArrayStream,
+    CDevice,
+    CDEVICE_CPU,
+)
 from nanoarrow.c_lib import c_array, c_array_stream
 from nanoarrow.iterator import iterator
 from nanoarrow.schema import Schema
@@ -49,13 +54,15 @@ class Scalar:
     Schema(INT32)
     """
 
-    def __init__(self, obj):
-        if not isinstance(obj, CScalar):
-            raise TypeError(
-                f"Can't create Scalar from object of class {type(obj).__name__}"
-            )
-        self._c_scalar = obj
+    def __init__(self):
+        # Private constructor
+        self._c_scalar = None
         self._schema = None
+        self._device = None
+
+    @property
+    def device(self) -> CDevice:
+        return self._device
 
     @property
     def schema(self) -> Schema:
@@ -85,7 +92,12 @@ class Array:
     interface. See :func:`array` for class details.
     """
 
-    def __init__(self, obj, schema=None) -> None:
+    def __init__(self, obj, schema=None, device=None) -> None:
+        if device is None:
+            self._device = CDEVICE_CPU
+        elif not isinstance(device, CDevice):
+            raise TypeError("device must be CDevice")
+
         if isinstance(obj, Array) and schema is None:
             self._data = obj._data
             return
@@ -98,9 +110,15 @@ class Array:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
 
     def __arrow_c_stream__(self, requested_schema=None):
+        if self._device is not CDEVICE_CPU:
+            raise RuntimeError("Can't export ArrowArrayStream from non-CPU device")
+
         return self._data.__arrow_c_stream__(requested_schema=requested_schema)
 
     def __arrow_c_array__(self, requested_schema=None):
+        if self._device is not CDEVICE_CPU:
+            raise RuntimeError("Can't export ArrowArray from non-CPU device")
+
         if self._data.n_arrays == 0:
             return c_array([], schema=self._data.schema).__arrow_c_array__(
                 requested_schema=requested_schema
@@ -113,6 +131,11 @@ class Array:
         raise ValueError(
             f"Can't export Array with {self._data.n_arrays} chunks to ArrowArray"
         )
+
+    @property
+    def device(self) -> CDevice:
+        """Get the device on which the buffers for this array are allocated."""
+        return self._device
 
     @cached_property
     def schema(self) -> Schema:
@@ -130,11 +153,11 @@ class Array:
         contiguous in memory.
         """
         for array in self._data.arrays:
-            yield Array(array)
+            yield Array(array, device=self._device)
 
     def chunk(self, i):
         """Extract a single contiguous Array from the underlying representation."""
-        return Array(self._data.array(i))
+        return Array(self._data.array(i), device=self._device)
 
     def to_pyiter(self) -> Iterable:
         """Iterate over the default Python representation of each element.
@@ -156,14 +179,18 @@ class Array:
         return len(self._data)
 
     def __getitem__(self, k) -> Scalar:
-        scalar = Scalar(self._data[k])
+        scalar = Scalar()
+        scalar._c_scalar = self._data[k]
         scalar._schema = self.schema
+        scalar._device = self._device
         return scalar
 
     def __iter__(self) -> Iterable[Scalar]:
         for c_scalar in self._data:
-            scalar = Scalar(c_scalar)
+            scalar = Scalar()
+            scalar._c_scalar = c_scalar
             scalar._schema = self.schema
+            scalar._device = self._device
             yield scalar
 
     def __repr__(self) -> str:
