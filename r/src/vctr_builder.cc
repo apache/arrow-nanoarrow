@@ -29,9 +29,11 @@
 
 #include "vctr_builder.h"
 #include "vctr_builder_base.h"
+#include "vctr_builder_int.h"
 #include "vctr_builder_list_of.h"
 #include "vctr_builder_primitive.h"
 #include "vctr_builder_rcrd.h"
+#include "vctr_builder_unspecified.h"
 
 // These conversions are the default R-native type guesses for
 // an array that don't require extra information from the ptype (e.g.,
