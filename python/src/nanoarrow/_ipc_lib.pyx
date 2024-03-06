@@ -75,7 +75,7 @@ cdef class PyInputStreamPrivate:
 
     # Needed for at least some implementations of readinto()
     def __len__(self):
-        return self.size_bytes
+        return self._size_bytes
 
     # Implement the buffer protocol so that this object can be used as
     # the argument to xxx.readinto(). This ensures that no extra copies
