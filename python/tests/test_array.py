@@ -27,7 +27,7 @@ def test_array_empty():
     assert len(array) == 0
     assert array.n_chunks == 0
     assert list(array.chunks) == []
-    with pytest.raises(IndexError, match="Index 0 out of range"):
+    with pytest.raises(IndexError):
         array.chunk(0)
 
     with na.c_array_stream(array) as stream:

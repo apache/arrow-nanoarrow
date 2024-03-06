@@ -1212,7 +1212,7 @@ cdef class CScalar:
     def __cinit__(self, CArray array, int64_t offset):
         array._assert_valid()
         if offset < 0 or offset >= array._ptr.length:
-            raise IndexError(f"Index out of range: {self._offset}")
+            raise IndexError(f"Index out of range: {offset}")
 
         self._array = array
         self._offset = offset
@@ -2253,58 +2253,20 @@ cdef class CArrayStream:
 cdef class CMaterializedArrayStream:
     cdef CSchema _schema
     cdef CBuffer _array_ends
-    cdef ArrowArray* _arrays
-    cdef int64_t _size_arrays
+    cdef list _arrays
     cdef int64_t _capacity_arrays
     cdef int64_t _total_length
 
     def __cinit__(self):
-        self._arrays = NULL
-        self._size_arrays = 0
-        self._capacity_arrays = 0
+        self._arrays = []
         self._total_length = 0
         self._schema = CSchema.allocate()
-
         self._array_ends = CBuffer.empty()
         cdef int code = ArrowBufferAppendInt64(self._array_ends._ptr, 0)
         Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
 
     cdef _finalize(self):
         self._array_ends._set_data_type(NANOARROW_TYPE_INT64)
-
-    cdef int _reserve(self, int64_t additional_arrays) noexcept nogil:
-        cdef int64_t required_capacity_arrays = self._size_arrays + additional_arrays
-        if self._capacity_arrays >= required_capacity_arrays:
-            return NANOARROW_OK
-
-        if required_capacity_arrays < (self._size_arrays * 2):
-            required_capacity_arrays = self._size_arrays * 2
-
-        cdef ArrowArray* new_arrays = <ArrowArray*>ArrowMalloc(
-            required_capacity_arrays * sizeof(ArrowArray)
-        )
-        if new_arrays == NULL:
-            return ENOMEM
-
-        if self._size_arrays > 0:
-            memcpy(new_arrays, self._arrays, self._size_arrays * sizeof(ArrowArray))
-            ArrowFree(self._arrays)
-
-        self._arrays = new_arrays
-        self._capacity_arrays = required_capacity_arrays
-
-        return ArrowBufferReserve(
-            self._array_ends._ptr,
-            additional_arrays * sizeof(int64_t)
-            )
-
-    def __dealloc__(self):
-        for i in range(self._size_arrays):
-            if self._arrays[i].release != NULL:
-                ArrowArrayRelease(&(self._arrays[i]))
-
-        if self._arrays != NULL:
-            ArrowFree(self._arrays)
 
     @property
     def schema(self):
@@ -2338,45 +2300,39 @@ cdef class CMaterializedArrayStream:
             if kint < 0 or kint >= self._total_length:
                 raise IndexError(f"Index {kint} is out of range")
 
-            array_i = self._resolve_chunk(sorted_offsets, kint, 0, self._size_arrays)
+            array_i = self._resolve_chunk(sorted_offsets, kint, 0, len(self._arrays))
             kint -= sorted_offsets[array_i]
-            return CScalar(self.array(array_i), kint)
+            return CScalar(self._arrays[array_i], kint)
 
         raise NotImplementedError("index with slice")
 
     def __len__(self):
-        return self._array_ends[self._size_arrays]
+        return self._array_ends[len(self._arrays)]
 
     def __iter__(self):
-        for array_i in range(self._size_arrays):
-            c_array = self.array(array_i)
+        for c_array in self._arrays:
             for item_i in range(c_array.length):
                 yield CScalar(c_array, item_i)
 
     def array(self, int64_t i):
-        if i < 0 or i >= self._size_arrays:
-            raise IndexError(f"Index {i} out of range")
-        cdef CArray out = CArray.allocate(self._schema)
-        c_array_shallow_copy(self, &(self._arrays[i]), out._ptr)
-        return out
+        return self._arrays[i]
 
     @property
     def n_arrays(self):
-        return self._size_arrays
+        return len(self._arrays)
 
     @property
     def arrays(self):
-        for i in range(self._size_arrays):
-            yield self.array(i)
+        return iter(self._arrays)
 
     def __arrow_c_stream__(self, requested_schema=None):
-        # When an array stream from iterable is supported, that should be used here
+        # When an array stream from iterable is supported, that could be used here
         # to avoid unnessary shallow copies.
-        stream = CArrayStream.from_array_list(list(self.arrays), self._schema, move=False)
+        stream = CArrayStream.from_array_list(self._arrays, self._schema, move=False)
         return stream.__arrow_c_stream__(requested_schema=requested_schema)
 
     @staticmethod
-    def from_c_array(CArray array, move=False):
+    def from_c_array(CArray array):
         array._assert_valid()
 
         cdef CMaterializedArrayStream out = CMaterializedArrayStream()
@@ -2386,17 +2342,11 @@ cdef class CMaterializedArrayStream:
             out._finalize()
             return out
 
-        out._reserve(1)
+        out._arrays.append(array)
         out._total_length += array._ptr.length
         cdef int code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
         Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
 
-        if move:
-            ArrowArrayMove(array._ptr, out._arrays)
-        else:
-            c_array_shallow_copy(array._base, array._ptr, out._arrays)
-
-        out._size_arrays = 1
         out._finalize()
         return out
 
@@ -2404,34 +2354,20 @@ cdef class CMaterializedArrayStream:
     def from_c_array_stream(CArrayStream stream):
         stream._assert_valid()
         cdef CMaterializedArrayStream out = CMaterializedArrayStream()
-
-        cdef Error error = Error()
         cdef int code
-        cdef ArrowArray* next_array
-        with nogil:
-            while True:
-                code = out._reserve(1)
-                if code != NANOARROW_OK:
-                    break
+        cdef CArray array
 
-                next_array = out._arrays + out._size_arrays
-                code = ArrowArrayStreamGetNext(stream._ptr, next_array, &error.c_error)
-                if code != NANOARROW_OK or next_array.release == NULL:
-                    break
+        with stream:
+            for array in stream:
+                if array._ptr.length == 0:
+                    continue
 
-                if next_array.length > 0:
-                    out._size_arrays += 1
-                    out._total_length += next_array.length
-                    code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
-                    if code != NANOARROW_OK:
-                        break
-                else:
-                    ArrowArrayRelease(next_array)
+                out._total_length += array._ptr.length
+                code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+                Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+                out._arrays.append(array)
 
-        error.raise_message_not_ok("ArrowArrayStreamGetNext()", code)
-
-        code = ArrowArrayStreamGetSchema(stream._ptr, out._schema._ptr, &error.c_error)
-        error.raise_message_not_ok("ArrowArrayStreamGetSchema()", code)
+            out._schema = stream._get_cached_schema()
 
         out._finalize()
         return out
