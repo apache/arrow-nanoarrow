@@ -80,6 +80,11 @@ class Scalar:
 
 
 class Array:
+    """The Array is nanoarrow's high-level in-memory array representation whose
+    scope maps to that of a fully-consumed ArrowArrayStream in the Arrow C Data
+    interface. See :func:`array` for class details.
+    """
+
     def __init__(self, obj, schema=None) -> None:
         if isinstance(obj, Array) and schema is None:
             self._data = obj._data
@@ -111,19 +116,41 @@ class Array:
 
     @cached_property
     def schema(self) -> Schema:
+        """Get the schema (data type) of this Array"""
         return Schema(self._data.schema)
 
     @property
     def n_chunks(self) -> int:
+        """Get the number of chunks in the underlying representation of this Array."""
         return self._data.n_arrays
 
     @property
     def chunks(self) -> Iterable:
+        """Iterate over Arrays in the underlying representation that are
+        contiguous in memory.
+        """
         for array in self._data.arrays:
             yield Array(array)
 
     def chunk(self, i):
+        """Extract a single contiguous Array from the underlying representation."""
         return Array(self._data.array(i))
+
+    def to_pyiter(self) -> Iterable:
+        """Iterate over the default Python representation of each element.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.array([1, 2, 3], na.int32())
+        >>> for item in array.to_pyiter():
+        ...     print(item)
+        1
+        2
+        3
+        """
+        return iterator(self)
 
     def __len__(self) -> int:
         return len(self._data)
