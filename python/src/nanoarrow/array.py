@@ -25,6 +25,30 @@ from nanoarrow.schema import Schema
 
 
 class Scalar:
+    """Generic wrapper around an :class:`Array` element
+
+    This class exists to provide a generic implementation of
+    array-like indexing for the :class:`Array`. These objects
+    can currently only be created by extracting an element from
+    an :class:`Array`.
+
+    Note that it is rarely efficient to iterate over Scalar objects:
+    use the iterators in :mod:`nanoarrow.iterator` to more effectively
+    iterate over an :class:`Array`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> array = na.array([1, 2, 3], na.int32())
+    >>> array[0]
+    Scalar<INT32> 1
+    >>> array[0].as_py()
+    1
+    >>> array[0].schema
+    Schema(INT32)
+    """
+
     def __init__(self, obj):
         if not isinstance(obj, CScalar):
             raise TypeError(
@@ -35,11 +59,13 @@ class Scalar:
 
     @property
     def schema(self) -> Schema:
+        """Get the schema (data type) of this scalar"""
         if self._schema is None:
             self._schema = Schema(self._c_scalar.schema)
         return self._schema
 
     def as_py(self):
+        """Get the Python object representation of this scalar"""
         return next(iterator(self._c_scalar))
 
     def __repr__(self) -> str:
@@ -133,3 +159,36 @@ class Array:
             lines.append(f"...and {n_more_items} more item")
 
         return "\n".join(lines)
+
+
+def array(obj, schema=None) -> Array:
+    """Create a nanoarrow Array
+
+    The :class:`Array` class is nanoarrow's high-level in-memory array
+    representation, encompasing the role of PyArrow's ``Array``,
+    ``ChunkedArray``, ``RecordBatch``, and ``Table``. This scope maps
+    to that of a fully-consumed ``ArrowArrayStream`` as represented by
+    the Arrow C Stream interface.
+
+    Note that an :class:`Array` is not necessarily contiguous in memory (i.e.,
+    it may consist of zero or more ``ArrowArray``s).
+
+    Parameters
+    ----------
+    obj : array or array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.array([1, 2, 3], na.int32())
+    Array<INT32>[3]
+    1
+    2
+    3
+    """
+    return Array(obj, schema=schema)

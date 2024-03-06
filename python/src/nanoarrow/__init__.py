@@ -73,6 +73,7 @@ from nanoarrow.schema import (
     decimal256,
     struct,
 )
+from nanoarrow.array import array, Array
 from nanoarrow._version import __version__  # noqa: F401
 
 # Helps Sphinx automatically populate an API reference section
@@ -123,4 +124,6 @@ __all__ = [
     "uint32",
     "uint64",
     "uint8",
+    "Array",
+    "array",
 ]
