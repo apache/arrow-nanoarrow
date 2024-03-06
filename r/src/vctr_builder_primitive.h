@@ -24,13 +24,6 @@
 
 #include "vctr_builder_base.h"
 
-class DblBuilder : public VctrBuilder {
- public:
-  explicit DblBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_DBL, ptype_sexp) {}
-
-  SEXP GetPtype() override { return Rf_allocVector(REALSXP, 0); }
-};
-
 class LglBuilder : public VctrBuilder {
  public:
   explicit LglBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_LGL, ptype_sexp) {}
