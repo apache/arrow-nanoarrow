@@ -30,6 +30,7 @@
 #include "vctr_builder.h"
 #include "vctr_builder_base.h"
 #include "vctr_builder_dbl.h"
+#include "vctr_builder_lgl.h"
 #include "vctr_builder_int.h"
 #include "vctr_builder_list_of.h"
 #include "vctr_builder_primitive.h"
