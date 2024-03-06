@@ -129,7 +129,7 @@ class Integer64Builder : public VctrBuilder {
     }
 
     if (n_bad_values > 0) {
-      warn_lossy_conversion(n_bad_values, "outside integer64 range set to NA");
+      WarnLossyConvert("outside integer64 range set to NA", n_bad_values);
     }
 
     return NANOARROW_OK;
