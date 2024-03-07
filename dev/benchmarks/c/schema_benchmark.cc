@@ -17,7 +17,7 @@
 
 #include <benchmark/benchmark.h>
 
-#include "nanoarrow.hpp"
+#include <nanoarrow/nanoarrow.hpp>
 
 /// \defgroup nanoarrow-benchmark-schema Schema-related benchmarks
 ///
