@@ -30,6 +30,13 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
 endif()
 
 option(NANOARROW_BENCHMARK_VERSION "nanoarrow version to benchmark" OFF)
+option(NANOARROW_BENCHMARK_SOURCE_DIR "path to a nanoarrow source checkout to benchmark" OFF)
+
+# Avoids a warning about timestamps on downloaded files (prefer new policy
+# if available))
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
+  cmake_policy(SET CMP0135 NEW)
+endif()
 
 # Use google/benchmark
 set(BENCHMARK_ENABLE_TESTING OFF)
@@ -39,20 +46,30 @@ fetchcontent_declare(benchmark
 )
 fetchcontent_makeavailable(benchmark)
 
-if(NANOARROW_BENCHMARK_VERSION)
-  # https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.4.0.zip
+if(NANOARROW_BENCHMARK_SOURCE)
+  fetchcontent_declare(nanoarrow SOURCE_DIR ${NANOARROW_BENCHMARK_SOURCE_DIR})
+  fetchcontent_makeavailable(nanoarrow)
+elseif(NANOARROW_BENCHMARK_VERSION)
   fetchcontent_declare(nanoarrow
                        URL https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-${NANOARROW_BENCHMARK_VERSION}.zip
   )
   fetchcontent_makeavailable(nanoarrow)
 endif()
 
+# Check that at least one option was specified. This also lets the top-level
+# CMakeLists.txt use add_subdirectory() for slightly easier benchmark development.
 if(NOT TARGET nanoarrow)
-
+  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_XXX option?")
 endif()
 
+# Add + link tests
 add_executable(schema_benchmark c/schema_benchmark.cc)
 add_executable(array_benchmark c/array_benchmark.cc)
 
 target_link_libraries(schema_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
 target_link_libraries(array_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
+
+# This lets all benchmarks run via ctest -VV when this is the top-level project
+include(CTest)
+add_test(NAME schema_benchmark COMMAND schema_benchmark)
+add_test(NAME array_benchmark COMMAND array_benchmark)

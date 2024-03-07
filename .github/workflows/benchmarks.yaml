@@ -25,9 +25,8 @@ on:
     branches:
       - main
     paths:
-      - 'CMakeLists.txt'
       - '.github/workflows/benchmarks.yaml'
-      - 'src/**/*_benchmark.cc'
+      - 'dev/benchmarks/**'
 
 jobs:
   benchmarks:
@@ -37,16 +36,26 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Build nanoarrow
+    # Ensures benchmarks can build + run against this commit
+    - name: Build C benchmarks
       run: |
         mkdir build && cd build
-        cmake .. -DNANOARROW_BUILD_BENCHMARKS=ON -DCMAKE_BUILD_TYPE=Release
+        cmake ../dev/benchmarks -DNANOARROW_BENCHMARK_SOURCE=${{ github.workspace }}
         cmake --build .
+        ctest -VV
 
-    - name: Run benchmarks
+    # Ensures benchmarks can build + run against 0.4.0
+    - name: Build and run C benchmarks (version 0.4.0)
       run: |
-        cd build
-        for f in $(ls | grep -e "_benchmark"); do
-          echo "::group::$(basename ${f})"
-          ./${f}
-        done
+        mkdir build-0.4.0 && cd build-0.4.0
+        cmake ../dev/benchmarks -DNANOARROW_BENCHMARK_VERSION=0.4.0
+        cmake --build .
+        ctest -VV
+
+    # Ensures benchmarks can build + run against 0.3.0
+    - name: Build and run C benchmarks (version 0.3.0)
+      run: |
+        mkdir build-0.3.0 && cd build-0.3.0
+        cmake ../dev/benchmarks -DNANOARROW_BENCHMARK_VERSION=0.3.0
+        cmake --build .
+        ctest -VV
