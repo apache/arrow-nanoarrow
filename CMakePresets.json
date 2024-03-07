@@ -9,17 +9,27 @@
         {
             "name": "default",
             "displayName": "Default Config",
-            "cacheVariables": {}
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
         },
         {
             "name": "default-with-tests",
-            "inherits": [
-                "default"
-            ],
+            "inherits": ["default"],
             "displayName": "Default with tests",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "NANOARROW_BUILD_TESTS": "ON"
+            }
+        },
+        {
+            "name": "default-with-benchmarks",
+            "inherits": ["default"],
+            "displayName": "Default with benchmarks",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "NANOARROW_BUILD_BENCHMARKS": "ON"
             }
         }
     ]
