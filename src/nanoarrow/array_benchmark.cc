@@ -104,32 +104,32 @@ static void BaseArrayViewGetIntUnsafe(benchmark::State& state, double prop_null 
 }
 
 /// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int8 array
-static void BM_ArrayViewGetIntUnsafeInt8(benchmark::State& state) {
+static void BenchmarkArrayViewGetIntUnsafeInt8(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int8_t, NANOARROW_TYPE_INT8>(state);
 }
 
 /// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int16 array
-static void BM_ArrayViewGetIntUnsafeInt16(benchmark::State& state) {
+static void BenchmarkArrayViewGetIntUnsafeInt16(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int16_t, NANOARROW_TYPE_INT16>(state);
 }
 
 /// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int32 array
-static void BM_ArrayViewGetIntUnsafeInt32(benchmark::State& state) {
+static void BenchmarkArrayViewGetIntUnsafeInt32(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int32_t, NANOARROW_TYPE_INT32>(state);
 }
 
 /// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int64 array
-static void BM_ArrayViewGetIntUnsafeInt64(benchmark::State& state) {
+static void BenchmarkArrayViewGetIntUnsafeInt64(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int64_t, NANOARROW_TYPE_INT64>(state);
 }
 
 /// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int64 array (checking for nulls)
-static void BM_ArrayViewGetIntUnsafeInt64CheckNull(benchmark::State& state) {
+static void BenchmarkArrayViewGetIntUnsafeInt64CheckNull(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int64_t, NANOARROW_TYPE_INT64>(state, 0.2);
 }
 
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt8);
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt16);
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt32);
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt64);
-BENCHMARK(BM_ArrayViewGetIntUnsafeInt64CheckNull);
+BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt8);
+BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt16);
+BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt32);
+BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt64);
+BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt64CheckNull);

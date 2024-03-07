@@ -40,9 +40,9 @@ static ArrowErrorCode SchemaInitStruct(struct ArrowSchema* schema, int64_t n_col
 ///
 /// Simulates part of the process of creating a very wide table with a
 /// simple column type (integer).
-static void BM_SchemaInitWideStruct(benchmark::State& state);
+static void BenchmarkSchemaInitWideStruct(benchmark::State& state);
 
-static void BM_SchemaInitWideStruct(benchmark::State& state) {
+static void BenchmarkSchemaInitWideStruct(benchmark::State& state) {
   struct ArrowSchema schema;
 
   int64_t n_columns = 10000;
@@ -55,14 +55,14 @@ static void BM_SchemaInitWideStruct(benchmark::State& state) {
   state.SetItemsProcessed(n_columns * state.iterations());
 }
 
-BENCHMARK(BM_SchemaInitWideStruct);
+BENCHMARK(BenchmarkSchemaInitWideStruct);
 
 /// \brief Benchmark ArrowSchema parsing for very wide tables
 ///
 /// Simulates part of the process of consuming a very wide table. Typically
 /// the ArrowSchemaViewInit() is done by ArrowArrayViewInit() but uses a
 /// similar pattern.
-static void BM_SchemaViewInitWideStruct(benchmark::State& state);
+static void BenchmarkSchemaViewInitWideStruct(benchmark::State& state);
 
 static ArrowErrorCode SchemaViewInitChildren(struct ArrowSchema* schema,
                                              struct ArrowError* error) {
@@ -75,7 +75,7 @@ static ArrowErrorCode SchemaViewInitChildren(struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
-static void BM_SchemaViewInitWideStruct(benchmark::State& state) {
+static void BenchmarkSchemaViewInitWideStruct(benchmark::State& state) {
   struct ArrowSchema schema;
   struct ArrowError error;
 
@@ -90,6 +90,6 @@ static void BM_SchemaViewInitWideStruct(benchmark::State& state) {
   ArrowSchemaRelease(&schema);
 }
 
-BENCHMARK(BM_SchemaViewInitWideStruct);
+BENCHMARK(BenchmarkSchemaViewInitWideStruct);
 
 /// @}
