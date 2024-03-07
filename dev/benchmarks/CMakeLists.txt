@@ -30,7 +30,8 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
 endif()
 
 option(NANOARROW_BENCHMARK_VERSION "nanoarrow version to benchmark" OFF)
-option(NANOARROW_BENCHMARK_SOURCE_DIR "path to a nanoarrow source checkout to benchmark" OFF)
+option(NANOARROW_BENCHMARK_SOURCE_DIR "path to a nanoarrow source checkout to benchmark"
+       OFF)
 
 # Avoids a warning about timestamps on downloaded files (prefer new policy
 # if available))
@@ -59,7 +60,8 @@ endif()
 # Check that at least one option was specified. This also lets the top-level
 # CMakeLists.txt use add_subdirectory() for slightly easier benchmark development.
 if(NOT TARGET nanoarrow)
-  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_XXX option?")
+  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_XXX option?"
+  )
 endif()
 
 # Add + link tests
