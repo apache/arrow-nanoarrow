@@ -47,7 +47,7 @@ fetchcontent_declare(benchmark
 )
 fetchcontent_makeavailable(benchmark)
 
-if(NANOARROW_BENCHMARK_SOURCE)
+if(NANOARROW_BENCHMARK_SOURCE_DIR)
   fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_DIR}")
   fetchcontent_makeavailable(nanoarrow)
 elseif(NANOARROW_BENCHMARK_VERSION)
@@ -60,7 +60,7 @@ endif()
 # Check that at least one option was specified. This also lets the top-level
 # CMakeLists.txt use add_subdirectory() for slightly easier benchmark development.
 if(NOT TARGET nanoarrow)
-  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_XXX option?"
+  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_XXX option?)"
   )
 endif()
 
@@ -73,5 +73,8 @@ target_link_libraries(array_benchmark PRIVATE nanoarrow benchmark::benchmark_mai
 
 # This lets all benchmarks run via ctest -VV when this is the top-level project
 include(CTest)
-add_test(NAME schema_benchmark COMMAND schema_benchmark)
-add_test(NAME array_benchmark COMMAND array_benchmark)
+enable_testing()
+add_test(NAME schema_benchmark COMMAND schema_benchmark
+                                       --benchmark_out=schema_benchmark.json)
+add_test(NAME array_benchmark COMMAND array_benchmark
+                                      --benchmark_out=array_benchmark.json)

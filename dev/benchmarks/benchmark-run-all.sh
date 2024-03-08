@@ -15,30 +15,42 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: benchmarks
+set -e
+set -o pipefail
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/benchmarks.yaml'
-      - 'dev/benchmarks/**'
+if [ ${VERBOSE:-0} -gt 0 ]; then
+  set -x
+fi
 
-permissions:
-  contents: read
+benchmarks_source_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+build_dir="$1"
 
-jobs:
-  benchmarks:
+if [ -z "${CMAKE_BIN}" ]; then
+  CMAKE_BIN=cmake
+fi
 
-    runs-on: ubuntu-latest
+if [ -z "${build_dir}" ]; then
+  build_dir=build
+fi
 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Run benchmarks
-      run: |
-        cd dev/benchmarks
-        ./benchmark-run-all.sh
+presets=$("${CMAKE_BIN}" --list-presets | grep -e " - " | sed -e "s/^.* //")
+pushd "${build_dir}"
+for preset in ${presets}; do
+    echo "::group::Build ${preset} benchmarks"
+    if [ ! -d ${preset} ]; then
+        mkdir ${preset}
+    fi
+
+    pushd ${preset}
+    cmake -S "${benchmarks_source_dir}" --preset ${preset}
+    cmake --build .
+    popd
+done
+
+for preset in ${presets}; do
+    echo "::group::Run ${preset} benchmarks"
+    pushd ${preset}
+    ctest -VV
+    popd
+done
+popd

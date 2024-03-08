@@ -33,16 +33,6 @@
             "cacheVariables": {
                 "NANOARROW_BENCHMARK_VERSION": "0.4.0"
             }
-        },
-        {
-            "name": "v0.3.0",
-            "inherits": [
-                "base"
-            ],
-            "displayName": "v0.3.0",
-            "cacheVariables": {
-                "NANOARROW_BENCHMARK_VERSION": "0.3.0"
-            }
         }
     ]
 }
