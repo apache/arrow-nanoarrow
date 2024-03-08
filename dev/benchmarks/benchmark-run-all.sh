@@ -29,11 +29,16 @@ if [ -z "${CMAKE_BIN}" ]; then
   CMAKE_BIN=cmake
 fi
 
+# Default build directory is build/ relative to this script
 if [ -z "${build_dir}" ]; then
-  build_dir=build
+  build_dir="${benchmarks_source_dir}/build"
 fi
 
+# List the build presets. Build presets are the canonical source for
+# nanoarrow configurations supported by these benchmarks.
 presets=$("${CMAKE_BIN}" --list-presets | grep -e " - " | sed -e "s/^.* //")
+
+# Configure/build all of them (lazily)
 pushd "${build_dir}"
 for preset in ${presets}; do
     echo "::group::Build ${preset} benchmarks"
@@ -47,6 +52,8 @@ for preset in ${presets}; do
     popd
 done
 
+# Run the benchmarks. This will generate a *_benchmark.json for each
+# benchmark that was run.
 for preset in ${presets}; do
     echo "::group::Run ${preset} benchmarks"
     pushd ${preset}
