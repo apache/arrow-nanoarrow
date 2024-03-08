@@ -48,7 +48,7 @@ fetchcontent_declare(benchmark
 fetchcontent_makeavailable(benchmark)
 
 if(NANOARROW_BENCHMARK_SOURCE)
-  fetchcontent_declare(nanoarrow SOURCE_DIR ${NANOARROW_BENCHMARK_SOURCE_DIR})
+  fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_DIR}")
   fetchcontent_makeavailable(nanoarrow)
 elseif(NANOARROW_BENCHMARK_VERSION)
   fetchcontent_declare(nanoarrow

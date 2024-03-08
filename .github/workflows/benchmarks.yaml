@@ -40,7 +40,7 @@ jobs:
     - name: Build C benchmarks
       run: |
         mkdir build && cd build
-        cmake ../dev/benchmarks -DNANOARROW_BENCHMARK_SOURCE=${{ github.workspace }}
+        cmake ../dev/benchmarks --preset local
         cmake --build .
         ctest -VV
 
@@ -48,7 +48,7 @@ jobs:
     - name: Build and run C benchmarks (version 0.4.0)
       run: |
         mkdir build-0.4.0 && cd build-0.4.0
-        cmake ../dev/benchmarks -DNANOARROW_BENCHMARK_VERSION=0.4.0
+        cmake ../dev/benchmarks --preset v0.4.0
         cmake --build .
         ctest -VV
 
@@ -56,6 +56,6 @@ jobs:
     - name: Build and run C benchmarks (version 0.3.0)
       run: |
         mkdir build-0.3.0 && cd build-0.3.0
-        cmake ../dev/benchmarks -DNANOARROW_BENCHMARK_VERSION=0.3.0
+        cmake ../dev/benchmarks --preset v0.3.0
         cmake --build .
         ctest -VV

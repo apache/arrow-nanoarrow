@@ -7,11 +7,41 @@
     },
     "configurePresets": [
         {
-            "name": "default",
-            "displayName": "Default",
+            "name": "base",
+            "hidden": true,
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "local",
+            "inherits": [
+                "base"
+            ],
+            "displayName": "local",
+            "cacheVariables": {
+                "NANOARROW_BENCHMARK_SOURCE_DIR": "${sourceDir}/../.."
+            }
+        },
+        {
+            "name": "v0.4.0",
+            "inherits": [
+                "base"
+            ],
+            "displayName": "v0.4.0",
+            "cacheVariables": {
+                "NANOARROW_BENCHMARK_VERSION": "0.4.0"
+            }
+        },
+        {
+            "name": "v0.3.0",
+            "inherits": [
+                "base"
+            ],
+            "displayName": "v0.3.0",
+            "cacheVariables": {
+                "NANOARROW_BENCHMARK_VERSION": "0.3.0"
             }
         }
     ]
