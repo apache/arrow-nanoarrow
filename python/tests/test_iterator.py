@@ -16,7 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow.iterator import iterator, itertuples
+from nanoarrow.iterator import iterator, iterrepr, itertuples
 
 import nanoarrow as na
 
@@ -313,3 +313,227 @@ def test_iterator_nullable_dictionary():
 
     sliced = array[1:]
     assert list(iterator(sliced)) == ["cde", "ab", "def", "cde", None]
+
+
+def test_iterrepr_primitive():
+    array = na.c_array_from_buffers(
+        na.int32(),
+        4,
+        buffers=[
+            na.c_buffer([1, 1, 1, 0], na.bool()),
+            na.c_buffer([12345, 5678, 9012, 0], na.int32()),
+        ],
+    )
+    assert list(iterrepr(array)) == ["12345", "5678", "9012", "None"]
+    assert list(iterrepr(array, max_width=4)) == ["1...", "5678", "9012", "None"]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == ["5678", "9012", "None"]
+
+
+def test_iterrepr_string():
+    array = na.c_array_from_buffers(
+        na.string(),
+        3,
+        buffers=[
+            na.c_buffer([1, 1, 0], na.bool()),
+            na.c_buffer([0, 5, 11, 11], na.int32()),
+            b"abcdefghijk",
+        ],
+    )
+
+    assert list(iterrepr(array)) == ["'abcde'", "'fghijk'", "None"]
+    assert list(iterrepr(array, max_width=7)) == ["'abcde'", "'fgh...", "None"]
+    assert list(iterrepr(array, max_width=4)) == ["'...", "'...", "None"]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == ["'fghijk'", "None"]
+
+
+def test_iterrepr_string_multibyte():
+    array = na.c_array_from_buffers(
+        na.string(),
+        3,
+        buffers=[
+            na.c_buffer([1, 1, 0], na.bool()),
+            na.c_buffer([0, 5 * 4, 11 * 4, 11 * 4], na.int32()),
+            # A 4-byte valid unicode character
+            b"\xf0\x9f\x92\xa9" * 11,
+        ],
+    )
+
+    s1 = b"\xf0\x9f\x92\xa9".decode()
+
+    assert list(iterrepr(array, max_width=3)) == ["...", "...", "..."]
+    assert list(iterrepr(array, max_width=5)) == [
+        "'" + s1 + "...",
+        "'" + s1 + "...",
+        "None",
+    ]
+    assert list(iterrepr(array, max_width=7)) == [
+        repr(s1 * 5),
+        "'" + s1 * 3 + "...",
+        "None",
+    ]
+    assert list(iterrepr(array, max_width=8)) == [repr(s1 * 5), repr(s1 * 6), "None"]
+
+
+def test_iterrepr_binary():
+    array = na.c_array_from_buffers(
+        na.binary(),
+        3,
+        buffers=[
+            na.c_buffer([1, 1, 0], na.bool()),
+            na.c_buffer([0, 5, 11, 11], na.int32()),
+            b"abcdefghijk",
+        ],
+    )
+
+    assert list(iterrepr(array)) == [repr(b"abcde"), repr(b"fghijk"), repr(None)]
+    assert list(iterrepr(array, max_width=8)) == ["b'abcde'", "b'fgh...", "None"]
+    assert list(iterrepr(array, max_width=5)) == ["b'...", "b'...", "None"]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [repr(b"fghijk"), repr(None)]
+
+
+def test_iterrepr_struct():
+    array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        length=4,
+        buffers=[na.c_buffer([True, True, True, False], na.bool())],
+        children=[
+            na.c_array([1, 2, 3, 4], na.int32()),
+            na.c_array([1, 0, 1, 0], na.bool()),
+        ],
+    )
+
+    assert list(iterrepr(array)) == [
+        "{'col1': 1, 'col2': True}",
+        "{'col1': 2, 'col2': False}",
+        "{'col1': 3, 'col2': True}",
+        "None",
+    ]
+
+    # Choose a max_width that results in an incomplete field name
+    assert list(iterrepr(array, max_width=17)) == [
+        "{'col1': 1, 'c...",
+        "{'col1': 2, 'c...",
+        "{'col1': 3, 'c...",
+        "None",
+    ]
+
+    # Choose a max_width that results in an incomplete value
+    assert list(iterrepr(array, max_width=24)) == [
+        "{'col1': 1, 'col2': T...",
+        "{'col1': 2, 'col2': F...",
+        "{'col1': 3, 'col2': T...",
+        "None",
+    ]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [
+        "{'col1': 2, 'col2': False}",
+        "{'col1': 3, 'col2': True}",
+        "None",
+    ]
+
+
+def test_iterrepr_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, None], [0], None]
+    array = pa.array(items)
+    assert list(iterrepr(array)) == [repr(item) for item in items]
+
+    assert list(iterrepr(array, max_width=8)) == [
+        "[1, 2...",
+        "[4, 5...",
+        "[7, 8...",
+        "[0]",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=9)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8,...",
+        "[0]",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=11)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, N...",
+        "[0]",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=12)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, None]",
+        "[0]",
+        "None",
+    ]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [repr(item) for item in items[1:]]
+
+
+def test_iterrepr_fixed_size_list():
+    pa = pytest.importorskip("pyarrow")
+    items = [[1, 2, 3], [4, 5, 6], [7, 8, None], None]
+    array = pa.array(items, pa.list_(pa.int64(), 3))
+    assert list(iterrepr(array)) == [repr(item) for item in items]
+
+    assert list(iterrepr(array, max_width=8)) == [
+        "[1, 2...",
+        "[4, 5...",
+        "[7, 8...",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=9)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8,...",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=11)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, N...",
+        "None",
+    ]
+
+    assert list(iterrepr(array, max_width=12)) == [
+        "[1, 2, 3]",
+        "[4, 5, 6]",
+        "[7, 8, None]",
+        "None",
+    ]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [repr(item) for item in items[1:]]
+
+
+def test_iterrepr_dictionary():
+    pa = pytest.importorskip("pyarrow")
+
+    items = ["ab", "cdefghij", "ab", "def", "cde", None]
+    array = pa.array(items).dictionary_encode()
+
+    assert list(iterrepr(array)) == [repr(item) for item in items]
+    assert list(iterrepr(array, max_width=9)) == [
+        "'ab'",
+        "'cdefg...",
+        "'ab'",
+        "'def'",
+        "'cde'",
+        "None",
+    ]
+
+    sliced = array[1:]
+    assert list(iterrepr(sliced)) == [repr(item) for item in items[1:]]
