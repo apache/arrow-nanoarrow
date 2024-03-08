@@ -34,6 +34,10 @@ if [ -z "${build_dir}" ]; then
   build_dir="${benchmarks_source_dir}/build"
 fi
 
+if [ ! -d "${build_dir}" ]; then
+  mkdir -p "${build_dir}"
+fi
+
 # List the build presets. Build presets are the canonical source for
 # nanoarrow configurations supported by these benchmarks.
 presets=$("${CMAKE_BIN}" --list-presets | grep -e " - " | sed -e "s/^.* //")
