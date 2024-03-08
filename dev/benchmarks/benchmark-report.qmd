@@ -1,0 +1,131 @@
+---
+title: "Benchmark Report"
+format: gfm
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(xml2)
+library(bench)
+
+knitr::opts_chunk$set(echo = FALSE, results = "hide")
+```
+
+```{r}
+presets <- jsonlite::read_json("CMakePresets.json", simplifyVector = TRUE)$configurePresets |> 
+  filter(is.na(hidden)) |> 
+  rename_all(~paste0("preset_", .))
+```
+
+```{r}
+benchmark_data <- tibble(
+  src = list.files("build", "_benchmark\\.json$", recursive = TRUE, full.names = TRUE),
+  content = map(src, jsonlite::read_json, simplifyVector = TRUE)
+) |> 
+  unnest_wider(content) |> 
+  select(-context) |> 
+  unnest_longer(benchmarks) |> 
+  unnest_wider(benchmarks) |> 
+  extract(src, "preset_name", "build/([^/]+)/")
+```
+
+```{r}
+groups <- tibble(
+  group_files = list.files(
+    "apidoc/xml",
+    "^group__.*?\\.xml$",
+    recursive = TRUE,
+    full.names = TRUE
+  ),
+  group_xml = map(group_files, ~xml_find_first(read_xml(.), "compounddef")),
+  group_id = group_xml |> 
+    map(xml_find_first, "compoundname") |> 
+    map_chr(xml_text),
+  group_title = group_xml |> 
+    map(xml_find_first, "title") |> 
+    map_chr(xml_text),
+  group_description = group_xml |> 
+    map(xml_find_all, "detaileddescription/para") |> 
+    map(xml_text) |> 
+    map_chr(paste, collapse = "\n\n"),
+  function_xml = group_xml |> 
+    map(xml_find_all, "//memberdef")
+)
+
+functions <- groups |> 
+  select(group_id, function_xml) |> 
+  mutate(function_xml = map(function_xml, map, identity)) |> 
+  unnest_longer(function_xml) |> 
+  mutate(
+    function_name = function_xml |> 
+      map(xml_find_first, "name") |> 
+      map_chr(xml_text),
+    function_brief = function_xml |> 
+      map(xml_find_all, "briefdescription/para") |> 
+      map(xml_text) |> 
+      map_chr(paste, collapse = "\n\n"),
+    function_description = function_xml |> 
+      map(xml_find_all, "detaileddescription/para") |> 
+      map(xml_text) |> 
+      map_chr(paste, collapse = "\n\n"),
+  )
+```
+
+## Summary
+
+```{r}
+#| results: markup
+
+benchmark_data |> 
+  arrange(name) |> 
+  transmute(
+    preset_name = as_factor(preset_name),
+    name = as_factor(name),
+    real_time = as_bench_time(paste0(real_time, time_unit)),
+    cpu_time = as_bench_time(paste0(cpu_time, time_unit)),
+  ) |> 
+  pivot_wider(names_from = preset_name, values_from = c(real_time, cpu_time)) |> 
+  mutate(
+    name = glue::glue("[{name}](#{tolower(name)})")
+  ) |> 
+  knitr::kable()
+```
+
+
+```{r}
+#| results: asis
+
+template_group <- "
+
+## {group_title}
+
+{group_description}
+
+{functions}
+"
+
+template_func <- "
+
+### {function_name}
+
+{function_brief}
+
+{function_description}
+"
+
+functions |> 
+  semi_join(benchmark_data, by = c("function_name" = "name")) |> 
+  mutate(
+    content = glue::glue(template_func)
+  ) |> 
+  group_by(group_id) |> 
+  summarise(functions = paste(content, collapse = "\n\n")) |> 
+  left_join(groups, by = "group_id") |> 
+  mutate(groups = glue::glue(template_group)) |> 
+  pull(groups) |> 
+  paste(collapse = "\n\n") |>
+  cat()
+```
+
+
+
