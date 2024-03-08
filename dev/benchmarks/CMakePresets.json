@@ -16,20 +16,22 @@
         },
         {
             "name": "local",
+            "displayName": "local",
+            "description": "Uses the nanoarrow C sources from this checkout.",
             "inherits": [
                 "base"
             ],
-            "displayName": "local",
             "cacheVariables": {
                 "NANOARROW_BENCHMARK_SOURCE_DIR": "${sourceDir}/../.."
             }
         },
         {
             "name": "v0.4.0",
+            "displayName": "v0.4.0",
+            "description": "Uses the nanoarrow C sources the 0.4.0 release.",
             "inherits": [
                 "base"
             ],
-            "displayName": "v0.4.0",
             "cacheVariables": {
                 "NANOARROW_BENCHMARK_VERSION": "0.4.0"
             }
