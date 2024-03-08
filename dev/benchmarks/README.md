@@ -19,4 +19,33 @@
 
 # Benchmarking nanoarrow
 
-This subdirectory contains benchmarks and tools to run them.
+This subdirectory contains benchmarks and tools to run them. This is currently
+only implemented for the C library but may expand to include the R and Python
+bindings. The structure is as follows:
+
+- Benchmarks are documented inline using [Doxygen](https://www.doxygen.nl/).
+- Configurations are CMake build presets, and CMake handles pulling a previous
+  or local nanoarrow using `FetchContent`. Benchmarks are run using `ctest`.
+- There is a bare-bones report written as a [Quarto](https://quarto.org)
+  document that renders to markdown.
+  
+You can run benchmarks for a single configuration (e.g., `local`) with:
+
+```shell
+mkdir build && cd build
+cmake .. --preset local
+cmake --build .
+ctest
+```
+
+The provided `benchmark-run-all.sh` creates (or reuses, if they are already
+present) build directories in the form `build/<preset>` for each preset
+and runs `ctest`.
+
+You can build a full report by running:
+
+```shell
+./benchmark-run-all.sh
+cd apidoc && doxygen && cd ..
+quarto render benchmark-report.qmd
+```
