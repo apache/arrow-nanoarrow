@@ -28,7 +28,7 @@ bindings. The structure is as follows:
   or local nanoarrow using `FetchContent`. Benchmarks are run using `ctest`.
 - There is a bare-bones report written as a [Quarto](https://quarto.org)
   document that renders to markdown.
-  
+
 You can run benchmarks for a single configuration (e.g., `local`) with:
 
 ```shell
