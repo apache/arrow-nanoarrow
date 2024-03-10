@@ -24,12 +24,6 @@
 
 #include "vctr_builder_base.h"
 
-class PosixctBuilder : public VctrBuilder {
- public:
-  explicit PosixctBuilder(SEXP ptype_sexp)
-      : VctrBuilder(VECTOR_TYPE_POSIXCT, ptype_sexp) {}
-};
-
 class OtherBuilder : public VctrBuilder {
  public:
   explicit OtherBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_OTHER, ptype_sexp) {}
