@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_NANOARROW_VCTR_BUILDER_DIFFTIME_H_INCLUDED
-#define R_NANOARROW_VCTR_BUILDER_DIFFTIME_H_INCLUDED
+#ifndef R_NANOARROW_VCTR_BUILDER_POSIXCT_H_INCLUDED
+#define R_NANOARROW_VCTR_BUILDER_POSIXCT_H_INCLUDED
 
 #define R_NO_REMAP
 #include <R.h>
@@ -24,43 +24,32 @@
 
 #include "vctr_builder_dbl.h"
 
-class DifftimeBuilder : public DblBuilder {
+class PosixctBuilder : public DblBuilder {
  public:
-  explicit DifftimeBuilder(SEXP ptype_sexp, VectorType vector_type = VECTOR_TYPE_DIFFTIME)
-      : DblBuilder(ptype_sexp, vector_type), scale_(0) {}
+  explicit PosixctBuilder(SEXP ptype_sexp)
+      : DblBuilder(ptype_sexp, VECTOR_TYPE_POSIXCT), scale_(0) {}
 
   ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
                       ArrowError* error) override {
     NANOARROW_RETURN_NOT_OK(DblBuilder::Init(schema, options, error));
+
+    ArrowTimeUnit time_unit = NANOARROW_TIME_UNIT_SECOND;
     switch (schema_view_.type) {
       case NANOARROW_TYPE_NA:
-      case NANOARROW_TYPE_TIME32:
-      case NANOARROW_TYPE_TIME64:
-      case NANOARROW_TYPE_DURATION:
+        break;
+      case NANOARROW_TYPE_DATE64:
+        time_unit = NANOARROW_TIME_UNIT_MILLI;
+        break;
+      case NANOARROW_TYPE_TIMESTAMP:
+        time_unit = schema_view_.time_unit;
         break;
       default:
         StopCantConvert();
     }
 
-    switch (GetTimeUnits(ptype_sexp_)) {
-      case R_TIME_UNIT_MINUTES:
-        scale_ = 1.0 / 60;
-        break;
-      case R_TIME_UNIT_HOURS:
-        scale_ = 1.0 / (60 * 60);
-        break;
-      case R_TIME_UNIT_DAYS:
-        scale_ = 1.0 / (60 * 60 * 24);
-        break;
-      case R_TIME_UNIT_WEEKS:
-        scale_ = 1.0 / (60 * 60 * 24 * 7);
-        break;
-      default:
-        scale_ = 1.0;
-        break;
-    }
+    scale_ = 1;
 
-    switch (schema_view_.time_unit) {
+    switch (time_unit) {
       case NANOARROW_TIME_UNIT_SECOND:
         scale_ *= 1;
         break;
@@ -96,30 +85,6 @@ class DifftimeBuilder : public DblBuilder {
 
  private:
   double scale_;
-
-  static RTimeUnits GetTimeUnits(SEXP ptype) {
-    SEXP units_attr = Rf_getAttrib(ptype, Rf_install("units"));
-    if (units_attr == R_NilValue || TYPEOF(units_attr) != STRSXP ||
-        Rf_length(units_attr) != 1) {
-      Rf_error("Expected difftime 'units' attribute of type character(1)");
-    }
-
-    const char* dst_units = Rf_translateCharUTF8(STRING_ELT(units_attr, 0));
-    if (strcmp(dst_units, "secs") == 0) {
-      return R_TIME_UNIT_SECONDS;
-    } else if (strcmp(dst_units, "mins") == 0) {
-      return R_TIME_UNIT_MINUTES;
-    } else if (strcmp(dst_units, "hours") == 0) {
-      return R_TIME_UNIT_HOURS;
-    } else if (strcmp(dst_units, "days") == 0) {
-      return R_TIME_UNIT_DAYS;
-    } else if (strcmp(dst_units, "weeks") == 0) {
-      return R_TIME_UNIT_WEEKS;
-    } else {
-      Rf_error("Unexpected value for difftime 'units' attribute");
-      return R_TIME_UNIT_SECONDS;
-    }
-  }
 };
 
 #endif
