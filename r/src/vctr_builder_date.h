@@ -15,35 +15,32 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_NANOARROW_VCTR_BUILDER_PRIMITIVE_H_INCLUDED
-#define R_NANOARROW_VCTR_BUILDER_PRIMITIVE_H_INCLUDED
+#ifndef R_NANOARROW_VCTR_BUILDER_DATE_H_INCLUDED
+#define R_NANOARROW_VCTR_BUILDER_DATE_H_INCLUDED
 
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
 
-#include "vctr_builder_base.h"
+#include "vctr_builder_dbl.h"
 
-class HmsBuilder : public VctrBuilder {
+class DateBuilder : public DblBuilder {
  public:
-  explicit HmsBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_HMS, ptype_sexp) {}
-};
+  explicit DateBuilder(SEXP ptype_sexp) : DblBuilder(ptype_sexp, VECTOR_TYPE_DATE) {}
 
-class PosixctBuilder : public VctrBuilder {
- public:
-  explicit PosixctBuilder(SEXP ptype_sexp)
-      : VctrBuilder(VECTOR_TYPE_POSIXCT, ptype_sexp) {}
-};
+  ArrowErrorCode Init(const ArrowSchema* schema, VctrBuilderOptions options,
+                      ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(DblBuilder::Init(schema, options, error));
+    switch (schema_view_.type) {
+      case NANOARROW_TYPE_NA:
+      case NANOARROW_TYPE_DATE32:
+        break;
+      default:
+        StopCantConvert();
+    }
 
-class DifftimeBuilder : public VctrBuilder {
- public:
-  explicit DifftimeBuilder(SEXP ptype_sexp)
-      : VctrBuilder(VECTOR_TYPE_DIFFTIME, ptype_sexp) {}
-};
-
-class OtherBuilder : public VctrBuilder {
- public:
-  explicit OtherBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_OTHER, ptype_sexp) {}
+    return NANOARROW_OK;
+  }
 };
 
 #endif

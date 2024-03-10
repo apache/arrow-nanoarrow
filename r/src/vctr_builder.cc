@@ -31,6 +31,7 @@
 #include "vctr_builder_base.h"
 #include "vctr_builder_blob.h"
 #include "vctr_builder_chr.h"
+#include "vctr_builder_date.h"
 #include "vctr_builder_dbl.h"
 #include "vctr_builder_int.h"
 #include "vctr_builder_int64.h"
