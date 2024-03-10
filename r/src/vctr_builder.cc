@@ -29,6 +29,7 @@
 
 #include "vctr_builder.h"
 #include "vctr_builder_base.h"
+#include "vctr_builder_blob.h"
 #include "vctr_builder_chr.h"
 #include "vctr_builder_dbl.h"
 #include "vctr_builder_int.h"
@@ -195,10 +196,10 @@ ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
       vector_type = VECTOR_TYPE_DATA_FRAME;
     } else if (Rf_inherits(ptype_sexp, "vctrs_unspecified")) {
       vector_type = VECTOR_TYPE_UNSPECIFIED;
-    } else if (Rf_inherits(ptype_sexp, "vctrs_list_of")) {
-      vector_type = VECTOR_TYPE_LIST_OF;
     } else if (Rf_inherits(ptype_sexp, "blob")) {
       vector_type = VECTOR_TYPE_BLOB;
+    } else if (Rf_inherits(ptype_sexp, "vctrs_list_of")) {
+      vector_type = VECTOR_TYPE_LIST_OF;
     } else if (Rf_inherits(ptype_sexp, "Date")) {
       vector_type = VECTOR_TYPE_DATE;
     } else if (Rf_inherits(ptype_sexp, "hms")) {
