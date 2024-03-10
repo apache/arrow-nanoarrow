@@ -33,6 +33,8 @@
 #include "vctr_builder_chr.h"
 #include "vctr_builder_date.h"
 #include "vctr_builder_dbl.h"
+#include "vctr_builder_difftime.h"
+#include "vctr_builder_hms.h"
 #include "vctr_builder_int.h"
 #include "vctr_builder_int64.h"
 #include "vctr_builder_lgl.h"
