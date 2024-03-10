@@ -24,11 +24,6 @@
 
 #include "vctr_builder_base.h"
 
-class BlobBuilder : public VctrBuilder {
- public:
-  explicit BlobBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_BLOB, ptype_sexp) {}
-};
-
 class DateBuilder : public VctrBuilder {
  public:
   explicit DateBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_DATE, ptype_sexp) {}
