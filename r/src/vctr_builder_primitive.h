@@ -24,17 +24,6 @@
 
 #include "vctr_builder_base.h"
 
-class ChrBuilder : public VctrBuilder {
- public:
-  explicit ChrBuilder(SEXP ptype_sexp)
-      : VctrBuilder(VECTOR_TYPE_CHR, ptype_sexp),
-        use_altrep_(VCTR_BUILDER_USE_ALTREP_DEFAULT) {}
-
-  SEXP GetPtype() override { return Rf_allocVector(STRSXP, 0); }
-
-  VctrBuilderUseAltrep use_altrep_;
-};
-
 class BlobBuilder : public VctrBuilder {
  public:
   explicit BlobBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_BLOB, ptype_sexp) {}
