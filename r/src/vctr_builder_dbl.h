@@ -29,7 +29,8 @@
 
 class DblBuilder : public VctrBuilder {
  public:
-  explicit DblBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_DBL, ptype_sexp) {}
+  explicit DblBuilder(SEXP ptype_sexp, VectorType vector_type = VECTOR_TYPE_DBL)
+      : VctrBuilder(vector_type, ptype_sexp) {}
 
   SEXP GetPtype() override { return Rf_allocVector(REALSXP, 0); }
 
@@ -123,8 +124,8 @@ class DblBuilder : public VctrBuilder {
     }
 
     if (n_bad_values > 0) {
-      warn_lossy_conversion(
-          n_bad_values, "may have incurred loss of precision in conversion to double()");
+      WarnLossyConvert("may have incurred loss of precision in conversion to double()",
+                       n_bad_values);
     }
 
     return NANOARROW_OK;
