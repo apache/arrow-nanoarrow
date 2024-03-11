@@ -191,7 +191,7 @@ class Array:
     def __repr__(self) -> str:
         width_hint = 80
         n_items = 10
-        lines = [f"Array<{self.schema.type.name}>[{len(self)}]"]
+        lines = [f"nanoarrow.Array<{self.schema.type.name}>[{len(self)}]"]
 
         for i, item in enumerate(self):
             if i >= n_items:
