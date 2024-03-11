@@ -43,7 +43,7 @@ class Scalar:
     >>> import nanoarrow as na
     >>> array = na.array([1, 2, 3], na.int32())
     >>> array[0]
-    Scalar<INT32> 1
+    Scalar<int32> 1
     >>> array[0].as_py()
     1
     >>> array[0].schema
@@ -252,7 +252,7 @@ def array(obj, schema=None) -> Array:
 
     >>> import nanoarrow as na
     >>> na.array([1, 2, 3], na.int32())
-    Array<INT32>[3]
+    nanoarrow.Array<int32>[3]
     1
     2
     3
