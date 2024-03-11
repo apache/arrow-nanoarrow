@@ -70,15 +70,27 @@ class Scalar:
         """Get the Python object representation of this scalar"""
         return next(iterator(self._c_scalar))
 
-    def __repr__(self) -> str:
-        width_hint = 80
-        prefix = f"Scalar<{self.schema.type.name}> "
+    def to_string(self, width_hint=80) -> str:
+        max_schema_chars = max(width_hint // 4, 10)
+        c_schema_string = self._c_scalar.schema._to_string(
+            recursive=True, max_chars=max_schema_chars + 1
+        )
+        if len(c_schema_string) > max_schema_chars:
+            c_schema_string = c_schema_string[: (max_schema_chars - 3)] + "..."
+
+        prefix = f"Scalar<{c_schema_string}> "
         width_hint -= len(prefix)
 
         py_repr = repr(self.as_py())
         if len(py_repr) > width_hint:
             py_repr = py_repr[: (width_hint - 3)] + "..."
         return f"{prefix}{py_repr}"
+
+    def __repr__(self) -> str:
+        return self.to_string()
+
+    def __arrow_c_array__(self, requested_schema=None):
+        return self._c_scalar.__arrow_c_array__(requested_schema=requested_schema)
 
 
 class Array:

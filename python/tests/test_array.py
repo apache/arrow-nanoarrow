@@ -88,9 +88,35 @@ def test_array_chunked():
         na.c_array(array)
 
 
+def test_scalar_to_array():
+    array = na.array([123456, 7890], na.int32())
+    scalar = scalar = array[1]
+    as_array = na.c_array(scalar)
+    assert as_array.offset == 1
+    assert as_array.length == 1
+    assert as_array.buffers == na.c_array(array).buffers
+
+    with pytest.raises(NotImplementedError):
+        na.c_array(scalar, na.string())
+
+
 def test_scalar_repr():
+    # Check a scalar that does not need truncation
     scalar = na.array([123456], na.int32())[0]
-    assert repr(scalar) == """Scalar<INT32> 123456"""
+    assert repr(scalar) == "Scalar<int32> 123456"
+
+    # Check a Scalar that needs truncation
+    c_array = na.c_array_from_buffers(
+        na.struct({f"col{i}": na.int32() for i in range(100)}),
+        length=1,
+        buffers=[None],
+        children=[na.c_array([123456], na.int32())] * 100,
+    )
+    scalar = na.array(c_array)[0]
+    assert (
+        repr(scalar)
+        == "Scalar<struct<col0: int3...> {'col0': 123456, 'col1': 123456, 'col2': 123456,..."
+    )
 
 
 def test_scalar_repr_long():
@@ -104,13 +130,17 @@ def test_array_repr():
     array = na.array(range(10), na.int32())
     one_to_ten = "\n".join(str(i) for i in range(10))
 
-    assert repr(array) == f"Array<INT32>[10]\n{one_to_ten}"
+    assert repr(array) == f"nanoarrow.Array<INT32>[10]\n{one_to_ten}"
 
     array = na.array(range(11), na.int32())
-    assert repr(array) == f"Array<INT32>[11]\n{one_to_ten}\n...and 1 more item"
+    assert (
+        repr(array) == f"nanoarrow.Array<INT32>[11]\n{one_to_ten}\n...and 1 more item"
+    )
 
     array = na.array(range(12), na.int32())
-    assert repr(array) == f"Array<INT32>[12]\n{one_to_ten}\n...and 2 more items"
+    assert (
+        repr(array) == f"nanoarrow.Array<INT32>[12]\n{one_to_ten}\n...and 2 more items"
+    )
 
 
 def test_array_repr_long():
