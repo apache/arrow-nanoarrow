@@ -93,9 +93,41 @@ class Scalar:
 
 
 class Array:
-    """The Array is nanoarrow's high-level in-memory array representation whose
+    """High-level in-memory Array representation
+
+    The Array is nanoarrow's high-level in-memory array representation whose
     scope maps to that of a fully-consumed ArrowArrayStream in the Arrow C Data
     interface. See :func:`array` for class details.
+
+    The :class:`Array` class is nanoarrow's high-level in-memory array
+    representation, encompasing the role of PyArrow's ``Array``,
+    ``ChunkedArray``, ``RecordBatch``, and ``Table``. This scope maps
+    to that of a fully-consumed ``ArrowArrayStream`` as represented by
+    the Arrow C Stream interface.
+
+    Note that an :class:`Array` is not necessarily contiguous in memory (i.e.,
+    it may consist of zero or more ``ArrowArray``s).
+
+    Parameters
+    ----------
+    obj : array or array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+    device : CDevice, optional
+        The device associated with the buffers held by this Array.
+        Defaults to the CPU device.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.Array([1, 2, 3], na.int32())
+    nanoarrow.Array<int32>[3]
+    1
+    2
+    3
     """
 
     def __init__(self, obj, schema=None, device=None) -> None:
@@ -226,36 +258,3 @@ class Array:
             lines.append(f"...and {n_more_items} more item")
 
         return "\n".join(lines)
-
-
-def array(obj, schema=None) -> Array:
-    """Create a nanoarrow Array
-
-    The :class:`Array` class is nanoarrow's high-level in-memory array
-    representation, encompasing the role of PyArrow's ``Array``,
-    ``ChunkedArray``, ``RecordBatch``, and ``Table``. This scope maps
-    to that of a fully-consumed ``ArrowArrayStream`` as represented by
-    the Arrow C Stream interface.
-
-    Note that an :class:`Array` is not necessarily contiguous in memory (i.e.,
-    it may consist of zero or more ``ArrowArray``s).
-
-    Parameters
-    ----------
-    obj : array or array stream-like
-        An array-like or array stream-like object as sanitized by
-        :func:`c_array_stream`.
-    schema : schema-like, optional
-        An optional schema, passed to :func:`c_array_stream`.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> na.array([1, 2, 3], na.int32())
-    nanoarrow.Array<int32>[3]
-    1
-    2
-    3
-    """
-    return Array(obj, schema=schema)
