@@ -20,8 +20,8 @@ from typing import Iterable, Tuple
 
 from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStream
 from nanoarrow.c_lib import c_array, c_array_stream
-from nanoarrow.schema import Schema
 from nanoarrow.iterator import iterator, itertuples
+from nanoarrow.schema import Schema
 
 from nanoarrow import _repr_utils
 
