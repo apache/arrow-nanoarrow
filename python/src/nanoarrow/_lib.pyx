@@ -51,7 +51,6 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
-from functools import cached_property
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
@@ -2254,7 +2253,6 @@ cdef class CMaterializedArrayStream:
     cdef CSchema _schema
     cdef CBuffer _array_ends
     cdef list _arrays
-    cdef int64_t _capacity_arrays
     cdef int64_t _total_length
 
     def __cinit__(self):
