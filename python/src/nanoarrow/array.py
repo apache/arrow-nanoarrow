@@ -16,12 +16,12 @@
 # under the License.
 
 from functools import cached_property
-from typing import Iterable
+from typing import Iterable, Tuple
 
 from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStream
 from nanoarrow.c_lib import c_array, c_array_stream
-from nanoarrow.iterator import iterator
 from nanoarrow.schema import Schema
+from nanoarrow.iterator import iterator, itertuples
 
 from nanoarrow import _repr_utils
 
@@ -185,33 +185,9 @@ class Array:
         """Get the number of chunks in the underlying representation of this Array."""
         return self._data.n_arrays
 
-    @property
-    def chunks(self) -> Iterable:
-        """Iterate over Arrays in the underlying representation that are
-        contiguous in memory.
-        """
-        for array in self._data.arrays:
-            yield Array(array, device=self._device)
-
     def chunk(self, i):
         """Extract a single contiguous Array from the underlying representation."""
         return Array(self._data.array(i), device=self._device)
-
-    def to_pyiter(self) -> Iterable:
-        """Iterate over the default Python representation of each element.
-
-        Examples
-        --------
-
-        >>> import nanoarrow as na
-        >>> array = na.array([1, 2, 3], na.int32())
-        >>> for item in array.to_pyiter():
-        ...     print(item)
-        1
-        2
-        3
-        """
-        return iterator(self)
 
     def __len__(self) -> int:
         return len(self._data)
@@ -223,13 +199,45 @@ class Array:
         scalar._device = self._device
         return scalar
 
-    def __iter__(self) -> Iterable[Scalar]:
+    def iter_scalar(self) -> Iterable[Scalar]:
         for c_scalar in self._data:
             scalar = Scalar()
             scalar._c_scalar = c_scalar
             scalar._schema = self.schema
             scalar._device = self._device
             yield scalar
+
+    def iter_chunks(self) -> Iterable:
+        """Iterate over Arrays in the underlying representation that are
+        contiguous in memory.
+        """
+        for array in self._data.arrays:
+            yield Array(array, device=self._device)
+
+    def iter_py(self) -> Iterable:
+        """Iterate over the default Python representation of each element.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.array([1, 2, 3], na.int32())
+        >>> for item in array.iter_py():
+        ...     print(item)
+        1
+        2
+        3
+        """
+        return iterator(self)
+
+    def iter_tuples(self) -> Iterable[Tuple]:
+        return itertuples(self)
+
+    def __iter__(self):
+        raise NotImplementedError(
+            "Use iter_scalar(), iter_py(), or iter_tuples() "
+            "to iterate over elements of this Array"
+        )
 
     def __repr__(self) -> str:
         width_hint = 80
@@ -243,10 +251,10 @@ class Array:
 
         lines = [f"{cls_name}<{c_schema_string}>{len_text}"]
 
-        for i, item in enumerate(self):
+        for i, item in enumerate(self.iter_py()):
             if i >= n_items:
                 break
-            py_repr = repr(item.as_py())
+            py_repr = repr(item)
             if len(py_repr) > width_hint:
                 py_repr = py_repr[: (width_hint - 3)] + "..."
             lines.append(py_repr)

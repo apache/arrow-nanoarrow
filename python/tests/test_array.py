@@ -26,7 +26,7 @@ def test_array_empty():
     assert array.schema.type == na.Type.INT32
     assert len(array) == 0
     assert array.n_chunks == 0
-    assert list(array.chunks) == []
+    assert list(array.iter_chunks()) == []
     with pytest.raises(IndexError):
         array.chunk(0)
 
@@ -34,7 +34,8 @@ def test_array_empty():
         arrays = list(stream)
         assert len(arrays) == 0
 
-    assert list(array) == []
+    assert list(array.iter_py()) == []
+    assert list(array.iter_scalar()) == []
     with pytest.raises(IndexError):
         array[0]
 
@@ -48,18 +49,24 @@ def test_array_contiguous():
     assert array.schema.type == na.Type.INT32
     assert len(array) == 3
     assert array.n_chunks == 1
-    assert len(list(array.chunks)) == 1
+    assert len(list(array.iter_chunks())) == 1
     assert len(array.chunk(0)) == 3
 
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
         assert len(arrays) == 1
 
-    for py_item, item in zip([1, 2, 3], array):
+    # Scalars by iterator
+    for py_item, item in zip([1, 2, 3], array.iter_scalar()):
         assert item.as_py() == py_item
 
+    # Scalars by __getitem__
     for py_item, i in zip([1, 2, 3], range(len(array))):
         assert array[i].as_py() == py_item
+
+    # Python objects by iter_py()
+    for py_item, item in zip([1, 2, 3], array.iter_py()):
+        assert item == py_item
 
     c_array = na.c_array(array)
     assert c_array.length == 3
@@ -77,11 +84,15 @@ def test_array_chunked():
         arrays = list(stream)
         assert len(arrays) == 2
 
-    for py_item, item in zip([1, 2, 3, 4, 5, 6], array):
+    for py_item, item in zip([1, 2, 3, 4, 5, 6], array.iter_scalar()):
         assert item.as_py() == py_item
 
     for py_item, i in zip([1, 2, 3, 4, 5, 6], range(len(array))):
         assert array[i].as_py() == py_item
+
+    # Python objects by iter_py()
+    for py_item, item in zip([1, 2, 3], array.iter_py()):
+        assert item == py_item
 
     msg = "Can't export Array with 2 chunks to ArrowArray"
     with pytest.raises(ValueError, match=msg):
