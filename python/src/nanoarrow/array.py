@@ -22,6 +22,7 @@ from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStrea
 from nanoarrow.c_lib import c_array, c_array_stream
 from nanoarrow.iterator import iterator
 from nanoarrow.schema import Schema
+
 from nanoarrow import _repr_utils
 
 

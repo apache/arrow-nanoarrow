@@ -113,9 +113,9 @@ def test_scalar_repr():
         children=[na.c_array([123456], na.int32())] * 100,
     )
     scalar = na.array(c_array)[0]
-    assert (
-        repr(scalar)
-        == "Scalar<struct<col0: int3...> {'col0': 123456, 'col1': 123456, 'col2': 123456,..."
+    assert repr(scalar) == (
+        "Scalar<struct<col0: int3...> {'col0': 123456, "
+        "'col1': 123456, 'col2': 123456,..."
     )
     assert len(repr(scalar)) == 80
 
@@ -156,9 +156,9 @@ def test_wide_array_repr():
     repr_lines = repr(array).splitlines()
 
     # Check abbreviated schema
-    assert (
-        repr_lines[0]
-        == "nanoarrow.Array<struct<col0: int32, col1: int32, col2: int32, col3: int32...>[1]"
+    assert repr_lines[0] == (
+        "nanoarrow.Array<struct<col0: int32, col1: int32, col2"
+        ": int32, col3: int32...>[1]"
     )
     assert len(repr_lines[0]) == 80
 
