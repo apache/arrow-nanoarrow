@@ -22,6 +22,7 @@ from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStrea
 from nanoarrow.c_lib import c_array, c_array_stream
 from nanoarrow.iterator import iterator
 from nanoarrow.schema import Schema
+from nanoarrow import _repr_utils
 
 
 class Scalar:
@@ -71,12 +72,9 @@ class Scalar:
         return next(iterator(self._c_scalar))
 
     def to_string(self, width_hint=80) -> str:
-        max_schema_chars = max(width_hint // 4, 10)
-        c_schema_string = self._c_scalar.schema._to_string(
-            recursive=True, max_chars=max_schema_chars + 1
+        c_schema_string = _repr_utils.c_schema_to_string(
+            self._c_scalar.schema, width_hint // 4
         )
-        if len(c_schema_string) > max_schema_chars:
-            c_schema_string = c_schema_string[: (max_schema_chars - 3)] + "..."
 
         prefix = f"Scalar<{c_schema_string}> "
         width_hint -= len(prefix)
@@ -203,7 +201,14 @@ class Array:
     def __repr__(self) -> str:
         width_hint = 80
         n_items = 10
-        lines = [f"nanoarrow.Array<{self.schema.type.name}>[{len(self)}]"]
+
+        cls_name = _repr_utils.make_class_label(self, module="nanoarrow")
+        len_text = f"[{len(self)}]"
+        c_schema_string = _repr_utils.c_schema_to_string(
+            self._data.schema, width_hint - len(cls_name) - len(len_text) - 2
+        )
+
+        lines = [f"{cls_name}<{c_schema_string}>{len_text}"]
 
         for i, item in enumerate(self):
             if i >= n_items:

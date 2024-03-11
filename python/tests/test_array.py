@@ -101,11 +101,11 @@ def test_scalar_to_array():
 
 
 def test_scalar_repr():
-    # Check a scalar that does not need truncation
+    # Check a scalar repr that does not need truncation
     scalar = na.array([123456], na.int32())[0]
     assert repr(scalar) == "Scalar<int32> 123456"
 
-    # Check a Scalar that needs truncation
+    # Check a long Scalar repr that needs truncation
     c_array = na.c_array_from_buffers(
         na.struct({f"col{i}": na.int32() for i in range(100)}),
         length=1,
@@ -117,6 +117,7 @@ def test_scalar_repr():
         repr(scalar)
         == "Scalar<struct<col0: int3...> {'col0': 123456, 'col1': 123456, 'col2': 123456,..."
     )
+    assert len(repr(scalar)) == 80
 
 
 def test_scalar_repr_long():
@@ -130,17 +131,39 @@ def test_array_repr():
     array = na.array(range(10), na.int32())
     one_to_ten = "\n".join(str(i) for i in range(10))
 
-    assert repr(array) == f"nanoarrow.Array<INT32>[10]\n{one_to_ten}"
+    assert repr(array) == f"nanoarrow.Array<int32>[10]\n{one_to_ten}"
 
     array = na.array(range(11), na.int32())
     assert (
-        repr(array) == f"nanoarrow.Array<INT32>[11]\n{one_to_ten}\n...and 1 more item"
+        repr(array) == f"nanoarrow.Array<int32>[11]\n{one_to_ten}\n...and 1 more item"
     )
 
     array = na.array(range(12), na.int32())
     assert (
-        repr(array) == f"nanoarrow.Array<INT32>[12]\n{one_to_ten}\n...and 2 more items"
+        repr(array) == f"nanoarrow.Array<int32>[12]\n{one_to_ten}\n...and 2 more items"
     )
+
+
+def test_wide_array_repr():
+    c_array = na.c_array_from_buffers(
+        na.struct({f"col{i}": na.int32() for i in range(100)}),
+        length=1,
+        buffers=[None],
+        children=[na.c_array([123456], na.int32())] * 100,
+    )
+    array = na.array(c_array)
+
+    repr_lines = repr(array).splitlines()
+
+    # Check abbreviated schema
+    assert (
+        repr_lines[0]
+        == "nanoarrow.Array<struct<col0: int32, col1: int32, col2: int32, col3: int32...>[1]"
+    )
+    assert len(repr_lines[0]) == 80
+
+    # Check an abbreviated value
+    assert len(repr_lines[1]) == 80
 
 
 def test_array_repr_long():

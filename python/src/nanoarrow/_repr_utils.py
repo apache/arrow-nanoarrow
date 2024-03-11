@@ -26,6 +26,15 @@ def make_class_label(obj, module=None):
     return f"{module}.{obj.__class__.__name__}"
 
 
+def c_schema_to_string(obj, max_char_width=80):
+    max_char_width = max(max_char_width, 10)
+    c_schema_string = obj._to_string(recursive=True, max_chars=max_char_width + 1)
+    if len(c_schema_string) > max_char_width:
+        return c_schema_string[: (max_char_width - 3)] + "..."
+    else:
+        return c_schema_string
+
+
 def schema_repr(schema, indent=0):
     indent_str = " " * indent
     class_label = make_class_label(schema, module="nanoarrow.c_lib")
