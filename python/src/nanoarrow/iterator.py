@@ -48,7 +48,7 @@ def iter_py(obj, schema=None) -> Iterable:
     >>> import nanoarrow as na
     >>> from nanoarrow import iterator
     >>> array = na.c_array([1, 2, 3], na.int32())
-    >>> list(iterator.iterator(array))
+    >>> list(iterator.iter_py(array))
     [1, 2, 3]
     """
     return PyIterator.get_iterator(obj, schema=schema)
