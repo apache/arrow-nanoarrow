@@ -20,7 +20,7 @@ from typing import Iterable, Tuple
 
 from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStream
 from nanoarrow.c_lib import c_array, c_array_stream
-from nanoarrow.iterator import iter_tuples, iterator
+from nanoarrow.iterator import iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
 from nanoarrow import _repr_utils
@@ -69,7 +69,7 @@ class Scalar:
 
     def as_py(self):
         """Get the Python object representation of this scalar"""
-        return next(iterator(self))
+        return next(iter_py(self))
 
     def to_string(self, width_hint=80) -> str:
         c_schema_string = _repr_utils.c_schema_to_string(
@@ -229,7 +229,7 @@ class Array:
         2
         3
         """
-        return iterator(self)
+        return iter_py(self)
 
     def iter_tuples(self) -> Iterable[Tuple]:
         return iter_tuples(self)

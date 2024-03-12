@@ -16,17 +16,17 @@
 # under the License.
 
 import pytest
-from nanoarrow.iterator import iter_tuples, iterator
+from nanoarrow.iterator import iter_py, iter_tuples
 
 import nanoarrow as na
 
 
 def test_iterator_primitive():
     array = na.c_array([1, 2, 3], na.int32())
-    assert list(iterator(array)) == [1, 2, 3]
+    assert list(iter_py(array)) == [1, 2, 3]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [2, 3]
+    assert list(iter_py(sliced)) == [2, 3]
 
 
 def test_iterator_nullable_primitive():
@@ -38,10 +38,10 @@ def test_iterator_nullable_primitive():
             na.c_buffer([1, 2, 3, 0], na.int32()),
         ],
     )
-    assert list(iterator(array)) == [1, 2, 3, None]
+    assert list(iter_py(array)) == [1, 2, 3, None]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [2, 3, None]
+    assert list(iter_py(sliced)) == [2, 3, None]
 
 
 def test_iterator_string():
@@ -49,10 +49,10 @@ def test_iterator_string():
         na.string(), 2, buffers=[None, na.c_buffer([0, 2, 5], na.int32()), b"abcde"]
     )
 
-    assert list(iterator(array)) == ["ab", "cde"]
+    assert list(iter_py(array)) == ["ab", "cde"]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == ["cde"]
+    assert list(iter_py(sliced)) == ["cde"]
 
 
 def test_iterator_nullable_string():
@@ -66,10 +66,10 @@ def test_iterator_nullable_string():
         ],
     )
 
-    assert list(iterator(array)) == ["ab", "cde", None]
+    assert list(iter_py(array)) == ["ab", "cde", None]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == ["cde", None]
+    assert list(iter_py(sliced)) == ["cde", None]
 
 
 def test_iterator_binary():
@@ -77,10 +77,10 @@ def test_iterator_binary():
         na.binary(), 2, buffers=[None, na.c_buffer([0, 2, 5], na.int32()), b"abcde"]
     )
 
-    assert list(iterator(array)) == [b"ab", b"cde"]
+    assert list(iter_py(array)) == [b"ab", b"cde"]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [b"cde"]
+    assert list(iter_py(sliced)) == [b"cde"]
 
 
 def test_iterator_nullable_binary():
@@ -94,10 +94,10 @@ def test_iterator_nullable_binary():
         ],
     )
 
-    assert list(iterator(array)) == [b"ab", b"cde", None]
+    assert list(iter_py(array)) == [b"ab", b"cde", None]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [b"cde", None]
+    assert list(iter_py(sliced)) == [b"cde", None]
 
 
 def test_iter_tuples():
@@ -166,14 +166,14 @@ def test_iterator_struct():
         children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
     )
 
-    assert list(iterator(array)) == [
+    assert list(iter_py(array)) == [
         {"col1": 1, "col2": True},
         {"col1": 2, "col2": False},
         {"col1": 3, "col2": True},
     ]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [
+    assert list(iter_py(sliced)) == [
         {"col1": 2, "col2": False},
         {"col1": 3, "col2": True},
     ]
@@ -190,7 +190,7 @@ def test_iterator_nullable_struct():
         ],
     )
 
-    assert list(iterator(array)) == [
+    assert list(iter_py(array)) == [
         {"col1": 1, "col2": True},
         {"col1": 2, "col2": False},
         {"col1": 3, "col2": True},
@@ -198,7 +198,7 @@ def test_iterator_nullable_struct():
     ]
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [
+    assert list(iter_py(sliced)) == [
         {"col1": 2, "col2": False},
         {"col1": 3, "col2": True},
         None,
@@ -209,13 +209,13 @@ def test_iterator_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, None], [0]]
     array = pa.array(items)
-    assert list(iterator(array)) == items
+    assert list(iter_py(array)) == items
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [[4, 5, 6], [7, 8, None], [0]]
+    assert list(iter_py(sliced)) == [[4, 5, 6], [7, 8, None], [0]]
 
     array_sliced_child = pa.ListArray.from_arrays([0, 2, 5, 8, 9], array.values[1:])
-    assert (list(iterator(array_sliced_child))) == [
+    assert (list(iter_py(array_sliced_child))) == [
         [2, 3],
         [4, 5, 6],
         [7, 8, None],
@@ -223,7 +223,7 @@ def test_iterator_list():
     ]
 
     nested_sliced = array_sliced_child[1:]
-    assert (list(iterator(nested_sliced))) == [
+    assert (list(iter_py(nested_sliced))) == [
         [4, 5, 6],
         [7, 8, None],
         [0],
@@ -234,17 +234,17 @@ def test_iterator_nullable_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, None], [0], None]
     array = pa.array(items)
-    assert list(iterator(array)) == items
+    assert list(iter_py(array)) == items
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [[4, 5, 6], [7, 8, None], [0], None]
+    assert list(iter_py(sliced)) == [[4, 5, 6], [7, 8, None], [0], None]
 
     array_sliced_child = pa.ListArray.from_arrays(
         [0, 2, 5, 8, 9, 9],
         array.values[1:],
         mask=pa.array([False, False, False, False, True]),
     )
-    assert (list(iterator(array_sliced_child))) == [
+    assert (list(iter_py(array_sliced_child))) == [
         [2, 3],
         [4, 5, 6],
         [7, 8, None],
@@ -253,42 +253,42 @@ def test_iterator_nullable_list():
     ]
 
     nested_sliced = array_sliced_child[1:]
-    assert (list(iterator(nested_sliced))) == [[4, 5, 6], [7, 8, None], [0], None]
+    assert (list(iter_py(nested_sliced))) == [[4, 5, 6], [7, 8, None], [0], None]
 
 
 def test_iterator_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, None]]
     array = pa.array(items, pa.list_(pa.int64(), 3))
-    assert list(iterator(array)) == items
+    assert list(iter_py(array)) == items
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [[4, 5, 6], [7, 8, None]]
+    assert list(iter_py(sliced)) == [[4, 5, 6], [7, 8, None]]
 
     array_sliced_child = pa.FixedSizeListArray.from_arrays(array.values[3:], 3)
-    assert (list(iterator(array_sliced_child))) == [[4, 5, 6], [7, 8, None]]
+    assert (list(iter_py(array_sliced_child))) == [[4, 5, 6], [7, 8, None]]
 
     nested_sliced = array_sliced_child[1:]
-    assert (list(iterator(nested_sliced))) == [[7, 8, None]]
+    assert (list(iter_py(nested_sliced))) == [[7, 8, None]]
 
 
 def test_iterator_nullable_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, None], None]
     array = pa.array(items, pa.list_(pa.int64(), 3))
-    assert list(iterator(array)) == items
+    assert list(iter_py(array)) == items
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == [[4, 5, 6], [7, 8, None], None]
+    assert list(iter_py(sliced)) == [[4, 5, 6], [7, 8, None], None]
 
     # mask argument only available for pyarrow >= 15.0.0
     array_sliced_child = pa.FixedSizeListArray.from_arrays(
         array.values[3:], 3, mask=pa.array([False, False, True])
     )
-    assert (list(iterator(array_sliced_child))) == [[4, 5, 6], [7, 8, None], None]
+    assert (list(iter_py(array_sliced_child))) == [[4, 5, 6], [7, 8, None], None]
 
     nested_sliced = array_sliced_child[1:]
-    assert (list(iterator(nested_sliced))) == [[7, 8, None], None]
+    assert (list(iter_py(nested_sliced))) == [[7, 8, None], None]
 
 
 def test_iterator_dictionary():
@@ -297,10 +297,10 @@ def test_iterator_dictionary():
     items = ["ab", "cde", "ab", "def", "cde"]
     array = pa.array(items).dictionary_encode()
 
-    assert list(iterator(array)) == items
+    assert list(iter_py(array)) == items
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == ["cde", "ab", "def", "cde"]
+    assert list(iter_py(sliced)) == ["cde", "ab", "def", "cde"]
 
 
 def test_iterator_nullable_dictionary():
@@ -309,7 +309,7 @@ def test_iterator_nullable_dictionary():
     items = ["ab", "cde", "ab", "def", "cde", None]
     array = pa.array(items).dictionary_encode()
 
-    assert list(iterator(array)) == items
+    assert list(iter_py(array)) == items
 
     sliced = array[1:]
-    assert list(iterator(sliced)) == ["cde", "ab", "def", "cde", None]
+    assert list(iter_py(sliced)) == ["cde", "ab", "def", "cde", None]

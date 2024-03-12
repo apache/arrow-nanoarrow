@@ -28,7 +28,7 @@ from nanoarrow.c_lib import (
 )
 
 
-def iterator(obj, schema=None) -> Iterable:
+def iter_py(obj, schema=None) -> Iterable:
     """Iterate over items in zero or more arrays
 
     Returns an iterator over an array stream where each item is a
@@ -59,7 +59,7 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
 
     Returns an iterator over an array stream of struct arrays (i.e.,
     record batches) where each item is a tuple of the items in each
-    row. This is different than :func:`iterator`, which encodes struct
+    row. This is different than :func:`iter_py`, which encodes struct
     columns as dictionaries.
 
     Paramters
@@ -84,7 +84,7 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
 
 
 class ArrayViewIterator:
-    """Base class for iterators that use an internal ArrowArrayStream
+    """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
     """
 
