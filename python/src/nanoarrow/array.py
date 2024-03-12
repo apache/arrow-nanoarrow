@@ -200,9 +200,9 @@ class Array:
         return scalar
 
     def iter_scalar(self) -> Iterable[Scalar]:
-        for c_array, offset in self._data:
+        for carray, offset in self._data:
             scalar = Scalar()
-            scalar._c_array = c_array
+            scalar._c_array = carray
             scalar._offset = offset
             scalar._schema = self.schema
             scalar._device = self._device
