@@ -181,7 +181,7 @@ class Array:
         return Schema(self._data.schema)
 
     @property
-    def n_chunks(self) -> int:
+    def num_chunks(self) -> int:
         """Get the number of chunks in the underlying representation of this Array."""
         return self._data.n_arrays
 

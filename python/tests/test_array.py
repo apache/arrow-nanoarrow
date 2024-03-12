@@ -25,7 +25,7 @@ def test_array_empty():
     array = na.Array([], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 0
-    assert array.n_chunks == 0
+    assert array.num_chunks == 0
     assert list(array.iter_chunks()) == []
     with pytest.raises(IndexError):
         array.chunk(0)
@@ -48,7 +48,7 @@ def test_array_contiguous():
     array = na.Array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 3
-    assert array.n_chunks == 1
+    assert array.num_chunks == 1
     assert len(list(array.iter_chunks())) == 1
     assert len(array.chunk(0)) == 3
 
@@ -79,6 +79,7 @@ def test_array_chunked():
     array = na.Array(CArrayStream.from_array_list(src, na.c_schema(na.int32())))
     assert array.schema.type == na.Type.INT32
     assert len(array) == 6
+    assert array.num_chunks == 2
 
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
