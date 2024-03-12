@@ -42,7 +42,7 @@ class Scalar:
     --------
 
     >>> import nanoarrow as na
-    >>> array = na.array([1, 2, 3], na.int32())
+    >>> array = na.Array([1, 2, 3], na.int32())
     >>> array[0]
     Scalar<int32> 1
     >>> array[0].as_py()
@@ -221,7 +221,7 @@ class Array:
         --------
 
         >>> import nanoarrow as na
-        >>> array = na.array([1, 2, 3], na.int32())
+        >>> array = na.Array([1, 2, 3], na.int32())
         >>> for item in array.iter_py():
         ...     print(item)
         1
