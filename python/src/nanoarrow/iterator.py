@@ -51,10 +51,10 @@ def iterator(obj, schema=None) -> Iterable:
     >>> list(iterator.iterator(array))
     [1, 2, 3]
     """
-    return RowIterator.get_iterator(obj, schema=schema)
+    return PyIterator.get_iterator(obj, schema=schema)
 
 
-def itertuples(obj, schema=None) -> Iterable[Tuple]:
+def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
     """Iterate over rows in zero or more struct arrays
 
     Returns an iterator over an array stream of struct arrays (i.e.,
@@ -77,7 +77,7 @@ def itertuples(obj, schema=None) -> Iterable[Tuple]:
     >>> from nanoarrow import iterator
     >>> import pyarrow as pa
     >>> array = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
-    >>> list(iterator.itertuples(array))
+    >>> list(iterator.iter_tuples(array))
     [(1,), (2,), (3,)]
     """
     return RowTupleIterator.get_iterator(obj, schema=schema)
@@ -127,7 +127,7 @@ class ArrayViewIterator:
         return self
 
 
-class RowIterator(ArrayViewIterator):
+class PyIterator(ArrayViewIterator):
     """Iterate over the Python object version of values in an ArrowArrayView.
     Intended for internal use.
     """
@@ -279,7 +279,7 @@ class RowIterator(ArrayViewIterator):
             return iter(items)
 
 
-class RowTupleIterator(RowIterator):
+class RowTupleIterator(PyIterator):
     """Iterate over rows of a struct array (stream) where each row is a
     tuple instead of a dictionary. This is ~3x faster and matches other
     Python concepts more closely (e.g., dbapi's cursor, pandas itertuples).
@@ -295,7 +295,7 @@ class RowTupleIterator(RowIterator):
             )
 
     def _make_child(self, schema, array_view):
-        return RowIterator(schema, _array_view=array_view)
+        return PyIterator(schema, _array_view=array_view)
 
     def _iter1(self, offset, length):
         return self._struct_tuple_iter(offset, length)

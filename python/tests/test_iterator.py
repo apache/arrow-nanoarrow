@@ -16,7 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow.iterator import iterator, itertuples
+from nanoarrow.iterator import iter_tuples, iterator
 
 import nanoarrow as na
 
@@ -100,7 +100,7 @@ def test_iterator_nullable_binary():
     assert list(iterator(sliced)) == [b"cde", None]
 
 
-def test_itertuples():
+def test_iter_tuples():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool()}),
         length=3,
@@ -108,10 +108,10 @@ def test_itertuples():
         children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
     )
 
-    assert list(itertuples(array)) == [(1, True), (2, False), (3, True)]
+    assert list(iter_tuples(array)) == [(1, True), (2, False), (3, True)]
 
     sliced = array[1:]
-    assert list(itertuples(sliced)) == [(2, False), (3, True)]
+    assert list(iter_tuples(sliced)) == [(2, False), (3, True)]
 
     sliced_child = na.c_array_from_buffers(
         array.schema,
@@ -119,13 +119,13 @@ def test_itertuples():
         buffers=[None],
         children=[array.child(0)[1:], array.child(1)[1:]],
     )
-    assert list(itertuples(sliced_child)) == [(2, False), (3, True)]
+    assert list(iter_tuples(sliced_child)) == [(2, False), (3, True)]
 
     nested_sliced = sliced_child[1:]
-    assert list(itertuples(nested_sliced)) == [(3, True)]
+    assert list(iter_tuples(nested_sliced)) == [(3, True)]
 
 
-def test_itertuples_nullable():
+def test_iter_tuples_nullable():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool()}),
         length=4,
@@ -136,10 +136,10 @@ def test_itertuples_nullable():
         ],
     )
 
-    assert list(itertuples(array)) == [(1, True), (2, False), (3, True), None]
+    assert list(iter_tuples(array)) == [(1, True), (2, False), (3, True), None]
 
     sliced = array[1:]
-    assert list(itertuples(sliced)) == [(2, False), (3, True), None]
+    assert list(iter_tuples(sliced)) == [(2, False), (3, True), None]
 
     sliced_child = na.c_array_from_buffers(
         array.schema,
@@ -147,15 +147,15 @@ def test_itertuples_nullable():
         buffers=[na.c_buffer([True, True, False], na.bool())],
         children=[array.child(0)[1:], array.child(1)[1:]],
     )
-    assert list(itertuples(sliced_child)) == [(2, False), (3, True), None]
+    assert list(iter_tuples(sliced_child)) == [(2, False), (3, True), None]
 
     nested_sliced = sliced_child[1:]
-    assert list(itertuples(nested_sliced)) == [(3, True), None]
+    assert list(iter_tuples(nested_sliced)) == [(3, True), None]
 
 
-def test_itertuples_errors():
+def test_iter_tuples_errors():
     with pytest.raises(TypeError, match="can only iterate over struct arrays"):
-        list(itertuples(na.c_array([1, 2, 3], na.int32())))
+        list(iter_tuples(na.c_array([1, 2, 3], na.int32())))
 
 
 def test_iterator_struct():

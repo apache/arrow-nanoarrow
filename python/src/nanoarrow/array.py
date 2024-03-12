@@ -20,7 +20,7 @@ from typing import Iterable, Tuple
 
 from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStream
 from nanoarrow.c_lib import c_array, c_array_stream
-from nanoarrow.iterator import iterator, itertuples
+from nanoarrow.iterator import iter_tuples, iterator
 from nanoarrow.schema import Schema
 
 from nanoarrow import _repr_utils
@@ -232,7 +232,7 @@ class Array:
         return iterator(self)
 
     def iter_tuples(self) -> Iterable[Tuple]:
-        return itertuples(self)
+        return iter_tuples(self)
 
     def __iter__(self):
         raise NotImplementedError(
