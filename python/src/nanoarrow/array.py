@@ -18,8 +18,14 @@
 from functools import cached_property
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import CDEVICE_CPU, CArray, CDevice, CMaterializedArrayStream
-from nanoarrow.c_lib import c_array, c_array_stream
+from nanoarrow._lib import (
+    CDEVICE_CPU,
+    CArray,
+    CBuffer,
+    CDevice,
+    CMaterializedArrayStream,
+)
+from nanoarrow.c_lib import c_array, c_array_stream, c_array_view
 from nanoarrow.iterator import iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
@@ -147,15 +153,18 @@ class Array:
         with c_array_stream(obj, schema=schema) as stream:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
 
-    def __arrow_c_stream__(self, requested_schema=None):
-        if self._device is not CDEVICE_CPU:
-            raise RuntimeError("Can't export ArrowArrayStream from non-CPU device")
+    def _assert_one_chunk(self, op):
+        raise ValueError(f"Can't {op} with non-contiguous Array")
 
+    def _assert_cpu(self, op):
+        raise ValueError(f"Can't {op} with Array on non-CPU device")
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        self._assert_cpu("export ArrowArrayStream")
         return self._data.__arrow_c_stream__(requested_schema=requested_schema)
 
     def __arrow_c_array__(self, requested_schema=None):
-        if self._device is not CDEVICE_CPU:
-            raise RuntimeError("Can't export ArrowArray from non-CPU device")
+        self._assert_cpu("export ArrowArray")
 
         if self._data.n_arrays == 0:
             return c_array([], schema=self._data.schema).__arrow_c_array__(
@@ -166,9 +175,7 @@ class Array:
                 requested_schema=requested_schema
             )
 
-        raise ValueError(
-            f"Can't export Array with {self._data.n_arrays} chunks to ArrowArray"
-        )
+        self._assert_one_chunk("export ArrowArray")
 
     @property
     def device(self) -> CDevice:
@@ -181,6 +188,35 @@ class Array:
         return Schema(self._data.schema)
 
     @property
+    def n_buffers(self) -> int:
+        return self.schema._c_schema_view.layout.n_buffers
+
+    def buffer(self, i: int) -> CBuffer:
+        return self.buffers[i]
+
+    @cached_property
+    def buffers(self) -> Tuple[CBuffer]:
+        view = c_array_view(self)
+        return tuple(view.buffers)
+
+    @property
+    def n_children(self) -> int:
+        return self._data.schema.n_children
+
+    @property
+    def child(self, i: int):
+        pass
+
+    @property
+    def children(self):
+        pass
+
+    def dictionary(self):
+        # Frequently chunks share a dictionary, but this is not always the case
+        self._assert_one_chunk("access dictionary")
+        return Array(self._data.array(0).dictionary, device=self.device)
+
+    @property
     def n_chunks(self) -> int:
         """Get the number of chunks in the underlying representation of this Array."""
         return self._data.n_arrays
@@ -188,6 +224,13 @@ class Array:
     def chunk(self, i):
         """Extract a single contiguous Array from the underlying representation."""
         return Array(self._data.array(i), device=self._device)
+
+    def iter_chunks(self) -> Iterable:
+        """Iterate over Arrays in the underlying representation whose buffers are
+        contiguous in memory.
+        """
+        for array in self._data.arrays:
+            yield Array(array, device=self._device)
 
     def __len__(self) -> int:
         return len(self._data)
@@ -207,13 +250,6 @@ class Array:
             scalar._schema = self.schema
             scalar._device = self._device
             yield scalar
-
-    def iter_chunks(self) -> Iterable:
-        """Iterate over Arrays in the underlying representation that are
-        contiguous in memory.
-        """
-        for array in self._data.arrays:
-            yield Array(array, device=self._device)
 
     def iter_py(self) -> Iterable:
         """Iterate over the default Python representation of each element.
