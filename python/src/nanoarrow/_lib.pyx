@@ -2268,6 +2268,20 @@ cdef class CMaterializedArrayStream:
         stream = CArrayStream.from_array_list(self._arrays, self._schema, move=False)
         return stream.__arrow_c_stream__(requested_schema=requested_schema)
 
+    def child(self, int64_t i):
+        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
+        cdef int code
+
+        out._schema = self._schema.child(i)
+        out._arrays = [chunk.child(i) for chunk in self._arrays]
+        for child_chunk in out._arrays:
+            out._total_length += child_chunk.length
+            code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+            Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+
+        out._finalize()
+        return out
+
     @staticmethod
     def from_c_array(CArray array):
         array._assert_valid()
