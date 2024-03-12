@@ -57,8 +57,11 @@ def test_array_contiguous():
     assert len(array) == 3
 
     assert array.n_buffers == 2
-    assert list(array.buffer(0)) == []
-    assert list(array.buffer(1)) == [1, 2, 3]
+    validity, data = array.buffers
+    assert list(validity) == []
+    assert list(data) == [1, 2, 3]
+    assert array.buffer(0) is validity
+    assert array.buffer(1) is data
 
     assert array.n_children == 0
 
@@ -95,8 +98,8 @@ def test_array_chunked():
     assert len(array) == 6
 
     assert array.n_buffers == 2
-    assert list(array.buffer(0)) == []
-    assert list(array.buffer(1)) == [1, 2, 3]
+    with pytest.raises(ValueError, match="Can't export ArrowArray"):
+        array.buffers
 
     assert array.n_children == 0
 
@@ -121,6 +124,22 @@ def test_array_chunked():
     msg = "Can't export ArrowArray"
     with pytest.raises(ValueError, match=msg):
         na.c_array(array)
+
+
+def test_array_children():
+    c_array = na.c_array_from_buffers(
+        na.struct({f"col{i}": na.int32() for i in range(100)}),
+        length=1,
+        buffers=[None],
+        children=[na.c_array([123456], na.int32())] * 100,
+    )
+    src = [c_array, c_array]
+    array = na.Array(CArrayStream.from_array_list(src, c_array.schema))
+
+    assert array.n_children == 100
+    assert array.child(0).schema.type == na.Type.INT32
+    assert array.child(0).n_chunks == 2
+    assert list(array.child(0).iter_py()) == [123456, 123456]
 
 
 def test_scalar_to_array():

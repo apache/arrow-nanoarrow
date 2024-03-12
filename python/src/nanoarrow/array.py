@@ -139,8 +139,14 @@ class Array:
     def __init__(self, obj, schema=None, device=None) -> None:
         if device is None:
             self._device = CDEVICE_CPU
-        elif not isinstance(device, CDevice):
+        elif isinstance(device, CDevice):
+            self._device = device
+        else:
             raise TypeError("device must be CDevice")
+
+        if isinstance(obj, CMaterializedArrayStream) and schema is None:
+            self._data = obj
+            return
 
         if isinstance(obj, Array) and schema is None:
             self._data = obj._data
@@ -201,22 +207,21 @@ class Array:
         view = c_array_view(self)
         return tuple(view.buffers)
 
+    def iter_buffers(self) -> Iterable[Tuple[CBuffer]]:
+        # Could be more efficient using the iterator.ArrayViewIterator
+        for chunk in self.iter_chunks():
+            yield chunk.buffers
+
     @property
     def n_children(self) -> int:
         return self._data.schema.n_children
 
-    @property
     def child(self, i: int):
-        pass
+        return Array(self._data.child(i), device=self._device)
 
-    @property
-    def children(self):
-        pass
-
-    def dictionary(self):
-        # Frequently chunks share a dictionary, but this is not always the case
-        self._assert_one_chunk("access dictionary")
-        return Array(self._data.array(0).dictionary, device=self.device)
+    def iter_children(self) -> Iterable:
+        for i in range(self.n_children):
+            yield self.child(i)
 
     @property
     def n_chunks(self) -> int:
