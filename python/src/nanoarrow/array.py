@@ -154,10 +154,12 @@ class Array:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
 
     def _assert_one_chunk(self, op):
-        raise ValueError(f"Can't {op} with non-contiguous Array")
+        if self._data.n_arrays != 1:
+            raise ValueError(f"Can't {op} with non-contiguous Array")
 
     def _assert_cpu(self, op):
-        raise ValueError(f"Can't {op} with Array on non-CPU device")
+        if self._device != CDEVICE_CPU:
+            raise ValueError(f"Can't {op} with Array on non-CPU device")
 
     def __arrow_c_stream__(self, requested_schema=None):
         self._assert_cpu("export ArrowArrayStream")

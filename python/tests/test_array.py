@@ -25,19 +25,26 @@ def test_array_empty():
     array = na.Array([], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 0
+
+    assert array.n_buffers == 2
+    assert list(array.buffer(0)) == []
+    assert list(array.buffer(1)) == []
+
+    assert array.n_children == 0
+
     assert array.n_chunks == 0
     assert list(array.iter_chunks()) == []
     with pytest.raises(IndexError):
         array.chunk(0)
 
-    with na.c_array_stream(array) as stream:
-        arrays = list(stream)
-        assert len(arrays) == 0
-
     assert list(array.iter_py()) == []
     assert list(array.iter_scalar()) == []
     with pytest.raises(IndexError):
         array[0]
+
+    with na.c_array_stream(array) as stream:
+        arrays = list(stream)
+        assert len(arrays) == 0
 
     c_array = na.c_array(array)
     assert c_array.length == 0
@@ -48,13 +55,16 @@ def test_array_contiguous():
     array = na.Array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 3
+
+    assert array.n_buffers == 2
+    assert list(array.buffer(0)) == []
+    assert list(array.buffer(1)) == [1, 2, 3]
+
+    assert array.n_children == 0
+
     assert array.n_chunks == 1
     assert len(list(array.iter_chunks())) == 1
     assert len(array.chunk(0)) == 3
-
-    with na.c_array_stream(array) as stream:
-        arrays = list(stream)
-        assert len(arrays) == 1
 
     # Scalars by iterator
     for py_item, item in zip([1, 2, 3], array.iter_scalar()):
@@ -68,6 +78,10 @@ def test_array_contiguous():
     for py_item, item in zip([1, 2, 3], array.iter_py()):
         assert item == py_item
 
+    with na.c_array_stream(array) as stream:
+        arrays = list(stream)
+        assert len(arrays) == 1
+
     c_array = na.c_array(array)
     assert c_array.length == 3
     assert c_array.schema.format == "i"
@@ -79,11 +93,16 @@ def test_array_chunked():
     array = na.Array(CArrayStream.from_array_list(src, na.c_schema(na.int32())))
     assert array.schema.type == na.Type.INT32
     assert len(array) == 6
-    assert array.n_chunks == 2
 
-    with na.c_array_stream(array) as stream:
-        arrays = list(stream)
-        assert len(arrays) == 2
+    assert array.n_buffers == 2
+    assert list(array.buffer(0)) == []
+    assert list(array.buffer(1)) == [1, 2, 3]
+
+    assert array.n_children == 0
+
+    assert array.n_chunks == 2
+    assert len(list(array.iter_chunks())) == 2
+    assert len(array.chunk(0)) == 3
 
     for py_item, item in zip([1, 2, 3, 4, 5, 6], array.iter_scalar()):
         assert item.as_py() == py_item
@@ -95,7 +114,11 @@ def test_array_chunked():
     for py_item, item in zip([1, 2, 3], array.iter_py()):
         assert item == py_item
 
-    msg = "Can't export Array with 2 chunks to ArrowArray"
+    with na.c_array_stream(array) as stream:
+        arrays = list(stream)
+        assert len(arrays) == 2
+
+    msg = "Can't export ArrowArray"
     with pytest.raises(ValueError, match=msg):
         na.c_array(array)
 
