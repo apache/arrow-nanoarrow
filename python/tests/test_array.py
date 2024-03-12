@@ -21,6 +21,20 @@ from nanoarrow.c_lib import CArrayStream
 import nanoarrow as na
 
 
+def test_array_construct():
+    array = na.Array([], na.int32())
+    assert array.schema.type == na.Type.INT32
+
+    array2 = na.Array(array)
+    assert array2._data is array._data
+
+    array2 = na.Array(array._data)
+    assert array2._data is array._data
+
+    with pytest.raises(TypeError, match="device must be CDevice"):
+        na.Array([], na.int32(), device=1234)
+
+
 def test_array_empty():
     array = na.Array([], na.int32())
     assert array.schema.type == na.Type.INT32
@@ -29,6 +43,7 @@ def test_array_empty():
     assert array.n_buffers == 2
     assert list(array.buffer(0)) == []
     assert list(array.buffer(1)) == []
+    assert list(array.iter_buffers()) == []
 
     assert array.n_children == 0
 
@@ -57,13 +72,20 @@ def test_array_contiguous():
     assert len(array) == 3
 
     assert array.n_buffers == 2
+
     validity, data = array.buffers
     assert list(validity) == []
     assert list(data) == [1, 2, 3]
     assert array.buffer(0) is validity
     assert array.buffer(1) is data
 
+    chunk_buffers = list(array.iter_buffers())
+    assert len(chunk_buffers) == array.n_chunks
+    assert len(chunk_buffers[0]) == array.n_buffers
+    assert list(chunk_buffers[0][1]) == [1, 2, 3]
+
     assert array.n_children == 0
+    assert list(array.iter_children()) == []
 
     assert array.n_chunks == 1
     assert len(list(array.iter_chunks())) == 1
@@ -101,7 +123,17 @@ def test_array_chunked():
     with pytest.raises(ValueError, match="Can't export ArrowArray"):
         array.buffers
 
+    chunk_buffers = list(array.iter_buffers())
+    assert len(chunk_buffers) == array.n_chunks
+    assert len(chunk_buffers[0]) == array.n_buffers
+    assert list(chunk_buffers[0][1]) == [1, 2, 3]
+    assert list(chunk_buffers[1][1]) == [4, 5, 6]
+
     assert array.n_children == 0
+    assert list(array.iter_children()) == []
+
+    assert array.n_children == 0
+    assert list(array.iter_children()) == []
 
     assert array.n_chunks == 2
     assert len(list(array.iter_chunks())) == 2
@@ -141,10 +173,15 @@ def test_array_children():
     assert array.child(0).n_chunks == 2
     assert list(array.child(0).iter_py()) == [123456, 123456]
 
+    children = list(array.iter_children())
+    assert len(children) == array.n_children
+
 
 def test_scalar_to_array():
     array = na.Array([123456, 7890], na.int32())
     scalar = scalar = array[1]
+    assert scalar.schema is array.schema
+    assert scalar.device is array.device
     as_array = na.c_array(scalar)
     assert as_array.offset == 1
     assert as_array.length == 1
