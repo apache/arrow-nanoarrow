@@ -53,7 +53,8 @@ class Scalar:
 
     def __init__(self):
         # Private constructor
-        self._c_scalar = None
+        self._c_array = None
+        self._offset = None
         self._schema = None
         self._device = None
 
@@ -64,17 +65,15 @@ class Scalar:
     @property
     def schema(self) -> Schema:
         """Get the schema (data type) of this scalar"""
-        if self._schema is None:
-            self._schema = Schema(self._c_scalar.schema)
         return self._schema
 
     def as_py(self):
         """Get the Python object representation of this scalar"""
-        return next(iterator(self._c_scalar))
+        return next(iterator(self))
 
     def to_string(self, width_hint=80) -> str:
         c_schema_string = _repr_utils.c_schema_to_string(
-            self._c_scalar.schema, width_hint // 4
+            self._c_array.schema, width_hint // 4
         )
 
         prefix = f"Scalar<{c_schema_string}> "
@@ -89,7 +88,8 @@ class Scalar:
         return self.to_string()
 
     def __arrow_c_array__(self, requested_schema=None):
-        return self._c_scalar.__arrow_c_array__(requested_schema=requested_schema)
+        array = self._c_array[self._offset : (self._offset + 1)]
+        return array.__arrow_c_array__(requested_schema=requested_schema)
 
 
 class Array:
@@ -194,15 +194,16 @@ class Array:
 
     def __getitem__(self, k) -> Scalar:
         scalar = Scalar()
-        scalar._c_scalar = self._data[k]
+        scalar._c_array, scalar._offset = self._data[k]
         scalar._schema = self.schema
         scalar._device = self._device
         return scalar
 
     def iter_scalar(self) -> Iterable[Scalar]:
-        for c_scalar in self._data:
+        for c_array, offset in self._data:
             scalar = Scalar()
-            scalar._c_scalar = c_scalar
+            scalar._c_array = c_array
+            scalar._offset = offset
             scalar._schema = self.schema
             scalar._device = self._device
             yield scalar
