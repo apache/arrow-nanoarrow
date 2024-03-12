@@ -2225,18 +2225,6 @@ cdef class CMaterializedArrayStream:
     def array_ends(self):
         return self._array_ends
 
-    cdef int _resolve_chunk(self, const int64_t* sorted_offsets, int64_t index, int64_t start_offset_i,
-                           int64_t end_offset_i) noexcept nogil:
-        if start_offset_i >= (end_offset_i - 1):
-            return start_offset_i
-
-        cdef int64_t mid_offset_i = start_offset_i + (end_offset_i - start_offset_i) // 2
-        cdef int64_t mid_index = sorted_offsets[mid_offset_i]
-        if index < mid_index:
-            return self._resolve_chunk(sorted_offsets, index, start_offset_i, mid_offset_i)
-        else:
-            return self._resolve_chunk(sorted_offsets, index, mid_offset_i, end_offset_i)
-
     def __getitem__(self, k):
         cdef int64_t kint
         cdef int array_i
@@ -2249,7 +2237,7 @@ cdef class CMaterializedArrayStream:
             if kint < 0 or kint >= self._total_length:
                 raise IndexError(f"Index {kint} is out of range")
 
-            array_i = self._resolve_chunk(sorted_offsets, kint, 0, len(self._arrays))
+            array_i = ArrowResolveChunk64(kint, sorted_offsets, 0, len(self._arrays))
             kint -= sorted_offsets[array_i]
             return self._arrays[array_i], kint
 
