@@ -34,6 +34,9 @@ def test_array_construct():
     with pytest.raises(TypeError, match="device must be CDevice"):
         na.Array([], na.int32(), device=1234)
 
+    with pytest.raises(NotImplementedError):
+        iter(array)
+
 
 def test_array_empty():
     array = na.Array([], na.int32())
@@ -175,6 +178,10 @@ def test_array_children():
 
     children = list(array.iter_children())
     assert len(children) == array.n_children
+
+    tuples = list(array.iter_tuples())
+    assert len(tuples) == 2
+    assert len(tuples[0]) == 100
 
 
 def test_scalar_to_array():
