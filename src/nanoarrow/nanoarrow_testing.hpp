@@ -138,7 +138,14 @@ class DictionaryContext {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
-  TestingJSONWriter() : float_precision_(-1) {}
+  enum IncludeMetadata {
+    INCLUDE_METADATA_NON_NULL,
+    INCLUDE_METADATA_NON_EMPTY,
+    INCLUDE_METADATA_NEVER
+  };
+
+  TestingJSONWriter()
+      : float_precision_(-1), include_metadata_(INCLUDE_METADATA_NON_NULL) {}
 
   /// \brief Set the floating point precision of the writer
   ///
@@ -146,7 +153,9 @@ class TestingJSONWriter {
   /// to encode the value in the output. When writing files specifically for
   /// integration tests, floating point values should be rounded to 3 decimal places to
   /// avoid serialization issues.
-  void set_float_precision(int precision) { float_precision_ = precision; }
+  void set_float_precision(int value) { float_precision_ = value; }
+
+  void set_include_metadata(IncludeMetadata value) { include_metadata_ = value; }
 
   void ResetDictionaries() { dictionaries_.clear(); }
 
@@ -227,7 +236,7 @@ class TestingJSONWriter {
     }
 
     // Write metadata
-    if (schema->metadata != nullptr) {
+    if (ShouldWriteMetadata(schema->metadata)) {
       out << R"(, "metadata": )";
       NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
     }
@@ -293,7 +302,7 @@ class TestingJSONWriter {
     }
 
     // Write metadata
-    if (field->metadata != nullptr) {
+    if (ShouldWriteMetadata(field->metadata)) {
       out << R"(, "metadata": )";
       NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
     }
@@ -494,7 +503,27 @@ class TestingJSONWriter {
 
  private:
   int float_precision_;
+  IncludeMetadata include_metadata_;
   internal::DictionaryContext dictionaries_;
+
+  bool ShouldWriteMetadata(const char* metadata) {
+    if (include_metadata_ == INCLUDE_METADATA_NEVER) {
+      return false;
+    }
+
+    if (metadata == nullptr) {
+      return false;
+    }
+
+    if (include_metadata_ == INCLUDE_METADATA_NON_NULL) {
+      return true;
+    }
+
+    ArrowMetadataReader reader;
+    reader.remaining_keys = 0;
+    (void)ArrowMetadataReaderInit(&reader, metadata);
+    return reader.remaining_keys > 0;
+  }
 
   ArrowErrorCode WriteDictionaryBatch(std::ostream& out, int32_t dictionary_id) {
     const internal::Dictionary& dict = dictionaries_.Get(dictionary_id);
@@ -2501,6 +2530,47 @@ class TestingJSONComparison {
   };
 
  public:
+  TestingJSONComparison() : compare_batch_flags_(true), compare_metadata_order_(true) {}
+
+  /// \brief Compare top-level RecordBatch flags (e.g., nullability)
+  ///
+  /// Some Arrow implementations export batches as nullable, and some export them as
+  /// non-nullable. Use false to consider these two types of batches as equivalent.
+  void set_compare_batch_flags(bool value) { compare_batch_flags_ = value; }
+
+  /// \brief Compare metadata order
+  ///
+  /// Some Arrow implementations store metadata using structures (e.g., hash map) that
+  /// reorder metadata items. Use false to consider metadata whose keys/values have
+  /// been reordered as equivalent.
+  void set_compare_metadata_order(bool value) { compare_metadata_order_ = value; }
+
+  /// \brief Consider omitted metadata equivalent to empty metadata
+  ///
+  /// Some Arrow implementations always write an empty metadata string (i.e.,
+  /// \0\0\0\0) instead of omitting it (i.e., nullptr). T
+  void set_metadata_null_equals_metadata_empty(bool value) {
+    TestingJSONWriter::IncludeMetadata option;
+    if (value) {
+      option = TestingJSONWriter::IncludeMetadata::INCLUDE_METADATA_NON_EMPTY;
+    } else {
+      option = TestingJSONWriter::IncludeMetadata::INCLUDE_METADATA_NON_NULL;
+    }
+
+    writer_actual_.set_include_metadata(option);
+    writer_expected_.set_include_metadata(option);
+  }
+
+  /// \brief Set float precision
+  ///
+  /// The Arrow Integration Testing JSON document states that values should be compared
+  /// to 3 decimal places to avoid floating point serialization issues. Use -1 to specify
+  /// that all decimal places should be used (the default).
+  void set_compare_float_precision(int value) {
+    writer_actual_.set_float_precision(value);
+    writer_expected_.set_float_precision(value);
+  }
+
   /// \brief Returns the number of differences found by the previous call
   size_t num_differences() const { return differences_.size(); }
 
@@ -2615,7 +2685,7 @@ class TestingJSONComparison {
     // (Purposefully ignore the name field at the top level)
 
     // Compare flags
-    if (actual->flags != expected->flags) {
+    if (compare_batch_flags_ && actual->flags != expected->flags) {
       differences_.push_back({path,
                               std::string(".flags: ") + std::to_string(actual->flags),
                               std::string(".flags: ") + std::to_string(expected->flags)});
@@ -2717,6 +2787,10 @@ class TestingJSONComparison {
   nanoarrow::UniqueSchema schema_;
   nanoarrow::UniqueArrayView actual_;
   nanoarrow::UniqueArrayView expected_;
+
+  // Comparison options
+  bool compare_batch_flags_;
+  bool compare_metadata_order_;
 
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {

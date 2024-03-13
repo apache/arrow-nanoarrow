@@ -54,6 +54,13 @@ static ArrowBufferAllocator IntegrationTestAllocator() {
   return allocator;
 }
 
+static void SetComparisonOptions(nanoarrow::testing::TestingJSONComparison* comparison) {
+  comparison->set_compare_batch_flags(false);
+  comparison->set_compare_float_precision(3);
+  comparison->set_compare_metadata_order(false);
+  comparison->set_metadata_null_equals_metadata_empty(true);
+}
+
 static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_path) {
   std::ifstream infile(file_path, std::ios::in | std::ios::binary);
   char buf[8096];
@@ -141,6 +148,8 @@ static ArrowErrorCode ImportSchemaAndCompareToJson(const char* json_path,
       error));
 
   nanoarrow::testing::TestingJSONComparison comparison;
+  SetComparisonOptions(&comparison);
+
   NANOARROW_RETURN_NOT_OK(
       comparison.CompareSchema(actual.get(), data.schema.get(), error));
   if (comparison.num_differences() > 0) {
@@ -171,6 +180,8 @@ static ArrowErrorCode ImportBatchAndCompareToJson(const char* json_path, int num
   NANOARROW_RETURN_NOT_OK(MaterializeJsonFilePath(json_path, &data, num_batch, error));
 
   nanoarrow::testing::TestingJSONComparison comparison;
+  SetComparisonOptions(&comparison);
+
   NANOARROW_RETURN_NOT_OK(comparison.SetSchema(data.schema.get(), error));
   NANOARROW_RETURN_NOT_OK(
       comparison.CompareBatch(actual.get(), data.arrays[0].get(), error));
