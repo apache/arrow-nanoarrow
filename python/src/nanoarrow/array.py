@@ -187,7 +187,10 @@ class Array:
 
     @property
     def device(self) -> CDevice:
-        """Get the device on which the buffers for this array are allocated."""
+        """Get the device on which the buffers for this array are allocated.
+
+
+        """
         return self._device
 
     @cached_property
@@ -197,44 +200,188 @@ class Array:
 
     @property
     def n_buffers(self) -> int:
+        """Get the number of buffers in each chunk of this Array.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> array.n_buffers
+        2
+        """
         return self.schema._c_schema_view.layout.n_buffers
 
     def buffer(self, i: int) -> CBuffer:
+        """Access a single buffer of a contiguous array.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> array.buffer(1)
+        nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
+        """
         return self.buffers[i]
 
     @cached_property
     def buffers(self) -> Tuple[CBuffer]:
+        """Access buffers of a contiguous array.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> for buffer in array.buffers:
+        ...     print(buffer)
+        nanoarrow.c_lib.CBufferView(bool[0 b] )
+        nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
+        """
         view = c_array_view(self)
         return tuple(view.buffers)
 
     def iter_buffers(self) -> Iterable[Tuple[CBuffer]]:
+        """Iterate over buffers of each chunk in this Array.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> for data, validity in array.iter_buffers():
+        ...     print(data)
+        ...     print(validity)
+        nanoarrow.c_lib.CBufferView(bool[0 b] )
+        nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
+        """
         # Could be more efficient using the iterator.ArrayViewIterator
         for chunk in self.iter_chunks():
             yield chunk.buffers
 
     @property
     def n_children(self) -> int:
+        """Get the number of children for an Array of this type.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> batch = pa.record_batch(
+        ...     [pa.array([1, 2, 3]), pa.array(["a", "b", "c"])],
+        ...     names=["col1", "col2"]
+        ... )
+        >>> array = na.Array(batch)
+        >>> array.n_children
+        2
+        """
         return self._data.schema.n_children
 
     def child(self, i: int):
+        """Borrow a child Array from its parent.
+
+        Parameters
+        ----------
+        i : int
+            The index of the child to return.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> batch = pa.record_batch(
+        ...     [pa.array([1, 2, 3]), pa.array(["a", "b", "c"])],
+        ...     names=["col1", "col2"]
+        ... )
+        >>> array = na.Array(batch)
+        >>> array.child(1)
+        nanoarrow.Array<string>[3]
+        'a'
+        'b'
+        'c'
+        """
         return Array(self._data.child(i), device=self._device)
 
     def iter_children(self) -> Iterable:
+        """Iterate over children of this Array
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> batch = pa.record_batch(
+        ...     [pa.array([1, 2, 3]), pa.array(["a", "b", "c"])],
+        ...     names=["col1", "col2"]
+        ... )
+        >>> array = na.Array(batch)
+        >>> for child in array.iter_children():
+        ...     print(child)
+        nanoarrow.Array<int64>[3]
+        1
+        2
+        3
+        nanoarrow.Array<string>[3]
+        'a'
+        'b'
+        'c'
+        """
         for i in range(self.n_children):
             yield self.child(i)
 
     @property
     def n_chunks(self) -> int:
-        """Get the number of chunks in the underlying representation of this Array."""
+        """Get the number of chunks in the underlying representation of this Array.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> array.n_chunks
+        1
+        """
         return self._data.n_arrays
 
-    def chunk(self, i):
-        """Extract a single contiguous Array from the underlying representation."""
+    def chunk(self, i: int):
+        """Extract a single contiguous Array from the underlying representation.
+
+        Parameters
+        ----------
+        i : int
+            The index of the chunk to extract.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> array.chunk(0)
+        nanoarrow.Array<int32>[3]
+        1
+        2
+        3
+        """
         return Array(self._data.array(i), device=self._device)
 
     def iter_chunks(self) -> Iterable:
         """Iterate over Arrays in the underlying representation whose buffers are
         contiguous in memory.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> for chunk in array.iter_chunks():
+        ...     print(chunk)
+        nanoarrow.Array<int32>[3]
+        1
+        2
+        3
         """
         for array in self._data.arrays:
             yield Array(array, device=self._device)
@@ -250,6 +397,19 @@ class Array:
         return scalar
 
     def iter_scalar(self) -> Iterable[Scalar]:
+        """Iterate over items as Scalars
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> for item in array.iter_scalar():
+        ...     print(item)
+        Scalar<int32> 1
+        Scalar<int32> 2
+        Scalar<int32> 3
+        """
         for carray, offset in self._data:
             scalar = Scalar()
             scalar._c_array = carray
@@ -275,6 +435,24 @@ class Array:
         return iter_py(self)
 
     def iter_tuples(self) -> Iterable[Tuple]:
+        """Iterate over rows of a struct array as tuples.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> batch = pa.record_batch(
+        ...     [pa.array([1, 2, 3]), pa.array(["a", "b", "c"])],
+        ...     names=["col1", "col2"]
+        ... )
+        >>> array = na.Array(batch)
+        >>> for item in array.iter_tuples():
+        ...     print(item)
+        (1, 'a')
+        (2, 'b')
+        (3, 'c')
+        """
         return iter_tuples(self)
 
     def __iter__(self):
