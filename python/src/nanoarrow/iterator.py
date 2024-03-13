@@ -244,29 +244,6 @@ class PyIterator(ArrayViewIterator):
             for start, end in zip(starts, ends):
                 yield bytes(data[start:end])
 
-    def _timestamp_iter(self, offset, length):
-        from datetime import datetime
-
-        unit = self._schema_view.time_unit
-        if unit == "s":
-            scale = 1
-        elif unit == "ms":
-            scale = 1000
-        elif unit == "us":
-            scale = 1_000_000
-        elif unit == "ns":
-            raise NotImplementedError(
-                "Timestamp with unit 'ns' is not currently supported"
-            )
-
-        for parent in self._primitive_iter(offset, length):
-            if parent is None:
-                yield None
-            else:
-                s = parent // scale
-                us = parent % scale * (1_000_000 // scale)
-                yield datetime.utcfromtimestamp(s).replace(microsecond=us)
-
     def _primitive_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
@@ -311,7 +288,6 @@ _ITEMS_ITER_LOOKUP = {
     CArrowType.LARGE_LIST: "_list_iter",
     CArrowType.FIXED_SIZE_LIST: "_fixed_size_list_iter",
     CArrowType.DICTIONARY: "_dictionary_iter",
-    CArrowType.TIMESTAMP: "_timestamp_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [
