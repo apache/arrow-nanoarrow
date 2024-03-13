@@ -538,3 +538,15 @@ TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
 
   ArrowBufferReset(&buffer);
 }
+
+TEST(UtilsTest, ArrowResolveChunk64Test) {
+  int64_t offsets[] = {0, 2, 3, 6};
+  int64_t n_offsets = 4;
+
+  EXPECT_EQ(ArrowResolveChunk64(0, offsets, 0, n_offsets), 0);
+  EXPECT_EQ(ArrowResolveChunk64(1, offsets, 0, n_offsets), 0);
+  EXPECT_EQ(ArrowResolveChunk64(2, offsets, 0, n_offsets), 1);
+  EXPECT_EQ(ArrowResolveChunk64(3, offsets, 0, n_offsets), 2);
+  EXPECT_EQ(ArrowResolveChunk64(4, offsets, 0, n_offsets), 2);
+  EXPECT_EQ(ArrowResolveChunk64(5, offsets, 0, n_offsets), 2);
+}
