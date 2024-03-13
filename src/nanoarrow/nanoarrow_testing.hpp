@@ -138,14 +138,7 @@ class DictionaryContext {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
-  enum IncludeMetadata {
-    INCLUDE_METADATA_NON_NULL,
-    INCLUDE_METADATA_NON_EMPTY,
-    INCLUDE_METADATA_NEVER
-  };
-
-  TestingJSONWriter()
-      : float_precision_(-1), include_metadata_(INCLUDE_METADATA_NON_NULL) {}
+  TestingJSONWriter() : float_precision_(-1), include_metadata_(true) {}
 
   /// \brief Set the floating point precision of the writer
   ///
@@ -155,7 +148,7 @@ class TestingJSONWriter {
   /// avoid serialization issues.
   void set_float_precision(int value) { float_precision_ = value; }
 
-  void set_include_metadata(IncludeMetadata value) { include_metadata_ = value; }
+  void set_include_metadata(bool value) { include_metadata_ = value; }
 
   void ResetDictionaries() { dictionaries_.clear(); }
 
@@ -503,26 +496,11 @@ class TestingJSONWriter {
 
  private:
   int float_precision_;
-  IncludeMetadata include_metadata_;
+  bool include_metadata_;
   internal::DictionaryContext dictionaries_;
 
   bool ShouldWriteMetadata(const char* metadata) {
-    if (include_metadata_ == INCLUDE_METADATA_NEVER) {
-      return false;
-    }
-
-    if (metadata == nullptr) {
-      return false;
-    }
-
-    if (include_metadata_ == INCLUDE_METADATA_NON_NULL) {
-      return true;
-    }
-
-    ArrowMetadataReader reader;
-    reader.remaining_keys = 0;
-    (void)ArrowMetadataReaderInit(&reader, metadata);
-    return reader.remaining_keys > 0;
+    return metadata != nullptr && include_metadata_;
   }
 
   ArrowErrorCode WriteDictionaryBatch(std::ostream& out, int32_t dictionary_id) {
@@ -2538,7 +2516,11 @@ class TestingJSONComparison {
   };
 
  public:
-  TestingJSONComparison() : compare_batch_flags_(true), compare_metadata_order_(true) {}
+  TestingJSONComparison() : compare_batch_flags_(true), compare_metadata_order_(true) {
+    // We do our own metadata comparison
+    writer_actual_.set_include_metadata(false);
+    writer_expected_.set_include_metadata(false);
+  }
 
   /// \brief Compare top-level RecordBatch flags (e.g., nullability)
   ///
@@ -2551,17 +2533,7 @@ class TestingJSONComparison {
   /// Some Arrow implementations store metadata using structures (e.g., hash map) that
   /// reorder metadata items. Use false to consider metadata whose keys/values have
   /// been reordered as equivalent.
-  void set_compare_metadata_order(bool value) {
-    compare_metadata_order_ = value;
-
-    if (compare_metadata_order_) {
-      writer_actual_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NON_NULL);
-      writer_expected_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NON_NULL);
-    } else {
-      writer_actual_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NEVER);
-      writer_expected_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NEVER);
-    }
-  }
+  void set_compare_metadata_order(bool value) { compare_metadata_order_ = value; }
 
   /// \brief Set float precision
   ///
@@ -2707,20 +2679,8 @@ class TestingJSONComparison {
     }
 
     // Compare metadata
-    std::stringstream ss;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteMetadata(ss, actual->metadata),
-                                       error);
-    std::string actual_metadata = ss.str();
-
-    ss.str("");
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        writer_expected_.WriteMetadata(ss, expected->metadata), error);
-    std::string expected_metadata = ss.str();
-
-    if (actual_metadata != expected_metadata) {
-      differences_.push_back({path, std::string(".metadata: ") + actual_metadata,
-                              std::string(".metadata: ") + expected_metadata});
-    }
+    NANOARROW_RETURN_NOT_OK(CompareMetadata(actual->metadata, expected->metadata, error,
+                                            path + std::string(".metadata")));
 
     return NANOARROW_OK;
   }
@@ -2826,13 +2786,62 @@ class TestingJSONComparison {
       differences_.push_back({path, actual_json, expected_json});
     }
 
+    NANOARROW_RETURN_NOT_OK(CompareMetadata(actual->metadata, expected->metadata, error,
+                                            path + std::string(".metadata")));
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode MetadataEquivalent(const char* actual, const char* expected, bool* out) {
+  ArrowErrorCode CompareMetadata(const char* actual, const char* expected,
+                                 ArrowError* error, const std::string& path = "") {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteMetadata(ss, actual), error);
+    std::string actual_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_expected_.WriteMetadata(ss, expected),
+                                       error);
+    std::string expected_json = ss.str();
+
+    bool metadata_equal = actual_json == expected_json;
+
+    // If there is a difference in the rendered JSON but we aren't being strict about
+    // order, check again using the KeyValue comparison.
+    if (!metadata_equal && !compare_metadata_order_) {
+      NANOARROW_RETURN_NOT_OK(MetadataEqualKeyValue(actual, expected, &metadata_equal));
+    }
+
+    // If we still have an inequality, add a difference.
+    if (!metadata_equal) {
+      differences_.push_back({path, actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode MetadataEqualKeyValue(const char* actual, const char* expected,
+                                       bool* out) {
     std::unordered_map<std::string, std::string> actual_map, expected_map;
     NANOARROW_RETURN_NOT_OK(MetadataToMap(actual, &actual_map));
     NANOARROW_RETURN_NOT_OK(MetadataToMap(expected, &expected_map));
+
+    if (actual_map.size() != expected_map.size()) {
+      *out = false;
+      return NANOARROW_OK;
+    }
+
+    for (const auto& item : expected_map) {
+      const auto& actual_item = actual_map.find(item.first);
+      if (actual_item == actual_map.end()) {
+        *out = false;
+        return NANOARROW_OK;
+      }
+
+      if (actual_item->second != item.second) {
+        *out = false;
+        return NANOARROW_OK;
+      }
+    }
 
     *out = true;
     return NANOARROW_OK;

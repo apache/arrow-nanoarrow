@@ -58,7 +58,6 @@ static void SetComparisonOptions(nanoarrow::testing::TestingJSONComparison* comp
   comparison->set_compare_batch_flags(false);
   comparison->set_compare_float_precision(3);
   comparison->set_compare_metadata_order(false);
-  comparison->set_metadata_null_equals_metadata_empty(true);
 }
 
 static ArrowErrorCode ReadFileString(std::ostream& out, const std::string& file_path) {
