@@ -189,7 +189,15 @@ class Array:
     def device(self) -> CDevice:
         """Get the device on which the buffers for this array are allocated.
 
+        Examples
+        --------
 
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> array.device
+        <nanoarrow.device.CDevice>
+        - device_type: 1
+        - device_id: 0
         """
         return self._device
 
@@ -461,10 +469,7 @@ class Array:
             "to iterate over elements of this Array"
         )
 
-    def __repr__(self) -> str:
-        width_hint = 80
-        n_items = 10
-
+    def to_string(self, width_hint=80, items_hint=10) -> str:
         cls_name = _repr_utils.make_class_label(self, module="nanoarrow")
         len_text = f"[{len(self)}]"
         c_schema_string = _repr_utils.c_schema_to_string(
@@ -474,17 +479,20 @@ class Array:
         lines = [f"{cls_name}<{c_schema_string}>{len_text}"]
 
         for i, item in enumerate(self.iter_py()):
-            if i >= n_items:
+            if i >= items_hint:
                 break
             py_repr = repr(item)
             if len(py_repr) > width_hint:
                 py_repr = py_repr[: (width_hint - 3)] + "..."
             lines.append(py_repr)
 
-        n_more_items = len(self) - n_items
+        n_more_items = len(self) - items_hint
         if n_more_items > 1:
             lines.append(f"...and {n_more_items} more items")
         elif n_more_items > 0:
             lines.append(f"...and {n_more_items} more item")
 
         return "\n".join(lines)
+
+    def __repr__(self) -> str:
+        return self.to_string()
