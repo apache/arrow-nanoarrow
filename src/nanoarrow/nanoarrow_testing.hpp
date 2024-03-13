@@ -2058,6 +2058,14 @@ class TestingJSONReader {
             array_view->length -
             ArrowBitCountSet(buffer_view->data.as_uint8, 0, array_view->length);
       }
+
+      // If there are no nulls, drop the validity bitmap entirely. This is more
+      // consistent with how other integration testing JSON readers represent a
+      // validity bitmap.
+      if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+          array_view->null_count == 0) {
+        ArrowBufferReset(buffer);
+      }
     }
 
     // If there is a dictionary associated with schema, parse its value into dictionary
