@@ -2551,22 +2551,16 @@ class TestingJSONComparison {
   /// Some Arrow implementations store metadata using structures (e.g., hash map) that
   /// reorder metadata items. Use false to consider metadata whose keys/values have
   /// been reordered as equivalent.
-  void set_compare_metadata_order(bool value) { compare_metadata_order_ = value; }
+  void set_compare_metadata_order(bool value) {
+    compare_metadata_order_ = value;
 
-  /// \brief Consider omitted metadata equivalent to empty metadata
-  ///
-  /// Some Arrow implementations always write an empty metadata string (i.e.,
-  /// \0\0\0\0) instead of omitting it (i.e., nullptr). T
-  void set_metadata_null_equals_metadata_empty(bool value) {
-    TestingJSONWriter::IncludeMetadata option;
-    if (value) {
-      option = TestingJSONWriter::IncludeMetadata::INCLUDE_METADATA_NON_EMPTY;
+    if (compare_metadata_order_) {
+      writer_actual_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NON_NULL);
+      writer_expected_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NON_NULL);
     } else {
-      option = TestingJSONWriter::IncludeMetadata::INCLUDE_METADATA_NON_NULL;
+      writer_actual_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NEVER);
+      writer_expected_.set_include_metadata(TestingJSONWriter::INCLUDE_METADATA_NEVER);
     }
-
-    writer_actual_.set_include_metadata(option);
-    writer_expected_.set_include_metadata(option);
   }
 
   /// \brief Set float precision
@@ -2799,6 +2793,7 @@ class TestingJSONComparison {
   // Comparison options
   bool compare_batch_flags_;
   bool compare_metadata_order_;
+  bool metadata_null_equals_metadata_empty_;
 
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {
@@ -2829,6 +2824,30 @@ class TestingJSONComparison {
 
     if (actual_json != expected_json) {
       differences_.push_back({path, actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode MetadataEquivalent(const char* actual, const char* expected, bool* out) {
+    std::unordered_map<std::string, std::string> actual_map, expected_map;
+    NANOARROW_RETURN_NOT_OK(MetadataToMap(actual, &actual_map));
+    NANOARROW_RETURN_NOT_OK(MetadataToMap(expected, &expected_map));
+
+    *out = true;
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode MetadataToMap(const char* metadata,
+                               std::unordered_map<std::string, std::string>* out) {
+    ArrowMetadataReader reader;
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
+
+    ArrowStringView key, value;
+    while (reader.remaining_keys > 0) {
+      NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderRead(&reader, &key, &value));
+      out->insert({std::string(key.data, key.size_bytes),
+                   std::string(value.data, value.size_bytes)});
     }
 
     return NANOARROW_OK;
