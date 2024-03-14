@@ -2028,21 +2028,12 @@ class TestingJSONReader {
       buffer_view->data.as_uint8 = buffer->data;
       buffer_view->size_bytes = buffer->size_bytes;
 
-      // If this is a validity buffer with a big enough size, set the array_view's
-      // null_count
+      // If this is a validity buffer, set the null_count
       if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
           _ArrowBytesForBits(array_view->length) <= buffer_view->size_bytes) {
         array_view->null_count =
             array_view->length -
             ArrowBitCountSet(buffer_view->data.as_uint8, 0, array_view->length);
-      }
-
-      // If there are no nulls, drop the validity bitmap entirely. This is more
-      // consistent with how other integration testing JSON readers represent a
-      // validity bitmap.
-      if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
-          array_view->null_count == 0) {
-        ArrowBufferReset(buffer);
       }
     }
 
