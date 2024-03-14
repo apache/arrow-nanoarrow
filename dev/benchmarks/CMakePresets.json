@@ -22,7 +22,7 @@
                 "base"
             ],
             "cacheVariables": {
-                "NANOARROW_BENCHMARK_SOURCE_DIR": "${sourceDir}/../.."
+                "NANOARROW_BENCHMARK_SOURCE_URL": "${sourceDir}/../.."
             }
         },
         {
@@ -33,7 +33,7 @@
                 "base"
             ],
             "cacheVariables": {
-                "NANOARROW_BENCHMARK_VERSION": "0.4.0"
+                "NANOARROW_BENCHMARK_SOURCE_URL": "https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.4.0.zip"
             }
         }
     ]

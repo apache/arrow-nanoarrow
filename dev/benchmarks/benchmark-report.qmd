@@ -29,12 +29,13 @@ library(bench)
 # This heuristic is not perfect but will generally result in correct links
 # for PRs that update benchmarks and the general running of benchmarks on the
 # main branch.
+github_repo <- "apache/arrow-nanoarrow"
 github_ref <- gert::git_branch()
-if (github_ref == "main") {
-  github_repo <- "apache/arrow-nanoarrow"
-} else {
-  remote <- gert::git_remote_info()
-  github_repo <- str_match(remote$url, "github.com/([^/]+/[^/.]+)")[,2]
+if (github_ref != "main") {
+  try({
+    remote <- gert::git_remote_info()
+    github_repo <- str_match(remote$url, "github.com/([^/]+/[^/.]+)")[,2]
+  })
 }
 
 knitr::opts_chunk$set(echo = FALSE, results = "hide")

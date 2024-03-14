@@ -23,15 +23,20 @@ project(nanoarrow_benchmarks)
 
 if(NOT DEFINED CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
+  set(CMAKE_C_STANDARD_REQUIRED ON)
 endif()
 
 if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-option(NANOARROW_BENCHMARK_VERSION "nanoarrow version to benchmark" OFF)
-option(NANOARROW_BENCHMARK_SOURCE_DIR "path to a nanoarrow source checkout to benchmark"
-       OFF)
+set(NANOARROW_BENCHMARK_VERSION
+    ""
+    CACHE STRING "nanoarrow version to benchmark")
+set(NANOARROW_BENCHMARK_SOURCE_DIR
+    ""
+    CACHE STRING "path to a nanoarrow source checkout to benchmark" OFF)
 
 # Avoids a warning about timestamps on downloaded files (prefer new policy
 # if available))
@@ -47,20 +52,17 @@ fetchcontent_declare(benchmark
 )
 fetchcontent_makeavailable(benchmark)
 
-if(NANOARROW_BENCHMARK_SOURCE_DIR)
-  fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_DIR}")
+if(IS_DIRECTORY "${NANOARROW_BENCHMARK_SOURCE_URL}")
+  fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_URL}")
   fetchcontent_makeavailable(nanoarrow)
-elseif(NANOARROW_BENCHMARK_VERSION)
-  fetchcontent_declare(nanoarrow
-                       URL https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-${NANOARROW_BENCHMARK_VERSION}.zip
-  )
+elseif(NOT NANOARROW_BENCHMARK_SOURCE_URL STREQUAL "")
+  fetchcontent_declare(nanoarrow URL "${NANOARROW_BENCHMARK_SOURCE_URL}")
   fetchcontent_makeavailable(nanoarrow)
 endif()
 
-# Check that at least one option was specified. This also lets the top-level
-# CMakeLists.txt use add_subdirectory() for slightly easier benchmark development.
+# Check that either the parent scope or this CMakeLists.txt defines a nanoarrow target
 if(NOT TARGET nanoarrow)
-  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_XXX option?)"
+  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_SOURCE_URL option?)"
   )
 endif()
 
