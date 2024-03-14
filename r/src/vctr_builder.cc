@@ -39,8 +39,8 @@
 #include "vctr_builder_int64.h"
 #include "vctr_builder_lgl.h"
 #include "vctr_builder_list_of.h"
+#include "vctr_builder_other.h"
 #include "vctr_builder_posixct.h"
-#include "vctr_builder_primitive.h"
 #include "vctr_builder_rcrd.h"
 #include "vctr_builder_unspecified.h"
 

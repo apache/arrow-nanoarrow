@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef R_NANOARROW_VCTR_BUILDER_PRIMITIVE_H_INCLUDED
-#define R_NANOARROW_VCTR_BUILDER_PRIMITIVE_H_INCLUDED
+#ifndef R_NANOARROW_VCTR_BUILDER_OTHER_H_INCLUDED
+#define R_NANOARROW_VCTR_BUILDER_OTHER_H_INCLUDED
 
 #define R_NO_REMAP
 #include <R.h>
