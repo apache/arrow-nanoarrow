@@ -15,30 +15,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: benchmarks
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/benchmarks.yaml'
-      - 'dev/benchmarks/**'
-
-permissions:
-  contents: read
-
-jobs:
-  benchmarks:
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Run benchmarks
-      run: |
-        cd dev/benchmarks
-        ./benchmark-run-all.sh
+.Rhistory
+benchmark-report.md

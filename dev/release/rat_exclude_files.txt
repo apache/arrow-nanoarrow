@@ -6,7 +6,7 @@ rat.txt
 r/DESCRIPTION
 r/NAMESPACE
 r/.Rbuildignore
-r/nanoarrow.Rproj
+*.Rproj
 *.Rd
 r/tests/testthat/_snaps/*.md
 r/cran-comments.md

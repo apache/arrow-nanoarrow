@@ -1,0 +1,40 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "local",
+            "displayName": "local",
+            "description": "Uses the nanoarrow C sources from this checkout.",
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "NANOARROW_BENCHMARK_SOURCE_URL": "${sourceDir}/../.."
+            }
+        },
+        {
+            "name": "v0.4.0",
+            "displayName": "v0.4.0",
+            "description": "Uses the nanoarrow C sources the 0.4.0 release.",
+            "inherits": [
+                "base"
+            ],
+            "cacheVariables": {
+                "NANOARROW_BENCHMARK_SOURCE_URL": "https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.4.0.zip"
+            }
+        }
+    ]
+}

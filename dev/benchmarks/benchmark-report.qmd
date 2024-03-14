@@ -1,0 +1,228 @@
+---
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+title: "Benchmark Report"
+format: gfm
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(xml2)
+library(bench)
+
+# For linking benchmark sources with https://github.com/{repo}/blob/{ref}/file#Lxx
+# This heuristic is not perfect but will generally result in correct links
+# for PRs that update benchmarks and the general running of benchmarks on the
+# main branch.
+github_repo <- "apache/arrow-nanoarrow"
+github_ref <- gert::git_branch()
+if (github_ref != "main") {
+  try({
+    remote <- gert::git_remote_info()
+    github_repo <- str_match(remote$url, "github.com/([^/]+/[^/.]+)")[,2]
+  })
+}
+
+knitr::opts_chunk$set(echo = FALSE, results = "hide")
+```
+
+```{r}
+# Read the presets from CMakePresets.json. This is the canonical list of
+# supported benchmark configurations.
+presets <- jsonlite::read_json("CMakePresets.json", simplifyVector = TRUE)$configurePresets |>
+  filter(is.na(hidden)) |>
+  rename_all(~paste0("preset_", .))
+```
+
+```{r}
+benchmark_data <- tibble(
+  src = list.files("build", "_benchmark\\.json$", recursive = TRUE, full.names = TRUE),
+  content = map(src, jsonlite::read_json, simplifyVector = TRUE)
+) |>
+  unnest_wider(content) |>
+  select(-context) |>
+  unnest_longer(benchmarks) |>
+  unnest_wider(benchmarks) |>
+  extract(src, "preset_name", "build/([^/]+)/") |>
+  # Use bench::bench_time vctr class to help with unit printing
+  mutate(
+    real_time_pretty = as_bench_time(paste0(real_time, time_unit)),
+    cpu_time_pretty = as_bench_time(paste0(cpu_time, time_unit)),
+    benchmark_label = str_remove(name, "^Benchmark")
+  )
+```
+
+```{r}
+groups <- tibble(
+  group_files = list.files(
+    "apidoc/xml",
+    "^group__.*?\\.xml$",
+    recursive = TRUE,
+    full.names = TRUE
+  ),
+  group_xml = map(group_files, ~xml_find_first(read_xml(.), "compounddef")),
+  group_id = group_xml |>
+    map(xml_find_first, "compoundname") |>
+    map_chr(xml_text),
+  group_title = group_xml |>
+    map(xml_find_first, "title") |>
+    map_chr(xml_text),
+  group_description = group_xml |>
+    map(xml_find_all, "detaileddescription/para") |>
+    map(xml_text) |>
+    map_chr(paste, collapse = "\n\n"),
+  function_xml = group_xml |>
+    map(xml_find_all, "//memberdef")
+)
+
+functions <- groups |>
+  select(group_id, function_xml) |>
+  mutate(function_xml = map(function_xml, map, identity)) |>
+  unnest_longer(function_xml) |>
+  mutate(
+    function_name = function_xml |>
+      map(xml_find_first, "name") |>
+      map_chr(xml_text),
+    function_brief = function_xml |>
+      map(xml_find_all, "briefdescription/para") |>
+      map(xml_text) |>
+      map_chr(paste, collapse = "\n\n"),
+    function_description = function_xml |>
+      map(xml_find_all, "detaileddescription/para") |>
+      map(xml_text) |>
+      map_chr(paste, collapse = "\n\n"),
+    function_file = function_xml |>
+      map(xml_find_first, "location") |>
+      map_chr(xml_attr, "file") |>
+      str_replace(".*?/dev/benchmarks", "dev/benchmarks"),
+    function_line_start = function_xml |>
+      map(xml_find_first, "location") |>
+      map_chr(xml_attr, "bodystart") |>
+      as.integer(),
+    function_line_end = function_xml |>
+      map(xml_find_first, "location") |>
+      map_chr(xml_attr, "bodyend") |>
+      as.integer(),
+    benchmark_label = str_remove(function_name, "^Benchmark")
+  )
+```
+
+## Configurations
+
+These benchmarks were run with the following configurations:
+
+```{r}
+#| results: markup
+
+presets |>
+  transmute(
+    preset_name,
+    preset_description
+  ) |>
+  knitr::kable()
+```
+
+## Summary
+
+A quick and dirty summary of benchmark results between this checkout and the last released version.
+
+```{r}
+#| results: markup
+
+preset_contender <- presets$preset_name[1]
+preset_baseline <- presets$preset_name[2]
+
+benchmark_data |>
+  arrange(benchmark_label) |>
+  filter(preset_name %in% c(preset_baseline, preset_contender)) |>
+  transmute(
+    preset_name = factor(preset_name, levels = c(preset_baseline, preset_contender)),
+    benchmark_label = as_factor(benchmark_label),
+    real_time = real_time_pretty
+  ) |>
+  arrange(preset_name) |>
+  pivot_wider(names_from = preset_name, values_from = real_time) |>
+  mutate(
+    benchmark_label = glue::glue("[{benchmark_label}](#{tolower(benchmark_label)})"),
+    change = (.data[[preset_contender]] - .data[[preset_baseline]]),
+    pct_change = paste0(
+      round(
+        as.numeric(change) / as.numeric(.data[[preset_baseline]]) * 100,
+        1
+      ),
+      "%"
+    )
+  ) |>
+  select(everything(), pct_change, change) |>
+  knitr::kable(align = "lrrrr")
+```
+
+```{r}
+#| results: asis
+
+template_group <- "
+
+## {group_title}
+
+{group_description}
+
+{functions}
+"
+
+template_func <- "
+
+### {benchmark_label}
+
+{function_brief}
+
+{function_description}
+
+[View Source](https://github.com/{github_repo}/blob/{github_ref}/{function_file}#L{function_line_start}-L{function_line_end})
+
+{function_table}
+"
+
+make_table <- function(benchmark_name) {
+  benchmark_data |>
+    filter(name == benchmark_name) |>
+    transmute(
+      preset_name,
+      iterations,
+      real_time = real_time_pretty,
+      cpu_time = cpu_time_pretty,
+      items_per_second = format(items_per_second, big.mark = ",")
+    ) |>
+    knitr::kable(align = "lrrrr") |>
+    as.character() |>
+    paste(collapse = "\n")
+}
+
+functions |>
+  semi_join(benchmark_data, by = c("function_name" = "name")) |>
+  mutate(
+    function_table = map_chr(function_name, make_table),
+    content = glue::glue(template_func)
+  ) |>
+  group_by(group_id) |>
+  summarise(functions = paste(content, collapse = "\n\n")) |>
+  left_join(groups, by = "group_id") |>
+  mutate(groups = glue::glue(template_group)) |>
+  pull(groups) |>
+  paste(collapse = "\n\n") |>
+  cat()
+```

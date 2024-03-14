@@ -17,7 +17,7 @@
 
 #include <benchmark/benchmark.h>
 
-#include "nanoarrow.hpp"
+#include <nanoarrow/nanoarrow.hpp>
 
 /// \defgroup nanoarrow-benchmark-array-view ArrowArrayView-related benchmarks
 ///
@@ -34,7 +34,8 @@ ArrowErrorCode InitSchemaAndArrayPrimitive(ArrowSchema* schema, ArrowArray* arra
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array, schema, nullptr));
 
   // Set the data buffer
-  nanoarrow::BufferInitSequence(ArrowArrayBuffer(array, 1), std::move(values));
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(ArrowArrayBuffer(array, 1), values.data(),
+                                            values.size() * sizeof(CType)));
 
   // Pack the validity bitmap
   if (validity.size() > 0) {

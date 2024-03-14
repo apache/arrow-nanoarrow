@@ -20,6 +20,7 @@ cmake_minimum_required(VERSION 3.14)
 
 if(NOT DEFINED CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
+  set(CMAKE_C_STANDARD_REQUIRED ON)
 endif()
 
 set(NANOARROW_VERSION "0.5.0-SNAPSHOT")
@@ -260,17 +261,5 @@ if(NANOARROW_BUILD_TESTS)
 endif()
 
 if(NANOARROW_BUILD_BENCHMARKS)
-  # benchmark requires at least C++11
-  if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 11)
-  endif()
-
-  add_subdirectory("thirdparty/benchmark")
-
-  add_executable(schema_benchmark src/nanoarrow/schema_benchmark.cc)
-  add_executable(array_benchmark src/nanoarrow/array_benchmark.cc)
-
-  target_link_libraries(schema_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
-  target_link_libraries(array_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
-
+  add_subdirectory(dev/benchmarks)
 endif()
