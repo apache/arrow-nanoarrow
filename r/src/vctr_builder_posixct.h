@@ -69,9 +69,10 @@ class PosixctBuilder : public DblBuilder {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
+  ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
+                          ArrowError* error) override {
     R_xlen_t value_size0 = value_size_;
-    NANOARROW_RETURN_NOT_OK(DblBuilder::PushNext(array, error));
+    NANOARROW_RETURN_NOT_OK(DblBuilder::PushNext(array_shelter, array, error));
 
     if (scale_ != 1) {
       double* result = REAL(value_);

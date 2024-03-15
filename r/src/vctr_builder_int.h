@@ -38,8 +38,9 @@ class IntBuilder : public VctrBuilder {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
-    NANOARROW_RETURN_NOT_OK(VctrBuilder::PushNext(array, error));
+  ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
+                          ArrowError* error) override {
+    NANOARROW_RETURN_NOT_OK(VctrBuilder::PushNext(array_shelter, array, error));
 
     int* result = INTEGER(value_);
     int64_t n_bad_values = 0;

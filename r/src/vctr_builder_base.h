@@ -76,7 +76,8 @@ struct VctrBuilder {
   // Push an array into this builder and do not take ownership of array. This is
   // called when the caller cannot safely relinquish ownership of an array (e.g.,
   // convert_array()). Calling this method may longjmp.
-  virtual ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) {
+  virtual ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
+                                  ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&array_view_, array, error));
     return NANOARROW_OK;
   }
@@ -85,7 +86,7 @@ struct VctrBuilder {
   // ownership. This is called when the caller can relinquish ownership (e.g.,
   // convert_array_stream()). Calling this method may longjmp.
   virtual ArrowErrorCode PushNextOwning(ArrowArray* array, ArrowError* error) {
-    return PushNext(array, error);
+    return PushNext(R_NilValue, array, error);
   }
 
   // Perform any final calculations required to calculate the return value.
