@@ -29,6 +29,8 @@ const int64_t kNumItemsPrettyBig = 1000000;
 ///
 /// @{
 
+// Helper to initialize an ArrowArrayView from buffers. The ArrowArray isn't used
+// by the benchmark but is needed to hold the memory.
 template <typename Buffer1T, typename Buffer2T = int8_t>
 ArrowErrorCode InitArrayViewFromBuffers(ArrowType type, ArrowArray* array,
                                         ArrowArrayView* array_view,
@@ -87,7 +89,7 @@ ArrowErrorCode InitArrayViewFromBuffers(ArrowType type, ArrowArray* array,
 }
 
 template <typename CType, ArrowType type>
-static void BaseArrayViewGet(benchmark::State& state) {
+static void BaseArrayViewGetInt(benchmark::State& state) {
   nanoarrow::UniqueArray array;
   nanoarrow::UniqueArrayView array_view;
 
@@ -114,22 +116,22 @@ static void BaseArrayViewGet(benchmark::State& state) {
 
 /// \brief Use ArrowArrayViewGet() to consume an int8 array
 static void BenchmarkArrayViewGetInt8(benchmark::State& state) {
-  BaseArrayViewGet<int8_t, NANOARROW_TYPE_INT8>(state);
+  BaseArrayViewGetInt<int8_t, NANOARROW_TYPE_INT8>(state);
 }
 
 /// \brief Use ArrowArrayViewGet() to consume an int16 array
 static void BenchmarkArrayViewGetInt16(benchmark::State& state) {
-  BaseArrayViewGet<int16_t, NANOARROW_TYPE_INT16>(state);
+  BaseArrayViewGetInt<int16_t, NANOARROW_TYPE_INT16>(state);
 }
 
 /// \brief Use ArrowArrayViewGet() to consume an int32 array
 static void BenchmarkArrayViewGetInt32(benchmark::State& state) {
-  BaseArrayViewGet<int32_t, NANOARROW_TYPE_INT32>(state);
+  BaseArrayViewGetInt<int32_t, NANOARROW_TYPE_INT32>(state);
 }
 
 /// \brief Use ArrowArrayViewGet() to consume an int64 array
 static void BenchmarkArrayViewGetInt64(benchmark::State& state) {
-  BaseArrayViewGet<int64_t, NANOARROW_TYPE_INT64>(state);
+  BaseArrayViewGetInt<int64_t, NANOARROW_TYPE_INT64>(state);
 }
 
 /// \brief Use ArrowArrayViewIsNull() to check for nulls while consuming an int32 array
@@ -166,7 +168,7 @@ static void BenchmarkArrayViewIsNullNonNullable(benchmark::State& state) {
 }
 
 /// \brief Use ArrowArrayViewIsNull() to check for nulls while consuming an int32 array
-/// that contains nulls.
+/// that contains 20% nulls.
 static void BenchmarkArrayViewIsNull(benchmark::State& state) {
   nanoarrow::UniqueArray array;
   nanoarrow::UniqueArrayView array_view;
@@ -208,6 +210,7 @@ static void BenchmarkArrayViewIsNull(benchmark::State& state) {
   state.SetItemsProcessed(n_values * state.iterations());
 }
 
+/// \brief Use ArrowArrayViewGetStringUnsafe() to consume a string array
 static void BenchmarkArrayViewGetString(benchmark::State& state) {
   nanoarrow::UniqueArray array;
   nanoarrow::UniqueArrayView array_view;
