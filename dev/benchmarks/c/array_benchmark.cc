@@ -19,9 +19,13 @@
 
 #include <nanoarrow/nanoarrow.hpp>
 
+// The length of most arrays used in these benchmarks. Just big enough so
+// that the benchmark takes a non-trivial amount of time to run.
+const int64_t kNumItemsPrettyBig = 1000000;
+
 /// \defgroup nanoarrow-benchmark-array-view ArrowArrayView-related benchmarks
 ///
-/// Benchmarks for consuming ArrowArrays using the ArrowArrayViewXXX() functions.
+/// Benchmarks for consuming ArrowArrays using the `ArrowArrayViewXXX()` functions.
 ///
 /// @{
 
@@ -87,7 +91,7 @@ static void BaseArrayViewGet(benchmark::State& state) {
   nanoarrow::UniqueArray array;
   nanoarrow::UniqueArrayView array_view;
 
-  int64_t n_values = 1000000;
+  int64_t n_values = kNumItemsPrettyBig;
 
   std::vector<CType> values(n_values);
   for (int64_t i = 0; i < n_values; i++) {
@@ -134,7 +138,7 @@ static void BenchmarkArrayViewIsNullNonNullable(benchmark::State& state) {
   nanoarrow::UniqueArray array;
   nanoarrow::UniqueArrayView array_view;
 
-  int64_t n_values = 1000000;
+  int64_t n_values = kNumItemsPrettyBig;
 
   // Create values
   std::vector<int32_t> values(n_values);
@@ -167,7 +171,7 @@ static void BenchmarkArrayViewIsNull(benchmark::State& state) {
   nanoarrow::UniqueArray array;
   nanoarrow::UniqueArrayView array_view;
 
-  int64_t n_values = 1000000;
+  int64_t n_values = kNumItemsPrettyBig;
 
   // Create values
   std::vector<int32_t> values(n_values);
@@ -205,12 +209,11 @@ static void BenchmarkArrayViewIsNull(benchmark::State& state) {
 }
 
 static void BenchmarkArrayViewGetString(benchmark::State& state) {
-  nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray array;
   nanoarrow::UniqueArrayView array_view;
 
-  // Create a large array with intentionally tiny strings (to maximize overhead)
-  int64_t n_values = 1000000;
+  // Create an array of relatively small strings
+  int64_t n_values = kNumItemsPrettyBig;
   int64_t value_size = 7;
   std::string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -238,6 +241,119 @@ static void BenchmarkArrayViewGetString(benchmark::State& state) {
   state.SetItemsProcessed(n_values * state.iterations());
 }
 
+/// @}
+
+/// \defgroup nanoarrow-benchmark-array ArrowArray-related benchmarks
+///
+/// Benchmarks for producing ArrowArrays using the `ArrowArrayXXX()` functions.
+///
+/// @{
+
+template <typename CType, ArrowType type>
+static ArrowErrorCode CreateAndAppendToArrayInt(ArrowArray* array,
+                                                const std::vector<CType>& values) {
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array, type));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
+
+  for (int64_t i = 0; i < values.size(); i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, values[i]));
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(array, nullptr));
+  return NANOARROW_OK;
+}
+
+template <ArrowType type>
+static ArrowErrorCode CreateAndAppendToArrayString(
+    ArrowArray* array, const std::vector<std::string>& values) {
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array, type));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
+
+  ArrowStringView view;
+  for (int64_t i = 0; i < values.size(); i++) {
+    const std::string& item = values[i];
+    view.data = item.data();
+    view.size_bytes = item.size();
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, view));
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(array, nullptr));
+  return NANOARROW_OK;
+}
+
+/// \brief Use ArrowArrayAppendString() to build a string array
+static void BenchmarkArrayAppendString(benchmark::State& state) {
+  nanoarrow::UniqueArray array;
+
+  int64_t n_values = kNumItemsPrettyBig;
+  int64_t value_size = 7;
+  std::string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  std::vector<std::string> values(n_values);
+  int64_t alphabet_pos = 0;
+  for (int64_t i = 0; i < n_values; i++) {
+    if ((alphabet_pos + value_size) >= alphabet.size()) {
+      alphabet_pos = 0;
+    }
+
+    std::string value(alphabet.data() + alphabet_pos, value_size);
+    alphabet_pos += value_size;
+    values[i] = value;
+  }
+
+  for (auto _ : state) {
+    array.reset();
+    NANOARROW_THROW_NOT_OK(
+        CreateAndAppendToArrayString<NANOARROW_TYPE_STRING>(array.get(), values));
+    benchmark::DoNotOptimize(array);
+  }
+
+  state.SetItemsProcessed(n_values * state.iterations());
+}
+
+template <typename CType, ArrowType type>
+static void BaseBenchmarkArrayAppendInt(benchmark::State& state) {
+  nanoarrow::UniqueArray array;
+
+  int64_t n_values = kNumItemsPrettyBig;
+
+  std::vector<CType> values(n_values);
+  for (int64_t i = 0; i < n_values; i++) {
+    values[i] = i % std::numeric_limits<CType>::max();
+  }
+
+  for (auto _ : state) {
+    array.reset();
+    int code = CreateAndAppendToArrayInt<CType, type>(array.get(), values);
+    NANOARROW_THROW_NOT_OK(code);
+    benchmark::DoNotOptimize(array);
+  }
+
+  state.SetItemsProcessed(n_values * state.iterations());
+}
+
+/// \brief Use ArrowArrayAppendInt() to build an int8 array
+static void BenchmarkArrayAppendInt8(benchmark::State& state) {
+  BaseBenchmarkArrayAppendInt<int8_t, NANOARROW_TYPE_INT8>(state);
+}
+
+/// \brief Use ArrowArrayAppendInt() to build an int16 array
+static void BenchmarkArrayAppendInt16(benchmark::State& state) {
+  BaseBenchmarkArrayAppendInt<int16_t, NANOARROW_TYPE_INT16>(state);
+}
+
+/// \brief Use ArrowArrayAppendInt() to build an int32 array
+static void BenchmarkArrayAppendInt32(benchmark::State& state) {
+  BaseBenchmarkArrayAppendInt<int32_t, NANOARROW_TYPE_INT32>(state);
+}
+
+/// \brief Use ArrowArrayAppendInt() to build an int64 array
+static void BenchmarkArrayAppendInt64(benchmark::State& state) {
+  BaseBenchmarkArrayAppendInt<int64_t, NANOARROW_TYPE_INT64>(state);
+}
+
+/// @}
+
 BENCHMARK(BenchmarkArrayViewGetInt8);
 BENCHMARK(BenchmarkArrayViewGetInt16);
 BENCHMARK(BenchmarkArrayViewGetInt32);
@@ -245,3 +361,9 @@ BENCHMARK(BenchmarkArrayViewGetInt64);
 BENCHMARK(BenchmarkArrayViewGetString);
 BENCHMARK(BenchmarkArrayViewIsNullNonNullable);
 BENCHMARK(BenchmarkArrayViewIsNull);
+
+BENCHMARK(BenchmarkArrayAppendString);
+BENCHMARK(BenchmarkArrayAppendInt8);
+BENCHMARK(BenchmarkArrayAppendInt16);
+BENCHMARK(BenchmarkArrayAppendInt32);
+BENCHMARK(BenchmarkArrayAppendInt64);
