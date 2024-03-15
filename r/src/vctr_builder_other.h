@@ -47,7 +47,8 @@ class OtherBuilder : public VctrBuilder {
 
   ArrowErrorCode Reserve(R_xlen_t n, ArrowError* error) override { return NANOARROW_OK; }
 
-  ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
+  ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
+                          ArrowError* error) override {
     // Fill this in
     return NANOARROW_OK;
   }

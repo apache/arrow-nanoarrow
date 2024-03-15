@@ -311,7 +311,7 @@ SEXP nanoarrow_c_convert_array2(SEXP array_xptr, SEXP ptype_sexp) {
     Rf_error("builder->Reserve() failed: %s", error.message);
   }
 
-  result = builder->PushNext(array, &error);
+  result = builder->PushNext(array_xptr, array, &error);
   if (result != NANOARROW_OK) {
     Rf_error("builder->PushNext() failed: %s", error.message);
   }

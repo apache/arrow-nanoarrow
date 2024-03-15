@@ -50,7 +50,8 @@ class UnspecifiedBuilder : public VctrBuilder {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
+  ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
+                          ArrowError* error) override {
     int64_t not_null_count;
     if (array->null_count == -1 && array->buffers[0] == nullptr) {
       not_null_count = array->length;

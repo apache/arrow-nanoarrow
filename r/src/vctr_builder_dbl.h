@@ -48,8 +48,9 @@ class DblBuilder : public VctrBuilder {
     return NANOARROW_OK;
   }
 
-  virtual ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
-    NANOARROW_RETURN_NOT_OK(VctrBuilder::PushNext(array, error));
+  virtual ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
+                                  ArrowError* error) override {
+    NANOARROW_RETURN_NOT_OK(VctrBuilder::PushNext(array_shelter, array, error));
 
     double* result = REAL(value_);
     int64_t n_bad_values = 0;
