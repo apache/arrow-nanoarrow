@@ -41,8 +41,9 @@ class ChrBuilder : public VctrBuilder {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
-    NANOARROW_RETURN_NOT_OK(VctrBuilder::PushNext(array, error));
+  ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
+                          ArrowError* error) override {
+    NANOARROW_RETURN_NOT_OK(VctrBuilder::PushNext(array_shelter, array, error));
     R_xlen_t length = array_view_.length;
 
     switch (array_view_.storage_type) {
