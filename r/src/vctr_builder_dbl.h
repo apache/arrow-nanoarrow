@@ -32,7 +32,13 @@ class DblBuilder : public VctrBuilder {
   explicit DblBuilder(SEXP ptype_sexp, VectorType vector_type = VECTOR_TYPE_DBL)
       : VctrBuilder(vector_type, ptype_sexp) {}
 
-  SEXP GetPtype() override { return Rf_allocVector(REALSXP, 0); }
+  SEXP GetPtype() override {
+    if (ptype_sexp_ != R_NilValue) {
+      return ptype_sexp_;
+    } else {
+      return Rf_allocVector(REALSXP, 0);
+    }
+  }
 
   ArrowErrorCode Reserve(R_xlen_t n, ArrowError* error) override {
     NANOARROW_RETURN_NOT_OK(VctrBuilder::Reserve(n, error));

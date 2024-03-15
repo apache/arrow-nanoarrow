@@ -157,24 +157,32 @@ static ArrowErrorCode InstantiateBuilderBase(const ArrowSchema* schema,
 ArrowErrorCode InstantiateBuilder(const ArrowSchema* schema, SEXP ptype_sexp,
                                   VctrBuilderOptions options, VctrBuilder** out,
                                   ArrowError* error) {
-  // See if we can skip any ptype resolution at all
-  if (ptype_sexp == R_NilValue) {
-    ArrowSchemaView view;
-    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, schema, error));
+  ArrowSchemaView view;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, schema, error));
 
-    // Ensure extension types always go through infer_ptype_other()
-    if (view.extension_name.size_bytes == 0) {
-      enum VectorType vector_type = nanoarrow_infer_vector_type(view.type);
-      switch (vector_type) {
-        case VECTOR_TYPE_LGL:
-        case VECTOR_TYPE_INT:
-        case VECTOR_TYPE_DBL:
-        case VECTOR_TYPE_CHR:
-        case VECTOR_TYPE_DATA_FRAME:
-          return InstantiateBuilderBase(schema, vector_type, R_NilValue, out, error);
-        default:
-          break;
-      }
+  // Extension types and dictionary types always need their ptype resolved in
+  // R and always need to use the VctrBuilderOther. This simplifies writing
+  // the builders (e.g., they do not all have to consider these cases).
+  if (view.extension_name.size_bytes > 0 || view.type == NANOARROW_TYPE_DICTIONARY) {
+    SEXP inferred_ptype_sexp = PROTECT(call_infer_ptype_other(schema));
+    int code = InstantiateBuilderBase(schema, VECTOR_TYPE_OTHER, inferred_ptype_sexp, out,
+                                      error);
+    UNPROTECT(1);
+    return code;
+  }
+
+  if (ptype_sexp == R_NilValue) {
+    // See if we can skip any ptype resolution at all
+    enum VectorType vector_type = nanoarrow_infer_vector_type(view.type);
+    switch (vector_type) {
+      case VECTOR_TYPE_LGL:
+      case VECTOR_TYPE_INT:
+      case VECTOR_TYPE_DBL:
+      case VECTOR_TYPE_CHR:
+      case VECTOR_TYPE_DATA_FRAME:
+        return InstantiateBuilderBase(schema, vector_type, R_NilValue, out, error);
+      default:
+        break;
     }
 
     // Otherwise, resolve the ptype and use it (this will error for ptypes that can't be
