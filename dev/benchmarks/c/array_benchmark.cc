@@ -352,6 +352,51 @@ static void BenchmarkArrayAppendInt64(benchmark::State& state) {
   BaseBenchmarkArrayAppendInt<int64_t, NANOARROW_TYPE_INT64>(state);
 }
 
+template <typename CType, ArrowType type>
+static ArrowErrorCode CreateAndAppendIntWithNulls(ArrowArray* array,
+                                                  const std::vector<int8_t>& validity) {
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array, type));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
+  CType non_null_value = std::numeric_limits<CType>::max() / 2;
+
+  for (int64_t i = 0; i < validity.size(); i++) {
+    if (validity[i]) {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, non_null_value));
+    } else {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
+    }
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(array, nullptr));
+  return NANOARROW_OK;
+}
+
+/// \brief Use ArrowArrayAppendNulls() to build an int32 array that contains 80%
+/// null values.
+static void BenchmarkArrayAppendNulls(benchmark::State& state) {
+  nanoarrow::UniqueArray array;
+
+  int64_t n_values = kNumItemsPrettyBig;
+  double prop_null = 0.8;
+  int64_t num_nulls = n_values * prop_null;
+  int64_t null_spacing = n_values / num_nulls;
+
+  std::vector<int8_t> validity(n_values);
+  for (int64_t i = 0; i < n_values; i++) {
+    validity[i] = i % null_spacing != 0;
+  }
+
+  for (auto _ : state) {
+    array.reset();
+    int code =
+        CreateAndAppendIntWithNulls<int32_t, NANOARROW_TYPE_INT32>(array.get(), validity);
+    NANOARROW_THROW_NOT_OK(code);
+    benchmark::DoNotOptimize(array);
+  }
+
+  state.SetItemsProcessed(n_values * state.iterations());
+}
+
 /// @}
 
 BENCHMARK(BenchmarkArrayViewGetInt8);
@@ -367,3 +412,4 @@ BENCHMARK(BenchmarkArrayAppendInt8);
 BENCHMARK(BenchmarkArrayAppendInt16);
 BENCHMARK(BenchmarkArrayAppendInt32);
 BENCHMARK(BenchmarkArrayAppendInt64);
+BENCHMARK(BenchmarkArrayAppendNulls);
