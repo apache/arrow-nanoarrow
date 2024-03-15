@@ -17,7 +17,9 @@
 # under the License.
 
 title: "Benchmark Report"
-format: gfm
+format:
+  gfm:
+    wrap: none
 ---
 
 ```{r setup, include=FALSE}
