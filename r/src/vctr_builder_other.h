@@ -24,9 +24,90 @@
 
 #include "vctr_builder_base.h"
 
+// If we've ended up here, we need to call in to R to convert this stream
+// of arrays into an R vector. Currently, the S3 generic that implements
+// this is convert_array(), so we have to do this one array at a time.
+// The current conversions that are implemented this way internally are
+// factor(), decimal, and + extension types/dictionary.
+//
+// An early version of this reimplemented a good chunk of vctrs-like internals
+// to allow a generic preallocate where each chunk would be copied in to the
+// preallocated vector. This version just converts each chunk as it comes
+// and calls c(); however, eventually the generic should be
+// convert_array_stream() to give implementations in other packages the ability
+// to handle converting more than one array at a time.
 class OtherBuilder : public VctrBuilder {
  public:
-  explicit OtherBuilder(SEXP ptype_sexp) : VctrBuilder(VECTOR_TYPE_OTHER, ptype_sexp) {}
+  explicit OtherBuilder(SEXP ptype_sexp)
+      : VctrBuilder(VECTOR_TYPE_OTHER, ptype_sexp),
+        chunks_sexp_(R_NilValue),
+        chunks_tail_(R_NilValue) {}
+
+  ~OtherBuilder() { nanoarrow_release_sexp(chunks_sexp_); }
+
+  ArrowErrorCode Reserve(R_xlen_t n, ArrowError* error) override { return NANOARROW_OK; }
+
+  ArrowErrorCode PushNext(const ArrowArray* array, ArrowError* error) override {
+    // Fill this in
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode Finish(ArrowError* error) override {
+    if (chunks_tail_ == chunks_sexp_) {
+      Rprintf("zero chunks\n");
+      // Zero chunks (return the ptype)
+      // Probably need to ensure the ptype has zero elements
+      SetValue(GetPtype());
+
+    } else if (chunks_tail_ == CDR(chunks_sexp_)) {
+      Rprintf("one chunk\n");
+      // One chunk (return the chunk)
+      SetValue(CAR(chunks_tail_));
+
+    } else {
+      Rprintf("many chunks\n");
+      // Many chunks (concatenate or rbind)
+      SEXP fun;
+      if (Rf_inherits(ptype_sexp_, "data.frame")) {
+        fun = PROTECT(Rf_install("rbind"));
+      } else {
+        fun = PROTECT(Rf_install("c"));
+      }
+
+      SETCAR(chunks_sexp_, fun);
+      UNPROTECT(1);
+
+      SEXP result = PROTECT(Rf_eval(chunks_sexp_, R_BaseEnv));
+      SetValue(result);
+      UNPROTECT(1);
+    }
+
+    nanoarrow_release_sexp(chunks_sexp_);
+    chunks_sexp_ = R_NilValue;
+    chunks_tail_ = R_NilValue;
+    return NANOARROW_OK;
+  }
+
+ private:
+  SEXP chunks_sexp_;
+  SEXP chunks_tail_;
+
+  void Append(SEXP chunk_sexp) {
+    if (chunks_sexp_ == R_NilValue) {
+      // Not sure if we will need no function, c, or rbind when we
+      // create this, so leave it as R_NilValue for now.
+      SEXP chunks_init = PROTECT(Rf_lang1(R_NilValue));
+      chunks_sexp_ = chunks_init;
+      nanoarrow_preserve_sexp(chunks_sexp_);
+      chunks_tail_ = chunks_sexp_;
+      UNPROTECT(1);
+    }
+
+    SEXP next_sexp = PROTECT(Rf_lcons(chunk_sexp, R_NilValue));
+    SETCDR(chunks_tail_, next_sexp);
+    UNPROTECT(1);
+    chunks_tail_ = next_sexp;
+  }
 };
 
 #endif
