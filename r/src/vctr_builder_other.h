@@ -49,24 +49,35 @@ class OtherBuilder : public VctrBuilder {
 
   ArrowErrorCode PushNext(SEXP array_shelter, const ArrowArray* array,
                           ArrowError* error) override {
-    // Fill this in
+    SEXP schema_borrowed_xptr = PROTECT(
+        R_MakeExternalPtr(const_cast<ArrowSchema*>(schema_), R_NilValue, R_NilValue));
+    Rf_setAttrib(schema_borrowed_xptr, R_ClassSymbol, nanoarrow_cls_schema);
+
+    SEXP array_borrowed_xptr = PROTECT(R_MakeExternalPtr(
+        const_cast<ArrowArray*>(array), schema_borrowed_xptr, array_shelter));
+    Rf_setAttrib(array_borrowed_xptr, R_ClassSymbol, nanoarrow_cls_array);
+
+    SEXP fun = PROTECT(Rf_install("convert_fallback_other"));
+    SEXP call =
+        PROTECT(Rf_lang5(fun, array_borrowed_xptr, R_NilValue, R_NilValue, ptype_sexp_));
+    SEXP chunk_sexp = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
+    Append(chunk_sexp);
+    UNPROTECT(5);
+
     return NANOARROW_OK;
   }
 
   ArrowErrorCode Finish(ArrowError* error) override {
     if (chunks_tail_ == chunks_sexp_) {
-      Rprintf("zero chunks\n");
       // Zero chunks (return the ptype)
       // Probably need to ensure the ptype has zero elements
-      SetValue(GetPtype());
+      SetValue(ptype_sexp_);
 
     } else if (chunks_tail_ == CDR(chunks_sexp_)) {
-      Rprintf("one chunk\n");
       // One chunk (return the chunk)
       SetValue(CAR(chunks_tail_));
 
     } else {
-      Rprintf("many chunks\n");
       // Many chunks (concatenate or rbind)
       SEXP fun;
       if (Rf_inherits(ptype_sexp_, "data.frame")) {
