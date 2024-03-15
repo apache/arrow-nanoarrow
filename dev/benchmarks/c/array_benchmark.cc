@@ -124,13 +124,54 @@ static void BenchmarkArrayViewGetIntUnsafeInt64(benchmark::State& state) {
   BaseArrayViewGetIntUnsafe<int64_t, NANOARROW_TYPE_INT64>(state);
 }
 
-/// \brief Use ArrowArrayViewGetIntUnsafe() to consume an int64 array (checking for nulls)
-static void BenchmarkArrayViewGetIntUnsafeInt64CheckNull(benchmark::State& state) {
-  BaseArrayViewGetIntUnsafe<int64_t, NANOARROW_TYPE_INT64>(state, 0.2);
+/// \brief Use ArrowArrayViewIsNull() to check for nulls while consuming an int32 array
+static void BenchmarkArrayViewIsNull(benchmark::State& state) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  nanoarrow::UniqueArrayView array_view;
+
+  int64_t n_values = 1000000;
+
+  // Create values
+  std::vector<int32_t> values(n_values);
+  for (int64_t i = 0; i < n_values; i++) {
+    values[i] = i % 1000;
+  }
+
+  // Create validity buffer
+  double prop_null = 0.2;
+  int64_t num_nulls = n_values * prop_null;
+  int64_t null_spacing = n_values / num_nulls;
+
+  std::vector<int8_t> validity(n_values);
+  for (int64_t i = 0; i < n_values; i++) {
+    validity[i] = i % null_spacing != 0;
+  }
+
+  int code = InitSchemaAndArrayPrimitive<int32_t, NANOARROW_TYPE_INT32>(
+      schema.get(), array.get(), std::move(values), std::move(validity));
+  NANOARROW_THROW_NOT_OK(code);
+  NANOARROW_THROW_NOT_OK(
+      ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr));
+  NANOARROW_THROW_NOT_OK(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+
+  std::vector<int32_t> values_out(n_values);
+  for (auto _ : state) {
+    for (int64_t i = 0; i < n_values; i++) {
+      if (ArrowArrayViewIsNull(array_view.get(), i)) {
+        values_out[i] = 0;
+      } else {
+        values_out[i] = ArrowArrayViewGetIntUnsafe(array_view.get(), i);
+      }
+    }
+    benchmark::DoNotOptimize(values_out);
+  }
+
+  state.SetItemsProcessed(n_values * state.iterations());
 }
 
 BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt8);
 BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt16);
 BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt32);
 BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt64);
-BENCHMARK(BenchmarkArrayViewGetIntUnsafeInt64CheckNull);
+BENCHMARK(BenchmarkArrayViewIsNull);
