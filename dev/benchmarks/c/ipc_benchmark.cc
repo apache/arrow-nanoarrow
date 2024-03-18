@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <iostream>
+#include <stdio.h>
 
 #include <benchmark/benchmark.h>
 
@@ -104,6 +104,19 @@ static ArrowErrorCode ArrayStreamReadAll(ArrowArrayStream* array_stream,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode MakeFixtureArrayStreamReader(const char* fixture_name,
+                                                   ArrowArrayStream* out) {
+  FILE* fixture_file = fopen(fixture_name, "rb");
+
+  nanoarrow::ipc::UniqueInputStream input_stream;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcInputStreamInitFile(input_stream.get(), fixture_file, true));
+
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcArrayStreamReaderInit(out, input_stream.get(), nullptr));
+  return NANOARROW_OK;
+}
+
 /// \defgroup nanoarrow-benchmark-ipc IPC Reader Benchmarks
 ///
 /// Benchmarks for the ArrowArrayStream IPC reader.
@@ -114,7 +127,7 @@ static ArrowErrorCode ArrayStreamReadAll(ArrowArrayStream* array_stream,
 static void BenchmarkIpcReadManyBatches(benchmark::State& state) {
   nanoarrow::UniqueArrayStream array_stream;
   NANOARROW_THROW_NOT_OK(
-      MakeSimpleArrayStreamReader(kNumBatchesPrettyBig, array_stream.get()));
+      MakeFixtureArrayStreamReader("many_batches.arrows", array_stream.get()));
   int64_t batch_count = 0;
 
   for (auto _ : state) {
