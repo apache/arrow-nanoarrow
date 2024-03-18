@@ -16,6 +16,7 @@
 # under the License.
 
 import os
+
 import numpy as np
 import pyarrow as pa
 from pyarrow import ipc
@@ -29,10 +30,12 @@ num_batches_pretty_big = int(1e5)
 batch_size = 5
 schema = pa.schema({"col1": pa.float64()})
 
+
 def gen_batches():
     for _ in range(num_batches_pretty_big):
         array = np.array(generator.random(batch_size))
         yield pa.record_batch([array], names=["col1"])
+
 
 with ipc.new_stream(os.path.join(fixtures_dir, "many_batches.arrows"), schema) as out:
     for batch in gen_batches():

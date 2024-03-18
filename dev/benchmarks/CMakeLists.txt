@@ -83,3 +83,4 @@ add_test(NAME schema_benchmark COMMAND schema_benchmark
                                        --benchmark_out=schema_benchmark.json)
 add_test(NAME array_benchmark COMMAND array_benchmark
                                       --benchmark_out=array_benchmark.json)
+add_test(NAME ipc_benchmark COMMAND ipc_benchmark --benchmark_out=array_benchmark.json)
