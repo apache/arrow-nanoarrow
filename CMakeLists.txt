@@ -154,13 +154,25 @@ else()
     endif()
   endif()
 
-  install(TARGETS nanoarrow DESTINATION lib)
+  install(TARGETS nanoarrow DESTINATION lib EXPORT nanoarrow-exports)
   install(DIRECTORY src/
           DESTINATION include
           FILES_MATCHING
           PATTERN "*.h")
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
           DESTINATION include/nanoarrow)
+
+  # Set up build and install trees as CMake packages.
+  include(CMakePackageConfigHelpers)
+  write_basic_package_version_file(
+      "${PROJECT_BINARY_DIR}/nanoarrow-config-version.cmake" VERSION ${nanoarrow_VERSION}
+      # Not sure if nanoarrow plans to promise any compatibility.
+      COMPATIBILITY AnyNewerVersion)
+  export(EXPORT nanoarrow-exports FILE "${PROJECT_BINARY_DIR}/nanoarrow-targets.cmake")
+  configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
+                                "${PROJECT_BINARY_DIR}/nanoarrow-config.cmake"
+                                INSTALL_DESTINATION "${PROJECT_BINARY_DIR}")
+
 endif()
 
 # Always build integration test if building tests
