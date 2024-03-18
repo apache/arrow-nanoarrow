@@ -272,12 +272,8 @@ static ArrowErrorCode CreateAndAppendToArrayString(
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array, type));
   NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
 
-  ArrowStringView view;
-  for (int64_t i = 0; i < values.size(); i++) {
-    const std::string& item = values[i];
-    view.data = item.data();
-    view.size_bytes = item.size();
-    NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, view));
+  for (const std::string& s : values) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, {s.data(), s.size()}));
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(array, nullptr));
