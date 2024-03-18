@@ -16,7 +16,7 @@
 # under the License.
 
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 include(FetchContent)
 
 project(nanoarrow_benchmarks)
@@ -61,17 +61,20 @@ elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
 endif()
 
 # Check that either the parent scope or this CMakeLists.txt defines a nanoarrow target
-if(NOT TARGET nanoarrow)
-  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_SOURCE_URL option?)"
+if(NOT TARGET nanoarrow OR NOT TARGET nanoarrow_ipc)
+  message(FATAL_ERROR "nanoarrow or nanoarrow_ipc target not found (missing -DNANOARROW_BENCHMARK_SOURCE_URL option?)"
   )
 endif()
 
 # Add + link tests
 add_executable(schema_benchmark c/schema_benchmark.cc)
 add_executable(array_benchmark c/array_benchmark.cc)
+add_executable(ipc_benchmark c/ipc_benchmark.cc)
 
 target_link_libraries(schema_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
 target_link_libraries(array_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
+target_link_libraries(ipc_benchmark PRIVATE nanoarrow nanoarrow_ipc
+                                            benchmark::benchmark_main)
 
 # This lets all benchmarks run via ctest -VV when this is the top-level project
 include(CTest)
