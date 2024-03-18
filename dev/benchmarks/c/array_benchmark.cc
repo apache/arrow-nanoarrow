@@ -21,7 +21,11 @@
 
 // The length of most arrays used in these benchmarks. Just big enough so
 // that the benchmark takes a non-trivial amount of time to run.
-const int64_t kNumItemsPrettyBig = 1000000;
+static const int64_t kNumItemsPrettyBig = 1000000;
+
+// Used to generate string/binary arrays
+static const std::string kAlphabet =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /// \defgroup nanoarrow-benchmark-array-view ArrowArrayView-related benchmarks
 ///
@@ -273,7 +277,8 @@ static ArrowErrorCode CreateAndAppendToArrayString(
   NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
 
   for (const std::string& s : values) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, {s.data(), s.size()}));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayAppendString(array, {s.data(), static_cast<int64_t>(s.size())}));
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(array, nullptr));
@@ -286,16 +291,15 @@ static void BenchmarkArrayAppendString(benchmark::State& state) {
 
   int64_t n_values = kNumItemsPrettyBig;
   int64_t value_size = 7;
-  std::string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-  std::vector<std::string> values(kNumItemsPrettyBig);
+  std::vector<std::string> values(n_values);
   int64_t alphabet_pos = 0;
   for (std::string& value : values) {
-    if ((alphabet_pos + value_size) >= alphabet.size()) {
+    if ((alphabet_pos + value_size) >= kAlphabet.size()) {
       alphabet_pos = 0;
     }
 
-    value.assign(alphabet.data() + alphabet_pos, value_size);
+    value.assign(kAlphabet.data() + alphabet_pos, value_size);
     alphabet_pos += value_size;
   }
 
@@ -370,7 +374,7 @@ static ArrowErrorCode CreateAndAppendIntWithNulls(ArrowArray* array,
 }
 
 /// \brief Use ArrowArrayAppendNulls() to build an int32 array that contains 80%
-/// null values.
+/// null values
 static void BenchmarkArrayAppendNulls(benchmark::State& state) {
   nanoarrow::UniqueArray array;
 
