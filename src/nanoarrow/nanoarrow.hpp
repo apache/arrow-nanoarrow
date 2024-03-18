@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "nanoarrow.h"
+#include "nanoarrow/nanoarrow_types.h"
 
 #ifndef NANOARROW_HPP_INCLUDED
 #define NANOARROW_HPP_INCLUDED
@@ -550,6 +551,223 @@ class VectorArrayStream {
 
 /// @}
 
+struct Nothing {};
+
+template <typename T>
+class Maybe {
+ public:
+  Maybe() : nothing_{Nothing{}}, is_something_{false} {}
+  Maybe(Nothing) : Maybe{} {}
+
+  Maybe(T something)  // NOLINT(google-explicit-constructor)
+      : something_{something}, is_something_{true} {}
+
+  explicit constexpr operator bool() const { return is_something_; }
+
+  constexpr T get_unchecked() const { return something_; }
+
+  friend inline bool operator==(Maybe l, Maybe r) {
+    if (l.is_something_ != r.is_something_) return false;
+    return l.is_something_ ? l.something_ == r.something_ : true;
+  }
+  friend inline bool operator!=(Maybe l, Maybe r) { return !(l == r); }
+
+ private:
+  static_assert(std::is_trivially_copyable<T>::value, "");
+  static_assert(std::is_trivially_destructible<T>::value, "");
+
+  union {
+    Nothing nothing_;
+    T something_;
+  };
+  bool is_something_;
+};
+
+template <typename Get>
+struct RandomAccessRange {
+  Get get;
+  int64_t size;
+
+  using value_type = decltype(std::declval<Get>()(0));
+  using element_type = value_type const;
+
+  struct const_iterator {
+    int64_t i;
+    const RandomAccessRange* range;
+    bool operator==(const_iterator other) const { return i == other.i; }
+    bool operator!=(const_iterator other) const { return i != other.i; }
+    const_iterator& operator++() { return ++i, *this; }
+    value_type operator*() const { return range->get(i); }
+  };
+
+  const_iterator begin() const { return {0, this}; }
+  const_iterator end() const { return {size, this}; }
+};
+
+// C++17 could do all of this with a lambda
+template <typename T>
+class ViewAs {
+ private:
+  struct Get {
+    const uint8_t* validity;
+    const void* values;
+    int64_t offset;
+
+    Maybe<T> operator()(int64_t i) const {
+      i += offset;
+      if (validity == nullptr || ArrowBitGet(validity, i)) {
+        if (std::is_same<T, bool>::value) {
+          return ArrowBitGet(static_cast<const uint8_t*>(values), i);
+        } else {
+          return static_cast<const T*>(values)[i];
+        }
+      }
+      return Nothing{};
+    }
+  };
+
+  RandomAccessRange<Get> range_;
+
+ public:
+  ViewAs(const ArrowArrayView* array_view)
+      : range_{
+            Get{
+                array_view->buffer_views[0].data.as_uint8,
+                array_view->buffer_views[1].data.data,
+                array_view->offset,
+            },
+            array_view->length,
+        } {}
+
+  ViewAs(const ArrowArray* array)
+      : range_{
+            Get{
+                static_cast<const uint8_t*>(array->buffers[0]),
+                array->buffers[1],
+                /*offset=*/0,
+            },
+            array->length,
+        } {}
+
+  using value_type = typename RandomAccessRange<Get>::value_type;
+  using element_type = typename RandomAccessRange<Get>::element_type;
+  using const_iterator = typename RandomAccessRange<Get>::const_iterator;
+  const_iterator begin() const { return range_.begin(); }
+  const_iterator end() const { return range_.end(); }
+};
+
+template <int OffsetSize = 0>
+class ViewAsBytes {
+ private:
+  using OffsetType = typename std::conditional<OffsetSize == 32, int32_t, int64_t>::type;
+
+  struct Get {
+    const uint8_t* validity;
+    const void* offsets;
+    const char* data;
+    int64_t offset;
+
+    Maybe<ArrowStringView> operator()(int64_t i) const {
+      i += offset;
+      auto* offsets = static_cast<const OffsetType*>(this->offsets);
+      if (validity == nullptr || ArrowBitGet(validity, i)) {
+        return ArrowStringView{data + offsets[i], offsets[i + 1] - offsets[i]};
+      }
+      return Nothing{};
+    }
+  };
+
+  RandomAccessRange<Get> range_;
+
+ public:
+  ViewAsBytes(const ArrowArrayView* array_view)
+      : range_{
+            Get{
+                array_view->buffer_views[0].data.as_uint8,
+                array_view->buffer_views[1].data.data,
+                array_view->buffer_views[2].data.as_char,
+                array_view->offset,
+            },
+            array_view->length,
+        } {}
+
+  ViewAsBytes(const ArrowArray* array)
+      : range_{
+            Get{
+                static_cast<const uint8_t*>(array->buffers[0]),
+                array->buffers[1],
+                static_cast<const char*>(array->buffers[2]),
+                /*offset=*/0,
+            },
+            array->length,
+        } {}
+
+  using value_type = typename RandomAccessRange<Get>::value_type;
+  using element_type = typename RandomAccessRange<Get>::element_type;
+  using const_iterator = typename RandomAccessRange<Get>::const_iterator;
+  const_iterator begin() const { return range_.begin(); }
+  const_iterator end() const { return range_.end(); }
+};
+
+template <>
+class ViewAsBytes<0> {
+ private:
+  struct Get {
+    const uint8_t* validity;
+    const char* data;
+    int64_t offset;
+    int fixed_size;
+
+    Maybe<ArrowStringView> operator()(int64_t i) const {
+      i += offset;
+      if (validity == nullptr || ArrowBitGet(validity, i)) {
+        return ArrowStringView{data + i * fixed_size, fixed_size};
+      }
+      return Nothing{};
+    }
+  };
+
+  RandomAccessRange<Get> range_;
+
+ public:
+  ViewAsBytes(const ArrowArrayView* array_view, int fixed_size)
+      : range_{
+            Get{
+                array_view->buffer_views[0].data.as_uint8,
+                array_view->buffer_views[1].data.as_char,
+                array_view->offset,
+                fixed_size,
+            },
+            array_view->length,
+        } {}
+
+  ViewAsBytes(const ArrowArray* array, int fixed_size)
+      : range_{
+            Get{
+                static_cast<const uint8_t*>(array->buffers[0]),
+                static_cast<const char*>(array->buffers[1]),
+                /*offset=*/0,
+                fixed_size,
+            },
+            array->length,
+        } {}
+
+  using value_type = typename RandomAccessRange<Get>::value_type;
+  using element_type = typename RandomAccessRange<Get>::element_type;
+  using const_iterator = typename RandomAccessRange<Get>::const_iterator;
+  const_iterator begin() const { return range_.begin(); }
+  const_iterator end() const { return range_.end(); }
+};
+
 }  // namespace nanoarrow
+
+inline bool operator==(ArrowStringView l, ArrowStringView r) {
+  if (l.size_bytes != r.size_bytes) return false;
+  return memcmp(l.data, r.data, l.size_bytes) == 0;
+}
+
+inline ArrowStringView operator""_v(const char* data, std::size_t size_bytes) {
+  return {data, static_cast<int64_t>(size_bytes)};
+}
 
 #endif

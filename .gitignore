@@ -30,3 +30,5 @@ __pycache__
 
 # meson subprojects
 subprojects
+
+compile_commands.json
