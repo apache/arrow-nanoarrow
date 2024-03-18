@@ -53,13 +53,19 @@ fetchcontent_declare(benchmark
 fetchcontent_makeavailable(benchmark)
 
 if(IS_DIRECTORY "${NANOARROW_BENCHMARK_SOURCE_URL}")
+  fetchcontent_declare(nanoarrow
+                       SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_URL}")
   fetchcontent_declare(nanoarrow_ipc
                        SOURCE_DIR
                        "${NANOARROW_BENCHMARK_SOURCE_URL}/extensions/nanoarrow_ipc")
+
+  fetchcontent_makeavailable(nanoarrow)
   fetchcontent_makeavailable(nanoarrow_ipc)
 elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
+  fetchcontent_declare(nanoarrow URL "${NANOARROW_BENCHMARK_SOURCE_URL}")
   fetchcontent_declare(nanoarrow_ipc URL "${NANOARROW_BENCHMARK_SOURCE_URL}"
                                          SOURCE_SUBDIR extensions/nanoarrow_ipc)
+  fetchcontent_makeavailable(nanoarrow)
   fetchcontent_makeavailable(nanoarrow_ipc)
 endif()
 
