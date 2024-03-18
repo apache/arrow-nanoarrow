@@ -53,11 +53,14 @@ fetchcontent_declare(benchmark
 fetchcontent_makeavailable(benchmark)
 
 if(IS_DIRECTORY "${NANOARROW_BENCHMARK_SOURCE_URL}")
-  fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_URL}")
-  fetchcontent_makeavailable(nanoarrow)
+  fetchcontent_declare(nanoarrow_ipc
+                       SOURCE_DIR
+                       "${NANOARROW_BENCHMARK_SOURCE_URL}/extensions/nanoarrow_ipc")
+  fetchcontent_makeavailable(nanoarrow_ipc)
 elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
-  fetchcontent_declare(nanoarrow URL "${NANOARROW_BENCHMARK_SOURCE_URL}")
-  fetchcontent_makeavailable(nanoarrow)
+  fetchcontent_declare(nanoarrow_ipc URL "${NANOARROW_BENCHMARK_SOURCE_URL}"
+                                         SOURCE_SUBDIR extensions/nanoarrow_ipc)
+  fetchcontent_makeavailable(nanoarrow_ipc)
 endif()
 
 # Check that either the parent scope or this CMakeLists.txt defines a nanoarrow target
@@ -83,4 +86,4 @@ add_test(NAME schema_benchmark COMMAND schema_benchmark
                                        --benchmark_out=schema_benchmark.json)
 add_test(NAME array_benchmark COMMAND array_benchmark
                                       --benchmark_out=array_benchmark.json)
-add_test(NAME ipc_benchmark COMMAND ipc_benchmark --benchmark_out=array_benchmark.json)
+add_test(NAME ipc_benchmark COMMAND ipc_benchmark --benchmark_out=ipc_benchmark.json)
