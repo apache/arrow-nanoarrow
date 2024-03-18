@@ -288,16 +288,15 @@ static void BenchmarkArrayAppendString(benchmark::State& state) {
   int64_t value_size = 7;
   std::string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-  std::vector<std::string> values(n_values);
+  std::vector<std::string> values(kNumItemsPrettyBig);
   int64_t alphabet_pos = 0;
-  for (int64_t i = 0; i < n_values; i++) {
+  for (std::string& value : values) {
     if ((alphabet_pos + value_size) >= alphabet.size()) {
       alphabet_pos = 0;
     }
 
-    std::string value(alphabet.data() + alphabet_pos, value_size);
+    value.assign(alphabet.data() + alphabet_pos, value_size);
     alphabet_pos += value_size;
-    values[i] = value;
   }
 
   for (auto _ : state) {
