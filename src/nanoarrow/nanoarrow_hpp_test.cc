@@ -17,9 +17,13 @@
 
 #include <array>
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.hpp"
+
+constexpr nanoarrow::Nothing kNull{};
+using testing::ElementsAre;
 
 TEST(NanoarrowHppTest, NanoarrowHppExceptionTest) {
   ASSERT_THROW(NANOARROW_THROW_NOT_OK(EINVAL), nanoarrow::Exception);
@@ -286,24 +290,10 @@ TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
   nanoarrow::VectorArrayStream(schema_in.get(), array_in.get())
       .ToArrayStream(array_stream.get());
 
-  nanoarrow::UniqueSchema schema;
-  ASSERT_EQ(array_stream->get_schema(array_stream.get(), schema.get()), NANOARROW_OK);
-
-  nanoarrow::UniqueArrayView array_view;
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
-            NANOARROW_OK);
-
-  nanoarrow::UniqueArray array;
-  EXPECT_EQ(ArrowArrayStreamGetNext(array_stream.get(), array.get(), nullptr),
-            NANOARROW_OK);
-
-  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view.get(), 0), 1234);
-  array.reset();
-
-  EXPECT_EQ(ArrowArrayStreamGetNext(array_stream.get(), array.get(), nullptr),
-            NANOARROW_OK);
-  EXPECT_EQ(array->release, nullptr);
-
-  EXPECT_STREQ(array_stream->get_last_error(array_stream.get()), "");
+  nanoarrow::ErrorWithCode error;
+  for (ArrowArray& array : nanoarrow::ViewStream(array_stream.get(), &error)) {
+    EXPECT_THAT(nanoarrow::ViewAs<int32_t>(&array), ElementsAre(1234));
+  }
+  EXPECT_FALSE(error);
+  EXPECT_STREQ(error.message, "");
 }

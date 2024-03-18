@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <stdexcept>
+#include <sys/wait.h>
 #include <string>
 #include <vector>
 
@@ -564,7 +564,7 @@ class Maybe {
 
   explicit constexpr operator bool() const { return is_something_; }
 
-  constexpr T get_unchecked() const { return something_; }
+  const T& operator*() const { return something_; }
 
   friend inline bool operator==(Maybe l, Maybe r) {
     if (l.is_something_ != r.is_something_) return false;
@@ -589,7 +589,6 @@ struct RandomAccessRange {
   int64_t size;
 
   using value_type = decltype(std::declval<Get>()(0));
-  using element_type = value_type const;
 
   struct const_iterator {
     int64_t i;
@@ -602,6 +601,37 @@ struct RandomAccessRange {
 
   const_iterator begin() const { return {0, this}; }
   const_iterator end() const { return {size, this}; }
+};
+
+template <typename Next>
+struct InputRange {
+  Next next;
+  using ValueOrFalsy = decltype(std::declval<Next>()());
+
+  static_assert(std::is_convertible<ValueOrFalsy, bool>::value, "");
+  using value_type = decltype(*std::declval<ValueOrFalsy>());
+
+  struct iterator {
+    InputRange* range;
+    ValueOrFalsy stashed;
+
+    bool operator==(iterator other) const {
+      if (stashed) false;
+      // The stashed value is falsy, so the LHS iterator is at the end.
+      // Check if RHS iterator is the end sentinel.
+      return other.range == nullptr;
+    }
+    bool operator!=(iterator other) const { return !(*this == other); }
+
+    iterator& operator++() {
+      stashed = range->next();
+      return *this;
+    }
+    value_type operator*() const { return *stashed; }
+  };
+
+  iterator begin() { return {this}; }
+  iterator end() { return {}; }
 };
 
 // C++17 could do all of this with a lambda
@@ -650,7 +680,6 @@ class ViewAs {
         } {}
 
   using value_type = typename RandomAccessRange<Get>::value_type;
-  using element_type = typename RandomAccessRange<Get>::element_type;
   using const_iterator = typename RandomAccessRange<Get>::const_iterator;
   const_iterator begin() const { return range_.begin(); }
   const_iterator end() const { return range_.end(); }
@@ -703,7 +732,6 @@ class ViewAsBytes {
         } {}
 
   using value_type = typename RandomAccessRange<Get>::value_type;
-  using element_type = typename RandomAccessRange<Get>::element_type;
   using const_iterator = typename RandomAccessRange<Get>::const_iterator;
   const_iterator begin() const { return range_.begin(); }
   const_iterator end() const { return range_.end(); }
@@ -753,10 +781,55 @@ class ViewAsBytes<0> {
         } {}
 
   using value_type = typename RandomAccessRange<Get>::value_type;
-  using element_type = typename RandomAccessRange<Get>::element_type;
   using const_iterator = typename RandomAccessRange<Get>::const_iterator;
   const_iterator begin() const { return range_.begin(); }
   const_iterator end() const { return range_.end(); }
+};
+
+struct ErrorWithCode : ArrowError {
+  ErrorWithCode() : ArrowError{}, code{NANOARROW_OK} {}
+  ArrowErrorCode code;
+  constexpr operator bool() const { return code != NANOARROW_OK; }
+};
+
+class ViewStream {
+ public:
+  ViewStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
+      : range_{Next{this, stream, ArrowArray{}}}, code_{code}, error_{error} {}
+
+  ViewStream(ArrowArrayStream* stream, ErrorWithCode* error)
+      : ViewStream{stream, &error->code, error} {}
+
+ private:
+  struct Next {
+    ViewStream* self;
+    ArrowArrayStream* stream;
+    ArrowArray array;
+
+    ArrowArray* operator()() {
+      if (array.release) {
+        ArrowArrayRelease(&array);
+      }
+      *self->code_ = ArrowArrayStreamGetNext(stream, &array, self->error_);
+      if (*self->code_ != NANOARROW_OK) {
+        NANOARROW_DCHECK(array.release == nullptr);
+        return nullptr;
+      }
+      if (array.release == nullptr) {
+        return nullptr;
+      }
+      return &array;
+    }
+  };
+
+  InputRange<Next> range_;
+  ArrowError* error_;
+  ArrowErrorCode* code_;
+
+ public:
+  using iterator = typename InputRange<Next>::iterator;
+  iterator begin() { return range_.begin(); }
+  iterator end() { return range_.end(); }
 };
 
 }  // namespace nanoarrow

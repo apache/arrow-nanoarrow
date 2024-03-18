@@ -263,8 +263,8 @@ if(NANOARROW_BUILD_TESTS)
   target_link_libraries(buffer_test nanoarrow gtest_main)
   target_link_libraries(array_test nanoarrow gtest_main gmock_main ${NANOARROW_ARROW_TARGET})
   target_link_libraries(schema_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
-  target_link_libraries(array_stream_test nanoarrow gtest_main)
-  target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main)
+  target_link_libraries(array_stream_test nanoarrow gtest_main gmock_main)
+  target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main gmock_main)
   target_link_libraries(nanoarrow_testing_test nanoarrow gtest_main
                         nlohmann_json::nlohmann_json)
   target_link_libraries(c_data_integration_test nanoarrow nanoarrow_c_data_integration
