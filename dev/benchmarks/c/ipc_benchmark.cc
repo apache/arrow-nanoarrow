@@ -23,7 +23,7 @@
 #include <nanoarrow/nanoarrow_ipc.hpp>
 
 // The number of batches used when generating test data
-static const int64_t kNumBatchesPrettyBig = 100000;
+static const int64_t kNumBatchesPrettyBig = 500000;
 
 // Simple schema/batch combination (because we don't have an IPC writer and can't
 // generate our own test data yet). This schema is struct<some_col: int32> with
@@ -84,6 +84,19 @@ static ArrowErrorCode MakeSimpleArrayStreamReader(int64_t num_batches,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode MakeFixtureArrayStreamReader(const char* fixture_name,
+                                                   ArrowArrayStream* out) {
+  FILE* fixture_file = fopen(fixture_name, "rb");
+
+  nanoarrow::ipc::UniqueInputStream input_stream;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcInputStreamInitFile(input_stream.get(), fixture_file, true));
+
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcArrayStreamReaderInit(out, input_stream.get(), nullptr));
+  return NANOARROW_OK;
+}
+
 static ArrowErrorCode ArrayStreamReadAll(ArrowArrayStream* array_stream,
                                          int64_t* batch_count) {
   nanoarrow::UniqueSchema schema;
@@ -99,21 +112,9 @@ static ArrowErrorCode ArrayStreamReadAll(ArrowArrayStream* array_stream,
     }
 
     *batch_count = *batch_count + 1;
+    benchmark::DoNotOptimize(*batch_count);
   }
 
-  return NANOARROW_OK;
-}
-
-static ArrowErrorCode MakeFixtureArrayStreamReader(const char* fixture_name,
-                                                   ArrowArrayStream* out) {
-  FILE* fixture_file = fopen(fixture_name, "rb");
-
-  nanoarrow::ipc::UniqueInputStream input_stream;
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcInputStreamInitFile(input_stream.get(), fixture_file, true));
-
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcArrayStreamReaderInit(out, input_stream.get(), nullptr));
   return NANOARROW_OK;
 }
 
@@ -127,7 +128,7 @@ static ArrowErrorCode MakeFixtureArrayStreamReader(const char* fixture_name,
 static void BenchmarkIpcReadManyBatches(benchmark::State& state) {
   nanoarrow::UniqueArrayStream array_stream;
   NANOARROW_THROW_NOT_OK(
-      MakeFixtureArrayStreamReader("many_batches.arrows", array_stream.get()));
+      MakeSimpleArrayStreamReader(kNumBatchesPrettyBig, array_stream.get()));
   int64_t batch_count = 0;
 
   for (auto _ : state) {
