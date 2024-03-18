@@ -24,3 +24,4 @@ CMakeUserPresets.json
 .vscode
 .Rproj.user
 .cache
+*.swp
