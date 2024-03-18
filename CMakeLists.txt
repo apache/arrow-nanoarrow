@@ -229,6 +229,7 @@ if(NANOARROW_BUILD_TESTS)
   target_link_libraries(array_test
                         nanoarrow
                         gtest_main
+                        gmock_main
                         ${NANOARROW_ARROW_TARGET}
                         coverage_config)
   target_link_libraries(schema_test
