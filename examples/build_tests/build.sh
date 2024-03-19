@@ -13,3 +13,7 @@ cmake --build build/
 cmake --install nanoarrow_build/
 cmake -S . -B build_against_install/ -Dnanoarrow_ROOT=nanoarrow_install/
 cmake --build build_against_install/
+
+# Now try using FetchContent to get nanoarrow from remote.
+cmake -S . -B build_against_fetched/ -DFIND_NANOARROW=OFF
+cmake --build build_against_fetched/

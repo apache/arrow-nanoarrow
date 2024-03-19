@@ -18,9 +18,10 @@
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 # Setting minimum to 3.12 for CMP0074
 cmake_minimum_required(VERSION 3.25)
-include(FetchContent)
 
 project(NanoArrowExampleCMakeMinimal)
+
+option(FIND_NANOARROW "Find an existing nanoarrow" ON)
 
 # When adding nanoarrow's CMake directory to a CMake project that contains a library
 # intended for use by others, set NANOARROW_NAMESPACE to rename symbols in the
@@ -30,7 +31,16 @@ project(NanoArrowExampleCMakeMinimal)
 # available in many text editors.
 set(NANOARROW_NAMESPACE "ExampleCmakeMinimal")
 
-find_package(nanoarrow 0.5.0 REQUIRED)
+if(FIND_NANOARROW)
+  find_package(nanoarrow 0.5.0 REQUIRED)
+else()
+  include(FetchContent)
+  FetchContent_Declare(nanoarrow_example_cmake_minimal
+                       GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
+                       GIT_TAG main
+                       GIT_SHALLOW TRUE)
+  FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
+endif()
 
 # Add the library and link it against nanoarrow
 include_directories(src)
