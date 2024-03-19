@@ -119,8 +119,9 @@ static void BaseArrayViewGetInt(benchmark::State& state) {
   std::vector<CType> values_out(n_values);
   for (auto _ : state) {
 #if NANOARROW_HAS_ZIP
-    for (auto [i, value] : Zip(Enumerate, values_out)) {
-      value = ArrowArrayViewGetIntUnsafe(array_view.get(), i);
+    for (auto [i, array_slot, value_out] :
+         Zip(Enumerate, nanoarrow::ViewAs<int32_t>(array_view.get()), values_out)) {
+      value_out = *array_slot;
     }
 #else
     for (int64_t i = 0; i < n_values; i++) {
