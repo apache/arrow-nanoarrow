@@ -155,6 +155,7 @@ else()
   endif()
 
   install(TARGETS nanoarrow DESTINATION lib EXPORT nanoarrow-exports)
+  install(TARGETS coverage_config DESTINATION lib EXPORT nanoarrow-exports)
   install(DIRECTORY src/
           DESTINATION include
           FILES_MATCHING
