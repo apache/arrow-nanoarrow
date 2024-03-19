@@ -872,6 +872,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_THAT(nanoarrow::ViewAsBytes<>(&array, 5),
               ElementsAre("12345"_v, kNull, kNull, "67890"_v, "\0\0\0\0\0"_v));
   ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 }
 
 TEST(ArrayTest, ArrayTestAppendToBinaryArrayErrors) {
