@@ -162,7 +162,7 @@ else()
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
           DESTINATION include/nanoarrow)
 
-  # Set up build and install trees as CMake packages.
+  # Set up build tree as a CMake package.
   include(CMakePackageConfigHelpers)
   write_basic_package_version_file(
       "${PROJECT_BINARY_DIR}/nanoarrow-config-version.cmake" VERSION ${nanoarrow_VERSION}
@@ -173,6 +173,7 @@ else()
                                 INSTALL_DESTINATION "${PROJECT_BINARY_DIR}")
   export(EXPORT nanoarrow-exports FILE "${PROJECT_BINARY_DIR}/nanoarrow-targets.cmake")
 
+  # Set up install tree as a CMake package.
   include(GNUInstallDirs)
   set(install_location "${CMAKE_INSTALL_LIBDIR}/cmake/nanoarrow")
   set(build_location "${CMAKE_BINARY_DIR}/${install_location}")
