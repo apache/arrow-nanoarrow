@@ -17,7 +17,9 @@
 
 _coverage/
 build/
+build_against_install/
 nanoarrow_build/
+nanoarrow_install/
 out/
 arrow-hpp
 .DS_Store

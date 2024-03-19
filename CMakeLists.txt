@@ -168,10 +168,23 @@ else()
       "${PROJECT_BINARY_DIR}/nanoarrow-config-version.cmake" VERSION ${nanoarrow_VERSION}
       # Not sure if nanoarrow plans to promise any compatibility.
       COMPATIBILITY AnyNewerVersion)
-  export(EXPORT nanoarrow-exports FILE "${PROJECT_BINARY_DIR}/nanoarrow-targets.cmake")
   configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
                                 "${PROJECT_BINARY_DIR}/nanoarrow-config.cmake"
                                 INSTALL_DESTINATION "${PROJECT_BINARY_DIR}")
+  export(EXPORT nanoarrow-exports FILE "${PROJECT_BINARY_DIR}/nanoarrow-targets.cmake")
+
+  include(GNUInstallDirs)
+  set(install_location "${CMAKE_INSTALL_LIBDIR}/cmake/nanoarrow")
+  set(build_location "${CMAKE_BINARY_DIR}/${install_location}")
+  write_basic_package_version_file(
+      "${build_location}/nanoarrow-config-version.cmake" VERSION ${nanoarrow_VERSION}
+      # Not sure if nanoarrow plans to promise any compatibility.
+      COMPATIBILITY AnyNewerVersion)
+  configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
+                                "${build_location}/nanoarrow-config.cmake"
+                                INSTALL_DESTINATION "${install_location}")
+  install(DIRECTORY "${build_location}/" DESTINATION "${install_location}")
+  install(EXPORT nanoarrow-exports DESTINATION "${install_location}" FILE "nanoarrow-targets.cmake")
 
 endif()
 
