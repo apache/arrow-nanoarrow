@@ -17,8 +17,7 @@
 
 _coverage/
 build/
-examples/build_tests/build_*
-examples/build_tests/nanoarrow_*
+scratch/
 out/
 arrow-hpp
 .DS_Store
