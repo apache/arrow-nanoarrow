@@ -22,9 +22,8 @@
 #include <nanoarrow/nanoarrow.hpp>
 #include <nanoarrow/nanoarrow_ipc.hpp>
 
-static ArrowErrorCode MakeFixtureArrayStreamReader(const std::string& fixture_name,
-                                                   bool copy_to_buffer,
-                                                   ArrowArrayStream* out) {
+static ArrowErrorCode MakeFixtureInputStreamFile(const std::string& fixture_name,
+                                                 ArrowIpcInputStream* out) {
   const char* fixture_dir = std::getenv("NANOARROW_BENCHMARK_FIXTURE_DIR");
   if (fixture_dir == NULL) {
     fixture_dir = "fixtures";
@@ -33,29 +32,26 @@ static ArrowErrorCode MakeFixtureArrayStreamReader(const std::string& fixture_na
   std::string fixture_path = std::string(fixture_dir) + std::string("/") + fixture_name;
   FILE* fixture_file = fopen(fixture_path.c_str(), "rb");
 
+  NANOARROW_RETURN_NOT_OK(ArrowIpcInputStreamInitFile(out, fixture_file, true));
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode MakeFixtureBuffer(const std::string& fixture_name,
+                                        ArrowBuffer* out) {
   nanoarrow::ipc::UniqueInputStream input_stream;
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcInputStreamInitFile(input_stream.get(), fixture_file, true));
+  NANOARROW_RETURN_NOT_OK(MakeFixtureInputStreamFile(fixture_name, input_stream.get()));
 
-  if (copy_to_buffer) {
-    nanoarrow::UniqueBuffer buffer;
-    int64_t size_read_out = 0;
-    int64_t chunk_size = 1024;
-    do {
-      NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer.get(), chunk_size));
-      input_stream->read(input_stream.get(), buffer->data + buffer->size_bytes,
-                         chunk_size, &size_read_out, nullptr);
-      buffer->size_bytes += size_read_out;
-    } while (size_read_out > 0);
+  nanoarrow::UniqueBuffer buffer;
+  int64_t size_read_out = 0;
+  int64_t chunk_size = 1024;
+  do {
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer.get(), chunk_size));
+    input_stream->read(input_stream.get(), buffer->data + buffer->size_bytes, chunk_size,
+                       &size_read_out, nullptr);
+    buffer->size_bytes += size_read_out;
+  } while (size_read_out > 0);
 
-    input_stream.reset();
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcInputStreamInitBuffer(input_stream.get(), buffer.get()));
-  }
-
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcArrayStreamReaderInit(out, input_stream.get(), nullptr));
-
+  ArrowBufferMove(buffer.get(), out);
   return NANOARROW_OK;
 }
 
@@ -99,11 +95,17 @@ static void BenchmarkIpcReadManyBatchesFromFile(benchmark::State& state) {
   int64_t column_count = 0;
 
   for (auto _ : state) {
+    nanoarrow::ipc::UniqueInputStream input_stream;
+    NANOARROW_THROW_NOT_OK(
+        MakeFixtureInputStreamFile("many_batches.arrows", input_stream.get()));
+
     nanoarrow::UniqueArrayStream array_stream;
     NANOARROW_THROW_NOT_OK(
-        MakeFixtureArrayStreamReader("many_batches.arrows", false, array_stream.get()));
+        ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(), nullptr));
+
     NANOARROW_THROW_NOT_OK(
         ArrayStreamReadAll(array_stream.get(), &batch_count, &column_count));
+
     benchmark::DoNotOptimize(batch_count);
   }
 
@@ -116,12 +118,28 @@ static void BenchmarkIpcReadManyBatchesFromBuffer(benchmark::State& state) {
   int64_t batch_count = 0;
   int64_t column_count = 0;
 
+  nanoarrow::UniqueBuffer buffer;
+  NANOARROW_THROW_NOT_OK(MakeFixtureBuffer("many_batches.arrows", buffer.get()));
+
   for (auto _ : state) {
+    // Note: an attempt to remove this copy does not affect the timing for this particular
+    // benchmark (it is possible to set a deallocator that does nothing and manually
+    // assign the data and size_bytes of the copy).
+    nanoarrow::UniqueBuffer buffer_copy;
+    NANOARROW_THROW_NOT_OK(
+        ArrowBufferAppend(buffer_copy.get(), buffer->data, buffer->size_bytes));
+
+    nanoarrow::ipc::UniqueInputStream input_stream;
+    NANOARROW_THROW_NOT_OK(
+        ArrowIpcInputStreamInitBuffer(input_stream.get(), buffer_copy.get()));
+
     nanoarrow::UniqueArrayStream array_stream;
     NANOARROW_THROW_NOT_OK(
-        MakeFixtureArrayStreamReader("many_batches.arrows", true, array_stream.get()));
+        ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(), nullptr));
+
     NANOARROW_THROW_NOT_OK(
         ArrayStreamReadAll(array_stream.get(), &batch_count, &column_count));
+
     benchmark::DoNotOptimize(batch_count);
   }
 
@@ -135,11 +153,17 @@ static void BenchmarkIpcReadManyColumnsFromFile(benchmark::State& state) {
   int64_t column_count = 0;
 
   for (auto _ : state) {
+    nanoarrow::ipc::UniqueInputStream input_stream;
+    NANOARROW_THROW_NOT_OK(
+        MakeFixtureInputStreamFile("many_columns.arrows", input_stream.get()));
+
     nanoarrow::UniqueArrayStream array_stream;
     NANOARROW_THROW_NOT_OK(
-        MakeFixtureArrayStreamReader("many_columns.arrows", false, array_stream.get()));
+        ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(), nullptr));
+
     NANOARROW_THROW_NOT_OK(
         ArrayStreamReadAll(array_stream.get(), &batch_count, &column_count));
+
     benchmark::DoNotOptimize(column_count);
   }
 
