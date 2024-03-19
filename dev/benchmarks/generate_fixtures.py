@@ -48,3 +48,19 @@ def write_fixture_many_batches():
             yield pa.record_batch([array], names=["col1"])
 
     write_fixture(schema, gen_batches(), "many_batches.arrows")
+
+
+def write_fixture_many_columns():
+    """
+    A fixture with 10,000 columns and zero batches. This is designed to benchmark
+    the overhead of reading a schema message.
+    """
+
+    num_columns_pretty_big = int(1e4)
+    schema = pa.schema({f"col{i}": pa.float64() for i in range(num_columns_pretty_big)})
+    write_fixture(schema, [], "many_columns.arrows")
+
+
+if __name__ == "__main__":
+    write_fixture_many_batches()
+    write_fixture_many_columns()
