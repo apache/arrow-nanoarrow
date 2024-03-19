@@ -35,7 +35,7 @@
 #include "nanoarrow/nanoarrow.hpp"
 
 using namespace arrow;
-constexpr nanoarrow::Nothing kNull{};
+using nanoarrow::NA;
 using testing::ElementsAre;
 
 // Lightweight versions of ArrowTesting's ARROW_EXPECT_OK. This
@@ -800,7 +800,7 @@ TEST(ArrayTest, ArrayTestAppendToBoolArray) {
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
-  EXPECT_THAT(nanoarrow::ViewAs<bool>(&array), ElementsAre(true, kNull, kNull, false));
+  EXPECT_THAT(nanoarrow::ViewAs<bool>(&array), ElementsAre(true, NA, NA, false));
   ArrowArrayRelease(&array);
 }
 
@@ -834,7 +834,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
 
   EXPECT_THAT(nanoarrow::ViewAsBytes<64>(&array),
-              ElementsAre("1234"_v, kNull, kNull, "56789"_v, ""_v));
+              ElementsAre("1234"_v, NA, NA, "56789"_v, ""_v));
   ArrowArrayRelease(&array);
 }
 
@@ -870,7 +870,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_EQ(memcmp(data_buffer, expected_data, 25), 0);
 
   EXPECT_THAT(nanoarrow::ViewAsBytes<>(&array, 5),
-              ElementsAre("12345"_v, kNull, kNull, "67890"_v, "\0\0\0\0\0"_v));
+              ElementsAre("12345"_v, NA, NA, "67890"_v, "\0\0\0\0\0"_v));
   ArrowArrayRelease(&array);
   ArrowSchemaRelease(&schema);
 }
@@ -905,7 +905,7 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 1);
 
-  EXPECT_THAT(nanoarrow::ViewAs<int32_t>(&array), ElementsAre(months, kNull));
+  EXPECT_THAT(nanoarrow::ViewAs<int32_t>(&array), ElementsAre(months, NA));
   ArrowArrayRelease(&array);
 }
 
