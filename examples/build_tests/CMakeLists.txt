@@ -19,7 +19,7 @@ message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 # Setting minimum to 3.12 for CMP0074
 cmake_minimum_required(VERSION 3.25)
 
-project(NanoArrowExampleCMakeMinimal)
+project(NanoArrowExampleCMakeMinimal LANGUAGES C CXX)
 
 option(FIND_NANOARROW "Find an existing nanoarrow" ON)
 
@@ -43,9 +43,8 @@ else()
 endif()
 
 # Add the library and link it against nanoarrow
-include_directories(src)
-add_library(example_cmake_minimal_library src/library.c)
+add_library(minimal_c_example src/library.c)
+target_link_libraries(minimal_c_example PRIVATE nanoarrow)
 
-# Always use PRIVATE when linking to nanoarrow to hide nanoarrow's headers from a
-# target that in turn uses your library.
-target_link_libraries(example_cmake_minimal_library PRIVATE nanoarrow)
+add_library(minimal_cpp_example src/library.cpp)
+target_link_libraries(minimal_cpp_example PRIVATE nanoarrow)

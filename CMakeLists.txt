@@ -158,7 +158,7 @@ else()
   install(DIRECTORY src/
           DESTINATION include
           FILES_MATCHING
-          PATTERN "*.h")
+          PATTERN "*.h*")
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
           DESTINATION include/nanoarrow)
 
