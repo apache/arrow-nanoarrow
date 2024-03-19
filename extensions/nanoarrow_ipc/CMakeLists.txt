@@ -39,7 +39,7 @@ option(NANOARROW_IPC_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(ipc_coverage_config INTERFACE)
 
 # Lazily add the nanoarrow dependency
-if(NOT TARGET nanoarrow)
+if(NOT TARGET nanoarrow AND NOT NANOARROW_IPC_BUNDLE)
   fetchcontent_declare(nanoarrow SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 
   # Don't install nanoarrow because of this configuration
