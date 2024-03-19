@@ -35,11 +35,11 @@ if(FIND_NANOARROW)
   find_package(nanoarrow 0.5.0 REQUIRED)
 else()
   include(FetchContent)
-  FetchContent_Declare(nanoarrow_example_cmake_minimal
+  fetchcontent_declare(nanoarrow_example_cmake_minimal
                        GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
                        GIT_TAG main
                        GIT_SHALLOW TRUE)
-  FetchContent_MakeAvailable(nanoarrow_example_cmake_minimal)
+  fetchcontent_makeavailable(nanoarrow_example_cmake_minimal)
 endif()
 
 # Add the library and link it against nanoarrow
