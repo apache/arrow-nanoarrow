@@ -19,6 +19,9 @@
 
 #include <nanoarrow/nanoarrow.hpp>
 
+using nanoarrow::Enumerate;
+using nanoarrow::Zip;
+
 // The length of most arrays used in these benchmarks. Just big enough so
 // that the benchmark takes a non-trivial amount of time to run.
 static const int64_t kNumItemsPrettyBig = 1000000;
@@ -100,18 +103,30 @@ static void BaseArrayViewGetInt(benchmark::State& state) {
   int64_t n_values = kNumItemsPrettyBig;
 
   std::vector<CType> values(n_values);
+#if NANOARROW_HAS_ZIP
+  for (auto [i, value] : Zip(Enumerate, values)) {
+    value = i % std::numeric_limits<CType>::max();
+  }
+#else
   for (int64_t i = 0; i < n_values; i++) {
     values[i] = i % std::numeric_limits<CType>::max();
   }
+#endif
 
   NANOARROW_THROW_NOT_OK(
       InitArrayViewFromBuffers(type, array.get(), array_view.get(), {}, values));
 
   std::vector<CType> values_out(n_values);
   for (auto _ : state) {
+#if NANOARROW_HAS_ZIP
+    for (auto [i, value] : Zip(Enumerate, values_out)) {
+      value = ArrowArrayViewGetIntUnsafe(array_view.get(), i);
+    }
+#else
     for (int64_t i = 0; i < n_values; i++) {
       values_out[i] = ArrowArrayViewGetIntUnsafe(array_view.get(), i);
     }
+#endif
     benchmark::DoNotOptimize(values_out);
   }
 
@@ -158,6 +173,12 @@ static void BenchmarkArrayViewIsNullNonNullable(benchmark::State& state) {
   // Read the array
   std::vector<int32_t> values_out(n_values);
   for (auto _ : state) {
+#if NANOARROW_HAS_ZIP
+    for (auto [i, array_slot, value] :
+         Zip(Enumerate, nanoarrow::ViewAs<int32_t>(array_view.get()), values_out)) {
+      value = array_slot.value_or(0);
+    }
+#else
     for (int64_t i = 0; i < n_values; i++) {
       if (ArrowArrayViewIsNull(array_view.get(), i)) {
         values_out[i] = 0;
@@ -165,6 +186,7 @@ static void BenchmarkArrayViewIsNullNonNullable(benchmark::State& state) {
         values_out[i] = ArrowArrayViewGetIntUnsafe(array_view.get(), i);
       }
     }
+#endif
     benchmark::DoNotOptimize(values_out);
   }
 

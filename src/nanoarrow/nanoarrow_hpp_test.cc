@@ -20,7 +20,6 @@
 
 #include "nanoarrow/nanoarrow.hpp"
 
-constexpr nanoarrow::Nothing kNull{};
 using testing::ElementsAre;
 
 TEST(NanoarrowHppTest, NanoarrowHppExceptionTest) {
