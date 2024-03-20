@@ -77,7 +77,7 @@ endif()
 # Copy fixtures to the binary directory. This is slightly easier than setting environment variables
 # to ensure the tests can find them.
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/fixtures")
-foreach(ITEM many_batches;many_columns)
+foreach(ITEM float64_basic;float64_long;float64_wide)
   file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/fixtures/${ITEM}.arrows"
        "${CMAKE_BINARY_DIR}/fixtures/${ITEM}.arrows" ONLY_IF_DIFFERENT)
 endforeach()

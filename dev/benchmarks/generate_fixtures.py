@@ -31,36 +31,27 @@ def write_fixture(schema, batch_generator, fixture_name):
             out.write_batch(batch)
 
 
-def write_fixture_many_batches():
+def write_fixture_float64(
+    fixture_name, num_cols=10, num_batches=2, batch_size=65536, seed=1938
+):
     """
-    A fixture with 10,000 batches, each of which has 5 rows. This is designed to
-    benchmark per-batch overhead.
+    Writes a fixture containing random float64 columns in various configurations.
     """
-    generator = np.random.default_rng(seed=1938)
+    generator = np.random.default_rng(seed=seed)
 
-    num_batches_pretty_big = int(1e4)
-    batch_size = 5
-    schema = pa.schema({"col1": pa.float64()})
+    schema = pa.schema({f"col{i}": pa.float64() for i in range(num_cols)})
 
     def gen_batches():
-        for _ in range(num_batches_pretty_big):
-            array = np.array(generator.random(batch_size))
-            yield pa.record_batch([array], names=["col1"])
+        for _ in range(num_batches):
+            arrays = [np.array(generator.random(batch_size)) for _ in range(num_cols)]
+            yield pa.record_batch(arrays, names=[f"col{i}" for i in range(num_cols)])
 
-    write_fixture(schema, gen_batches(), "many_batches.arrows")
-
-
-def write_fixture_many_columns():
-    """
-    A fixture with 10,000 columns and zero batches. This is designed to benchmark
-    the overhead of reading a schema message.
-    """
-
-    num_columns_pretty_big = int(1e4)
-    schema = pa.schema({f"col{i}": pa.float64() for i in range(num_columns_pretty_big)})
-    write_fixture(schema, [], "many_columns.arrows")
+    write_fixture(schema, gen_batches(), fixture_name)
 
 
 if __name__ == "__main__":
-    write_fixture_many_batches()
-    write_fixture_many_columns()
+    write_fixture_float64("float64_basic.arrows", num_cols=10, num_batches=2, batch_size=65536)
+    write_fixture_float64("float64_long.arrows", num_cols=1, num_batches=20, batch_size=65536)
+    write_fixture_float64(
+        "float64_wide.arrows", num_cols=1280, num_batches=1, batch_size=1024
+    )

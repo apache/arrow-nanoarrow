@@ -32,7 +32,8 @@ static ArrowErrorCode MakeFixtureInputStreamFile(const std::string& fixture_name
   std::string fixture_path = std::string(fixture_dir) + std::string("/") + fixture_name;
   FILE* fixture_file = fopen(fixture_path.c_str(), "rb");
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcInputStreamInitFile(out, fixture_file, true));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcInputStreamInitFile(out, fixture_file, /*close_on_release*/ true));
   return NANOARROW_OK;
 }
 
@@ -89,46 +90,23 @@ static ArrowErrorCode ArrayStreamReadAll(ArrowArrayStream* array_stream,
 ///
 /// @{
 
-/// \brief Use the ArrowArrayStream IPC reader to read 10,000 batches with 5 elements each
-/// from a file
-static void BenchmarkIpcReadManyBatchesFromFile(benchmark::State& state) {
-  int64_t batch_count = 0;
-  int64_t column_count = 0;
-
-  for (auto _ : state) {
-    nanoarrow::ipc::UniqueInputStream input_stream;
-    NANOARROW_THROW_NOT_OK(
-        MakeFixtureInputStreamFile("many_batches.arrows", input_stream.get()));
-
-    nanoarrow::UniqueArrayStream array_stream;
-    NANOARROW_THROW_NOT_OK(
-        ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(), nullptr));
-
-    NANOARROW_THROW_NOT_OK(
-        ArrayStreamReadAll(array_stream.get(), &batch_count, &column_count));
-
-    benchmark::DoNotOptimize(batch_count);
-  }
-
-  state.SetItemsProcessed(state.items_processed() + batch_count);
-}
-
-/// \brief Use the ArrowArrayStream IPC reader to read 10,000 batches with 5 elements each
-/// from a buffer
-static void BenchmarkIpcReadManyBatchesFromBuffer(benchmark::State& state) {
+static void BaseBenchmarIpcFixtureBuffer(const std::string& fixture_name,
+                                         benchmark::State& state) {
   int64_t batch_count = 0;
   int64_t column_count = 0;
 
   nanoarrow::UniqueBuffer buffer;
-  NANOARROW_THROW_NOT_OK(MakeFixtureBuffer("many_batches.arrows", buffer.get()));
+  NANOARROW_THROW_NOT_OK(MakeFixtureBuffer(fixture_name, buffer.get()));
 
   for (auto _ : state) {
-    // Note: an attempt to remove this copy does not affect the timing for this particular
-    // benchmark (it is possible to set a deallocator that does nothing and manually
-    // assign the data and size_bytes of the copy).
+    // Don't copy the buffer within the benchmarking loop
     nanoarrow::UniqueBuffer buffer_copy;
-    NANOARROW_THROW_NOT_OK(
-        ArrowBufferAppend(buffer_copy.get(), buffer->data, buffer->size_bytes));
+    NANOARROW_THROW_NOT_OK(ArrowBufferSetAllocator(
+        buffer_copy.get(),
+        ArrowBufferDeallocator([](ArrowBufferAllocator*, uint8_t*, int64_t) -> void {},
+                               nullptr)));
+    buffer_copy->data = buffer->data;
+    buffer_copy->size_bytes = buffer->size_bytes;
 
     nanoarrow::ipc::UniqueInputStream input_stream;
     NANOARROW_THROW_NOT_OK(
@@ -144,35 +122,29 @@ static void BenchmarkIpcReadManyBatchesFromBuffer(benchmark::State& state) {
     benchmark::DoNotOptimize(batch_count);
   }
 
-  state.SetItemsProcessed(state.items_processed() + batch_count);
+  state.SetBytesProcessed(state.iterations() * buffer->size_bytes);
 }
 
-/// \brief Use the ArrowArrayStream IPC reader to read 10,000 columns with 0 batches from
-/// a file
-static void BenchmarkIpcReadManyColumnsFromFile(benchmark::State& state) {
-  int64_t batch_count = 0;
-  int64_t column_count = 0;
-
-  for (auto _ : state) {
-    nanoarrow::ipc::UniqueInputStream input_stream;
-    NANOARROW_THROW_NOT_OK(
-        MakeFixtureInputStreamFile("many_columns.arrows", input_stream.get()));
-
-    nanoarrow::UniqueArrayStream array_stream;
-    NANOARROW_THROW_NOT_OK(
-        ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(), nullptr));
-
-    NANOARROW_THROW_NOT_OK(
-        ArrayStreamReadAll(array_stream.get(), &batch_count, &column_count));
-
-    benchmark::DoNotOptimize(column_count);
-  }
-
-  state.SetItemsProcessed(state.items_processed() + column_count);
+/// \brief Use the ArrowArrayStream IPC reader to read a ~10 MB stream with 10
+/// float64 columns.
+static void BenchmarkIpcReadFloat64FromBuffer(benchmark::State& state) {
+  BaseBenchmarIpcFixtureBuffer("float64_basic.arrows", state);
 }
 
-BENCHMARK(BenchmarkIpcReadManyBatchesFromFile);
-BENCHMARK(BenchmarkIpcReadManyBatchesFromBuffer);
-BENCHMARK(BenchmarkIpcReadManyColumnsFromFile);
+/// \brief Use the ArrowArrayStream IPC reader to read a ~10 MB stream with 1
+/// float64 column.
+static void BenchmarkIpcReadFloat64LongFromBuffer(benchmark::State& state) {
+  BaseBenchmarIpcFixtureBuffer("float64_long.arrows", state);
+}
+
+/// \brief Use the ArrowArrayStream IPC reader to read a ~10 MB stream with 1280
+/// float64 columns.
+static void BenchmarkIpcReadFloat64WideFromBuffer(benchmark::State& state) {
+  BaseBenchmarIpcFixtureBuffer("float64_wide.arrows", state);
+}
+
+BENCHMARK(BenchmarkIpcReadFloat64FromBuffer);
+BENCHMARK(BenchmarkIpcReadFloat64LongFromBuffer);
+BENCHMARK(BenchmarkIpcReadFloat64WideFromBuffer);
 
 /// @}
