@@ -116,6 +116,8 @@ if(NANOARROW_BUNDLE)
   if(NANOARROW_BUILD_TESTS)
     include_directories(${CMAKE_BINARY_DIR}/amalgamation)
     add_library(nanoarrow ${NANOARROW_C_TEMP})
+    add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
+
     target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
   endif()
 
@@ -125,6 +127,7 @@ if(NANOARROW_BUNDLE)
 else()
   add_library(nanoarrow src/nanoarrow/array.c src/nanoarrow/schema.c
                         src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
+  add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
   target_include_directories(nanoarrow
                              PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -204,8 +207,6 @@ else()
     endif()
   endforeach()
 endif()
-
-add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
