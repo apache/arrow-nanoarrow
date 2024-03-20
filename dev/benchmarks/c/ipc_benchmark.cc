@@ -46,8 +46,9 @@ static ArrowErrorCode MakeFixtureBuffer(const std::string& fixture_name,
   int64_t chunk_size = 1024;
   do {
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer.get(), chunk_size));
-    input_stream->read(input_stream.get(), buffer->data + buffer->size_bytes, chunk_size,
-                       &size_read_out, nullptr);
+    NANOARROW_RETURN_NOT_OK(input_stream->read(input_stream.get(),
+                                               buffer->data + buffer->size_bytes,
+                                               chunk_size, &size_read_out, nullptr));
     buffer->size_bytes += size_read_out;
   } while (size_read_out > 0);
 
