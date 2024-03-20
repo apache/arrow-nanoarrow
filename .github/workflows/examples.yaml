@@ -109,3 +109,8 @@ jobs:
           cmake ..
           cmake --build .
           ctest .
+
+      - name: Comprehensive CMake example
+        run: |
+          cd examples/cmake-scenarios
+          ./build.sh
