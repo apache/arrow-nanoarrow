@@ -43,8 +43,27 @@ else()
 endif()
 
 # Add the library and link it against nanoarrow
-add_library(minimal_c_example src/library.c)
-target_link_libraries(minimal_c_example PRIVATE nanoarrow)
+add_library(minimal_c_library src/library.c)
+target_include_directories(minimal_c_library PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_library(minimal_cpp_example src/library.cpp)
-target_link_libraries(minimal_cpp_example PRIVATE nanoarrow)
+# Always use PRIVATE when linking to nanoarrow to hide nanoarrow's headers from a
+# target that in turn uses your library.
+target_link_libraries(minimal_c_library PRIVATE nanoarrow)
+
+# Add the executable and link it against the library
+add_executable(minimal_c_app src/app.c)
+target_link_libraries(minimal_c_app minimal_c_library)
+target_include_directories(minimal_c_app PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Add the library and link it against nanoarrow
+add_library(minimal_cpp_library src/library.cpp)
+target_include_directories(minimal_cpp_library PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Always use PRIVATE when linking to nanoarrow to hide nanoarrow's headers from a
+# target that in turn uses your library.
+target_link_libraries(minimal_cpp_library PRIVATE nanoarrow)
+
+# Add the executable and link it against the library
+add_executable(minimal_cpp_app src/app.cpp)
+target_link_libraries(minimal_cpp_app minimal_cpp_library)
+target_include_directories(minimal_cpp_app PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
