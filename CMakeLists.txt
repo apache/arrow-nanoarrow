@@ -157,9 +157,6 @@ else()
   install(TARGETS nanoarrow
           DESTINATION lib
           EXPORT nanoarrow-exports)
-  install(TARGETS coverage_config
-          DESTINATION lib
-          EXPORT nanoarrow-exports)
   install(DIRECTORY src/
           DESTINATION include
           FILES_MATCHING
@@ -259,7 +256,7 @@ if(NANOARROW_BUILD_TESTS)
   if(NANOARROW_CODE_COVERAGE)
     target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
     target_link_options(coverage_config INTERFACE --coverage)
-    target_link_libraries(nanoarrow coverage_config)
+    target_link_libraries(nanoarrow PRIVATE coverage_config)
   endif()
 
   target_link_libraries(utils_test
