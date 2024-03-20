@@ -2037,6 +2037,11 @@ class TestingJSONReader {
       }
     }
 
+    // The null type doesn't have any buffers but we can set the null_count
+    if (array_view->storage_type == NANOARROW_TYPE_NA) {
+      array_view->null_count = array_view->length;
+    }
+
     // If there is a dictionary associated with schema, parse its value into dictionary
     if (schema->dictionary != nullptr) {
       NANOARROW_RETURN_NOT_OK(Check(
