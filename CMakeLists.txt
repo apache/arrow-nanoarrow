@@ -49,12 +49,6 @@ else()
 endif()
 
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
-# The coverage target simply provides compile definitions and link options, and
-# we only need to link to it privately, but CMake will still complain about it
-# not being part of an export set when we try to install nanoarrow. To work
-# around this issue, we mark it as an imported library so CMake won't try to
-# export it.
-add_library(coverage_config INTERFACE IMPORTED)
 
 # Avoids a warning about timestamps on downloaded files (prefer new policy
 # if available))
@@ -260,34 +254,18 @@ if(NANOARROW_BUILD_TESTS)
                  src/nanoarrow/integration/c_data_integration_test.cc)
 
   if(NANOARROW_CODE_COVERAGE)
-    target_compile_options(coverage_config INTERFACE -O0 -g --coverage)
-    target_link_options(coverage_config INTERFACE --coverage)
-    target_link_libraries(nanoarrow PRIVATE coverage_config)
+    target_compile_options(nanoarrow PUBLIC -O0 -g --coverage)
+    target_link_options(nanoarrow PUBLIC --coverage)
   endif()
 
-  target_link_libraries(utils_test
-                        nanoarrow
-                        gtest_main
-                        ${NANOARROW_ARROW_TARGET}
-                        coverage_config)
-  target_link_libraries(buffer_test nanoarrow gtest_main coverage_config)
-  target_link_libraries(array_test
-                        nanoarrow
-                        gtest_main
-                        ${NANOARROW_ARROW_TARGET}
-                        coverage_config)
-  target_link_libraries(schema_test
-                        nanoarrow
-                        gtest_main
-                        ${NANOARROW_ARROW_TARGET}
-                        coverage_config)
-  target_link_libraries(array_stream_test nanoarrow gtest_main coverage_config)
-  target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main coverage_config)
-  target_link_libraries(nanoarrow_testing_test
-                        nanoarrow
-                        gtest_main
-                        nlohmann_json::nlohmann_json
-                        coverage_config)
+  target_link_libraries(utils_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
+  target_link_libraries(buffer_test nanoarrow gtest_main)
+  target_link_libraries(array_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
+  target_link_libraries(schema_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
+  target_link_libraries(array_stream_test nanoarrow gtest_main)
+  target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main)
+  target_link_libraries(nanoarrow_testing_test nanoarrow gtest_main
+                        nlohmann_json::nlohmann_json)
   target_link_libraries(c_data_integration_test nanoarrow nanoarrow_c_data_integration
                         gtest_main)
 
