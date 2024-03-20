@@ -15,21 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <sys/wait.h>
 #include <string>
 #include <vector>
 
 #include "nanoarrow.h"
-#include "nanoarrow/nanoarrow_types.h"
-
-#if defined(__cpp_variadic_using) && defined(__cpp_deduction_guides) &&       \
-    defined(__cpp_fold_expressions) && defined(__cpp_lib_integer_sequence) && \
-    __cpp_range_based_for >= 201603L  // end sentinels
-#include <tuple>
-#define NANOARROW_HAS_ZIP 1
-#else
-#define NANOARROW_HAS_ZIP 0
-#endif
 
 #ifndef NANOARROW_HPP_INCLUDED
 #define NANOARROW_HPP_INCLUDED
@@ -231,6 +220,9 @@ class Unique {
   /// \brief Use the pointer operator to access fields of this object
   T* operator->() noexcept { return &data_; }
   const T* operator->() const noexcept { return &data_; }
+
+  /// \brief Check for validity
+  explicit operator bool() const { return data_.release != nullptr; }
 
   /// \brief Call data's release callback if valid
   void reset() { release_pointer(&data_); }
@@ -620,7 +612,8 @@ struct InputRange {
   Next next;
   using ValueOrFalsy = decltype(std::declval<Next>()());
 
-  static_assert(std::is_convertible<ValueOrFalsy, bool>::value, "");
+  static_assert(std::is_constructible<bool, ValueOrFalsy>::value, "");
+  static_assert(std::is_default_constructible<ValueOrFalsy>::value, "");
   using value_type = decltype(*std::declval<ValueOrFalsy>());
 
   struct iterator {
@@ -628,10 +621,7 @@ struct InputRange {
     ValueOrFalsy stashed;
 
     bool operator==(iterator other) const {
-      if (stashed) false;
-      // The stashed value is falsy, so the LHS iterator is at the end.
-      // Check if RHS iterator is the end sentinel.
-      return other.range == nullptr;
+      return static_cast<bool>(stashed) == static_cast<bool>(other.stashed);
     }
     bool operator!=(iterator other) const { return !(*this == other); }
 
@@ -642,13 +632,13 @@ struct InputRange {
     value_type operator*() const { return *stashed; }
   };
 
-  iterator begin() { return {this}; }
-  iterator end() { return {}; }
+  iterator begin() { return {this, next()}; }
+  iterator end() { return {this, {}}; }
 };
 
 // C++17 could do all of this with a lambda
 template <typename T>
-class ViewAs {
+class ViewArrayAs {
  private:
   struct Get {
     const uint8_t* validity;
@@ -671,7 +661,7 @@ class ViewAs {
   RandomAccessRange<Get> range_;
 
  public:
-  ViewAs(const ArrowArrayView* array_view)
+  ViewArrayAs(const ArrowArrayView* array_view)
       : range_{
             Get{
                 array_view->buffer_views[0].data.as_uint8,
@@ -681,7 +671,7 @@ class ViewAs {
             array_view->length,
         } {}
 
-  ViewAs(const ArrowArray* array)
+  ViewArrayAs(const ArrowArray* array)
       : range_{
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
@@ -698,9 +688,10 @@ class ViewAs {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
-template <int OffsetSize = 0>
-class ViewAsBytes {
+template <int OffsetSize>
+class ViewArrayAsBytes {
  private:
+  static_assert(OffsetSize == 32 || OffsetSize == 64, "");
   using OffsetType = typename std::conditional<OffsetSize == 32, int32_t, int64_t>::type;
 
   struct Get {
@@ -722,7 +713,7 @@ class ViewAsBytes {
   RandomAccessRange<Get> range_;
 
  public:
-  ViewAsBytes(const ArrowArrayView* array_view)
+  ViewArrayAsBytes(const ArrowArrayView* array_view)
       : range_{
             Get{
                 array_view->buffer_views[0].data.as_uint8,
@@ -733,7 +724,7 @@ class ViewAsBytes {
             array_view->length,
         } {}
 
-  ViewAsBytes(const ArrowArray* array)
+  ViewArrayAsBytes(const ArrowArray* array)
       : range_{
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
@@ -751,8 +742,7 @@ class ViewAsBytes {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
-template <>
-class ViewAsBytes<0> {
+class ViewAsFixedSizeBytes {
  private:
   struct Get {
     const uint8_t* validity;
@@ -772,7 +762,7 @@ class ViewAsBytes<0> {
   RandomAccessRange<Get> range_;
 
  public:
-  ViewAsBytes(const ArrowArrayView* array_view, int fixed_size)
+  ViewAsFixedSizeBytes(const ArrowArrayView* array_view, int fixed_size)
       : range_{
             Get{
                 array_view->buffer_views[0].data.as_uint8,
@@ -783,7 +773,7 @@ class ViewAsBytes<0> {
             array_view->length,
         } {}
 
-  ViewAsBytes(const ArrowArray* array, int fixed_size)
+  ViewAsFixedSizeBytes(const ArrowArray* array, int fixed_size)
       : range_{
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
@@ -801,115 +791,63 @@ class ViewAsBytes<0> {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
-struct ErrorWithCode : ArrowError {
-  ErrorWithCode() : ArrowError{}, code{NANOARROW_OK} {}
-  ArrowErrorCode code;
-  constexpr operator bool() const { return code != NANOARROW_OK; }
-};
-
-class ViewStream {
+class ViewArrayStream {
  public:
-  ViewStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
-      : range_{Next{this, stream, ArrowArray{}}}, code_{code}, error_{error} {}
+  ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
+      : range_{Next{this, stream, UniqueArray{}}}, code_{code}, error_{error} {}
 
-  ViewStream(ArrowArrayStream* stream, ErrorWithCode* error)
-      : ViewStream{stream, &error->code, error} {}
+  ViewArrayStream(ArrowArrayStream* stream, ArrowError* error)
+      : ViewArrayStream{stream, &internal_code_, error} {}
+
+  ViewArrayStream(ArrowArrayStream* stream)
+      : ViewArrayStream{stream, &internal_code_, &internal_error_} {}
+
+  // disable copy/move of this view, since its error references may point into itself
+  ViewArrayStream(ViewArrayStream&&) = delete;
+  ViewArrayStream& operator=(ViewArrayStream&&) = delete;
+  ViewArrayStream(const ViewArrayStream&) = delete;
+  ViewArrayStream& operator=(const ViewArrayStream&) = delete;
+
+  // ensure the error code of this stream was accessed at least once
+  ~ViewArrayStream() { NANOARROW_DCHECK(code_was_accessed_); }
 
  private:
   struct Next {
-    ViewStream* self;
+    ViewArrayStream* self;
     ArrowArrayStream* stream;
-    ArrowArray array;
+    UniqueArray array;
 
     ArrowArray* operator()() {
-      if (array.release) {
-        ArrowArrayRelease(&array);
-      }
-      *self->code_ = ArrowArrayStreamGetNext(stream, &array, self->error_);
-      if (*self->code_ != NANOARROW_OK) {
-        NANOARROW_DCHECK(array.release == nullptr);
-        return nullptr;
-      }
-      if (array.release == nullptr) {
-        return nullptr;
-      }
-      return &array;
+      array.reset();
+      *self->code_ = ArrowArrayStreamGetNext(stream, array.get(), self->error_);
+      NANOARROW_DCHECK(
+          // either there was no error or there was an error and array is invalid
+          *self->code_ == NANOARROW_OK || !array);
+      return array ? array.get() : nullptr;
     }
   };
 
   InputRange<Next> range_;
   ArrowError* error_;
   ArrowErrorCode* code_;
+  ArrowError internal_error_ = {};
+  ArrowErrorCode internal_code_;
+  bool code_was_accessed_;
+  // ArrowErrorCode internal_code_ = NANOARROW_OK;
+  // bool code_was_accessed_ = false;
 
  public:
+  using value_type = typename InputRange<Next>::value_type;
   using iterator = typename InputRange<Next>::iterator;
   iterator begin() { return range_.begin(); }
   iterator end() { return range_.end(); }
+
+  ArrowErrorCode code() {
+    code_was_accessed_ = true;
+    return *code_;
+  }
+  ArrowError* error() { return error_; }
 };
-
-#if NANOARROW_HAS_ZIP
-template <typename Ranges, typename Indices>
-struct Zip;
-
-template <typename... Ranges>
-Zip(Ranges&&...) -> Zip<std::tuple<Ranges...>, std::index_sequence_for<Ranges...>>;
-
-template <typename... Ranges, size_t... I>
-struct Zip<std::tuple<Ranges...>, std::index_sequence<I...>> {
-  explicit Zip(Ranges... ranges) : ranges_(std::forward<Ranges>(ranges)...) {}
-
-  std::tuple<Ranges...> ranges_;
-
-  using sentinel = std::tuple<decltype(std::get<I>(ranges_).end())...>;
-
-  struct iterator : std::tuple<decltype(std::get<I>(ranges_).begin())...> {
-    using iterator::tuple::tuple;
-
-    auto operator*() {
-      return std::tuple<decltype(*std::get<I>(*this))...>{*std::get<I>(*this)...};
-    }
-
-    iterator& operator++() {
-      (++std::get<I>(*this), ...);
-      return *this;
-    }
-
-    bool operator!=(const sentinel& s) const {
-      bool any_iterator_at_end = (... || (std::get<I>(*this) == std::get<I>(s)));
-      return !any_iterator_at_end;
-    }
-  };
-
-  iterator begin() { return {std::get<I>(ranges_).begin()...}; }
-
-  sentinel end() { return {std::get<I>(ranges_).end()...}; }
-};
-
-constexpr auto Enumerate = [] {
-  struct {
-    struct sentinel {};
-    constexpr sentinel end() const { return {}; }
-
-    struct iterator {
-      int64_t i{0};
-
-      constexpr int64_t operator*() { return i; }
-
-      constexpr iterator& operator++() {
-        ++i;
-        return *this;
-      }
-
-      constexpr std::true_type operator!=(sentinel) const { return {}; }
-      constexpr std::false_type operator==(sentinel) const { return {}; }
-    };
-    constexpr iterator begin() const { return {}; }
-  } out;
-
-  return out;
-}();
-
-#endif
 
 }  // namespace nanoarrow
 

@@ -609,7 +609,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
   EXPECT_EQ(array.buffers[0], nullptr);
-  EXPECT_THAT(nanoarrow::ViewAs<uint32_t>(&array), ElementsAre(1, 3));
+  EXPECT_THAT(nanoarrow::ViewArrayAs<uint32_t>(&array), ElementsAre(1, 3));
   ArrowArrayRelease(&array);
 }
 
@@ -800,7 +800,7 @@ TEST(ArrayTest, ArrayTestAppendToBoolArray) {
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
-  EXPECT_THAT(nanoarrow::ViewAs<bool>(&array), ElementsAre(true, NA, NA, false));
+  EXPECT_THAT(nanoarrow::ViewArrayAs<bool>(&array), ElementsAre(true, NA, NA, false));
   ArrowArrayRelease(&array);
 }
 
@@ -833,7 +833,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(offset_buffer[4], 9);
   EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
 
-  EXPECT_THAT(nanoarrow::ViewAsBytes<64>(&array),
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
               ElementsAre("1234"_v, NA, NA, "56789"_v, ""_v));
   ArrowArrayRelease(&array);
 }
@@ -869,7 +869,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
                           '9',  '0',  0x00, 0x00, 0x00, 0x00, 0x00};
   EXPECT_EQ(memcmp(data_buffer, expected_data, 25), 0);
 
-  EXPECT_THAT(nanoarrow::ViewAsBytes<>(&array, 5),
+  EXPECT_THAT(nanoarrow::ViewAsFixedSizeBytes(&array, 5),
               ElementsAre("12345"_v, NA, NA, "67890"_v, "\0\0\0\0\0"_v));
   ArrowArrayRelease(&array);
   ArrowSchemaRelease(&schema);
@@ -905,7 +905,7 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 1);
 
-  EXPECT_THAT(nanoarrow::ViewAs<int32_t>(&array), ElementsAre(months, NA));
+  EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(&array), ElementsAre(months, NA));
   ArrowArrayRelease(&array);
 }
 

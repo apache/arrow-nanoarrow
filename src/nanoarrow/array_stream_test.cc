@@ -48,13 +48,13 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   EXPECT_STREQ(schema_copy.format, "i");
   ArrowSchemaRelease(&schema_copy);
 
-  nanoarrow::ErrorWithCode error;
-  for (ArrowArray& array : nanoarrow::ViewStream(&array_stream, &error)) {
-    EXPECT_THAT(nanoarrow::ViewAs<int32_t>(&array), ElementsAre(123));
+  nanoarrow::ViewArrayStream array_stream_view(&array_stream);
+  for (ArrowArray& array : array_stream_view) {
+    EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(&array), ElementsAre(123));
     EXPECT_EQ(array.n_buffers, 2);
   }
-  EXPECT_FALSE(error);
-  EXPECT_STREQ(error.message, "");
+  EXPECT_EQ(array_stream_view.code(), NANOARROW_OK);
+  EXPECT_STREQ(array_stream_view.error()->message, "");
 
   ArrowArrayStreamRelease(&array_stream);
   EXPECT_EQ(array_stream.release, nullptr);

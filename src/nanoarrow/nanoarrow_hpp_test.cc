@@ -289,10 +289,10 @@ TEST(NanoarrowHppTest, NanoarrowHppVectorArrayStreamTest) {
   nanoarrow::VectorArrayStream(schema_in.get(), array_in.get())
       .ToArrayStream(array_stream.get());
 
-  nanoarrow::ErrorWithCode error;
-  for (ArrowArray& array : nanoarrow::ViewStream(array_stream.get(), &error)) {
-    EXPECT_THAT(nanoarrow::ViewAs<int32_t>(&array), ElementsAre(1234));
+  nanoarrow::ViewArrayStream array_stream_view(array_stream.get());
+  for (ArrowArray& array : array_stream_view) {
+    EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(&array), ElementsAre(1234));
   }
-  EXPECT_FALSE(error);
-  EXPECT_STREQ(error.message, "");
+  EXPECT_EQ(array_stream_view.code(), NANOARROW_OK);
+  EXPECT_STREQ(array_stream_view.error()->message, "");
 }
