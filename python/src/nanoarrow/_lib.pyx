@@ -2221,27 +2221,23 @@ cdef class CMaterializedArrayStream:
     def schema(self):
         return self._schema
 
-    @property
-    def array_ends(self):
-        return self._array_ends
-
     def __getitem__(self, k):
         cdef int64_t kint
         cdef int array_i
         cdef const int64_t* sorted_offsets = <int64_t*>self._array_ends._ptr.data
 
-        if not isinstance(k, slice):
-            kint = k
-            if kint < 0:
-                kint += self._total_length
-            if kint < 0 or kint >= self._total_length:
-                raise IndexError(f"Index {kint} is out of range")
+        if isinstance(k, slice):
+            raise NotImplementedError("index with slice")
 
-            array_i = ArrowResolveChunk64(kint, sorted_offsets, 0, len(self._arrays))
-            kint -= sorted_offsets[array_i]
-            return self._arrays[array_i], kint
+        kint = k
+        if kint < 0:
+            kint += self._total_length
+        if kint < 0 or kint >= self._total_length:
+            raise IndexError(f"Index {kint} is out of range")
 
-        raise NotImplementedError("index with slice")
+        array_i = ArrowResolveChunk64(kint, sorted_offsets, 0, len(self._arrays))
+        kint -= sorted_offsets[array_i]
+        return self._arrays[array_i], kint
 
     def __len__(self):
         return self._array_ends[len(self._arrays)]
