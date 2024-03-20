@@ -167,37 +167,40 @@ else()
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
           DESTINATION include/nanoarrow)
 
-  # Set up build tree as a CMake package.
+  # Generate package files for the build and install trees.
   include(CMakePackageConfigHelpers)
-  write_basic_package_version_file(
-    "${PROJECT_BINARY_DIR}/nanoarrow-config-version.cmake"
-    VERSION ${nanoarrow_VERSION}
-    # Not sure if nanoarrow plans to promise any compatibility.
-    COMPATIBILITY ExactVersion)
-  configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
-                                "${PROJECT_BINARY_DIR}/nanoarrow-config.cmake"
-                                INSTALL_DESTINATION "${PROJECT_BINARY_DIR}")
-  export(EXPORT nanoarrow-exports
-         FILE "${PROJECT_BINARY_DIR}/nanoarrow-targets.cmake"
-         NAMESPACE nanoarrow::)
-
-  # Set up install tree as a CMake package.
   include(GNUInstallDirs)
-  set(install_location "${CMAKE_INSTALL_LIBDIR}/cmake/nanoarrow")
-  set(build_location "${CMAKE_BINARY_DIR}/${install_location}")
-  write_basic_package_version_file(
-    "${build_location}/nanoarrow-config-version.cmake"
-    VERSION ${nanoarrow_VERSION}
-    COMPATIBILITY ExactVersion)
-  configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
-                                "${build_location}/nanoarrow-config.cmake"
-                                INSTALL_DESTINATION "${install_location}")
-  install(DIRECTORY "${build_location}/" DESTINATION "${install_location}")
-  install(EXPORT nanoarrow-exports
-          DESTINATION "${install_location}"
-          FILE "nanoarrow-targets.cmake"
-          NAMESPACE nanoarrow::)
 
+  foreach(tree_type BUILD INSTALL)
+    if(tree_type STREQUAL "BUILD")
+      set(install_location ".")
+    else()
+      set(install_location "${CMAKE_INSTALL_LIBDIR}/cmake/nanoarrow")
+    endif()
+
+    set(build_location "${PROJECT_BINARY_DIR}/${install_location}")
+    write_basic_package_version_file(
+      "${build_location}/nanoarrow-config-version.cmake"
+      VERSION ${nanoarrow_VERSION}
+      # After 1.0.0, we can use `SameMajorVersion` here.
+      COMPATIBILITY ExactVersion)
+    configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
+                                  "${build_location}/nanoarrow-config.cmake"
+                                  INSTALL_DESTINATION "${install_location}")
+
+    if(tree_type STREQUAL "BUILD")
+      export(EXPORT nanoarrow-exports
+             FILE "${build_location}/nanoarrow-targets.cmake"
+             NAMESPACE nanoarrow::)
+
+    else()
+      install(DIRECTORY "${build_location}/" DESTINATION "${install_location}")
+      install(EXPORT nanoarrow-exports
+              DESTINATION "${install_location}"
+              FILE "nanoarrow-targets.cmake"
+              NAMESPACE nanoarrow::)
+    endif()
+  endforeach()
 endif()
 
 add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
