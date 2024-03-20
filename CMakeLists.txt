@@ -49,7 +49,12 @@ else()
 endif()
 
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
-add_library(coverage_config INTERFACE)
+# The coverage target simply provides compile definitions and link options, and
+# we only need to link to it privately, but CMake will still complain about it
+# not being part of an export set when we try to install nanoarrow. To work
+# around this issue, we mark it as an imported library so CMake won't try to
+# export it.
+add_library(coverage_config INTERFACE IMPORTED)
 
 # Avoids a warning about timestamps on downloaded files (prefer new policy
 # if available))
