@@ -23,7 +23,7 @@
 #include "nanoarrow/nanoarrow.h"
 #include "nanoarrow/nanoarrow.hpp"
 
-#include "library.h"
+#include "library.hpp"
 
 static struct ArrowError global_error;
 
@@ -45,6 +45,24 @@ int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_o
   NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema_out, NANOARROW_TYPE_INT32));
 
   return NANOARROW_OK;
+}
+
+std::optional<std::pair<std::unique_ptr<ArrowArray>, std::unique_ptr<ArrowSchema>>>
+make_simple_array() {
+  nanoarrow::UniqueArray tmp_array;
+  nanoarrow::UniqueSchema tmp_schema;
+  auto result = make_simple_array(tmp_array.get(), tmp_schema.get());
+  if (result != 0) {
+    if (tmp_array.get()->release) tmp_array.get()->release(tmp_array.get());
+    if (tmp_schema.get()->release) tmp_schema.get()->release(tmp_schema.get());
+    return std::nullopt;
+  }
+  auto ret_array = std::make_unique<ArrowArray>();
+  tmp_array.move(ret_array.get());
+
+  auto ret_schema = std::make_unique<ArrowSchema>();
+  tmp_schema.move(ret_schema.get());
+  return std::make_pair(std::move(ret_array), std::move(ret_schema));
 }
 
 int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema) {

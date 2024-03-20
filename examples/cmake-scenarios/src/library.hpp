@@ -18,6 +18,9 @@
 #pragma once
 
 #include <stdint.h>
+#include <memory>
+#include <optional>
+#include <utility>
 
 // You can and should use the Arrow C Data interface types in headers
 // that will be included by others; however, you should not include
@@ -118,3 +121,6 @@ int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_o
 
 // Prints the array created by make_simple_array to the stdout
 int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema);
+
+std::optional<std::pair<std::unique_ptr<ArrowArray>, std::unique_ptr<ArrowSchema>>>
+make_simple_array();

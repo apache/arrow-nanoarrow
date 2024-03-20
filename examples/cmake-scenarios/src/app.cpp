@@ -15,26 +15,23 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "library.h"
+#include "library.hpp"
 
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-  struct ArrowArray array;
-  struct ArrowSchema schema;
-  array.release = NULL;
-  schema.release = NULL;
-
-  int result = make_simple_array(&array, &schema);
-  if (result != 0) {
-    if (array.release) array.release(&array);
-    if (schema.release) schema.release(&schema);
-    return result;
+  auto result = make_simple_array();
+  if (!result) {
+    fprintf(stderr, "Error: %s\n", my_library_last_error());
+    return 1;
   }
 
-  result = print_simple_array(&array, &schema);
-  if (array.release) array.release(&array);
-  if (schema.release) schema.release(&schema);
+  auto& array = result.value().first;
+  auto& schema = result.value().second;
 
-  return result;
+  auto print_result = print_simple_array(array.get(), schema.get());
+  if (array->release) array->release(array.get());
+  if (schema->release) schema->release(schema.get());
+
+  return 0;
 }
