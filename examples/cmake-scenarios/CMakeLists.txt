@@ -35,9 +35,11 @@ if(FIND_NANOARROW)
   find_package(nanoarrow 0.5.0 REQUIRED)
 else()
   include(FetchContent)
+  # TODO: This needs to point to this branch in order for everything to work,
+  # but we should repoint this before the PR merges.
   fetchcontent_declare(nanoarrow_example_cmake_minimal
-                       GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
-                       GIT_TAG main
+                       GIT_REPOSITORY https://github.com/vyasr/arrow-nanoarrow.git
+                       GIT_TAG feat/build_testing
                        GIT_SHALLOW TRUE)
   fetchcontent_makeavailable(nanoarrow_example_cmake_minimal)
 endif()
@@ -48,7 +50,7 @@ target_include_directories(minimal_c_library PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/
 
 # Always use PRIVATE when linking to nanoarrow to hide nanoarrow's headers from a
 # target that in turn uses your library.
-target_link_libraries(minimal_c_library PRIVATE nanoarrow)
+target_link_libraries(minimal_c_library PRIVATE nanoarrow::nanoarrow)
 
 # Add the executable and link it against the library
 add_executable(minimal_c_app src/app.c)
@@ -61,7 +63,7 @@ target_include_directories(minimal_cpp_library PUBLIC ${CMAKE_CURRENT_SOURCE_DIR
 
 # Always use PRIVATE when linking to nanoarrow to hide nanoarrow's headers from a
 # target that in turn uses your library.
-target_link_libraries(minimal_cpp_library PRIVATE nanoarrow minimal_c_library)
+target_link_libraries(minimal_cpp_library PRIVATE nanoarrow::nanoarrow minimal_c_library)
 
 # Add the executable and link it against the library
 add_executable(minimal_cpp_app src/app.cpp)

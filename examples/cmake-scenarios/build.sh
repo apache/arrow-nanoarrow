@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set -exuo pipefail
+
 # Build nanoarrow statically.
 cmake -S ../.. -B scratch/nanoarrow_build_static/ -DCMAKE_INSTALL_PREFIX=scratch/nanoarrow_install_static/
 cmake --build scratch/nanoarrow_build_static/
