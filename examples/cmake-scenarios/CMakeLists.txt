@@ -16,8 +16,7 @@
 # under the License.
 
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
-# Setting minimum to 3.12 for CMP0074
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.12)
 
 project(NanoArrowExampleCMakeMinimal LANGUAGES C CXX)
 
