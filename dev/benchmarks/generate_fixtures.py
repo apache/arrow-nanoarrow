@@ -50,8 +50,12 @@ def write_fixture_float64(
 
 
 if __name__ == "__main__":
-    write_fixture_float64("float64_basic.arrows", num_cols=10, num_batches=2, batch_size=65536)
-    write_fixture_float64("float64_long.arrows", num_cols=1, num_batches=20, batch_size=65536)
+    write_fixture_float64(
+        "float64_basic.arrows", num_cols=10, num_batches=2, batch_size=65536
+    )
+    write_fixture_float64(
+        "float64_long.arrows", num_cols=1, num_batches=20, batch_size=65536
+    )
     write_fixture_float64(
         "float64_wide.arrows", num_cols=1280, num_batches=1, batch_size=1024
     )
