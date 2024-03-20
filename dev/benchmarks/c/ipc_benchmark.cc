@@ -114,7 +114,7 @@ static void BenchmarkIpcReadManyBatchesFromFile(benchmark::State& state) {
 }
 
 /// \brief Use the ArrowArrayStream IPC reader to read 10,000 batches with 5 elements each
-/// from a file
+/// from a buffer
 static void BenchmarkIpcReadManyBatchesFromBuffer(benchmark::State& state) {
   int64_t batch_count = 0;
   int64_t column_count = 0;
@@ -147,8 +147,8 @@ static void BenchmarkIpcReadManyBatchesFromBuffer(benchmark::State& state) {
   state.SetItemsProcessed(state.items_processed() + batch_count);
 }
 
-/// \brief Use the ArrowArrayStream IPC reader to read 10,000 batches with 5 elements each
-/// from a file
+/// \brief Use the ArrowArrayStream IPC reader to read 10,000 columns with 0 batches from
+/// a file
 static void BenchmarkIpcReadManyColumnsFromFile(benchmark::State& state) {
   int64_t batch_count = 0;
   int64_t column_count = 0;
