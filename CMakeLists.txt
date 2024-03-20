@@ -177,7 +177,9 @@ else()
   configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
                                 "${PROJECT_BINARY_DIR}/nanoarrow-config.cmake"
                                 INSTALL_DESTINATION "${PROJECT_BINARY_DIR}")
-  export(EXPORT nanoarrow-exports FILE "${PROJECT_BINARY_DIR}/nanoarrow-targets.cmake")
+  export(EXPORT nanoarrow-exports
+         FILE "${PROJECT_BINARY_DIR}/nanoarrow-targets.cmake"
+         NAMESPACE nanoarrow::)
 
   # Set up install tree as a CMake package.
   include(GNUInstallDirs)
@@ -194,9 +196,12 @@ else()
   install(DIRECTORY "${build_location}/" DESTINATION "${install_location}")
   install(EXPORT nanoarrow-exports
           DESTINATION "${install_location}"
-          FILE "nanoarrow-targets.cmake")
+          FILE "nanoarrow-targets.cmake"
+          NAMESPACE nanoarrow::)
 
 endif()
+
+add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
