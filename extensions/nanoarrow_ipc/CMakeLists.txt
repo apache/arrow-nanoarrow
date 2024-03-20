@@ -38,19 +38,19 @@ option(NANOARROW_ARROW_STATIC
 option(NANOARROW_IPC_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(ipc_coverage_config INTERFACE)
 
-# Lazily add the nanoarrow dependency
-if(NOT TARGET nanoarrow AND NOT NANOARROW_IPC_BUNDLE)
-  fetchcontent_declare(nanoarrow SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
-
-  # Don't install nanoarrow because of this configuration
-  fetchcontent_getproperties(nanoarrow)
-  if(NOT nanoarrow_POPULATED)
-    fetchcontent_populate(nanoarrow)
-    add_subdirectory(${nanoarrow_SOURCE_DIR} ${nanoarrow_BINARY_DIR} EXCLUDE_FROM_ALL)
-  endif()
-endif()
-
 if(NANOARROW_IPC_BUILD_TESTS OR NOT NANOARROW_IPC_BUNDLE)
+  # Lazily add the nanoarrow dependency
+  if(NOT TARGET nanoarrow)
+    fetchcontent_declare(nanoarrow SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
+
+    # Don't install nanoarrow because of this configuration
+    fetchcontent_getproperties(nanoarrow)
+    if(NOT nanoarrow_POPULATED)
+      fetchcontent_populate(nanoarrow)
+      add_subdirectory(${nanoarrow_SOURCE_DIR} ${nanoarrow_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
+  endif()
+
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY
       ON
