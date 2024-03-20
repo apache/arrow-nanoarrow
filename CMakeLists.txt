@@ -173,7 +173,7 @@ else()
     "${PROJECT_BINARY_DIR}/nanoarrow-config-version.cmake"
     VERSION ${nanoarrow_VERSION}
     # Not sure if nanoarrow plans to promise any compatibility.
-    COMPATIBILITY AnyNewerVersion)
+    COMPATIBILITY ExactVersion)
   configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
                                 "${PROJECT_BINARY_DIR}/nanoarrow-config.cmake"
                                 INSTALL_DESTINATION "${PROJECT_BINARY_DIR}")
@@ -188,8 +188,7 @@ else()
   write_basic_package_version_file(
     "${build_location}/nanoarrow-config-version.cmake"
     VERSION ${nanoarrow_VERSION}
-    # Not sure if nanoarrow plans to promise any compatibility.
-    COMPATIBILITY AnyNewerVersion)
+    COMPATIBILITY ExactVersion)
   configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
                                 "${build_location}/nanoarrow-config.cmake"
                                 INSTALL_DESTINATION "${install_location}")

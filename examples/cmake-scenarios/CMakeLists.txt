@@ -32,7 +32,10 @@ option(FIND_NANOARROW "Find an existing nanoarrow" ON)
 set(NANOARROW_NAMESPACE "ExampleCmakeMinimal")
 
 if(FIND_NANOARROW)
-  find_package(nanoarrow 0.5.0 REQUIRED)
+  # Users should pin to a specific version of nanoarrow if they choose
+  # to find nanoarrow rather than pinning to a specific version via
+  # FetchContent.
+  find_package(nanoarrow REQUIRED)
 else()
   include(FetchContent)
   # TODO: This needs to point to this branch in order for everything to work,
