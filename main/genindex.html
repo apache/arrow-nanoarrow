@@ -382,6 +382,8 @@ document.write(`
 </li>
       <li><a href="reference/python.html#nanoarrow.allocate_c_schema">allocate_c_schema() (in module nanoarrow)</a>
 </li>
+      <li><a href="reference/python.html#nanoarrow.Array">Array (class in nanoarrow)</a>
+</li>
       <li><a href="reference/c.html#c.ARROW_C_DATA_INTERFACE">ARROW_C_DATA_INTERFACE (C macro)</a>
 </li>
       <li><a href="reference/device.html#c.ARROW_C_DEVICE_DATA_INTERFACE">ARROW_C_DEVICE_DATA_INTERFACE (C macro)</a>
@@ -1014,6 +1016,8 @@ document.write(`
 </li>
       <li><a href="reference/c.html#_CPPv412ArrowReallocPv7int64_t">ArrowRealloc (C++ function)</a>
 </li>
+      <li><a href="reference/c.html#_CPPv419ArrowResolveChunk647int64_tPK7int64_t7int64_t7int64_t">ArrowResolveChunk64 (C++ function)</a>
+</li>
       <li><a href="reference/c.html#_CPPv411ArrowSchema">ArrowSchema (C++ struct)</a>
 </li>
       <li><a href="reference/c.html#_CPPv4N11ArrowSchema8childrenE">ArrowSchema::children (C++ member)</a>
@@ -1216,9 +1220,13 @@ document.write(`
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.binary">binary() (in module nanoarrow)</a>
 </li>
+      <li><a href="reference/python.html#nanoarrow.bool">bool() (in module nanoarrow)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="reference/python.html#nanoarrow.bool">bool() (in module nanoarrow)</a>
+      <li><a href="reference/python.html#nanoarrow.Array.buffer">buffer() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.buffers">buffers (Array property)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Schema.byte_width">byte_width (Schema property)</a>
 </li>
@@ -1236,15 +1244,19 @@ document.write(`
 </li>
       <li><a href="reference/python.html#nanoarrow.c_array_view">c_array_view() (in module nanoarrow)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.c_buffer">c_buffer() (in module nanoarrow)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.c_schema">c_schema() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.c_schema_view">c_schema_view() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.c_version">c_version() (in module nanoarrow)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.child">child() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.chunk">chunk() (Array method)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.TimeUnit.create">create() (TimeUnit static method)</a>
 </li>
@@ -1265,6 +1277,8 @@ document.write(`
       <li><a href="reference/python.html#nanoarrow.decimal128">decimal128() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.decimal256">decimal256() (in module nanoarrow)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.device">device (Array property)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.duration">duration() (in module nanoarrow)</a>
 </li>
@@ -1302,15 +1316,27 @@ document.write(`
 </li>
       <li><a href="reference/python.html#nanoarrow.int64">int64() (in module nanoarrow)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.int8">int8() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.interval_day_time">interval_day_time() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.interval_month_day_nano">interval_month_day_nano() (in module nanoarrow)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.interval_months">interval_months() (in module nanoarrow)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.iter_buffers">iter_buffers() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.iter_children">iter_children() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.iter_chunks">iter_chunks() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.iter_py">iter_py() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.iter_scalar">iter_scalar() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.iter_tuples">iter_tuples() (Array method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1347,6 +1373,12 @@ document.write(`
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference/python.html#nanoarrow.Array.n_buffers">n_buffers (Array property)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.n_children">n_children (Array property)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.n_chunks">n_chunks (Array property)</a>
+</li>
       <li><a href="reference/python.html#nanoarrow.Schema.n_fields">n_fields (Schema property)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Schema.name">name (Schema property)</a>
@@ -1378,10 +1410,10 @@ document.write(`
 </li>
       <li><a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6Unique4moveEP1T">nanoarrow::internal::Unique::move (C++ function)</a>
 </li>
-      <li><a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6UniqueptEv">nanoarrow::internal::Unique::operator-&gt; (C++ function)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6UniqueptEv">nanoarrow::internal::Unique::operator-&gt; (C++ function)</a>
+</li>
       <li><a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6Unique5resetEP1T">nanoarrow::internal::Unique::reset (C++ function)</a>, <a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6Unique5resetEv">[1]</a>
 </li>
       <li><a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6Unique6UniqueEP1T">nanoarrow::internal::Unique::Unique (C++ function)</a>, <a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6Unique6UniqueERR6Unique">[1]</a>, <a href="reference/cpp.html#_CPPv4N9nanoarrow8internal6Unique6UniqueEv">[2]</a>
@@ -1437,6 +1469,8 @@ document.write(`
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.Schema.scale">scale (Schema property)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.Array.schema">schema (Array property)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Schema">Schema (class in nanoarrow)</a>
 </li>
