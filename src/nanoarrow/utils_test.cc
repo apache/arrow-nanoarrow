@@ -21,7 +21,7 @@
 #include <arrow/util/decimal.h>
 #include <gtest/gtest.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
 
 using namespace arrow;
 
@@ -551,4 +551,37 @@ TEST(UtilsTest, ArrowResolveChunk64Test) {
   EXPECT_EQ(ArrowResolveChunk64(3, offsets, 0, n_offsets), 2);
   EXPECT_EQ(ArrowResolveChunk64(4, offsets, 0, n_offsets), 2);
   EXPECT_EQ(ArrowResolveChunk64(5, offsets, 0, n_offsets), 2);
+}
+
+TEST(MaybeTest, ConstructionAndConversion) {
+  // NOTE these will not print nicely in GTest unless we write PrintTo,
+  // which should probably not be defined in headers (but we've only got nanoarrow.hpp).
+  using nanoarrow::Maybe;
+  using nanoarrow::NA;
+
+  Maybe<int> na, three{3}, five{5};
+  EXPECT_FALSE(na);
+  EXPECT_TRUE(three);
+  EXPECT_TRUE(five);
+
+  EXPECT_EQ(na, NA);
+  EXPECT_NE(na, 0);
+  EXPECT_EQ(na.value_or(0), 0);
+
+  EXPECT_EQ(three, 3);
+  EXPECT_EQ(five, 5);
+  EXPECT_NE(five, NA);
+
+  for (auto* l : {&na, &three, &five}) {
+    for (auto* r : {&na, &three, &five}) {
+      if (l == r) {
+        EXPECT_EQ(*l, *r);
+      } else {
+        EXPECT_NE(*l, *r);
+      }
+    }
+  }
+
+  EXPECT_EQ(*three, 3);
+  EXPECT_EQ(*five, 5);
 }
