@@ -138,7 +138,7 @@ class Stream:
         """
         out = Stream()
         out._stream = CIpcInputStream.from_readable(
-            open(obj, "rb", *args, **kwargs), close_stream=True
+            open(obj, "rb", *args, **kwargs), close_obj=True
         )
         out._desc = repr(obj)
         return out
@@ -179,7 +179,7 @@ class Stream:
 
         out = Stream()
         out._stream = CIpcInputStream.from_readable(
-            urllib.request.urlopen(obj, *args, **kwargs), close_stream=True
+            urllib.request.urlopen(obj, *args, **kwargs), close_obj=True
         )
         out._desc = repr(obj)
         return out
