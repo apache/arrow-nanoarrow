@@ -37,11 +37,9 @@ if(FIND_NANOARROW)
   find_package(nanoarrow REQUIRED)
 else()
   include(FetchContent)
-  # TODO: This needs to point to this branch in order for everything to work,
-  # but we should repoint this before the PR merges.
   fetchcontent_declare(nanoarrow_example_cmake_minimal
-                       GIT_REPOSITORY https://github.com/vyasr/arrow-nanoarrow.git
-                       GIT_TAG feat/build_testing
+                       GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
+                       GIT_TAG main
                        GIT_SHALLOW TRUE)
   fetchcontent_makeavailable(nanoarrow_example_cmake_minimal)
 endif()
