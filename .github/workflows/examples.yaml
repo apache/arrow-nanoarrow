@@ -109,3 +109,12 @@ jobs:
           cmake ..
           cmake --build .
           ctest .
+
+      - name: Comprehensive CMake example
+        run: |
+          cd examples/cmake-scenarios
+          ./build.sh
+          for dir in scratch/build*; do
+            ./${dir}/minimal_cpp_app;
+            echo ;
+          done
