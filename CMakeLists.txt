@@ -229,6 +229,7 @@ if(NANOARROW_BUILD_TESTS)
   target_link_libraries(array_test
                         nanoarrow
                         gtest_main
+                        gmock_main
                         ${NANOARROW_ARROW_TARGET}
                         coverage_config)
   target_link_libraries(schema_test
@@ -236,8 +237,16 @@ if(NANOARROW_BUILD_TESTS)
                         gtest_main
                         ${NANOARROW_ARROW_TARGET}
                         coverage_config)
-  target_link_libraries(array_stream_test nanoarrow gtest_main coverage_config)
-  target_link_libraries(nanoarrow_hpp_test nanoarrow gtest_main coverage_config)
+  target_link_libraries(array_stream_test
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        coverage_config)
+  target_link_libraries(nanoarrow_hpp_test
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        coverage_config)
   target_link_libraries(nanoarrow_testing_test
                         nanoarrow
                         gtest_main
