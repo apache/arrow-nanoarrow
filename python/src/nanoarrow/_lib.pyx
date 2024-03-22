@@ -2375,7 +2375,12 @@ cdef class CDeviceArray:
 
     @property
     def array(self):
-        return CArray(self, <uintptr_t>&self._ptr.array, self._schema)
+        cdef CArray out = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
+        out._set_device(self._device_type, self._device_id)
+        return out
+
+    def __arrow_c_array__(self, requested_schema=None):
+        return self.array.__arrow_c_array__(requested_schema=requested_schema)
 
     def __repr__(self):
         return _repr_utils.device_array_repr(self)

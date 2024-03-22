@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CDEVICE_CPU, CDevice, CDeviceArray
+from nanoarrow._lib import CDEVICE_CPU, CDevice, CDeviceArray, CArray
 from nanoarrow.c_lib import c_array
 
 
