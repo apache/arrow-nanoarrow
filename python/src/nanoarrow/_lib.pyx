@@ -163,10 +163,11 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
 
 
-cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
-    Py_DECREF(<object>array.private_data)
-    array.private_data = NULL
-    array.release = NULL
+cdef void arrow_array_release(ArrowArray* array) noexcept nogil:
+    with gil:
+        Py_DECREF(<object>array.private_data)
+        array.private_data = NULL
+        array.release = NULL
 
 
 cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
@@ -182,7 +183,7 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
     c_array_out.release = arrow_array_release
 
 
-cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
+cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array):
     """Make a shallow copy of an ArrowArray
 
     To more safely implement export of an ArrowArray whose address may be
@@ -197,6 +198,30 @@ cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) n
     return array_capsule
 
 
+cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array,
+                                      ArrowDeviceArray* c_array_out) noexcept:
+    # shallow copy
+    memcpy(c_array_out, c_array, sizeof(ArrowDeviceArray))
+    c_array_out.array.release = NULL
+    c_array_out.array.private_data = NULL
+
+    # track original base
+    c_array_out.array.private_data = <void*>base
+    Py_INCREF(base)
+    c_array_out.array.release = arrow_array_release
+
+
+cdef object alloc_c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array):
+    """Make a shallow copy of an ArrowDeviceArray
+
+    See :func:`arrow_c_array_shallow_copy()`
+    """
+    cdef ArrowDeviceArray* c_array_out
+    array_capsule = alloc_c_device_array(&c_array_out)
+    c_device_array_shallow_copy(base, c_array, c_array_out)
+    return array_capsule
+
+
 cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
     cdef ArrowBuffer* buffer = <ArrowBuffer*>PyCapsule_GetPointer(
         stream_capsule, 'nanoarrow_buffer'
@@ -206,16 +231,17 @@ cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
     ArrowFree(buffer)
 
 
-cdef object alloc_c_buffer(ArrowBuffer** c_buffer) noexcept:
+cdef object alloc_c_buffer(ArrowBuffer** c_buffer):
     c_buffer[0] = <ArrowBuffer*> ArrowMalloc(sizeof(ArrowBuffer))
     ArrowBufferInit(c_buffer[0])
     return PyCapsule_New(c_buffer[0], 'nanoarrow_buffer', &pycapsule_buffer_deleter)
 
-cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
-    cdef Py_buffer* buffer = <Py_buffer*>allocator.private_data
-    PyBuffer_Release(buffer)
-    ArrowFree(buffer)
-
+cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept nogil:
+    cdef Py_buffer* buffer
+    with gil:
+        buffer = <Py_buffer*>allocator.private_data
+        PyBuffer_Release(buffer)
+        ArrowFree(buffer)
 
 cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
     # This should probably be changed in nanoarrow C; however, currently, the deallocator
@@ -2375,9 +2401,14 @@ cdef class CDeviceArray:
 
     @property
     def array(self):
-        cdef CArray out = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
-        out._set_device(self._device_type, self._device_id)
-        return out
+        # TODO: We loose access to the sync_event here, so we probably need to
+        # synchronize (or propatate it, or somehow prevent data access downstream)
+        cdef CArray array = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
+        array._set_device(self._device_type, self._device_id)
+        return array
+
+    def view(self):
+        return self.array.view()
 
     def __arrow_c_array__(self, requested_schema=None):
         return self.array.__arrow_c_array__(requested_schema=requested_schema)
