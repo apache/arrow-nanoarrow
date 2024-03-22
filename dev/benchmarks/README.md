@@ -45,7 +45,7 @@ and runs `ctest`.
 You can build a full report by running:
 
 ```shell
-python generate_fixtures.py
+python generate_fixtures.py # requires pyarrow
 ./benchmark-run-all.sh
 cd apidoc && doxygen && cd ..
 quarto render benchmark-report.qmd
