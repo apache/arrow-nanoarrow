@@ -21,18 +21,23 @@ import numpy as np
 import pyarrow as pa
 from pyarrow import ipc
 
-this_dir = os.path.dirname(__file__)
-fixtures_dir = os.path.join(this_dir, "fixtures")
 
+def write_fixture(schema, batch_generator, fixture_name, fixtures_dir=None):
+    if fixtures_dir is None:
+        fixtures_dir = os.getcwd()
 
-def write_fixture(schema, batch_generator, fixture_name):
     with ipc.new_stream(os.path.join(fixtures_dir, fixture_name), schema) as out:
         for batch in batch_generator:
             out.write_batch(batch)
 
 
 def write_fixture_float64(
-    fixture_name, num_cols=10, num_batches=2, batch_size=65536, seed=1938
+    fixture_name,
+    num_cols=10,
+    num_batches=2,
+    batch_size=65536,
+    seed=1938,
+    fixtures_dir=None,
 ):
     """
     Writes a fixture containing random float64 columns in various configurations.
@@ -46,16 +51,34 @@ def write_fixture_float64(
             arrays = [np.array(generator.random(batch_size)) for _ in range(num_cols)]
             yield pa.record_batch(arrays, names=[f"col{i}" for i in range(num_cols)])
 
-    write_fixture(schema, gen_batches(), fixture_name)
+    write_fixture(schema, gen_batches(), fixture_name, fixtures_dir=fixtures_dir)
 
 
 if __name__ == "__main__":
+    this_dir = os.path.dirname(__file__)
+    fixtures_dir = os.path.join(this_dir, "fixtures")
+
+    if not os.path.isdir(fixtures_dir):
+        os.mkdir(fixtures_dir)
+
     write_fixture_float64(
-        "float64_basic.arrows", num_cols=10, num_batches=2, batch_size=65536
+        "float64_basic.arrows",
+        num_cols=10,
+        num_batches=2,
+        batch_size=65536,
+        fixtures_dir=fixtures_dir,
     )
     write_fixture_float64(
-        "float64_long.arrows", num_cols=1, num_batches=20, batch_size=65536
+        "float64_long.arrows",
+        num_cols=1,
+        num_batches=20,
+        batch_size=65536,
+        fixtures_dir=fixtures_dir,
     )
     write_fixture_float64(
-        "float64_wide.arrows", num_cols=1280, num_batches=1, batch_size=1024
+        "float64_wide.arrows",
+        num_cols=1280,
+        num_batches=1,
+        batch_size=1024,
+        fixtures_dir=fixtures_dir,
     )
