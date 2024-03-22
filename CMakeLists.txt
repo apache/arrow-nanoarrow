@@ -18,11 +18,6 @@
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 cmake_minimum_required(VERSION 3.14)
 
-# Try to use C11 (required by IPC extension) but fall back to C99
-if(NOT DEFINED CMAKE_C_STANDARD)
-  set(CMAKE_C_STANDARD 11)
-endif()
-
 if(NOT DEFINED CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
   set(CMAKE_C_STANDARD_REQUIRED ON)
