@@ -107,7 +107,7 @@ jobs:
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build'
         run: |
-          sudo apt-get update && sudo apt-get install -y valgrind
+          sudo apt-get update && sudo apt-get install -y cmake valgrind
 
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build'
