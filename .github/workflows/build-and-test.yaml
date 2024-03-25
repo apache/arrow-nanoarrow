@@ -49,6 +49,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install memcheck dependencies
+        if: matrix.config.label == 'default-build'
+        run: |
+          sudo apt-get update && sudo apt-get install -y valgrind
+
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
         uses: actions/cache@v3
@@ -103,11 +108,6 @@ jobs:
           sudo ldconfig
           cd build
           ctest -T test --output-on-failure .
-
-      - name: Run tests with valgrind
-        if: matrix.config.label == 'default-build'
-        run: |
-          sudo apt-get update && sudo apt-get install -y cmake valgrind
 
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build'
