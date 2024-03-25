@@ -2420,6 +2420,8 @@ cdef class CDeviceArray:
         if requested_schema is not None:
             raise NotImplementedError("requested_schema")
 
+        # TODO: evaluate whether we need to synchronize here or whether we should
+        # move device arrays instead of shallow-copying them
         device_array_capsule = alloc_c_device_array_shallow_copy(self._base, self._ptr)
         return self._schema.__arrow_c_schema__(), device_array_capsule
 
