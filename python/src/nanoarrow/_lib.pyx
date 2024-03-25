@@ -2404,7 +2404,7 @@ cdef class CDeviceArray:
         # TODO: We loose access to the sync_event here, so we probably need to
         # synchronize (or propatate it, or somehow prevent data access downstream)
         cdef CArray array = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
-        array._set_device(self._device_type, self._device_id)
+        array._set_device(self._ptr.device_type, self._ptr.device_id)
         return array
 
     def view(self):
