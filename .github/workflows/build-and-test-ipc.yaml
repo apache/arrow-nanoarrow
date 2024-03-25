@@ -84,9 +84,14 @@ jobs:
           cd $SUBDIR
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
+
+          ARROW_PATH="$(pwd)/arrow"
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON ${{ matrix.config.cmake_args }}
+
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON \
+            -DCMAKE_PREFIX_PATH="${ARROW_PATH}" ${{ matrix.config.cmake_args }}
+
           cmake --build .
 
       - name: Check for non-namespaced symbols in namespaced build
