@@ -32,7 +32,7 @@ def test_cpu_device():
 
 
 def test_c_device_array():
-    # Unrecognized arguments should be passed to c_array() to generate  CPU array
+    # Unrecognized arguments should be passed to c_array() to generate CPU array
     darray = device.c_device_array([1, 2, 3], na.int32())
 
     assert darray.device_type == 1

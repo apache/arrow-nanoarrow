@@ -163,11 +163,10 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
 
 
-cdef void arrow_array_release(ArrowArray* array) noexcept nogil:
-    with gil:
-        Py_DECREF(<object>array.private_data)
-        array.private_data = NULL
-        array.release = NULL
+cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
+    Py_DECREF(<object>array.private_data)
+    array.private_data = NULL
+    array.release = NULL
 
 
 cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
@@ -236,12 +235,12 @@ cdef object alloc_c_buffer(ArrowBuffer** c_buffer):
     ArrowBufferInit(c_buffer[0])
     return PyCapsule_New(c_buffer[0], 'nanoarrow_buffer', &pycapsule_buffer_deleter)
 
-cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept nogil:
-    cdef Py_buffer* buffer
-    with gil:
-        buffer = <Py_buffer*>allocator.private_data
-        PyBuffer_Release(buffer)
-        ArrowFree(buffer)
+
+cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
+    cdef Py_buffer* buffer = <Py_buffer*>allocator.private_data
+    PyBuffer_Release(buffer)
+    ArrowFree(buffer)
+
 
 cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
     # This should probably be changed in nanoarrow C; however, currently, the deallocator
