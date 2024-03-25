@@ -111,7 +111,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           cd build
-          ctest -T memcheck .
+          ctest -T memcheck . --parallel
 
       - name: Upload memcheck results
         if: failure() && matrix.config.label == 'default-build'
