@@ -2392,6 +2392,10 @@ cdef class CDeviceArray:
         self._schema = schema
 
     @property
+    def schema(self):
+        return self._schema
+
+    @property
     def device_type(self):
         return self._ptr.device_type
 
@@ -2419,6 +2423,33 @@ cdef class CDeviceArray:
 
         device_array_capsule = alloc_c_device_array_shallow_copy(self._base, self._ptr)
         return self._schema.__arrow_c_schema__(), device_array_capsule
+
+    @staticmethod
+    def _import_from_c_capsule(schema_capsule, device_array_capsule):
+        """
+        Import from a ArrowSchema and ArrowArray PyCapsule tuple.
+
+        Parameters
+        ----------
+        schema_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_schema' containing an
+            ArrowSchema pointer.
+        device_array_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_device_array' containing an
+            ArrowArray pointer.
+        """
+        cdef:
+            CSchema out_schema
+            CDeviceArray out
+
+        out_schema = CSchema._import_from_c_capsule(schema_capsule)
+        out = CDeviceArray(
+            device_array_capsule,
+            <uintptr_t>PyCapsule_GetPointer(device_array_capsule, 'arrow_device_array'),
+            out_schema
+        )
+
+        return out
 
     def __repr__(self):
         return _repr_utils.device_array_repr(self)
