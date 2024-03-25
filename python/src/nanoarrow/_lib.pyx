@@ -2437,7 +2437,7 @@ cdef class CDeviceArray:
             ArrowSchema pointer.
         device_array_capsule : PyCapsule
             A valid PyCapsule with name 'arrow_device_array' containing an
-            ArrowArray pointer.
+            ArrowDeviceArray pointer.
         """
         cdef:
             CSchema out_schema
