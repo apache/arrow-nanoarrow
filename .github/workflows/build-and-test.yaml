@@ -107,6 +107,11 @@ jobs:
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build'
         run: |
+          sudo apt-get update && sudo apt-get install -y valgrind
+
+      - name: Run tests with valgrind
+        if: matrix.config.label == 'default-build'
+        run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           cd build
