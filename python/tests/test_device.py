@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pytest
+
 import nanoarrow as na
 from nanoarrow import device
 
@@ -35,11 +37,17 @@ def test_c_device_array():
 
     assert darray.device_type == 1
     assert darray.device_id == 0
+    assert "device_type: 1" in repr(darray)
+
     assert darray.schema.format == "i"
+
     assert darray.array.length == 3
     assert darray.array.device_type == device.cpu().device_type
     assert darray.array.device_id == device.cpu().device_id
-    assert "device_type: 1" in repr(darray)
+
+    darray_view = darray.view()
+    assert darray_view.length == 3
+    assert list(darray_view.buffer(1)) == [1, 2, 3]
 
     # A CDeviceArray should be returned as is
     assert device.c_device_array(darray) is darray
@@ -50,21 +58,23 @@ def test_c_device_array():
     assert array.buffers == darray.array.buffers
 
 
-# Wrapper to prevent c_device_array() from returning early when it detects the
-# input is already a CDeviceArray
-class DeviceArrayWrapper:
-    def __init__(self, obj):
-        self.obj = obj
-
-    def __arrow_c_device_array__(self, requested_schema=None):
-        return self.obj.__arrow_c_device_array__(requested_schema=requested_schema)
-
-
 def test_c_device_array_protocol():
+    # Wrapper to prevent c_device_array() from returning early when it detects the
+    # input is already a CDeviceArray
+    class CDeviceArrayWrapper:
+        def __init__(self, obj):
+            self.obj = obj
+
+        def __arrow_c_device_array__(self, requested_schema=None):
+            return self.obj.__arrow_c_device_array__(requested_schema=requested_schema)
+
     darray = device.c_device_array([1, 2, 3], na.int32())
-    wrapper = DeviceArrayWrapper(darray)
+    wrapper = CDeviceArrayWrapper(darray)
 
     darray2 = device.c_device_array(wrapper)
     assert darray2.schema.format == "i"
     assert darray2.array.length == 3
     assert darray2.array.buffers == darray.array.buffers
+
+    with pytest.raises(NotImplementedError):
+        device.c_device_array(wrapper, na.int64())
