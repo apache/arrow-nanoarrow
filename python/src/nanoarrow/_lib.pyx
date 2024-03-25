@@ -2413,5 +2413,12 @@ cdef class CDeviceArray:
     def __arrow_c_array__(self, requested_schema=None):
         return self.array.__arrow_c_array__(requested_schema=requested_schema)
 
+    def __arrow_c_device_array__(self, requested_schema=None):
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        device_array_capsule = alloc_c_device_array_shallow_copy(self._base, self._ptr)
+        return self._schema.__arrow_c_schema__(), device_array_capsule
+
     def __repr__(self):
         return _repr_utils.device_array_repr(self)
