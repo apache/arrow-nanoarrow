@@ -81,11 +81,11 @@ jobs:
 
       - name: Build
         run: |
+          ARROW_PATH="$(pwd)/arrow"
           cd $SUBDIR
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
 
-          ARROW_PATH="$(pwd)/arrow"
           mkdir build
           cd build
 
