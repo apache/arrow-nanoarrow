@@ -49,24 +49,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Cache Arrow C++ Build
+        id: cache-arrow-build
+        uses: actions/cache@v3
+        with:
+          path: arrow
+          key: arrow-${{ runner.os }}-6
+
+      - name: Build Arrow C++
+        if: steps.cache-arrow-build.outputs.cache-hit != 'true'
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt install -y -V ca-certificates lsb-release wget cmake valgrind
-          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt-get update
-          sudo apt-get install -y -V libarrow-dev
-          rm apache-arrow-apt-*.deb
+          curl https://dlcdn.apache.org/arrow/arrow-15.0.2/apache-arrow-15.0.2.tar.gz | \
+            tar -zxf -
+          mkdir arrow-build && cd arrow-build
+          cmake ../apache-arrow-15.0.2/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+          cmake --build .
+          cmake --install . --prefix=../arrow
 
       - name: Build nanoarrow
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
+
+          ARROW_PATH="$(pwd)/arrow"
           mkdir build
           cd build
+
           cmake .. -DNANOARROW_BUILD_TESTS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DCMAKE_PREFIX_PATH="${ARROW_PATH}"
             ${{ matrix.config.cmake_args }}
+
           cmake --build .
 
       - name: Check for non-namespaced symbols in namespaced build
