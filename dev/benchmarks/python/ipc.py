@@ -14,3 +14,29 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
+import os
+
+import nanoarrow as na
+from nanoarrow import ipc
+
+
+class IpcReaderSuite:
+    """
+    Benchmarks for reading IPC streams
+    """
+
+    def setup(self):
+        self.fixtures_dir = os.path.join(os.path.dirname(__file__), "..", "fixtures")
+
+    def fixture_path(self, name):
+        return os.path.join(self.fixtures_dir, name)
+
+    def time_read_float64_basic(self):
+        na.Array(ipc.Stream.from_path(self.fixture_path("float64_basic.arrows")))
+
+    def time_read_float64_long(self):
+        na.Array(ipc.Stream.from_path(self.fixture_path("float64_long.arrows")))
+
+    def time_read_float64_wide(self):
+        na.Array(ipc.Stream.from_path(self.fixture_path("float64_wide.arrows")))
