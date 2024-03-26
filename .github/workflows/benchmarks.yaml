@@ -38,6 +38,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+
+    - name: Install pyarrow
+      run: |
+        pip install pyarrow
+
+    - name: Genereate fixtures
+      run: |
+        cd dev/benchmarks
+        python generate-fixtures.py
+
     - name: Run benchmarks
       run: |
         cd dev/benchmarks

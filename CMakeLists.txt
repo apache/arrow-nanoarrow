@@ -284,5 +284,6 @@ if(NANOARROW_BUILD_TESTS)
 endif()
 
 if(NANOARROW_BUILD_BENCHMARKS)
+  add_subdirectory(extensions/nanoarrow_ipc)
   add_subdirectory(dev/benchmarks)
 endif()
