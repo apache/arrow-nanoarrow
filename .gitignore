@@ -26,3 +26,5 @@ CMakeUserPresets.json
 .Rproj.user
 .cache
 *.swp
+nanoarrow-python-asv
+__pycache__
