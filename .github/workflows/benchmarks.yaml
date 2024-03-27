@@ -39,17 +39,23 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
+      with:
+        cache: "pip"
 
-    - name: Install pyarrow
+    - name: Install Python dependencies
       run: |
-        pip install pyarrow
+        pip install pyarrow asv
 
     - name: Genereate fixtures
       run: |
         cd dev/benchmarks
         python generate-fixtures.py
 
-    - name: Run benchmarks
+    - name: Check C benchmarks
       run: |
         cd dev/benchmarks
         ./benchmark-run-all.sh
+
+    - name: Check Python
+      run: |
+        asv run --quick
