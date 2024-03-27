@@ -427,7 +427,7 @@ def c_array_view(obj, schema=None) -> CArrayView:
     if isinstance(obj, CArrayView) and schema is None:
         return obj
 
-    return CArrayView.from_array(c_array(obj, schema))
+    return c_array(obj, schema).view()
 
 
 def c_buffer(obj, schema=None) -> CBuffer:

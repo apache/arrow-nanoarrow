@@ -39,6 +39,8 @@ def test_c_array_from_c_array():
     assert c_array_from_c_array.length == c_array.length
     assert c_array_from_c_array.buffers == c_array.buffers
 
+    assert list(c_array.view().buffer(1)) == [1, 2, 3]
+
 
 def test_c_array_from_capsule_protocol():
     class CArrayWrapper:
@@ -53,6 +55,8 @@ def test_c_array_from_capsule_protocol():
     c_array_from_protocol = na.c_array(c_array_wrapper)
     assert c_array_from_protocol.length == c_array.length
     assert c_array_from_protocol.buffers == c_array.buffers
+
+    assert list(c_array_from_protocol.view().buffer(1)) == [1, 2, 3]
 
 
 def test_c_array_from_old_pyarrow():
@@ -72,6 +76,8 @@ def test_c_array_from_old_pyarrow():
     c_array = na.c_array(array)
     assert c_array.length == 3
     assert c_array.schema.format == "i"
+
+    assert list(c_array.view().buffer(1)) == [1, 2, 3]
 
     # Make sure that this heuristic won't result in trying to import
     # something else that has an _export_to_c method
@@ -96,6 +102,8 @@ def test_c_array_from_bare_capsule():
     c_array_from_capsule = na.c_array(array_capsule, schema_capsule)
     assert c_array_from_capsule.length == c_array.length
     assert c_array_from_capsule.buffers == c_array.buffers
+
+    assert list(c_array_from_capsule.view().buffer(1)) == [1, 2, 3]
 
 
 def test_c_array_type_not_supported():
