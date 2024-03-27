@@ -40,7 +40,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
-        cache: "pip"
+        cache: 'pip'
 
     - name: Install Python dependencies
       run: |
@@ -56,6 +56,7 @@ jobs:
         cd dev/benchmarks
         ./benchmark-run-all.sh
 
-    - name: Check Python
+    - name: Check Python benchmarks
       run: |
+        asv machine --yes
         asv run --quick
