@@ -30,6 +30,9 @@ on:
       - 'src/nanoarrow/**'
       - 'extensions/nanoarrow_device/**'
 
+permissions:
+  contents: read
+
 jobs:
   test-c-device:
 
