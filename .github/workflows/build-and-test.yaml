@@ -29,6 +29,9 @@ on:
       - '.github/workflows/build-and-test.yaml'
       - 'src/nanoarrow/**'
 
+permissions:
+  contents: read
+
 jobs:
   test-c:
 
@@ -49,24 +52,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install memcheck dependencies
+        if: matrix.config.label == 'default-build'
         run: |
-          sudo apt-get update
-          sudo apt install -y -V ca-certificates lsb-release wget cmake valgrind
-          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt-get update
-          sudo apt-get install -y -V libarrow-dev
-          rm apache-arrow-apt-*.deb
+          sudo apt-get update && sudo apt-get install -y valgrind
+
+      - name: Cache Arrow C++ Build
+        id: cache-arrow-build
+        uses: actions/cache@v4
+        with:
+          path: arrow
+          # Bump the number at the end of this line to force a new Arrow C++ build
+          key: arrow-${{ runner.os }}-10
+
+      - name: Build Arrow C++
+        if: steps.cache-arrow-build.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          ci/scripts/build-arrow-cpp-minimal.sh 15.0.2 arrow
 
       - name: Build nanoarrow
         run: |
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
+
+          ARROW_PATH="$(pwd)/arrow"
           mkdir build
           cd build
+
           cmake .. -DNANOARROW_BUILD_TESTS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            ${{ matrix.config.cmake_args }}
+            -DCMAKE_PREFIX_PATH="${ARROW_PATH}" ${{ matrix.config.cmake_args }}
+
           cmake --build .
 
       - name: Check for non-namespaced symbols in namespaced build

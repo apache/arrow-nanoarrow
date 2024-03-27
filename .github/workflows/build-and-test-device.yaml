@@ -30,6 +30,9 @@ on:
       - 'src/nanoarrow/**'
       - 'extensions/nanoarrow_device/**'
 
+permissions:
+  contents: read
+
 jobs:
   test-c-device:
 
@@ -50,27 +53,12 @@ jobs:
       NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Checkout arrow-testing
-        uses: actions/checkout@v3
-        with:
-          repository: apache/arrow-testing
-          fetch-depth: 0
-          path: arrow-testing
-
-      - name: Install dependencies
+      - name: Install memcheck dependencies
+        if: matrix.config.label == 'default-build'
         run: |
-          sudo apt-get update
-          sudo apt install -y -V ca-certificates lsb-release wget cmake valgrind
-          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-          sudo apt-get update
-          sudo apt-get install -y -V libarrow-dev
-          rm apache-arrow-apt-*.deb
+          sudo apt-get update && sudo apt-get install -y valgrind
 
       - name: Build
         run: |
