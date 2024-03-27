@@ -16,6 +16,7 @@
 # under the License.
 
 import os
+import io
 
 import nanoarrow as na
 from nanoarrow import ipc
@@ -28,15 +29,36 @@ class IpcReaderSuite:
 
     def setup(self):
         self.fixtures_dir = os.path.join(os.path.dirname(__file__), "..", "fixtures")
+        self.fixture_names = [
+            "float64_basic.arrows",
+            "float64_long.arrows",
+            "float64_wide.arrows",
+        ]
+        self.fixture_buffer = {}
+        for name in self.fixture_names:
+            with open(self.fixture_path(name), "rb") as f:
+                self.fixture_buffer[name] = f.read()
 
     def fixture_path(self, name):
         return os.path.join(self.fixtures_dir, name)
 
-    def time_read_float64_basic(self):
-        na.Array(ipc.Stream.from_path(self.fixture_path("float64_basic.arrows")))
+    def read_fixture_file(self, name):
+        with ipc.Stream.from_path(self.fixture_path(name)) as in_stream:
+            list(na.c_array_stream(in_stream))
 
-    def time_read_float64_long(self):
-        na.Array(ipc.Stream.from_path(self.fixture_path("float64_long.arrows")))
+    def read_fixture_buffer(self, name):
+        f = io.BytesIO(self.fixture_buffer[name])
+        with ipc.Stream.from_readable(f) as in_stream:
+            list(na.c_array_stream(in_stream))
 
-    def time_read_float64_wide(self):
-        na.Array(ipc.Stream.from_path(self.fixture_path("float64_wide.arrows")))
+    def time_read_float64_basic_file(self):
+        self.read_fixture_file("float64_basic.arrows")
+
+    def time_read_float64_basic_buffer(self):
+        self.read_fixture_buffer("float64_basic.arrows")
+
+    def time_read_float64_long_buffer(self):
+        self.read_fixture_buffer("float64_long.arrows")
+
+    def time_read_float64_wide_buffer(self):
+        self.read_fixture_buffer("float64_wide.arrows")
