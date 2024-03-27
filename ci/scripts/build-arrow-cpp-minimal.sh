@@ -50,7 +50,7 @@ ARROW_CPP_SCRATCH_DIR="arrow-cpp-build-${ARROW_CPP_VERSION}"
 mkdir "${ARROW_CPP_SCRATCH_DIR}"
 pushd "${ARROW_CPP_SCRATCH_DIR}"
 
-curl "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/arrow-${ARROW_CPP_VERSION}/apache-arrow-${ARROW_CPP_VERSION}.tar.gz" | \
+curl -L "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/arrow-${ARROW_CPP_VERSION}/apache-arrow-${ARROW_CPP_VERSION}.tar.gz" | \
   tar -zxf -
 mkdir build && cd build
 cmake ../apache-arrow-${ARROW_CPP_VERSION}/cpp \
