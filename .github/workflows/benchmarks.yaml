@@ -59,4 +59,4 @@ jobs:
     - name: Check Python benchmarks
       run: |
         asv machine --yes
-        asv run --quick
+        asv run --quick ${{ github.sha }}^!
