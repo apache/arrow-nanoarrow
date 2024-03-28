@@ -1386,10 +1386,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
 
   AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
                               /*differences*/
-                              "Path: "
+                              "Path: .metadata"
                               R"(
-- .metadata: [{"key": "key", "value": "value"}]
-+ .metadata: null
+- [{"key": "key", "value": "value"}]
++ null
 
 )");
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), nullptr), NANOARROW_OK);
