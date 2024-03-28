@@ -2187,6 +2187,10 @@ class TestingJSONReader {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_array(), error, "bitmap buffer must be array"));
 
+    // Reserving with the exact length ensures that the last bits are always zeroed.
+    // This is currently an assumption made by the C# implementation.
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapReserve(bitmap, value.size()), error);
+
     for (const auto& item : value) {
       // Some example files write bitmaps as [true, false, true] but the documentation
       // says [1, 0, 1]. Accept both for simplicity.
