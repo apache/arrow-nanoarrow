@@ -34,6 +34,7 @@ generally have better autocomplete + documentation available to IDEs).
 from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
+from libc.errno cimport ENOMEM
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
 from cpython cimport (
@@ -1066,10 +1067,11 @@ cdef class CArray:
         return out
 
     def __getitem__(self, k):
+        self._assert_valid()
+
         if not isinstance(k, slice):
             raise TypeError(
-                f"Can't slice CArray with object of type {type(k).__name__}"
-            )
+                f"Can't subset CArray with object of type {type(k).__name__}")
 
         if k.step is not None:
             raise ValueError("Can't slice CArray with step")
@@ -2196,6 +2198,126 @@ cdef class CArrayStream:
 
     def __repr__(self):
         return _repr_utils.array_stream_repr(self)
+
+
+cdef class CMaterializedArrayStream:
+    cdef CSchema _schema
+    cdef CBuffer _array_ends
+    cdef list _arrays
+    cdef int64_t _total_length
+
+    def __cinit__(self):
+        self._arrays = []
+        self._total_length = 0
+        self._schema = CSchema.allocate()
+        self._array_ends = CBuffer.empty()
+        cdef int code = ArrowBufferAppendInt64(self._array_ends._ptr, 0)
+        Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+
+    cdef _finalize(self):
+        self._array_ends._set_data_type(NANOARROW_TYPE_INT64)
+
+    @property
+    def schema(self):
+        return self._schema
+
+    def __getitem__(self, k):
+        cdef int64_t kint
+        cdef int array_i
+        cdef const int64_t* sorted_offsets = <int64_t*>self._array_ends._ptr.data
+
+        if isinstance(k, slice):
+            raise NotImplementedError("index with slice")
+
+        kint = k
+        if kint < 0:
+            kint += self._total_length
+        if kint < 0 or kint >= self._total_length:
+            raise IndexError(f"Index {kint} is out of range")
+
+        array_i = ArrowResolveChunk64(kint, sorted_offsets, 0, len(self._arrays))
+        kint -= sorted_offsets[array_i]
+        return self._arrays[array_i], kint
+
+    def __len__(self):
+        return self._array_ends[len(self._arrays)]
+
+    def __iter__(self):
+        for c_array in self._arrays:
+            for item_i in range(c_array.length):
+                yield c_array, item_i
+
+    def array(self, int64_t i):
+        return self._arrays[i]
+
+    @property
+    def n_arrays(self):
+        return len(self._arrays)
+
+    @property
+    def arrays(self):
+        return iter(self._arrays)
+
+    def __arrow_c_stream__(self, requested_schema=None):
+        # When an array stream from iterable is supported, that could be used here
+        # to avoid unnessary shallow copies.
+        stream = CArrayStream.from_array_list(self._arrays, self._schema, move=False)
+        return stream.__arrow_c_stream__(requested_schema=requested_schema)
+
+    def child(self, int64_t i):
+        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
+        cdef int code
+
+        out._schema = self._schema.child(i)
+        out._arrays = [chunk.child(i) for chunk in self._arrays]
+        for child_chunk in out._arrays:
+            out._total_length += child_chunk.length
+            code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+            Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+
+        out._finalize()
+        return out
+
+    @staticmethod
+    def from_c_array(CArray array):
+        array._assert_valid()
+
+        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
+        out._schema = array._schema
+
+        if array._ptr.length == 0:
+            out._finalize()
+            return out
+
+        out._arrays.append(array)
+        out._total_length += array._ptr.length
+        cdef int code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+        Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+
+        out._finalize()
+        return out
+
+    @staticmethod
+    def from_c_array_stream(CArrayStream stream):
+        stream._assert_valid()
+        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
+        cdef int code
+        cdef CArray array
+
+        with stream:
+            for array in stream:
+                if array._ptr.length == 0:
+                    continue
+
+                out._total_length += array._ptr.length
+                code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+                Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+                out._arrays.append(array)
+
+            out._schema = stream._get_cached_schema()
+
+        out._finalize()
+        return out
 
 
 cdef class CDeviceArray:

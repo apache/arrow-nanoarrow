@@ -207,9 +207,10 @@ make_table <- function(benchmark_name) {
       iterations,
       real_time = real_time_pretty,
       cpu_time = cpu_time_pretty,
-      items_per_second = format(items_per_second, big.mark = ",")
+      items_per_second = format(items_per_second, big.mark = ","),
+      bytes_per_second = format(bytes_per_second, big.mark = ",")
     ) |>
-    knitr::kable(align = "lrrrr") |>
+    knitr::kable(align = "lrrrrr") |>
     as.character() |>
     paste(collapse = "\n")
 }

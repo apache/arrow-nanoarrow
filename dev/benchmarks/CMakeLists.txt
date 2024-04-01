@@ -16,7 +16,7 @@
 # under the License.
 
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 include(FetchContent)
 
 project(nanoarrow_benchmarks)
@@ -54,29 +54,45 @@ fetchcontent_makeavailable(benchmark)
 
 if(IS_DIRECTORY "${NANOARROW_BENCHMARK_SOURCE_URL}")
   fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_URL}")
+  fetchcontent_declare(nanoarrow_ipc
+                       SOURCE_DIR
+                       "${NANOARROW_BENCHMARK_SOURCE_URL}/extensions/nanoarrow_ipc")
+
   fetchcontent_makeavailable(nanoarrow)
+  fetchcontent_makeavailable(nanoarrow_ipc)
 elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
   fetchcontent_declare(nanoarrow URL "${NANOARROW_BENCHMARK_SOURCE_URL}")
+  fetchcontent_declare(nanoarrow_ipc URL "${NANOARROW_BENCHMARK_SOURCE_URL}"
+                                         SOURCE_SUBDIR extensions/nanoarrow_ipc)
   fetchcontent_makeavailable(nanoarrow)
+  fetchcontent_makeavailable(nanoarrow_ipc)
 endif()
 
 # Check that either the parent scope or this CMakeLists.txt defines a nanoarrow target
-if(NOT TARGET nanoarrow)
-  message(FATAL_ERROR "nanoarrow target not found (missing -DNANOARROW_BENCHMARK_SOURCE_URL option?)"
+if(NOT TARGET nanoarrow OR NOT TARGET nanoarrow_ipc)
+  message(FATAL_ERROR "nanoarrow or nanoarrow_ipc target not found (missing -DNANOARROW_BENCHMARK_SOURCE_URL option?)"
   )
 endif()
 
-# Add + link tests
-add_executable(schema_benchmark c/schema_benchmark.cc)
-add_executable(array_benchmark c/array_benchmark.cc)
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/fixtures")
+foreach(ITEM float64_basic;float64_long;float64_wide)
+  file(COPY_FILE "${CMAKE_CURRENT_LIST_DIR}/fixtures/${ITEM}.arrows"
+       "${CMAKE_BINARY_DIR}/fixtures/${ITEM}.arrows" ONLY_IF_DIFFERENT)
+endforeach()
 
-target_link_libraries(schema_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
-target_link_libraries(array_benchmark PRIVATE nanoarrow benchmark::benchmark_main)
-
+# Add executables and register them as tests.
 # This lets all benchmarks run via ctest -VV when this is the top-level project
+# and takes care of setting the relevant test properties such that the benchmarks
+# can find the fixtures.
 include(CTest)
 enable_testing()
-add_test(NAME schema_benchmark COMMAND schema_benchmark
-                                       --benchmark_out=schema_benchmark.json)
-add_test(NAME array_benchmark COMMAND array_benchmark
-                                      --benchmark_out=array_benchmark.json)
+
+foreach(ITEM schema;array;ipc)
+  add_executable(${ITEM}_benchmark "c/${ITEM}_benchmark.cc")
+  target_link_libraries(${ITEM}_benchmark PRIVATE nanoarrow nanoarrow_ipc
+                                                  benchmark::benchmark_main)
+  add_test(NAME ${ITEM}_benchmark COMMAND ${ITEM}_benchmark
+                                          --benchmark_out=${ITEM}_benchmark.json)
+  set_tests_properties(${ITEM}_benchmark PROPERTIES WORKING_DIRECTORY
+                                                    "${CMAKE_BINARY_DIR}")
+endforeach(ITEM)

@@ -17,3 +17,7 @@
 
 .Rhistory
 benchmark-report.md
+fixtures/
+asv_results
+asv_env
+asv_html

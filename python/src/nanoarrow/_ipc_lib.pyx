@@ -50,22 +50,32 @@ cdef extern from "nanoarrow_ipc.h" nogil:
 
 
 cdef class PyInputStreamPrivate:
-    cdef object obj
-    cdef object obj_method
-    cdef void* addr
-    cdef Py_ssize_t size_bytes
-    cdef int close_stream
+    cdef object _obj
+    cdef bint _close_obj
+    cdef void* _addr
+    cdef Py_ssize_t _size_bytes
 
-    def __cinit__(self, obj, close_stream=False):
-        self.obj = obj
-        self.obj_method = obj.readinto
-        self.addr = NULL
-        self.size_bytes = 0
-        self.close_stream = close_stream
+    def __cinit__(self, obj, close_obj=False):
+        self._obj = obj
+        self._close_obj = close_obj
+        self._addr = NULL
+        self._size_bytes = 0
+
+    @property
+    def obj(self):
+        return self._obj
+
+    @property
+    def close_obj(self):
+        return self._close_obj
+
+    def set_buffer(self, uintptr_t addr, Py_ssize_t size_bytes):
+        self._addr = <void*>addr
+        self._size_bytes = size_bytes
 
     # Needed for at least some implementations of readinto()
     def __len__(self):
-        return self.size_bytes
+        return self._size_bytes
 
     # Implement the buffer protocol so that this object can be used as
     # the argument to xxx.readinto(). This ensures that no extra copies
@@ -75,7 +85,7 @@ cdef class PyInputStreamPrivate:
     # implementation before issuing each read call (two per message, with
     # an extra call for a RecordBatch message to get the actual buffer data).
     def __getbuffer__(self, Py_buffer* buffer, int flags):
-        PyBuffer_FillInfo(buffer, self, self.addr, self.size_bytes, 0, flags)
+        PyBuffer_FillInfo(buffer, self, self._addr, self._size_bytes, 0, flags)
 
     def __releasebuffer__(self, Py_buffer* buffer):
         pass
@@ -83,33 +93,35 @@ cdef class PyInputStreamPrivate:
 
 cdef ArrowErrorCode py_input_stream_read(ArrowIpcInputStream* stream, uint8_t* buf,
                                          int64_t buf_size_bytes, int64_t* size_read_out,
-                                         ArrowError* error) noexcept:
-    cdef PyInputStreamPrivate stream_private = <object>stream.private_data
-    stream_private.addr = buf
-    stream_private.size_bytes = buf_size_bytes
+                                         ArrowError* error) noexcept nogil:
 
-    try:
-        size_read_out[0] = stream_private.obj_method(stream_private)
-        return NANOARROW_OK
-    except Exception as e:
-        cls = type(e).__name__.encode()
-        msg = str(e).encode()
-        snprintf(
-            error.message,
-            sizeof(error.message),
-            "%s: %s",
-            <const char*>cls,
-            <const char*>msg
-        )
-        return EIO
+    with gil:
+        stream_private = <object>stream.private_data
+        stream_private.set_buffer(<uintptr_t>buf, buf_size_bytes)
 
+        try:
+            size_read_out[0] = stream_private.obj.readinto(stream_private)
+            return NANOARROW_OK
+        except Exception as e:
+            cls = type(e).__name__.encode()
+            msg = str(e).encode()
+            snprintf(
+                error.message,
+                sizeof(error.message),
+                "%s: %s",
+                <const char*>cls,
+                <const char*>msg
+            )
+            return EIO
 
-cdef void py_input_stream_release(ArrowIpcInputStream* stream) noexcept:
-    cdef PyInputStreamPrivate stream_private = <object>stream.private_data
-    if stream_private.close_stream:
-        stream_private.obj.close()
+cdef void py_input_stream_release(ArrowIpcInputStream* stream) noexcept nogil:
+    with gil:
+        stream_private = <object>stream.private_data
+        if stream_private.close_obj:
+            stream_private.obj.close()
 
-    Py_DECREF(stream_private)
+        Py_DECREF(stream_private)
+
     stream.private_data = NULL
     stream.release = NULL
 
@@ -136,9 +148,9 @@ cdef class CIpcInputStream:
             return False
 
     @staticmethod
-    def from_readable(obj, close_stream=False):
+    def from_readable(obj, close_obj=False):
         cdef CIpcInputStream stream = CIpcInputStream()
-        cdef PyInputStreamPrivate private_data = PyInputStreamPrivate(obj, close_stream)
+        cdef PyInputStreamPrivate private_data = PyInputStreamPrivate(obj, close_obj)
 
         stream._stream.private_data = <PyObject*>private_data
         Py_INCREF(private_data)
