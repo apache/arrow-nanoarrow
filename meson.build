@@ -25,6 +25,7 @@ project(
         'buildtype=release',
         'c_std=c99',
         'warning_level=2',
+        'cpp_std=c++17',
     ]
 )
 
@@ -38,4 +39,12 @@ if get_option('NANOARROW_BUNDLE')
   error('NANOARROW_BUNDLE not implemented in meson configuration - try CMake instead')
 endif
 
+if get_option('NANOARROW_BUNDLE_AS_CPP')
+  error('NANOARROW_BUNDLE_AS_CPP not implemented in meson configuration - try CMake instead')
+endif
+
 subdir('src/nanoarrow')
+
+if get_option('NANOARROW_BUILD_BENCHMARKS')
+  subdir('dev/benchmarks')
+endif
