@@ -1,0 +1,6 @@
+[wrap-git]
+url = ../../..
+revision = head
+
+[provide]
+nanoarrow = nanoarrow_dep

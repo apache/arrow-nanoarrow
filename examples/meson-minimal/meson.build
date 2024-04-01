@@ -15,19 +15,23 @@
 # specific language governing permissions and limitations
 # under the License.
 
-gbench = dependency('benchmark')
-incdir = '../../../src'
-incdir2 = '../../../src/nanoarrow'
-schema_e = executable('schema_benchmark',
-                      'schema_benchmark.cc',
-                      link_with: nanoarrow_lib,
-                      dependencies: [gbench],
-                      include_directories: [incdir, incdir2])
-benchmark('schema benchmark', schema_e)
+project(
+    'nanoarrow-example-meson-minimal',
+    'c', 'cpp',
+    license: 'Apache 2.0',
+    meson_version: '>=1.3.0',
+    default_options: [
+        'buildtype=release',
+        'c_std=c99',
+        'warning_level=2',
+        'cpp_std=c++17',
+    ]
+)
 
-array_e = executable('array_benchmark',
-                     'array_benchmark.cc',
-                     link_with: nanoarrow_lib,
-                     dependencies: [gbench],
-                     include_directories: [incdir, incdir2])
-benchmark('array benchmark', array_e)
+nanoarrow_dep = dependency('nanoarrow')
+example_lib = library('example_meson_minimal_library',
+                      'src/library.c',
+                      dependencies: [nanoarrow_dep])
+example_exec = executable('example_meson_minimal_app',
+                          'src/app.c',
+                          link_with: example_lib)
