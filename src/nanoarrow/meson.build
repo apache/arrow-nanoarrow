@@ -17,10 +17,6 @@ configure_file(input: 'nanoarrow_config.h.in',
                output: 'nanoarrow_config.h',
                configuration: conf_data)
 
-if get_option('NANOARROW_BUNDLE')
-  error('NANOARROW_BUNDLE not implemented in meson configuration - try CMake instead')
-endif
-
 nanoarrow = library(
     'nanoarrow',
     'array.c',
@@ -43,12 +39,26 @@ if get_option('NANOARROW_BUILD_TESTS') or get_option('NANOARROW_BUILD_INTEGRATIO
 endif
 
 if get_option('NANOARROW_BUILD_TESTS')
-  message('TODO: add leak check options here')
-  message('TODO: add code coverate option here')
-  arrow_dep = dependency('Arrow', modules: ['Arrow::arrow_shared'])
+  # CMake configuration sets MEMORYCHECK_COMMAND_OPTIONS but with meson you instead
+  # wrap the tests with valgrind via `meson test --wrap=valgrind`. See
+  # https://mesonbuild.com/Unit-tests.html
+
+  # Similarly code coverage has a built in option users should use instead
+  # https://mesonbuild.com/Unit-tests.html#coverage
+
+  if get_option('NANOARROW_ARROW_STATIC')
+      arrow_dep = dependency('Arrow', modules: ['Arrow::arrow_static'])
+  else
+      arrow_dep = dependency('Arrow', modules: ['Arrow::arrow_shared'])
+  endif
+
   gtest_dep = dependency('gtest', fallback: ['gtest', 'gtest_main_dep'])
 
-  message('TODO: set C++ standard based off of Arrow version')
+  # TODO: the CMake configuration sets a different C++ version depending on
+  # the version of Arrow used. Meson allows this standard to be set by subproject
+  # do we need to do anything here?
+  # https://mesonbuild.com/Builtin-options.html#specifying-options-per-subproject
+
   utils_test = executable('utils_test', 'utils_test.cc',
                           link_with: nanoarrow,
                           dependencies: [arrow_dep, gtest_dep],
