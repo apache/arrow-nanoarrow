@@ -34,7 +34,7 @@ configure_file(input: 'nanoarrow_config.h.in',
                output: 'nanoarrow_config.h',
                configuration: conf_data)
 
-nanoarrow = library(
+nanoarrow_lib = library(
     'nanoarrow',
     'array.c',
     'schema.c',
@@ -42,14 +42,18 @@ nanoarrow = library(
     'utils.c',
     install: true)
 
+curdir = include_directories('.')  # only needed when used as subproject?
 incdir = include_directories('..')
+
+nanoarrow_dep = declare_dependency(include_directories: [curdir, incdir],
+                                   link_with: nanoarrow_lib)
 
 if get_option('NANOARROW_BUILD_TESTS') or get_option('NANOARROW_BUILD_INTEGRATION_TESTS')
   nlohmann_json_dep = dependency('nlohmann_json')
 
   c_data_integration_lib = library('nanoarrow_c_data_integration',
                                    'integration/c_data_integration.cc',
-                                   link_with: nanoarrow,
+                                   link_with: nanoarrow_lib,
                                    dependencies: [nlohmann_json_dep],
                                    include_directories: incdir)
 
@@ -77,45 +81,45 @@ if get_option('NANOARROW_BUILD_TESTS')
   # https://mesonbuild.com/Builtin-options.html#specifying-options-per-subproject
 
   utils_test = executable('utils_test', 'utils_test.cc',
-                          link_with: nanoarrow,
+                          link_with: nanoarrow_lib,
                           dependencies: [arrow_dep, gtest_dep],
                           include_directories: incdir)
   test('utils test', utils_test)
 
   buffer_test = executable('buffer_test', 'buffer_test.cc',
                            dependencies: [arrow_dep, gtest_dep],
-                          link_with: nanoarrow,
+                          link_with: nanoarrow_lib,
                            include_directories: incdir)
   test('buffer test', buffer_test)
 
   array_test = executable('array_test', 'array_test.cc',
                           dependencies: [arrow_dep, gtest_dep],
-                          link_with: nanoarrow,
+                          link_with: nanoarrow_lib,
                           include_directories: incdir)
   test('array test', array_test)
 
   schema_test = executable('schema_test', 'schema_test.cc',
                            dependencies: [arrow_dep, gtest_dep],
-                          link_with: nanoarrow,
+                          link_with: nanoarrow_lib,
                            include_directories: incdir)
   test('schema test', schema_test)
 
   array_stream_test = executable('array_stream_test', 'array_stream_test.cc',
                                  dependencies: [arrow_dep, gtest_dep],
-                                 link_with: nanoarrow,
+                                 link_with: nanoarrow_lib,
                                  include_directories: incdir)
   test('array_stream test', array_stream_test)
 
   nanoarrow_hpp_test = executable('nanoarrow_hpp_test', 'nanoarrow_hpp_test.cc',
                                   dependencies: [arrow_dep, gtest_dep],
-                                  link_with: nanoarrow,
+                                  link_with: nanoarrow_lib,
                                   include_directories: incdir)
   test('nanoarrow_hpp test', nanoarrow_hpp_test)
 
   nlohmann_json_dep = dependency('nlohmann_json')
   nanoarrow_testing_test = executable('nanoarrow_testing_test', 'nanoarrow_testing_test.cc',
                                       dependencies: [arrow_dep, gtest_dep, nlohmann_json_dep],
-                                      link_with: nanoarrow,
+                                      link_with: nanoarrow_lib,
                                       include_directories: incdir)
   test('nanoarrow_testing test', nanoarrow_testing_test)
 
