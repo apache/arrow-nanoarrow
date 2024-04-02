@@ -20,11 +20,16 @@ conf_data = configuration_data()
 ns = get_option('NANOARROW_NAMESPACE')
 conf_data.set('NANOARROW_NAMESPACE_DEFINE', '#define NANOARROW_NAMESPACE ' + ns)
 
-# TODO: CMake uses a regex to extract major/minor/patch from this string
-version = '0.5.0-SNAPSHOT'
-ver_major = 0
-ver_minor = 5
-ver_patch = 0
+version = meson.project_version()
+# Remove any pre-release / build identifiers
+version_no_pre_release = version.split('-')[0]
+version_no_build = version_no_pre_release.split('+')[0]
+components = version_no_build.split('.')
+assert(components.length() >= 3,
+       'The version does not contain major, minor and patch')
+ver_major = components[0]
+ver_minor = components[1]
+ver_patch = components[2]
 conf_data.set('NANOARROW_VERSION', version)
 conf_data.set('NANOARROW_VERSION_MAJOR', ver_major)
 conf_data.set('NANOARROW_VERSION_MINOR', ver_minor)
@@ -69,11 +74,6 @@ if get_option('NANOARROW_BUILD_TESTS')
 
   arrow_dep = dependency('arrow')
   gtest_dep = dependency('gtest', fallback: ['gtest', 'gtest_main_dep'])
-
-  # TODO: the CMake configuration sets a different C++ version depending on
-  # the version of Arrow used. Meson allows this standard to be set by subproject
-  # do we need to do anything here?
-  # https://mesonbuild.com/Builtin-options.html#specifying-options-per-subproject
 
   utils_test = executable('utils_test', 'utils_test.cc',
                           link_with: nanoarrow_lib,

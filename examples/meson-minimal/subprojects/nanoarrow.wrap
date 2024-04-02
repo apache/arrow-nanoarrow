@@ -16,6 +16,7 @@
 # under the License.
 
 [wrap-git]
+# url should point to the project root with the top-level meson.build file
 url = ../../..
 revision = head
 
