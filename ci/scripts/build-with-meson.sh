@@ -75,6 +75,7 @@ function main() {
     meson setup "${SANDBOX_DIR}"
 
     pushd "${SANDBOX_DIR}"
+    echo "Looking for Arrow in ${PKG_CONFIG_PATH}"
     meson configure -DNANOARROW_BUILD_TESTS=true \
           -DNANOARROW_BUILD_BENCHMARKS=true \
           -Db_coverage=true
