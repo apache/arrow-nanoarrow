@@ -72,10 +72,10 @@ function main() {
     meson wrap install nlohmann_json
 
     show_header "Compile project with meson"
-    meson setup "${SANDBOX_DIR}"
+    echo "Looking for Arrow in ${PKG_CONFIG_PATH}"
+    PKG_CONFIG_PATH=$PKG_CONFIG_PATH meson setup "${SANDBOX_DIR}"
 
     pushd "${SANDBOX_DIR}"
-    echo "Looking for Arrow in ${PKG_CONFIG_PATH}"
     meson configure -DNANOARROW_BUILD_TESTS=true \
           -DNANOARROW_BUILD_BENCHMARKS=true \
           -Db_coverage=true
