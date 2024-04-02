@@ -53,5 +53,4 @@ jobs:
 
       - name: Run meson testing script
         run: |
-          ARROW_PATH="$(pwd)/arrow"
-          ARROW_PATH=ARROW_PATH ci/scripts/build-with-meson.sh
+          PKG_CONFIG_PATH="$(pwd)/arrow/lib/pkgconfig" ci/scripts/build-with-meson.sh

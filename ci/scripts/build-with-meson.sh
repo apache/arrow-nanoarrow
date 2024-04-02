@@ -72,7 +72,7 @@ function main() {
     meson wrap install nlohmann_json
 
     show_header "Compile project with meson"
-    meson setup "${SANDBOX_DIR}" --pkg-config-path "${ARROW_PATH}"
+    meson setup "${SANDBOX_DIR}"
 
     pushd "${SANDBOX_DIR}"
     meson configure -DNANOARROW_BUILD_TESTS=true \
