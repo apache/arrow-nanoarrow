@@ -75,13 +75,16 @@ function main() {
     meson setup "${SANDBOX_DIR}" --pkg-config-path $PKG_CONFIG_PATH
 
     pushd "${SANDBOX_DIR}"
+
+    show_header "Run test suite"
     meson configure -DNANOARROW_BUILD_TESTS=true \
-          -DNANOARROW_BUILD_BENCHMARKS=true \
           -Db_coverage=true
     meson compile
-
-    show_header "Test and run benchmarks"
     meson test --wrap valgrind
+
+    show_header "Run benchmarks"
+    meson configure -DNANOARROW_BUILD_BENCHMMARKS=true
+    meson compile
     meson test --benchmark
 
     show_header "Generate coverage reports"
