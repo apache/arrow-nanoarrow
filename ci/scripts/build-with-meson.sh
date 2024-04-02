@@ -72,8 +72,6 @@ function main() {
     meson wrap install nlohmann_json
 
     show_header "Compile project with meson"
-    echo "Looking for Arrow in ${PKG_CONFIG_PATH}"
-    pkg-config --cflags --libs arrow
     meson setup "${SANDBOX_DIR}" --pkg-config-path $PKG_CONFIG_PATH
 
     pushd "${SANDBOX_DIR}"

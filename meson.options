@@ -28,9 +28,6 @@ option('NANOARROW_BUNDLE_AS_CPP', type: 'boolean',
        value: false)
 option('NANOARROW_NAMESPACE', type: 'string',
        description: 'A prefix for exported symbols')
-option('NANOARROW_ARROW_STATIC', type: 'boolean',
-       description: 'Use a statically-linked Arrow C++ build when linking tests',
-       value: false)
 option('NANOARROW_CODE_COVERAGE', type: 'boolean',
        description: 'Enable coverage reporting',
        value: false)

@@ -67,12 +67,7 @@ if get_option('NANOARROW_BUILD_TESTS')
   # Similarly code coverage has a built in option users should use instead
   # https://mesonbuild.com/Unit-tests.html#coverage
 
-  if get_option('NANOARROW_ARROW_STATIC')
-      arrow_dep = dependency('Arrow', modules: ['Arrow::arrow_static'])
-  else
-      arrow_dep = dependency('Arrow', modules: ['Arrow::arrow_shared'])
-  endif
-
+  arrow_dep = dependency('arrow')
   gtest_dep = dependency('gtest', fallback: ['gtest', 'gtest_main_dep'])
 
   # TODO: the CMake configuration sets a different C++ version depending on
