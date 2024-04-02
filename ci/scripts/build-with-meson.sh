@@ -73,6 +73,7 @@ function main() {
 
     show_header "Compile project with meson"
     echo "Looking for Arrow in ${PKG_CONFIG_PATH}"
+    PKG_CONFIG_PATH=$PKG_CONFIG_PATH pkg-config --cflags --libs arrow
     PKG_CONFIG_PATH=$PKG_CONFIG_PATH meson setup "${SANDBOX_DIR}"
 
     pushd "${SANDBOX_DIR}"
