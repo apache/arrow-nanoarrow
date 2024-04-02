@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Verification
+name: Meson Build Testing
 
 on:
   schedule:
@@ -24,9 +24,8 @@ on:
     branches:
       - main
     paths:
-      - 'docker-compose.yaml'
-      - '.github/workflows/verify.yaml'
-      - 'dev/release/verify-release-candidate.sh'
+      - '.github/workflows/meson-build.yaml'
+      - 'ci/scripts/build-with-meson.sh'
 
 permissions:
   contents: read
