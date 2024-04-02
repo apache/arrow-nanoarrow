@@ -83,7 +83,7 @@ function main() {
     meson test --wrap valgrind
 
     show_header "Run benchmarks"
-    meson configure -DNANOARROW_BUILD_BENCHMMARKS=true
+    meson configure -DNANOARROW_BUILD_BENCHMARKS=true
     meson compile
     meson test --benchmark
 
