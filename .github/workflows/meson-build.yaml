@@ -45,6 +45,12 @@ jobs:
         run: |
           python3 -m pip install meson
 
+      - name: Build Arrow C++
+        if: steps.cache-arrow-build.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          ci/scripts/build-arrow-cpp-minimal.sh 15.0.2 arrow
+
       - name: Run meson testing script
         run: |
           ci/scripts/build-with-meson.sh
