@@ -16,18 +16,12 @@
 # under the License.
 
 gbench = dependency('benchmark')
-incdir = '../../../src'
-incdir2 = '../../../src/nanoarrow'
 schema_e = executable('schema_benchmark',
                       'schema_benchmark.cc',
-                      link_with: nanoarrow_lib,
-                      dependencies: [gbench],
-                      include_directories: [incdir, incdir2])
+                      dependencies: [gbench, nanoarrow_dep])
 benchmark('schema benchmark', schema_e)
 
 array_e = executable('array_benchmark',
                      'array_benchmark.cc',
-                     link_with: nanoarrow_lib,
-                     dependencies: [gbench],
-                     include_directories: [incdir, incdir2])
+                     dependencies: [gbench, nanoarrow_dep])
 benchmark('array benchmark', array_e)
