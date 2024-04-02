@@ -53,4 +53,5 @@ jobs:
 
       - name: Run meson testing script
         run: |
-          ci/scripts/build-with-meson.sh
+          ARROW_PATH="$(pwd)/arrow"
+          ARROW_PATH=ARROW_PATH ci/scripts/build-with-meson.sh
