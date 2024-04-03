@@ -37,7 +37,7 @@ where linking to a higher level Arrow binding is difficult or impossible.
 ## Using the C library
 
 The nanoarrow C library is intended to be copied and vendored. This can be done using
-CMake or by using the bundled nanoarrow.h/nanorrow.c distribution available in the
+CMake or by using the bundled nanoarrow.h/nanoarrow.c distribution available in the
 dist/ directory in this repository. Examples of both can be found in the examples/
 directory in this repository.
 
