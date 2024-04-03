@@ -1151,7 +1151,7 @@ cdef class CArray:
 
         if self._device_type != ARROW_DEVICE_CPU:
             raise ValueError(
-                "Can't invoke __arrow_c_aray__ on non-CPU array "
+                "Can't invoke __arrow_c_array__ on non-CPU array "
                 f"with device_type {self._device_type}")
 
         if requested_schema is not None:
@@ -2404,8 +2404,8 @@ cdef class CDeviceArray:
 
     @property
     def array(self):
-        # TODO: We loose access to the sync_event here, so we probably need to
-        # synchronize (or propatate it, or somehow prevent data access downstream)
+        # TODO: We lose access to the sync_event here, so we probably need to
+        # synchronize (or propagate it, or somehow prevent data access downstream)
         cdef CArray array = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
         array._set_device(self._ptr.device_type, self._ptr.device_id)
         return array
@@ -2428,7 +2428,7 @@ cdef class CDeviceArray:
     @staticmethod
     def _import_from_c_capsule(schema_capsule, device_array_capsule):
         """
-        Import from a ArrowSchema and ArrowArray PyCapsule tuple.
+        Import from an ArrowSchema and ArrowArray PyCapsule tuple.
 
         Parameters
         ----------
