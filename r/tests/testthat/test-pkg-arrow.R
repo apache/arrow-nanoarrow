@@ -51,7 +51,7 @@ test_that("infer_nanoarrow_schema() works for arrow objects", {
   )
   expect_true(arrow::as_schema(tbl_schema)$Equals(tbl_schema_expected))
 
-  skip_if_not(isTRUE(arrow::arrow_info()$capabilities["dataset"]))
+  skip_if_not(arrow::arrow_info()$capabilities["dataset"])
 
   tbl_schema <- infer_nanoarrow_schema(
     arrow::InMemoryDataset$create(arrow::record_batch(x = 1L))
@@ -382,7 +382,7 @@ test_that("Table to nanoarrow_array_stream works", {
 
 test_that("Dataset to nanoarrow_array_stream works", {
   skip_if_not_installed("arrow")
-  skip_if_not(isTRUE(arrow::arrow_info()$capabilities["dataset"]))
+  skip_if_not(arrow::arrow_info()$capabilities["dataset"])
 
   dataset <- arrow::InMemoryDataset$create(arrow::arrow_table(a = 1:5, b = letters[1:5]))
   stream <- as_nanoarrow_array_stream(dataset)
@@ -397,7 +397,7 @@ test_that("Dataset to nanoarrow_array_stream works", {
 
 test_that("Scanner to nanoarrow_array_stream works", {
   skip_if_not_installed("arrow")
-  skip_if_not(isTRUE(arrow::arrow_info()$capabilities["dataset"]))
+  skip_if_not(arrow::arrow_info()$capabilities["dataset"])
 
   dataset <- arrow::InMemoryDataset$create(arrow::arrow_table(a = 1:5, b = letters[1:5]))
   scanner <- arrow::Scanner$create(dataset)

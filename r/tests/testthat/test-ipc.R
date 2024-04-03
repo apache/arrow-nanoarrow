@@ -240,7 +240,7 @@ test_that("read_nanoarrow() respects lazy argument", {
 
 test_that("read_nanoarrow() from connection errors when called from another thread", {
   skip_if_not_installed("arrow")
-  skip_if_not("dataset" %in% names(arrow::arrow_info()$capabilities))
+  skip_if_not(arrow::arrow_info()$capabilities["dataset"])
   skip_if_not_installed("dplyr")
 
   tf <- tempfile()
