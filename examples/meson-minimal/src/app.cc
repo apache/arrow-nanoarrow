@@ -15,26 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "library.h"
+#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
 
-#include <stdio.h>
-
-int main(int argc, char* argv[]) {
-  struct ArrowArray array;
-  struct ArrowSchema schema;
-  array.release = NULL;
-  schema.release = NULL;
-
-  int result = make_simple_array(&array, &schema);
-  if (result != 0) {
-    if (array.release) array.release(&array);
-    if (schema.release) schema.release(&schema);
-    return result;
-  }
-
-  result = print_simple_array(&array, &schema);
-  if (array.release) array.release(&array);
-  if (schema.release) schema.release(&schema);
-
-  return result;
+int main(void) {
+  nanoarrow::UniqueSchema schema;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32));
+  printf("Schema format for int32 is '%s'\n", schema->format);
+  return EXIT_SUCCESS;
 }

@@ -24,11 +24,8 @@ on:
     branches:
       - main
     paths:
-      - 'meson.build'
+      - '**meson.build'
       - 'meson.options'
-      - 'src/nanoarrow/meson.build'
-      - 'dev/benchmarks/meson.build'
-      - 'dev/benchmarks/c/meson.build'
       - '.github/workflows/meson-build.yaml'
       - 'ci/scripts/build-with-meson.sh'
 

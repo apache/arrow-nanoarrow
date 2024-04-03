@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# Minimal CMake Example
+# Minimal Meson Example
 
 This folder contains a meson project that links to its own copy of
 nanoarrow using a subproject.
@@ -36,7 +36,7 @@ parses command line arguments into an int32 array and prints out the
 resulting length (or any error encountered whilst building the array).
 
 ```bash
-./example_cmake_minimal_app
+./example_meson_minimal_app
 # 1
 # 2
 # 3

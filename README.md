@@ -103,10 +103,13 @@ CMake is the officially supported build system for nanoarrow. However, the Meson
 To run the test suite with Meson, you will want to first install the testing dependencies via the wrap database (n.b. no wrap database entry exists for Arrow - that must be installed separately).
 
 ```sh
+mkdir subprojects
 meson wrap install gtest
 meson wrap install google-benchmark
 meson wrap install nlohmann_json
 ```
+
+The Arrow C++ library must also be discoverable via pkg-config build tests.
 
 You can then set up your build directory:
 
@@ -121,7 +124,9 @@ And configure your project (this could have also been done inline with ``setup``
 meson configure -DNANOARROW_BUILD_TESTS=true -DNANOARROW_BUILD_BENCHMARKS=true
 ```
 
-From there the compilation command should take care of the rest:
+Note that if your Arrow pkg-config profile is installed in a non-standard location on your system, you may pass the ``--pkg-config-path <path to directory with arrow.pc>`` to either the setup or configure steps above.
+
+With the above out of the way, the ``compile`` command should take care of the rest:
 
 ```sh
 meson compile
@@ -130,7 +135,7 @@ meson compile
 Upon a successful build you can execute the test suite and benchmarks with the following commands:
 
 ```sh
-meson test   # default test run
-meson test --wrap valgrind  # run tests under valgrind
-meson test --benchmark # run benchmarks
+meson test nanoarrow:  # default test run
+meson test nanoarrow: --wrap valgrind  # run tests under valgrind
+meson test nanoarrow: --benchmark --verbose # run benchmarks
 ```
