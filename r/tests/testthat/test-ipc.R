@@ -131,7 +131,10 @@ test_that("read_nanoarrow() works for compressed .zip file paths", {
     wd <- getwd()
     on.exit(setwd(wd))
     setwd(tdir)
-    zip(tf, "file.arrows", extras = "-q")
+    tryCatch(
+      zip(tf, "file.arrows", extras = "-q"),
+      error = function(...) skip("zip() not supported")
+    )
   })
 
   stream <- read_nanoarrow(tf)
@@ -166,7 +169,10 @@ test_that("read_nanoarrow() errors zip archives that contain files != 1", {
     wd <- getwd()
     on.exit(setwd(wd))
     setwd(tdir)
-    zip(tf, c("file1", "file2"), extras = "-q")
+    tryCatch(
+      zip(tf, c("file1", "file2"), extras = "-q"),
+      error = function(...) skip("zip() not supported")
+    )
   })
 
   expect_error(
@@ -234,7 +240,7 @@ test_that("read_nanoarrow() respects lazy argument", {
 
 test_that("read_nanoarrow() from connection errors when called from another thread", {
   skip_if_not_installed("arrow")
-  skip_if_not("dataset" %in% names(arrow::arrow_info()$capabilities))
+  skip_if_not(arrow::arrow_info()$capabilities["dataset"])
   skip_if_not_installed("dplyr")
 
   tf <- tempfile()
