@@ -2055,6 +2055,18 @@ class TestingJSONReader {
           array->dictionary, error, error_prefix + "-> <dictionary> "));
     }
 
+    // csharp needs all non-validity buffer values to be non-null?
+    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+      if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY) {
+        continue;
+      }
+
+      ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+      if (buffer->data == nullptr) {
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(buffer, 0));
+      }
+    }
+
     // Validate the array view
     NANOARROW_RETURN_NOT_OK(PrefixError(
         ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
