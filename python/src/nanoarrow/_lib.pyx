@@ -551,7 +551,7 @@ class DeviceType(Enum):
     HEXAGON = ARROW_DEVICE_HEXAGON
 
 
-cdef class CDevice:
+cdef class Device:
     """ArrowDevice wrapper
 
     The ArrowDevice structure is a nanoarrow internal struct (i.e.,
@@ -601,7 +601,7 @@ cdef class CDevice:
 
 # Cache the CPU device
 # The CPU device is statically allocated (so base is None)
-CDEVICE_CPU = CDevice(None, <uintptr_t>ArrowDeviceCpu())
+CDEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
 
 
 cdef class CSchema:
@@ -1208,7 +1208,7 @@ cdef class CArray:
             raise RuntimeError("CArray is released")
 
     def view(self):
-        device = CDevice.resolve(self._device_type, self._device_id)
+        device = Device.resolve(self._device_type, self._device_id)
         return CArrayView.from_array(self, device)
 
     @property
@@ -1301,14 +1301,14 @@ cdef class CArrayView:
     cdef object _base
     cdef object _array_base
     cdef ArrowArrayView* _ptr
-    cdef CDevice _device
+    cdef Device _device
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
         self._device = CDEVICE_CPU
 
-    def _set_array(self, CArray array, CDevice device=CDEVICE_CPU):
+    def _set_array(self, CArray array, Device device=CDEVICE_CPU):
         cdef Error error = Error()
         cdef int code
 
@@ -1444,7 +1444,7 @@ cdef class CArrayView:
         return CArrayView(base, <uintptr_t>c_array_view)
 
     @staticmethod
-    def from_array(CArray array, CDevice device=CDEVICE_CPU):
+    def from_array(CArray array, Device device=CDEVICE_CPU):
         out = CArrayView.from_schema(array._schema)
         return out._set_array(array, device)
 
@@ -1491,7 +1491,7 @@ cdef class CBufferView:
     cdef object _base
     cdef ArrowBufferView _ptr
     cdef ArrowType _data_type
-    cdef CDevice _device
+    cdef Device _device
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
@@ -1499,7 +1499,7 @@ cdef class CBufferView:
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
                   ArrowType data_type,
-                  Py_ssize_t element_size_bits, CDevice device):
+                  Py_ssize_t element_size_bits, Device device):
         self._base = base
         self._ptr.data.data = <void*>addr
         self._ptr.size_bytes = size_bytes
@@ -1701,7 +1701,7 @@ cdef class CBuffer:
     cdef ArrowType _data_type
     cdef int _element_size_bits
     cdef char _format[32]
-    cdef CDevice _device
+    cdef Device _device
     cdef CBufferView _view
     cdef int _get_buffer_count
 
