@@ -594,14 +594,14 @@ cdef class Device:
     @staticmethod
     def resolve(device_type, int64_t device_id):
         if int(device_type) == ARROW_DEVICE_CPU:
-            return CDEVICE_CPU
+            return DEVICE_CPU
         else:
             raise ValueError(f"Device not found for type {device_type}/{device_id}")
 
 
 # Cache the CPU device
 # The CPU device is statically allocated (so base is None)
-CDEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
+DEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
 
 
 cdef class CSchema:
@@ -1306,13 +1306,13 @@ cdef class CArrayView:
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._device = CDEVICE_CPU
+        self._device = DEVICE_CPU
 
-    def _set_array(self, CArray array, Device device=CDEVICE_CPU):
+    def _set_array(self, CArray array, Device device=DEVICE_CPU):
         cdef Error error = Error()
         cdef int code
 
-        if device is CDEVICE_CPU:
+        if device is DEVICE_CPU:
             code = ArrowArrayViewSetArray(self._ptr, array._ptr, &error.c_error)
         else:
             code = ArrowArrayViewSetArrayMinimal(self._ptr, array._ptr, &error.c_error)
@@ -1444,7 +1444,7 @@ cdef class CArrayView:
         return CArrayView(base, <uintptr_t>c_array_view)
 
     @staticmethod
-    def from_array(CArray array, Device device=CDEVICE_CPU):
+    def from_array(CArray array, Device device=DEVICE_CPU):
         out = CArrayView.from_schema(array._schema)
         return out._set_array(array, device)
 
@@ -1659,7 +1659,7 @@ cdef class CBufferView:
         self._do_releasebuffer(buffer)
 
     cdef _do_getbuffer(self, Py_buffer *buffer, int flags):
-        if self._device is not CDEVICE_CPU:
+        if self._device is not DEVICE_CPU:
             raise RuntimeError("CBufferView is not a CPU buffer")
 
         if flags & PyBUF_WRITABLE:
@@ -1710,7 +1710,7 @@ cdef class CBuffer:
         self._ptr = NULL
         self._data_type = NANOARROW_TYPE_BINARY
         self._element_size_bits = 0
-        self._device = CDEVICE_CPU
+        self._device = DEVICE_CPU
         # Set initial format to "B" (Cython makes this hard)
         self._format[0] = 66
         self._format[1] = 0
@@ -1747,7 +1747,7 @@ cdef class CBuffer:
         cdef CBuffer out = CBuffer()
         out._base = alloc_c_buffer(&out._ptr)
         out._set_format(c_buffer_set_pybuffer(obj, &out._ptr))
-        out._device = CDEVICE_CPU
+        out._device = DEVICE_CPU
         out._populate_view()
         return out
 

@@ -19,7 +19,7 @@ from functools import cached_property
 from typing import Iterable, Tuple
 
 from nanoarrow._lib import (
-    CDEVICE_CPU,
+    DEVICE_CPU,
     CArray,
     CBuffer,
     CMaterializedArrayStream,
@@ -138,7 +138,7 @@ class Array:
 
     def __init__(self, obj, schema=None, device=None) -> None:
         if device is None:
-            self._device = CDEVICE_CPU
+            self._device = DEVICE_CPU
         elif isinstance(device, Device):
             self._device = device
         else:
@@ -164,7 +164,7 @@ class Array:
             raise ValueError(f"Can't {op} with non-contiguous Array")
 
     def _assert_cpu(self, op):
-        if self._device != CDEVICE_CPU:
+        if self._device != DEVICE_CPU:
             raise ValueError(f"Can't {op} with Array on non-CPU device")
 
     def __arrow_c_stream__(self, requested_schema=None):

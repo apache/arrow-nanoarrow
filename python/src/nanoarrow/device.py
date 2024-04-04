@@ -15,12 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CDEVICE_CPU, CDeviceArray, Device, DeviceType  # noqa: F401
+from nanoarrow._lib import DEVICE_CPU, CDeviceArray, Device, DeviceType  # noqa: F401
 from nanoarrow.c_lib import c_array, c_schema
 
 
 def cpu():
-    return CDEVICE_CPU
+    return DEVICE_CPU
 
 
 def resolve(device_type, device_id):
