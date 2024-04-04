@@ -25,11 +25,11 @@ def test_cpu_device():
     cpu = device.cpu()
     assert cpu.device_type_id == 1
     assert cpu.device_type == device.DeviceType.CPU
-    assert cpu.device_id == 0
+    assert cpu.device_id == -1
     assert "device_type: CPU <1>" in repr(cpu)
 
-    cpu = device.resolve(1, 0)
-    assert cpu.device_type_id == 1
+    cpu2 = device.resolve(1, 0)
+    assert cpu2 is cpu
 
 
 def test_c_device_array():
@@ -38,7 +38,7 @@ def test_c_device_array():
 
     assert darray.device_type_id == 1
     assert darray.device_type == device.DeviceType.CPU
-    assert darray.device_id == 0
+    assert darray.device_id == -1
     assert "device_type: CPU <1>" in repr(darray)
 
     assert darray.schema.format == "i"
