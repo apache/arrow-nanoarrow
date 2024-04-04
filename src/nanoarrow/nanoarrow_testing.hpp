@@ -2758,7 +2758,6 @@ class TestingJSONComparison {
   // Comparison options
   bool compare_batch_flags_;
   bool compare_metadata_order_;
-  bool metadata_null_equals_metadata_empty_;
 
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {
