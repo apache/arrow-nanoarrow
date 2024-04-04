@@ -169,7 +169,7 @@ def buffer_view_repr(buffer_view, max_char_width=80):
     prefix = f"{buffer_view.data_type}"
     prefix += f"[{buffer_view.size_bytes} b]"
 
-    if buffer_view.device.device_type == 1:
+    if buffer_view.device.device_type_id == 1:
         return (
             prefix
             + " "
@@ -232,7 +232,10 @@ def device_array_repr(device_array):
     class_label = make_class_label(device_array, module="nanoarrow.device")
 
     title_line = f"<{class_label}>"
-    device_type = f"- device_type: {device_array.device_type}"
+    device_type = (
+        f"- device_type: {device_array.device_type.name} "
+        f"<{device_array.device_type_id}>"
+    )
     device_id = f"- device_id: {device_array.device_id}"
     array = f"- array: {array_repr(device_array.array, indent=2)}"
     return "\n".join((title_line, device_type, device_id, array))
@@ -242,6 +245,6 @@ def device_repr(device):
     class_label = make_class_label(device, module="nanoarrow.device")
 
     title_line = f"<{class_label}>"
-    device_type = f"- device_type: {device.device_type}"
+    device_type = f"- device_type: {device.device_type.name} <{device.device_type_id}>"
     device_id = f"- device_id: {device.device_id}"
     return "\n".join([title_line, device_type, device_id])

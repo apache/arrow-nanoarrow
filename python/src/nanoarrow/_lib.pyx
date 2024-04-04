@@ -50,6 +50,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
+from enum import Enum
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
@@ -523,6 +524,32 @@ cdef class CArrowTimeUnit:
     NANO = NANOARROW_TIME_UNIT_NANO
 
 
+class DeviceType(Enum):
+    """
+    An enum-like wrapper providing access to the device constant values
+    defined in the Arrow C Device interface. Unlike the other enum
+    accessors, this Python Enum is defined in Cython so that we can use
+    the bulit-in functionality to do better printing of device identifiers
+    for classes defined in Cython. Unlike the other enums, users don't
+    typically need to specify these (but would probably like them printed
+    nicely).
+    """
+
+    CPU = ARROW_DEVICE_CPU
+    CUDA = ARROW_DEVICE_CUDA
+    CUDA_HOST = ARROW_DEVICE_CUDA_HOST
+    OPENCL = ARROW_DEVICE_OPENCL
+    VULKAN =  ARROW_DEVICE_VULKAN
+    METAL = ARROW_DEVICE_METAL
+    VPI = ARROW_DEVICE_VPI
+    ROCM = ARROW_DEVICE_ROCM
+    ROCM_HOST = ARROW_DEVICE_ROCM_HOST
+    EXT_DEV = ARROW_DEVICE_EXT_DEV
+    CUDA_MANAGED = ARROW_DEVICE_CUDA_MANAGED
+    ONEAPI = ARROW_DEVICE_ONEAPI
+    WEBGPU = ARROW_DEVICE_WEBGPU
+    HEXAGON = ARROW_DEVICE_HEXAGON
+
 
 cdef class CDevice:
     """ArrowDevice wrapper
@@ -554,6 +581,10 @@ cdef class CDevice:
 
     @property
     def device_type(self):
+        return DeviceType(self._ptr.device_type)
+
+    @property
+    def device_type_id(self):
         return self._ptr.device_type
 
     @property
@@ -561,8 +592,8 @@ cdef class CDevice:
         return self._ptr.device_id
 
     @staticmethod
-    def resolve(ArrowDeviceType device_type, int64_t device_id):
-        if device_type == ARROW_DEVICE_CPU:
+    def resolve(device_type, int64_t device_id):
+        if int(device_type) == ARROW_DEVICE_CPU:
             return CDEVICE_CPU
         else:
             raise ValueError(f"Device not found for type {device_type}/{device_id}")
@@ -1186,6 +1217,10 @@ cdef class CArray:
 
     @property
     def device_type(self):
+        return DeviceType(self._device_type)
+
+    @property
+    def device_type_id(self):
         return self._device_type
 
     @property
@@ -2396,6 +2431,10 @@ cdef class CDeviceArray:
 
     @property
     def device_type(self):
+        return DeviceType(self._ptr.device_type)
+
+    @property
+    def device_type_id(self):
         return self._ptr.device_type
 
     @property

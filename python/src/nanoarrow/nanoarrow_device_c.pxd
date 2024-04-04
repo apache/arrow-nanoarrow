@@ -26,7 +26,17 @@ cdef extern from "nanoarrow_device.h" nogil:
     int32_t ARROW_DEVICE_CPU
     int32_t ARROW_DEVICE_CUDA
     int32_t ARROW_DEVICE_CUDA_HOST
+    int32_t ARROW_DEVICE_OPENCL
+    int32_t ARROW_DEVICE_VULKAN
     int32_t ARROW_DEVICE_METAL
+    int32_t ARROW_DEVICE_VPI
+    int32_t ARROW_DEVICE_ROCM
+    int32_t ARROW_DEVICE_ROCM_HOST
+    int32_t ARROW_DEVICE_EXT_DEV
+    int32_t ARROW_DEVICE_CUDA_MANAGED
+    int32_t ARROW_DEVICE_ONEAPI
+    int32_t ARROW_DEVICE_WEBGPU
+    int32_t ARROW_DEVICE_HEXAGON
 
     struct ArrowDeviceArray:
         ArrowArray array

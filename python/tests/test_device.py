@@ -23,21 +23,23 @@ from nanoarrow import device
 
 def test_cpu_device():
     cpu = device.cpu()
-    assert cpu.device_type == 1
+    assert cpu.device_type_id == 1
+    assert cpu.device_type == device.DeviceType.CPU
     assert cpu.device_id == 0
-    assert "device_type: 1" in repr(cpu)
+    assert "device_type: CPU <1>" in repr(cpu)
 
     cpu = device.resolve(1, 0)
-    assert cpu.device_type == 1
+    assert cpu.device_type_id == 1
 
 
 def test_c_device_array():
     # Unrecognized arguments should be passed to c_array() to generate CPU array
     darray = device.c_device_array([1, 2, 3], na.int32())
 
-    assert darray.device_type == 1
+    assert darray.device_type_id == 1
+    assert darray.device_type == device.DeviceType.CPU
     assert darray.device_id == 0
-    assert "device_type: 1" in repr(darray)
+    assert "device_type: CPU <1>" in repr(darray)
 
     assert darray.schema.format == "i"
 
