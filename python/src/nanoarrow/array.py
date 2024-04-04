@@ -190,8 +190,8 @@ class Array:
         >>> array = na.Array([1, 2, 3], na.int32())
         >>> array.device
         <nanoarrow.device.Device>
-        - device_type: 1
-        - device_id: 0
+        - device_type: CPU <1>
+        - device_id: -1
         """
         return self._device
 
