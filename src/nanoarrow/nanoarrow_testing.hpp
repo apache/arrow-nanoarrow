@@ -2055,26 +2055,15 @@ class TestingJSONReader {
           array->dictionary, error, error_prefix + "-> <dictionary> "));
     }
 
-    // csharp needs all non-validity buffer values to be non-null?
-    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-      if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY) {
-        continue;
-      }
-
-      ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
-      if (buffer->data == nullptr) {
-        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt8(buffer, 0));
-      }
-    }
-
     // Validate the array view
     NANOARROW_RETURN_NOT_OK(PrefixError(
         ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
         error_prefix + "failed to validate: "));
 
-    // Flush length and buffer pointers to the Array
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr), error);
+    // Flush length and buffer pointers to the Array. This also ensures that buffers
+    // are not NULL (matters for some versions of some implementations).
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFinishBuildingDefault(array, nullptr),
+                                       error);
     array->length = array_view->length;
     array->null_count = array_view->null_count;
 
@@ -2200,7 +2189,8 @@ class TestingJSONReader {
         Check(value.is_array(), error, "bitmap buffer must be array"));
 
     // Reserving with the exact length ensures that the last bits are always zeroed.
-    // This is currently an assumption made by the C# implementation.
+    // This was an assumption made by the C# implementation at the time this was
+    // implemented.
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapReserve(bitmap, value.size()), error);
 
     for (const auto& item : value) {
