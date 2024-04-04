@@ -18,13 +18,7 @@
 from functools import cached_property
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import (
-    DEVICE_CPU,
-    CArray,
-    CBuffer,
-    CMaterializedArrayStream,
-    Device,
-)
+from nanoarrow._lib import DEVICE_CPU, CArray, CBuffer, CMaterializedArrayStream, Device
 from nanoarrow.c_lib import c_array, c_array_stream, c_array_view
 from nanoarrow.iterator import iter_py, iter_tuples
 from nanoarrow.schema import Schema
