@@ -1622,6 +1622,45 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
 )");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFloatingPointArrayComparison) {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray actual;
+  nanoarrow::UniqueArray expected;
+  TestingJSONComparison comparison;
+  std::stringstream msg;
+
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_DOUBLE), NANOARROW_OK);
+  ASSERT_EQ(comparison.SetSchema(schema.get()), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(actual.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendDouble(actual->children[0], 1.23456789), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(actual.get(), nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(expected.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendDouble(expected->children[0], 1.23456), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(expected.get(), nullptr), NANOARROW_OK);
+
+  // Default precision: all decimal places
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.ClearDifferences();
+
+  // With just enough decimal places to trigger a difference
+  comparison.set_compare_float_precision(5);
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 1);
+  comparison.ClearDifferences();
+
+  // With just few enough decimal places to be considered equivalent
+  comparison.set_compare_float_precision(4);
+  ASSERT_EQ(comparison.CompareBatch(actual.get(), expected.get()), NANOARROW_OK);
+  EXPECT_EQ(comparison.num_differences(), 0);
+  comparison.ClearDifferences();
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayWithDictionaryComparison) {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray actual;
