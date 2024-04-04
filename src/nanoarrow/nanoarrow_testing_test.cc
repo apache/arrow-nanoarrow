@@ -1347,9 +1347,15 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDictionaryRoundtrip) {
       R"("isOrdered": true}, "children": []})");
 }
 
-void AssertSchemasCompareEqual(ArrowSchema* actual, ArrowSchema* expected) {
+void AssertSchemasCompareEqual(
+    ArrowSchema* actual, ArrowSchema* expected,
+    void (*setup_comparison)(TestingJSONComparison&) = nullptr) {
   TestingJSONComparison comparison;
   std::stringstream msg;
+
+  if (setup_comparison != nullptr) {
+    setup_comparison(comparison);
+  }
 
   ASSERT_EQ(comparison.CompareSchema(actual, expected), NANOARROW_OK);
   EXPECT_EQ(comparison.num_differences(), 0);
@@ -1357,10 +1363,16 @@ void AssertSchemasCompareEqual(ArrowSchema* actual, ArrowSchema* expected) {
   EXPECT_EQ(msg.str(), "");
 }
 
-void AssertSchemasCompareUnequal(ArrowSchema* actual, ArrowSchema* expected,
-                                 int num_differences, const std::string& differences) {
+void AssertSchemasCompareUnequal(
+    ArrowSchema* actual, ArrowSchema* expected, int num_differences,
+    const std::string& differences,
+    void (*setup_comparison)(TestingJSONComparison&) = nullptr) {
   TestingJSONComparison comparison;
   std::stringstream msg;
+
+  if (setup_comparison != nullptr) {
+    setup_comparison(comparison);
+  }
 
   ASSERT_EQ(comparison.CompareSchema(actual, expected), NANOARROW_OK);
   EXPECT_EQ(comparison.num_differences(), num_differences);
@@ -1384,26 +1396,121 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   actual->flags = 0;
   AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
                               "Path: \n- .flags: 0\n+ .flags: 2\n\n");
+  // With different top-level flags but turning off that comparison
+  AssertSchemasCompareEqual(actual.get(), expected.get(),
+                            [](TestingJSONComparison& comparison) {
+                              comparison.set_compare_batch_flags((false));
+                            });
   actual->flags = expected->flags;
 
   // With different top-level metadata
   nanoarrow::UniqueBuffer buf;
   ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key"), ArrowCharView("value")),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key1"),
+                                       ArrowCharView("value1")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
+                                       ArrowCharView("value2")),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+
+  buf.reset();
+  ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
+                                       ArrowCharView("value2")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key1"),
+                                       ArrowCharView("value1")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(expected.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
 
   AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
                               /*differences*/
                               "Path: .metadata"
                               R"(
-- [{"key": "key", "value": "value"}]
-+ null
+- [{"key": "key1", "value": "value1"}, {"key": "key2", "value": "value2"}]
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
 
 )");
+
+  // With different top-level metadata that could be considered equivalent
+  AssertSchemasCompareEqual(actual.get(), expected.get(),
+                            [](TestingJSONComparison& comparison) {
+                              comparison.set_compare_metadata_order(false);
+                            });
+
+  // With different top-level metadata that are not equivalent because of number of items
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), nullptr), NANOARROW_OK);
+
+  // ...using the comparison that considers ordering
+  AssertSchemasCompareUnequal(actual.get(), expected.get(),
+                              /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .metadata"
+                              R"(
+- null
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)",
+                              [](TestingJSONComparison& comparison) {
+                                comparison.set_compare_metadata_order(false);
+                              });
+
+  // ...using the comparison that does *not* consider ordering
+  AssertSchemasCompareUnequal(actual.get(), expected.get(),
+                              /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .metadata"
+                              R"(
+- null
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)",
+                              [](TestingJSONComparison& comparison) {
+                                comparison.set_compare_metadata_order(false);
+                              });
+
+  // With different top-level metadata that are not equivalent because of item content
+  buf.reset();
+  ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
+                                       ArrowCharView("value2")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key1"),
+                                       ArrowCharView("gazornenplat")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+
+  // ...using the schema comparison that considers order
+  AssertSchemasCompareUnequal(actual.get(), expected.get(),
+                              /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .metadata"
+                              R"(
+- [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "gazornenplat"}]
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)");
+
+  // ...and using the schema comparison that does *not* consider order
+  AssertSchemasCompareUnequal(actual.get(), expected.get(),
+                              /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .metadata"
+                              R"(
+- [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "gazornenplat"}]
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)",
+                              [](TestingJSONComparison& comparison) {
+                                comparison.set_compare_metadata_order(false);
+                              });
+
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(expected.get(), nullptr), NANOARROW_OK);
 
   // With different children
   actual->children[0]->flags = 0;
