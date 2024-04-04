@@ -148,6 +148,9 @@ class TestingJSONWriter {
   /// avoid serialization issues.
   void set_float_precision(int value) { float_precision_ = value; }
 
+  /// \brief Set whether metadata should be included in the output of a schema or field
+  ///
+  /// Use false to skip writing schema/field metadata in the output.
   void set_include_metadata(bool value) { include_metadata_ = value; }
 
   void ResetDictionaries() { dictionaries_.clear(); }

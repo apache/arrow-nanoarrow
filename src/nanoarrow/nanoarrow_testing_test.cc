@@ -459,6 +459,17 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
       [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": [], )"
       R"("metadata": [{"key": "k1", "value": "v1"}, {"key": "k2", "value": "v2"}]})");
+
+  // Ensure we can turn off metadata
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, "\0\0\0\0"));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})",
+      [](TestingJSONWriter& writer) { writer.set_include_metadata(false); });
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldNested) {
