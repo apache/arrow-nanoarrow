@@ -526,7 +526,7 @@ cdef class CArrowTimeUnit:
 
 class DeviceType(Enum):
     """
-    An enum-like wrapper providing access to the device constant values
+    An enumerator providing access to the device constant values
     defined in the Arrow C Device interface. Unlike the other enum
     accessors, this Python Enum is defined in Cython so that we can use
     the bulit-in functionality to do better printing of device identifiers
