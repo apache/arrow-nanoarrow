@@ -246,7 +246,6 @@ class PyIterator(ArrayViewIterator):
 
     def _timestamp_iter(self, offset, length):
         from datetime import datetime
-        import dateutil
 
         unit = self._schema_view.time_unit
         if unit == "s":
@@ -262,6 +261,8 @@ class PyIterator(ArrayViewIterator):
 
         tz = self._schema_view.timezone
         if tz:
+            import dateutil
+
             tz = dateutil.tz.gettz(tz)
         else:
             tz = None
