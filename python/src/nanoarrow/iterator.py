@@ -244,6 +244,36 @@ class PyIterator(ArrayViewIterator):
             for start, end in zip(starts, ends):
                 yield bytes(data[start:end])
 
+    def _timestamp_iter(self, offset, length):
+        from datetime import datetime
+        import dateutil
+
+        unit = self._schema_view.time_unit
+        if unit == "s":
+            scale = 1
+        elif unit == "ms":
+            scale = 1000
+        elif unit == "us":
+            scale = 1_000_000
+        elif unit == "ns":
+            raise NotImplementedError(
+                "Timestamp with unit 'ns' is not currently supported"
+            )
+
+        tz = self._schema_view.timezone
+        if tz:
+            tz = dateutil.tz.gettz(tz)
+        else:
+            tz = None
+
+        for parent in self._primitive_iter(offset, length):
+            if parent is None:
+                yield None
+            else:
+                s = parent // scale
+                us = parent % scale * (1_000_000 // scale)
+                yield datetime.fromtimestamp(s, tz).replace(microsecond=us)
+
     def _primitive_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
@@ -258,7 +288,7 @@ class PyIterator(ArrayViewIterator):
 
 class RowTupleIterator(PyIterator):
     """Iterate over rows of a struct array (stream) where each row is a
-    tuple instead of a dictionary. This is ~3x faster and matches other
+    tuple instead of a dictionary. This is usually faster and matches other
     Python concepts more closely (e.g., dbapi's cursor, pandas itertuples).
     Intended for internal use.
     """
@@ -288,6 +318,7 @@ _ITEMS_ITER_LOOKUP = {
     CArrowType.LARGE_LIST: "_list_iter",
     CArrowType.FIXED_SIZE_LIST: "_fixed_size_list_iter",
     CArrowType.DICTIONARY: "_dictionary_iter",
+    CArrowType.TIMESTAMP: "_timestamp_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [
