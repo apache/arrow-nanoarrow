@@ -233,6 +233,10 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
       return EINVAL;
   }
 
+  if (((size_t)n_chars) >= sizeof(buffer) || n_chars < 0) {
+    return ERANGE;
+  }
+
   buffer[n_chars] = '\0';
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, buffer));
 
@@ -263,6 +267,10 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
       break;
     default:
       return EINVAL;
+  }
+
+  if (((size_t)n_chars) >= sizeof(buffer) || n_chars < 0) {
+    return ERANGE;
   }
 
   buffer[n_chars] = '\0';
@@ -341,7 +349,7 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum Arrow
       return EINVAL;
   }
 
-  if (((size_t)n_chars) >= sizeof(buffer)) {
+  if (((size_t)n_chars) >= sizeof(buffer) || n_chars < 0) {
     return ERANGE;
   }
 
@@ -378,6 +386,12 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
       return EINVAL;
   }
 
+  // Ensure that an encoding error from snprintf() does not result
+  // in an out-of-bounds access.
+  if (n_chars < 0) {
+    return ERANGE;
+  }
+
   if (n_children > 0) {
     n_chars = snprintf(format_cursor, format_out_size, "0");
     format_cursor += n_chars;
@@ -388,6 +402,12 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
       format_cursor += n_chars;
       format_out_size -= n_chars;
     }
+  }
+
+  // Ensure that an encoding error from snprintf() does not result
+  // in an out-of-bounds access.
+  if (n_chars < 0) {
+    return ERANGE;
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(schema, format_out));
@@ -1256,6 +1276,12 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
 // among multiple sprintf calls.
 static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
                                          int64_t* n_remaining, int64_t* n_chars) {
+  // In the unlikely snprintf() returning a negative value (encoding error),
+  // ensure the result won't cause an out-of-bounds access.
+  if (n_chars_last < 0) {
+    n_chars = 0;
+  }
+
   *n_chars += n_chars_last;
   *n_remaining -= n_chars_last;
 
@@ -1351,7 +1377,12 @@ int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t
     n_chars += snprintf(out, n, ">");
   }
 
-  return n_chars;
+  // Ensure that we always return a positive result
+  if (n_chars > 0) {
+    return n_chars;
+  } else {
+    return 0;
+  }
 }
 
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
