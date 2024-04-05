@@ -22,16 +22,8 @@ FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 RUN apk add bash linux-headers git cmake R R-dev g++ gfortran gnupg curl py3-virtualenv python3-dev
 
 # For Arrow C++
-RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-14.0.1.tar.gz | tar -zxf - && \
-    mkdir /arrow-build && \
-    cd /arrow-build && \
-    cmake ../arrow-apache-arrow-14.0.1/cpp \
-        -DARROW_JEMALLOC=OFF \
-        -DARROW_SIMD_LEVEL=NONE \
-        -DARROW_WITH_ZLIB=ON \
-        -DCMAKE_INSTALL_PREFIX=../arrow && \
-    cmake --build . && \
-    cmake --install . --prefix=../arrow
+COPY ci/scripts/build-arrow-cpp-minimal.sh /
+RUN /build-arrow-cpp-minimal.sh 15.0.2 /arrow
 
 # There's a missing define that numpy's build needs on s390x and there is no wheel
 RUN (grep -e "S390" /usr/include/bits/hwcap.h && echo "#define HWCAP_S390_VX HWCAP_S390_VXRS" >> /usr/include/bits/hwcap.h) || true
@@ -41,7 +33,9 @@ ENV NANOARROW_PYTHON_VENV "/venv"
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64"), repos = "https://cloud.r-project.org")'
+RUN R -e 'install.packages("desc", repos = "https://cloud.r-project.org")' && mkdir /tmp/rdeps
+COPY r/DESCRIPTION /tmp/rdeps
+RUN R -e 'install.packages(setdiff(desc::desc("/tmp/rdeps")$get_deps()$package, "arrow"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow

@@ -33,11 +33,6 @@ case $# in
      ;;
 esac
 
-# Allow other cmake (e.g., cmake3 on centos7)
-if [ -z "$CMAKE_BIN" ]; then
-  CMAKE_BIN=cmake
-fi
-
 # Ensure install directory exists and is absolute
 if [ ! -d "${ARROW_CPP_INSTALL_DIR}" ]; then
   mkdir -p "${ARROW_CPP_INSTALL_DIR}"
