@@ -40,8 +40,10 @@ ENV NANOARROW_PYTHON_VENV "/venv"
 RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 
 # For R
-RUN mkdir ~/.R && echo "MAKEFLAGS += -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages(c("blob", "hms", "tibble", "rlang", "testthat", "tibble", "vctrs", "withr", "bit64", "pkgdown", "covr", "pkgbuild"), repos = "https://cloud.r-project.org")'
+RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
+RUN R -e 'install.packages("desc", repos = "https://cloud.r-project.org")' && mkdir /tmp/rdeps
+COPY r/DESCRIPTION /tmp/rdeps
+RUN R -e 'install.packages(setdiff(desc::desc("/tmp/rdeps")$get_deps()$package, "arrow"), repos = "https://cloud.r-project.org")'
 
 # Install arrow here so that the integration tests for R run in at least one test image.
 # -fPIC required for this to work on MacOS/arm64
