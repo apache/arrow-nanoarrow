@@ -245,7 +245,7 @@ class PyIterator(ArrayViewIterator):
                 yield bytes(data[start:end])
 
     def _timestamp_iter(self, offset, length):
-        from datetime import UTC, datetime
+        from datetime import datetime
 
         fromtimestamp = datetime.fromtimestamp
 
@@ -267,7 +267,7 @@ class PyIterator(ArrayViewIterator):
             tz_fromtimestamp = tz
         else:
             tz = None
-            tz_fromtimestamp = UTC
+            tz_fromtimestamp = _get_tzinfo("UTC")
 
         for parent in self._primitive_iter(offset, length):
             if parent is None:
