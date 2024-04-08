@@ -263,6 +263,16 @@ class PyIterator(ArrayViewIterator):
                 else:
                     yield epoch + timedelta(milliseconds=item)
 
+    def _time_iter(self, offset, length):
+        from datetime import time
+
+        for item in self._iter_datetime_components(offset, length):
+            if item is None:
+                yield None
+            else:
+                days, hours, mins, secs, us = item
+                yield time(hours, mins, secs, us)
+
     def _timestamp_iter(self, offset, length):
         from datetime import datetime
 
@@ -297,6 +307,62 @@ class PyIterator(ArrayViewIterator):
                 yield fromtimestamp(s, tz_fromtimestamp).replace(
                     microsecond=us, tzinfo=tz
                 )
+
+    def _duration_iter(self, offset, length):
+        from datetime import timedelta
+
+        storage = self._primitive_iter(offset, length)
+
+        unit = self._schema_view.time_unit
+        if unit == "s":
+            to_us = 1_000_000
+        elif unit == "ms":
+            to_us = 1000
+        elif unit == "us":
+            to_us = 1
+        elif unit == "ns":
+            storage = _scale_and_round_maybe_none(storage, 0.001)
+            to_us = 1
+
+        for item in storage:
+            if item is None:
+                yield None
+            else:
+                yield timedelta(microseconds=item * to_us)
+
+    def _iter_datetime_components(self, offset, length):
+        storage = self._primitive_iter(offset, length)
+
+        unit = self._schema_view.time_unit
+        if unit == "s":
+            to_us = 1_000_000
+        elif unit == "ms":
+            to_us = 1000
+        elif unit == "us":
+            to_us = 1
+        elif unit == "ns":
+            storage = _scale_and_round_maybe_none(storage, 0.001)
+            to_us = 1
+
+        us_per_sec = 1_000_000
+        us_per_min = us_per_sec * 60
+        us_per_hour = us_per_min * 60
+        us_per_day = us_per_hour * 24
+
+        for item in storage:
+            if item is None:
+                yield None
+            else:
+                us = item * to_us
+                days = us // us_per_day
+                us = us % us_per_day
+                hours = us // us_per_hour
+                us = us % us_per_hour
+                mins = us // us_per_min
+                us = us % us_per_min
+                secs = us // us_per_sec
+                us = us % us_per_sec
+                yield days, hours, mins, secs, us
 
     def _primitive_iter(self, offset, length):
         view = self._array_view
@@ -388,7 +454,10 @@ _ITEMS_ITER_LOOKUP = {
     CArrowType.DICTIONARY: "_dictionary_iter",
     CArrowType.DATE32: "_date_iter",
     CArrowType.DATE64: "_date_iter",
+    CArrowType.TIME32: "_time_iter",
+    CArrowType.TIME64: "_time_iter",
     CArrowType.TIMESTAMP: "_timestamp_iter",
+    CArrowType.DURATION: "_duration_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [

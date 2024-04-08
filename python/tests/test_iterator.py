@@ -317,7 +317,7 @@ def test_iterator_nullable_dictionary():
     assert list(iter_py(sliced)) == ["cde", "ab", "def", "cde", None]
 
 
-def test_iterator_date32():
+def test_iterator_date():
     pa = pytest.importorskip("pyarrow")
 
     items = [
@@ -329,17 +329,31 @@ def test_iterator_date32():
     array = pa.array(items, pa.date32())
     assert list(iter_py(array)) == items
 
+    array = pa.array(items, pa.date64())
+    assert list(iter_py(array)) == items
 
-def test_iterator_date64():
+
+def test_iterator_time():
     pa = pytest.importorskip("pyarrow")
 
     items = [
-        datetime.date(1970, 1, 2),
+        datetime.time(15, 45, 21, 12345),
         None,
-        datetime.date(2024, 4, 8),
+        datetime.time(1, 23, 45),
     ]
 
-    array = pa.array(items, pa.date64())
+    array = pa.array(items, pa.time64("ns"))
+    assert list(iter_py(array)) == items
+
+    array = pa.array(items, pa.time64("us"))
+    assert list(iter_py(array)) == items
+
+    items[0] = datetime.time(15, 45, 21, 123000)
+    array = pa.array(items, pa.time32("ms"))
+    assert list(iter_py(array)) == items
+
+    items[0] = datetime.time(15, 45, 21)
+    array = pa.array(items, pa.time32("s"))
     assert list(iter_py(array)) == items
 
 
@@ -404,7 +418,6 @@ def test_get_tzinfo():
     assert dt.replace(tzinfo=_get_tzinfo("utc")).utcoffset() == datetime.timedelta(0)
 
     pytest.importorskip("zoneinfo")
-    pytest.importorskip("pytz")
     pytest.importorskip("dateutil")
 
     tz_zoneinfo = _get_tzinfo("America/Halifax", strategy=["zoneinfo"])
@@ -415,3 +428,27 @@ def test_get_tzinfo():
 
     with pytest.raises(RuntimeError):
         _get_tzinfo("America/Halifax", strategy=[])
+
+
+def test_iterator_duration():
+    pa = pytest.importorskip("pyarrow")
+
+    items = [
+        datetime.timedelta(days=12, seconds=345, microseconds=6789),
+        None,
+        datetime.timedelta(days=12345, seconds=67890),
+    ]
+
+    array = pa.array(items, pa.duration("ns"))
+    assert list(iter_py(array)) == items
+
+    array = pa.array(items, pa.duration("us"))
+    assert list(iter_py(array)) == items
+
+    items[0] = datetime.timedelta(days=12, seconds=345, microseconds=678000)
+    array = pa.array(items, pa.duration("ms"))
+    assert list(iter_py(array)) == items
+
+    items[0] = datetime.timedelta(days=12, seconds=345)
+    array = pa.array(items, pa.duration("s"))
+    assert list(iter_py(array)) == items
