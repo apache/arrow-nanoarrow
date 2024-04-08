@@ -263,9 +263,7 @@ class PyIterator(ArrayViewIterator):
 
         tz = self._schema_view.timezone
         if tz:
-            import dateutil
-
-            tz = dateutil.tz.gettz(tz)
+            tz = _get_tzinfo(tz)
             tz_fromtimestamp = tz
         else:
             tz = None
@@ -313,6 +311,36 @@ class RowTupleIterator(PyIterator):
 
     def _iter1(self, offset, length):
         return self._struct_tuple_iter(offset, length)
+
+
+def _get_tzinfo(tz_string, strategy=None):
+    # We can handle UTC without any imports
+    if tz_string.upper() == "UTC":
+        from datetime import UTC
+
+        return UTC
+
+    # Try zoneinfo.ZoneInfo() (Python 3.9+)
+    if strategy is None or "zoneinfo" in strategy:
+        try:
+            from zoneinfo import ZoneInfo
+
+            return ZoneInfo(tz_string)
+        except ImportError:
+            pass
+
+    # Try dateutil.tz.gettz()
+    if strategy is None or "dateutil" in strategy:
+        try:
+            from dateutil.tz import gettz
+
+            return gettz(tz_string)
+        except ImportError:
+            pass
+
+    raise RuntimeError(
+        "zoneinfo (Python 3.9+), pytz, or dateutil is required to resolve timezone"
+    )
 
 
 _ITEMS_ITER_LOOKUP = {

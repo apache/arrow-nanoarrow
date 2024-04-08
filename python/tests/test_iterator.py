@@ -359,3 +359,25 @@ def test_iterator_timestamp_tz():
     items[0] = items[0].replace(microsecond=0)
     array = pa.array(items, pa.timestamp("s", "America/Halifax"))
     assert list(iter_py(array)) == items
+
+
+def test_get_tzinfo():
+    from nanoarrow.iterator import _get_tzinfo
+
+    assert _get_tzinfo("UTC") is datetime.UTC
+    assert _get_tzinfo("utc") is datetime.UTC
+
+    pytest.importorskip("zoneinfo")
+    pytest.importorskip("pytz")
+    pytest.importorskip("dateutil")
+
+    dt = datetime.datetime(2020, 1, 2, 3, 4, 5)
+
+    tz_zoneinfo = _get_tzinfo("America/Halifax", strategy=["zoneinfo"])
+    tz_dateutil = _get_tzinfo("America/Halifax", strategy=["dateutil"])
+
+    for tz in [tz_zoneinfo, tz_dateutil]:
+        assert dt.replace(tzinfo=tz).utcoffset() == datetime.timedelta(hours=-4)
+
+    with pytest.raises(RuntimeError):
+        _get_tzinfo("America/Halifax", strategy=[])
