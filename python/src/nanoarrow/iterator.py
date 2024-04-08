@@ -245,7 +245,7 @@ class PyIterator(ArrayViewIterator):
                 yield bytes(data[start:end])
 
     def _timestamp_iter(self, offset, length):
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
 
         fromtimestamp = datetime.fromtimestamp
 

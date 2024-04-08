@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import pytest
 import datetime
+
+import pytest
 from nanoarrow.iterator import iter_py, iter_tuples
 
 import nanoarrow as na
