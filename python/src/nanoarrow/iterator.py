@@ -266,21 +266,20 @@ class PyIterator(ArrayViewIterator):
             import dateutil
 
             tz = dateutil.tz.gettz(tz)
-            for parent in self._primitive_iter(offset, length):
-                if parent is None:
-                    yield None
-                else:
-                    s = parent // scale
-                    us = parent % scale * (1_000_000 // scale)
-                    yield fromtimestamp(s, tz).replace(microsecond=us)
+            tz_fromtimestamp = tz
         else:
-            for parent in self._primitive_iter(offset, length):
-                if parent is None:
-                    yield None
-                else:
-                    s = parent // scale
-                    us = parent % scale * (1_000_000 // scale)
-                    yield fromtimestamp(s, UTC).replace(microsecond=us, tzinfo=None)
+            tz = None
+            tz_fromtimestamp = UTC
+
+        for parent in self._primitive_iter(offset, length):
+            if parent is None:
+                yield None
+            else:
+                s = parent // scale
+                us = parent % scale * (1_000_000 // scale)
+                yield fromtimestamp(s, tz_fromtimestamp).replace(
+                    microsecond=us, tzinfo=tz
+                )
 
     def _primitive_iter(self, offset, length):
         view = self._array_view
