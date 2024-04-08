@@ -322,7 +322,7 @@ def _get_tzinfo(tz_string, strategy=None):
 
             return UTC
         except ImportError:
-            from datetime import timezone, timedelta
+            from datetime import timedelta, timezone
 
             return timezone(timedelta(0), "UTC")
 
