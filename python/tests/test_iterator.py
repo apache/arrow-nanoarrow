@@ -317,6 +317,32 @@ def test_iterator_nullable_dictionary():
     assert list(iter_py(sliced)) == ["cde", "ab", "def", "cde", None]
 
 
+def test_iterator_date32():
+    pa = pytest.importorskip("pyarrow")
+
+    items = [
+        datetime.date(1970, 1, 2),
+        None,
+        datetime.date(2024, 4, 8),
+    ]
+
+    array = pa.array(items, pa.date32())
+    assert list(iter_py(array)) == items
+
+
+def test_iterator_date64():
+    pa = pytest.importorskip("pyarrow")
+
+    items = [
+        datetime.date(1970, 1, 2),
+        None,
+        datetime.date(2024, 4, 8),
+    ]
+
+    array = pa.array(items, pa.date64())
+    assert list(iter_py(array)) == items
+
+
 def test_iterator_timestamp():
     pa = pytest.importorskip("pyarrow")
 
@@ -342,10 +368,11 @@ def test_iterator_timestamp():
 
 
 def test_iterator_timestamp_tz():
-    pa = pytest.importorskip("pyarrow")
-    dateutil = pytest.importorskip("dateutil")
+    from nanoarrow.iterator import _get_tzinfo
 
-    tz = dateutil.tz.gettz("America/Halifax")
+    pa = pytest.importorskip("pyarrow")
+
+    tz = _get_tzinfo("America/Halifax")
 
     items = [
         datetime.datetime(2021, 1, 1, 11, 59, 1, 1234, tzinfo=tz),

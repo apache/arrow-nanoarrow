@@ -244,6 +244,25 @@ class PyIterator(ArrayViewIterator):
             for start, end in zip(starts, ends):
                 yield bytes(data[start:end])
 
+    def _date_iter(self, offset, length):
+        from datetime import date, timedelta
+
+        storage = self._primitive_iter(offset, length)
+        epoch = date(1970, 1, 1)
+
+        if self._schema_view.type_id == CArrowType.DATE32:
+            for item in storage:
+                if item is None:
+                    yield item
+                else:
+                    yield epoch + timedelta(item)
+        else:
+            for item in storage:
+                if item is None:
+                    yield item
+                else:
+                    yield epoch + timedelta(milliseconds=item)
+
     def _timestamp_iter(self, offset, length):
         from datetime import datetime
 
@@ -367,6 +386,8 @@ _ITEMS_ITER_LOOKUP = {
     CArrowType.LARGE_LIST: "_list_iter",
     CArrowType.FIXED_SIZE_LIST: "_fixed_size_list_iter",
     CArrowType.DICTIONARY: "_dictionary_iter",
+     CArrowType.DATE32: "_date_iter",
+    CArrowType.DATE64: "_date_iter",
     CArrowType.TIMESTAMP: "_timestamp_iter",
 }
 
