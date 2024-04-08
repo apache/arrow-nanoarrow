@@ -386,7 +386,7 @@ _ITEMS_ITER_LOOKUP = {
     CArrowType.LARGE_LIST: "_list_iter",
     CArrowType.FIXED_SIZE_LIST: "_fixed_size_list_iter",
     CArrowType.DICTIONARY: "_dictionary_iter",
-     CArrowType.DATE32: "_date_iter",
+    CArrowType.DATE32: "_date_iter",
     CArrowType.DATE64: "_date_iter",
     CArrowType.TIMESTAMP: "_timestamp_iter",
 }
