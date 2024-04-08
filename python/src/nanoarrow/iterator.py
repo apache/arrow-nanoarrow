@@ -316,9 +316,15 @@ class RowTupleIterator(PyIterator):
 def _get_tzinfo(tz_string, strategy=None):
     # We can handle UTC without any imports
     if tz_string.upper() == "UTC":
-        from datetime import UTC
+        try:
+            # Added in Python 3.11
+            from datetime import UTC
 
-        return UTC
+            return UTC
+        except ImportError:
+            from datetime import timezone, timedelta
+
+            return timezone(timedelta(0), "UTC")
 
     # Try zoneinfo.ZoneInfo() (Python 3.9+)
     if strategy is None or "zoneinfo" in strategy:

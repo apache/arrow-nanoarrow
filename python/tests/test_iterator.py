@@ -365,14 +365,14 @@ def test_iterator_timestamp_tz():
 def test_get_tzinfo():
     from nanoarrow.iterator import _get_tzinfo
 
-    assert _get_tzinfo("UTC") is datetime.UTC
-    assert _get_tzinfo("utc") is datetime.UTC
+    dt = datetime.datetime(2020, 1, 2, 3, 4, 5)
+
+    assert dt.replace(tzinfo=_get_tzinfo("UTC")).utcoffset() == datetime.timedelta(0)
+    assert dt.replace(tzinfo=_get_tzinfo("utc")).utcoffset() == datetime.timedelta(0)
 
     pytest.importorskip("zoneinfo")
     pytest.importorskip("pytz")
     pytest.importorskip("dateutil")
-
-    dt = datetime.datetime(2020, 1, 2, 3, 4, 5)
 
     tz_zoneinfo = _get_tzinfo("America/Halifax", strategy=["zoneinfo"])
     tz_dateutil = _get_tzinfo("America/Halifax", strategy=["dateutil"])
