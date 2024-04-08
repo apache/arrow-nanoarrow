@@ -27,7 +27,7 @@ license = {text = "Apache-2.0"}
 requires-python = ">=3.8"
 
 [project.optional-dependencies]
-test = ["pyarrow", "dateutil", "pytest", "numpy"]
+test = ["pyarrow", "python-dateutil", "pytest", "numpy"]
 verify = ["dateutil", "pytest", "numpy"]
 
 [project.urls]
