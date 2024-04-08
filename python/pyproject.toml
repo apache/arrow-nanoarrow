@@ -28,7 +28,7 @@ requires-python = ">=3.8"
 
 [project.optional-dependencies]
 test = ["pyarrow", "python-dateutil", "pytest", "numpy"]
-verify = ["dateutil", "pytest", "numpy"]
+verify = ["python-dateutil", "pytest", "numpy"]
 
 [project.urls]
 Homepage = "https://arrow.apache.org"
