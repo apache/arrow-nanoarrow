@@ -6,7 +6,7 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -15,18 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-_coverage/
-build/
-scratch/
-out/
-arrow-hpp
-.DS_Store
-CMakeUserPresets.json
-.vscode
-.Rproj.user
-.cache
-*.swp
-__pycache__
+gbench = dependency('benchmark')
+schema_e = executable('schema_benchmark',
+                      'schema_benchmark.cc',
+                      dependencies: [gbench, nanoarrow_dep])
+benchmark('schema benchmark', schema_e)
 
-# meson subprojects
-subprojects
+array_e = executable('array_benchmark',
+                     'array_benchmark.cc',
+                     dependencies: [gbench, nanoarrow_dep])
+benchmark('array benchmark', array_e)

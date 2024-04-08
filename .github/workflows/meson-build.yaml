@@ -1,0 +1,66 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Meson Build Testing
+
+on:
+  schedule:
+    - cron: '5 0 * * 0'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**meson.build'
+      - 'meson.options'
+      - '.github/workflows/meson-build.yaml'
+      - 'ci/scripts/build-with-meson.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-meson:
+    name: meson-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y lcov ninja-build valgrind
+
+      - name: Install meson
+        run: |
+          python3 -m pip install meson
+
+      - name: Cache Arrow C++ Build
+        id: cache-arrow-build
+        uses: actions/cache@v4
+        with:
+          path: arrow
+          # Bump the number at the end of this line to force a new Arrow C++ build
+          key: arrow-meson-build-10
+
+      - name: Build Arrow C++
+        if: steps.cache-arrow-build.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          ci/scripts/build-arrow-cpp-minimal.sh 15.0.2 arrow
+
+      - name: Run meson testing script
+        run: |
+          PKG_CONFIG_PATH="$(pwd)/arrow/lib/pkgconfig" ci/scripts/build-with-meson.sh

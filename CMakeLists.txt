@@ -243,6 +243,7 @@ if(NANOARROW_BUILD_TESTS)
 
   add_subdirectory("thirdparty/googletest")
 
+  # Be sure to keep these tests in sync with src/nanoarrow/meson.build
   add_executable(utils_test src/nanoarrow/utils_test.cc)
   add_executable(buffer_test src/nanoarrow/buffer_test.cc)
   add_executable(array_test src/nanoarrow/array_test.cc)

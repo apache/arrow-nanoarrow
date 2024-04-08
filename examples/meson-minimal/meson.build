@@ -6,7 +6,7 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -15,18 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
-_coverage/
-build/
-scratch/
-out/
-arrow-hpp
-.DS_Store
-CMakeUserPresets.json
-.vscode
-.Rproj.user
-.cache
-*.swp
-__pycache__
+project(
+    'nanoarrow-example-meson-minimal',
+    'cpp',
+    license: 'Apache 2.0',
+    meson_version: '>=1.3.0',
+    default_options: [
+        'buildtype=release',
+        'warning_level=2',
+        'cpp_std=c++17',
+    ]
+)
 
-# meson subprojects
-subprojects
+nanoarrow_dep = dependency('nanoarrow')
+example_exec = executable('example_meson_minimal_app',
+                          'src/app.cc',
+                          dependencies: [nanoarrow_dep])
