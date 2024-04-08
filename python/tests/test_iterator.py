@@ -16,6 +16,7 @@
 # under the License.
 
 import pytest
+import datetime
 from nanoarrow.iterator import iter_py, iter_tuples
 
 import nanoarrow as na
@@ -313,3 +314,48 @@ def test_iterator_nullable_dictionary():
 
     sliced = array[1:]
     assert list(iter_py(sliced)) == ["cde", "ab", "def", "cde", None]
+
+
+def test_iterator_timestamp():
+    pa = pytest.importorskip("pyarrow")
+
+    items = [
+        datetime.datetime(2021, 1, 1, 11, 59, 1, 123),
+        None,
+        datetime.datetime(2022, 1, 1, 23, 59, 1, 0),
+    ]
+
+    array = pa.array(items, pa.timestamp("us"))
+    assert list(iter_py(array)) == items
+
+    items[0] = items[0].replace(microsecond=123000)
+    array = pa.array(items, pa.timestamp("ms"))
+    assert list(iter_py(array)) == items
+
+    items[0] = items[0].replace(microsecond=0)
+    array = pa.array(items, pa.timestamp("s"))
+    assert list(iter_py(array)) == items
+
+
+def test_iterator_timestamp_tz():
+    pa = pytest.importorskip("pyarrow")
+    dateutil = pytest.importorskip("dateutil")
+
+    tz = dateutil.tz.gettz("America/Halifax")
+
+    items = [
+        datetime.datetime(2021, 1, 1, 11, 59, 1, 1234, tzinfo=tz),
+        None,
+        datetime.datetime(2022, 1, 1, 23, 59, 1, 0, tzinfo=tz),
+    ]
+
+    array = pa.array(items, pa.timestamp("us", "America/Halifax"))
+    assert list(iter_py(array)) == items
+
+    items[0] = items[0].replace(microsecond=123000)
+    array = pa.array(items, pa.timestamp("ms", "America/Halifax"))
+    assert list(iter_py(array)) == items
+
+    items[0] = items[0].replace(microsecond=0)
+    array = pa.array(items, pa.timestamp("s", "America/Halifax"))
+    assert list(iter_py(array)) == items

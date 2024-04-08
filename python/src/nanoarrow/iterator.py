@@ -245,7 +245,9 @@ class PyIterator(ArrayViewIterator):
                 yield bytes(data[start:end])
 
     def _timestamp_iter(self, offset, length):
-        from datetime import datetime
+        from datetime import datetime, UTC
+
+        fromtimestamp = datetime.fromtimestamp
 
         unit = self._schema_view.time_unit
         if unit == "s":
@@ -264,16 +266,21 @@ class PyIterator(ArrayViewIterator):
             import dateutil
 
             tz = dateutil.tz.gettz(tz)
+            for parent in self._primitive_iter(offset, length):
+                if parent is None:
+                    yield None
+                else:
+                    s = parent // scale
+                    us = parent % scale * (1_000_000 // scale)
+                    yield fromtimestamp(s, tz).replace(microsecond=us)
         else:
-            tz = None
-
-        for parent in self._primitive_iter(offset, length):
-            if parent is None:
-                yield None
-            else:
-                s = parent // scale
-                us = parent % scale * (1_000_000 // scale)
-                yield datetime.fromtimestamp(s, tz).replace(microsecond=us)
+            for parent in self._primitive_iter(offset, length):
+                if parent is None:
+                    yield None
+                else:
+                    s = parent // scale
+                    us = parent % scale * (1_000_000 // scale)
+                    yield fromtimestamp(s, UTC).replace(microsecond=us, tzinfo=None)
 
     def _primitive_iter(self, offset, length):
         view = self._array_view
