@@ -326,6 +326,9 @@ def test_iterator_timestamp():
         datetime.datetime(2022, 1, 1, 23, 59, 1, 0),
     ]
 
+    array = pa.array(items, pa.timestamp("ns"))
+    assert list(iter_py(array)) == items
+
     array = pa.array(items, pa.timestamp("us"))
     assert list(iter_py(array)) == items
 
@@ -349,6 +352,9 @@ def test_iterator_timestamp_tz():
         None,
         datetime.datetime(2022, 1, 1, 23, 59, 1, 0, tzinfo=tz),
     ]
+
+    array = pa.array(items, pa.timestamp("ns", "America/Halifax"))
+    assert list(iter_py(array)) == items
 
     array = pa.array(items, pa.timestamp("us", "America/Halifax"))
     assert list(iter_py(array)) == items

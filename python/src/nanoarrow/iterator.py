@@ -248,6 +248,7 @@ class PyIterator(ArrayViewIterator):
         from datetime import datetime
 
         fromtimestamp = datetime.fromtimestamp
+        storage = self._primitive_iter(offset, length)
 
         unit = self._schema_view.time_unit
         if unit == "s":
@@ -257,9 +258,8 @@ class PyIterator(ArrayViewIterator):
         elif unit == "us":
             scale = 1_000_000
         elif unit == "ns":
-            raise NotImplementedError(
-                "Timestamp with unit 'ns' is not currently supported"
-            )
+            storage = _scale_and_round_maybe_none(storage, 0.001)
+            scale = 1_000_000
 
         tz = self._schema_view.timezone
         if tz:
@@ -269,7 +269,7 @@ class PyIterator(ArrayViewIterator):
             tz = None
             tz_fromtimestamp = _get_tzinfo("UTC")
 
-        for parent in self._primitive_iter(offset, length):
+        for parent in storage:
             if parent is None:
                 yield None
             else:
@@ -347,6 +347,14 @@ def _get_tzinfo(tz_string, strategy=None):
     raise RuntimeError(
         "zoneinfo (Python 3.9+), pytz, or dateutil is required to resolve timezone"
     )
+
+
+def _scale_and_round_maybe_none(parent, scale):
+    for item in parent:
+        if item is None:
+            yield None
+        else:
+            yield round(item * scale)
 
 
 _ITEMS_ITER_LOOKUP = {
