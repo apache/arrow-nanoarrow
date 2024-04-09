@@ -441,6 +441,48 @@ repository.</p>
 </pre></div>
 </div>
 </section>
+<section id="building-with-meson">
+<h2>Building with Meson<a class="headerlink" href="#building-with-meson" title="Link to this heading">#</a></h2>
+<p>CMake is the officially supported build system for nanoarrow. However,
+the Meson backend is an experimental feature you may also wish to try.</p>
+<p>To run the test suite with Meson, you will want to first install the
+testing dependencies via the wrap database (n.b. no wrap database entry
+exists for Arrow - that must be installed separately).</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>subprojects
+meson<span class="w"> </span>wrap<span class="w"> </span>install<span class="w"> </span>gtest
+meson<span class="w"> </span>wrap<span class="w"> </span>install<span class="w"> </span>google-benchmark
+meson<span class="w"> </span>wrap<span class="w"> </span>install<span class="w"> </span>nlohmann_json
+</pre></div>
+</div>
+<p>The Arrow C++ library must also be discoverable via pkg-config build
+tests.</p>
+<p>You can then set up your build directory:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>setup<span class="w"> </span>builddir
+<span class="nb">cd</span><span class="w"> </span>builddir
+</pre></div>
+</div>
+<p>And configure your project (this could have also been done inline with
+<code class="docutils literal notranslate"><span class="pre">setup</span></code>)</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>configure<span class="w"> </span>-DNANOARROW_BUILD_TESTS<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-DNANOARROW_BUILD_BENCHMARKS<span class="o">=</span><span class="nb">true</span>
+</pre></div>
+</div>
+<p>Note that if your Arrow pkg-config profile is installed in a
+non-standard location on your system, you may pass the
+<code class="docutils literal notranslate"><span class="pre">--pkg-config-path</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">directory</span> <span class="pre">with</span> <span class="pre">arrow.pc&gt;</span></code> to either the
+setup or configure steps above.</p>
+<p>With the above out of the way, the <code class="docutils literal notranslate"><span class="pre">compile</span></code> command should take care
+of the rest:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>compile
+</pre></div>
+</div>
+<p>Upon a successful build you can execute the test suite and benchmarks
+with the following commands:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span><span class="nb">test</span><span class="w"> </span>nanoarrow:<span class="w">  </span><span class="c1"># default test run</span>
+meson<span class="w"> </span><span class="nb">test</span><span class="w"> </span>nanoarrow:<span class="w"> </span>--wrap<span class="w"> </span>valgrind<span class="w">  </span><span class="c1"># run tests under valgrind</span>
+meson<span class="w"> </span><span class="nb">test</span><span class="w"> </span>nanoarrow:<span class="w"> </span>--benchmark<span class="w"> </span>--verbose<span class="w"> </span><span class="c1"># run benchmarks</span>
+</pre></div>
+</div>
+</section>
 <section id="contents">
 <h2>Contents<a class="headerlink" href="#contents" title="Link to this heading">#</a></h2>
 <div class="toctree-wrapper compound">
@@ -512,6 +554,7 @@ repository.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-the-c-library">Using the C library</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-with-meson">Building with Meson</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contents">Contents</a></li>
 </ul>
   </nav></div>

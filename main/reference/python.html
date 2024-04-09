@@ -422,7 +422,7 @@ it may consist of zero or more <a href="#id1"><span class="problematic" id="id2"
 </dd>
 <dt>schema<span class="classifier">schema-like, optional</span></dt><dd><p>An optional schema, passed to <a class="reference internal" href="#nanoarrow.c_array_stream" title="nanoarrow.c_array_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_array_stream()</span></code></a>.</p>
 </dd>
-<dt>device<span class="classifier">CDevice, optional</span></dt><dd><p>The device associated with the buffers held by this Array.
+<dt>device<span class="classifier">Device, optional</span></dt><dd><p>The device associated with the buffers held by this Array.
 Defaults to the CPU device.</p>
 </dd>
 </dl>
@@ -526,16 +526,16 @@ Defaults to the CPU device.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.Array.device">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CDevice</span></em><a class="headerlink" href="#nanoarrow.Array.device" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Device</span></em><a class="headerlink" href="#nanoarrow.Array.device" title="Link to this definition">#</a></dt>
 <dd><p>Get the device on which the buffers for this array are allocated.</p>
 <section id="id9">
 <h3>Examples<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">device</span>
-<span class="go">&lt;nanoarrow.device.CDevice&gt;</span>
-<span class="go">- device_type: 1</span>
-<span class="go">- device_id: 0</span>
+<span class="go">&lt;nanoarrow.device.Device&gt;</span>
+<span class="go">- device_type: CPU &lt;1&gt;</span>
+<span class="go">- device_id: -1</span>
 </pre></div>
 </div>
 </section>
