@@ -1638,6 +1638,34 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestMetadataComparison) {
                               [](TestingJSONComparison& comparison) {
                                 comparison.set_compare_metadata_order(false);
                               });
+
+  // Metadata that are not equal and contain duplicate keys
+  buf.reset();
+  ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
+                                       ArrowCharView("value2")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
+                                       ArrowCharView("value2 again")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+
+  // ...using the schema comparison that considers order
+  AssertSchemasCompareUnequal(actual.get(), expected.get(),
+                              /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .metadata"
+                              R"(
+- [{"key": "key2", "value": "value2"}, {"key": "key2", "value": "value2 again"}]
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)");
+
+  // Comparison is not implemented for the comparison that does not consider order
+  TestingJSONComparison comparison;
+  comparison.set_compare_metadata_order(false);
+  ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), ENOTSUP);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {

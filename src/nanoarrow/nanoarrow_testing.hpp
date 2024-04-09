@@ -2812,7 +2812,8 @@ class TestingJSONComparison {
     // If there is a difference in the rendered JSON but we aren't being strict about
     // order, check again using the KeyValue comparison.
     if (!metadata_equal && !compare_metadata_order_) {
-      NANOARROW_RETURN_NOT_OK(MetadataEqualKeyValue(actual, expected, &metadata_equal));
+      NANOARROW_RETURN_NOT_OK(
+          MetadataEqualKeyValue(actual, expected, &metadata_equal, error));
     }
 
     // If we still have an inequality, add a difference.
@@ -2824,10 +2825,10 @@ class TestingJSONComparison {
   }
 
   ArrowErrorCode MetadataEqualKeyValue(const char* actual, const char* expected,
-                                       bool* out) {
+                                       bool* out, ArrowError* error) {
     std::unordered_map<std::string, std::string> actual_map, expected_map;
-    NANOARROW_RETURN_NOT_OK(MetadataToMap(actual, &actual_map));
-    NANOARROW_RETURN_NOT_OK(MetadataToMap(expected, &expected_map));
+    NANOARROW_RETURN_NOT_OK(MetadataToMap(actual, &actual_map, error));
+    NANOARROW_RETURN_NOT_OK(MetadataToMap(expected, &expected_map, error));
 
     if (actual_map.size() != expected_map.size()) {
       *out = false;
@@ -2852,15 +2853,26 @@ class TestingJSONComparison {
   }
 
   ArrowErrorCode MetadataToMap(const char* metadata,
-                               std::unordered_map<std::string, std::string>* out) {
+                               std::unordered_map<std::string, std::string>* out,
+                               ArrowError* error) {
     ArrowMetadataReader reader;
-    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderInit(&reader, metadata), error);
 
     ArrowStringView key, value;
+    size_t metadata_num_keys = 0;
     while (reader.remaining_keys > 0) {
-      NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderRead(&reader, &key, &value));
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderRead(&reader, &key, &value),
+                                         error);
       out->insert({std::string(key.data, key.size_bytes),
                    std::string(value.data, value.size_bytes)});
+      metadata_num_keys++;
+    }
+
+    if (metadata_num_keys != out->size()) {
+      ArrowErrorSet(error,
+                    "Comparison of metadata containing duplicate keys without "
+                    "considering order is not implemented");
+      return ENOTSUP;
     }
 
     return NANOARROW_OK;
