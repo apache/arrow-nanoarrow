@@ -916,10 +916,10 @@ static inline T *N ## _array_copy(T *p, const T *p2, size_t n)\
 { memcpy(p, p2, n * sizeof(T)); return p; }\
 static inline T *N ## _array_copy_from_pe(T *p, const T *p2, size_t n)\
 { size_t i; if (NS ## is_native_pe()) { memcpy(p, p2, n * sizeof(T)); } else\
-  { for (i = 0; i < n; ++i) { N ## _copy_from_pe(&p[i], &p2[i]); } return p; } }\
+  { for (i = 0; i < n; ++i) { N ## _copy_from_pe(&p[i], &p2[i]); } } return p; }\
 static inline T *N ## _array_copy_to_pe(T *p, const T *p2, size_t n)\
 { size_t i; if (NS ## is_native_pe()) { memcpy(p, p2, n * sizeof(T)); } else\
-  { for (i = 0; i < n; ++i) { N ## _copy_to_pe(&p[i], &p2[i]); } return p; } }
+  { for (i = 0; i < n; ++i) { N ## _copy_to_pe(&p[i], &p2[i]); } } return p; }
 #define __flatbuffers_define_scalar_primitives(NS, N, T)\
 static inline T *N ## _from_pe(T *p) { return __ ## NS ## from_pe(p, N); }\
 static inline T *N ## _to_pe(T *p) { return __ ## NS ## to_pe(p, N); }\
