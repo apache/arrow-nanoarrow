@@ -17,26 +17,66 @@
 
 import pytest
 
+import nanoarrow as na
 from nanoarrow import device
-
-pa = pytest.importorskip("pyarrow")
 
 
 def test_cpu_device():
     cpu = device.cpu()
-    assert cpu.device_type == 1
-    assert cpu.device_id == 0
-    assert "device_type: 1" in repr(cpu)
+    assert cpu.device_type_id == 1
+    assert cpu.device_type == device.DeviceType.CPU
+    assert cpu.device_id == -1
+    assert "device_type: CPU <1>" in repr(cpu)
 
-    cpu = device.resolve(1, 0)
-    assert cpu.device_type == 1
+    cpu2 = device.resolve(1, 0)
+    assert cpu2 is cpu
 
-    pa_array = pa.array([1, 2, 3])
 
-    darray = device.c_device_array(pa_array)
-    assert darray.device_type == 1
-    assert darray.device_id == 0
+def test_c_device_array():
+    # Unrecognized arguments should be passed to c_array() to generate CPU array
+    darray = device.c_device_array([1, 2, 3], na.int32())
+
+    assert darray.device_type_id == 1
+    assert darray.device_type == device.DeviceType.CPU
+    assert darray.device_id == -1
+    assert "device_type: CPU <1>" in repr(darray)
+
+    assert darray.schema.format == "i"
+
     assert darray.array.length == 3
-    assert "device_type: 1" in repr(darray)
+    assert darray.array.device_type == device.cpu().device_type
+    assert darray.array.device_id == device.cpu().device_id
 
+    darray_view = darray.view()
+    assert darray_view.length == 3
+    assert list(darray_view.buffer(1)) == [1, 2, 3]
+
+    # A CDeviceArray should be returned as is
     assert device.c_device_array(darray) is darray
+
+    # A CPU device array should be able to export to a regular array
+    array = na.c_array(darray)
+    assert array.schema.format == "i"
+    assert array.buffers == darray.array.buffers
+
+
+def test_c_device_array_protocol():
+    # Wrapper to prevent c_device_array() from returning early when it detects the
+    # input is already a CDeviceArray
+    class CDeviceArrayWrapper:
+        def __init__(self, obj):
+            self.obj = obj
+
+        def __arrow_c_device_array__(self, requested_schema=None):
+            return self.obj.__arrow_c_device_array__(requested_schema=requested_schema)
+
+    darray = device.c_device_array([1, 2, 3], na.int32())
+    wrapper = CDeviceArrayWrapper(darray)
+
+    darray2 = device.c_device_array(wrapper)
+    assert darray2.schema.format == "i"
+    assert darray2.array.length == 3
+    assert darray2.array.buffers == darray.array.buffers
+
+    with pytest.raises(NotImplementedError):
+        device.c_device_array(wrapper, na.int64())

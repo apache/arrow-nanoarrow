@@ -28,7 +28,7 @@ TEST(NanoarrowDevice, CheckRuntime) {
 TEST(NanoarrowDevice, CpuDevice) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   EXPECT_EQ(cpu->device_type, ARROW_DEVICE_CPU);
-  EXPECT_EQ(cpu->device_id, 0);
+  EXPECT_EQ(cpu->device_id, -1);
   EXPECT_EQ(cpu, ArrowDeviceCpu());
 
   void* sync_event = nullptr;

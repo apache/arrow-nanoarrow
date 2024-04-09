@@ -34,7 +34,6 @@ generally have better autocomplete + documentation available to IDEs).
 from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
-from libc.errno cimport ENOMEM
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
 from cpython cimport (
@@ -51,6 +50,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
+from enum import Enum
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
@@ -183,7 +183,7 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
     c_array_out.release = arrow_array_release
 
 
-cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) noexcept:
+cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array):
     """Make a shallow copy of an ArrowArray
 
     To more safely implement export of an ArrowArray whose address may be
@@ -198,6 +198,30 @@ cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array) n
     return array_capsule
 
 
+cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array,
+                                      ArrowDeviceArray* c_array_out) noexcept:
+    # shallow copy
+    memcpy(c_array_out, c_array, sizeof(ArrowDeviceArray))
+    c_array_out.array.release = NULL
+    c_array_out.array.private_data = NULL
+
+    # track original base
+    c_array_out.array.private_data = <void*>base
+    Py_INCREF(base)
+    c_array_out.array.release = arrow_array_release
+
+
+cdef object alloc_c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array):
+    """Make a shallow copy of an ArrowDeviceArray
+
+    See :func:`arrow_c_array_shallow_copy()`
+    """
+    cdef ArrowDeviceArray* c_array_out
+    array_capsule = alloc_c_device_array(&c_array_out)
+    c_device_array_shallow_copy(base, c_array, c_array_out)
+    return array_capsule
+
+
 cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
     cdef ArrowBuffer* buffer = <ArrowBuffer*>PyCapsule_GetPointer(
         stream_capsule, 'nanoarrow_buffer'
@@ -207,10 +231,11 @@ cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
     ArrowFree(buffer)
 
 
-cdef object alloc_c_buffer(ArrowBuffer** c_buffer) noexcept:
+cdef object alloc_c_buffer(ArrowBuffer** c_buffer):
     c_buffer[0] = <ArrowBuffer*> ArrowMalloc(sizeof(ArrowBuffer))
     ArrowBufferInit(c_buffer[0])
     return PyCapsule_New(c_buffer[0], 'nanoarrow_buffer', &pycapsule_buffer_deleter)
+
 
 cdef void c_deallocate_pybuffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
     cdef Py_buffer* buffer = <Py_buffer*>allocator.private_data
@@ -499,8 +524,34 @@ cdef class CArrowTimeUnit:
     NANO = NANOARROW_TIME_UNIT_NANO
 
 
+class DeviceType(Enum):
+    """
+    An enumerator providing access to the device constant values
+    defined in the Arrow C Device interface. Unlike the other enum
+    accessors, this Python Enum is defined in Cython so that we can use
+    the bulit-in functionality to do better printing of device identifiers
+    for classes defined in Cython. Unlike the other enums, users don't
+    typically need to specify these (but would probably like them printed
+    nicely).
+    """
 
-cdef class CDevice:
+    CPU = ARROW_DEVICE_CPU
+    CUDA = ARROW_DEVICE_CUDA
+    CUDA_HOST = ARROW_DEVICE_CUDA_HOST
+    OPENCL = ARROW_DEVICE_OPENCL
+    VULKAN =  ARROW_DEVICE_VULKAN
+    METAL = ARROW_DEVICE_METAL
+    VPI = ARROW_DEVICE_VPI
+    ROCM = ARROW_DEVICE_ROCM
+    ROCM_HOST = ARROW_DEVICE_ROCM_HOST
+    EXT_DEV = ARROW_DEVICE_EXT_DEV
+    CUDA_MANAGED = ARROW_DEVICE_CUDA_MANAGED
+    ONEAPI = ARROW_DEVICE_ONEAPI
+    WEBGPU = ARROW_DEVICE_WEBGPU
+    HEXAGON = ARROW_DEVICE_HEXAGON
+
+
+cdef class Device:
     """ArrowDevice wrapper
 
     The ArrowDevice structure is a nanoarrow internal struct (i.e.,
@@ -530,6 +581,10 @@ cdef class CDevice:
 
     @property
     def device_type(self):
+        return DeviceType(self._ptr.device_type)
+
+    @property
+    def device_type_id(self):
         return self._ptr.device_type
 
     @property
@@ -537,16 +592,16 @@ cdef class CDevice:
         return self._ptr.device_id
 
     @staticmethod
-    def resolve(ArrowDeviceType device_type, int64_t device_id):
-        if device_type == ARROW_DEVICE_CPU:
-            return CDEVICE_CPU
+    def resolve(device_type, int64_t device_id):
+        if int(device_type) == ARROW_DEVICE_CPU:
+            return DEVICE_CPU
         else:
             raise ValueError(f"Device not found for type {device_type}/{device_id}")
 
 
 # Cache the CPU device
 # The CPU device is statically allocated (so base is None)
-CDEVICE_CPU = CDevice(None, <uintptr_t>ArrowDeviceCpu())
+DEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
 
 
 cdef class CSchema:
@@ -1027,6 +1082,8 @@ cdef class CArray:
     cdef object _base
     cdef ArrowArray* _ptr
     cdef CSchema _schema
+    cdef ArrowDeviceType _device_type
+    cdef int _device_id
 
     @staticmethod
     def allocate(CSchema schema):
@@ -1038,6 +1095,12 @@ cdef class CArray:
         self._base = base
         self._ptr = <ArrowArray*>addr
         self._schema = schema
+        self._device_type = ARROW_DEVICE_CPU
+        self._device_id = 0
+
+    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id):
+        self._device_type = device_type
+        self._device_id = device_id
 
     @staticmethod
     def _import_from_c_capsule(schema_capsule, array_capsule):
@@ -1095,7 +1158,9 @@ cdef class CArray:
 
         c_array_out.offset = c_array_out.offset + start
         c_array_out.length = stop - start
-        return CArray(base, <uintptr_t>c_array_out, self._schema)
+        cdef CArray out = CArray(base, <uintptr_t>c_array_out, self._schema)
+        out._set_device(self._device_type, self._device_id)
+        return out
 
     def __arrow_c_array__(self, requested_schema=None):
         """
@@ -1114,6 +1179,11 @@ cdef class CArray:
             respectively.
         """
         self._assert_valid()
+
+        if self._device_type != ARROW_DEVICE_CPU:
+            raise ValueError(
+                "Can't invoke __arrow_c_array__ on non-CPU array "
+                f"with device_type {self._device_type}")
 
         if requested_schema is not None:
             raise NotImplementedError("requested_schema")
@@ -1137,9 +1207,25 @@ cdef class CArray:
         if self._ptr.release == NULL:
             raise RuntimeError("CArray is released")
 
+    def view(self):
+        device = Device.resolve(self._device_type, self._device_id)
+        return CArrayView.from_array(self, device)
+
     @property
     def schema(self):
         return self._schema
+
+    @property
+    def device_type(self):
+        return DeviceType(self._device_type)
+
+    @property
+    def device_type_id(self):
+        return self._device_type
+
+    @property
+    def device_id(self):
+        return self._device_id
 
     @property
     def length(self):
@@ -1175,7 +1261,13 @@ cdef class CArray:
         self._assert_valid()
         if i < 0 or i >= self._ptr.n_children:
             raise IndexError(f"{i} out of range [0, {self._ptr.n_children})")
-        return CArray(self._base, <uintptr_t>self._ptr.children[i], self._schema.child(i))
+        cdef CArray out = CArray(
+            self._base,
+            <uintptr_t>self._ptr.children[i],
+            self._schema.child(i)
+        )
+        out._set_device(self._device_type, self._device_id)
+        return out
 
     @property
     def children(self):
@@ -1185,8 +1277,11 @@ cdef class CArray:
     @property
     def dictionary(self):
         self._assert_valid()
+        cdef CArray out
         if self._ptr.dictionary != NULL:
-            return CArray(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
+            out = CArray(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
+            out._set_device(self._device_type, self._device_id)
+            return out
         else:
             return None
 
@@ -1206,18 +1301,18 @@ cdef class CArrayView:
     cdef object _base
     cdef object _array_base
     cdef ArrowArrayView* _ptr
-    cdef CDevice _device
+    cdef Device _device
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._device = CDEVICE_CPU
+        self._device = DEVICE_CPU
 
-    def _set_array(self, CArray array, CDevice device=CDEVICE_CPU):
+    def _set_array(self, CArray array, Device device=DEVICE_CPU):
         cdef Error error = Error()
         cdef int code
 
-        if device is CDEVICE_CPU:
+        if device is DEVICE_CPU:
             code = ArrowArrayViewSetArray(self._ptr, array._ptr, &error.c_error)
         else:
             code = ArrowArrayViewSetArrayMinimal(self._ptr, array._ptr, &error.c_error)
@@ -1349,7 +1444,7 @@ cdef class CArrayView:
         return CArrayView(base, <uintptr_t>c_array_view)
 
     @staticmethod
-    def from_array(CArray array, CDevice device=CDEVICE_CPU):
+    def from_array(CArray array, Device device=DEVICE_CPU):
         out = CArrayView.from_schema(array._schema)
         return out._set_array(array, device)
 
@@ -1396,7 +1491,7 @@ cdef class CBufferView:
     cdef object _base
     cdef ArrowBufferView _ptr
     cdef ArrowType _data_type
-    cdef CDevice _device
+    cdef Device _device
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
@@ -1404,7 +1499,7 @@ cdef class CBufferView:
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
                   ArrowType data_type,
-                  Py_ssize_t element_size_bits, CDevice device):
+                  Py_ssize_t element_size_bits, Device device):
         self._base = base
         self._ptr.data.data = <void*>addr
         self._ptr.size_bytes = size_bytes
@@ -1564,7 +1659,7 @@ cdef class CBufferView:
         self._do_releasebuffer(buffer)
 
     cdef _do_getbuffer(self, Py_buffer *buffer, int flags):
-        if self._device is not CDEVICE_CPU:
+        if self._device is not DEVICE_CPU:
             raise RuntimeError("CBufferView is not a CPU buffer")
 
         if flags & PyBUF_WRITABLE:
@@ -1606,7 +1701,7 @@ cdef class CBuffer:
     cdef ArrowType _data_type
     cdef int _element_size_bits
     cdef char _format[32]
-    cdef CDevice _device
+    cdef Device _device
     cdef CBufferView _view
     cdef int _get_buffer_count
 
@@ -1615,7 +1710,7 @@ cdef class CBuffer:
         self._ptr = NULL
         self._data_type = NANOARROW_TYPE_BINARY
         self._element_size_bits = 0
-        self._device = CDEVICE_CPU
+        self._device = DEVICE_CPU
         # Set initial format to "B" (Cython makes this hard)
         self._format[0] = 66
         self._format[1] = 0
@@ -1652,7 +1747,7 @@ cdef class CBuffer:
         cdef CBuffer out = CBuffer()
         out._base = alloc_c_buffer(&out._ptr)
         out._set_format(c_buffer_set_pybuffer(obj, &out._ptr))
-        out._device = CDEVICE_CPU
+        out._device = DEVICE_CPU
         out._populate_view()
         return out
 
@@ -2331,7 +2426,15 @@ cdef class CDeviceArray:
         self._schema = schema
 
     @property
+    def schema(self):
+        return self._schema
+
+    @property
     def device_type(self):
+        return DeviceType(self._ptr.device_type)
+
+    @property
+    def device_type_id(self):
         return self._ptr.device_type
 
     @property
@@ -2340,7 +2443,53 @@ cdef class CDeviceArray:
 
     @property
     def array(self):
-        return CArray(self, <uintptr_t>&self._ptr.array, self._schema)
+        # TODO: We lose access to the sync_event here, so we probably need to
+        # synchronize (or propagate it, or somehow prevent data access downstream)
+        cdef CArray array = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
+        array._set_device(self._ptr.device_type, self._ptr.device_id)
+        return array
+
+    def view(self):
+        return self.array.view()
+
+    def __arrow_c_array__(self, requested_schema=None):
+        return self.array.__arrow_c_array__(requested_schema=requested_schema)
+
+    def __arrow_c_device_array__(self, requested_schema=None):
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        # TODO: evaluate whether we need to synchronize here or whether we should
+        # move device arrays instead of shallow-copying them
+        device_array_capsule = alloc_c_device_array_shallow_copy(self._base, self._ptr)
+        return self._schema.__arrow_c_schema__(), device_array_capsule
+
+    @staticmethod
+    def _import_from_c_capsule(schema_capsule, device_array_capsule):
+        """
+        Import from an ArrowSchema and ArrowArray PyCapsule tuple.
+
+        Parameters
+        ----------
+        schema_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_schema' containing an
+            ArrowSchema pointer.
+        device_array_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_device_array' containing an
+            ArrowDeviceArray pointer.
+        """
+        cdef:
+            CSchema out_schema
+            CDeviceArray out
+
+        out_schema = CSchema._import_from_c_capsule(schema_capsule)
+        out = CDeviceArray(
+            device_array_capsule,
+            <uintptr_t>PyCapsule_GetPointer(device_array_capsule, 'arrow_device_array'),
+            out_schema
+        )
+
+        return out
 
     def __repr__(self):
         return _repr_utils.device_array_repr(self)

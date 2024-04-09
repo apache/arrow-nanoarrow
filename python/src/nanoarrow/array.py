@@ -18,13 +18,7 @@
 from functools import cached_property
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import (
-    CDEVICE_CPU,
-    CArray,
-    CBuffer,
-    CDevice,
-    CMaterializedArrayStream,
-)
+from nanoarrow._lib import DEVICE_CPU, CArray, CBuffer, CMaterializedArrayStream, Device
 from nanoarrow.c_lib import c_array, c_array_stream, c_array_view
 from nanoarrow.iterator import iter_py, iter_tuples
 from nanoarrow.schema import Schema
@@ -65,7 +59,7 @@ class Scalar:
         self._device = None
 
     @property
-    def device(self) -> CDevice:
+    def device(self) -> Device:
         return self._device
 
     @property
@@ -121,7 +115,7 @@ class Array:
         :func:`c_array_stream`.
     schema : schema-like, optional
         An optional schema, passed to :func:`c_array_stream`.
-    device : CDevice, optional
+    device : Device, optional
         The device associated with the buffers held by this Array.
         Defaults to the CPU device.
 
@@ -138,11 +132,11 @@ class Array:
 
     def __init__(self, obj, schema=None, device=None) -> None:
         if device is None:
-            self._device = CDEVICE_CPU
-        elif isinstance(device, CDevice):
+            self._device = DEVICE_CPU
+        elif isinstance(device, Device):
             self._device = device
         else:
-            raise TypeError("device must be CDevice")
+            raise TypeError("device must be Device")
 
         if isinstance(obj, CMaterializedArrayStream) and schema is None:
             self._data = obj
@@ -164,7 +158,7 @@ class Array:
             raise ValueError(f"Can't {op} with non-contiguous Array")
 
     def _assert_cpu(self, op):
-        if self._device != CDEVICE_CPU:
+        if self._device != DEVICE_CPU:
             raise ValueError(f"Can't {op} with Array on non-CPU device")
 
     def __arrow_c_stream__(self, requested_schema=None):
@@ -186,7 +180,7 @@ class Array:
         self._assert_one_chunk("export ArrowArray")
 
     @property
-    def device(self) -> CDevice:
+    def device(self) -> Device:
         """Get the device on which the buffers for this array are allocated.
 
         Examples
@@ -195,9 +189,9 @@ class Array:
         >>> import nanoarrow as na
         >>> array = na.Array([1, 2, 3], na.int32())
         >>> array.device
-        <nanoarrow.device.CDevice>
-        - device_type: 1
-        - device_id: 0
+        <nanoarrow.device.Device>
+        - device_type: CPU <1>
+        - device_id: -1
         """
         return self._device
 

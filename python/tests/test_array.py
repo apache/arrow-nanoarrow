@@ -31,7 +31,7 @@ def test_array_construct():
     array2 = na.Array(array._data)
     assert array2._data is array._data
 
-    with pytest.raises(TypeError, match="device must be CDevice"):
+    with pytest.raises(TypeError, match="device must be Device"):
         na.Array([], na.int32(), device=1234)
 
     with pytest.raises(NotImplementedError):

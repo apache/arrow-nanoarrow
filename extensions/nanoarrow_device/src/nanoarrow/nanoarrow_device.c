@@ -115,7 +115,7 @@ struct ArrowDevice* ArrowDeviceCpu(void) {
 
 void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->device_type = ARROW_DEVICE_CPU;
-  device->device_id = 0;
+  device->device_id = -1;
   device->array_init = NULL;
   device->array_move = NULL;
   device->buffer_init = &ArrowDeviceCpuBufferInit;
@@ -135,7 +135,7 @@ struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_
 #endif
 
 struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id) {
-  if (device_type == ARROW_DEVICE_CPU && device_id == 0) {
+  if (device_type == ARROW_DEVICE_CPU) {
     return ArrowDeviceCpu();
   }
 
