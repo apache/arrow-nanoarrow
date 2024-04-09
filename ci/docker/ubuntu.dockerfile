@@ -39,9 +39,9 @@ ENV NANOARROW_PYTHON_VENV "/venv"
 # Locale required for R CMD check
 RUN locale-gen en_US.UTF-8 && update-locale en_US.UTF-8
 
-# For R
+# For R. The Ubuntu image installs a few extras for coverage + documentation
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
-RUN R -e 'install.packages("desc", repos = "https://cloud.r-project.org")' && mkdir /tmp/rdeps
+RUN R -e 'install.packages(c("desc", "covr", "pkgdown"), repos = "https://cloud.r-project.org")' && mkdir /tmp/rdeps
 COPY r/DESCRIPTION /tmp/rdeps
 RUN R -e 'install.packages(setdiff(desc::desc("/tmp/rdeps")$get_deps()$package, "arrow"), repos = "https://cloud.r-project.org")'
 
