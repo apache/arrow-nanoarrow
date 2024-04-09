@@ -29,6 +29,7 @@
 static uint8_t* TestAllocatorReallocate(struct ArrowBufferAllocator* allocator,
                                         uint8_t* ptr, int64_t old_size,
                                         int64_t new_size) {
+  NANOARROW_UNUSED(allocator);
   uint8_t* new_ptr = reinterpret_cast<uint8_t*>(malloc(new_size));
 
   int64_t copy_size = std::min<int64_t>(old_size, new_size);
@@ -45,6 +46,8 @@ static uint8_t* TestAllocatorReallocate(struct ArrowBufferAllocator* allocator,
 
 static void TestAllocatorFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                               int64_t size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(size);
   free(ptr);
 }
 
@@ -188,7 +191,7 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendUInt8(&buffer, 123), NANOARROW_OK);
-  EXPECT_EQ(reinterpret_cast<uint8_t*>(buffer.data)[0], 123);
+  EXPECT_EQ(reinterpret_cast<uint8_t*>(buffer.data)[0], 123U);
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendInt16(&buffer, 123), NANOARROW_OK);
@@ -196,7 +199,7 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendUInt16(&buffer, 123), NANOARROW_OK);
-  EXPECT_EQ(reinterpret_cast<uint16_t*>(buffer.data)[0], 123);
+  EXPECT_EQ(reinterpret_cast<uint16_t*>(buffer.data)[0], 123U);
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendInt32(&buffer, 123), NANOARROW_OK);
@@ -204,7 +207,7 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendUInt32(&buffer, 123), NANOARROW_OK);
-  EXPECT_EQ(reinterpret_cast<uint32_t*>(buffer.data)[0], 123);
+  EXPECT_EQ(reinterpret_cast<uint32_t*>(buffer.data)[0], 123U);
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendInt64(&buffer, 123), NANOARROW_OK);
@@ -212,7 +215,7 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendUInt64(&buffer, 123), NANOARROW_OK);
-  EXPECT_EQ(reinterpret_cast<uint64_t*>(buffer.data)[0], 123);
+  EXPECT_EQ(reinterpret_cast<uint64_t*>(buffer.data)[0], 123U);
   ArrowBufferReset(&buffer);
 
   EXPECT_EQ(ArrowBufferAppendDouble(&buffer, 123), NANOARROW_OK);
@@ -241,7 +244,7 @@ TEST(BitmapTest, BitmapTestElement) {
   uint8_t bitmap[10];
 
   memset(bitmap, 0xff, sizeof(bitmap));
-  for (int i = 0; i < sizeof(bitmap) * 8; i++) {
+  for (size_t i = 0; i < sizeof(bitmap) * 8; i++) {
     EXPECT_EQ(ArrowBitGet(bitmap, i), 1);
   }
 
@@ -256,7 +259,7 @@ TEST(BitmapTest, BitmapTestElement) {
   EXPECT_EQ(ArrowBitGet(bitmap, 16 + 7), 1);
 
   memset(bitmap, 0x00, sizeof(bitmap));
-  for (int i = 0; i < sizeof(bitmap) * 8; i++) {
+  for (size_t i = 0; i < sizeof(bitmap) * 8; i++) {
     EXPECT_EQ(ArrowBitGet(bitmap, i), 0);
   }
 
@@ -271,7 +274,7 @@ TEST(BitmapTest, BitmapTestElement) {
   EXPECT_EQ(ArrowBitGet(bitmap, 16 + 7), 0);
 }
 
-template <int offset, int length>
+template <int offset, size_t length>
 void TestArrowBitmapUnpackUnsafe(const uint8_t* bitmap, std::vector<int8_t> expected) {
   int8_t out[length];
   int32_t out32[length];
@@ -281,12 +284,12 @@ void TestArrowBitmapUnpackUnsafe(const uint8_t* bitmap, std::vector<int8_t> expe
   ASSERT_EQ(length, expected.size());
 
   ArrowBitsUnpackInt8(bitmap, offset, length, out);
-  for (int i = 0; i < length; i++) {
+  for (size_t i = 0; i < length; i++) {
     EXPECT_EQ(out[i], expected[i]);
   }
 
   ArrowBitsUnpackInt32(bitmap, offset, length, out32);
-  for (int i = 0; i < length; i++) {
+  for (size_t i = 0; i < length; i++) {
     EXPECT_EQ(out32[i], expected[i]);
   }
 }

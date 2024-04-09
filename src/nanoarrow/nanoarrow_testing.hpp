@@ -1105,7 +1105,7 @@ class TestingJSONReader {
       } else if (num_batch == kNumBatchReadAll) {
         batch_ids.resize(batches.size());
         std::iota(batch_ids.begin(), batch_ids.end(), 0);
-      } else if (num_batch >= 0 && num_batch < batches.size()) {
+      } else if (num_batch >= 0 && static_cast<size_t>(num_batch) < batches.size()) {
         batch_ids.push_back(num_batch);
       } else {
         ArrowErrorSet(error, "Expected num_batch between 0 and %d but got %d",
@@ -1887,8 +1887,9 @@ class TestingJSONReader {
     const auto& columns = value["columns"];
     NANOARROW_RETURN_NOT_OK(
         Check(columns.is_array(), error, "RecordBatch columns must be array"));
-    NANOARROW_RETURN_NOT_OK(Check(columns.size() == array_view->n_children, error,
-                                  "RecordBatch children has incorrect size"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(columns.size() == static_cast<size_t>(array_view->n_children), error,
+              "RecordBatch children has incorrect size"));
 
     for (int64_t i = 0; i < array_view->n_children; i++) {
       NANOARROW_RETURN_NOT_OK(SetArrayColumn(columns[i], schema->children[i],
@@ -1987,8 +1988,9 @@ class TestingJSONReader {
       const auto& children = value["children"];
       NANOARROW_RETURN_NOT_OK(
           Check(children.is_array(), error, error_prefix + "children must be array"));
-      NANOARROW_RETURN_NOT_OK(Check(children.size() == array_view->n_children, error,
-                                    error_prefix + "children has incorrect size"));
+      NANOARROW_RETURN_NOT_OK(
+          Check(children.size() == static_cast<size_t>(array_view->n_children), error,
+                error_prefix + "children has incorrect size"));
 
       for (int64_t i = 0; i < array_view->n_children; i++) {
         NANOARROW_RETURN_NOT_OK(SetArrayColumn(children[i], schema->children[i],
@@ -2272,7 +2274,8 @@ class TestingJSONReader {
     // Check offsets against values
     const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
     NANOARROW_RETURN_NOT_OK(Check(
-        offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
+        static_cast<size_t>(offsets->size_bytes) == ((value.size() + 1) * sizeof(T)),
+        error,
         "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
     NANOARROW_RETURN_NOT_OK(
         Check(*expected_offset++ == 0, error, "first offset must be zero"));
@@ -2310,7 +2313,8 @@ class TestingJSONReader {
     // Check offsets against values if not fixed size
     const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
     NANOARROW_RETURN_NOT_OK(Check(
-        offsets->size_bytes == ((value.size() + 1) * sizeof(T)), error,
+        static_cast<size_t>(offsets->size_bytes) == ((value.size() + 1) * sizeof(T)),
+        error,
         "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
     NANOARROW_RETURN_NOT_OK(
         Check(*expected_offset++ == 0, error, "first offset must be zero"));
@@ -2355,7 +2359,7 @@ class TestingJSONReader {
         Check(item.is_string(), error, "binary data buffer item must be string"));
     auto item_str = item.get<std::string>();
 
-    int64_t item_size_bytes = item_str.size() / 2;
+    size_t item_size_bytes = item_str.size() / 2;
     NANOARROW_RETURN_NOT_OK(Check((item_size_bytes * 2) == item_str.size(), error,
                                   "binary data buffer item must have even size"));
 
@@ -2502,7 +2506,7 @@ class TestingJSONComparison {
 
  public:
   /// \brief Returns the number of differences found by the previous call
-  size_t num_differences() const { return differences_.size(); }
+  int64_t num_differences() const { return differences_.size(); }
 
   /// \brief Dump a human-readable summary of differences to out
   void WriteDifferences(std::ostream& out) {
