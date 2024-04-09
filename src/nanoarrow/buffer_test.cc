@@ -29,6 +29,7 @@
 static uint8_t* TestAllocatorReallocate(struct ArrowBufferAllocator* allocator,
                                         uint8_t* ptr, int64_t old_size,
                                         int64_t new_size) {
+  NANOARROW_UNUSED(allocator);
   uint8_t* new_ptr = reinterpret_cast<uint8_t*>(malloc(new_size));
 
   int64_t copy_size = std::min<int64_t>(old_size, new_size);
@@ -45,6 +46,8 @@ static uint8_t* TestAllocatorReallocate(struct ArrowBufferAllocator* allocator,
 
 static void TestAllocatorFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                               int64_t size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(size);
   free(ptr);
 }
 
@@ -168,7 +171,7 @@ TEST(BufferTest, BufferTestError) {
   ArrowBufferInit(&buffer);
   EXPECT_EQ(ArrowBufferResize(&buffer, std::numeric_limits<int64_t>::max(), false),
             ENOMEM);
-  EXPECT_EQ(ArrowBufferAppend(&buffer, nullptr, std::numeric_limits<int64_t>::max()),
+  EXPECT_EQ(ArrowBufferAppend(nullptr, nullptr, std::numeric_limits<int64_t>::max()),
             ENOMEM);
 
   ASSERT_EQ(ArrowBufferAppend(&buffer, "abcd", 4), NANOARROW_OK);
@@ -241,7 +244,7 @@ TEST(BitmapTest, BitmapTestElement) {
   uint8_t bitmap[10];
 
   memset(bitmap, 0xff, sizeof(bitmap));
-  for (int i = 0; i < sizeof(bitmap) * 8; i++) {
+  for (size_t i = 0; i < sizeof(bitmap) * 8; i++) {
     EXPECT_EQ(ArrowBitGet(bitmap, i), 1);
   }
 
@@ -256,7 +259,7 @@ TEST(BitmapTest, BitmapTestElement) {
   EXPECT_EQ(ArrowBitGet(bitmap, 16 + 7), 1);
 
   memset(bitmap, 0x00, sizeof(bitmap));
-  for (int i = 0; i < sizeof(bitmap) * 8; i++) {
+  for (size_t i = 0; i < sizeof(bitmap) * 8; i++) {
     EXPECT_EQ(ArrowBitGet(bitmap, i), 0);
   }
 

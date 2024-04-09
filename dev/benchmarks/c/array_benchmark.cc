@@ -231,7 +231,7 @@ static void BenchmarkArrayViewGetString(benchmark::State& state) {
 
   int64_t n_alphabets = n_values / alphabet.size() + 1;
   std::vector<char> data(alphabet.size() * n_alphabets);
-  for (int64_t data_pos = 0; data_pos < data.size(); data_pos += alphabet.size()) {
+  for (size_t data_pos = 0; data_pos < data.size(); data_pos += alphabet.size()) {
     memcpy(data.data() + data_pos, alphabet.data(), alphabet.size());
   }
 
@@ -262,7 +262,7 @@ static ArrowErrorCode CreateAndAppendToArrayInt(ArrowArray* array,
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array, type));
   NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
 
-  for (int64_t i = 0; i < values.size(); i++) {
+  for (size_t i = 0; i < values.size(); i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, values[i]));
   }
 
@@ -289,11 +289,11 @@ static ArrowErrorCode CreateAndAppendToArrayString(
 static void BenchmarkArrayAppendString(benchmark::State& state) {
   nanoarrow::UniqueArray array;
 
-  int64_t n_values = kNumItemsPrettyBig;
-  int64_t value_size = 7;
+  const int64_t n_values = kNumItemsPrettyBig;
+  const size_t value_size = 7;
 
   std::vector<std::string> values(n_values);
-  int64_t alphabet_pos = 0;
+  size_t alphabet_pos = 0;
   for (std::string& value : values) {
     if ((alphabet_pos + value_size) >= kAlphabet.size()) {
       alphabet_pos = 0;
@@ -361,7 +361,7 @@ static ArrowErrorCode CreateAndAppendIntWithNulls(ArrowArray* array,
   NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array));
   CType non_null_value = std::numeric_limits<CType>::max() / 2;
 
-  for (int64_t i = 0; i < validity.size(); i++) {
+  for (size_t i = 0; i < validity.size(); i++) {
     if (validity[i]) {
       NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array, non_null_value));
     } else {

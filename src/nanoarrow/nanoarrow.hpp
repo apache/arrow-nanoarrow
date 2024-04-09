@@ -244,6 +244,8 @@ class Unique {
 template <typename T>
 static inline void DeallocateWrappedBuffer(struct ArrowBufferAllocator* allocator,
                                            uint8_t* ptr, int64_t size) {
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(size);
   auto obj = reinterpret_cast<T*>(allocator->private_data);
   delete obj;
 }

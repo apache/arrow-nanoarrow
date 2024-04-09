@@ -28,6 +28,7 @@ static int64_t kBytesAllocated = 0;
 
 static uint8_t* IntegrationTestReallocate(ArrowBufferAllocator* allocator, uint8_t* ptr,
                                           int64_t old_size, int64_t new_size) {
+  NANOARROW_UNUSED(allocator);
   ArrowBufferAllocator default_allocator = ArrowBufferAllocatorDefault();
   kBytesAllocated -= old_size;
   uint8_t* out =
@@ -41,6 +42,7 @@ static uint8_t* IntegrationTestReallocate(ArrowBufferAllocator* allocator, uint8
 
 static void IntegrationTestFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                                 int64_t size) {
+  NANOARROW_UNUSED(allocator);
   ArrowBufferAllocator default_allocator = ArrowBufferAllocatorDefault();
   kBytesAllocated -= size;
   default_allocator.free(&default_allocator, ptr, size);
