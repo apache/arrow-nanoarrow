@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import warnings
 from functools import cached_property
 from itertools import islice
 from typing import Iterable, Tuple
@@ -83,6 +84,14 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
+class InvalidArrayWarning(UserWarning):
+    pass
+
+
+class LossyConversionWarning(UserWarning):
+    pass
+
+
 class ArrayViewIterator:
     """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
@@ -115,6 +124,13 @@ class ArrayViewIterator:
     def _child_names(self):
         return [child.name for child in self._schema.children]
 
+    @cached_property
+    def _object_label(self):
+        if self._schema.name:
+            return f"{self._schema.name} <{self._schema_view.type}>"
+        else:
+            return f"<unnamed {self._schema_view.type}>"
+
     def _contains_nulls(self):
         return (
             self._schema_view.nullable
@@ -125,6 +141,9 @@ class ArrayViewIterator:
     def _set_array(self, array):
         self._array_view._set_array(array)
         return self
+
+    def _warn(self, message, category):
+        warnings.warn(f"{self._object_label}: {message}", category)
 
 
 class PyIterator(ArrayViewIterator):
@@ -271,6 +290,9 @@ class PyIterator(ArrayViewIterator):
                 yield None
             else:
                 days, hours, mins, secs, us = item
+                if days != 0:
+                    self._warn("days != 0", InvalidArrayWarning)
+
                 yield time(hours, mins, secs, us)
 
     def _timestamp_iter(self, offset, length):
@@ -287,7 +309,7 @@ class PyIterator(ArrayViewIterator):
         elif unit == "us":
             scale = 1_000_000
         elif unit == "ns":
-            storage = _scale_and_round_maybe_none(storage, 0.001)
+            storage = self._iter_us_from_ns(storage)
             scale = 1_000_000
 
         tz = self._schema_view.timezone
@@ -298,12 +320,12 @@ class PyIterator(ArrayViewIterator):
             tz = None
             tz_fromtimestamp = _get_tzinfo("UTC")
 
-        for parent in storage:
-            if parent is None:
+        for item in storage:
+            if item is None:
                 yield None
             else:
-                s = parent // scale
-                us = parent % scale * (1_000_000 // scale)
+                s = item // scale
+                us = item % scale * (1_000_000 // scale)
                 yield fromtimestamp(s, tz_fromtimestamp).replace(
                     microsecond=us, tzinfo=tz
                 )
@@ -321,7 +343,7 @@ class PyIterator(ArrayViewIterator):
         elif unit == "us":
             to_us = 1
         elif unit == "ns":
-            storage = _scale_and_round_maybe_none(storage, 0.001)
+            storage = self._iter_us_from_ns(storage)
             to_us = 1
 
         for item in storage:
@@ -341,7 +363,7 @@ class PyIterator(ArrayViewIterator):
         elif unit == "us":
             to_us = 1
         elif unit == "ns":
-            storage = _scale_and_round_maybe_none(storage, 0.001)
+            storage = self._iter_us_from_ns(storage)
             to_us = 1
 
         us_per_sec = 1_000_000
@@ -363,6 +385,15 @@ class PyIterator(ArrayViewIterator):
                 secs = us // us_per_sec
                 us = us % us_per_sec
                 yield days, hours, mins, secs, us
+
+    def _iter_us_from_ns(self, parent):
+        for item in parent:
+            if item is None:
+                yield None
+            else:
+                if item % 1000 != 0:
+                    self._warn("nanoseconds discarded", LossyConversionWarning)
+                yield item // 1000
 
     def _primitive_iter(self, offset, length):
         view = self._array_view
@@ -432,14 +463,6 @@ def _get_tzinfo(tz_string, strategy=None):
     raise RuntimeError(
         "zoneinfo (Python 3.9+), pytz, or dateutil is required to resolve timezone"
     )
-
-
-def _scale_and_round_maybe_none(parent, scale):
-    for item in parent:
-        if item is None:
-            yield None
-        else:
-            yield round(item * scale)
 
 
 _ITEMS_ITER_LOOKUP = {
