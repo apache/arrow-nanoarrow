@@ -110,7 +110,7 @@ class ArrayViewIterator:
             map(self._make_child, self._schema.children, self._array_view.children)
         )
 
-        if schema.dictionary is None:
+        if self._schema.dictionary is None:
             self._dictionary = None
         else:
             self._dictionary = self._make_child(

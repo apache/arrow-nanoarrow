@@ -18,9 +18,26 @@
 import datetime
 
 import pytest
-from nanoarrow.iterator import iter_py, iter_tuples
+from nanoarrow.iterator import (
+    iter_py,
+    iter_tuples,
+    ArrayViewIterator,
+    LossyConversionWarning,
+    InvalidArrayWarning,
+)
 
 import nanoarrow as na
+
+
+def test_iterator_warnings():
+    msg_unnamed = "<unnamed int32>: something"
+    with pytest.warns(LossyConversionWarning, match=msg_unnamed):
+        ArrayViewIterator(na.int32())._warn("something", LossyConversionWarning)
+
+    msg_named = "some_colname <int32>: something"
+    with pytest.warns(LossyConversionWarning, match=msg_named):
+        iterator = ArrayViewIterator(na.Schema(na.Type.INT32, name="some_colname"))
+        iterator._warn("something", LossyConversionWarning)
 
 
 def test_iterator_primitive():
@@ -357,6 +374,15 @@ def test_iterator_time():
     assert list(iter_py(array)) == items
 
 
+def test_iterator_time_invalid():
+    time_invalid = na.c_array_from_buffers(
+        na.time32("s"), 1, [None, na.c_buffer([60 * 60 * 24], na.int32())]
+    )
+
+    with pytest.warns(InvalidArrayWarning):
+        list(iter_py(time_invalid))
+
+
 def test_iterator_timestamp():
     pa = pytest.importorskip("pyarrow")
 
@@ -407,6 +433,15 @@ def test_iterator_timestamp_tz():
     items[0] = items[0].replace(microsecond=0)
     array = pa.array(items, pa.timestamp("s", "America/Halifax"))
     assert list(iter_py(array)) == items
+
+
+def test_iterator_lossy_timestamp():
+    datetime_with_ns = na.c_array_from_buffers(
+        na.timestamp("ns"), 1, [None, na.c_buffer([1], na.int64())]
+    )
+
+    with pytest.warns(LossyConversionWarning):
+        list(iter_py(datetime_with_ns))
 
 
 def test_get_tzinfo():
