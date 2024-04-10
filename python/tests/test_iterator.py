@@ -417,6 +417,14 @@ def test_get_tzinfo():
     assert dt.replace(tzinfo=_get_tzinfo("UTC")).utcoffset() == datetime.timedelta(0)
     assert dt.replace(tzinfo=_get_tzinfo("utc")).utcoffset() == datetime.timedelta(0)
 
+    assert dt.replace(tzinfo=_get_tzinfo("+03:30")).utcoffset() == datetime.timedelta(
+        hours=3, minutes=30
+    )
+
+    assert dt.replace(tzinfo=_get_tzinfo("-03:30")).utcoffset() == datetime.timedelta(
+        hours=-3, minutes=-30
+    )
+
     pytest.importorskip("zoneinfo")
     pytest.importorskip("dateutil")
 
