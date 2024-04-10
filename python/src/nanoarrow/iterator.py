@@ -450,7 +450,7 @@ def _get_tzinfo(tz_string, strategy=None):
             pass
 
     raise RuntimeError(
-        "zoneinfo (Python 3.9+), pytz, or dateutil is required to resolve timezone"
+        "zoneinfo (Python 3.9+) or dateutil is required to resolve timezone"
     )
 
 
