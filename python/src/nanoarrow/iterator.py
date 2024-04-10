@@ -417,17 +417,19 @@ class RowTupleIterator(PyIterator):
 
 
 def _get_tzinfo(tz_string, strategy=None):
+    import re
+    from datetime import timedelta, timezone
+
     # We can handle UTC without any imports
-    if tz_string.upper() == "UTC":
-        try:
-            # Added in Python 3.11
-            from datetime import UTC
+    if re.search(r"^utc$", tz_string, re.IGNORECASE):
+        return timezone.utc
 
-            return UTC
-        except ImportError:
-            from datetime import timedelta, timezone
-
-            return timezone(timedelta(0), "UTC")
+    # Arrow also allows fixed-offset in the from +HH:MM
+    maybe_fixed_offset = re.search(r"^([+-])([0-9]{2}):([0-9]{2})$", tz_string)
+    if maybe_fixed_offset:
+        sign, hours, minutes = maybe_fixed_offset.groups()
+        sign = 1 if sign == "+" else -1
+        return timezone(sign * timedelta(hours=int(hours), minutes=int(minutes)))
 
     # Try zoneinfo.ZoneInfo() (Python 3.9+)
     if strategy is None or "zoneinfo" in strategy:

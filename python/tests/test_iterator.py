@@ -361,9 +361,9 @@ def test_iterator_timestamp():
     pa = pytest.importorskip("pyarrow")
 
     items = [
-        datetime.datetime(2021, 1, 1, 11, 59, 1, 123),
+        datetime.datetime(1900, 1, 1, 11, 59, 1, 123),
         None,
-        datetime.datetime(2022, 1, 1, 23, 59, 1, 0),
+        datetime.datetime(2050, 1, 1, 23, 59, 1, 0),
     ]
 
     array = pa.array(items, pa.timestamp("ns"))
@@ -389,9 +389,9 @@ def test_iterator_timestamp_tz():
     tz = _get_tzinfo("America/Halifax")
 
     items = [
-        datetime.datetime(2021, 1, 1, 11, 59, 1, 1234, tzinfo=tz),
+        datetime.datetime(1900, 1, 1, 11, 59, 1, 1234, tzinfo=tz),
         None,
-        datetime.datetime(2022, 1, 1, 23, 59, 1, 0, tzinfo=tz),
+        datetime.datetime(2050, 1, 1, 23, 59, 1, 0, tzinfo=tz),
     ]
 
     array = pa.array(items, pa.timestamp("ns", "America/Halifax"))
@@ -434,7 +434,7 @@ def test_iterator_duration():
     pa = pytest.importorskip("pyarrow")
 
     items = [
-        datetime.timedelta(days=12, seconds=345, microseconds=6789),
+        datetime.timedelta(days=-12, seconds=-345, microseconds=-6789),
         None,
         datetime.timedelta(days=12345, seconds=67890),
     ]
@@ -445,10 +445,10 @@ def test_iterator_duration():
     array = pa.array(items, pa.duration("us"))
     assert list(iter_py(array)) == items
 
-    items[0] = datetime.timedelta(days=12, seconds=345, microseconds=678000)
+    items[0] = datetime.timedelta(days=-12, seconds=-345, microseconds=-678000)
     array = pa.array(items, pa.duration("ms"))
     assert list(iter_py(array)) == items
 
-    items[0] = datetime.timedelta(days=12, seconds=345)
+    items[0] = datetime.timedelta(days=-12, seconds=-345)
     array = pa.array(items, pa.duration("s"))
     assert list(iter_py(array)) == items
