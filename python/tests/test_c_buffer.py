@@ -49,10 +49,11 @@ def test_c_buffer_constructor():
 def test_c_buffer_unsupported_format():
     empty = CBuffer.empty()
 
-    with pytest.raises(ValueError, match="Can't convert format '>i' to Arrow type"):
-        if sys.byteorder == "little":
+    if sys.byteorder == "little":
+        with pytest.raises(ValueError, match="Can't convert format '>i' to Arrow type"):
             empty._set_format(">i")
-        else:
+    else:
+        with pytest.raises(ValueError, match="Can't convert format '<i' to Arrow type"):
             empty._set_format("<i")
 
     with pytest.raises(ValueError, match=r"Unsupported Arrow type_id"):

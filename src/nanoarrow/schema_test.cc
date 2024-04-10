@@ -1510,7 +1510,8 @@ TEST(MetadataTest, Metadata) {
   std::string simple_metadata = SimpleMetadata();
 
   EXPECT_EQ(ArrowMetadataSizeOf(nullptr), 0);
-  EXPECT_EQ(ArrowMetadataSizeOf(simple_metadata.data()), simple_metadata.size());
+  EXPECT_EQ(ArrowMetadataSizeOf(simple_metadata.data()),
+            static_cast<int64_t>(simple_metadata.size()));
 
   EXPECT_EQ(ArrowMetadataHasKey(simple_metadata.data(), ArrowCharView("key")), 1);
   EXPECT_EQ(ArrowMetadataHasKey(simple_metadata.data(), ArrowCharView("not_a_key")), 0);

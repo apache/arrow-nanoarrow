@@ -166,6 +166,8 @@ struct CustomFreeData {
 
 static void CustomFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
                        int64_t size) {
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(size);
   auto data = reinterpret_cast<struct CustomFreeData*>(allocator->private_data);
   ArrowFree(data->pointer_proxy);
   data->pointer_proxy = nullptr;

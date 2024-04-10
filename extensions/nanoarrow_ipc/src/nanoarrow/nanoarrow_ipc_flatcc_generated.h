@@ -189,7 +189,7 @@ static inline int N ## _ ## NK ## _is_present(N ## _table_t t__tmp)\
 __## NS ## field_present(ID, t__tmp)\
 static inline T ## _union_t N ## _ ## NK ## _union(N ## _table_t t__tmp)\
 { T ## _union_t u__tmp = { 0, 0 }; u__tmp.type = N ## _ ## NK ## _type_get(t__tmp);\
-  if (u__tmp.type == 0) return u__tmp; u__tmp.value = N ## _ ## NK ## _get(t__tmp); return u__tmp; }\
+  if (u__tmp.type == 0) { return u__tmp; } u__tmp.value = N ## _ ## NK ## _get(t__tmp); return u__tmp; }\
 static inline NS ## string_t N ## _ ## NK ## _as_string(N ## _table_t t__tmp)\
 { return NS ## string_cast_from_generic(N ## _ ## NK ## _get(t__tmp)); }\
 
@@ -200,7 +200,7 @@ static inline T ## _union_t T ## _union_vec_at(T ## _union_vec_t uv__tmp, size_t
 { T ## _union_t u__tmp = { 0, 0 }; size_t n__tmp = NS ## vec_len(uv__tmp.type);\
   FLATCC_ASSERT(n__tmp > (i__tmp) && "index out of range"); u__tmp.type = uv__tmp.type[i__tmp];\
   /* Unknown type is treated as NONE for schema evolution. */\
-  if (u__tmp.type == 0) return u__tmp;\
+  if (u__tmp.type == 0) { return u__tmp; }\
   u__tmp.value = NS ## generic_vec_at(uv__tmp.value, i__tmp); return u__tmp; }\
 static inline NS ## string_t T ## _union_vec_at_as_string(T ## _union_vec_t uv__tmp, size_t i__tmp)\
 { return (NS ## string_t) NS ## generic_vec_at_as_string(uv__tmp.value, i__tmp); }\
@@ -810,7 +810,7 @@ static inline N ## _union_vec_ref_t N ## _vec_clone(NS ## builder_t *B, N ##_uni
   _uvref.type = flatcc_builder_refmap_find(B, vec.type); _uvref.value = flatcc_builder_refmap_find(B, vec.value);\
   _len = N ## _union_vec_len(vec); if (_uvref.type == 0) {\
   _uvref.type = flatcc_builder_refmap_insert(B, vec.type, (flatcc_builder_create_type_vector(B, vec.type, _len))); }\
-  if (_uvref.type == 0) return _ret; if (_uvref.value == 0) {\
+  if (_uvref.type == 0) { return _ret; } if (_uvref.value == 0) {\
   if (flatcc_builder_start_offset_vector(B)) return _ret;\
   for (_i = 0; _i < _len; ++_i) { _uref = N ## _clone(B, N ## _union_vec_at(vec, _i));\
     if (!_uref.value || !(flatcc_builder_offset_vector_push(B, _uref.value))) return _ret; }\
@@ -915,11 +915,11 @@ __flatbuffers_build_offset_vector(NS, NS ## string)
 static inline T *N ## _array_copy(T *p, const T *p2, size_t n)\
 { memcpy(p, p2, n * sizeof(T)); return p; }\
 static inline T *N ## _array_copy_from_pe(T *p, const T *p2, size_t n)\
-{ size_t i; if (NS ## is_native_pe()) memcpy(p, p2, n * sizeof(T)); else\
-  for (i = 0; i < n; ++i) N ## _copy_from_pe(&p[i], &p2[i]); return p; }\
+{ size_t i; if (NS ## is_native_pe()) { memcpy(p, p2, n * sizeof(T)); } else\
+  { for (i = 0; i < n; ++i) { N ## _copy_from_pe(&p[i], &p2[i]); } } return p; }\
 static inline T *N ## _array_copy_to_pe(T *p, const T *p2, size_t n)\
-{ size_t i; if (NS ## is_native_pe()) memcpy(p, p2, n * sizeof(T)); else\
-  for (i = 0; i < n; ++i) N ## _copy_to_pe(&p[i], &p2[i]); return p; }
+{ size_t i; if (NS ## is_native_pe()) { memcpy(p, p2, n * sizeof(T)); } else\
+  { for (i = 0; i < n; ++i) { N ## _copy_to_pe(&p[i], &p2[i]); } } return p; }
 #define __flatbuffers_define_scalar_primitives(NS, N, T)\
 static inline T *N ## _from_pe(T *p) { return __ ## NS ## from_pe(p, N); }\
 static inline T *N ## _to_pe(T *p) { return __ ## NS ## to_pe(p, N); }\
