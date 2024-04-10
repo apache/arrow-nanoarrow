@@ -298,37 +298,24 @@ class PyIterator(ArrayViewIterator):
     def _timestamp_iter(self, offset, length):
         from datetime import datetime
 
-        fromtimestamp = datetime.fromtimestamp
-        storage = self._primitive_iter(offset, length)
-
-        unit = self._schema_view.time_unit
-        if unit == "s":
-            scale = 1
-        elif unit == "ms":
-            scale = 1000
-        elif unit == "us":
-            scale = 1_000_000
-        elif unit == "ns":
-            storage = self._iter_us_from_ns(storage)
-            scale = 1_000_000
+        epoch = datetime(1970, 1, 1, tzinfo=_get_tzinfo("UTC"))
+        parent = self._duration_iter(offset, length)
 
         tz = self._schema_view.timezone
         if tz:
             tz = _get_tzinfo(tz)
-            tz_fromtimestamp = tz
-        else:
-            tz = None
-            tz_fromtimestamp = _get_tzinfo("UTC")
 
-        for item in storage:
-            if item is None:
-                yield None
-            else:
-                s = item // scale
-                us = item % scale * (1_000_000 // scale)
-                yield fromtimestamp(s, tz_fromtimestamp).replace(
-                    microsecond=us, tzinfo=tz
-                )
+            for item in parent:
+                if item is None:
+                    yield None
+                else:
+                    yield (epoch + item).astimezone(tz)
+        else:
+            for item in parent:
+                if item is None:
+                    yield None
+                else:
+                    yield (epoch + item).replace(tzinfo=None)
 
     def _duration_iter(self, offset, length):
         from datetime import timedelta
