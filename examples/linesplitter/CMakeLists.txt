@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+cmake_minimum_required(VERSION 3.24)
 project(linesplitter)
-cmake_minimum_required(VERSION 3.14)
 
 set(CMAKE_CXX_STANDARD 11)
 
