@@ -19,11 +19,11 @@ import datetime
 
 import pytest
 from nanoarrow.iterator import (
+    ArrayViewIterator,
+    InvalidArrayWarning,
+    LossyConversionWarning,
     iter_py,
     iter_tuples,
-    ArrayViewIterator,
-    LossyConversionWarning,
-    InvalidArrayWarning,
 )
 
 import nanoarrow as na
