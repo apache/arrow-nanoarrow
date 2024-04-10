@@ -285,7 +285,7 @@ class PyIterator(ArrayViewIterator):
     def _time_iter(self, offset, length):
         from datetime import time
 
-        for item in self._iter_datetime_components(offset, length):
+        for item in self._iter_time_components(offset, length):
             if item is None:
                 yield None
             else:
@@ -339,7 +339,7 @@ class PyIterator(ArrayViewIterator):
             else:
                 yield timedelta(microseconds=item * to_us)
 
-    def _iter_datetime_components(self, offset, length):
+    def _iter_time_components(self, offset, length):
         storage = self._primitive_iter(offset, length)
 
         unit = self._schema_view.time_unit
