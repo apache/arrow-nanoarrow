@@ -264,7 +264,7 @@ class PyIterator(ArrayViewIterator):
                 yield bytes(data[start:end])
 
     def _decimal_iter(self, offset, length):
-        from decimal import Decimal, Context
+        from decimal import Context, Decimal
         from sys import byteorder
 
         storage = self._primitive_iter(offset, length)
