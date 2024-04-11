@@ -346,7 +346,7 @@ def test_iterator_decimal():
     assert list(iter_py(array)) == items
 
     # Make sure this isn't affected by user-modified context
-    with decimal.localcontext(prec=1):
+    with decimal.localcontext(decimal.Context(prec=1)):
         assert list(iter_py(array)) == items
 
 
