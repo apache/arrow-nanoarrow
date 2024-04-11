@@ -15,10 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-project(linesplitter)
 cmake_minimum_required(VERSION 3.14)
+project(linesplitter)
 
 set(CMAKE_CXX_STANDARD 11)
+
+# Avoids a warning about timestamps on downloaded files (prefer new policy
+# if available))
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
+  cmake_policy(SET CMP0135 NEW)
+endif()
 
 include(FetchContent)
 
