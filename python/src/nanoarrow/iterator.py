@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import warnings
 from functools import cached_property
 from itertools import islice
 from typing import Iterable, Tuple
@@ -83,6 +84,14 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
+class InvalidArrayWarning(UserWarning):
+    pass
+
+
+class LossyConversionWarning(UserWarning):
+    pass
+
+
 class ArrayViewIterator:
     """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
@@ -101,7 +110,7 @@ class ArrayViewIterator:
             map(self._make_child, self._schema.children, self._array_view.children)
         )
 
-        if schema.dictionary is None:
+        if self._schema.dictionary is None:
             self._dictionary = None
         else:
             self._dictionary = self._make_child(
@@ -115,6 +124,13 @@ class ArrayViewIterator:
     def _child_names(self):
         return [child.name for child in self._schema.children]
 
+    @cached_property
+    def _object_label(self):
+        if self._schema.name:
+            return f"{self._schema.name} <{self._schema_view.type}>"
+        else:
+            return f"<unnamed {self._schema_view.type}>"
+
     def _contains_nulls(self):
         return (
             self._schema_view.nullable
@@ -125,6 +141,9 @@ class ArrayViewIterator:
     def _set_array(self, array):
         self._array_view._set_array(array)
         return self
+
+    def _warn(self, message, category):
+        warnings.warn(f"{self._object_label}: {message}", category)
 
 
 class PyIterator(ArrayViewIterator):
@@ -244,6 +263,126 @@ class PyIterator(ArrayViewIterator):
             for start, end in zip(starts, ends):
                 yield bytes(data[start:end])
 
+    def _date_iter(self, offset, length):
+        from datetime import date, timedelta
+
+        storage = self._primitive_iter(offset, length)
+        epoch = date(1970, 1, 1)
+
+        if self._schema_view.type_id == CArrowType.DATE32:
+            for item in storage:
+                if item is None:
+                    yield item
+                else:
+                    yield epoch + timedelta(item)
+        else:
+            for item in storage:
+                if item is None:
+                    yield item
+                else:
+                    yield epoch + timedelta(milliseconds=item)
+
+    def _time_iter(self, offset, length):
+        from datetime import time
+
+        for item in self._iter_time_components(offset, length):
+            if item is None:
+                yield None
+            else:
+                days, hours, mins, secs, us = item
+                if days != 0:
+                    self._warn("days != 0", InvalidArrayWarning)
+
+                yield time(hours, mins, secs, us)
+
+    def _timestamp_iter(self, offset, length):
+        from datetime import datetime
+
+        epoch = datetime(1970, 1, 1, tzinfo=_get_tzinfo("UTC"))
+        parent = self._duration_iter(offset, length)
+
+        tz = self._schema_view.timezone
+        if tz:
+            tz = _get_tzinfo(tz)
+
+            for item in parent:
+                if item is None:
+                    yield None
+                else:
+                    yield (epoch + item).astimezone(tz)
+        else:
+            epoch = epoch.replace(tzinfo=None)
+            for item in parent:
+                if item is None:
+                    yield None
+                else:
+                    yield epoch + item
+
+    def _duration_iter(self, offset, length):
+        from datetime import timedelta
+
+        storage = self._primitive_iter(offset, length)
+
+        unit = self._schema_view.time_unit
+        if unit == "s":
+            to_us = 1_000_000
+        elif unit == "ms":
+            to_us = 1000
+        elif unit == "us":
+            to_us = 1
+        elif unit == "ns":
+            storage = self._iter_us_from_ns(storage)
+            to_us = 1
+
+        for item in storage:
+            if item is None:
+                yield None
+            else:
+                yield timedelta(microseconds=item * to_us)
+
+    def _iter_time_components(self, offset, length):
+        storage = self._primitive_iter(offset, length)
+
+        unit = self._schema_view.time_unit
+        if unit == "s":
+            to_us = 1_000_000
+        elif unit == "ms":
+            to_us = 1000
+        elif unit == "us":
+            to_us = 1
+        elif unit == "ns":
+            storage = self._iter_us_from_ns(storage)
+            to_us = 1
+
+        us_per_sec = 1_000_000
+        us_per_min = us_per_sec * 60
+        us_per_hour = us_per_min * 60
+        us_per_day = us_per_hour * 24
+
+        for item in storage:
+            if item is None:
+                yield None
+            else:
+                us = item * to_us
+                days = us // us_per_day
+                us = us % us_per_day
+                hours = us // us_per_hour
+                us = us % us_per_hour
+                mins = us // us_per_min
+                us = us % us_per_min
+                secs = us // us_per_sec
+                us = us % us_per_sec
+                yield days, hours, mins, secs, us
+
+    def _iter_us_from_ns(self, parent):
+        for item in parent:
+            if item is None:
+                yield None
+            else:
+                if item % 1000 != 0:
+                    self._warn("nanoseconds discarded", LossyConversionWarning)
+                yield item // 1000
+
     def _primitive_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
@@ -258,7 +397,7 @@ class PyIterator(ArrayViewIterator):
 
 class RowTupleIterator(PyIterator):
     """Iterate over rows of a struct array (stream) where each row is a
-    tuple instead of a dictionary. This is ~3x faster and matches other
+    tuple instead of a dictionary. This is usually faster and matches other
     Python concepts more closely (e.g., dbapi's cursor, pandas itertuples).
     Intended for internal use.
     """
@@ -278,6 +417,44 @@ class RowTupleIterator(PyIterator):
         return self._struct_tuple_iter(offset, length)
 
 
+def _get_tzinfo(tz_string, strategy=None):
+    import re
+    from datetime import timedelta, timezone
+
+    # We can handle UTC without any imports
+    if tz_string.upper() == "UTC":
+        return timezone.utc
+
+    # Arrow also allows fixed-offset in the from +HH:MM
+    maybe_fixed_offset = re.search(r"^([+-])([0-9]{2}):([0-9]{2})$", tz_string)
+    if maybe_fixed_offset:
+        sign, hours, minutes = maybe_fixed_offset.groups()
+        sign = 1 if sign == "+" else -1
+        return timezone(sign * timedelta(hours=int(hours), minutes=int(minutes)))
+
+    # Try zoneinfo.ZoneInfo() (Python 3.9+)
+    if strategy is None or "zoneinfo" in strategy:
+        try:
+            from zoneinfo import ZoneInfo
+
+            return ZoneInfo(tz_string)
+        except ImportError:
+            pass
+
+    # Try dateutil.tz.gettz()
+    if strategy is None or "dateutil" in strategy:
+        try:
+            from dateutil.tz import gettz
+
+            return gettz(tz_string)
+        except ImportError:
+            pass
+
+    raise RuntimeError(
+        "zoneinfo (Python 3.9+) or dateutil is required to resolve timezone"
+    )
+
+
 _ITEMS_ITER_LOOKUP = {
     CArrowType.BINARY: "_binary_iter",
     CArrowType.LARGE_BINARY: "_binary_iter",
@@ -288,6 +465,12 @@ _ITEMS_ITER_LOOKUP = {
     CArrowType.LARGE_LIST: "_list_iter",
     CArrowType.FIXED_SIZE_LIST: "_fixed_size_list_iter",
     CArrowType.DICTIONARY: "_dictionary_iter",
+    CArrowType.DATE32: "_date_iter",
+    CArrowType.DATE64: "_date_iter",
+    CArrowType.TIME32: "_time_iter",
+    CArrowType.TIME64: "_time_iter",
+    CArrowType.TIMESTAMP: "_timestamp_iter",
+    CArrowType.DURATION: "_duration_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [
