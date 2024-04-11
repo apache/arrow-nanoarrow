@@ -263,6 +263,25 @@ class PyIterator(ArrayViewIterator):
             for start, end in zip(starts, ends):
                 yield bytes(data[start:end])
 
+    def _decimal_iter(self, offset, length):
+        from decimal import Decimal, Context
+        from sys import byteorder
+
+        storage = self._primitive_iter(offset, length)
+        precision = self._schema_view.decimal_precision
+        scaleb = Decimal(-self._schema_view.decimal_scale)
+        context = Context(prec=precision)
+
+        # It would probably be fastest to go straight from binary
+        # to string to decimal, since creating a decimal from a string
+        # appears to be the fastest constructor.
+        for item in storage:
+            if item is None:
+                yield None
+            else:
+                int_value = int.from_bytes(item, byteorder)
+                yield Decimal(int_value).scaleb(scaleb, context)
+
     def _date_iter(self, offset, length):
         from datetime import date, timedelta
 
@@ -471,6 +490,8 @@ _ITEMS_ITER_LOOKUP = {
     CArrowType.TIME64: "_time_iter",
     CArrowType.TIMESTAMP: "_timestamp_iter",
     CArrowType.DURATION: "_duration_iter",
+    CArrowType.DECIMAL128: "_decimal_iter",
+    CArrowType.DECIMAL256: "_decimal_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [
@@ -490,8 +511,6 @@ _PRIMITIVE_TYPE_NAMES = [
     "INTERVAL_MONTHS",
     "INTERVAL_DAY_TIME",
     "INTERVAL_MONTH_DAY_NANO",
-    "DECIMAL128",
-    "DECIMAL256",
 ]
 
 for type_name in _PRIMITIVE_TYPE_NAMES:

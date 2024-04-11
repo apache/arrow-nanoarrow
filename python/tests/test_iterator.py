@@ -16,6 +16,7 @@
 # under the License.
 
 import datetime
+import decimal
 
 import pytest
 from nanoarrow.iterator import (
@@ -332,6 +333,21 @@ def test_iterator_nullable_dictionary():
 
     sliced = array[1:]
     assert list(iter_py(sliced)) == ["cde", "ab", "def", "cde", None]
+
+
+def test_iterator_decimal():
+    pa = pytest.importorskip("pyarrow")
+
+    items = [decimal.Decimal("12.3450"), None, decimal.Decimal("1234567.3456")]
+    array = pa.array(items, pa.decimal128(11, 4))
+    assert list(iter_py(array)) == items
+
+    array = pa.array(items, pa.decimal256(11, 4))
+    assert list(iter_py(array)) == items
+
+    # Make sure this isn't affected by user-modified context
+    with decimal.localcontext(prec=1):
+        assert list(iter_py(array)) == items
 
 
 def test_iterator_date():
