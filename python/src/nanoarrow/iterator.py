@@ -311,11 +311,12 @@ class PyIterator(ArrayViewIterator):
                 else:
                     yield (epoch + item).astimezone(tz)
         else:
+            epoch = epoch.replace(tzinfo=None)
             for item in parent:
                 if item is None:
                     yield None
                 else:
-                    yield (epoch + item).replace(tzinfo=None)
+                    yield epoch + item
 
     def _duration_iter(self, offset, length):
         from datetime import timedelta
@@ -421,7 +422,7 @@ def _get_tzinfo(tz_string, strategy=None):
     from datetime import timedelta, timezone
 
     # We can handle UTC without any imports
-    if re.search(r"^utc$", tz_string, re.IGNORECASE):
+    if tz_string.upper() == "UTC":
         return timezone.utc
 
     # Arrow also allows fixed-offset in the from +HH:MM
