@@ -49,14 +49,7 @@ def test_iterator_primitive():
 
 
 def test_iterator_nullable_primitive():
-    array = na.c_array_from_buffers(
-        na.int32(),
-        4,
-        buffers=[
-            na.c_buffer([1, 1, 1, 0], na.bool()),
-            na.c_buffer([1, 2, 3, 0], na.int32()),
-        ],
-    )
+    array = na.c_array([1, 2, 3, None], na.int32())
     assert list(iter_py(array)) == [1, 2, 3, None]
 
     sliced = array[1:]
