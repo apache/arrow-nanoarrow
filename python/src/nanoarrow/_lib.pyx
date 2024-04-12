@@ -2033,6 +2033,15 @@ cdef class CBufferBuilder:
 
 
 cdef class NoneAwareWrapperIterator:
+    """Nullable iterator wrapper
+
+    This class wraps an iterable ``obj`` that might contain ``None`` values
+    such that the iterable provided by this class contains "empty" (but valid)
+    values. After ``obj`` has been completely consumed, one can call
+    ``finish()`` to obtain the resulting bitmap. This is useful for passing
+    iterables that might contain None to tools that cannot handle them
+    (e.g., struct.pack(), array.array()).
+    """
     cdef ArrowBitmap _bitmap
     cdef object _obj
     cdef object _value_if_none
@@ -2061,7 +2070,7 @@ cdef class NoneAwareWrapperIterator:
             return (0, 0, 0)
         elif type_id == NANOARROW_TYPE_BOOL:
             return False
-        elif type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY):
+        elif type_id  == NANOARROW_TYPE_BINARY:
             return b"\x00" * item_size_bytes
         elif type_id in (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE):
             return 0.0
@@ -2071,18 +2080,20 @@ cdef class NoneAwareWrapperIterator:
     cdef _append_to_validity(self, int is_valid):
         self._valid_count += is_valid
         self._item_count += 1
+
+        # Avoid allocating a bitmap if all values seen so far are valid
         if self._valid_count == self._item_count:
             return
 
+        # If the bitmap hasn't been allocated yet, allocate it now and
+        # fill with 1s for all previous elements.
         cdef int code
         if self._bitmap.size_bits == 0 and self._item_count > 1:
             code = ArrowBitmapAppend(&self._bitmap, 1, self._item_count - 1)
             if code != NANOARROW_OK:
                 Error.raise_error("ArrowBitmapAppend()", code)
 
-        # Note that appending to a bitmap in this way is not efficient in a
-        # tight loop (although this may not matter in the context of a Python
-        # iterator))
+        # Append this element to the bitmap
         code = ArrowBitmapAppend(&self._bitmap, is_valid, 1)
         if code != NANOARROW_OK:
             Error.raise_error("ArrowBitmapAppend()", code)
@@ -2097,6 +2108,8 @@ cdef class NoneAwareWrapperIterator:
                 yield item
 
     def finish(self):
+        """Obtain the total count, null count, and validity bitmap after
+        consuming this iterable."""
         null_count = self._item_count - self._valid_count
 
         # If we did allocate a bitmap, make sure the last few bits are zeroed
