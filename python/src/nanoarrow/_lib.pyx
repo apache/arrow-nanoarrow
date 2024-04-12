@@ -2069,7 +2069,7 @@ cdef class NoneAwareWrapperIterator:
             return (0, 0, 0)
         elif type_id == NANOARROW_TYPE_BOOL:
             return False
-        elif type_id  == NANOARROW_TYPE_BINARY:
+        elif type_id  in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY):
             return b"\x00" * item_size_bytes
         elif type_id in (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE):
             return 0.0
