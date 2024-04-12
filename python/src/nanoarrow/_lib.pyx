@@ -52,7 +52,6 @@ from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
 from enum import Enum
-from itertools import repeat
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
