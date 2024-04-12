@@ -42,6 +42,7 @@ from cpython cimport (
     PyObject_GetBuffer,
     PyBuffer_Release,
     PyBuffer_ToContiguous,
+    PyBuffer_FillInfo,
     PyBUF_ANY_CONTIGUOUS,
     PyBUF_FORMAT,
     PyBUF_WRITABLE
@@ -51,6 +52,7 @@ from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
 from enum import Enum
+from array import array as py_array
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
@@ -1858,9 +1860,32 @@ cdef class CBuffer:
 cdef class CBufferBuilder:
     """Wrapper around writable owned buffer CPU content"""
     cdef CBuffer _buffer
+    cdef bint _locked
 
     def __cinit__(self):
         self._buffer = CBuffer.empty()
+        self._locked = False
+
+    cdef _assert_unlocked(self):
+        if self._locked:
+            raise BufferError("CBufferBuilder is locked")
+
+    # Implement the buffer protocol so that this object can be used as
+    # the argument to Struct.readinto().
+    def __getbuffer__(self, Py_buffer* buffer, int flags):
+        self._assert_unlocked()
+        PyBuffer_FillInfo(
+            buffer,
+            self,
+            self._buffer._ptr.data,
+            self._buffer._ptr.capacity_bytes,
+            0,
+            flags
+        )
+        self._locked = True
+
+    def __releasebuffer__(self, Py_buffer* buffer):
+        self._locked = False
 
     @property
     def size_bytes(self):
@@ -1875,14 +1900,19 @@ cdef class CBufferBuilder:
         return self
 
     def reserve_bytes(self, int64_t additional_bytes):
+        self._assert_unlocked()
         cdef int code = ArrowBufferReserve(self._buffer._ptr, additional_bytes)
         Error.raise_error_not_ok("ArrowBufferReserve()", code)
         return self
 
     def write(self, content):
+        self._assert_unlocked()
+
         cdef Py_buffer buffer
         cdef int64_t out
         PyObject_GetBuffer(content, &buffer, PyBUF_ANY_CONTIGUOUS)
+
+        # TODO: Check for single dimension?
 
         cdef int code = ArrowBufferReserve(self._buffer._ptr, buffer.len)
         if code != NANOARROW_OK:
@@ -1904,23 +1934,49 @@ cdef class CBufferBuilder:
         return out
 
     def write_elements(self, obj):
+        self._assert_unlocked()
+
+        # Boolean arrays need their own writer since Python provides
+        # no helpers for bitpacking
         if self._buffer._data_type == NANOARROW_TYPE_BOOL:
             return self._write_bits(obj)
 
         cdef int64_t n_values = 0
-        struct_obj = Struct(self._buffer._format)
-        pack = struct_obj.pack
-        write = self.write
+        cdef int64_t bytes_per_element = calcsize(self._buffer.format)
+        cdef int code
 
+        struct_obj = Struct(self._buffer._format)
+        pack_into = struct_obj.pack_into
+
+        # If an object has a length, we can avoid extra allocations
+        if hasattr(obj, "__len__"):
+            code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element * len(obj))
+            Error.raise_error_not_ok("ArrowBufferReserve()", code)
+
+        # Types whose Python representation is a tuple need a slightly different
+        # pack_into() call. if code != NANOARROW_OK is used instead of
+        # Error.raise_error_not_ok() Cython can avoid the extra function call
+        # and this is a very tight loop.
         if self._buffer._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
-                               NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
+                                       NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
             for item in obj:
+                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
+                if code != NANOARROW_OK:
+                    Error.raise_error("ArrowBufferReserve()", code)
+
+                pack_into(self, self._buffer._ptr.size_bytes, *item)
+                self._buffer._ptr.size_bytes += bytes_per_element
                 n_values += 1
-                write(pack(*item))
+
         else:
             for item in obj:
+                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
+                if code != NANOARROW_OK:
+                    Error.raise_error("ArrowBufferReserve()", code)
+
+                pack_into(self, self._buffer._ptr.size_bytes, item)
+                self._buffer._ptr.size_bytes += bytes_per_element
                 n_values += 1
-                write(pack(item))
 
         return n_values
 
@@ -1951,6 +2007,8 @@ cdef class CBufferBuilder:
         return n_values
 
     def finish(self):
+        self._assert_unlocked()
+
         cdef CBuffer out = self._buffer
         out._populate_view()
 

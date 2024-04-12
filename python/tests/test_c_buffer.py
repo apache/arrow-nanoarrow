@@ -214,6 +214,14 @@ def test_c_buffer_builder():
     assert builder.size_bytes == 10
     assert builder.capacity_bytes == 123
 
+    mv = memoryview(builder)
+    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+        memoryview(builder)
+
+    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+        assert bytes(builder.finish()) == b"abcdefghij"
+
+    del mv
     assert bytes(builder.finish()) == b"abcdefghij"
 
 
