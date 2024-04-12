@@ -481,7 +481,8 @@ def c_buffer(obj, schema=None) -> CBuffer:
         return CBuffer.from_pybuffer(obj)
 
     if _obj_is_iterable(obj):
-        return _c_buffer_from_iterable(obj, schema)
+        buf, _ = _c_buffer_from_iterable(obj, schema)
+        return buf
 
     raise TypeError(
         f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_buffer"
@@ -629,16 +630,22 @@ def _c_array_from_iterable(obj, schema=None) -> CArray:
 
     # Creating a buffer from an iterable does not handle None values,
     # but we can do so here with the NoneAwareWrapperIterator() wrapper.
-    obj_wrapper = NoneAwareWrapperIterator(
-        obj, schema_view.storage_type_id, schema_view.fixed_size
-    )
+    # This approach is quite a bit slower, so only do it for a nullable
+    # type.
+    if schema_view.nullable:
+        obj_wrapper = NoneAwareWrapperIterator(
+            obj, schema_view.storage_type_id, schema_view.fixed_size
+        )
 
-    if obj_len > 0:
-        obj_wrapper.reserve(obj_len)
+        if obj_len > 0:
+            obj_wrapper.reserve(obj_len)
 
-    # Use buffer create for crude support of array from iterable
-    data = _c_buffer_from_iterable(obj_wrapper, schema_view)
-    n_values, null_count, validity = obj_wrapper.finish()
+        data, _ = _c_buffer_from_iterable(obj_wrapper, schema_view)
+        n_values, null_count, validity = obj_wrapper.finish()
+    else:
+        data, n_values = _c_buffer_from_iterable(obj, schema_view)
+        null_count = 0
+        validity = None
 
     return c_array_from_buffers(
         schema, n_values, buffers=(validity, data), null_count=null_count, move=True
@@ -671,7 +678,7 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
         and schema_view.storage_type_id != CArrowType.BOOL
     ):
         buf = array.array(builder.format, obj)
-        return CBuffer.from_pybuffer(buf)
+        return CBuffer.from_pybuffer(buf), len(buf)
 
-    builder.write_elements(obj)
-    return builder.finish()
+    n_values = builder.write_elements(obj)
+    return builder.finish(), n_values

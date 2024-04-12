@@ -219,7 +219,7 @@ def test_c_array_from_iterable_empty():
     assert len(array_view.buffer(2)) == 0
 
 
-def test_c_array_from_iterable_non_empty():
+def test_c_array_from_iterable_non_empty_nullable_without_nulls():
     c_array = na.c_array([1, 2, 3], na.int32())
     assert c_array.length == 3
     assert c_array.null_count == 0
@@ -229,7 +229,17 @@ def test_c_array_from_iterable_non_empty():
     assert list(view.buffer(1)) == [1, 2, 3]
 
 
-def test_c_array_from_iterable_non_empty_nullable():
+def test_c_array_from_iterable_non_empty_non_nullable():
+    c_array = na.c_array([1, 2, 3], na.int32(nullable=False))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [1, 2, 3]
+
+
+def test_c_array_from_iterable_non_empty_nullable_with_nulls():
     c_array = na.c_array([1, None, 3], na.int32())
     assert c_array.length == 3
     assert c_array.null_count == 1
