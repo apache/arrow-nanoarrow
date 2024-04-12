@@ -52,7 +52,6 @@ from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
 from enum import Enum
-from array import array as py_array
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
@@ -1903,6 +1902,14 @@ cdef class CBufferBuilder:
         self._assert_unlocked()
         cdef int code = ArrowBufferReserve(self._buffer._ptr, additional_bytes)
         Error.raise_error_not_ok("ArrowBufferReserve()", code)
+        return self
+
+    def advance(self, int64_t additional_bytes):
+        cdef int64_t new_size = self._buffer._ptr.size_bytes + additional_bytes
+        if new_size < 0 or new_size > self._buffer._ptr.capacity_bytes:
+            raise IndexError(f"Can't advance {additional_bytes} from {self.size_bytes}")
+
+        self._buffer._ptr.size_bytes = new_size
         return self
 
     def write(self, content):
