@@ -38,6 +38,7 @@ from nanoarrow._lib import (
     CSchema,
     CSchemaBuilder,
     CSchemaView,
+    NoneAwareWrapperIterator,
     _obj_is_buffer,
     _obj_is_capsule,
 )
@@ -480,8 +481,7 @@ def c_buffer(obj, schema=None) -> CBuffer:
         return CBuffer.from_pybuffer(obj)
 
     if _obj_is_iterable(obj):
-        buffer, _ = _c_buffer_from_iterable(obj, schema)
-        return buffer
+        return _c_buffer_from_iterable(obj, schema)
 
     raise TypeError(
         f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_buffer"
@@ -602,7 +602,7 @@ def _c_array_from_pybuffer(obj) -> CArray:
     return builder.finish()
 
 
-def _c_array_from_iterable(obj, schema=None):
+def _c_array_from_iterable(obj, schema=None) -> CArray:
     if schema is None:
         raise ValueError("schema is required for CArray import from iterable")
 
@@ -618,11 +618,27 @@ def _c_array_from_iterable(obj, schema=None):
         builder.start_appending()
         return builder.finish()
 
+    # We need to know a few things about the data type to choose the appropriate
+    # strategy for building the array.
+    schema_view = c_schema_view(schema)
+
+    if schema_view.storage_type_id != schema_view.type_id:
+        raise ValueError(
+            f"Can't create array from iterable for type {schema_view.type}"
+        )
+
+    # Creating a buffer from an iterable does not handle None values,
+    # but we can do so here with the NoneAwareWrapperIterator() wrapper.
+    obj_wrapper = NoneAwareWrapperIterator(
+        obj, schema_view.storage_type_id, schema_view.fixed_size
+    )
+
     # Use buffer create for crude support of array from iterable
-    buffer, n_values = _c_buffer_from_iterable(obj, schema)
+    data = _c_buffer_from_iterable(obj_wrapper, schema_view)
+    n_values, null_count, validity = obj_wrapper.finish()
 
     return c_array_from_buffers(
-        schema, n_values, buffers=(None, buffer), null_count=0, move=True
+        schema, n_values, buffers=(validity, data), null_count=null_count, move=True
     )
 
 
@@ -632,11 +648,13 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
     if schema is None:
         raise ValueError("CBuffer from iterable requires schema")
 
-    builder = CBufferBuilder()
-
     schema_view = c_schema_view(schema)
     if schema_view.storage_type_id != schema_view.type_id:
-        raise ValueError(f"Can't create buffer from type {schema}")
+        raise ValueError(
+            f"Can't create buffer from iterable for type {schema_view.type}"
+        )
+
+    builder = CBufferBuilder()
 
     if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
         builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
@@ -650,7 +668,7 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
         and schema_view.storage_type_id != CArrowType.BOOL
     ):
         buf = array.array(builder.format, obj)
-        return CBuffer.from_pybuffer(buf), len(buf)
+        return CBuffer.from_pybuffer(buf)
 
-    n_values_written = builder.write_elements(obj)
-    return builder.finish(), n_values_written
+    builder.write_elements(obj)
+    return builder.finish()

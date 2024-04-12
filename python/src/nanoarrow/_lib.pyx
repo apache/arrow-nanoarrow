@@ -52,6 +52,7 @@ from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 
 from enum import Enum
+from itertools import repeat
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
@@ -2029,6 +2030,64 @@ cdef class CBufferBuilder:
     def __repr__(self):
         class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
         return f"{class_label}({self.size_bytes}/{self.capacity_bytes})"
+
+
+cdef class NoneAwareWrapperIterator:
+    cdef object _obj
+    cdef object _value_if_none
+    cdef CBufferBuilder _validity_builder
+    cdef int64_t _valid_count
+    cdef int64_t _item_count
+
+    def __cinit__(self, obj, type_id, item_size=0):
+        self._obj = iter(obj)
+        self._value_if_none = self._get_value_if_none(type_id, item_size)
+        self._validity_builder = CBufferBuilder()
+        self._validity_builder.set_data_type(NANOARROW_TYPE_BOOL)
+        self._valid_count = 0
+        self._item_count = 0
+
+    def _get_value_if_none(self, type_id, item_size=0):
+        if type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
+            return (0, 0)
+        elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+            return (0, 0, 0)
+        elif type_id == NANOARROW_TYPE_BOOL:
+            return False
+        elif type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY):
+            return b"\x00" * item_size
+        elif type_id in (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE):
+            return 0.0
+        else:
+            return 0
+
+    cdef _append_to_validity(self, int is_valid):
+        self._valid_count += is_valid
+        self._item_count += 1
+        if self._valid_count == self._item_count:
+            return
+
+        if self._validity_builder.capacity_bytes == 0 and self._item_count > 1:
+            self._validity_builder._write_bits(repeat(True, self._item_count - 1))
+
+        self._validity_builder._write_bits([is_valid])
+
+    def __iter__(self):
+        for item in self._obj:
+            if item is None:
+                self._append_to_validity(0)
+                yield self._value_if_none
+            else:
+                self._append_to_validity(1)
+                yield item
+
+    def finish(self):
+        null_count = self._item_count - self._valid_count
+        return (
+            self._item_count,
+            null_count,
+            self._validity_builder.finish() if null_count > 0 else None
+        )
 
 
 cdef class CArrayBuilder:

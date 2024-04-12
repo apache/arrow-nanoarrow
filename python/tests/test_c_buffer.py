@@ -248,7 +248,7 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
-    with pytest.raises(ValueError, match="Can't create buffer from type"):
+    with pytest.raises(ValueError, match="Can't create buffer"):
         na.c_buffer([1, 2, 3], na.date32())
 
 
