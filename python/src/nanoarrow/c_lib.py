@@ -25,8 +25,6 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
-import array
-
 from typing import Any, Iterable, Literal
 
 from nanoarrow._lib import (
@@ -629,6 +627,8 @@ def _c_array_from_iterable(obj, schema=None):
 
 
 def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
+    import array
+
     if schema is None:
         raise ValueError("CBuffer from iterable requires schema")
 
