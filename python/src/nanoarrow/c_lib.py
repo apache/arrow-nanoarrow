@@ -481,8 +481,8 @@ def c_buffer(obj, schema=None) -> CBuffer:
         return CBuffer.from_pybuffer(obj)
 
     if _obj_is_iterable(obj):
-        buf, _ = _c_buffer_from_iterable(obj, schema)
-        return buf
+        buffer, _ = _c_buffer_from_iterable(obj, schema)
+        return buffer
 
     raise TypeError(
         f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_buffer"
