@@ -225,7 +225,18 @@ def test_c_array_from_iterable_non_empty():
     assert c_array.null_count == 0
 
     view = na.c_array_view(c_array)
+    assert list(view.buffer(0)) == []
     assert list(view.buffer(1)) == [1, 2, 3]
+
+
+def test_c_array_from_iterable_non_empty_nullable():
+    c_array = na.c_array([1, None, 3], na.int32())
+    assert c_array.length == 3
+    assert c_array.null_count == 1
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
+    assert list(view.buffer(1)) == [1, 0, 3]
 
 
 def test_c_array_from_iterable_error():

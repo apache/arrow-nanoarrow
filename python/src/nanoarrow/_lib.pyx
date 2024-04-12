@@ -2035,17 +2035,19 @@ cdef class CBufferBuilder:
 cdef class NoneAwareWrapperIterator:
     cdef object _obj
     cdef object _value_if_none
-    cdef CBufferBuilder _validity_builder
+    cdef ArrowBitmap _bitmap
     cdef int64_t _valid_count
     cdef int64_t _item_count
 
     def __cinit__(self, obj, type_id, item_size=0):
         self._obj = iter(obj)
         self._value_if_none = self._get_value_if_none(type_id, item_size)
-        self._validity_builder = CBufferBuilder()
-        self._validity_builder.set_data_type(NANOARROW_TYPE_BOOL)
+        ArrowBitmapInit(&self._bitmap)
         self._valid_count = 0
         self._item_count = 0
+
+    def __dealloc__(self):
+        ArrowBitmapReset(&self._bitmap)
 
     def _get_value_if_none(self, type_id, item_size=0):
         if type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
@@ -2067,10 +2069,18 @@ cdef class NoneAwareWrapperIterator:
         if self._valid_count == self._item_count:
             return
 
-        if self._validity_builder.capacity_bytes == 0 and self._item_count > 1:
-            self._validity_builder._write_bits(repeat(True, self._item_count - 1))
+        cdef int code
+        if self._bitmap.size_bits == 0 and self._item_count > 1:
+            code = ArrowBitmapAppend(&self._bitmap, 1, self._item_count - 1)
+            if code != NANOARROW_OK:
+                Error.raise_error("ArrowBitmapAppend()", code)
 
-        self._validity_builder._write_bits([is_valid])
+        # Note that appending to a bitmap in this way is not efficient in a
+        # tight loop (although this may not matter in the context of a Python
+        # iterator))
+        code = ArrowBitmapAppend(&self._bitmap, is_valid, 1)
+        if code != NANOARROW_OK:
+            Error.raise_error("ArrowBitmapAppend()", code)
 
     def __iter__(self):
         for item in self._obj:
@@ -2083,10 +2093,19 @@ cdef class NoneAwareWrapperIterator:
 
     def finish(self):
         null_count = self._item_count - self._valid_count
+
+        # If we did allocate a bitmap, make sure the last few bits are zeroed
+        if null_count > 0 and self._bitmap.size_bits % 8 != 0:
+            ArrowBitmapAppendUnsafe(&self._bitmap, 0, self._bitmap.size_bits % 8)
+
+        cdef CBuffer validity = CBuffer.empty()
+        ArrowBufferMove(&self._bitmap.buffer, validity._ptr)
+        validity._set_data_type(NANOARROW_TYPE_BOOL)
+
         return (
             self._item_count,
             null_count,
-            self._validity_builder.finish() if null_count > 0 else None
+            validity if null_count > 0 else None
         )
 
 
