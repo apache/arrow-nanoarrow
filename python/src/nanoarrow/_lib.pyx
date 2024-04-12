@@ -1887,6 +1887,10 @@ cdef class CBufferBuilder:
         self._locked = False
 
     @property
+    def format(self):
+        return self._buffer._format.decode()
+
+    @property
     def size_bytes(self):
         return self._buffer.size_bytes
 

@@ -25,6 +25,8 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
+import array
+
 from typing import Any, Iterable, Literal
 
 from nanoarrow._lib import (
@@ -640,6 +642,15 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
         builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
     else:
         builder.set_data_type(schema_view.storage_type_id)
+
+    # If we are using a typecode supported by the array module, it has much
+    # faster implementations of safely building buffers from iterables
+    if (
+        builder.format in array.typecodes
+        and schema_view.storage_type_id != CArrowType.BOOL
+    ):
+        buf = array.array(builder.format, obj)
+        return CBuffer.from_pybuffer(buf), len(buf)
 
     n_values_written = builder.write_elements(obj)
     return builder.finish(), n_values_written
