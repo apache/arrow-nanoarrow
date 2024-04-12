@@ -2033,23 +2033,28 @@ cdef class CBufferBuilder:
 
 
 cdef class NoneAwareWrapperIterator:
+    cdef ArrowBitmap _bitmap
     cdef object _obj
     cdef object _value_if_none
-    cdef ArrowBitmap _bitmap
     cdef int64_t _valid_count
     cdef int64_t _item_count
 
-    def __cinit__(self, obj, type_id, item_size=0):
-        self._obj = iter(obj)
-        self._value_if_none = self._get_value_if_none(type_id, item_size)
+    def __cinit__(self, obj, type_id, item_size_bytes=0):
         ArrowBitmapInit(&self._bitmap)
+        self._obj = iter(obj)
+
+        self._value_if_none = self._get_value_if_none(type_id, item_size_bytes)
         self._valid_count = 0
         self._item_count = 0
 
     def __dealloc__(self):
         ArrowBitmapReset(&self._bitmap)
 
-    def _get_value_if_none(self, type_id, item_size=0):
+    def reserve(self, int64_t additional_elements):
+        cdef int code = ArrowBitmapReserve(&self._bitmap, additional_elements)
+        Error.raise_error_not_ok(self, code)
+
+    def _get_value_if_none(self, type_id, item_size_bytes=0):
         if type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
             return (0, 0)
         elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
@@ -2057,7 +2062,7 @@ cdef class NoneAwareWrapperIterator:
         elif type_id == NANOARROW_TYPE_BOOL:
             return False
         elif type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY):
-            return b"\x00" * item_size
+            return b"\x00" * item_size_bytes
         elif type_id in (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE):
             return 0.0
         else:

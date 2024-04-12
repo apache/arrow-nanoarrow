@@ -633,6 +633,9 @@ def _c_array_from_iterable(obj, schema=None) -> CArray:
         obj, schema_view.storage_type_id, schema_view.fixed_size
     )
 
+    if obj_len > 0:
+        obj_wrapper.reserve(obj_len)
+
     # Use buffer create for crude support of array from iterable
     data = _c_buffer_from_iterable(obj_wrapper, schema_view)
     n_values, null_count, validity = obj_wrapper.finish()
