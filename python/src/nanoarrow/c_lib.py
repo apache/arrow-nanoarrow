@@ -365,8 +365,8 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
         return CArrayStream.from_array_list([array], array.schema, validate=False)
     except Exception as e:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} "
-            "to nanoarrow.c_array_stream or nanoarrow.c_array"
+            f"An error occurred whilst converting {type(obj).__name__} "
+            f"to nanoarrow.c_array_stream or nanoarrow.c_array: \n {e}"
         ) from e
 
 
