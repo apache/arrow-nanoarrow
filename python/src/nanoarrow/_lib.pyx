@@ -2236,6 +2236,31 @@ cdef class CArrayBuilder:
 
         return self
 
+    def append_bytes(self, obj):
+        cdef Py_buffer buffer
+        cdef ArrowBufferView item
+
+        for py_item in obj:
+            if py_item is None:
+                code = ArrowArrayAppendNull(self._ptr, 1)
+            else:
+                PyObject_GetBuffer(py_item, &buffer, PyBUF_ANY_CONTIGUOUS)
+
+                if buffer.ndim != 1:
+                    raise ValueError("Can't append buffer with dimensions != 1 to binary array")
+
+                if buffer.format != NULL and buffer.format != b"B":
+                    PyBuffer_Release(&buffer)
+                    raise ValueError("Can't append buffer with format != 'B' to binary array")
+
+                item.data.data = buffer.buf
+                item.size_bytes = buffer.len
+                code = ArrowArrayAppendBytes(self._ptr, item)
+                PyBuffer_Release(&buffer)
+
+            if code != NANOARROW_OK:
+                Error.raise_error(f"append bytes item {py_item}")
+
     def set_offset(self, int64_t offset):
         self.c_array._assert_valid()
         self._ptr.offset = offset

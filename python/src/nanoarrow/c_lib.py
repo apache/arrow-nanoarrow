@@ -628,12 +628,18 @@ def _c_array_from_iterable(obj, schema=None) -> CArray:
             f"Can't create array from iterable for type {schema_view.type}"
         )
 
-    # Handle variable-size binary types
+    # Handle variable-size binary types (string, binary)
     if schema_view.type_id in (CArrowType.STRING, CArrowType.LARGE_STRING):
         builder = CArrayBuilder.allocate()
         builder.init_from_schema(schema)
         builder.start_appending()
         builder.append_strings(obj)
+        return builder.finish()
+    elif schema_view.type_id in (CArrowType.BINARY, CArrowType.LARGE_BINARY):
+        builder = CArrayBuilder.allocate()
+        builder.init_from_schema(schema)
+        builder.start_appending()
+        builder.append_bytes(obj)
         return builder.finish()
 
     # Creating a buffer from an iterable does not handle None values,
@@ -663,6 +669,14 @@ def _c_array_from_iterable(obj, schema=None) -> CArray:
 def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
     import array
 
+    # array.typecodes is not available in all PyPy versions.
+    # Rather than guess, just don't use the array constructor if
+    # this attribute is not available.
+    if hasattr(array, "typecodes"):
+        array_typecodes = array.typecodes
+    else:
+        array_typecodes = []
+
     if schema is None:
         raise ValueError("CBuffer from iterable requires schema")
 
@@ -682,7 +696,7 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
     # If we are using a typecode supported by the array module, it has much
     # faster implementations of safely building buffers from iterables
     if (
-        builder.format in array.typecodes
+        builder.format in array_typecodes
         and schema_view.storage_type_id != CArrowType.BOOL
     ):
         buf = array.array(builder.format, obj)
