@@ -214,7 +214,24 @@ def test_c_buffer_builder():
     assert builder.size_bytes == 10
     assert builder.capacity_bytes == 123
 
-    assert bytes(builder.finish()) == b"abcdefghij"
+    with pytest.raises(IndexError):
+        builder.advance(-11)
+
+    with pytest.raises(IndexError):
+        builder.advance(114)
+
+    mv = memoryview(builder)
+    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+        memoryview(builder)
+
+    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+        assert bytes(builder.finish()) == b"abcdefghij"
+
+    mv[builder.size_bytes] = ord("k")
+    builder.advance(1)
+
+    del mv
+    assert bytes(builder.finish()) == b"abcdefghijk"
 
 
 def test_c_buffer_from_iterable():
@@ -231,7 +248,7 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
-    with pytest.raises(ValueError, match="Can't create buffer from type"):
+    with pytest.raises(ValueError, match="Can't create buffer"):
         na.c_buffer([1, 2, 3], na.date32())
 
 

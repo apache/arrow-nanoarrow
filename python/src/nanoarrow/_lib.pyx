@@ -42,6 +42,7 @@ from cpython cimport (
     PyObject_GetBuffer,
     PyBuffer_Release,
     PyBuffer_ToContiguous,
+    PyBuffer_FillInfo,
     PyBUF_ANY_CONTIGUOUS,
     PyBUF_FORMAT,
     PyBUF_WRITABLE
@@ -1856,33 +1857,102 @@ cdef class CBuffer:
 
 
 cdef class CBufferBuilder:
-    """Wrapper around writable owned buffer CPU content"""
+    """Wrapper around writable CPU buffer content
+
+    This class provides a growable type-aware buffer that can be used
+    to create a typed buffer from a Python iterable. This method of
+    creating a buffer is usually slower than constructors like
+    ``array.array()`` or ``numpy.array()``; however, this class supports
+    all Arrow types with a single data buffer (e.g., boolean bitmaps,
+    float16, intervals, fixed-size binary), some of which are not supported
+    by other constructors.
+    """
     cdef CBuffer _buffer
+    cdef bint _locked
 
     def __cinit__(self):
         self._buffer = CBuffer.empty()
+        self._locked = False
+
+    cdef _assert_unlocked(self):
+        if self._locked:
+            raise BufferError("CBufferBuilder is locked")
+
+    # Implement the buffer protocol so that this object can be used as
+    # the argument to Struct.readinto() (or perhaps written to by
+    # an independent library).
+    def __getbuffer__(self, Py_buffer* buffer, int flags):
+        self._assert_unlocked()
+        PyBuffer_FillInfo(
+            buffer,
+            self,
+            self._buffer._ptr.data,
+            self._buffer._ptr.capacity_bytes,
+            0,
+            flags
+        )
+        self._locked = True
+
+    def __releasebuffer__(self, Py_buffer* buffer):
+        self._locked = False
+
+    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
+        """Set the data type used to interpret elements in :meth:`write_elements`."""
+        self._buffer._set_data_type(type_id, element_size_bits)
+        return self
+
+    @property
+    def format(self):
+        """The ``struct`` format code of the underlying buffer"""
+        return self._buffer._format.decode()
 
     @property
     def size_bytes(self):
+        """The number of bytes that have been written to this buffer"""
         return self._buffer.size_bytes
 
     @property
     def capacity_bytes(self):
+        """The number of bytes allocated in the underlying buffer"""
         return self._buffer._ptr.capacity_bytes
 
-    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
-        self._buffer._set_data_type(type_id, element_size_bits)
-        return self
-
     def reserve_bytes(self, int64_t additional_bytes):
+        """Ensure that the underlying buffer has space for ``additional_bytes``
+        more bytes to be written"""
+        self._assert_unlocked()
         cdef int code = ArrowBufferReserve(self._buffer._ptr, additional_bytes)
         Error.raise_error_not_ok("ArrowBufferReserve()", code)
         return self
 
+    def advance(self, int64_t additional_bytes):
+        """Manually increase :attr:`size_bytes` by ``additional_bytes``
+
+        This can be used after writing to the buffer using the buffer protocol
+        to ensure that :attr:`size_bytes` accurately reflects the number of
+        bytes written to the buffer.
+        """
+        cdef int64_t new_size = self._buffer._ptr.size_bytes + additional_bytes
+        if new_size < 0 or new_size > self._buffer._ptr.capacity_bytes:
+            raise IndexError(f"Can't advance {additional_bytes} from {self.size_bytes}")
+
+        self._buffer._ptr.size_bytes = new_size
+        return self
+
     def write(self, content):
+        """Write bytes to this buffer
+
+        Writes the bytes of ``content`` without considering the element type of
+        ``content`` or the element type of this buffer.
+
+        This method returns the number of bytes that were written.
+        """
+        self._assert_unlocked()
+
         cdef Py_buffer buffer
         cdef int64_t out
         PyObject_GetBuffer(content, &buffer, PyBUF_ANY_CONTIGUOUS)
+
+        # TODO: Check for single dimension?
 
         cdef int code = ArrowBufferReserve(self._buffer._ptr, buffer.len)
         if code != NANOARROW_OK:
@@ -1904,23 +1974,58 @@ cdef class CBufferBuilder:
         return out
 
     def write_elements(self, obj):
+        """"Write an iterable of elements to this buffer
+
+        Writes the elements of iterable ``obj`` according to the binary
+        representation specified by :attr:`format`. This is currently
+        powered by ``struct.pack_into()`` except when building bitmaps
+        where an internal implementation is used.
+
+        This method returns the number of elements that were written.
+        """
+        self._assert_unlocked()
+
+        # Boolean arrays need their own writer since Python provides
+        # no helpers for bitpacking
         if self._buffer._data_type == NANOARROW_TYPE_BOOL:
             return self._write_bits(obj)
 
         cdef int64_t n_values = 0
-        struct_obj = Struct(self._buffer._format)
-        pack = struct_obj.pack
-        write = self.write
+        cdef int64_t bytes_per_element = calcsize(self._buffer.format)
+        cdef int code
 
+        struct_obj = Struct(self._buffer._format)
+        pack_into = struct_obj.pack_into
+
+        # If an object has a length, we can avoid extra allocations
+        if hasattr(obj, "__len__"):
+            code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element * len(obj))
+            Error.raise_error_not_ok("ArrowBufferReserve()", code)
+
+        # Types whose Python representation is a tuple need a slightly different
+        # pack_into() call. if code != NANOARROW_OK is used instead of
+        # Error.raise_error_not_ok() Cython can avoid the extra function call
+        # and this is a very tight loop.
         if self._buffer._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
-                               NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
+                                       NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
             for item in obj:
+                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
+                if code != NANOARROW_OK:
+                    Error.raise_error("ArrowBufferReserve()", code)
+
+                pack_into(self, self._buffer._ptr.size_bytes, *item)
+                self._buffer._ptr.size_bytes += bytes_per_element
                 n_values += 1
-                write(pack(*item))
+
         else:
             for item in obj:
+                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
+                if code != NANOARROW_OK:
+                    Error.raise_error("ArrowBufferReserve()", code)
+
+                pack_into(self, self._buffer._ptr.size_bytes, item)
+                self._buffer._ptr.size_bytes += bytes_per_element
                 n_values += 1
-                write(pack(item))
 
         return n_values
 
@@ -1951,6 +2056,15 @@ cdef class CBufferBuilder:
         return n_values
 
     def finish(self):
+        """Finish building this buffer
+
+        Performs any steps required to finish building this buffer and
+        returns the result. Any behaviour resulting from calling methods
+        on this object after it has been finished is not currently
+        defined (but should not crash).
+        """
+        self._assert_unlocked()
+
         cdef CBuffer out = self._buffer
         out._populate_view()
 
@@ -1960,6 +2074,103 @@ cdef class CBufferBuilder:
     def __repr__(self):
         class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
         return f"{class_label}({self.size_bytes}/{self.capacity_bytes})"
+
+
+cdef class NoneAwareWrapperIterator:
+    """Nullable iterator wrapper
+
+    This class wraps an iterable ``obj`` that might contain ``None`` values
+    such that the iterable provided by this class contains "empty" (but valid)
+    values. After ``obj`` has been completely consumed, one can call
+    ``finish()`` to obtain the resulting bitmap. This is useful for passing
+    iterables that might contain None to tools that cannot handle them
+    (e.g., struct.pack(), array.array()).
+    """
+    cdef ArrowBitmap _bitmap
+    cdef object _obj
+    cdef object _value_if_none
+    cdef int64_t _valid_count
+    cdef int64_t _item_count
+
+    def __cinit__(self, obj, type_id, item_size_bytes=0):
+        ArrowBitmapInit(&self._bitmap)
+        self._obj = iter(obj)
+
+        self._value_if_none = self._get_value_if_none(type_id, item_size_bytes)
+        self._valid_count = 0
+        self._item_count = 0
+
+    def __dealloc__(self):
+        ArrowBitmapReset(&self._bitmap)
+
+    def reserve(self, int64_t additional_elements):
+        cdef int code = ArrowBitmapReserve(&self._bitmap, additional_elements)
+        Error.raise_error_not_ok(self, code)
+
+    def _get_value_if_none(self, type_id, item_size_bytes=0):
+        if type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
+            return (0, 0)
+        elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+            return (0, 0, 0)
+        elif type_id == NANOARROW_TYPE_BOOL:
+            return False
+        elif type_id  in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY):
+            return b"\x00" * item_size_bytes
+        elif type_id in (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE):
+            return 0.0
+        else:
+            return 0
+
+    cdef _append_to_validity(self, int is_valid):
+        self._valid_count += is_valid
+        self._item_count += 1
+
+        # Avoid allocating a bitmap if all values seen so far are valid
+        if self._valid_count == self._item_count:
+            return
+
+        # If the bitmap hasn't been allocated yet, allocate it now and
+        # fill with 1s for all previous elements.
+        cdef int code
+        if self._bitmap.size_bits == 0 and self._item_count > 1:
+            code = ArrowBitmapAppend(&self._bitmap, 1, self._item_count - 1)
+            if code != NANOARROW_OK:
+                Error.raise_error("ArrowBitmapAppend()", code)
+
+        # Append this element to the bitmap
+        code = ArrowBitmapAppend(&self._bitmap, is_valid, 1)
+        if code != NANOARROW_OK:
+            Error.raise_error("ArrowBitmapAppend()", code)
+
+    def __iter__(self):
+        for item in self._obj:
+            if item is None:
+                self._append_to_validity(0)
+                yield self._value_if_none
+            else:
+                self._append_to_validity(1)
+                yield item
+
+    def finish(self):
+        """Obtain the total count, null count, and validity bitmap after
+        consuming this iterable."""
+        cdef CBuffer validity
+        null_count = self._item_count - self._valid_count
+
+        # If we did allocate a bitmap, make sure the last few bits are zeroed
+        if null_count > 0 and self._bitmap.size_bits % 8 != 0:
+            ArrowBitmapAppendUnsafe(&self._bitmap, 0, self._bitmap.size_bits % 8)
+
+        if null_count > 0:
+            validity = CBuffer.empty()
+            ArrowBufferMove(&self._bitmap.buffer, validity._ptr)
+            validity._set_data_type(NANOARROW_TYPE_BOOL)
+
+        return (
+            self._item_count,
+            null_count,
+            validity if null_count > 0 else None
+        )
 
 
 cdef class CArrayBuilder:

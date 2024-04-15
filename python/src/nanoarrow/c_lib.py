@@ -38,6 +38,7 @@ from nanoarrow._lib import (
     CSchema,
     CSchemaBuilder,
     CSchemaView,
+    NoneAwareWrapperIterator,
     _obj_is_buffer,
     _obj_is_capsule,
 )
@@ -364,8 +365,8 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
         return CArrayStream.from_array_list([array], array.schema, validate=False)
     except Exception as e:
         raise TypeError(
-            f"Can't convert object of type {type(obj).__name__} "
-            "to nanoarrow.c_array_stream or nanoarrow.c_array"
+            f"An error occurred whilst converting {type(obj).__name__} "
+            f"to nanoarrow.c_array_stream or nanoarrow.c_array: \n {e}"
         ) from e
 
 
@@ -602,7 +603,7 @@ def _c_array_from_pybuffer(obj) -> CArray:
     return builder.finish()
 
 
-def _c_array_from_iterable(obj, schema=None):
+def _c_array_from_iterable(obj, schema=None) -> CArray:
     if schema is None:
         raise ValueError("schema is required for CArray import from iterable")
 
@@ -618,28 +619,66 @@ def _c_array_from_iterable(obj, schema=None):
         builder.start_appending()
         return builder.finish()
 
-    # Use buffer create for crude support of array from iterable
-    buffer, n_values = _c_buffer_from_iterable(obj, schema)
+    # We need to know a few things about the data type to choose the appropriate
+    # strategy for building the array.
+    schema_view = c_schema_view(schema)
+
+    if schema_view.storage_type_id != schema_view.type_id:
+        raise ValueError(
+            f"Can't create array from iterable for type {schema_view.type}"
+        )
+
+    # Creating a buffer from an iterable does not handle None values,
+    # but we can do so here with the NoneAwareWrapperIterator() wrapper.
+    # This approach is quite a bit slower, so only do it for a nullable
+    # type.
+    if schema_view.nullable:
+        obj_wrapper = NoneAwareWrapperIterator(
+            obj, schema_view.storage_type_id, schema_view.fixed_size
+        )
+
+        if obj_len > 0:
+            obj_wrapper.reserve(obj_len)
+
+        data, _ = _c_buffer_from_iterable(obj_wrapper, schema_view)
+        n_values, null_count, validity = obj_wrapper.finish()
+    else:
+        data, n_values = _c_buffer_from_iterable(obj, schema_view)
+        null_count = 0
+        validity = None
 
     return c_array_from_buffers(
-        schema, n_values, buffers=(None, buffer), null_count=0, move=True
+        schema, n_values, buffers=(validity, data), null_count=null_count, move=True
     )
 
 
 def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
+    import array
+
     if schema is None:
         raise ValueError("CBuffer from iterable requires schema")
 
-    builder = CBufferBuilder()
-
     schema_view = c_schema_view(schema)
     if schema_view.storage_type_id != schema_view.type_id:
-        raise ValueError(f"Can't create buffer from type {schema}")
+        raise ValueError(
+            f"Can't create buffer from iterable for type {schema_view.type}"
+        )
+
+    builder = CBufferBuilder()
 
     if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
         builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
     else:
         builder.set_data_type(schema_view.storage_type_id)
 
-    n_values_written = builder.write_elements(obj)
-    return builder.finish(), n_values_written
+    # If we are using a typecode supported by the array module, it has much
+    # faster implementations of safely building buffers from iterables
+    if (
+        builder.format in array.typecodes
+        and schema_view.storage_type_id != CArrowType.BOOL
+    ):
+        buf = array.array(builder.format, obj)
+        return CBuffer.from_pybuffer(buf), len(buf)
+
+    n_values = builder.write_elements(obj)
+    return builder.finish(), n_values
