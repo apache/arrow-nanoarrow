@@ -112,7 +112,7 @@ jobs:
     needs: ["build_sdist", "build_wheels"]
     name: Upload nightly packages
     runs-on: "ubuntu-20.04"
-    if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+    # if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -139,4 +139,4 @@ jobs:
             --as="arrow-nightlies" \
             dist/*
         env:
-          NANOARROW_GEMFURY_TOKEN: {{ '${{ secrets.NANOARROW_GEMFURY_TOKEN }}' }}
+          NANOARROW_GEMFURY_TOKEN: ${{ secrets.NANOARROW_GEMFURY_TOKEN }}
