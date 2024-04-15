@@ -1879,6 +1879,9 @@ cdef class CBufferBuilder:
         if self._locked:
             raise BufferError("CBufferBuilder is locked")
 
+    def __buffer__(self, flags):
+        return memoryview(self)
+
     # Implement the buffer protocol so that this object can be used as
     # the argument to Struct.readinto() (or perhaps written to by
     # an independent library).
@@ -1938,9 +1941,6 @@ cdef class CBufferBuilder:
 
         self._buffer._ptr.size_bytes = new_size
         return self
-
-    def read(self, *args):
-        raise NotImplementedError()
 
     def write(self, content):
         """Write bytes to this buffer
