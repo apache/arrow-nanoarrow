@@ -239,7 +239,7 @@ def test_c_buffer_builder_buffer_protocol():
     # On at least some versions of PyPy the call to mv.release() does not seem
     # to deterministically call the CBufferBuilder's __releasebuffer__().
     if platform.python_implementation() == "PyPy":
-        pytest.skip("CBufferBuilder buffer  not implemented for PyPy")
+        pytest.skip("CBufferBuilder buffer release is non-deterministic on PyPy")
 
     mv[builder.size_bytes] = ord("k")
     builder.advance(1)

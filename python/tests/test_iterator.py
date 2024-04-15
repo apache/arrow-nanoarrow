@@ -58,9 +58,7 @@ def test_iterator_nullable_primitive():
 
 
 def test_iterator_string():
-    array = na.c_array_from_buffers(
-        na.string(), 2, buffers=[None, na.c_buffer([0, 2, 5], na.int32()), b"abcde"]
-    )
+    array = na.c_array(["ab", "cde"], na.string())
 
     assert list(iter_py(array)) == ["ab", "cde"]
 
@@ -69,15 +67,7 @@ def test_iterator_string():
 
 
 def test_iterator_nullable_string():
-    array = na.c_array_from_buffers(
-        na.string(),
-        3,
-        buffers=[
-            na.c_buffer([1, 1, 0], na.bool()),
-            na.c_buffer([0, 2, 5, 5], na.int32()),
-            b"abcde",
-        ],
-    )
+    array = na.c_array(["ab", "cde", None], na.string())
 
     assert list(iter_py(array)) == ["ab", "cde", None]
 
@@ -86,9 +76,7 @@ def test_iterator_nullable_string():
 
 
 def test_iterator_binary():
-    array = na.c_array_from_buffers(
-        na.binary(), 2, buffers=[None, na.c_buffer([0, 2, 5], na.int32()), b"abcde"]
-    )
+    array = na.c_array([b"ab", b"cde"], na.binary())
 
     assert list(iter_py(array)) == [b"ab", b"cde"]
 
@@ -97,15 +85,7 @@ def test_iterator_binary():
 
 
 def test_iterator_nullable_binary():
-    array = na.c_array_from_buffers(
-        na.binary(),
-        3,
-        buffers=[
-            na.c_buffer([1, 1, 0], na.bool()),
-            na.c_buffer([0, 2, 5, 5], na.int32()),
-            b"abcde",
-        ],
-    )
+    array = na.c_array([b"ab", b"cde", None], na.binary())
 
     assert list(iter_py(array)) == [b"ab", b"cde", None]
 
