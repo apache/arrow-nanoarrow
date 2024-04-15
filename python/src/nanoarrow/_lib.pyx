@@ -1939,6 +1939,9 @@ cdef class CBufferBuilder:
         self._buffer._ptr.size_bytes = new_size
         return self
 
+    def read(self, *args):
+        raise NotImplementedError()
+
     def write(self, content):
         """Write bytes to this buffer
 
