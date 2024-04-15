@@ -1857,7 +1857,16 @@ cdef class CBuffer:
 
 
 cdef class CBufferBuilder:
-    """Wrapper around writable owned buffer CPU content"""
+    """Wrapper around writable CPU buffer content
+
+    This class provides a growable type-aware buffer that can be used
+    to create a typed buffer from a Python iterable. This method of
+    creating a buffer is usually slower than constructors like
+    ``array.array()`` or ``numpy.array()``; however, this class supports
+    all Arrow types with a single data buffer (e.g., boolean bitmaps,
+    float16, intervals, fixed-size binary), some of which are not supported
+    by other constructors.
+    """
     cdef CBuffer _buffer
     cdef bint _locked
 
@@ -1870,7 +1879,8 @@ cdef class CBufferBuilder:
             raise BufferError("CBufferBuilder is locked")
 
     # Implement the buffer protocol so that this object can be used as
-    # the argument to Struct.readinto().
+    # the argument to Struct.readinto() (or perhaps written to by
+    # an independent library).
     def __getbuffer__(self, Py_buffer* buffer, int flags):
         self._assert_unlocked()
         PyBuffer_FillInfo(
@@ -1886,29 +1896,41 @@ cdef class CBufferBuilder:
     def __releasebuffer__(self, Py_buffer* buffer):
         self._locked = False
 
+    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
+        """Set the data type used to interpret elements in :meth:`write_elements`."""
+        self._buffer._set_data_type(type_id, element_size_bits)
+        return self
+
     @property
     def format(self):
+        """The ``struct`` format code of the underlying buffer"""
         return self._buffer._format.decode()
 
     @property
     def size_bytes(self):
+        """The number of bytes that have been written to this buffer"""
         return self._buffer.size_bytes
 
     @property
     def capacity_bytes(self):
+        """The number of bytes allocated in the underlying buffer"""
         return self._buffer._ptr.capacity_bytes
 
-    def set_data_type(self, ArrowType type_id, int element_size_bits=0):
-        self._buffer._set_data_type(type_id, element_size_bits)
-        return self
-
     def reserve_bytes(self, int64_t additional_bytes):
+        """Ensure that the underlying buffer has space for ``additional_bytes``
+        more bytes to be written"""
         self._assert_unlocked()
         cdef int code = ArrowBufferReserve(self._buffer._ptr, additional_bytes)
         Error.raise_error_not_ok("ArrowBufferReserve()", code)
         return self
 
     def advance(self, int64_t additional_bytes):
+        """Manually increase :attr:`size_bytes` by ``additional_bytes``
+
+        This can be used after writing to the buffer using the buffer protocol
+        to ensure that :attr:`size_bytes` accurately reflects the number of
+        bytes written to the buffer.
+        """
         cdef int64_t new_size = self._buffer._ptr.size_bytes + additional_bytes
         if new_size < 0 or new_size > self._buffer._ptr.capacity_bytes:
             raise IndexError(f"Can't advance {additional_bytes} from {self.size_bytes}")
@@ -1917,6 +1939,13 @@ cdef class CBufferBuilder:
         return self
 
     def write(self, content):
+        """Write bytes to this buffer
+
+        Writes the bytes of ``content`` without considering the element type of
+        ``content`` or the element type of this buffer.
+
+        This method returns the number of bytes that were written.
+        """
         self._assert_unlocked()
 
         cdef Py_buffer buffer
@@ -1945,6 +1974,15 @@ cdef class CBufferBuilder:
         return out
 
     def write_elements(self, obj):
+        """"Write an iterable of elements to this buffer
+
+        Writes the elements of iterable ``obj`` according to the binary
+        representation specified by :attr:`format`. This is currently
+        powered by ``struct.pack_into()`` except when building bitmaps
+        where an internal implementation is used.
+
+        This method returns the number of elements that were written.
+        """
         self._assert_unlocked()
 
         # Boolean arrays need their own writer since Python provides
@@ -2018,6 +2056,13 @@ cdef class CBufferBuilder:
         return n_values
 
     def finish(self):
+        """Finish building this buffer
+
+        Performs any steps required to finish building this buffer and
+        returns the result. Any behaviour resulting from calling methods
+        on this object after it has been finished is not currently
+        defined (but should not crash).
+        """
         self._assert_unlocked()
 
         cdef CBuffer out = self._buffer
@@ -2109,15 +2154,17 @@ cdef class NoneAwareWrapperIterator:
     def finish(self):
         """Obtain the total count, null count, and validity bitmap after
         consuming this iterable."""
+        cdef CBuffer validity
         null_count = self._item_count - self._valid_count
 
         # If we did allocate a bitmap, make sure the last few bits are zeroed
         if null_count > 0 and self._bitmap.size_bits % 8 != 0:
             ArrowBitmapAppendUnsafe(&self._bitmap, 0, self._bitmap.size_bits % 8)
 
-        cdef CBuffer validity = CBuffer.empty()
-        ArrowBufferMove(&self._bitmap.buffer, validity._ptr)
-        validity._set_data_type(NANOARROW_TYPE_BOOL)
+        if null_count > 0:
+            validity = CBuffer.empty()
+            ArrowBufferMove(&self._bitmap.buffer, validity._ptr)
+            validity._set_data_type(NANOARROW_TYPE_BOOL)
 
         return (
             self._item_count,
