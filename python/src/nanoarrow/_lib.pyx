@@ -2216,9 +2216,11 @@ cdef class CArrayBuilder:
             if py_item is None:
                 code = ArrowArrayAppendNull(self._ptr, 1)
             else:
+                # Cython raises the error from PyUnicode_AsUTF8AndSize()
+                # in the event that py_item is not a str(); however, we
+                # set item_utf8_size = 0 to be safe.
+                item_utf8_size = 0
                 item.data = PyUnicode_AsUTF8AndSize(py_item, &item_utf8_size)
-                if item.data == NULL:
-                    raise TypeError("PyUnicode_AsUTF8AndSize() failed")
                 item.size_bytes = item_utf8_size
                 code = ArrowArrayAppendString(self._ptr, item)
 
@@ -2235,14 +2237,14 @@ cdef class CArrayBuilder:
             if py_item is None:
                 code = ArrowArrayAppendNull(self._ptr, 1)
             else:
-                PyObject_GetBuffer(py_item, &buffer, PyBUF_ANY_CONTIGUOUS)
+                PyObject_GetBuffer(py_item, &buffer, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT)
 
                 if buffer.ndim != 1:
                     raise ValueError("Can't append buffer with dimensions != 1 to binary array")
 
-                if buffer.format != NULL and buffer.format != b"B":
+                if buffer.itemsize != 1:
                     PyBuffer_Release(&buffer)
-                    raise ValueError("Can't append buffer with format != 'B' to binary array")
+                    raise ValueError("Can't append buffer with itemsize != 1 to binary array")
 
                 item.data.data = buffer.buf
                 item.size_bytes = buffer.len

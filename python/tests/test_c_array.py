@@ -229,6 +229,10 @@ def test_c_array_from_iterable_string():
     assert len(array_view.buffer(1)) == 4
     assert len(array_view.buffer(2)) == 7
 
+    # Check an item that is not a str()
+    with pytest.raises(TypeError):
+        na.c_array([b"1234"], na.string())
+
 
 def test_c_array_from_iterable_bytes():
     string = na.c_array([b"abc", None, b"defg"], na.binary())
@@ -239,6 +243,18 @@ def test_c_array_from_iterable_bytes():
     assert len(array_view.buffer(0)) == 1
     assert len(array_view.buffer(1)) == 4
     assert len(array_view.buffer(2)) == 7
+
+    with pytest.raises(TypeError, match="a bytes-like object"):
+        na.c_array(["1234"], na.binary())
+
+    buf_not_bytes = na.c_buffer([1, 2, 3], na.int32())
+    with pytest.raises(ValueError, match="Can't append buffer with itemsize != 1"):
+        na.c_array([buf_not_bytes], na.binary())
+
+    np = pytest.importorskip("numpy")
+    buf_2d = np.ones((2, 2))
+    with pytest.raises(ValueError, match="Can't append buffer with dimensions != 1"):
+        na.c_array([buf_2d], na.binary())
 
 
 def test_c_array_from_iterable_non_empty_nullable_without_nulls():
