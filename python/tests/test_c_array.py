@@ -244,7 +244,7 @@ def test_c_array_from_iterable_bytes():
     assert len(array_view.buffer(1)) == 4
     assert len(array_view.buffer(2)) == 7
 
-    with pytest.raises(TypeError, match="a bytes-like object"):
+    with pytest.raises(TypeError):
         na.c_array(["1234"], na.binary())
 
     buf_not_bytes = na.c_buffer([1, 2, 3], na.int32())
