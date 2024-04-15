@@ -229,8 +229,8 @@ def test_c_buffer_builder():
 
     mv[builder.size_bytes] = ord("k")
     builder.advance(1)
+    mv.release()
 
-    del mv
     assert bytes(builder.finish()) == b"abcdefghijk"
 
 
