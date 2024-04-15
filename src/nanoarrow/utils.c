@@ -430,6 +430,13 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
   // The most significant segment should have no leading zeroes
   int n_chars = snprintf((char*)buffer->data + buffer->size_bytes, 21, "%lu",
                          (unsigned long)segments[num_segments - 1]);
+
+  // Ensure that an encoding error from snprintf() does not result
+  // in an out-of-bounds access.
+  if (n_chars < 0) {
+    return ERANGE;
+  }
+
   buffer->size_bytes += n_chars;
 
   // Subsequent output needs to be left-padded with zeroes such that each segment
