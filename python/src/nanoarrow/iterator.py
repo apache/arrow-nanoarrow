@@ -269,12 +269,20 @@ class PyIterator(ArrayViewIterator):
 
         storage = self._primitive_iter(offset, length)
         precision = self._schema_view.decimal_precision
-        scaleb = Decimal(-self._schema_view.decimal_scale)
-        context = Context(prec=precision)
 
+        # The approach here it to use Decimal(<integer>).scaleb(-scale),
+        # which is a balance between simplicity, performance, and
+        # safety (ensuring that we stay independent from the global precision).
+        # We cache the scaleb and context to avoid doing so in the loop (the
+        # argument to scaleb is transformed to a decimal by the .scaleb()
+        # implementation).
+        #
         # It would probably be fastest to go straight from binary
         # to string to decimal, since creating a decimal from a string
         # appears to be the fastest constructor.
+        scaleb = Decimal(-self._schema_view.decimal_scale)
+        context = Context(prec=precision)
+
         for item in storage:
             if item is None:
                 yield None
