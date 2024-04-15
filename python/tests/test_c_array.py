@@ -219,6 +219,17 @@ def test_c_array_from_iterable_empty():
     assert len(array_view.buffer(2)) == 0
 
 
+def test_c_array_from_iterable_string():
+    string = na.c_array(["abc", None, "defg"], na.c_schema(na.string()))
+    assert string.length == 3
+    assert string.null_count == 1
+
+    array_view = na.c_array_view(string)
+    assert len(array_view.buffer(0)) == 1
+    assert len(array_view.buffer(1)) == 4
+    assert len(array_view.buffer(2)) == 7
+
+
 def test_c_array_from_iterable_non_empty_nullable_without_nulls():
     c_array = na.c_array([1, 2, 3], na.int32())
     assert c_array.length == 3

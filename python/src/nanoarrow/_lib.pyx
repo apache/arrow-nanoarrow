@@ -36,6 +36,7 @@ from libc.string cimport memcpy
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
+from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
     Py_buffer,
     PyObject_CheckBuffer,
@@ -2213,6 +2214,26 @@ cdef class CArrayBuilder:
     def start_appending(self):
         cdef int code = ArrowArrayStartAppending(self._ptr)
         Error.raise_error_not_ok("ArrowArrayStartAppending()", code)
+        return self
+
+    def append_strings(self, obj):
+        cdef int code
+        cdef Py_ssize_t item_utf8_size
+        cdef ArrowStringView item
+
+        for py_item in obj:
+            if py_item is None:
+                code = ArrowArrayAppendNull(self._ptr, 1)
+            else:
+                item.data = PyUnicode_AsUTF8AndSize(py_item, &item_utf8_size)
+                if item.data == NULL:
+                    raise TypeError("PyUnicode_AsUTF8AndSize() failed")
+                item.size_bytes = item_utf8_size
+                code = ArrowArrayAppendString(self._ptr, item)
+
+            if code != NANOARROW_OK:
+                Error.raise_error(f"append string item {py_item}")
+
         return self
 
     def set_offset(self, int64_t offset):

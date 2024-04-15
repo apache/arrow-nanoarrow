@@ -628,6 +628,14 @@ def _c_array_from_iterable(obj, schema=None) -> CArray:
             f"Can't create array from iterable for type {schema_view.type}"
         )
 
+    # Handle variable-size binary types
+    if schema_view.type_id in (CArrowType.STRING, CArrowType.LARGE_STRING):
+        builder = CArrayBuilder.allocate()
+        builder.init_from_schema(schema)
+        builder.start_appending()
+        builder.append_strings(obj)
+        return builder.finish()
+
     # Creating a buffer from an iterable does not handle None values,
     # but we can do so here with the NoneAwareWrapperIterator() wrapper.
     # This approach is quite a bit slower, so only do it for a nullable
