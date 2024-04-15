@@ -1996,7 +1996,8 @@ cdef class CBufferBuilder:
         cdef int code
 
         struct_obj = Struct(self._buffer._format)
-        pack_into = struct_obj.pack_into
+        pack = struct_obj.pack
+        write = self.write
 
         # If an object has a length, we can avoid extra allocations
         if hasattr(obj, "__len__"):
@@ -2010,22 +2011,12 @@ cdef class CBufferBuilder:
         if self._buffer._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
                                        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
             for item in obj:
-                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
-                if code != NANOARROW_OK:
-                    Error.raise_error("ArrowBufferReserve()", code)
-
-                pack_into(self, self._buffer._ptr.size_bytes, *item)
-                self._buffer._ptr.size_bytes += bytes_per_element
+                write(pack(*item))
                 n_values += 1
 
         else:
             for item in obj:
-                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
-                if code != NANOARROW_OK:
-                    Error.raise_error("ArrowBufferReserve()", code)
-
-                pack_into(self, self._buffer._ptr.size_bytes, item)
-                self._buffer._ptr.size_bytes += bytes_per_element
+                write(pack(item))
                 n_values += 1
 
         return n_values
