@@ -105,9 +105,9 @@ def test_schema_metadata():
     assert len(schema.metadata) == 2
 
     meta2 = {k: v for k, v in schema.metadata}
-    assert list(meta2.keys()) == ["key1", "key2"]
+    assert list(meta2.keys()) == [b"key1", b"key2"]
     assert list(meta2.values()) == [b"value1", b"value2"]
-    assert "'key1': b'value1'" in repr(schema)
+    assert "b'key1': b'value1'" in repr(schema)
 
 
 def test_c_schema_view():
