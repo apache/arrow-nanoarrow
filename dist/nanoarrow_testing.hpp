@@ -138,7 +138,7 @@ class DictionaryContext {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
-  TestingJSONWriter() : float_precision_(-1) {}
+  TestingJSONWriter() : float_precision_(-1), include_metadata_(true) {}
 
   /// \brief Set the floating point precision of the writer
   ///
@@ -146,7 +146,12 @@ class TestingJSONWriter {
   /// to encode the value in the output. When writing files specifically for
   /// integration tests, floating point values should be rounded to 3 decimal places to
   /// avoid serialization issues.
-  void set_float_precision(int precision) { float_precision_ = precision; }
+  void set_float_precision(int value) { float_precision_ = value; }
+
+  /// \brief Set whether metadata should be included in the output of a schema or field
+  ///
+  /// Use false to skip writing schema/field metadata in the output.
+  void set_include_metadata(bool value) { include_metadata_ = value; }
 
   void ResetDictionaries() { dictionaries_.clear(); }
 
@@ -227,7 +232,7 @@ class TestingJSONWriter {
     }
 
     // Write metadata
-    if (schema->metadata != nullptr) {
+    if (ShouldWriteMetadata(schema->metadata)) {
       out << R"(, "metadata": )";
       NANOARROW_RETURN_NOT_OK(WriteMetadata(out, schema->metadata));
     }
@@ -293,7 +298,7 @@ class TestingJSONWriter {
     }
 
     // Write metadata
-    if (field->metadata != nullptr) {
+    if (ShouldWriteMetadata(field->metadata)) {
       out << R"(, "metadata": )";
       NANOARROW_RETURN_NOT_OK(WriteMetadata(out, field->metadata));
     }
@@ -494,7 +499,12 @@ class TestingJSONWriter {
 
  private:
   int float_precision_;
+  bool include_metadata_;
   internal::DictionaryContext dictionaries_;
+
+  bool ShouldWriteMetadata(const char* metadata) {
+    return metadata != nullptr && include_metadata_;
+  }
 
   ArrowErrorCode WriteDictionaryBatch(std::ostream& out, int32_t dictionary_id) {
     const internal::Dictionary& dict = dictionaries_.Get(dictionary_id);
@@ -2023,14 +2033,18 @@ class TestingJSONReader {
       buffer_view->data.as_uint8 = buffer->data;
       buffer_view->size_bytes = buffer->size_bytes;
 
-      // If this is a validity buffer with a big enough size, set the array_view's
-      // null_count
+      // If this is a validity buffer, set the null_count
       if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
           _ArrowBytesForBits(array_view->length) <= buffer_view->size_bytes) {
         array_view->null_count =
             array_view->length -
             ArrowBitCountSet(buffer_view->data.as_uint8, 0, array_view->length);
       }
+    }
+
+    // The null type doesn't have any buffers but we can set the null_count
+    if (array_view->storage_type == NANOARROW_TYPE_NA) {
+      array_view->null_count = array_view->length;
     }
 
     // If there is a dictionary associated with schema, parse its value into dictionary
@@ -2051,9 +2065,10 @@ class TestingJSONReader {
         ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
         error_prefix + "failed to validate: "));
 
-    // Flush length and buffer pointers to the Array
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr), error);
+    // Flush length and buffer pointers to the Array. This also ensures that buffers
+    // are not NULL (matters for some versions of some implementations).
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFinishBuildingDefault(array, nullptr),
+                                       error);
     array->length = array_view->length;
     array->null_count = array_view->null_count;
 
@@ -2177,6 +2192,11 @@ class TestingJSONReader {
                                  ArrowError* error) {
     NANOARROW_RETURN_NOT_OK(
         Check(value.is_array(), error, "bitmap buffer must be array"));
+
+    // Reserving with the exact length ensures that the last bits are always zeroed.
+    // This was an assumption made by the C# implementation at the time this was
+    // implemented.
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapReserve(bitmap, value.size()), error);
 
     for (const auto& item : value) {
       // Some example files write bitmaps as [true, false, true] but the documentation
@@ -2505,6 +2525,35 @@ class TestingJSONComparison {
   };
 
  public:
+  TestingJSONComparison() : compare_batch_flags_(true), compare_metadata_order_(true) {
+    // We do our own metadata comparison
+    writer_actual_.set_include_metadata(false);
+    writer_expected_.set_include_metadata(false);
+  }
+
+  /// \brief Compare top-level RecordBatch flags (e.g., nullability)
+  ///
+  /// Some Arrow implementations export batches as nullable, and some export them as
+  /// non-nullable. Use false to consider these two types of batches as equivalent.
+  void set_compare_batch_flags(bool value) { compare_batch_flags_ = value; }
+
+  /// \brief Compare metadata order
+  ///
+  /// Some Arrow implementations store metadata using structures (e.g., hash map) that
+  /// reorder metadata items. Use false to consider metadata whose keys/values have
+  /// been reordered as equivalent.
+  void set_compare_metadata_order(bool value) { compare_metadata_order_ = value; }
+
+  /// \brief Set float precision
+  ///
+  /// The Arrow Integration Testing JSON document states that values should be compared
+  /// to 3 decimal places to avoid floating point serialization issues. Use -1 to specify
+  /// that all decimal places should be used (the default).
+  void set_compare_float_precision(int value) {
+    writer_actual_.set_float_precision(value);
+    writer_expected_.set_float_precision(value);
+  }
+
   /// \brief Returns the number of differences found by the previous call
   int64_t num_differences() const { return differences_.size(); }
 
@@ -2619,7 +2668,7 @@ class TestingJSONComparison {
     // (Purposefully ignore the name field at the top level)
 
     // Compare flags
-    if (actual->flags != expected->flags) {
+    if (compare_batch_flags_ && actual->flags != expected->flags) {
       differences_.push_back({path,
                               std::string(".flags: ") + std::to_string(actual->flags),
                               std::string(".flags: ") + std::to_string(expected->flags)});
@@ -2639,20 +2688,8 @@ class TestingJSONComparison {
     }
 
     // Compare metadata
-    std::stringstream ss;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteMetadata(ss, actual->metadata),
-                                       error);
-    std::string actual_metadata = ss.str();
-
-    ss.str("");
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        writer_expected_.WriteMetadata(ss, expected->metadata), error);
-    std::string expected_metadata = ss.str();
-
-    if (actual_metadata != expected_metadata) {
-      differences_.push_back({path, std::string(".metadata: ") + actual_metadata,
-                              std::string(".metadata: ") + expected_metadata});
-    }
+    NANOARROW_RETURN_NOT_OK(CompareMetadata(actual->metadata, expected->metadata, error,
+                                            path + std::string(".metadata")));
 
     return NANOARROW_OK;
   }
@@ -2722,6 +2759,10 @@ class TestingJSONComparison {
   nanoarrow::UniqueArrayView actual_;
   nanoarrow::UniqueArrayView expected_;
 
+  // Comparison options
+  bool compare_batch_flags_;
+  bool compare_metadata_order_;
+
   ArrowErrorCode CompareField(ArrowSchema* actual, ArrowSchema* expected,
                               ArrowError* error, const std::string& path = "") {
     // Preprocess both fields such that map types have canonical names
@@ -2751,6 +2792,91 @@ class TestingJSONComparison {
 
     if (actual_json != expected_json) {
       differences_.push_back({path, actual_json, expected_json});
+    }
+
+    NANOARROW_RETURN_NOT_OK(CompareMetadata(actual->metadata, expected->metadata, error,
+                                            path + std::string(".metadata")));
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode CompareMetadata(const char* actual, const char* expected,
+                                 ArrowError* error, const std::string& path = "") {
+    std::stringstream ss;
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_actual_.WriteMetadata(ss, actual), error);
+    std::string actual_json = ss.str();
+
+    ss.str("");
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(writer_expected_.WriteMetadata(ss, expected),
+                                       error);
+    std::string expected_json = ss.str();
+
+    bool metadata_equal = actual_json == expected_json;
+
+    // If there is a difference in the rendered JSON but we aren't being strict about
+    // order, check again using the KeyValue comparison.
+    if (!metadata_equal && !compare_metadata_order_) {
+      NANOARROW_RETURN_NOT_OK(
+          MetadataEqualKeyValue(actual, expected, &metadata_equal, error));
+    }
+
+    // If we still have an inequality, add a difference.
+    if (!metadata_equal) {
+      differences_.push_back({path, actual_json, expected_json});
+    }
+
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode MetadataEqualKeyValue(const char* actual, const char* expected,
+                                       bool* out, ArrowError* error) {
+    std::unordered_map<std::string, std::string> actual_map, expected_map;
+    NANOARROW_RETURN_NOT_OK(MetadataToMap(actual, &actual_map, error));
+    NANOARROW_RETURN_NOT_OK(MetadataToMap(expected, &expected_map, error));
+
+    if (actual_map.size() != expected_map.size()) {
+      *out = false;
+      return NANOARROW_OK;
+    }
+
+    for (const auto& item : expected_map) {
+      const auto& actual_item = actual_map.find(item.first);
+      if (actual_item == actual_map.end()) {
+        *out = false;
+        return NANOARROW_OK;
+      }
+
+      if (actual_item->second != item.second) {
+        *out = false;
+        return NANOARROW_OK;
+      }
+    }
+
+    *out = true;
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode MetadataToMap(const char* metadata,
+                               std::unordered_map<std::string, std::string>* out,
+                               ArrowError* error) {
+    ArrowMetadataReader reader;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderInit(&reader, metadata), error);
+
+    ArrowStringView key, value;
+    size_t metadata_num_keys = 0;
+    while (reader.remaining_keys > 0) {
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderRead(&reader, &key, &value),
+                                         error);
+      out->insert({std::string(key.data, key.size_bytes),
+                   std::string(value.data, value.size_bytes)});
+      metadata_num_keys++;
+    }
+
+    if (metadata_num_keys != out->size()) {
+      ArrowErrorSet(error,
+                    "Comparison of metadata containing duplicate keys without "
+                    "considering order is not implemented");
+      return ENOTSUP;
     }
 
     return NANOARROW_OK;

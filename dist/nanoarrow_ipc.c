@@ -20884,6 +20884,11 @@ static int ArrowIpcDecoderSetTypeFixedSizeList(struct ArrowSchema* schema,
 
   char fixed_size_str[128];
   int n_chars = snprintf(fixed_size_str, 128, "+w:%d", fixed_size);
+  if (n_chars < 0) {
+    ArrowErrorSet(error, "snprintf() encoding error");
+    return ERANGE;
+  }
+
   fixed_size_str[n_chars] = '\0';
   return ArrowIpcDecoderSetTypeSimpleNested(schema, fixed_size_str, error);
 }
@@ -20942,6 +20947,11 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
       return EINVAL;
   }
 
+  if (n_chars < 0) {
+    ArrowErrorSet(error, "snprintf() encoding error");
+    return ERANGE;
+  }
+
   if (ns(Union_typeIds_is_present(type))) {
     flatbuffers_int32_vec_t type_ids = ns(Union_typeIds(type));
     int64_t n_type_ids = flatbuffers_int32_vec_len(type_ids);
@@ -20960,11 +20970,21 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
       format_cursor += n_chars;
       format_out_size -= n_chars;
 
+      if (n_chars < 0) {
+        ArrowErrorSet(error, "snprintf() encoding error");
+        return ERANGE;
+      }
+
       for (int64_t i = 1; i < n_type_ids; i++) {
         n_chars = snprintf(format_cursor, format_out_size, ",%d",
                            (int)flatbuffers_int32_vec_at(type_ids, i));
         format_cursor += n_chars;
         format_out_size -= n_chars;
+
+        if (n_chars < 0) {
+          ArrowErrorSet(error, "snprintf() encoding error");
+          return ERANGE;
+        }
       }
     }
   } else if (n_children > 0) {
@@ -20972,10 +20992,20 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
     format_cursor += n_chars;
     format_out_size -= n_chars;
 
+    if (n_chars < 0) {
+      ArrowErrorSet(error, "snprintf() encoding error");
+      return ERANGE;
+    }
+
     for (int64_t i = 1; i < n_children; i++) {
       n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
       format_cursor += n_chars;
       format_out_size -= n_chars;
+
+      if (n_chars < 0) {
+        ArrowErrorSet(error, "snprintf() encoding error");
+        return ERANGE;
+      }
     }
   }
 
