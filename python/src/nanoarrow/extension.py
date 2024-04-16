@@ -16,10 +16,9 @@
 # under the License.
 
 import warnings
+from typing import Iterable, Mapping, Type, Union
 
-from typing import Union, Iterable, Mapping
-
-from nanoarrow._lib import CArrayView, CSchemaView
+from nanoarrow._lib import CArrayView, CSchema
 
 
 class UnregisteredExtensionWarning(UserWarning):
@@ -27,9 +26,8 @@ class UnregisteredExtensionWarning(UserWarning):
 
 
 class Extension:
-
     @classmethod
-    def deserialize(cls, name: str, metadata: Union[None, bytes]):
+    def deserialize(cls, name: str, schema: CSchema):
         raise NotImplementedError()
 
     @property
@@ -42,7 +40,6 @@ class Extension:
 
 
 class SimpleExtension:
-
     def __init__(self, name: str, metadata=None) -> None:
         self._name = name
 
@@ -54,7 +51,19 @@ class SimpleExtension:
             self._metadata = bytes(metadata)
 
     @classmethod
-    def deserialize(cls, name: str, metadata: Union[None, bytes]):
+    def deserialize(cls, name: str, schema: CSchema):
+        name = None
+        metadata = None
+
+        for key, value in schema.metadata:
+            if key == b"ARROW:extension:name":
+                name = value.decode()
+            elif key == b"ARROW:extension:metadata":
+                metadata = value
+
+        if name is None:
+            raise ValueError("schema is not an Arrow extension type")
+
         return cls(name, metadata)
 
     @property
@@ -65,12 +74,9 @@ class SimpleExtension:
     def metadata(self) -> Union[bytes, None]:
         return self._metadata
 
-    def _iter_py(
-        self, c_schema_view: CSchemaView, c_array_view: CArrayView
-    ) -> Union[None, Iterable]:
+    def _iter_py(self, c_array_view: CArrayView) -> Union[None, Iterable]:
         warnings.warn(
-            f"Converting unregistered extension '{self.name}' "
-            f"as storage type '{c_schema_view.type}'",
+            f"Converting unregistered extension '{self.name} as storage type",
             UnregisteredExtensionWarning,
         )
 
@@ -78,23 +84,37 @@ class SimpleExtension:
 
 
 class ExtensionRegistry:
-
     def __init__(self) -> None:
         self._extensions = {}
 
     def __iter__(self) -> Iterable[str]:
         return iter(self._extensions.keys())
 
-    def __contains__(self, k) -> bool:
+    def __contains__(self, k: str) -> bool:
         return k in self._extensions
 
-    def __getitem__(self, k) -> Extension:
+    def __getitem__(self, k: str) -> Type[Extension]:
         return self._extensions[k]
+
+    def __setitem__(self, k, v: Type[Extension]) -> None:
+        self._extensions[k] = v
 
 
 _global_extension_registry = ExtensionRegistry()
 
 
-def global_extension_registry() -> Mapping[str, Extension]:
+def global_extension_registry() -> Mapping[str, Type[Extension]]:
     global _global_extension_registry
     return _global_extension_registry
+
+
+def resolve_extension(
+    extension_name: str, schema: CSchema, default: Union[Type[Extension], None] = None
+) -> Type[Extension]:
+    registry = global_extension_registry()
+    if extension_name in registry:
+        return registry[extension_name]
+    elif default is not None:
+        return default
+    else:
+        raise KeyError(f"Extension '{extension_name}' is not registered")

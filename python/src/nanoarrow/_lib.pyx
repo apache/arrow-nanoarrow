@@ -1477,7 +1477,7 @@ cdef class SchemaMetadata:
         self._init_reader()
         while self._reader.remaining_keys > 0:
             ArrowMetadataReaderRead(&self._reader, &key, &value)
-            key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes).decode('UTF-8')
+            key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
 
