@@ -16,11 +16,13 @@
 # under the License.
 
 import enum
+from functools import cached_property
 import reprlib
 from typing import Union
 
 from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaBuilder, CSchemaView
 from nanoarrow.c_lib import c_schema
+from nanoarrow import extension
 
 
 class Type(enum.Enum):
@@ -168,6 +170,20 @@ class Schema:
         False
         """
         return self._c_schema_view.nullable
+
+    @cached_property
+    def extension(self) -> Union[None, extension.Extension]:
+        extension_name = self._c_schema_view.extension_name
+        if extension_name:
+            registry = extension.global_extension_registry()
+            if extension_name in registry:
+                extension_cls = registry[extension_name]
+            else:
+                extension_cls = extension.SimpleExtension
+
+            return extension_cls.deserialize(
+                extension_name, self._c_schema_view.extension_metadata
+            )
 
     @property
     def byte_width(self) -> Union[int, None]:
