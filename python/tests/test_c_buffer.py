@@ -220,18 +220,31 @@ def test_c_buffer_builder():
     with pytest.raises(IndexError):
         builder.advance(114)
 
+
+def test_c_buffer_builder_buffer_protocol():
+    import platform
+
+    builder = CBufferBuilder()
+    builder.reserve_bytes(1)
+
     mv = memoryview(builder)
+    assert len(mv) == 1
+
     with pytest.raises(BufferError, match="CBufferBuilder is locked"):
         memoryview(builder)
 
     with pytest.raises(BufferError, match="CBufferBuilder is locked"):
         assert bytes(builder.finish()) == b"abcdefghij"
 
+    # On at least some versions of PyPy the call to mv.release() does not seem
+    # to deterministically call the CBufferBuilder's __releasebuffer__().
+    if platform.python_implementation() == "PyPy":
+        pytest.skip("CBufferBuilder buffer release is non-deterministic on PyPy")
+
     mv[builder.size_bytes] = ord("k")
     builder.advance(1)
-
-    del mv
-    assert bytes(builder.finish()) == b"abcdefghijk"
+    mv.release()
+    assert bytes(builder.finish()) == b"k"
 
 
 def test_c_buffer_from_iterable():

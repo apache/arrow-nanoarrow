@@ -36,6 +36,7 @@ from libc.string cimport memcpy
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
+from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
     Py_buffer,
     PyObject_CheckBuffer,
@@ -1995,7 +1996,8 @@ cdef class CBufferBuilder:
         cdef int code
 
         struct_obj = Struct(self._buffer._format)
-        pack_into = struct_obj.pack_into
+        pack = struct_obj.pack
+        write = self.write
 
         # If an object has a length, we can avoid extra allocations
         if hasattr(obj, "__len__"):
@@ -2009,22 +2011,12 @@ cdef class CBufferBuilder:
         if self._buffer._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
                                        NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
             for item in obj:
-                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
-                if code != NANOARROW_OK:
-                    Error.raise_error("ArrowBufferReserve()", code)
-
-                pack_into(self, self._buffer._ptr.size_bytes, *item)
-                self._buffer._ptr.size_bytes += bytes_per_element
+                write(pack(*item))
                 n_values += 1
 
         else:
             for item in obj:
-                code = ArrowBufferReserve(self._buffer._ptr, bytes_per_element)
-                if code != NANOARROW_OK:
-                    Error.raise_error("ArrowBufferReserve()", code)
-
-                pack_into(self, self._buffer._ptr.size_bytes, item)
-                self._buffer._ptr.size_bytes += bytes_per_element
+                write(pack(item))
                 n_values += 1
 
         return n_values
@@ -2214,6 +2206,53 @@ cdef class CArrayBuilder:
         cdef int code = ArrowArrayStartAppending(self._ptr)
         Error.raise_error_not_ok("ArrowArrayStartAppending()", code)
         return self
+
+    def append_strings(self, obj):
+        cdef int code
+        cdef Py_ssize_t item_utf8_size
+        cdef ArrowStringView item
+
+        for py_item in obj:
+            if py_item is None:
+                code = ArrowArrayAppendNull(self._ptr, 1)
+            else:
+                # Cython raises the error from PyUnicode_AsUTF8AndSize()
+                # in the event that py_item is not a str(); however, we
+                # set item_utf8_size = 0 to be safe.
+                item_utf8_size = 0
+                item.data = PyUnicode_AsUTF8AndSize(py_item, &item_utf8_size)
+                item.size_bytes = item_utf8_size
+                code = ArrowArrayAppendString(self._ptr, item)
+
+            if code != NANOARROW_OK:
+                Error.raise_error(f"append string item {py_item}")
+
+        return self
+
+    def append_bytes(self, obj):
+        cdef Py_buffer buffer
+        cdef ArrowBufferView item
+
+        for py_item in obj:
+            if py_item is None:
+                code = ArrowArrayAppendNull(self._ptr, 1)
+            else:
+                PyObject_GetBuffer(py_item, &buffer, PyBUF_ANY_CONTIGUOUS | PyBUF_FORMAT)
+
+                if buffer.ndim != 1:
+                    raise ValueError("Can't append buffer with dimensions != 1 to binary array")
+
+                if buffer.itemsize != 1:
+                    PyBuffer_Release(&buffer)
+                    raise ValueError("Can't append buffer with itemsize != 1 to binary array")
+
+                item.data.data = buffer.buf
+                item.size_bytes = buffer.len
+                code = ArrowArrayAppendBytes(self._ptr, item)
+                PyBuffer_Release(&buffer)
+
+            if code != NANOARROW_OK:
+                Error.raise_error(f"append bytes item {py_item}")
 
     def set_offset(self, int64_t offset):
         self.c_array._assert_valid()
