@@ -109,12 +109,14 @@ def global_extension_registry() -> Mapping[str, Type[Extension]]:
 
 
 def resolve_extension(
-    extension_name: str, schema: CSchema, default: Union[Type[Extension], None] = None
-) -> Type[Extension]:
+    extension_name: str,
+    schema: CSchema,
+    default_cls: Union[Type[Extension], None] = None,
+) -> Extension:
     registry = global_extension_registry()
     if extension_name in registry:
-        return registry[extension_name]
-    elif default is not None:
-        return default
+        return registry[extension_name].deserialize(extension_name, schema)
+    elif default_cls is not None:
+        return default_cls.deserialize(extension_name, schema)
     else:
         raise KeyError(f"Extension '{extension_name}' is not registered")
