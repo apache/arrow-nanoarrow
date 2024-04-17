@@ -377,7 +377,7 @@ ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum Arrow
                                           enum ArrowTimeUnit time_unit,
                                           const char* timezone);
 
-/// \brief Seet the format field of a union schema
+/// \brief Set the format field of a union schema
 ///
 /// Returns EINVAL for a type that is not NANOARROW_TYPE_DENSE_UNION
 /// or NANOARROW_TYPE_SPARSE_UNION. The specified number of children are
