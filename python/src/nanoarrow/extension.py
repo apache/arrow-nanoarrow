@@ -109,8 +109,8 @@ def global_extension_registry() -> Mapping[str, Type[Extension]]:
 
 
 def resolve_extension(
-    extension_name: str,
     schema: CSchema,
+    extension_name: Union[str, None] = None,
     default_cls: Union[Type[Extension], None] = None,
 ) -> Extension:
     registry = global_extension_registry()

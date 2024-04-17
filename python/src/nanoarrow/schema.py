@@ -175,7 +175,7 @@ class Schema:
     def extension(self) -> Union[Extension, None]:
         extension_name = self._c_schema_view.extension_name
         if extension_name:
-            return resolve_extension(extension_name, self._c_schema, SimpleExtension)
+            return resolve_extension(self._c_schema, extension_name, SimpleExtension)
 
     @property
     def byte_width(self) -> Union[int, None]:
@@ -903,6 +903,10 @@ def struct(fields, nullable=True) -> Schema:
     Schema(STRUCT, fields=[Schema(INT32, name='col1')])
     """
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
+
+
+def extension(storage, extension_name, extension_metadata=None) -> Schema:
+    pass
 
 
 def _c_schema_from_type_and_params(
