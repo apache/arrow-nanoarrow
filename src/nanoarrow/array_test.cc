@@ -324,6 +324,41 @@ TEST(ArrayTest, ArrayTestValidateMinimalBufferAccess) {
   ArrowArrayRelease(&array);
 }
 
+class UnparameterizedTypeTestFixture : public ::testing::TestWithParam<enum ArrowType> {
+ protected:
+  enum ArrowType data_type;
+};
+
+TEST_P(UnparameterizedTypeTestFixture, ArrayTestBuildEmptyArray) {
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, GetParam()), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.offset, 0);
+  EXPECT_EQ(array.length, 0);
+  EXPECT_EQ(array.null_count, 0);
+
+  // For all of these, the validity buffer is the first buffer and should be NULL;
+  // however, other buffers should not be NULL.
+  for (int64_t i = 1; i < array.n_buffers; i++) {
+    if (i == 0) {
+      EXPECT_EQ(array.buffers[i], nullptr);
+    } else {
+      EXPECT_NE(array.buffers[i], nullptr);
+    }
+  }
+
+  ArrowArrayRelease(&array);
+}
+
+// We don't need to exhaustively check here...just a few different categories
+// of inputs to ensure our buffer finalizing worked.
+INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, UnparameterizedTypeTestFixture,
+                         ::testing::Values(NANOARROW_TYPE_NA, NANOARROW_TYPE_INT32,
+                                           NANOARROW_TYPE_BINARY, NANOARROW_TYPE_STRUCT));
+
 TEST(ArrayTest, ArrayTestAppendToNullArray) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_NA), NANOARROW_OK);

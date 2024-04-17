@@ -214,7 +214,37 @@ def test_c_buffer_builder():
     assert builder.size_bytes == 10
     assert builder.capacity_bytes == 123
 
-    assert bytes(builder.finish()) == b"abcdefghij"
+    with pytest.raises(IndexError):
+        builder.advance(-11)
+
+    with pytest.raises(IndexError):
+        builder.advance(114)
+
+
+def test_c_buffer_builder_buffer_protocol():
+    import platform
+
+    builder = CBufferBuilder()
+    builder.reserve_bytes(1)
+
+    mv = memoryview(builder)
+    assert len(mv) == 1
+
+    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+        memoryview(builder)
+
+    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+        assert bytes(builder.finish()) == b"abcdefghij"
+
+    # On at least some versions of PyPy the call to mv.release() does not seem
+    # to deterministically call the CBufferBuilder's __releasebuffer__().
+    if platform.python_implementation() == "PyPy":
+        pytest.skip("CBufferBuilder buffer release is non-deterministic on PyPy")
+
+    mv[builder.size_bytes] = ord("k")
+    builder.advance(1)
+    mv.release()
+    assert bytes(builder.finish()) == b"k"
 
 
 def test_c_buffer_from_iterable():
@@ -231,7 +261,7 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
-    with pytest.raises(ValueError, match="Can't create buffer from type"):
+    with pytest.raises(ValueError, match="Can't create buffer"):
         na.c_buffer([1, 2, 3], na.date32())
 
 

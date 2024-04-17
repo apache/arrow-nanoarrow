@@ -23,7 +23,7 @@ import tempfile
 import warnings
 
 
-# Generate the nanoarrow_c.pxd file used by the Cython extension
+# Generate the nanoarrow_c.pxd file used by the Cython extensions
 class NanoarrowPxdGenerator:
     def __init__(self):
         self._define_regexes()

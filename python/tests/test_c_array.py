@@ -207,7 +207,7 @@ def test_c_array_from_pybuffer_numpy():
 
 
 def test_c_array_from_iterable_empty():
-    empty_string = na.c_array([], na.c_schema(na.string()))
+    empty_string = na.c_array([], na.string())
     assert empty_string.length == 0
     assert empty_string.null_count == 0
     assert empty_string.offset == 0
@@ -219,13 +219,122 @@ def test_c_array_from_iterable_empty():
     assert len(array_view.buffer(2)) == 0
 
 
-def test_c_array_from_iterable_non_empty():
+def test_c_array_from_iterable_string():
+    string = na.c_array(["abc", None, "defg"], na.string())
+    assert string.length == 3
+    assert string.null_count == 1
+
+    array_view = na.c_array_view(string)
+    assert len(array_view.buffer(0)) == 1
+    assert len(array_view.buffer(1)) == 4
+    assert len(array_view.buffer(2)) == 7
+
+    # Check an item that is not a str()
+    with pytest.raises(TypeError):
+        na.c_array([b"1234"], na.string())
+
+
+def test_c_array_from_iterable_bytes():
+    string = na.c_array([b"abc", None, b"defg"], na.binary())
+    assert string.length == 3
+    assert string.null_count == 1
+
+    array_view = na.c_array_view(string)
+    assert len(array_view.buffer(0)) == 1
+    assert len(array_view.buffer(1)) == 4
+    assert len(array_view.buffer(2)) == 7
+
+    with pytest.raises(TypeError):
+        na.c_array(["1234"], na.binary())
+
+    buf_not_bytes = na.c_buffer([1, 2, 3], na.int32())
+    with pytest.raises(ValueError, match="Can't append buffer with itemsize != 1"):
+        na.c_array([buf_not_bytes], na.binary())
+
+    np = pytest.importorskip("numpy")
+    buf_2d = np.ones((2, 2))
+    with pytest.raises(ValueError, match="Can't append buffer with dimensions != 1"):
+        na.c_array([buf_2d], na.binary())
+
+
+def test_c_array_from_iterable_non_empty_nullable_without_nulls():
     c_array = na.c_array([1, 2, 3], na.int32())
     assert c_array.length == 3
     assert c_array.null_count == 0
 
     view = na.c_array_view(c_array)
+    assert list(view.buffer(0)) == []
     assert list(view.buffer(1)) == [1, 2, 3]
+
+
+def test_c_array_from_iterable_non_empty_non_nullable():
+    c_array = na.c_array([1, 2, 3], na.int32(nullable=False))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [1, 2, 3]
+
+
+def test_c_array_from_iterable_int_with_nulls():
+    c_array = na.c_array([1, None, 3], na.int32())
+    assert c_array.length == 3
+    assert c_array.null_count == 1
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
+    assert list(view.buffer(1)) == [1, 0, 3]
+
+
+def test_c_array_from_iterable_float_with_nulls():
+    c_array = na.c_array([1, None, 3], na.float64())
+    assert c_array.length == 3
+    assert c_array.null_count == 1
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
+    assert list(view.buffer(1)) == [1.0, 0.0, 3.0]
+
+
+def test_c_array_from_iterable_bool_with_nulls():
+    c_array = na.c_array([True, None, False], na.bool())
+    assert c_array.length == 3
+    assert c_array.null_count == 1
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
+    assert list(view.buffer(1).elements()) == [True, False, False] + [False] * 5
+
+
+def test_c_array_from_iterable_fixed_size_binary_with_nulls():
+    c_array = na.c_array([b"1234", None, b"5678"], na.fixed_size_binary(4))
+    assert c_array.length == 3
+    assert c_array.null_count == 1
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
+    assert list(view.buffer(1)) == [b"1234", b"\x00\x00\x00\x00", b"5678"]
+
+
+def test_c_array_from_iterable_day_time_interval_with_nulls():
+    c_array = na.c_array([(1, 2), None, (3, 4)], na.interval_day_time())
+    assert c_array.length == 3
+    assert c_array.null_count == 1
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
+    assert list(view.buffer(1)) == [(1, 2), (0, 0), (3, 4)]
+
+
+def test_c_array_from_iterable_month_day_nano_interval_with_nulls():
+    c_array = na.c_array([(1, 2, 3), None, (4, 5, 6)], na.interval_month_day_nano())
+    assert c_array.length == 3
+    assert c_array.null_count == 1
+
+    view = na.c_array_view(c_array)
+    assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
+    assert list(view.buffer(1)) == [(1, 2, 3), (0, 0, 0), (4, 5, 6)]
 
 
 def test_c_array_from_iterable_error():
