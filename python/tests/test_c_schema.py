@@ -21,17 +21,15 @@ import nanoarrow as na
 
 
 def test_c_schema_basic():
-    pa = pytest.importorskip("pyarrow")
-
     schema = na.allocate_c_schema()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
     assert repr(schema) == "<nanoarrow.c_lib.CSchema <released>>"
 
-    schema = na.c_schema(pa.schema([pa.field("some_name", pa.int32())]))
+    schema = na.c_schema(na.struct({"some_name": na.int32()}))
 
     assert schema.format == "+s"
-    assert schema.flags == 0
+    assert schema.flags == 2
     assert schema.metadata is None
     assert schema.n_children == 1
     assert len(list(schema.children)) == 1
@@ -55,10 +53,8 @@ def test_c_schema_dictionary():
 
 
 def test_schema_metadata():
-    pa = pytest.importorskip("pyarrow")
-
     meta = {"key1": "value1", "key2": "value2"}
-    schema = na.c_schema(pa.field("", pa.int32(), metadata=meta))
+    schema = na.c_schema(na.int32()).modify(metadata=meta)
 
     assert len(schema.metadata) == 2
 
@@ -90,13 +86,8 @@ def test_c_schema_view():
 
 
 def test_c_schema_view_extra_params():
-    pa = pytest.importorskip("pyarrow")
-
     schema = na.c_schema(na.fixed_size_binary(12))
     view = na.c_schema_view(schema)
-    assert view.fixed_size == 12
-
-    schema = na.c_schema(pa.list_(pa.int32(), 12))
     assert view.fixed_size == 12
 
     schema = na.c_schema(na.decimal128(10, 3))
@@ -122,15 +113,19 @@ def test_c_schema_view_extra_params():
     assert view.time_unit == "us"
     assert view.timezone == "America/Halifax"
 
+    pa = pytest.importorskip("pyarrow")
+
+    schema = na.c_schema(pa.list_(pa.int32(), 12))
+    assert view.fixed_size == 12
+
 
 def test_c_schema_metadata():
-    pa = pytest.importorskip("pyarrow")
     meta = {
         "ARROW:extension:name": "some_name",
         "ARROW:extension:metadata": "some_metadata",
     }
 
-    schema = na.c_schema(pa.field("", pa.int32(), metadata=meta))
+    schema = na.c_schema(na.int32()).modify(metadata=meta)
     view = na.c_schema_view(schema)
     assert view.extension_name == "some_name"
     assert view.extension_metadata == b"some_metadata"
