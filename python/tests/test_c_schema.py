@@ -155,6 +155,13 @@ def test_c_schema_modify():
     assert schema_non_nullable.flags == 0
     assert schema_non_nullable.format == schema.format
 
-    # meta = {"some key": "some value"}
-    # schema_metad = schema.modify(metadata=meta)
-    # assert list(schema_metad.metadata) == [(b"some key", b"some value")]
+    meta = {"some key": "some value"}
+    schema_metad = schema.modify(metadata=meta)
+    assert list(schema_metad.metadata) == [(b"some key", b"some value")]
+    assert schema_non_nullable.format == schema.format
+
+    schema_metad2 = schema.modify(metadata=schema_metad.metadata)
+    assert list(schema_metad2.metadata) == [(b"some key", b"some value")]
+
+    schema_no_metad = schema_metad.modify(metadata={})
+    assert schema_no_metad.metadata is None

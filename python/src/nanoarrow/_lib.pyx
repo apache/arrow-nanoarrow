@@ -34,7 +34,7 @@ generally have better autocomplete + documentation available to IDEs).
 from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
-from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsStringAndSize
+from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString, PyBytes_Size
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
@@ -1011,19 +1011,16 @@ cdef class CSchemaBuilder:
 
         cdef ArrowStringView key
         cdef ArrowStringView value
-        cdef Py_ssize_t py_size
         cdef int32_t keys_added = 0
-        cdef char* py_buf
+
         for k, v in metadata.items():
             k = k.encode() if isinstance(k, str) else bytes(k)
-            PyBytes_AsStringAndSize(k, &py_buf, &py_size)
-            key.data = py_buf
-            key.size_bytes = py_size
+            key.data = PyBytes_AsString(k)
+            key.size_bytes = PyBytes_Size(k)
 
             v = v.encode() if isinstance(v, str) else bytes(v)
-            PyBytes_AsStringAndSize(v, &py_buf, &py_size)
-            value.data = py_buf
-            value.size_bytes = py_size
+            value.data = PyBytes_AsString(v)
+            value.size_bytes = PyBytes_Size(v)
 
             code = ArrowMetadataBuilderAppend(buffer._ptr, key, value)
             Error.raise_error_not_ok("ArrowMetadataBuilderAppend()", code)
@@ -1031,7 +1028,7 @@ cdef class CSchemaBuilder:
             keys_added += 1
 
         if keys_added > 0:
-            code = ArrowSchemaSetMetadata(self.c_schema._ptr, <const char*>buffer._ptr)
+            code = ArrowSchemaSetMetadata(self.c_schema._ptr, <const char*>buffer._ptr.data)
             Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
 
         return self
