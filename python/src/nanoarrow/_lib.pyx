@@ -769,7 +769,8 @@ cdef class CSchema:
         else:
             return None
 
-    def modify(self, name=None, flags=None, metadata=None, validate=True):
+    def modify(self, name=None, flags=None, nullable=None, metadata=None,
+               validate=True):
         builder = CSchemaBuilder.copy_existing(self)
 
         if name is not None:
@@ -777,6 +778,9 @@ cdef class CSchema:
 
         if flags is not None:
             builder.set_flags(flags)
+
+        if nullable is not None:
+            builder.set_nullable(nullable)
 
         if metadata is not None:
             builder.clear_metadata()
@@ -1001,14 +1005,16 @@ cdef class CSchemaBuilder:
     def append_metadata(self, metadata):
         cdef CBuffer buffer = CBuffer.empty()
 
-        cdef int code = ArrowMetadataBuilderInit(buffer._ptr, self.c_schema.metadata)
+        cdef const char* existing_metadata = self.c_schema._ptr.metadata
+        cdef int code = ArrowMetadataBuilderInit(buffer._ptr, existing_metadata)
         Error.raise_error_not_ok("ArrowMetadataBuilderInit()", code)
 
         cdef ArrowStringView key
         cdef ArrowStringView value
         cdef Py_ssize_t py_size
+        cdef int32_t keys_added = 0
         cdef char* py_buf
-        for k, v in metadata:
+        for k, v in metadata.items():
             k = k.encode() if isinstance(k, str) else bytes(k)
             PyBytes_AsStringAndSize(k, &py_buf, &py_size)
             key.data = py_buf
@@ -1022,8 +1028,12 @@ cdef class CSchemaBuilder:
             code = ArrowMetadataBuilderAppend(buffer._ptr, key, value)
             Error.raise_error_not_ok("ArrowMetadataBuilderAppend()", code)
 
-        code = ArrowSchemaSetMetadata(self.c_schema._ptr, <const char*>buffer._ptr)
-        Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
+            keys_added += 1
+
+        if keys_added > 0:
+            code = ArrowSchemaSetMetadata(self.c_schema._ptr, <const char*>buffer._ptr)
+            Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
+
         return self
 
     def child(self, int64_t i):
@@ -1113,6 +1123,10 @@ cdef class CSchemaBuilder:
 
         return self
 
+    def set_flags(self, flags):
+        self._ptr.flags = flags
+        return self
+
     def set_nullable(self, nullable):
         if nullable:
             self._ptr.flags = self._ptr.flags | ARROW_FLAG_NULLABLE
@@ -1122,7 +1136,7 @@ cdef class CSchemaBuilder:
         return self
 
     def validate(self):
-        return self.c_schema.view()
+        return CSchemaView(self.c_schema)
 
     def finish(self):
         self.c_schema._assert_valid()
@@ -1521,7 +1535,7 @@ cdef class SchemaMetadata:
         self._base = base
         self._metadata = <const char*>ptr
 
-    def _init_reader(self):
+    cdef _init_reader(self):
         cdef int code = ArrowMetadataReaderInit(&self._reader, self._metadata)
         Error.raise_error_not_ok("ArrowMetadataReaderInit()", code)
 
@@ -1538,6 +1552,11 @@ cdef class SchemaMetadata:
             key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
+
+    # For duck type compatability such that code that accepts
+    # schema metadata can also accept a dictionary using obj.items()
+    def items(self):
+        return self
 
 
 cdef class CBufferView:
