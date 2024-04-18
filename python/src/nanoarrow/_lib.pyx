@@ -769,6 +769,24 @@ cdef class CSchema:
         else:
             return None
 
+    def modify(self, name=None, flags=None, metadata=None, validate=True):
+        builder = CSchemaBuilder.copy_existing(self)
+
+        if name is not None:
+            builder.set_name(name)
+
+        if flags is not None:
+            builder.set_flags(flags)
+
+        if metadata is not None:
+            builder.clear_metadata()
+            builder.append_metadata(metadata)
+
+        if validate:
+            builder.validate()
+
+        return builder.finish()
+
 
 cdef class CSchemaView:
     """Low-level ArrowSchemaView wrapper
@@ -989,7 +1007,7 @@ cdef class CSchemaBuilder:
         cdef ArrowStringView key
         cdef ArrowStringView value
         cdef Py_ssize_t py_size
-        cdef const char* py_buf
+        cdef char* py_buf
         for k, v in metadata:
             k = k.encode() if isinstance(k, str) else bytes(k)
             PyBytes_AsStringAndSize(k, &py_buf, &py_size)
@@ -1102,6 +1120,9 @@ cdef class CSchemaBuilder:
             self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_NULLABLE
 
         return self
+
+    def validate(self):
+        return self.c_schema.view()
 
     def finish(self):
         self.c_schema._assert_valid()
