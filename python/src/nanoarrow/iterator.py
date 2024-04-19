@@ -89,6 +89,16 @@ def iter_buffers(obj, schema=None) -> Iterable[Tuple]:
     return BufferIterator.get_iterator(obj, schema=schema)
 
 
+def iter_av_mutable(obj, schema=None):
+    return ArrayViewIterator.get_iterator(obj, schema=schema)
+
+
+def iter_av_copies(obj, schema=None):
+    with c_array_stream(obj, schema=schema) as stream:
+        for array in stream:
+            yield array.view()
+
+
 class InvalidArrayWarning(UserWarning):
     pass
 
@@ -134,7 +144,7 @@ class ArrayViewIterator:
         return type(self)(schema, _array_view=array_view)
 
     def _iter1(self, offset, length):
-        raise NotImplementedError()
+        yield self._array_view
 
     @cached_property
     def _child_names(self):
