@@ -111,9 +111,43 @@ class TimeUnit(enum.Enum):
 
 
 class Schema:
-    """The Schema is nanoarrow's high-level data type representation whose scope maps to
-    that of the ArrowSchema in the Arrow C Data interface. See :func:`schema` for class
-    details.
+    """Create a nanoarrow Schema
+
+    The Schema is nanoarrow's high-level data type representation, encompasing
+    the role of PyArrow's ``Schema``, ``Field``, and ``DataType``. This scope
+    maps to that of the ArrowSchema in the Arrow C Data interface.
+
+    Parameters
+    ----------
+    obj :
+        A :class:`Type` specifier or a schema-like object. A schema-like object
+        includes:
+        * A ``pyarrow.Schema``, `pyarrow.Field``, or ``pyarrow.DataType``
+        * A nanoarrow :class:`Schema`, :class:`CSchema`, or :class:`Type`
+        * Any object implementing the Arrow PyCapsule interface protocol method.
+
+    name : str, optional
+        An optional name to bind to this field.
+
+    nullable : bool, optional
+        Explicitly specify field nullability. Fields are nullable by default.
+        Only supported if ``obj`` is a :class:`Type` object (for any other input,
+        the nullability is preserved from the passed object).
+
+    params :
+        Type-specific parameters when ``obj`` is a :class:`Type`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> import pyarrow as pa
+    >>> na.Schema(na.Type.INT32)
+    Schema(INT32)
+    >>> na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
+    Schema(DURATION, unit=SECOND)
+    >>> na.Schema(pa.int32())
+    Schema(INT32)
     """
 
     def __init__(
@@ -286,48 +320,6 @@ class Schema:
 
     def __arrow_c_schema__(self):
         return self._c_schema.__arrow_c_schema__()
-
-
-def schema(obj, *, name=None, nullable=None, **params):
-    """Create a nanoarrow Schema
-
-    The Schema is nanoarrow's high-level data type representation, encompasing
-    the role of PyArrow's ``Schema``, ``Field``, and ``DataType``. This scope
-    maps to that of the ArrowSchema in the Arrow C Data interface.
-
-    Parameters
-    ----------
-    obj :
-        A :class:`Type` specifier or a schema-like object. A schema-like object
-        includes:
-        * A ``pyarrow.Schema``, `pyarrow.Field``, or ``pyarrow.DataType``
-        * A nanoarrow :class:`Schema`, :class:`CSchema`, or :class:`Type`
-        * Any object implementing the Arrow PyCapsule interface protocol method.
-
-    name : str, optional
-        An optional name to bind to this field.
-
-    nullable : bool, optional
-        Explicitly specify field nullability. Fields are nullable by default.
-        Only supported if ``obj`` is a :class:`Type` object (for any other input,
-        the nullability is preserved from the passed object).
-
-    params :
-        Type-specific parameters when ``obj`` is a :class:`Type`.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> import pyarrow as pa
-    >>> na.schema(na.Type.INT32)
-    Schema(INT32)
-    >>> na.schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
-    Schema(DURATION, unit=SECOND)
-    >>> na.schema(pa.int32())
-    Schema(INT32)
-    """
-    return Schema(obj, name=name, nullable=nullable, **params)
 
 
 def null(nullable: bool = True) -> Schema:
