@@ -263,9 +263,9 @@ class Array:
         ...     offset, length = view.offset, view.length
         ...     validity, data = view.buffers
         ...     print(view.offset, view.length)
-        ...     print(data)
         ...     print(validity)
-        (0, 3)
+        ...     print(data)
+        0 3
         nanoarrow.c_lib.CBufferView(bool[0 b] )
         nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
         """
