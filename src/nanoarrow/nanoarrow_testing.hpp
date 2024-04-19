@@ -2946,6 +2946,20 @@ class TestingJSONComparison {
 /// @}
 
 }  // namespace testing
+
+inline void PrintTo(const Nothing&, std::ostream* os) {
+    *os << "<NA>";
+}
+
+template <typename T>
+void PrintTo(const Maybe<T>& m, std::ostream* os) {
+  if (m) {
+    *os << *m;
+  } else {
+    PrintTo(NA, os);
+  }
+}
+
 }  // namespace nanoarrow
 
 #endif

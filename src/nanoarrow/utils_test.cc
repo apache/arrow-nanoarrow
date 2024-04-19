@@ -19,9 +19,11 @@
 #include <string>
 
 #include <arrow/util/decimal.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.hpp"
+#include "nanoarrow/nanoarrow_testing.hpp"
 
 using namespace arrow;
 
@@ -554,8 +556,6 @@ TEST(UtilsTest, ArrowResolveChunk64Test) {
 }
 
 TEST(MaybeTest, ConstructionAndConversion) {
-  // NOTE these will not print nicely in GTest unless we write PrintTo,
-  // which should probably not be defined in headers (but we've only got nanoarrow.hpp).
   using nanoarrow::Maybe;
   using nanoarrow::NA;
 
@@ -584,4 +584,39 @@ TEST(MaybeTest, ConstructionAndConversion) {
 
   EXPECT_EQ(*three, 3);
   EXPECT_EQ(*five, 5);
+}
+
+TEST(RandomAccessRangeTest, ConstructionAndPrinting) {
+  auto square = [](int i) { return i * i; };
+
+  // the range is usable as a constant
+  const nanoarrow::internal::RandomAccessRange<decltype(square)> squares{square, 4};
+
+  // gtest recognizes the range as a container and can print it
+  EXPECT_THAT(squares, testing::ElementsAre(0, 1, 4, 9));
+
+  // since the range is usable as a constant, we can iterate through it multiple times and
+  // it will work
+  int sum = 0;
+  for (int i : squares) {
+    sum += i;
+  }
+  EXPECT_EQ(sum, 1 + 4 + 9);
+}
+
+TEST(InputRangeTest, ConstructionAndPrinting) {
+  auto factorial = [i = 1, f = 1]() mutable {
+    f *= i++;
+    return f < 1000 ? &f : nullptr;
+  };
+  nanoarrow::internal::InputRange<decltype(factorial)> factorials{factorial};
+
+  // GTest's range utils require a constant range, which this is not
+  // EXPECT_THAT(factorials, testing::ElementsAre(1, 2, 6, 24, 120, 720));
+
+  std::vector<int> factorials_vector;
+  for (int i : factorials) {
+    factorials_vector.push_back(i);
+  }
+  EXPECT_THAT(factorials_vector, testing::ElementsAre(1, 2, 6, 24, 120, 720));
 }

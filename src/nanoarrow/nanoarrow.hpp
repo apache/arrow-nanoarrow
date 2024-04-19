@@ -587,6 +587,7 @@ class Maybe {
   bool is_something_;
 };
 
+namespace internal {
 template <typename Get>
 struct RandomAccessRange {
   Get get;
@@ -635,6 +636,7 @@ struct InputRange {
   iterator begin() { return {this, next()}; }
   iterator end() { return {this, {}}; }
 };
+}  // namespace internal
 
 // C++17 could do all of this with a lambda
 template <typename T>
@@ -658,7 +660,7 @@ class ViewArrayAs {
     }
   };
 
-  RandomAccessRange<Get> range_;
+  internal::RandomAccessRange<Get> range_;
 
  public:
   ViewArrayAs(const ArrowArrayView* array_view)
@@ -681,8 +683,8 @@ class ViewArrayAs {
             array->length,
         } {}
 
-  using value_type = typename RandomAccessRange<Get>::value_type;
-  using const_iterator = typename RandomAccessRange<Get>::const_iterator;
+  using value_type = typename internal::RandomAccessRange<Get>::value_type;
+  using const_iterator = typename internal::RandomAccessRange<Get>::const_iterator;
   const_iterator begin() const { return range_.begin(); }
   const_iterator end() const { return range_.end(); }
   value_type operator[](int64_t i) const { return range_.get(i); }
@@ -710,7 +712,7 @@ class ViewArrayAsBytes {
     }
   };
 
-  RandomAccessRange<Get> range_;
+  internal::RandomAccessRange<Get> range_;
 
  public:
   ViewArrayAsBytes(const ArrowArrayView* array_view)
@@ -735,8 +737,8 @@ class ViewArrayAsBytes {
             array->length,
         } {}
 
-  using value_type = typename RandomAccessRange<Get>::value_type;
-  using const_iterator = typename RandomAccessRange<Get>::const_iterator;
+  using value_type = typename internal::RandomAccessRange<Get>::value_type;
+  using const_iterator = typename internal::RandomAccessRange<Get>::const_iterator;
   const_iterator begin() const { return range_.begin(); }
   const_iterator end() const { return range_.end(); }
   value_type operator[](int64_t i) const { return range_.get(i); }
@@ -759,7 +761,7 @@ class ViewAsFixedSizeBytes {
     }
   };
 
-  RandomAccessRange<Get> range_;
+  internal::RandomAccessRange<Get> range_;
 
  public:
   ViewAsFixedSizeBytes(const ArrowArrayView* array_view, int fixed_size)
@@ -784,8 +786,8 @@ class ViewAsFixedSizeBytes {
             array->length,
         } {}
 
-  using value_type = typename RandomAccessRange<Get>::value_type;
-  using const_iterator = typename RandomAccessRange<Get>::const_iterator;
+  using value_type = typename internal::RandomAccessRange<Get>::value_type;
+  using const_iterator = typename internal::RandomAccessRange<Get>::const_iterator;
   const_iterator begin() const { return range_.begin(); }
   const_iterator end() const { return range_.end(); }
   value_type operator[](int64_t i) const { return range_.get(i); }
@@ -827,7 +829,7 @@ class ViewArrayStream {
     }
   };
 
-  InputRange<Next> range_;
+  internal::InputRange<Next> range_;
   ArrowError* error_;
   ArrowErrorCode* code_;
   ArrowError internal_error_ = {};
@@ -837,8 +839,8 @@ class ViewArrayStream {
   // bool code_was_accessed_ = false;
 
  public:
-  using value_type = typename InputRange<Next>::value_type;
-  using iterator = typename InputRange<Next>::iterator;
+  using value_type = typename internal::InputRange<Next>::value_type;
+  using iterator = typename internal::InputRange<Next>::iterator;
   iterator begin() { return range_.begin(); }
   iterator end() { return range_.end(); }
 
