@@ -85,13 +85,6 @@ def iter_array_view(obj, schema=None) -> Iterable[CArrayView]:
     Returns an iterator which yields a :func:`c_array_view`
     for each chunk in ``obj``.
 
-    For performance reasons, the :class:`CArrayView` yielded by this iterator
-    is the same Python object for each chunk backed by a different
-    :class:`CArray` on each iteration. The buffers obtained by
-    ``item.buffer()`` or ``item.buffers()`` are independent of this view
-    (i.e., they hold a strong reference to the underlying :class:`CArray`
-    but not the :class:`CArrayView` instance).
-
     Paramters
     ---------
     obj : array stream-like
@@ -118,7 +111,9 @@ def iter_array_view(obj, schema=None) -> Iterable[CArrayView]:
     - dictionary: NULL
     - children[0]:]
     """
-    return ArrayViewIterator.get_iterator(obj, schema=schema)
+    with c_array_stream(obj, schema) as stream:
+        for array in stream:
+            yield array.view()
 
 
 class InvalidArrayWarning(UserWarning):
@@ -192,21 +187,6 @@ class ArrayViewBaseIterator:
 
     def _warn(self, message, category):
         warnings.warn(f"{self._object_label}: {message}", category)
-
-
-class ArrayViewIterator(ArrayViewBaseIterator):
-    """Yield the prepared CArrayView backed by successive arrays in a stream.
-    Intended for internal use.
-    """
-
-    def __init__(self, schema):
-        # We don't child iterators for this iterator implementation
-        self._schema = c_schema(schema)
-        self._schema_view = c_schema_view(schema)
-        self._array_view = CArrayView.from_schema(self._schema)
-
-    def _iter1(self, offset, length):
-        yield self._array_view
 
 
 class PyIterator(ArrayViewBaseIterator):

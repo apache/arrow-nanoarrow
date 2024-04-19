@@ -18,9 +18,16 @@
 from functools import cached_property
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import DEVICE_CPU, CArray, CBuffer, CMaterializedArrayStream, Device
+from nanoarrow._lib import (
+    DEVICE_CPU,
+    CArray,
+    CArrayView,
+    CBuffer,
+    CMaterializedArrayStream,
+    Device,
+)
 from nanoarrow.c_lib import c_array, c_array_stream, c_array_view
-from nanoarrow.iterator import iter_py, iter_tuples
+from nanoarrow.iterator import iter_array_view, iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
 from nanoarrow import _repr_utils
@@ -181,7 +188,7 @@ class Array:
 
     @property
     def device(self) -> Device:
-        """Get the device on which the buffers for this array are allocated.
+        """Get the device on which the buffers for this array are allocated
 
         Examples
         --------
@@ -202,7 +209,7 @@ class Array:
 
     @property
     def n_buffers(self) -> int:
-        """Get the number of buffers in each chunk of this Array.
+        """Get the number of buffers in each chunk of this Array
 
         Examples
         --------
@@ -215,7 +222,7 @@ class Array:
         return self.schema._c_schema_view.layout.n_buffers
 
     def buffer(self, i: int) -> CBuffer:
-        """Access a single buffer of a contiguous array.
+        """Access a single buffer of a contiguous array
 
         Examples
         --------
@@ -228,7 +235,7 @@ class Array:
         return self.buffers[i]
 
     @cached_property
-    def buffers(self) -> Tuple[CBuffer]:
+    def buffers(self) -> Tuple[CBuffer, CBuffer, CBuffer]:
         """Access buffers of a contiguous array.
 
         Examples
@@ -244,23 +251,25 @@ class Array:
         view = c_array_view(self)
         return tuple(view.buffers)
 
-    def iter_buffers(self) -> Iterable[Tuple[CBuffer]]:
-        """Iterate over buffers of each chunk in this Array.
+    def iter_chunk_views(self) -> Iterable[CArrayView]:
+        """Iterate over Iterate over prepared views of each chunk
 
         Examples
         --------
 
         >>> import nanoarrow as na
         >>> array = na.Array([1, 2, 3], na.int32())
-        >>> for data, validity in array.iter_buffers():
+        >>> for view in array.iter_chunk_views():
+        ...     offset, length = view.offset, view.length
+        ...     validity, data = view.buffers
+        ...     print(view.offset, view.length)
         ...     print(data)
         ...     print(validity)
+        (0, 3)
         nanoarrow.c_lib.CBufferView(bool[0 b] )
         nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
         """
-        # Could be more efficient using the iterator.ArrayViewIterator
-        for chunk in self.iter_chunks():
-            yield chunk.buffers
+        return iter_array_view(self)
 
     @property
     def n_children(self) -> int:
