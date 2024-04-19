@@ -18,14 +18,9 @@
 import enum
 import reprlib
 from functools import cached_property
-from typing import Union, Mapping
+from typing import Mapping, Union
 
-from nanoarrow._lib import (
-    CArrowTimeUnit,
-    CArrowType,
-    CSchemaBuilder,
-    CSchemaView,
-)
+from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaBuilder, CSchemaView
 from nanoarrow.c_lib import c_schema
 from nanoarrow.extension import Extension, resolve_extension
 
