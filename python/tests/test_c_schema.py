@@ -86,28 +86,23 @@ def test_c_schema_view():
 
 
 def test_c_schema_view_extra_params():
-    schema = na.c_schema(na.fixed_size_binary(12))
-    view = na.c_schema_view(schema)
+    view = na.c_schema_view(na.fixed_size_binary(12))
     assert view.fixed_size == 12
 
-    schema = na.c_schema(na.decimal128(10, 3))
-    view = na.c_schema_view(schema)
+    view = na.c_schema_view(na.decimal128(10, 3))
     assert view.decimal_bitwidth == 128
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.c_schema(na.decimal256(10, 3))
-    view = na.c_schema_view(schema)
+    view = na.c_schema_view(na.decimal256(10, 3))
     assert view.decimal_bitwidth == 256
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    schema = na.c_schema(na.duration("us"))
-    view = na.c_schema_view(schema)
+    view = na.c_schema_view(na.duration("us"))
     assert view.time_unit == "us"
 
-    schema = na.c_schema(na.timestamp("us", "America/Halifax"))
-    view = na.c_schema_view(schema)
+    view = na.c_schema_view(na.timestamp("us", "America/Halifax"))
     assert view.type == "timestamp"
     assert view.storage_type == "int64"
     assert view.time_unit == "us"
@@ -115,7 +110,7 @@ def test_c_schema_view_extra_params():
 
     pa = pytest.importorskip("pyarrow")
 
-    schema = na.c_schema(pa.list_(pa.int32(), 12))
+    view = na.c_schema_view(pa.list_(pa.int32(), 12))
     assert view.fixed_size == 12
 
 
