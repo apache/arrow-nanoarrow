@@ -18,9 +18,9 @@
 import warnings
 from functools import cached_property
 from itertools import islice
-from typing import Iterable, List, Tuple
+from typing import Iterable, Tuple
 
-from nanoarrow._lib import CArrayView, CArrowType, CBufferView
+from nanoarrow._lib import CArrayView, CArrowType
 from nanoarrow.c_lib import c_array_stream, c_schema, c_schema_view
 
 
@@ -79,24 +79,46 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
-def iter_buffers_recursive(
-    obj, schema=None
-) -> Iterable[Tuple[List[int], List[int], Tuple[CBufferView]]]:
-    return RecursiveBufferIterator.get_iterator(obj, schema=schema)
+def iter_array_view(obj, schema=None) -> Iterable[CArrayView]:
+    """Iterate over prepared views of each array
 
+    Returns an iterator which yields a :func:`c_array_view`
+    for each chunk in ``obj``.
 
-def iter_buffers(obj, schema=None) -> Iterable[Tuple]:
-    return BufferIterator.get_iterator(obj, schema=schema)
+    For performance reasons, the :class:`CArrayView` yielded by this iterator
+    is the same Python object for each chunk backed by a different
+    :class:`CArray` on each iteration. The buffers obtained by
+    ``item.buffer()`` or ``item.buffers()`` are independent of this view
+    (i.e., they hold a strong reference to the underlying :class:`CArray`
+    but not the :class:`CArrayView` instance).
 
+    Paramters
+    ---------
+    obj : array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
 
-def iter_av_mutable(obj, schema=None):
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow import iterator
+    >>> array = na.c_array([1, 2, 3], na.int32())
+    >>> list(iterator.iter_array_view(array))
+    [<nanoarrow.c_lib.CArrayView>
+     - storage_type: 'int32'
+     - length: 3
+     - offset: 0
+     - null_count: 0
+     - buffers[2]:
+     - validity <bool[0 b] >
+     - data <int32[12 b] 1 2 3>
+     - dictionary: NULL
+     - children[0]:]
+    """
     return ArrayViewIterator.get_iterator(obj, schema=schema)
-
-
-def iter_av_copies(obj, schema=None):
-    with c_array_stream(obj, schema=schema) as stream:
-        for array in stream:
-            yield array.view()
 
 
 class InvalidArrayWarning(UserWarning):
@@ -107,7 +129,7 @@ class LossyConversionWarning(UserWarning):
     pass
 
 
-class ArrayViewIterator:
+class ArrayViewBaseIterator:
     """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
     """
@@ -143,7 +165,7 @@ class ArrayViewIterator:
     def _make_child(self, schema, array_view):
         return type(self)(schema, _array_view=array_view)
 
-    def _iter1(self, offset, length):
+    def _iter1(self, offset, length) -> Iterable:
         yield self._array_view
 
     @cached_property
@@ -172,61 +194,22 @@ class ArrayViewIterator:
         warnings.warn(f"{self._object_label}: {message}", category)
 
 
-class BufferIterator(ArrayViewIterator):
-    def __init__(self, schema, *, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
+class ArrayViewIterator(ArrayViewBaseIterator):
+    """Yield the prepared CArrayView backed by successive arrays in a stream.
+    Intended for internal use.
+    """
+
+    def __init__(self, schema):
+        # We don't child iterators for this iterator implementation
+        self._schema = c_schema(schema)
+        self._schema_view = c_schema_view(schema)
+        self._array_view = CArrayView.from_schema(self._schema)
 
     def _iter1(self, offset, length):
-        yield (
-            self._array_view.offset + offset,
-            length,
-            tuple(self._array_view.buffers),
-            tuple(self._child_buffers()),
-            self._dictionary_buffers(),
-        )
-
-    def _child_buffers(self):
-        for child in self._children:
-            yield next(child._iter1(0, child._array_view.length))
-
-    def _dictionary_buffers(self):
-        if self._dictionary:
-            return next(
-                self._dictionary._iter1(
-                    0,
-                    self._dictionary._array_view.length,
-                )
-            )
+        yield self._array_view
 
 
-class RecursiveBufferIterator(BufferIterator):
-    def _make_child(self, schema, array_view):
-        return BufferIterator(schema, _array_view=array_view)
-
-    def _iter1(
-        self, offset, length
-    ) -> Iterable[Tuple[List[int], List[int], Tuple[CBufferView]]]:
-        item = next(super()._iter1(offset, length))
-        offsets = []
-        lengths = []
-        buffers = tuple(self._buffers_from_parent(item, offsets, lengths))
-        offsets[0] += offset
-        lengths[0] = length
-        yield offsets, lengths, buffers
-
-    def _buffers_from_parent(self, parent_item, offsets, lengths):
-        offset, length, buffers, children, dictionary = parent_item
-        if dictionary:
-            raise ValueError("RecursiveBufferIterator not implemented for dictionary")
-
-        offsets.append(offset)
-        lengths.append(length)
-        yield from buffers
-        for child in children:
-            yield from self._buffers_from_parent(child, offsets, lengths)
-
-
-class PyIterator(ArrayViewIterator):
+class PyIterator(ArrayViewBaseIterator):
     """Iterate over the Python object version of values in an ArrowArrayView.
     Intended for internal use.
     """
