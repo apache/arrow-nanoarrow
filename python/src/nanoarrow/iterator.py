@@ -108,15 +108,15 @@ def iter_array_view(obj, schema=None) -> Iterable[CArrayView]:
     >>> array = na.c_array([1, 2, 3], na.int32())
     >>> list(iterator.iter_array_view(array))
     [<nanoarrow.c_lib.CArrayView>
-     - storage_type: 'int32'
-     - length: 3
-     - offset: 0
-     - null_count: 0
-     - buffers[2]:
-     - validity <bool[0 b] >
-     - data <int32[12 b] 1 2 3>
-     - dictionary: NULL
-     - children[0]:]
+    - storage_type: 'int32'
+    - length: 3
+    - offset: 0
+    - null_count: 0
+    - buffers[2]:
+      - validity <bool[0 b] >
+      - data <int32[12 b] 1 2 3>
+    - dictionary: NULL
+    - children[0]:]
     """
     return ArrayViewIterator.get_iterator(obj, schema=schema)
 
