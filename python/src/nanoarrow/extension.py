@@ -18,7 +18,7 @@
 import warnings
 from typing import Iterable, Mapping, Type, Union
 
-from nanoarrow._lib import CArrayView, CSchema
+from nanoarrow._lib import CArrayView, CSchema, CSchemaView
 
 
 class UnregisteredExtensionWarning(UserWarning):
@@ -26,45 +26,15 @@ class UnregisteredExtensionWarning(UserWarning):
 
 
 class Extension:
-    @classmethod
-    def deserialize(cls, name: str, schema: CSchema):
-        raise NotImplementedError()
-
-    @property
-    def name(self) -> str:
-        raise NotImplementedError()
-
-    @property
-    def metadata(self) -> Union[bytes, None]:
-        raise NotImplementedError()
-
-
-class SimpleExtension:
-    def __init__(self, name: str, metadata=None) -> None:
+    def __init__(self, name: str, schema: CSchema, metadata=None) -> None:
         self._name = name
 
         if metadata is None:
-            self._metadata = None
+            self._metadata = schema.metadata[b"ARROW:extension:metadata"]
         elif isinstance(metadata, str):
             self._metadata = metadata.encode()
         else:
             self._metadata = bytes(metadata)
-
-    @classmethod
-    def deserialize(cls, name: str, schema: CSchema):
-        name = None
-        metadata = None
-
-        for key, value in schema.metadata:
-            if key == b"ARROW:extension:name":
-                name = value.decode()
-            elif key == b"ARROW:extension:metadata":
-                metadata = value
-
-        if name is None:
-            raise ValueError("schema is not an Arrow extension type")
-
-        return cls(name, metadata)
 
     @property
     def name(self) -> str:
@@ -112,11 +82,19 @@ def resolve_extension(
     schema: CSchema,
     extension_name: Union[str, None] = None,
     default_cls: Union[Type[Extension], None] = None,
-) -> Extension:
+) -> Union[Extension, None]:
     registry = global_extension_registry()
+
+    if extension_name is None:
+        schema_view = CSchemaView(schema)
+        extension_name = schema_view.extension_name
+
+    if extension_name is None:
+        return None
+
     if extension_name in registry:
-        return registry[extension_name].deserialize(extension_name, schema)
+        return registry[extension_name](extension_name, schema)
     elif default_cls is not None:
-        return default_cls.deserialize(extension_name, schema)
+        return default_cls(extension_name, schema)
     else:
         raise KeyError(f"Extension '{extension_name}' is not registered")

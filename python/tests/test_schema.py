@@ -48,6 +48,11 @@ def test_schema_create_c_schema():
     schema_named = na.Schema(na.int32(), name="some_name")
     assert schema_named.name == "some_name"
 
+    schema_metad = na.Schema(na.int32(), metadata={"some key": "some value"})
+    assert b"some key" in schema_metad.metadata
+    assert schema_metad.metadata[b"some key"] == b"some value"
+    assert dict(schema_metad.metadata.items()) == {b"some key": b"some value"}
+
     with pytest.raises(ValueError):
         na.Schema(schema_obj._c_schema, some_parameter="some_value")
 
@@ -183,3 +188,18 @@ def test_schema_struct():
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.field(0).type == na.Type.INT32
     assert schema_obj.field(0).name == "col_name"
+
+
+def test_schema_extension():
+    schema_obj = na.int32()
+    assert schema_obj.extension is None
+
+    schema_obj = na.Schema(
+        na.int32(),
+        metadata={
+            "ARROW:extension:name": "arrow.test",
+            "ARROW:extension:metadata": "abcdefg",
+        },
+    )
+    assert schema_obj.extension.name == "arrow.test"
+    assert schema_obj.extension.metadata == b"abcdefg"

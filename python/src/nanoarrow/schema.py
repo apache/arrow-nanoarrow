@@ -25,10 +25,9 @@ from nanoarrow._lib import (
     CArrowType,
     CSchemaBuilder,
     CSchemaView,
-    SchemaMetadata,
 )
 from nanoarrow.c_lib import c_schema
-from nanoarrow.extension import Extension, SimpleExtension, resolve_extension
+from nanoarrow.extension import Extension, resolve_extension
 
 
 class Type(enum.Enum):
@@ -218,15 +217,15 @@ class Schema:
         """
         return self._c_schema_view.nullable
 
-    @property
-    def metadata(self) -> SchemaMetadata:
+    @cached_property
+    def metadata(self) -> Mapping[bytes, bytes]:
         return self._c_schema.metadata
 
     @cached_property
     def extension(self) -> Union[Extension, None]:
         extension_name = self._c_schema_view.extension_name
         if extension_name:
-            return resolve_extension(self._c_schema, extension_name, SimpleExtension)
+            return resolve_extension(self._c_schema, extension_name, Extension)
 
     @property
     def byte_width(self) -> Union[int, None]:
