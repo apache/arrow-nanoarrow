@@ -68,7 +68,7 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: sdist
+        name: release-sdist
         path: ./python/dist/nanoarrow-*.tar.gz
 
   build_wheels:
@@ -104,5 +104,39 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.config.label }}
+          name: release-wheels-${{ matrix.config.label }}
           path: ./wheelhouse/*.whl
+
+
+  upload_nightly:
+    needs: ["build_sdist", "build_wheels"]
+    name: Upload nightly packages
+    runs-on: "ubuntu-20.04"
+    # if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+
+      - name: Set up Ruby
+        if: runner.arch == 'X64' && runner.os != 'macOS'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "ruby"
+
+      - name: Install gemfury client
+        run: |
+          # GH-36692: Pin gemfury due to wrong faraday dependency declaration.
+          gem install gemfury -v 0.12.0
+
+      - name: Upload packages to Gemfury
+        shell: bash
+        run: |
+          fury push \
+            --api-token=${NANOARROW_GEMFURY_TOKEN} \
+            --as="arrow-nightlies" \
+            dist/*
+        env:
+          NANOARROW_GEMFURY_TOKEN: ${{ secrets.NANOARROW_GEMFURY_TOKEN }}
