@@ -58,7 +58,7 @@ def test_schema_metadata():
 
     assert len(schema.metadata) == 2
 
-    meta2 = {k: v for k, v in schema.metadata}
+    meta2 = {k: v for k, v in schema.metadata.items()}
     assert list(meta2.keys()) == [b"key1", b"key2"]
     assert list(meta2.values()) == [b"value1", b"value2"]
     assert "b'key1': b'value1'" in repr(schema)
@@ -147,11 +147,11 @@ def test_c_schema_modify():
 
     meta = {"some key": "some value"}
     schema_metad = schema.modify(metadata=meta)
-    assert list(schema_metad.metadata) == [(b"some key", b"some value")]
+    assert list(schema_metad.metadata.items()) == [(b"some key", b"some value")]
     assert schema_non_nullable.format == schema.format
 
     schema_metad2 = schema.modify(metadata=schema_metad.metadata)
-    assert list(schema_metad2.metadata) == [(b"some key", b"some value")]
+    assert list(schema_metad2.metadata.items()) == [(b"some key", b"some value")]
 
     schema_no_metad = schema_metad.modify(metadata={})
     assert schema_no_metad.metadata is None

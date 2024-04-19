@@ -42,14 +42,14 @@ def test_schema_create_c_schema():
     assert schema_obj2.type == schema_obj2.type
     assert schema_obj2._c_schema is schema_obj._c_schema
 
-    with pytest.raises(ValueError, match="must be unspecified"):
+    schema_obj_non_nullable = na.Schema(na.int32(), nullable=False)
+    assert schema_obj_non_nullable.nullable is False
+
+    schema_named = na.Schema(na.int32(), name="some_name")
+    assert schema_named.name == "some_name"
+
+    with pytest.raises(ValueError):
         na.Schema(schema_obj._c_schema, some_parameter="some_value")
-
-    with pytest.raises(ValueError, match="must be unspecified"):
-        na.Schema(schema_obj._c_schema, nullable=True)
-
-    with pytest.raises(ValueError, match="must be unspecified"):
-        na.Schema(schema_obj._c_schema, name="")
 
 
 def test_schema_create_no_params():

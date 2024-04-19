@@ -1540,7 +1540,30 @@ cdef class SchemaMetadata:
         self._init_reader()
         return self._reader.remaining_keys
 
+    def __contains__(self, item):
+        for key, _ in self.items():
+            if item == key:
+                return True
+
+        return False
+
+    def __getitem__(self, k):
+        out = None
+
+        for key, value in self.items():
+            if k == key:
+                if out is None:
+                    out = value
+                else:
+                    raise KeyError(f"key {k} matches more than one value in metadata")
+
+        return out
+
     def __iter__(self):
+        for key, _ in self.items():
+            yield key
+
+    def items(self):
         cdef ArrowStringView key
         cdef ArrowStringView value
         self._init_reader()
@@ -1549,11 +1572,6 @@ cdef class SchemaMetadata:
             key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
-
-    # For duck type compatability such that code that accepts
-    # schema metadata can also accept a dictionary using obj.items()
-    def items(self):
-        return self
 
 
 cdef class CBufferView:

@@ -18,9 +18,15 @@
 import enum
 import reprlib
 from functools import cached_property
-from typing import Union
+from typing import Union, Mapping
 
-from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaBuilder, CSchemaView
+from nanoarrow._lib import (
+    CArrowTimeUnit,
+    CArrowType,
+    CSchemaBuilder,
+    CSchemaView,
+    SchemaMetadata,
+)
 from nanoarrow.c_lib import c_schema
 from nanoarrow.extension import Extension, SimpleExtension, resolve_extension
 
@@ -131,8 +137,9 @@ class Schema:
 
     nullable : bool, optional
         Explicitly specify field nullability. Fields are nullable by default.
-        Only supported if ``obj`` is a :class:`Type` object (for any other input,
-        the nullability is preserved from the passed object).
+
+    metadata : mapping, optional
+        Explicitly specify field metadata.
 
     params :
         Type-specific parameters when ``obj`` is a :class:`Type`.
@@ -156,18 +163,24 @@ class Schema:
         *,
         name=None,
         nullable=None,
+        metadata=None,
         **params,
     ) -> None:
         if isinstance(obj, Type):
-            self._c_schema = _c_schema_from_type_and_params(obj, params, name, nullable)
-        elif not params and nullable is None and name is None:
-            self._c_schema = c_schema(obj)
-        else:
-            # A future version could also deep copy the schema and update it if these
-            # values *are* specified.
-            raise ValueError(
-                "params, nullable, and name must be unspecified if type is not "
-                "nanoarrow.Type"
+            self._c_schema = _c_schema_from_type_and_params(
+                obj, params, name, nullable, metadata
+            )
+            self._c_schema_view = CSchemaView(self._c_schema)
+            return
+
+        if params:
+            raise ValueError("params are only supported for obj of class Type")
+
+        self._c_schema = c_schema(obj)
+
+        if name is not None or nullable is not None or metadata is not None:
+            self._c_schema = self._c_schema.modify(
+                name=name, nullable=nullable, metadata=metadata
             )
 
         self._c_schema_view = CSchemaView(self._c_schema)
@@ -204,6 +217,10 @@ class Schema:
         False
         """
         return self._c_schema_view.nullable
+
+    @property
+    def metadata(self) -> SchemaMetadata:
+        return self._c_schema.metadata
 
     @cached_property
     def extension(self) -> Union[Extension, None]:
@@ -906,6 +923,7 @@ def _c_schema_from_type_and_params(
     params: dict,
     name: Union[bool, None, bool],
     nullable: Union[bool, None],
+    metadata: Mapping[Union[str, bytes], Union[str, bytes]],
 ):
     factory = CSchemaBuilder.allocate()
 
@@ -955,6 +973,10 @@ def _c_schema_from_type_and_params(
     elif name is False:
         name = None
     factory.set_name(name)
+
+    # Apply metadata
+    if metadata is not None:
+        factory.append_metadata(metadata)
 
     return factory.finish()
 
