@@ -27,7 +27,7 @@ from nanoarrow._lib import (
     Device,
 )
 from nanoarrow.c_lib import c_array, c_array_stream, c_array_view
-from nanoarrow.iterator import iter_array_data, iter_py, iter_tuples
+from nanoarrow.iterator import iter_array_view, iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
 from nanoarrow import _repr_utils
@@ -288,7 +288,7 @@ class Array:
         nanoarrow.c_lib.CBufferView(bool[0 b] )
         nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
         """
-        return iter_array_data(self)
+        return iter_array_view(self)
 
     @property
     def n_children(self) -> int:

@@ -23,6 +23,7 @@ from nanoarrow.iterator import (
     ArrayViewBaseIterator,
     InvalidArrayWarning,
     LossyConversionWarning,
+    iter_array_view,
     iter_py,
     iter_tuples,
 )
@@ -39,6 +40,14 @@ def test_iterator_warnings():
     with pytest.warns(LossyConversionWarning, match=msg_named):
         iterator = ArrayViewBaseIterator(na.Schema(na.Type.INT32, name="some_colname"))
         iterator._warn("something", LossyConversionWarning)
+
+
+def test_array_data_iterator():
+    array = na.c_array([1, 2, 3], na.int32())
+    views = list(iter_array_view(array))
+    assert len(views) == 1
+    assert views[0].storage_type == "int32"
+    assert list(views[0].buffer(1)) == [1, 2, 3]
 
 
 def test_iterator_primitive():
