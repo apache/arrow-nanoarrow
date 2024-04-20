@@ -79,7 +79,7 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
-def iter_array_view(obj, schema=None) -> Iterable[CArrayView]:
+def iter_array_data(obj, schema=None) -> Iterable[CArrayView]:
     """Iterate over prepared views of each array
 
     Returns an iterator which yields a :func:`c_array_view`
@@ -99,7 +99,7 @@ def iter_array_view(obj, schema=None) -> Iterable[CArrayView]:
     >>> import nanoarrow as na
     >>> from nanoarrow import iterator
     >>> array = na.c_array([1, 2, 3], na.int32())
-    >>> list(iterator.iter_array_view(array))
+    >>> list(iterator.iter_array_data(array))
     [<nanoarrow.c_lib.CArrayView>
     - storage_type: 'int32'
     - length: 3
