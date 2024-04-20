@@ -490,3 +490,7 @@ class Array:
 
     def __repr__(self) -> str:
         return self.to_string()
+
+    def inspect(self): # or dump?
+        self._assert_one_chunk("inspect")
+        print(_repr_utils.array_dump(c_array(self)))

@@ -248,3 +248,46 @@ def device_repr(device):
     device_type = f"- device_type: {device.device_type.name} <{device.device_type_id}>"
     device_id = f"- device_id: {device.device_id}"
     return "\n".join([title_line, device_type, device_id])
+
+
+def array_dump(array, indent=0, max_char_width=80):
+    array_view = array.view()
+
+    if max_char_width < 20:
+        max_char_width = 20
+
+    indent_str = " " * indent
+    class_label = "ArrowArray"
+    if array._addr() == 0:
+        return f"<{class_label} <NULL>>"
+    elif not array.is_valid():
+        return f"<{class_label} <released>>"
+
+    schema_string = array.schema._to_string(
+        max_chars=max_char_width - indent - 23, recursive=True
+    )
+    lines = [f"<{class_label} {schema_string}>"]
+    for attr in ("length", "offset", "null_count"):
+        attr_repr = repr(getattr(array, attr))
+        lines.append(f"{indent_str}- {attr}: {attr_repr}")
+
+    lines.append(f"{indent_str}- buffers[{array_view.n_buffers}]:")
+    for i, buffer in enumerate(array_view.buffers):
+        buffer_type = array_view.buffer_type(i)
+        lines.append(
+            f"{indent_str}  - {buffer_type} "
+            f"<{buffer_view_repr(buffer, max_char_width - indent - 4 - len(buffer))}>"
+        )
+
+    if array.dictionary:
+        dictionary_repr = array_dump(array.dictionary, indent=indent + 2)
+        lines.append(f"{indent_str}- dictionary: {dictionary_repr}")
+    else:
+        lines.append(f"{indent_str}- dictionary: NULL")
+
+    lines.append(f"{indent_str}- children[{array.n_children}]:")
+    for child in array.children:
+        child_repr = array_dump(child, indent=indent + 4)
+        lines.append(f"{indent_str}  {repr(child.schema.name)}: {child_repr}")
+
+    return "\n".join(lines)
