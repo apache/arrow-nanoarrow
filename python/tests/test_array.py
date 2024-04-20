@@ -42,6 +42,7 @@ def test_array_empty():
     array = na.Array([], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 0
+    assert array.offset == 0
 
     assert array.n_buffers == 2
     assert list(array.buffer(0)) == []
@@ -73,6 +74,7 @@ def test_array_contiguous():
     array = na.Array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
     assert len(array) == 3
+    assert array.offset == 0
 
     assert array.n_buffers == 2
 
