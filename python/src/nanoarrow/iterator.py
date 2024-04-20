@@ -135,7 +135,7 @@ class ArrayViewBaseIterator:
             iterator = cls(stream._get_cached_schema())
             for array in stream:
                 iterator._set_array(array)
-                yield from iterator._iter1(0, array.length)
+                yield from iterator._iter_chunk(0, array.length)
 
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
@@ -160,7 +160,7 @@ class ArrayViewBaseIterator:
     def _make_child(self, schema, array_view):
         return type(self)(schema, _array_view=array_view)
 
-    def _iter1(self, offset, length) -> Iterable:
+    def _iter_chunk(self, offset, length) -> Iterable:
         yield self._array_view
 
     @cached_property
@@ -194,7 +194,7 @@ class PyIterator(ArrayViewBaseIterator):
     Intended for internal use.
     """
 
-    def _iter1(self, offset, length):
+    def _iter_chunk(self, offset, length):
         type_id = self._schema_view.type_id
         if type_id not in _ITEMS_ITER_LOOKUP:
             raise KeyError(
@@ -206,7 +206,7 @@ class PyIterator(ArrayViewBaseIterator):
 
     def _dictionary_iter(self, offset, length):
         dictionary = list(
-            self._dictionary._iter1(0, self._dictionary._array_view.length)
+            self._dictionary._iter_chunk(0, self._dictionary._array_view.length)
         )
         for dict_index in self._primitive_iter(offset, length):
             yield None if dict_index is None else dictionary[dict_index]
@@ -218,7 +218,7 @@ class PyIterator(ArrayViewBaseIterator):
     def _struct_tuple_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
-        items = zip(*(child._iter1(offset, length) for child in self._children))
+        items = zip(*(child._iter_chunk(offset, length) for child in self._children))
 
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
@@ -239,7 +239,7 @@ class PyIterator(ArrayViewBaseIterator):
         starts = offsets[:-1]
         ends = offsets[1:]
         child = self._children[0]
-        child_iter = child._iter1(starts[0], ends[-1] - starts[0])
+        child_iter = child._iter_chunk(starts[0], ends[-1] - starts[0])
 
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
@@ -255,7 +255,7 @@ class PyIterator(ArrayViewBaseIterator):
         offset += view.offset
         child = self._children[0]
         fixed_size = view.layout.child_size_elements
-        child_iter = child._iter1(offset * fixed_size, length * fixed_size)
+        child_iter = child._iter_chunk(offset * fixed_size, length * fixed_size)
 
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
@@ -475,7 +475,7 @@ class RowTupleIterator(PyIterator):
     def _make_child(self, schema, array_view):
         return PyIterator(schema, _array_view=array_view)
 
-    def _iter1(self, offset, length):
+    def _iter_chunk(self, offset, length):
         return self._struct_tuple_iter(offset, length)
 
 
