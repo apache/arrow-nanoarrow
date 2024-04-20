@@ -42,7 +42,7 @@ def test_iterator_warnings():
         iterator._warn("something", LossyConversionWarning)
 
 
-def test_array_data_iterator():
+def test_array_view_iterator():
     array = na.c_array([1, 2, 3], na.int32())
     views = list(iter_array_view(array))
     assert len(views) == 1
