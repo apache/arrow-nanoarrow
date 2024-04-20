@@ -16,7 +16,7 @@
 # under the License.
 
 import warnings
-from typing import Iterable, Mapping, Type, Union
+from typing import Iterable, Union
 
 from nanoarrow._lib import CArrayView, CSchema, CSchemaView
 
@@ -53,37 +53,10 @@ class Extension:
         return None
 
 
-class ExtensionRegistry:
-    def __init__(self) -> None:
-        self._extensions = {}
-
-    def __iter__(self) -> Iterable[str]:
-        return iter(self._extensions.keys())
-
-    def __contains__(self, k: str) -> bool:
-        return k in self._extensions
-
-    def __getitem__(self, k: str) -> Type[Extension]:
-        return self._extensions[k]
-
-    def __setitem__(self, k, v: Type[Extension]) -> None:
-        self._extensions[k] = v
-
-
-_global_extension_registry = ExtensionRegistry()
-
-
-def global_extension_registry() -> Mapping[str, Type[Extension]]:
-    global _global_extension_registry
-    return _global_extension_registry
-
-
 def resolve_extension(
     schema: CSchema,
     extension_name: Union[str, None] = None,
-    default_cls: Union[Type[Extension], None] = None,
 ) -> Union[Extension, None]:
-    registry = global_extension_registry()
 
     if extension_name is None:
         schema_view = CSchemaView(schema)
@@ -92,9 +65,4 @@ def resolve_extension(
     if extension_name is None:
         return None
 
-    if extension_name in registry:
-        return registry[extension_name](extension_name, schema)
-    elif default_cls is not None:
-        return default_cls(extension_name, schema)
-    else:
-        raise KeyError(f"Extension '{extension_name}' is not registered")
+    return Extension(extension_name, schema)

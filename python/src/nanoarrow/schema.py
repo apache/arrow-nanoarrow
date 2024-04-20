@@ -220,7 +220,7 @@ class Schema:
     def extension(self) -> Union[Extension, None]:
         extension_name = self._c_schema_view.extension_name
         if extension_name:
-            return resolve_extension(self._c_schema, extension_name, Extension)
+            return resolve_extension(self._c_schema, extension_name)
 
     @property
     def byte_width(self) -> Union[int, None]:
