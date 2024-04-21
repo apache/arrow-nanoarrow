@@ -37,6 +37,8 @@ def test_time_unit_create():
 def test_schema_create_c_schema():
     schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32
+    assert schema_obj.name == ""
+    assert ("some key" in schema_obj.metadata) is False
 
     schema_obj2 = na.Schema(schema_obj._c_schema)
     assert schema_obj2.type == schema_obj2.type
