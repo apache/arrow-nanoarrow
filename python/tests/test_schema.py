@@ -194,6 +194,7 @@ def test_schema_extension():
     schema_obj = na.int32()
     assert schema_obj.extension is None
 
+    # Check with metadata manually added
     schema_obj = na.Schema(
         na.int32(),
         metadata={
@@ -203,3 +204,14 @@ def test_schema_extension():
     )
     assert schema_obj.extension.name == "arrow.test"
     assert schema_obj.extension.metadata == b"abcdefg"
+
+    # Check from extension_type constructor
+    schema_obj = na.extension_type(na.int32(), "arrow.test", "abcdefg")
+    assert schema_obj.extension.name == "arrow.test"
+    assert schema_obj.extension.metadata == b"abcdefg"
+    assert schema_obj.nullable is True
+
+    schema_obj = na.extension_type(na.int32(), "arrow.test", nullable=False)
+    assert schema_obj.extension.name == "arrow.test"
+    assert schema_obj.extension.metadata is None
+    assert schema_obj.nullable is False

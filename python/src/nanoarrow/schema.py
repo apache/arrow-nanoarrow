@@ -20,7 +20,13 @@ import reprlib
 from functools import cached_property
 from typing import Mapping, Union
 
-from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaBuilder, CSchemaView
+from nanoarrow._lib import (
+    CArrowTimeUnit,
+    CArrowType,
+    CSchemaBuilder,
+    CSchemaView,
+    SchemaMetadata,
+)
 from nanoarrow.c_lib import c_schema
 from nanoarrow.extension import Extension, resolve_extension
 
@@ -214,7 +220,10 @@ class Schema:
 
     @cached_property
     def metadata(self) -> Mapping[bytes, bytes]:
-        return self._c_schema.metadata
+        c_schema_metadata = self._c_schema.metadata
+        return (
+            SchemaMetadata.empty() if c_schema_metadata is None else c_schema_metadata
+        )
 
     @cached_property
     def extension(self) -> Union[Extension, None]:
@@ -908,8 +917,32 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
-def extension(storage, extension_name, extension_metadata=None) -> Schema:
-    pass
+def extension_type(
+    storage_schema,
+    extension_name: str,
+    extension_metadata: Union[str, bytes, None] = None,
+    nullable: bool = True,
+) -> Schema:
+    """Create an Arrow extension type
+
+    Parameters
+    ----------
+    extension_name: str
+        The extension name to associate with this type.
+    extension_metadata: str or bytes, optional
+        Extension metadata containing extension parameters associated with this
+        extension type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+    """
+    storage_schema = c_schema(storage_schema)
+    storage_metadata = storage_schema.metadata
+    metadata = dict(storage_metadata) if storage_metadata else {}
+    metadata["ARROW:extension:name"] = extension_name
+    if extension_metadata:
+        metadata["ARROW:extension:metadata"] = extension_metadata
+
+    return Schema(storage_schema, nullable=nullable, metadata=metadata)
 
 
 def _c_schema_from_type_and_params(

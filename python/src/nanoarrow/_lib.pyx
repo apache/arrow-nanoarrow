@@ -1532,6 +1532,10 @@ cdef class SchemaMetadata:
         self._base = base
         self._metadata = <const char*>ptr
 
+    @staticmethod
+    def empty():
+        return SchemaMetadata(None, 0)
+
     cdef _init_reader(self):
         cdef int code = ArrowMetadataReaderInit(&self._reader, self._metadata)
         Error.raise_error_not_ok("ArrowMetadataReaderInit()", code)
