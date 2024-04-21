@@ -135,10 +135,10 @@ class ExtensionAccessor:
     @property
     def storage(self):
         """Storage type for this extension type"""
-        metadata = dict(self._schema.metadata)
-        del metadata["ARROW:extension:name"]
-        if "ARROW:extension:metadata" in metadata:
-            del metadata["ARROW:extension:metadata"]
+        metadata = dict(self._schema.metadata.items())
+        del metadata[b"ARROW:extension:name"]
+        if b"ARROW:extension:metadata" in metadata:
+            del metadata[b"ARROW:extension:metadata"]
 
         return Schema(self._schema, metadata=metadata)
 
