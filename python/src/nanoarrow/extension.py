@@ -15,14 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import warnings
-from typing import Iterable, Union
+from typing import Union
 
-from nanoarrow._lib import CArrayView, CSchema, CSchemaView
-
-
-class UnregisteredExtensionWarning(UserWarning):
-    pass
+from nanoarrow._lib import CSchema
 
 
 class Extension:
@@ -44,25 +39,6 @@ class Extension:
     def metadata(self) -> Union[bytes, None]:
         return self._metadata
 
-    def _iter_py(self, c_array_view: CArrayView) -> Union[None, Iterable]:
-        warnings.warn(
-            f"Converting unregistered extension '{self.name} as storage type",
-            UnregisteredExtensionWarning,
-        )
 
-        return None
-
-
-def resolve_extension(
-    schema: CSchema,
-    extension_name: Union[str, None] = None,
-) -> Union[Extension, None]:
-
-    if extension_name is None:
-        schema_view = CSchemaView(schema)
-        extension_name = schema_view.extension_name
-
-    if extension_name is None:
-        return None
-
+def resolve_extension(schema: CSchema, extension_name: str) -> Extension:
     return Extension(extension_name, schema)
