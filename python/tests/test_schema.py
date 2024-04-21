@@ -209,6 +209,8 @@ def test_schema_extension():
 
     # Check from extension_type constructor
     schema_obj = na.extension_type(na.int32(), "arrow.test", "abcdefg")
+    assert schema_obj.type == na.Type.EXTENSION
+    assert schema_obj.extension is not None
     assert schema_obj.extension.name == "arrow.test"
     assert schema_obj.extension.metadata == b"abcdefg"
     assert schema_obj.extension.storage.type == na.Type.INT32

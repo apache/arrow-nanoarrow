@@ -220,7 +220,10 @@ class Schema:
         >>> na.int32().type
         <Type.INT32: 8>
         """
-        return Type(self._c_schema_view.type_id)
+        if self._c_schema_view.extension_name:
+            return Type.EXTENSION
+        else:
+            return Type(self._c_schema_view.type_id)
 
     @property
     def name(self) -> Union[str, None]:
