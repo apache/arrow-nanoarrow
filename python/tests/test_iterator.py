@@ -497,7 +497,7 @@ def test_iterator_duration():
 
 def test_iterator_extension():
     schema = na.extension_type(na.int32(), "arrow.test")
-    storage_array = na.c_array([1, 2, 3], schema)
+    storage_array = na.c_array([1, 2, 3], na.int32())
     _, storage_array_capsule = na.c_array(storage_array).__arrow_c_array__()
     extension_array = na.c_array(storage_array_capsule, schema)
 

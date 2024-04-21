@@ -28,7 +28,6 @@ from nanoarrow._lib import (
     SchemaMetadata,
 )
 from nanoarrow.c_lib import c_schema
-from nanoarrow.extension import Extension, resolve_extension
 
 
 class Type(enum.Enum):
@@ -114,6 +113,31 @@ class TimeUnit(enum.Enum):
                 return TimeUnit.NANO
 
         return TimeUnit(obj)
+
+
+class ExtensionAccessor:
+    """Access extension type parameters"""
+
+    def __init__(self, schema) -> None:
+        self._schema = schema
+
+    @property
+    def name(self) -> str:
+        return self._schema._c_schema_view.extension_name
+
+    @property
+    def metadata(self) -> Union[bytes, None]:
+        extension_metadata = self._schema._c_schema_view.extension_metadata
+        return extension_metadata if extension_metadata else None
+
+    @property
+    def storage(self):
+        metadata = dict(self._schema.metadata)
+        del metadata["ARROW:extension:name"]
+        if "ARROW:extension:metadata" in metadata:
+            del metadata["ARROW:extension:metadata"]
+
+        return Schema(self._schema, metadata=metadata)
 
 
 class Schema:
@@ -220,16 +244,32 @@ class Schema:
 
     @cached_property
     def metadata(self) -> Mapping[bytes, bytes]:
+        """Access field metadata of this field
+
+        >>> import nanoarrow as na
+        >>> schema = na.Schema(na.int32(), metadata={"key": "value"})
+        >>> dict(schema.metadata.items())
+        {b'key': b'value'}
+        """
         c_schema_metadata = self._c_schema.metadata
         return (
             SchemaMetadata.empty() if c_schema_metadata is None else c_schema_metadata
         )
 
     @cached_property
-    def extension(self) -> Union[Extension, None]:
+    def extension(self) -> Union[ExtensionAccessor, None]:
+        """Access extension type attributes
+
+        >>> import nanoarrow as na
+        >>> schema = na.extension_type(na.int32(), "arrow.example", b"{}")
+        >>> schema.extension.name
+        'arrow.example'
+        >>> schema.extension.metadata
+        b'{}'
+        """
         extension_name = self._c_schema_view.extension_name
         if extension_name:
-            return resolve_extension(self._c_schema, extension_name)
+            return ExtensionAccessor(self)
 
     @property
     def byte_width(self) -> Union[int, None]:
