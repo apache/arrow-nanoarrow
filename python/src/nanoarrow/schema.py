@@ -116,22 +116,25 @@ class TimeUnit(enum.Enum):
 
 
 class ExtensionAccessor:
-    """Access extension type parameters"""
+    """Accessor for extension type parameters"""
 
     def __init__(self, schema) -> None:
         self._schema = schema
 
     @property
     def name(self) -> str:
+        """Extension name for this extension type"""
         return self._schema._c_schema_view.extension_name
 
     @property
     def metadata(self) -> Union[bytes, None]:
+        """Extension metadata for this extension type if present"""
         extension_metadata = self._schema._c_schema_view.extension_metadata
         return extension_metadata if extension_metadata else None
 
     @property
     def storage(self):
+        """Storage type for this extension type"""
         metadata = dict(self._schema.metadata)
         del metadata["ARROW:extension:name"]
         if "ARROW:extension:metadata" in metadata:
