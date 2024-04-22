@@ -18,7 +18,7 @@
 import io
 
 from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
-from nanoarrow._lib import CArrayStream
+from nanoarrow._lib import CArrayStream, _obj_is_buffer
 
 from nanoarrow import _repr_utils
 
@@ -86,23 +86,27 @@ class Stream:
 
         Parameters
         ----------
-        obj : readable file-like
-            An object implementing ``readinto()``.
+        obj : readable file-like or buffer
+            An object implementing the Python buffer protocol or ``readinto()``.
 
         Examples
         --------
 
-        >>> import io
         >>> import nanoarrow as na
         >>> from nanoarrow.ipc import Stream
-        >>> with io.BytesIO(Stream.example_bytes()) as f:
-        ...     inp = Stream.from_readable(f)
-        ...     na.c_array_stream(inp)
+        >>> ipc_stream = Stream.from_readable(Stream.example_bytes())
+        >>> na.c_array_stream(ipc_stream)
         <nanoarrow.c_lib.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
+        if _obj_is_buffer(obj):
+            close_obj = True
+            obj = io.BytesIO(obj)
+        else:
+            close_obj = False
+
         out = Stream()
-        out._stream = CIpcInputStream.from_readable(obj)
+        out._stream = CIpcInputStream.from_readable(obj, close_obj=close_obj)
         out._desc = repr(obj)
         return out
 
@@ -200,7 +204,7 @@ class Stream:
         >>> Stream.example()
         <nanoarrow.ipc.Stream <_io.BytesIO object at ...>>
         """
-        return Stream.from_readable(io.BytesIO(Stream.example_bytes()))
+        return Stream.from_readable(Stream.example_bytes())
 
     @staticmethod
     def example_bytes():
