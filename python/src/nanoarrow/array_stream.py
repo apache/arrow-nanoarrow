@@ -19,13 +19,13 @@ from functools import cached_property
 from typing import Iterable
 
 from nanoarrow._lib import CMaterializedArrayStream
-from nanoarrow.c_lib import c_array_stream
+from nanoarrow._repr_utils import make_class_label
 from nanoarrow.array import Array
+from nanoarrow.c_lib import c_array_stream
 from nanoarrow.schema import Schema
 
 
 class ArrayStream:
-
     def __init__(self, obj, schema=None) -> None:
         self._c_array_stream = c_array_stream(obj, schema)
 
@@ -51,8 +51,12 @@ class ArrayStream:
     def __exit__(self, *args, **kwargs):
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         self._c_array_stream.release()
+
+    def __repr__(self) -> str:
+        cls = make_class_label(self, "nanoarrow")
+        return f"<{cls}: {self.schema}>"
 
     @staticmethod
     def from_readable(obj):

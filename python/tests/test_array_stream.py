@@ -21,9 +21,9 @@ import pathlib
 import tempfile
 
 import pytest
+from nanoarrow.ipc import Stream
 
 import nanoarrow as na
-from nanoarrow.ipc import Stream
 
 
 def test_array_stream_iter():
@@ -42,11 +42,13 @@ def test_array_stream_read_all():
     assert array.schema.type == na.Type.INT32
     assert list(array.iter_py()) == [1, 2, 3]
 
+
 def test_array_stream_close():
     stream = na.ArrayStream([], na.int32())
     stream.close()
     with pytest.raises(RuntimeError, match="array stream is released"):
         stream.read_all()
+
 
 def test_array_stream_context_manager():
     stream = na.ArrayStream([], na.int32())
