@@ -77,7 +77,7 @@ class Stream:
 
     @staticmethod
     def from_readable(obj):
-        """Wrap an open readable object as an Arrow stream
+        """Wrap an open readable file or buffer as an Arrow IPC stream
 
         Wraps a readable object (specificially, an object that implements a
         ``readinto()`` method) as a non-owning Stream. Closing ``obj`` remains
@@ -112,7 +112,7 @@ class Stream:
 
     @staticmethod
     def from_path(obj, *args, **kwargs):
-        """Wrap a local file as an Arrow stream
+        """Wrap a local file as an IPC stream
 
         Wraps a pathlike object (specificially, one that can be passed to ``open()``)
         as an owning Stream. The file will be opened in binary mode and will be closed
@@ -149,7 +149,7 @@ class Stream:
 
     @staticmethod
     def from_url(obj, *args, **kwargs):
-        """Wrap a URL as an Arrow stream
+        """Wrap a URL as an IPC stream
 
         Wraps a URL (specificially, one that can be passed to
         ``urllib.request.urlopen()``) as an owning Stream. The URL will be
@@ -190,7 +190,7 @@ class Stream:
 
     @staticmethod
     def example():
-        """Example Stream
+        """Example IPC Stream
 
         A self-contained example whose value is the serialized version of
         ``DataFrame({"some_col": [1, 2, 3]})``. This may be used for testing

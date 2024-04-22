@@ -43,6 +43,16 @@ def test_array_stream_read_all():
     assert list(array.iter_py()) == [1, 2, 3]
 
 
+def test_array_stream_read_next():
+    stream = na.ArrayStream([1, 2, 3], na.int32())
+    array = stream.read_next()
+    assert array.schema.type == na.Type.INT32
+    assert list(array.iter_py()) == [1, 2, 3]
+
+    with pytest.raises(StopIteration):
+        stream.read_next()
+
+
 def test_array_stream_close():
     stream = na.ArrayStream([], na.int32())
     stream.close()
