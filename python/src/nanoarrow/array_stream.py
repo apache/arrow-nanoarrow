@@ -16,12 +16,13 @@
 # under the License.
 
 from functools import cached_property
-from typing import Iterable
+from typing import Iterable, Tuple
 
 from nanoarrow._lib import CMaterializedArrayStream
 from nanoarrow._repr_utils import make_class_label
 from nanoarrow.array import Array
 from nanoarrow.c_lib import c_array_stream
+from nanoarrow.iterator import iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
 
@@ -72,10 +73,6 @@ class ArrayStream:
         return self._c_array_stream.__arrow_c_stream__(
             requested_schema=requested_schema
         )
-
-    def __iter__(self) -> Iterable[Array]:
-        for c_array in self._c_array_stream:
-            yield Array(CMaterializedArrayStream.from_c_array(c_array))
 
     def read_all(self) -> Array:
         """Materialize the entire stream into an :class:`Array`
@@ -139,6 +136,67 @@ class ArrayStream:
         RuntimeError: array stream is released
         """
         self._c_array_stream.release()
+
+    def __iter__(self) -> Iterable[Array]:
+        for c_array in self._c_array_stream:
+            yield Array(CMaterializedArrayStream.from_c_array(c_array))
+
+    def iter_chunks(self) -> Iterable[Array]:
+        """Iterate over contiguous Arrays in this stream
+
+        For the :class:`ArrayStream`, this is the same as iterating over
+        the stream itself.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> stream = na.ArrayStream([1, 2, 3], na.int32())
+        >>> for chunk in stream:
+        ...     print(chunk)
+        nanoarrow.Array<int32>[3]
+        1
+        2
+        3
+        """
+        return iter(self)
+
+    def iter_py(self) -> Iterable:
+        """Iterate over the default Python representation of each element.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> stream = na.ArrayStream([1, 2, 3], na.int32())
+        >>> for item in stream.iter_py():
+        ...     print(item)
+        1
+        2
+        3
+        """
+        return iter_py(self)
+
+    def iter_tuples(self) -> Iterable[Tuple]:
+        """Iterate over rows of a struct stream as tuples
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> batch = pa.record_batch(
+        ...     [pa.array([1, 2, 3]), pa.array(["a", "b", "c"])],
+        ...     names=["col1", "col2"]
+        ... )
+        >>> stream = na.ArrayStream(batch)
+        >>> for item in stream.iter_tuples():
+        ...     print(item)
+        (1, 'a')
+        (2, 'b')
+        (3, 'c')
+        """
+        return iter_tuples(self)
 
     def __repr__(self) -> str:
         cls = make_class_label(self, "nanoarrow")
