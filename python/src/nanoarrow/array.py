@@ -497,4 +497,4 @@ class Array:
         and children arrays).
         """
         self._assert_one_chunk("inspect")
-        print(_repr_utils.array_dump(c_array(self)))
+        print(_repr_utils.array_inspect(c_array(self)))

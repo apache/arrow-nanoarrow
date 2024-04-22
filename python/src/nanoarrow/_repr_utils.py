@@ -250,7 +250,7 @@ def device_repr(device):
     return "\n".join([title_line, device_type, device_id])
 
 
-def array_dump(array, indent=0, max_char_width=80):
+def array_inspect(array, indent=0, max_char_width=80):
     array_view = array.view()
 
     if max_char_width < 20:
@@ -280,14 +280,14 @@ def array_dump(array, indent=0, max_char_width=80):
         )
 
     if array.dictionary:
-        dictionary_repr = array_dump(array.dictionary, indent=indent + 2)
+        dictionary_repr = array_inspect(array.dictionary, indent=indent + 2)
         lines.append(f"{indent_str}- dictionary: {dictionary_repr}")
     else:
         lines.append(f"{indent_str}- dictionary: NULL")
 
     lines.append(f"{indent_str}- children[{array.n_children}]:")
     for child in array.children:
-        child_repr = array_dump(child, indent=indent + 4)
+        child_repr = array_inspect(child, indent=indent + 4)
         lines.append(f"{indent_str}  {repr(child.schema.name)}: {child_repr}")
 
     return "\n".join(lines)
