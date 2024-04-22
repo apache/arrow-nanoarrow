@@ -40,7 +40,7 @@ def git(*args):
     return out.stdout.decode("UTF-8").splitlines()
 
 
-def find_last_release_sha():
+def find_last_dev_tag():
     """Finds the commit of the last release
 
     For the purposes of the changelog, this is the commit where the versions
@@ -50,7 +50,9 @@ def find_last_release_sha():
     last_dev_tag = git(
         "describe", "--match", "apache-arrow-nanoarrow-*.dev", "--tags", "--abbrev=0"
     )[0]
-    return git("rev-list", "-n", "1", last_dev_tag)[0]
+    last_version = re.search(r"[0-9]+\.[0-9]+\.[0-9]+", last_dev_tag).group(0)
+    sha = git("rev-list", "-n", "1", last_dev_tag)[0]
+    return last_version, sha
 
 
 def find_commits_since(begin_sha, end_sha="HEAD"):
@@ -143,7 +145,7 @@ def parse_changelog(content):
 
 
 def render_new_changelog(unreleased_version=None, changelog_file=None):
-    sha = find_last_release_sha()
+    _, sha = find_last_dev_tag()
     commits = find_commits_since(sha)
     parsed = parse_commits(commits)
 
