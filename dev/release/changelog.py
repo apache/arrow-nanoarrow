@@ -47,9 +47,10 @@ def find_last_release_sha():
     were bumped. This would exclude changes that happened during the release
     process but were not picked into the release branch.
     """
-    for commit in git("log", "--pretty=oneline"):
-        if re.search(r" chore: Update versions on", commit):
-            return commit.split(" ")[0]
+    last_dev_tag = git(
+        "describe", "--match", "apache-arrow-nanoarrow-*.dev", "--tags", "--abbrev=0"
+    )[0]
+    return git("rev-list", "-n", "1", last_dev_tag)[0]
 
 
 def find_commits_since(begin_sha, end_sha="HEAD"):
