@@ -542,6 +542,13 @@ Defaults to the CPU device.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.Array.inspect">
+<span class="sig-name descname"><span class="pre">inspect</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.Array.inspect" title="Link to this definition">#</a></dt>
+<dd><p>Print the details of the array (type, length, offset, buffers,
+and children arrays).</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="nanoarrow.Array.iter_buffers">
 <span class="sig-name descname"><span class="pre">iter_buffers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBuffer</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.Array.iter_buffers" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over buffers of each chunk in this Array.</p>
@@ -1985,6 +1992,7 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.child"><code class="docutils literal notranslate"><span class="pre">Array.child()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.chunk"><code class="docutils literal notranslate"><span class="pre">Array.chunk()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.device"><code class="docutils literal notranslate"><span class="pre">Array.device</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.inspect"><code class="docutils literal notranslate"><span class="pre">Array.inspect()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.iter_buffers"><code class="docutils literal notranslate"><span class="pre">Array.iter_buffers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.iter_children"><code class="docutils literal notranslate"><span class="pre">Array.iter_children()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.iter_chunks"><code class="docutils literal notranslate"><span class="pre">Array.iter_chunks()</span></code></a></li>
