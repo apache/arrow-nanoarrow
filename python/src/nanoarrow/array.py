@@ -490,3 +490,11 @@ class Array:
 
     def __repr__(self) -> str:
         return self.to_string()
+
+    def inspect(self):
+        """
+        Print the details of the array (type, length, offset, buffers,
+        and children arrays).
+        """
+        self._assert_one_chunk("inspect")
+        print(_repr_utils.array_inspect(c_array(self)))
