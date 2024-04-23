@@ -15,6 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
+"""Set development version from git
+
+This is used to set the Python package version before building
+nightly wheels, since at least some tools do not allow
+duplicate versions when uploading sdist/wheels. This requires
+that the repo has a full checkout with tags.
+
+The Python package version is hard-coded in a _static_version.py
+file. This script calculates the number of commits since the last
+apache-arrow-nanoarrow-x.x.x.dev tag and updates the static version
+accordingly.
+"""
+
 import os
 import re
 import subprocess

@@ -16,5 +16,6 @@
 # under the License.
 
 exclude bootstrap.py
+exclude set_dev_version.py
 recursive-include src/nanoarrow/vendor *.c *.h *.pxd
 include src/nanoarrow/nanoarrow_device_c.pxd
