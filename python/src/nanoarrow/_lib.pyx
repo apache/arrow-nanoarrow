@@ -31,7 +31,7 @@ by default (i.e., classes, methods, and functions implemented in Python
 generally have better autocomplete + documentation available to IDEs).
 """
 
-from libc.stdint cimport uintptr_t, uint8_t, int64_t
+from libc.stdint cimport uintptr_t, int8_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
 from cpython.bytes cimport PyBytes_FromStringAndSize
@@ -1623,6 +1623,36 @@ cdef class CBufferView:
             return self._iter_bitmap(offset, length)
         else:
             return self._iter_dispatch(offset, length)
+
+    def unpack_bits_into(self, dest, offset=0, length=None):
+        if self._data_type != NANOARROW_TYPE_BOOL:
+            raise ValueError("Can't unpack non-boolean buffer")
+
+        if length is None:
+            length = self.n_elements
+
+        if offset < 0 or length < 0 or (offset + length) > self.n_elements:
+            raise IndexError(
+                f"offset {offset} and length {length} do not describe a valid slice "
+                f"of buffer with {self.n_elements} elements"
+            )
+
+        cdef Py_buffer buffer
+        PyObject_GetBuffer(dest, &buffer, PyBUF_WRITABLE | PyBUF_ANY_CONTIGUOUS)
+        if buffer.itemsize != 1:
+            PyBuffer_Release(&buffer)
+            raise ValueError("Destination buffer has itemsize != 1")
+
+        if buffer.len < length:
+            buffer_len = buffer.len
+            PyBuffer_Release(&buffer)
+            raise IndexError(
+                f"Can't unpack {length} elements into buffer of size {buffer_len}"
+            )
+
+        ArrowBitsUnpackInt8(self._ptr.data.as_uint8, offset, length, <int8_t*>dest.buf)
+        PyBuffer_Release(&buffer)
+
 
     def _iter_bitmap(self, int64_t offset, int64_t length):
         cdef uint8_t item

@@ -44,8 +44,8 @@ def to_numpy(obj, schema=None, dtype=None):
     dtype, chunks = NumPyIterator.get_dtype_and_iterator(
         obj, schema=schema, dtype=dtype
     )
-    first_chunk = next(chunks, None)
-    second_chunk = next(chunks, None)
+    first_mask, first_chunk = next(chunks, (None, None))
+    seond_mask, second_chunk = next(chunks, (None, None))
 
     if first_chunk is None:
         return np.array([], dtype=dtype)
@@ -63,21 +63,23 @@ def to_numpy(obj, schema=None, dtype=None):
         out[cursor : (cursor + len(second_chunk))] = second_chunk
         cursor += len(second_chunk)
 
-        for chunk in chunks:
-            out[cursor : (cursor + len(chunk))] = chunk
-            cursor += len(chunk)
+        for mask, data in chunks:
+            out[cursor : (cursor + len(data))] = data
+            cursor += len(data)
 
         return out
     else:
-        chunks = [first_chunk, second_chunk] + list(chunks)
-        return np.concatenate(chunks, dtype=dtype)
+        chunk_data = [first_chunk, second_chunk]
+        for mask, data in chunks:
+            chunk_data.append(data)
+        return np.concatenate(chunk_data, dtype=dtype)
 
 
 class NumPyIterator(PyIterator):
     @classmethod
-    def get_dtype_and_iterator(cls, obj, schema=None, dtype=None):
+    def get_dtype_and_iterator(cls, obj, schema=None, dtype=None, **kwargs):
         stream = c_array_stream(obj, schema=schema)
-        iterator = cls(stream._get_cached_schema(), dtype=dtype)
+        iterator = cls(stream._get_cached_schema(), dtype=dtype, **kwargs)
         return iterator._dtype, iterator._iter_all(stream)
 
     def __init__(self, schema, *, _array_view=None, dtype=None):
@@ -96,14 +98,27 @@ class NumPyIterator(PyIterator):
 
     def _iter1(self, offset, length):
         if self._dtype.str == "|O":
-            yield np.array(list(super()._iter1(offset, length)), dtype=self._dtype)
+            yield None, np.array(
+                list(super()._iter1(offset, length)), dtype=self._dtype
+            )
             return
 
         type_id = self._schema_view.type_id
-        if type_id in _ARROW_ZERO_COPY_TYPES:
-            yield self._array_from_buffer(offset, length)
+        if type_id in _ARROW_SHARED_STORAGE_TYPES:
+            yield self._array_mask(offset, length), self._array_from_buffer(
+                offset, length
+            )
         else:
             raise NotImplementedError("Convert to numpy not implemented")
+
+    def _array_mask(self, offset, length):
+        if not self._contains_nulls():
+            return None
+
+        validity = self._array_view.buffer(0)
+        mask = np.empty(length, np.bool_)
+        validity.unpack_bits_into(mask, offset, length)
+        return mask.invert(out=mask)
 
     def _array_from_buffer(self, offset, length):
         offset += self._array_view.offset
@@ -112,7 +127,7 @@ class NumPyIterator(PyIterator):
         return array[offset:end]
 
 
-_ARROW_ZERO_COPY_TYPES = {
+_ARROW_SHARED_STORAGE_TYPES = {
     CArrowType.INT8,
     CArrowType.UINT8,
     CArrowType.INT16,
