@@ -19,24 +19,24 @@ import os
 import re
 import tempfile
 
-import changelog
+import release_tools
 
 
 def test_git():
-    git_version = changelog.git("--version")
+    git_version = release_tools.git("--version")
     assert len(git_version) == 1
     assert re.match(r"git version", git_version[0]) is not None
 
 
 def test_find_last_release():
-    last_version, last_release = changelog.find_last_dev_tag()
+    last_version, last_release = release_tools.find_last_dev_tag()
     assert re.match(r"[0-9]+\.[0-9]+\.[0-9]+", last_version)
     assert re.match(r"[0-9a-f]{40}", last_release)
 
 
 def test_find_commits_since():
-    _, last_release = changelog.find_last_dev_tag()
-    commits = changelog.find_commits_since(last_release)
+    _, last_release = release_tools.find_last_dev_tag()
+    commits = release_tools.find_commits_since(last_release)
     assert isinstance(commits, list)
     assert len(commits) > 0
 
@@ -52,7 +52,7 @@ def test_parse_commits():
         "2" * 40 + " fix(r/sub_dir/sub-dir): A conventional commit with a component",
     ]
 
-    parsed = changelog.parse_commits(commits)
+    parsed = release_tools.parse_commits(commits)
 
     # Non-conventional commits not included (same as cz ch)
     assert len(parsed) == 2
@@ -75,7 +75,7 @@ def test_group_commits_by_type():
         {"type": "chore", "sha": "2"},
     ]
 
-    grouped = changelog.group_commits_by_type(parsed)
+    grouped = release_tools.group_commits_by_type(parsed)
     assert list(grouped.keys()) == ["fix", "chore"]
 
     assert len(grouped["fix"]) == 2
@@ -94,7 +94,7 @@ def test_group_commits_by_top_level_component():
         {"component": "r", "sha": "3"},
     ]
 
-    grouped = changelog.group_commits_by_top_level_component(parsed)
+    grouped = release_tools.group_commits_by_top_level_component(parsed)
 
     assert list(grouped.keys()) == ["", "r"]
     assert len(grouped[""]) == 2
@@ -115,7 +115,7 @@ def test_render():
         {"type": "feat", "component": "r", "message": "message 4"},
     ]
 
-    rendered = changelog.render_version_content(parsed)
+    rendered = release_tools.render_version_content(parsed)
     assert rendered.splitlines() == [
         "### Feat",
         "",
@@ -145,7 +145,7 @@ def test_parse_changelog():
     ]
 
     content = "\n".join(changelog_lines)
-    header, version_content = changelog.parse_changelog(content)
+    header, version_content = release_tools.parse_changelog(content)
     assert header == "<!-- header stuff we want untouched -->\n\n# nanoarrow Changelog"
 
     assert isinstance(version_content, dict)
@@ -162,10 +162,10 @@ def test_parse_changelog():
 
 def test_render_new_changelog():
     with tempfile.TemporaryDirectory() as tempdir:
-        changes_no_version = changelog.render_new_changelog()
+        changes_no_version = release_tools.render_new_changelog()
         assert re.match(r"^## nanoarrow", changes_no_version) is None
 
-        changes_with_version = changelog.render_new_changelog("some version info")
+        changes_with_version = release_tools.render_new_changelog("some version info")
         assert re.match(r"^## nanoarrow some version info", changes_with_version)
 
         changelog_file_name = os.path.join(tempdir, "CHANGELOG.md")
@@ -181,13 +181,13 @@ def test_render_new_changelog():
             f.write(changes_with_version)
 
         # Make sure we do not write two version items for the same version
-        modified_changelog = changelog.render_new_changelog(
+        modified_changelog = release_tools.render_new_changelog(
             "some version info", changelog_file_name
         )
         assert len(re.findall(r"\n## nanoarrow", modified_changelog)) == 1
 
         # Make sure do write two version items for different versions
-        modified_changelog = changelog.render_new_changelog(
+        modified_changelog = release_tools.render_new_changelog(
             "other version info", changelog_file_name
         )
         assert len(re.findall(r"\n## nanoarrow", modified_changelog)) == 2

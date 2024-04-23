@@ -70,7 +70,7 @@ main() {
        --skip-existing
 
     header "Adding release notes"
-    local -r release_notes=$(python3 ${source_dir}/changelog.py)
+    local -r release_notes=$(python3 ${source_dir}/release_tools.py changelog)
     echo "${release_notes}"
     gh release edit \
        "${tag}" \
