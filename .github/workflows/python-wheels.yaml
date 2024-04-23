@@ -54,7 +54,7 @@ jobs:
     - name: Set nanoarrow Python dev version
       # if: github.ref == 'refs/heads/main'
       run: |
-        python python/set_dev_version.py
+        python dev/release/release_tools.py set_python_dev_version
 
     - name: Build sdist
       run: |
@@ -107,7 +107,7 @@ jobs:
       - name: Set nanoarrow Python dev version
         # if: github.ref == 'refs/heads/main'
         run: |
-          python python/set_dev_version.py
+          python dev/release/release_tools.py set_python_dev_version
 
       - name: Build wheels
         run: |

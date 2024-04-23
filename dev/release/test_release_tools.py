@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import pytest
+
 import os
 import re
 import tempfile
@@ -32,6 +34,23 @@ def test_find_last_release():
     last_version, last_release = release_tools.find_last_dev_tag()
     assert re.match(r"[0-9]+\.[0-9]+\.[0-9]+", last_version)
     assert re.match(r"[0-9a-f]{40}", last_release)
+
+
+def test_src_path():
+    release_tools_path = release_tools.src_path("dev", "release", "release_tools.py")
+    assert os.path.exists(release_tools_path)
+
+
+def test_file_regex_replace():
+    with tempfile.TemporaryDirectory() as tempdir:
+        path = os.path.join(tempdir, "test.txt")
+        with open(path, "w") as f:
+            f.write("this file contains something that needs to be replaced")
+
+        release_tools.file_regex_replace(r"something\s+", "nothing ", path)
+
+        with pytest.raises(ValueError):
+            release_tools.file_regex_replace("text does not exist in file", "", path)
 
 
 def test_find_commits_since():
