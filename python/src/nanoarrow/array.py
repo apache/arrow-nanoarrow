@@ -235,10 +235,8 @@ class Array:
         """
         if self._data.n_arrays == 0:
             return 0
-        elif self._data.n_arrays == 1:
-            return self._data.array(0).offset
-
         self._assert_one_chunk("scalar offset")
+        return self._data.array(0).offset
 
     def buffer(self, i: int) -> CBuffer:
         """Access a single buffer of a contiguous array
@@ -271,7 +269,7 @@ class Array:
         return tuple(view.buffers)
 
     def iter_chunk_data(self) -> Iterable[CArrayView]:
-        """Iterate over Iterate over prepared views of each chunk
+        """Iterate over prepared views of each chunk
 
         Examples
         --------
