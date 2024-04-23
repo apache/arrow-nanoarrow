@@ -38,6 +38,11 @@ def test_array_construct():
         iter(array)
 
 
+def test_array_constructor():
+    array = na.array([1, 2, 3], na.int32())
+    assert array.schema.type == na.Type.INT32
+
+
 def test_array_empty():
     array = na.Array([], na.int32())
     assert array.schema.type == na.Type.INT32
