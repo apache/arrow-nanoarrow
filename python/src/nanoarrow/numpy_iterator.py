@@ -37,13 +37,14 @@ def to_numpy_dtype(schema):
 
 def to_numpy(obj, schema=None, dtype=None):
     if hasattr(obj, "__len__"):
-        return NumPyKnownSizeBuilder.visit(obj, schema, total_length=len(obj))
+        return NumPyKnownSizeBuilder.visit(
+            obj, schema, dtype=dtype, total_length=len(obj)
+        )
     else:
-        arrays = list(NumPyIterator.iterate(obj, schema))
-        return np.concatenate(arrays, dtype=dtype)
+        return NumPyVariableSizeBuilder.visit(obj, schema, dtype=dtype)
 
 
-class NumPyIterator(PyIterator):
+class ArrayIterator(PyIterator):
     def __init__(self, schema, *, _array_view=None, dtype=None):
         super().__init__(schema, _array_view=_array_view)
         dtype = self._resolve_dtype(dtype)
@@ -107,7 +108,7 @@ class NumPyIterator(PyIterator):
         return memoryview(self._array_view.buffer(1))[offset:end]
 
 
-class NumPyKnownSizeBuilder(NumPyIterator):
+class NumPyKnownSizeBuilder(ArrayIterator):
     def __init__(self, schema, *, _array_view=None, dtype=None, total_length=None):
         super().__init__(schema, _array_view=_array_view, dtype=dtype)
         self._total_length = total_length
@@ -124,6 +125,18 @@ class NumPyKnownSizeBuilder(NumPyIterator):
 
     def finish(self):
         return self._out
+
+
+class NumPyVariableSizeBuilder(ArrayIterator):
+
+    def begin(self):
+        self._chunk_arrays = []
+
+    def visit_chunk(self):
+        self._chunk_arrays.append(self._get_chunk_array(0, self._array_view.length))
+
+    def finish(self):
+        return np.concatenate(self._chunk_arrays, dtype=self._dtype)
 
 
 _ARROW_PY_BUFFER_TYPES = {
