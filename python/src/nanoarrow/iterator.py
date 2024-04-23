@@ -20,13 +20,8 @@ from functools import cached_property
 from itertools import islice
 from typing import Iterable, Tuple
 
-from nanoarrow.c_lib import (
-    CArrayView,
-    CArrowType,
-    c_array_stream,
-    c_schema,
-    c_schema_view,
-)
+from nanoarrow._lib import CArrayView, CArrowType
+from nanoarrow.c_lib import c_array_stream, c_schema, c_schema_view
 
 
 def iter_py(obj, schema=None) -> Iterable:
@@ -84,6 +79,43 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
     return RowTupleIterator.get_iterator(obj, schema=schema)
 
 
+def iter_array_views(obj, schema=None) -> Iterable[CArrayView]:
+    """Iterate over prepared views of each array
+
+    Returns an iterator which yields a :func:`c_array_view`
+    for each chunk in ``obj``.
+
+    Paramters
+    ---------
+    obj : array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow import iterator
+    >>> array = na.c_array([1, 2, 3], na.int32())
+    >>> list(iterator.iter_array_views(array))
+    [<nanoarrow.c_lib.CArrayView>
+    - storage_type: 'int32'
+    - length: 3
+    - offset: 0
+    - null_count: 0
+    - buffers[2]:
+      - validity <bool[0 b] >
+      - data <int32[12 b] 1 2 3>
+    - dictionary: NULL
+    - children[0]:]
+    """
+    with c_array_stream(obj, schema) as stream:
+        for array in stream:
+            yield array.view()
+
+
 class InvalidArrayWarning(UserWarning):
     pass
 
@@ -92,10 +124,18 @@ class LossyConversionWarning(UserWarning):
     pass
 
 
-class ArrayViewIterator:
+class ArrayViewBaseIterator:
     """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
     """
+
+    @classmethod
+    def get_iterator(cls, obj, schema=None):
+        with c_array_stream(obj, schema=schema) as stream:
+            iterator = cls(stream._get_cached_schema())
+            for array in stream:
+                iterator._set_array(array)
+                yield from iterator._iter_chunk(0, array.length)
 
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
@@ -119,6 +159,9 @@ class ArrayViewIterator:
 
     def _make_child(self, schema, array_view):
         return type(self)(schema, _array_view=array_view)
+
+    def _iter_chunk(self, offset, length) -> Iterable:
+        yield self._array_view
 
     @cached_property
     def _child_names(self):
@@ -146,20 +189,12 @@ class ArrayViewIterator:
         warnings.warn(f"{self._object_label}: {message}", category)
 
 
-class PyIterator(ArrayViewIterator):
+class PyIterator(ArrayViewBaseIterator):
     """Iterate over the Python object version of values in an ArrowArrayView.
     Intended for internal use.
     """
 
-    @classmethod
-    def get_iterator(cls, obj, schema=None):
-        with c_array_stream(obj, schema=schema) as stream:
-            iterator = cls(stream._get_cached_schema())
-            for array in stream:
-                iterator._set_array(array)
-                yield from iterator._iter1(0, array.length)
-
-    def _iter1(self, offset, length):
+    def _iter_chunk(self, offset, length):
         type_id = self._schema_view.type_id
         if type_id not in _ITEMS_ITER_LOOKUP:
             raise KeyError(
@@ -171,7 +206,7 @@ class PyIterator(ArrayViewIterator):
 
     def _dictionary_iter(self, offset, length):
         dictionary = list(
-            self._dictionary._iter1(0, self._dictionary._array_view.length)
+            self._dictionary._iter_chunk(0, self._dictionary._array_view.length)
         )
         for dict_index in self._primitive_iter(offset, length):
             yield None if dict_index is None else dictionary[dict_index]
@@ -183,7 +218,7 @@ class PyIterator(ArrayViewIterator):
     def _struct_tuple_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
-        items = zip(*(child._iter1(offset, length) for child in self._children))
+        items = zip(*(child._iter_chunk(offset, length) for child in self._children))
 
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
@@ -204,7 +239,7 @@ class PyIterator(ArrayViewIterator):
         starts = offsets[:-1]
         ends = offsets[1:]
         child = self._children[0]
-        child_iter = child._iter1(starts[0], ends[-1] - starts[0])
+        child_iter = child._iter_chunk(starts[0], ends[-1] - starts[0])
 
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
@@ -220,7 +255,7 @@ class PyIterator(ArrayViewIterator):
         offset += view.offset
         child = self._children[0]
         fixed_size = view.layout.child_size_elements
-        child_iter = child._iter1(offset * fixed_size, length * fixed_size)
+        child_iter = child._iter_chunk(offset * fixed_size, length * fixed_size)
 
         if self._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
@@ -440,7 +475,7 @@ class RowTupleIterator(PyIterator):
     def _make_child(self, schema, array_view):
         return PyIterator(schema, _array_view=array_view)
 
-    def _iter1(self, offset, length):
+    def _iter_chunk(self, offset, length):
         return self._struct_tuple_iter(offset, length)
 
 

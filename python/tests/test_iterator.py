@@ -20,9 +20,10 @@ import decimal
 
 import pytest
 from nanoarrow.iterator import (
-    ArrayViewIterator,
+    ArrayViewBaseIterator,
     InvalidArrayWarning,
     LossyConversionWarning,
+    iter_array_views,
     iter_py,
     iter_tuples,
 )
@@ -33,12 +34,20 @@ import nanoarrow as na
 def test_iterator_warnings():
     msg_unnamed = "<unnamed int32>: something"
     with pytest.warns(LossyConversionWarning, match=msg_unnamed):
-        ArrayViewIterator(na.int32())._warn("something", LossyConversionWarning)
+        ArrayViewBaseIterator(na.int32())._warn("something", LossyConversionWarning)
 
     msg_named = "some_colname <int32>: something"
     with pytest.warns(LossyConversionWarning, match=msg_named):
-        iterator = ArrayViewIterator(na.Schema(na.Type.INT32, name="some_colname"))
+        iterator = ArrayViewBaseIterator(na.Schema(na.Type.INT32, name="some_colname"))
         iterator._warn("something", LossyConversionWarning)
+
+
+def test_array_view_iterator():
+    array = na.c_array([1, 2, 3], na.int32())
+    views = list(iter_array_views(array))
+    assert len(views) == 1
+    assert views[0].storage_type == "int32"
+    assert list(views[0].buffer(1)) == [1, 2, 3]
 
 
 def test_iterator_primitive():
