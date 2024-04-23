@@ -39,7 +39,7 @@ def test_array_construct():
 
 
 def test_array_constructor():
-    array = na.Array([1, 2, 3], na.int32())
+    array = na.array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
 
 
