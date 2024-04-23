@@ -38,6 +38,10 @@ jobs:
     runs-on: "ubuntu-20.04"
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
     - uses: actions/setup-python@v5
     - name: Check that cmake is installed
       run: |
@@ -88,6 +92,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/setup-python@v5
         if: matrix.config.label != 'linux-arm64'
