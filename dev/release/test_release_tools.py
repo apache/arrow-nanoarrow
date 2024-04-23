@@ -15,12 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import pytest
-
 import os
 import re
 import tempfile
 
+import pytest
 import release_tools
 
 

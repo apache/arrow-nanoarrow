@@ -22,9 +22,9 @@ Use `python release_tools.py --help` for usage
 """
 
 import argparse
+import os
 import re
 import subprocess
-import os
 
 
 def git(*args):
