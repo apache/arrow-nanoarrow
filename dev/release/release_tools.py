@@ -73,7 +73,10 @@ def find_commits_since(begin_sha, end_sha="HEAD"):
 def add_set_python_dev_version_subparser(subparsers):
     subparsers.add_parser(
         "set_python_dev_version",
-        description="Generate and/or append new CHANGELOG.md content",
+        description=(
+            "Set the Python package development version based on "
+            "the number of commits since the last version bump"
+        ),
     )
 
 
@@ -238,8 +241,11 @@ if __name__ == "__main__":
         description="Python functions automating various pieces of release tasks",
     )
 
-    subparsers = parser.add_subparsers(title="subcommands", dest="subcommand")
+    subparsers = parser.add_subparsers(
+        title="subcommands", dest="subcommand", required=True
+    )
     add_changelog_parser(subparsers)
+    add_set_python_dev_version_subparser(subparsers)
 
     args = parser.parse_args(sys.argv[1:])
     if args.subcommand == "changelog":
