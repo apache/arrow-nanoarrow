@@ -17,7 +17,7 @@
 
 import numpy as np
 from nanoarrow._lib import CArrowType
-from nanoarrow.c_lib import c_array_stream, c_schema_view
+from nanoarrow.c_lib import c_schema_view
 from nanoarrow.iterator import PyIterator
 
 
@@ -37,97 +37,96 @@ def to_numpy_dtype(schema):
 
 def to_numpy(obj, schema=None, dtype=None):
     if hasattr(obj, "__len__"):
-        total_length = len(obj)
+        return NumPyKnownSizeBuilder.visit(obj, schema, total_length=len(obj))
     else:
-        total_length = None
-
-    dtype, chunks = NumPyIterator.get_dtype_and_iterator(
-        obj, schema=schema, dtype=dtype
-    )
-    first_mask, first_chunk = next(chunks, (None, None))
-    seond_mask, second_chunk = next(chunks, (None, None))
-
-    if first_chunk is None:
-        return np.array([], dtype=dtype)
-
-    if second_chunk is None:
-        return first_chunk
-
-    if total_length:
-        out = np.empty(total_length, dtype)
-        cursor = 0
-
-        out[cursor : (cursor + len(first_chunk))] = first_chunk
-        cursor += len(first_chunk)
-
-        out[cursor : (cursor + len(second_chunk))] = second_chunk
-        cursor += len(second_chunk)
-
-        for mask, data in chunks:
-            out[cursor : (cursor + len(data))] = data
-            cursor += len(data)
-
-        return out
-    else:
-        chunk_data = [first_chunk, second_chunk]
-        for mask, data in chunks:
-            chunk_data.append(data)
-        return np.concatenate(chunk_data, dtype=dtype)
+        arrays = list(NumPyIterator.iterate(obj, schema))
+        return np.concatenate(arrays, dtype=dtype)
 
 
 class NumPyIterator(PyIterator):
-    @classmethod
-    def get_dtype_and_iterator(cls, obj, schema=None, dtype=None, **kwargs):
-        stream = c_array_stream(obj, schema=schema)
-        iterator = cls(stream._get_cached_schema(), dtype=dtype, **kwargs)
-        return iterator._dtype, iterator._iter_all(stream)
-
     def __init__(self, schema, *, _array_view=None, dtype=None):
         super().__init__(schema, _array_view=_array_view)
+        dtype = self._resolve_dtype(dtype)
+        self._array_data_constructor = self._get_array_data_constructor(dtype)
+        self._dtype = dtype
 
+    def _resolve_dtype(self, dtype):
         if dtype is None:
-            self._dtype = to_numpy_dtype(self._schema_view)
+            return to_numpy_dtype(self._schema_view)
         else:
-            self._dtype = np.dtype(dtype)
+            return np.dtype(dtype)
 
-    def _iter_all(self, stream):
-        with stream:
-            for array in stream:
-                self._set_array(array)
-                yield from self._iter1(0, array.length)
-
-    def _iter1(self, offset, length):
-        if self._dtype.str == "|O":
-            yield None, np.array(
-                list(super()._iter1(offset, length)), dtype=self._dtype
-            )
-            return
+    def _get_array_data_constructor(self, dtype):
+        if dtype.str == "O":
+            return self._py_object_array
 
         type_id = self._schema_view.type_id
-        if type_id in _ARROW_SHARED_STORAGE_TYPES:
-            yield self._array_mask(offset, length), self._array_from_buffer(
-                offset, length
-            )
+        if type_id in _ARROW_PY_BUFFER_TYPES:
+            return self._py_buffer_array
+        elif type_id in _ARROW_TO_ARRAY_DISPATCH:
+            return getattr(self, _ARROW_TO_ARRAY_DISPATCH[type_id])
         else:
-            raise NotImplementedError("Convert to numpy not implemented")
+            raise NotImplementedError("Convert to array not implemented")
 
-    def _array_mask(self, offset, length):
+    def _get_chunk_array(self, offset, length):
+        validity = self._validity_array_bytes(offset, length)
+        data = self._array_data_constructor(offset, length)
+
+        if validity and not np.all(validity):
+            raise ValueError("null values not supported on convert to numpy")
+
+        return np.array(data, self._dtype)
+
+    def _iter1(self, offset, length):
+        yield self._get_chunk_array(offset, length)
+
+    def _validity_array_bytes(self, offset, length):
         if not self._contains_nulls():
             return None
 
-        validity = self._array_view.buffer(0)
-        mask = np.empty(length, np.bool_)
-        validity.unpack_bits_into(mask, offset, length)
-        return mask.invert(out=mask)
+        validity_bits = self._array_view.buffer(0)
+        validity_bytes = np.empty(length, np.bool_)
+        validity_bits.unpack_bits_into(validity_bytes, offset, length)
+        return validity_bytes
 
-    def _array_from_buffer(self, offset, length):
+    def _py_object_array(self, offset, length):
+        return np.array(list(super()._iter1(offset, length)), dtype=self._dtype)
+
+    def _bool_array(self, offset, length):
+        offset += self._array_view.offset
+        validity_bytes = bytearray(length)
+        self._array_view.buffer(0).unpack_bits_into(validity_bytes, offset, length)
+        return validity_bytes
+
+    def _variable_binary_array(self, offset, length):
+        return self._py_object_array(offset, length)
+
+    def _py_buffer_array(self, offset, length):
         offset += self._array_view.offset
         end = offset + length
-        array = np.array(self._array_view.buffer(1), self._dtype, copy=False)
-        return array[offset:end]
+        return memoryview(self._array_view.buffer(1))[offset:end]
 
 
-_ARROW_SHARED_STORAGE_TYPES = {
+class NumPyKnownSizeBuilder(NumPyIterator):
+    def __init__(self, schema, *, _array_view=None, dtype=None, total_length=None):
+        super().__init__(schema, _array_view=_array_view, dtype=dtype)
+        self._total_length = total_length
+
+    def begin(self):
+        self._out = np.empty(self._total_length, self._dtype)
+        self._cursor = 0
+
+    def visit_chunk(self):
+        length = self._array_view.length
+        array = self._get_chunk_array(0, length)
+        self._out[self._cursor : (self._cursor + length)] = array
+        self._cursor += length
+
+    def finish(self):
+        return self._out
+
+
+_ARROW_PY_BUFFER_TYPES = {
     CArrowType.INT8,
     CArrowType.UINT8,
     CArrowType.INT16,
@@ -143,6 +142,14 @@ _ARROW_SHARED_STORAGE_TYPES = {
     CArrowType.INTERVAL_DAY_TIME,
     CArrowType.INTERVAL_MONTHS,
     CArrowType.FIXED_SIZE_BINARY,
+}
+
+_ARROW_TO_ARRAY_DISPATCH = {
+    CArrowType.BOOL: "_array_from_bool",
+    CArrowType.STRING: "_variable_binary_array",
+    CArrowType.LARGE_STRING: "_variable_binary_array",
+    CArrowType.BINARY: "_variable_binary_array",
+    CArrowType.LARGE_BINARY: "_variable_binary_array",
 }
 
 _ARROW_TO_NUMPY_FIXED = {

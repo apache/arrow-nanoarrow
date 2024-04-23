@@ -52,7 +52,7 @@ def iter_py(obj, schema=None) -> Iterable:
     >>> list(iterator.iter_py(array))
     [1, 2, 3]
     """
-    return PyIterator.get_iterator(obj, schema=schema)
+    return PyIterator.iterate(obj, schema=schema)
 
 
 def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
@@ -81,7 +81,7 @@ def iter_tuples(obj, schema=None) -> Iterable[Tuple]:
     >>> list(iterator.iter_tuples(array))
     [(1,), (2,), (3,)]
     """
-    return RowTupleIterator.get_iterator(obj, schema=schema)
+    return RowTupleIterator.iterate(obj, schema=schema)
 
 
 class InvalidArrayWarning(UserWarning):
@@ -97,7 +97,37 @@ class ArrayViewIterator:
     as the basis for conversion to Python objects. Intended for internal use.
     """
 
-    def __init__(self, schema, *, _array_view=None):
+    @classmethod
+    def iterate(cls, obj, schema=None, **kwargs):
+        with c_array_stream(obj, schema=schema) as stream:
+            iterator = cls(stream._get_cached_schema(), **kwargs)
+            iterator.begin()
+
+            set_array = iterator._set_array
+            visit_chunk = iterator.visit_chunk
+
+            for array in stream:
+                set_array(array)
+                yield from visit_chunk()
+
+            iterator.finish()
+
+    @classmethod
+    def visit(cls, obj, schema=None, **kwargs):
+        with c_array_stream(obj, schema=schema) as stream:
+            iterator = cls(stream._get_cached_schema(), **kwargs)
+            iterator.begin()
+
+            set_array = iterator._set_array
+            visit_chunk = iterator.visit_chunk
+
+            for array in stream:
+                set_array(array)
+                visit_chunk()
+
+            return iterator.finish()
+
+    def __init__(self, schema, *, _array_view=None, recursive=True):
         self._schema = c_schema(schema)
         self._schema_view = c_schema_view(schema)
 
@@ -113,12 +143,24 @@ class ArrayViewIterator:
         if self._schema.dictionary is None:
             self._dictionary = None
         else:
-            self._dictionary = self._make_child(
+            self._dictionary = self._make_dictionary(
                 self._schema.dictionary, self._array_view.dictionary
             )
 
     def _make_child(self, schema, array_view):
         return type(self)(schema, _array_view=array_view)
+
+    def _make_dictionary(self, schema, array_view):
+        return type(self)(schema, _array_view=array_view)
+
+    def begin(self):
+        pass
+
+    def visit_chunk(self):
+        pass
+
+    def finish(self):
+        pass
 
     @cached_property
     def _child_names(self):
@@ -151,13 +193,8 @@ class PyIterator(ArrayViewIterator):
     Intended for internal use.
     """
 
-    @classmethod
-    def get_iterator(cls, obj, schema=None):
-        with c_array_stream(obj, schema=schema) as stream:
-            iterator = cls(stream._get_cached_schema())
-            for array in stream:
-                iterator._set_array(array)
-                yield from iterator._iter1(0, array.length)
+    def visit_chunk(self):
+        return self._iter1(0, self._array_view.length)
 
     def _iter1(self, offset, length):
         type_id = self._schema_view.type_id
