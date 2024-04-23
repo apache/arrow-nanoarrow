@@ -29,12 +29,13 @@ def test_git():
 
 
 def test_find_last_release():
-    last_release = changelog.find_last_release_sha()
+    last_version, last_release = changelog.find_last_dev_tag()
+    assert re.match(r"[0-9]+\.[0-9]+\.[0-9]+", last_version)
     assert re.match(r"[0-9a-f]{40}", last_release)
 
 
 def test_find_commits_since():
-    last_release = changelog.find_last_release_sha()
+    _, last_release = changelog.find_last_dev_tag()
     commits = changelog.find_commits_since(last_release)
     assert isinstance(commits, list)
     assert len(commits) > 0
@@ -42,8 +43,6 @@ def test_find_commits_since():
     for commit in commits:
         assert isinstance(commit, str)
         assert re.match(r"[0-9a-f]{40}", commit)
-
-    assert last_release in commits[-1]
 
 
 def test_parse_commits():
