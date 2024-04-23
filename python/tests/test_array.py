@@ -47,7 +47,7 @@ def test_array_empty():
     assert array.n_buffers == 2
     assert list(array.buffer(0)) == []
     assert list(array.buffer(1)) == []
-    assert list(array.iter_chunk_data()) == []
+    assert list(array.iter_chunk_views()) == []
 
     assert array.n_children == 0
 
@@ -84,7 +84,7 @@ def test_array_contiguous():
     assert array.buffer(0) is validity
     assert array.buffer(1) is data
 
-    chunk_views = list(array.iter_chunk_data())
+    chunk_views = list(array.iter_chunk_views())
     assert len(chunk_views) == array.n_chunks
     assert chunk_views[0].n_buffers == array.n_buffers
     assert list(chunk_views[0].buffer(1)) == [1, 2, 3]
@@ -128,7 +128,7 @@ def test_array_chunked():
     with pytest.raises(ValueError, match="Can't export ArrowArray"):
         array.buffers
 
-    chunk_views = list(array.iter_chunk_data())
+    chunk_views = list(array.iter_chunk_views())
     assert len(chunk_views) == array.n_chunks
     assert chunk_views[0].n_buffers == array.n_buffers
     assert list(chunk_views[0].buffer(1)) == [1, 2, 3]

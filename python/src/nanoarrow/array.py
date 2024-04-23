@@ -27,7 +27,7 @@ from nanoarrow._lib import (
     Device,
 )
 from nanoarrow.c_lib import c_array, c_array_stream, c_array_view
-from nanoarrow.iterator import iter_array_view, iter_py, iter_tuples
+from nanoarrow.iterator import iter_array_views, iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
 from nanoarrow import _repr_utils
@@ -268,7 +268,7 @@ class Array:
         view = c_array_view(self)
         return tuple(view.buffers)
 
-    def iter_chunk_data(self) -> Iterable[CArrayView]:
+    def iter_chunk_views(self) -> Iterable[CArrayView]:
         """Iterate over prepared views of each chunk
 
         Examples
@@ -276,7 +276,7 @@ class Array:
 
         >>> import nanoarrow as na
         >>> array = na.Array([1, 2, 3], na.int32())
-        >>> for view in array.iter_chunk_data():
+        >>> for view in array.iter_chunk_views():
         ...     offset, length = view.offset, view.length
         ...     validity, data = view.buffers
         ...     print(view.offset, view.length)
@@ -286,7 +286,7 @@ class Array:
         nanoarrow.c_lib.CBufferView(bool[0 b] )
         nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
         """
-        return iter_array_view(self)
+        return iter_array_views(self)
 
     @property
     def n_children(self) -> int:
