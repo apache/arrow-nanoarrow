@@ -280,3 +280,22 @@ def test_array_repr_long():
     assert len(repr_lines) == 2
     assert repr_lines[1].endswith("...")
     assert len(repr_lines[1]) == 80
+
+
+def test_array_inspect(capsys):
+    array = na.Array(range(10), na.int32())
+    array.inspect()
+    captured = capsys.readouterr()
+    assert captured.out.startswith("<ArrowArray int32>")
+
+    # with children
+    c_array = na.c_array_from_buffers(
+        na.struct({f"col{i}": na.int32() for i in range(100)}),
+        length=1,
+        buffers=[None],
+        children=[na.c_array([123456], na.int32())] * 100,
+    )
+    array = na.Array(c_array)
+    array.inspect()
+    captured = capsys.readouterr()
+    assert captured.out.startswith("<ArrowArray struct<col0: int32")

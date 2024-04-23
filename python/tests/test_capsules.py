@@ -116,9 +116,12 @@ def test_array_stream_requested_schema():
     pa_table = pa.table({"some_column": pa.array([1, 2, 3], pa.int32())})
     schema2 = pa.schema([pa.field("some_column", pa.int64())])
 
-    # Not implemented in pyarrow yet
-    with pytest.raises(NotImplementedError):
-        na.c_array_stream(pa_table, schema=schema2)
+    try:
+        stream = na.c_array_stream(pa_table, schema=schema2)
+        assert stream.get_schema().child(0).format == "l"
+    except NotImplementedError:
+        # Was not implemented before pyarrow 16.0.0
+        pass
 
 
 def test_export_invalid():
