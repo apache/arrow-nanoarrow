@@ -18,7 +18,6 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
-#include "nanoarrow/nanoarrow.h"
 #include "nanoarrow/nanoarrow.hpp"
 
 using testing::ElementsAre;
@@ -53,6 +52,7 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
     EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(&array), ElementsAre(123));
     EXPECT_EQ(array.n_buffers, 2);
   }
+  EXPECT_EQ(array_stream_view.count(), 1);
   EXPECT_EQ(array_stream_view.code(), NANOARROW_OK);
   EXPECT_STREQ(array_stream_view.error()->message, "");
 

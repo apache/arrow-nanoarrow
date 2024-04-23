@@ -31,7 +31,6 @@
 #include <arrow/compare.h>
 #include <arrow/util/decimal.h>
 
-#include "nanoarrow/nanoarrow.h"
 #include "nanoarrow/nanoarrow.hpp"
 
 using namespace arrow;
@@ -869,7 +868,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
                           '9',  '0',  0x00, 0x00, 0x00, 0x00, 0x00};
   EXPECT_EQ(memcmp(data_buffer, expected_data, 25), 0);
 
-  EXPECT_THAT(nanoarrow::ViewAsFixedSizeBytes(&array, 5),
+  EXPECT_THAT(nanoarrow::ViewArrayAsFixedSizeBytes(&array, 5),
               ElementsAre("12345"_v, NA, NA, "67890"_v, "\0\0\0\0\0"_v));
   ArrowArrayRelease(&array);
   ArrowSchemaRelease(&schema);

@@ -221,9 +221,6 @@ class Unique {
   T* operator->() noexcept { return &data_; }
   const T* operator->() const noexcept { return &data_; }
 
-  /// \brief Check for validity
-  explicit operator bool() const { return data_.release != nullptr; }
-
   /// \brief Call data's release callback if valid
   void reset() { release_pointer(&data_); }
 
@@ -744,7 +741,7 @@ class ViewArrayAsBytes {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
-class ViewAsFixedSizeBytes {
+class ViewArrayAsFixedSizeBytes {
  private:
   struct Get {
     const uint8_t* validity;
@@ -764,7 +761,7 @@ class ViewAsFixedSizeBytes {
   internal::RandomAccessRange<Get> range_;
 
  public:
-  ViewAsFixedSizeBytes(const ArrowArrayView* array_view, int fixed_size)
+  ViewArrayAsFixedSizeBytes(const ArrowArrayView* array_view, int fixed_size)
       : range_{
             Get{
                 array_view->buffer_views[0].data.as_uint8,
@@ -775,7 +772,7 @@ class ViewAsFixedSizeBytes {
             array_view->length,
         } {}
 
-  ViewAsFixedSizeBytes(const ArrowArray* array, int fixed_size)
+  ViewArrayAsFixedSizeBytes(const ArrowArray* array, int fixed_size)
       : range_{
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
@@ -822,10 +819,14 @@ class ViewArrayStream {
     ArrowArray* operator()() {
       array.reset();
       *self->code_ = ArrowArrayStreamGetNext(stream, array.get(), self->error_);
-      NANOARROW_DCHECK(
-          // either there was no error or there was an error and array is invalid
-          *self->code_ == NANOARROW_OK || !array);
-      return array ? array.get() : nullptr;
+
+      if (array->release != nullptr) {
+        NANOARROW_DCHECK(*self->code_ == NANOARROW_OK);
+        ++self->count_;
+        return array.get();
+      }
+
+      return nullptr;
     }
   };
 
@@ -835,8 +836,7 @@ class ViewArrayStream {
   ArrowError internal_error_ = {};
   ArrowErrorCode internal_code_;
   bool code_was_accessed_;
-  // ArrowErrorCode internal_code_ = NANOARROW_OK;
-  // bool code_was_accessed_ = false;
+  int count_ = 0;
 
  public:
   using value_type = typename internal::InputRange<Next>::value_type;
@@ -849,6 +849,8 @@ class ViewArrayStream {
     return *code_;
   }
   ArrowError* error() { return error_; }
+
+  int count() const { return count_; }
 };
 
 }  // namespace nanoarrow
