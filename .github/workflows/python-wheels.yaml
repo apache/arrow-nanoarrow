@@ -49,6 +49,10 @@ jobs:
       run: |
         pip install build twine
 
+    - name: Set nanoarrow Python dev version
+      run: |
+        python python/set_dev_version.py
+
     - name: Build sdist
       run: |
         cd python
@@ -94,6 +98,10 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==2.15.0
 
+      - name: Set nanoarrow Python dev version
+        run: |
+          python python/set_dev_version.py
+
       - name: Build wheels
         run: |
           python -m cibuildwheel --output-dir wheelhouse python
@@ -112,7 +120,7 @@ jobs:
     needs: ["build_sdist", "build_wheels"]
     name: Upload nightly packages
     runs-on: "ubuntu-20.04"
-    # if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+    if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v4
         with:
