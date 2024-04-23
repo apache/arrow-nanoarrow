@@ -48,7 +48,7 @@ jobs:
         pip install build twine
 
     - name: Set nanoarrow Python dev version
-      if: github.ref == 'refs/heads/main'
+      # if: github.ref == 'refs/heads/main'
       run: |
         python python/set_dev_version.py
 
@@ -98,7 +98,7 @@ jobs:
         run: python -m pip install cibuildwheel==2.15.0
 
       - name: Set nanoarrow Python dev version
-        if: github.ref == 'refs/heads/main'
+        # if: github.ref == 'refs/heads/main'
         run: |
           python python/set_dev_version.py
 
