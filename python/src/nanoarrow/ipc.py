@@ -18,7 +18,7 @@
 import io
 
 from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
-from nanoarrow._lib import CArrayStream
+from nanoarrow._lib import CArrayStream, _obj_is_buffer
 
 from nanoarrow import _repr_utils
 
@@ -77,7 +77,7 @@ class Stream:
 
     @staticmethod
     def from_readable(obj):
-        """Wrap an open readable object as an Arrow stream
+        """Wrap an open readable file or buffer as an Arrow IPC stream
 
         Wraps a readable object (specificially, an object that implements a
         ``readinto()`` method) as a non-owning Stream. Closing ``obj`` remains
@@ -86,29 +86,33 @@ class Stream:
 
         Parameters
         ----------
-        obj : readable file-like
-            An object implementing ``readinto()``.
+        obj : readable file-like or buffer
+            An object implementing the Python buffer protocol or ``readinto()``.
 
         Examples
         --------
 
-        >>> import io
         >>> import nanoarrow as na
         >>> from nanoarrow.ipc import Stream
-        >>> with io.BytesIO(Stream.example_bytes()) as f:
-        ...     inp = Stream.from_readable(f)
-        ...     na.c_array_stream(inp)
+        >>> ipc_stream = Stream.from_readable(Stream.example_bytes())
+        >>> na.c_array_stream(ipc_stream)
         <nanoarrow.c_lib.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
+        if _obj_is_buffer(obj):
+            close_obj = True
+            obj = io.BytesIO(obj)
+        else:
+            close_obj = False
+
         out = Stream()
-        out._stream = CIpcInputStream.from_readable(obj)
+        out._stream = CIpcInputStream.from_readable(obj, close_obj=close_obj)
         out._desc = repr(obj)
         return out
 
     @staticmethod
     def from_path(obj, *args, **kwargs):
-        """Wrap a local file as an Arrow stream
+        """Wrap a local file as an IPC stream
 
         Wraps a pathlike object (specificially, one that can be passed to ``open()``)
         as an owning Stream. The file will be opened in binary mode and will be closed
@@ -145,7 +149,7 @@ class Stream:
 
     @staticmethod
     def from_url(obj, *args, **kwargs):
-        """Wrap a URL as an Arrow stream
+        """Wrap a URL as an IPC stream
 
         Wraps a URL (specificially, one that can be passed to
         ``urllib.request.urlopen()``) as an owning Stream. The URL will be
@@ -186,7 +190,7 @@ class Stream:
 
     @staticmethod
     def example():
-        """Example Stream
+        """Example IPC Stream
 
         A self-contained example whose value is the serialized version of
         ``DataFrame({"some_col": [1, 2, 3]})``. This may be used for testing
@@ -200,7 +204,7 @@ class Stream:
         >>> Stream.example()
         <nanoarrow.ipc.Stream <_io.BytesIO object at ...>>
         """
-        return Stream.from_readable(io.BytesIO(Stream.example_bytes()))
+        return Stream.from_readable(Stream.example_bytes())
 
     @staticmethod
     def example_bytes():

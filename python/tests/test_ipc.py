@@ -53,6 +53,18 @@ def test_ipc_stream_example():
         assert list(batch.child(0).buffer(1)) == [1, 2, 3]
 
 
+def test_ipc_stream_from_readable():
+    with io.BytesIO(Stream.example_bytes()) as f:
+        with Stream.from_readable(f) as input:
+            assert input._is_valid() is True
+            assert "BytesIO object" in repr(input)
+
+            with na.c_array_stream(input) as stream:
+                batches = list(stream)
+                assert len(batches) == 1
+                assert batches[0].length == 3
+
+
 def test_ipc_stream_from_path():
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "test.arrows")

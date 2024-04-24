@@ -74,10 +74,12 @@ from nanoarrow.schema import (
     struct,
 )
 from nanoarrow.array import array, Array
+from nanoarrow.array_stream import ArrayStream
 from nanoarrow._version import __version__  # noqa: F401
 
 # Helps Sphinx automatically populate an API reference section
 __all__ = [
+    "ArrayStream",
     "Schema",
     "TimeUnit",
     "Type",
