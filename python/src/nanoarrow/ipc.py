@@ -99,7 +99,7 @@ class Stream:
         <nanoarrow.c_lib.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
-        if _obj_is_buffer(obj):
+        if not hasattr(obj, "readinto") and _obj_is_buffer(obj):
             close_obj = True
             obj = io.BytesIO(obj)
         else:
