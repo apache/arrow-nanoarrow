@@ -251,7 +251,7 @@ class ArrayStream:
 
     @staticmethod
     def from_url(obj, *args, **kwargs):
-        """Create an ArrayStream from an IPC stream at a local file path
+        """Create an ArrayStream from an IPC stream at a URL
 
         Examples
         --------
