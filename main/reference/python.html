@@ -752,6 +752,247 @@ contiguous in memory.</p>
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayStream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.ArrayStream" title="Link to this definition">#</a></dt>
+<dd><p>High-level ArrayStream representation</p>
+<p>The ArrayStream is nanoarrow’s high-level representation of zero
+or more contiguous arrays that have not neccessarily been materialized.
+This is in constrast to the nanoarrow <a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a>, which consists
+of zero or more contiguous arrays but is always fully-materialized.</p>
+<p>The <a class="reference internal" href="#nanoarrow.ArrayStream" title="nanoarrow.ArrayStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">ArrayStream</span></code></a> is similar to pyarrow’s <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>
+except it can also represent streams of non-struct arrays. Its scope
+maps to that of an``ArrowArrayStream`` as represented by the Arrow C
+Stream interface.</p>
+<section id="id20">
+<h2>Parameters<a class="headerlink" href="#id20" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt>obj<span class="classifier">array or array stream-like</span></dt><dd><p>An array-like or array stream-like object as sanitized by
+<a class="reference internal" href="#nanoarrow.c_array_stream" title="nanoarrow.c_array_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_array_stream()</span></code></a>.</p>
+</dd>
+<dt>schema<span class="classifier">schema-like, optional</span></dt><dd><p>An optional schema, passed to <a class="reference internal" href="#nanoarrow.c_array_stream" title="nanoarrow.c_array_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_array_stream()</span></code></a>.</p>
+</dd>
+</dl>
+</section>
+<section id="id21">
+<h2>Examples<a class="headerlink" href="#id21" title="Link to this heading">#</a></h2>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="go">&lt;nanoarrow.ArrayStream: Schema(INT32)&gt;</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nanoarrow.ArrayStream.close" title="Link to this definition">#</a></dt>
+<dd><p>Release resources associated with this stream</p>
+<p>Note that it is usually preferred to use the context manager to ensure
+prompt release of resources (e.g., open files) associated with
+this stream.</p>
+<section id="id22">
+<h3>Examples<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="k">pass</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="c">...</span>
+<span class="gr">RuntimeError</span>: <span class="n">array stream is released</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="c">...</span>
+<span class="gr">RuntimeError</span>: <span class="n">array stream is released</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.from_path">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.ArrayStream.from_path" title="Link to this definition">#</a></dt>
+<dd><p>Create an ArrayStream from an IPC stream at a local file path</p>
+<section id="id23">
+<h3>Examples<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">os</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">nanoarrow.ipc</span> <span class="kn">import</span> <span class="n">Stream</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">td</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="s2">&quot;test.arrows&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">nbytes</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">Stream</span><span class="o">.</span><span class="n">example_bytes</span><span class="p">())</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;struct&lt;some_col: int32&gt;&gt;[3]</span>
+<span class="go">{&#39;some_col&#39;: 1}</span>
+<span class="go">{&#39;some_col&#39;: 2}</span>
+<span class="go">{&#39;some_col&#39;: 3}</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.from_readable">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_readable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.ArrayStream.from_readable" title="Link to this definition">#</a></dt>
+<dd><p>Create an ArrayStream from an IPC stream in a readable file or buffer</p>
+<section id="id24">
+<h3>Examples<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">nanoarrow.ipc</span> <span class="kn">import</span> <span class="n">Stream</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">.</span><span class="n">from_readable</span><span class="p">(</span><span class="n">Stream</span><span class="o">.</span><span class="n">example_bytes</span><span class="p">())</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;struct&lt;some_col: int32&gt;&gt;[3]</span>
+<span class="go">{&#39;some_col&#39;: 1}</span>
+<span class="go">{&#39;some_col&#39;: 2}</span>
+<span class="go">{&#39;some_col&#39;: 3}</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.from_url">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.ArrayStream.from_url" title="Link to this definition">#</a></dt>
+<dd><p>Create an ArrayStream from an IPC stream at a URL</p>
+<section id="id25">
+<h3>Examples<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pathlib</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">os</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">nanoarrow.ipc</span> <span class="kn">import</span> <span class="n">Stream</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">td</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="s2">&quot;test.arrows&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">nbytes</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">Stream</span><span class="o">.</span><span class="n">example_bytes</span><span class="p">())</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">uri</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">as_uri</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;struct&lt;some_col: int32&gt;&gt;[3]</span>
+<span class="go">{&#39;some_col&#39;: 1}</span>
+<span class="go">{&#39;some_col&#39;: 2}</span>
+<span class="go">{&#39;some_col&#39;: 3}</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.iter_chunks">
+<span class="sig-name descname"><span class="pre">iter_chunks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.array.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.ArrayStream.iter_chunks" title="Link to this definition">#</a></dt>
+<dd><p>Iterate over contiguous Arrays in this stream</p>
+<p>For the <a class="reference internal" href="#nanoarrow.ArrayStream" title="nanoarrow.ArrayStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">ArrayStream</span></code></a>, this is the same as iterating over
+the stream itself.</p>
+<section id="id26">
+<h3>Examples<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+<span class="go">nanoarrow.Array&lt;int32&gt;[3]</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.iter_py">
+<span class="sig-name descname"><span class="pre">iter_py</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span></span></span><a class="headerlink" href="#nanoarrow.ArrayStream.iter_py" title="Link to this definition">#</a></dt>
+<dd><p>Iterate over the default Python representation of each element.</p>
+<section id="id27">
+<h3>Examples<a class="headerlink" href="#id27" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">stream</span><span class="o">.</span><span class="n">iter_py</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.iter_tuples">
+<span class="sig-name descname"><span class="pre">iter_tuples</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.ArrayStream.iter_tuples" title="Link to this definition">#</a></dt>
+<dd><p>Iterate over rows of a struct stream as tuples</p>
+<section id="id28">
+<h3>Examples<a class="headerlink" href="#id28" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">])],</span>
+<span class="gp">... </span>    <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;col1&quot;</span><span class="p">,</span> <span class="s2">&quot;col2&quot;</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">stream</span><span class="o">.</span><span class="n">iter_tuples</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+<span class="go">(1, &#39;a&#39;)</span>
+<span class="go">(2, &#39;b&#39;)</span>
+<span class="go">(3, &#39;c&#39;)</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.read_all">
+<span class="sig-name descname"><span class="pre">read_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.array.Array"><span class="pre">Array</span></a></span></span><a class="headerlink" href="#nanoarrow.ArrayStream.read_all" title="Link to this definition">#</a></dt>
+<dd><p>Materialize the entire stream into an <a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;int32&gt;[3]</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.read_next">
+<span class="sig-name descname"><span class="pre">read_next</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.array.Array"><span class="pre">Array</span></a></span></span><a class="headerlink" href="#nanoarrow.ArrayStream.read_next" title="Link to this definition">#</a></dt>
+<dd><p>Materialize the next contiguous <a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a> in this stream</p>
+<p>This method raises <code class="docutils literal notranslate"><span class="pre">StopIteration</span></code> if there are no more arrays
+in this stream.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_next</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;int32&gt;[3]</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nanoarrow.ArrayStream.schema">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><a class="headerlink" href="#nanoarrow.ArrayStream.schema" title="Link to this definition">#</a></dt>
+<dd><p>The <a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.Schema"><code class="xref py py-class docutils literal notranslate"><span class="pre">Schema</span></code></a> associated with this stream</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">schema</span>
+<span class="go">Schema(INT32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="nanoarrow.Schema">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.Schema" title="Link to this definition">#</a></dt>
 <dd><p>The Schema is nanoarrow’s high-level data type representation whose scope maps to
@@ -923,8 +1164,8 @@ categories can be identified. Type values can be used in place of
 <dt class="sig sig-object py" id="nanoarrow.allocate_c_array">
 <span class="sig-name descname"><span class="pre">allocate_c_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArray</span></span></span><a class="headerlink" href="#nanoarrow.allocate_c_array" title="Link to this definition">#</a></dt>
 <dd><p>Allocate an uninitialized ArrowArray</p>
-<section id="id20">
-<h2>Examples<a class="headerlink" href="#id20" title="Link to this heading">#</a></h2>
+<section id="id29">
+<h2>Examples<a class="headerlink" href="#id29" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">allocate_c_schema</span><span class="p">()</span>
@@ -938,8 +1179,8 @@ categories can be identified. Type values can be used in place of
 <dt class="sig sig-object py" id="nanoarrow.allocate_c_array_stream">
 <span class="sig-name descname"><span class="pre">allocate_c_array_stream</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArrayStream</span></span></span><a class="headerlink" href="#nanoarrow.allocate_c_array_stream" title="Link to this definition">#</a></dt>
 <dd><p>Allocate an uninitialized ArrowArrayStream wrapper</p>
-<section id="id21">
-<h2>Examples<a class="headerlink" href="#id21" title="Link to this heading">#</a></h2>
+<section id="id30">
+<h2>Examples<a class="headerlink" href="#id30" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pa_column</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
@@ -956,8 +1197,8 @@ categories can be identified. Type values can be used in place of
 <dt class="sig sig-object py" id="nanoarrow.allocate_c_schema">
 <span class="sig-name descname"><span class="pre">allocate_c_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CSchema</span></span></span><a class="headerlink" href="#nanoarrow.allocate_c_schema" title="Link to this definition">#</a></dt>
 <dd><p>Allocate an uninitialized ArrowSchema wrapper</p>
-<section id="id22">
-<h2>Examples<a class="headerlink" href="#id22" title="Link to this heading">#</a></h2>
+<section id="id31">
+<h2>Examples<a class="headerlink" href="#id31" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">allocate_c_schema</span><span class="p">()</span>
@@ -975,10 +1216,10 @@ categories can be identified. Type values can be used in place of
 representation whose scope maps to that of a fully-consumed
 ArrowArrayStream in the Arrow C Data interface. Note that an
 <a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a> is not necessarily contiguous in memory (i.e.,
-it may consist of zero or more <a href="#id23"><span class="problematic" id="id24">``</span></a>ArrowArray``s).
+it may consist of zero or more <a href="#id32"><span class="problematic" id="id33">``</span></a>ArrowArray``s).
 See <a class="reference internal" href="#nanoarrow.Array" title="nanoarrow.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a> for class details.</p>
-<section id="id25">
-<h2>Parameters<a class="headerlink" href="#id25" title="Link to this heading">#</a></h2>
+<section id="id34">
+<h2>Parameters<a class="headerlink" href="#id34" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>obj<span class="classifier">array or array stream-like</span></dt><dd><p>An array-like or array stream-like object. This can be any object
 supporting the Arrow PyCapsule interface, the Python buffer
@@ -993,8 +1234,8 @@ Defaults to the CPU device.</p>
 </dd>
 </dl>
 </section>
-<section id="id26">
-<h2>Examples<a class="headerlink" href="#id26" title="Link to this heading">#</a></h2>
+<section id="id35">
+<h2>Examples<a class="headerlink" href="#id35" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="go">nanoarrow.Array&lt;int32&gt;[3]</span>
@@ -1010,15 +1251,15 @@ Defaults to the CPU device.</p>
 <dt class="sig sig-object py" id="nanoarrow.binary">
 <span class="sig-name descname"><span class="pre">binary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.binary" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a variable or fixed-width binary type.</p>
-<section id="id27">
-<h2>Parameters<a class="headerlink" href="#id27" title="Link to this heading">#</a></h2>
+<section id="id36">
+<h2>Parameters<a class="headerlink" href="#id36" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id28">
-<h2>Examples<a class="headerlink" href="#id28" title="Link to this heading">#</a></h2>
+<section id="id37">
+<h2>Examples<a class="headerlink" href="#id37" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">binary</span><span class="p">()</span>
 <span class="go">Schema(BINARY)</span>
@@ -1031,15 +1272,15 @@ Defaults to the CPU device.</p>
 <dt class="sig sig-object py" id="nanoarrow.bool">
 <span class="sig-name descname"><span class="pre">bool</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.bool" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a boolean type.</p>
-<section id="id29">
-<h2>Parameters<a class="headerlink" href="#id29" title="Link to this heading">#</a></h2>
+<section id="id38">
+<h2>Parameters<a class="headerlink" href="#id38" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id30">
-<h2>Examples<a class="headerlink" href="#id30" title="Link to this heading">#</a></h2>
+<section id="id39">
+<h2>Examples<a class="headerlink" href="#id39" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span>
 <span class="go">Schema(BOOL)</span>
@@ -1064,8 +1305,8 @@ the content into a more easily inspectable object.</p>
 <p>Note that the <code class="xref py py-class docutils literal notranslate"><span class="pre">CArray</span></code> objects returned by <code class="docutils literal notranslate"><span class="pre">.child()</span></code> hold strong
 references to the original <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> to avoid copies while inspecting an
 imported structure.</p>
-<section id="id31">
-<h2>Parameters<a class="headerlink" href="#id31" title="Link to this heading">#</a></h2>
+<section id="id40">
+<h2>Parameters<a class="headerlink" href="#id40" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>obj<span class="classifier">array-like</span></dt><dd><p>An object supporting the Arrow PyCapsule interface, the Python buffer
 protocol, or an iterable of Python objects.</p>
@@ -1077,8 +1318,8 @@ different than <code class="docutils literal notranslate"><span class="pre">sche
 </dd>
 </dl>
 </section>
-<section id="id32">
-<h2>Examples<a class="headerlink" href="#id32" title="Link to this heading">#</a></h2>
+<section id="id41">
+<h2>Examples<a class="headerlink" href="#id41" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create from iterable</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
@@ -1107,8 +1348,8 @@ to be assembled; however, requires some knowledge of the Arrow Columnar
 specification. This function will do its best to validate the sizes and
 content of buffers according to <code class="docutils literal notranslate"><span class="pre">validation_level</span></code>; however, not all
 types of arrays can currently be validated when constructed in this way.</p>
-<section id="id33">
-<h2>Parameters<a class="headerlink" href="#id33" title="Link to this heading">#</a></h2>
+<section id="id42">
+<h2>Parameters<a class="headerlink" href="#id42" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>schema<span class="classifier">schema-like</span></dt><dd><p>The data type of the desired array as sanitized by <a class="reference internal" href="#nanoarrow.c_schema" title="nanoarrow.c_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_schema()</span></code></a>.</p>
 </dd>
@@ -1141,8 +1382,8 @@ output array.</p>
 </dd>
 </dl>
 </section>
-<section id="id34">
-<h2>Examples<a class="headerlink" href="#id34" title="Link to this heading">#</a></h2>
+<section id="id43">
+<h2>Examples<a class="headerlink" href="#id43" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">c_array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array_from_buffers</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">uint8</span><span class="p">(),</span> <span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;12345&quot;</span><span class="p">])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">c_array_view</span><span class="p">(</span><span class="n">c_array</span><span class="p">)</span>
@@ -1168,8 +1409,8 @@ output array.</p>
 <p>This class provides a user-facing interface to access the fields of
 an ArrowArrayStream as defined in the Arrow C Stream interface.
 These objects are usually created using <cite>nanoarrow.c_array_stream()</cite>.</p>
-<section id="id35">
-<h2>Examples<a class="headerlink" href="#id35" title="Link to this heading">#</a></h2>
+<section id="id44">
+<h2>Examples<a class="headerlink" href="#id44" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pa_column</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
@@ -1212,8 +1453,8 @@ data types. The buffer data is usually propagated from an ArrowArray
 but can also be propagated from other types of objects (e.g., serialized
 IPC). The offset and length of this view are independent of its parent
 (i.e., this object can also represent a slice of its parent).</p>
-<section id="id36">
-<h2>Examples<a class="headerlink" href="#id36" title="Link to this heading">#</a></h2>
+<section id="id45">
+<h2>Examples<a class="headerlink" href="#id45" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
@@ -1245,8 +1486,8 @@ a Python iterable. The <code class="docutils literal notranslate"><span class="p
 values from obj into binary form.</p>
 <p>Unlike with <a class="reference internal" href="#nanoarrow.c_array" title="nanoarrow.c_array"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_array()</span></code></a>, <code class="docutils literal notranslate"><span class="pre">schema</span></code> is explicitly
 honoured (or an error will be raised).</p>
-<section id="id37">
-<h2>Parameters<a class="headerlink" href="#id37" title="Link to this heading">#</a></h2>
+<section id="id46">
+<h2>Parameters<a class="headerlink" href="#id46" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>obj<span class="classifier">buffer-like or iterable</span></dt><dd><p>A Python object that supports the Python buffer protocol. This includes
 bytes, memoryview, bytearray, bulit-in types as well as numpy arrays.</p>
@@ -1258,8 +1499,8 @@ decimal types, binary, string, fixed-size binary).</p>
 </dd>
 </dl>
 </section>
-<section id="id38">
-<h2>Examples<a class="headerlink" href="#id38" title="Link to this heading">#</a></h2>
+<section id="id47">
+<h2>Examples<a class="headerlink" href="#id47" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">c_buffer</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;1234&quot;</span><span class="p">)</span>
 <span class="go">nanoarrow.c_lib.CBuffer(uint8[4 b] 49 50 51 52)</span>
@@ -1284,8 +1525,8 @@ and deserialize the content into a more easily inspectable object.</p>
 <p>Note that the <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> objects returned by <code class="docutils literal notranslate"><span class="pre">.child()</span></code> hold strong
 references to the original <cite>ArrowSchema</cite> to avoid copies while inspecting an
 imported structure.</p>
-<section id="id39">
-<h2>Examples<a class="headerlink" href="#id39" title="Link to this heading">#</a></h2>
+<section id="id48">
+<h2>Examples<a class="headerlink" href="#id48" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
@@ -1307,8 +1548,8 @@ imported structure.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">ArrowSchemaView</span></code> is a nanoarrow C library structure that facilitates
 access to the deserialized content of an <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> (e.g., parameter values for
 parameterized types). This wrapper extends that facility to Python.</p>
-<section id="id40">
-<h2>Examples<a class="headerlink" href="#id40" title="Link to this heading">#</a></h2>
+<section id="id49">
+<h2>Examples<a class="headerlink" href="#id49" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
@@ -1336,15 +1577,15 @@ parameterized types). This wrapper extends that facility to Python.</p>
 <dt class="sig sig-object py" id="nanoarrow.date32">
 <span class="sig-name descname"><span class="pre">date32</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.date32" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 32-bit date type (days since 1970-01-01).</p>
-<section id="id41">
-<h2>Parameters<a class="headerlink" href="#id41" title="Link to this heading">#</a></h2>
+<section id="id50">
+<h2>Parameters<a class="headerlink" href="#id50" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id42">
-<h2>Examples<a class="headerlink" href="#id42" title="Link to this heading">#</a></h2>
+<section id="id51">
+<h2>Examples<a class="headerlink" href="#id51" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">date32</span><span class="p">()</span>
 <span class="go">Schema(DATE32)</span>
@@ -1357,15 +1598,15 @@ parameterized types). This wrapper extends that facility to Python.</p>
 <dt class="sig sig-object py" id="nanoarrow.date64">
 <span class="sig-name descname"><span class="pre">date64</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.date64" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 64-bit date type (milliseconds since 1970-01-01).</p>
-<section id="id43">
-<h2>Parameters<a class="headerlink" href="#id43" title="Link to this heading">#</a></h2>
+<section id="id52">
+<h2>Parameters<a class="headerlink" href="#id52" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id44">
-<h2>Examples<a class="headerlink" href="#id44" title="Link to this heading">#</a></h2>
+<section id="id53">
+<h2>Examples<a class="headerlink" href="#id53" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">date64</span><span class="p">()</span>
 <span class="go">Schema(DATE64)</span>
@@ -1378,8 +1619,8 @@ parameterized types). This wrapper extends that facility to Python.</p>
 <dt class="sig sig-object py" id="nanoarrow.decimal128">
 <span class="sig-name descname"><span class="pre">decimal128</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.decimal128" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 128-bit decimal type.</p>
-<section id="id45">
-<h2>Parameters<a class="headerlink" href="#id45" title="Link to this heading">#</a></h2>
+<section id="id54">
+<h2>Parameters<a class="headerlink" href="#id54" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>precision<span class="classifier">int</span></dt><dd><p>The number of significant digits representable by this type. Must be
 between 1 and 38.</p>
@@ -1390,8 +1631,8 @@ between 1 and 38.</p>
 </dd>
 </dl>
 </section>
-<section id="id46">
-<h2>Examples<a class="headerlink" href="#id46" title="Link to this heading">#</a></h2>
+<section id="id55">
+<h2>Examples<a class="headerlink" href="#id55" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
 <span class="go">Schema(DECIMAL128, precision=10, scale=3)</span>
@@ -1404,8 +1645,8 @@ between 1 and 38.</p>
 <dt class="sig sig-object py" id="nanoarrow.decimal256">
 <span class="sig-name descname"><span class="pre">decimal256</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">precision</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.decimal256" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 256-bit decimal type.</p>
-<section id="id47">
-<h2>Parameters<a class="headerlink" href="#id47" title="Link to this heading">#</a></h2>
+<section id="id56">
+<h2>Parameters<a class="headerlink" href="#id56" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>precision<span class="classifier">int</span></dt><dd><p>The number of significant digits representable by this type. Must be
 between 1 and 76.</p>
@@ -1416,8 +1657,8 @@ between 1 and 76.</p>
 </dd>
 </dl>
 </section>
-<section id="id48">
-<h2>Examples<a class="headerlink" href="#id48" title="Link to this heading">#</a></h2>
+<section id="id57">
+<h2>Examples<a class="headerlink" href="#id57" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">decimal256</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
 <span class="go">Schema(DECIMAL256, precision=10, scale=3)</span>
@@ -1430,8 +1671,8 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.duration">
 <span class="sig-name descname"><span class="pre">duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.duration" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a duration type.</p>
-<section id="id49">
-<h2>Parameters<a class="headerlink" href="#id49" title="Link to this heading">#</a></h2>
+<section id="id58">
+<h2>Parameters<a class="headerlink" href="#id58" title="Link to this heading">#</a></h2>
 <dl>
 <dt>unit<span class="classifier">str or <a class="reference internal" href="#nanoarrow.TimeUnit" title="nanoarrow.TimeUnit"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeUnit</span></code></a></span></dt><dd><p>The unit of values stored by this type.</p>
 </dd>
@@ -1439,8 +1680,8 @@ between 1 and 76.</p>
 </dd>
 </dl>
 </section>
-<section id="id50">
-<h2>Examples<a class="headerlink" href="#id50" title="Link to this heading">#</a></h2>
+<section id="id59">
+<h2>Examples<a class="headerlink" href="#id59" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">duration</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
 <span class="go">Schema(DURATION, unit=SECOND)</span>
@@ -1453,8 +1694,8 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.fixed_size_binary">
 <span class="sig-name descname"><span class="pre">fixed_size_binary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">byte_width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.fixed_size_binary" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a variable or fixed-width binary type.</p>
-<section id="id51">
-<h2>Parameters<a class="headerlink" href="#id51" title="Link to this heading">#</a></h2>
+<section id="id60">
+<h2>Parameters<a class="headerlink" href="#id60" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>byte_width<span class="classifier">int</span></dt><dd><p>The width of each element in bytes.</p>
 </dd>
@@ -1462,8 +1703,8 @@ between 1 and 76.</p>
 </dd>
 </dl>
 </section>
-<section id="id52">
-<h2>Examples<a class="headerlink" href="#id52" title="Link to this heading">#</a></h2>
+<section id="id61">
+<h2>Examples<a class="headerlink" href="#id61" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">fixed_size_binary</span><span class="p">(</span><span class="mi">123</span><span class="p">)</span>
 <span class="go">Schema(FIXED_SIZE_BINARY, byte_width=123)</span>
@@ -1476,15 +1717,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.float16">
 <span class="sig-name descname"><span class="pre">float16</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.float16" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 16-bit floating-point type.</p>
-<section id="id53">
-<h2>Parameters<a class="headerlink" href="#id53" title="Link to this heading">#</a></h2>
+<section id="id62">
+<h2>Parameters<a class="headerlink" href="#id62" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id54">
-<h2>Examples<a class="headerlink" href="#id54" title="Link to this heading">#</a></h2>
+<section id="id63">
+<h2>Examples<a class="headerlink" href="#id63" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">float16</span><span class="p">()</span>
 <span class="go">Schema(HALF_FLOAT)</span>
@@ -1497,15 +1738,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.float32">
 <span class="sig-name descname"><span class="pre">float32</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.float32" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 32-bit floating-point type.</p>
-<section id="id55">
-<h2>Parameters<a class="headerlink" href="#id55" title="Link to this heading">#</a></h2>
+<section id="id64">
+<h2>Parameters<a class="headerlink" href="#id64" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id56">
-<h2>Examples<a class="headerlink" href="#id56" title="Link to this heading">#</a></h2>
+<section id="id65">
+<h2>Examples<a class="headerlink" href="#id65" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">float32</span><span class="p">()</span>
 <span class="go">Schema(FLOAT)</span>
@@ -1518,15 +1759,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.float64">
 <span class="sig-name descname"><span class="pre">float64</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.float64" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 64-bit floating-point type.</p>
-<section id="id57">
-<h2>Parameters<a class="headerlink" href="#id57" title="Link to this heading">#</a></h2>
+<section id="id66">
+<h2>Parameters<a class="headerlink" href="#id66" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id58">
-<h2>Examples<a class="headerlink" href="#id58" title="Link to this heading">#</a></h2>
+<section id="id67">
+<h2>Examples<a class="headerlink" href="#id67" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">float64</span><span class="p">()</span>
 <span class="go">Schema(DOUBLE)</span>
@@ -1539,15 +1780,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.int16">
 <span class="sig-name descname"><span class="pre">int16</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.int16" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a signed 16-bit integer type.</p>
-<section id="id59">
-<h2>Parameters<a class="headerlink" href="#id59" title="Link to this heading">#</a></h2>
+<section id="id68">
+<h2>Parameters<a class="headerlink" href="#id68" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id60">
-<h2>Examples<a class="headerlink" href="#id60" title="Link to this heading">#</a></h2>
+<section id="id69">
+<h2>Examples<a class="headerlink" href="#id69" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int16</span><span class="p">()</span>
 <span class="go">Schema(INT16)</span>
@@ -1560,15 +1801,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.int32">
 <span class="sig-name descname"><span class="pre">int32</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.int32" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a signed 32-bit integer type.</p>
-<section id="id61">
-<h2>Parameters<a class="headerlink" href="#id61" title="Link to this heading">#</a></h2>
+<section id="id70">
+<h2>Parameters<a class="headerlink" href="#id70" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id62">
-<h2>Examples<a class="headerlink" href="#id62" title="Link to this heading">#</a></h2>
+<section id="id71">
+<h2>Examples<a class="headerlink" href="#id71" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()</span>
 <span class="go">Schema(INT32)</span>
@@ -1581,15 +1822,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.int64">
 <span class="sig-name descname"><span class="pre">int64</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.int64" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a signed 32-bit integer type.</p>
-<section id="id63">
-<h2>Parameters<a class="headerlink" href="#id63" title="Link to this heading">#</a></h2>
+<section id="id72">
+<h2>Parameters<a class="headerlink" href="#id72" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id64">
-<h2>Examples<a class="headerlink" href="#id64" title="Link to this heading">#</a></h2>
+<section id="id73">
+<h2>Examples<a class="headerlink" href="#id73" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int64</span><span class="p">()</span>
 <span class="go">Schema(INT64)</span>
@@ -1602,15 +1843,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.int8">
 <span class="sig-name descname"><span class="pre">int8</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.int8" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a signed 8-bit integer type.</p>
-<section id="id65">
-<h2>Parameters<a class="headerlink" href="#id65" title="Link to this heading">#</a></h2>
+<section id="id74">
+<h2>Parameters<a class="headerlink" href="#id74" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id66">
-<h2>Examples<a class="headerlink" href="#id66" title="Link to this heading">#</a></h2>
+<section id="id75">
+<h2>Examples<a class="headerlink" href="#id75" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int8</span><span class="p">()</span>
 <span class="go">Schema(INT8)</span>
@@ -1623,15 +1864,15 @@ between 1 and 76.</p>
 <dt class="sig sig-object py" id="nanoarrow.interval_day_time">
 <span class="sig-name descname"><span class="pre">interval_day_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.interval_day_time" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of an interval type measured as a day/time pair.</p>
-<section id="id67">
-<h2>Parameters<a class="headerlink" href="#id67" title="Link to this heading">#</a></h2>
+<section id="id76">
+<h2>Parameters<a class="headerlink" href="#id76" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id68">
-<h2>Examples<a class="headerlink" href="#id68" title="Link to this heading">#</a></h2>
+<section id="id77">
+<h2>Examples<a class="headerlink" href="#id77" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">interval_day_time</span><span class="p">()</span>
 <span class="go">Schema(INTERVAL_DAY_TIME)</span>
@@ -1645,15 +1886,15 @@ between 1 and 76.</p>
 <span class="sig-name descname"><span class="pre">interval_month_day_nano</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.interval_month_day_nano" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of an interval type measured as a month/day/nanosecond
 tuple.</p>
-<section id="id69">
-<h2>Parameters<a class="headerlink" href="#id69" title="Link to this heading">#</a></h2>
+<section id="id78">
+<h2>Parameters<a class="headerlink" href="#id78" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id70">
-<h2>Examples<a class="headerlink" href="#id70" title="Link to this heading">#</a></h2>
+<section id="id79">
+<h2>Examples<a class="headerlink" href="#id79" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">interval_month_day_nano</span><span class="p">()</span>
 <span class="go">Schema(INTERVAL_MONTH_DAY_NANO)</span>
@@ -1666,15 +1907,15 @@ tuple.</p>
 <dt class="sig sig-object py" id="nanoarrow.interval_months">
 <span class="sig-name descname"><span class="pre">interval_months</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.interval_months" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of an interval type measured in months.</p>
-<section id="id71">
-<h2>Parameters<a class="headerlink" href="#id71" title="Link to this heading">#</a></h2>
+<section id="id80">
+<h2>Parameters<a class="headerlink" href="#id80" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id72">
-<h2>Examples<a class="headerlink" href="#id72" title="Link to this heading">#</a></h2>
+<section id="id81">
+<h2>Examples<a class="headerlink" href="#id81" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">interval_months</span><span class="p">()</span>
 <span class="go">Schema(INTERVAL_MONTHS)</span>
@@ -1687,15 +1928,15 @@ tuple.</p>
 <dt class="sig sig-object py" id="nanoarrow.large_binary">
 <span class="sig-name descname"><span class="pre">large_binary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.large_binary" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a variable-length binary type that uses 64-bit offsets.</p>
-<section id="id73">
-<h2>Parameters<a class="headerlink" href="#id73" title="Link to this heading">#</a></h2>
+<section id="id82">
+<h2>Parameters<a class="headerlink" href="#id82" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id74">
-<h2>Examples<a class="headerlink" href="#id74" title="Link to this heading">#</a></h2>
+<section id="id83">
+<h2>Examples<a class="headerlink" href="#id83" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">large_binary</span><span class="p">()</span>
 <span class="go">Schema(LARGE_BINARY)</span>
@@ -1709,15 +1950,15 @@ tuple.</p>
 <span class="sig-name descname"><span class="pre">large_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.large_string" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a variable-length UTF-8 encoded string type
 that uses 64-bit offsets.</p>
-<section id="id75">
-<h2>Parameters<a class="headerlink" href="#id75" title="Link to this heading">#</a></h2>
+<section id="id84">
+<h2>Parameters<a class="headerlink" href="#id84" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id76">
-<h2>Examples<a class="headerlink" href="#id76" title="Link to this heading">#</a></h2>
+<section id="id85">
+<h2>Examples<a class="headerlink" href="#id85" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">large_string</span><span class="p">()</span>
 <span class="go">Schema(LARGE_STRING)</span>
@@ -1730,15 +1971,15 @@ that uses 64-bit offsets.</p>
 <dt class="sig sig-object py" id="nanoarrow.null">
 <span class="sig-name descname"><span class="pre">null</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.null" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a null type.</p>
-<section id="id77">
-<h2>Parameters<a class="headerlink" href="#id77" title="Link to this heading">#</a></h2>
+<section id="id86">
+<h2>Parameters<a class="headerlink" href="#id86" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id78">
-<h2>Examples<a class="headerlink" href="#id78" title="Link to this heading">#</a></h2>
+<section id="id87">
+<h2>Examples<a class="headerlink" href="#id87" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">null</span><span class="p">()</span>
 <span class="go">Schema(NULL)</span>
@@ -1754,8 +1995,8 @@ that uses 64-bit offsets.</p>
 <p>The Schema is nanoarrow’s high-level data type representation, encompasing
 the role of PyArrow’s <code class="docutils literal notranslate"><span class="pre">Schema</span></code>, <code class="docutils literal notranslate"><span class="pre">Field</span></code>, and <code class="docutils literal notranslate"><span class="pre">DataType</span></code>. This scope
 maps to that of the ArrowSchema in the Arrow C Data interface.</p>
-<section id="id79">
-<h2>Parameters<a class="headerlink" href="#id79" title="Link to this heading">#</a></h2>
+<section id="id88">
+<h2>Parameters<a class="headerlink" href="#id88" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>obj :</dt><dd><p>A <a class="reference internal" href="#nanoarrow.Type" title="nanoarrow.Type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code></a> specifier or a schema-like object. A schema-like object
 includes:
@@ -1773,8 +2014,8 @@ the nullability is preserved from the passed object).</p>
 </dd>
 </dl>
 </section>
-<section id="id80">
-<h2>Examples<a class="headerlink" href="#id80" title="Link to this heading">#</a></h2>
+<section id="id89">
+<h2>Examples<a class="headerlink" href="#id89" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">INT32</span><span class="p">)</span>
@@ -1792,15 +2033,15 @@ the nullability is preserved from the passed object).</p>
 <dt class="sig sig-object py" id="nanoarrow.string">
 <span class="sig-name descname"><span class="pre">string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.string" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a variable-length UTF-8 encoded string type.</p>
-<section id="id81">
-<h2>Parameters<a class="headerlink" href="#id81" title="Link to this heading">#</a></h2>
+<section id="id90">
+<h2>Parameters<a class="headerlink" href="#id90" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id82">
-<h2>Examples<a class="headerlink" href="#id82" title="Link to this heading">#</a></h2>
+<section id="id91">
+<h2>Examples<a class="headerlink" href="#id91" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">()</span>
 <span class="go">Schema(STRING)</span>
@@ -1813,8 +2054,8 @@ the nullability is preserved from the passed object).</p>
 <dt class="sig sig-object py" id="nanoarrow.struct">
 <span class="sig-name descname"><span class="pre">struct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fields</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.struct" title="Link to this definition">#</a></dt>
 <dd><p>Create a type representing a named sequence of fields.</p>
-<section id="id83">
-<h2>Parameters<a class="headerlink" href="#id83" title="Link to this heading">#</a></h2>
+<section id="id92">
+<h2>Parameters<a class="headerlink" href="#id92" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>fields :</dt><dd><ul class="simple">
 <li><p>A dictionary whose keys are field names and values are schema-like objects</p></li>
@@ -1827,8 +2068,8 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 </dd>
 </dl>
 </section>
-<section id="id84">
-<h2>Examples<a class="headerlink" href="#id84" title="Link to this heading">#</a></h2>
+<section id="id93">
+<h2>Examples<a class="headerlink" href="#id93" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">struct</span><span class="p">([</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()])</span>
 <span class="go">Schema(STRUCT, fields=[Schema(INT32)])</span>
@@ -1845,8 +2086,8 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <dt class="sig sig-object py" id="nanoarrow.time32">
 <span class="sig-name descname"><span class="pre">time32</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#nanoarrow.TimeUnit" title="nanoarrow.schema.TimeUnit"><span class="pre">TimeUnit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.time32" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 32-bit time of day type.</p>
-<section id="id85">
-<h2>Parameters<a class="headerlink" href="#id85" title="Link to this heading">#</a></h2>
+<section id="id94">
+<h2>Parameters<a class="headerlink" href="#id94" title="Link to this heading">#</a></h2>
 <dl>
 <dt>unit<span class="classifier">str or <a class="reference internal" href="#nanoarrow.TimeUnit" title="nanoarrow.TimeUnit"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeUnit</span></code></a></span></dt><dd><p>The unit of values stored by this type.</p>
 </dd>
@@ -1854,8 +2095,8 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 </dd>
 </dl>
 </section>
-<section id="id86">
-<h2>Examples<a class="headerlink" href="#id86" title="Link to this heading">#</a></h2>
+<section id="id95">
+<h2>Examples<a class="headerlink" href="#id95" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">time32</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
 <span class="go">Schema(TIME32, unit=SECOND)</span>
@@ -1868,8 +2109,8 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <dt class="sig sig-object py" id="nanoarrow.time64">
 <span class="sig-name descname"><span class="pre">time64</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#nanoarrow.TimeUnit" title="nanoarrow.schema.TimeUnit"><span class="pre">TimeUnit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.time64" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a 64-bit time of day type.</p>
-<section id="id87">
-<h2>Parameters<a class="headerlink" href="#id87" title="Link to this heading">#</a></h2>
+<section id="id96">
+<h2>Parameters<a class="headerlink" href="#id96" title="Link to this heading">#</a></h2>
 <dl>
 <dt>unit<span class="classifier">str or <a class="reference internal" href="#nanoarrow.TimeUnit" title="nanoarrow.TimeUnit"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeUnit</span></code></a></span></dt><dd><p>The unit of values stored by this type.</p>
 </dd>
@@ -1877,8 +2118,8 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 </dd>
 </dl>
 </section>
-<section id="id88">
-<h2>Examples<a class="headerlink" href="#id88" title="Link to this heading">#</a></h2>
+<section id="id97">
+<h2>Examples<a class="headerlink" href="#id97" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">time64</span><span class="p">(</span><span class="s2">&quot;us&quot;</span><span class="p">)</span>
 <span class="go">Schema(TIME64, unit=MICRO)</span>
@@ -1891,8 +2132,8 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <dt class="sig sig-object py" id="nanoarrow.timestamp">
 <span class="sig-name descname"><span class="pre">timestamp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#nanoarrow.TimeUnit" title="nanoarrow.schema.TimeUnit"><span class="pre">TimeUnit</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timezone</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.timestamp" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of a timestamp type.</p>
-<section id="id89">
-<h2>Parameters<a class="headerlink" href="#id89" title="Link to this heading">#</a></h2>
+<section id="id98">
+<h2>Parameters<a class="headerlink" href="#id98" title="Link to this heading">#</a></h2>
 <dl>
 <dt>unit<span class="classifier">str or <a class="reference internal" href="#nanoarrow.TimeUnit" title="nanoarrow.TimeUnit"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeUnit</span></code></a></span></dt><dd><p>The unit of values stored by this type.</p>
 </dd>
@@ -1900,8 +2141,8 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 </dd>
 </dl>
 </section>
-<section id="id90">
-<h2>Examples<a class="headerlink" href="#id90" title="Link to this heading">#</a></h2>
+<section id="id99">
+<h2>Examples<a class="headerlink" href="#id99" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
 <span class="go">Schema(TIMESTAMP, unit=SECOND)</span>
@@ -1916,15 +2157,15 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <dt class="sig sig-object py" id="nanoarrow.uint16">
 <span class="sig-name descname"><span class="pre">uint16</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.uint16" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of an unsigned 16-bit integer type.</p>
-<section id="id91">
-<h2>Parameters<a class="headerlink" href="#id91" title="Link to this heading">#</a></h2>
+<section id="id100">
+<h2>Parameters<a class="headerlink" href="#id100" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id92">
-<h2>Examples<a class="headerlink" href="#id92" title="Link to this heading">#</a></h2>
+<section id="id101">
+<h2>Examples<a class="headerlink" href="#id101" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint16</span><span class="p">()</span>
 <span class="go">Schema(UINT16)</span>
@@ -1937,15 +2178,15 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <dt class="sig sig-object py" id="nanoarrow.uint32">
 <span class="sig-name descname"><span class="pre">uint32</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.uint32" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of an unsigned 32-bit integer type.</p>
-<section id="id93">
-<h2>Parameters<a class="headerlink" href="#id93" title="Link to this heading">#</a></h2>
+<section id="id102">
+<h2>Parameters<a class="headerlink" href="#id102" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id94">
-<h2>Examples<a class="headerlink" href="#id94" title="Link to this heading">#</a></h2>
+<section id="id103">
+<h2>Examples<a class="headerlink" href="#id103" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint32</span><span class="p">()</span>
 <span class="go">Schema(UINT32)</span>
@@ -1958,15 +2199,15 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <dt class="sig sig-object py" id="nanoarrow.uint64">
 <span class="sig-name descname"><span class="pre">uint64</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.uint64" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of an unsigned 32-bit integer type.</p>
-<section id="id95">
-<h2>Parameters<a class="headerlink" href="#id95" title="Link to this heading">#</a></h2>
+<section id="id104">
+<h2>Parameters<a class="headerlink" href="#id104" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id96">
-<h2>Examples<a class="headerlink" href="#id96" title="Link to this heading">#</a></h2>
+<section id="id105">
+<h2>Examples<a class="headerlink" href="#id105" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint64</span><span class="p">()</span>
 <span class="go">Schema(UINT64)</span>
@@ -1979,15 +2220,15 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <dt class="sig sig-object py" id="nanoarrow.uint8">
 <span class="sig-name descname"><span class="pre">uint8</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nullable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.uint8" title="Link to this definition">#</a></dt>
 <dd><p>Create an instance of an unsigned 8-bit integer type.</p>
-<section id="id97">
-<h2>Parameters<a class="headerlink" href="#id97" title="Link to this heading">#</a></h2>
+<section id="id106">
+<h2>Parameters<a class="headerlink" href="#id106" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>nullable<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">False</span></code> to mark this field as non-nullable.</p>
 </dd>
 </dl>
 </section>
-<section id="id98">
-<h2>Examples<a class="headerlink" href="#id98" title="Link to this heading">#</a></h2>
+<section id="id107">
+<h2>Examples<a class="headerlink" href="#id107" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint8</span><span class="p">()</span>
 <span class="go">Schema(UINT8)</span>
@@ -2062,6 +2303,19 @@ from the tuple, the field name is inherited from the schema-like object.</p></li
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.n_chunks"><code class="docutils literal notranslate"><span class="pre">Array.n_chunks</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.offset"><code class="docutils literal notranslate"><span class="pre">Array.offset</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Array.schema"><code class="docutils literal notranslate"><span class="pre">Array.schema</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrayStream</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.close"><code class="docutils literal notranslate"><span class="pre">ArrayStream.close()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.from_path"><code class="docutils literal notranslate"><span class="pre">ArrayStream.from_path()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.from_readable"><code class="docutils literal notranslate"><span class="pre">ArrayStream.from_readable()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.from_url"><code class="docutils literal notranslate"><span class="pre">ArrayStream.from_url()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.iter_chunks"><code class="docutils literal notranslate"><span class="pre">ArrayStream.iter_chunks()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.iter_py"><code class="docutils literal notranslate"><span class="pre">ArrayStream.iter_py()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.iter_tuples"><code class="docutils literal notranslate"><span class="pre">ArrayStream.iter_tuples()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.read_all"><code class="docutils literal notranslate"><span class="pre">ArrayStream.read_all()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.read_next"><code class="docutils literal notranslate"><span class="pre">ArrayStream.read_next()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.ArrayStream.schema"><code class="docutils literal notranslate"><span class="pre">ArrayStream.schema</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.Schema"><code class="docutils literal notranslate"><span class="pre">Schema</span></code></a><ul class="visible nav section-nav flex-column">

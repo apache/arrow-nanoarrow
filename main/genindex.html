@@ -387,6 +387,8 @@ document.write(`
 </li>
       <li><a href="reference/python.html#nanoarrow.array">array() (in module nanoarrow)</a>
 </li>
+      <li><a href="reference/python.html#nanoarrow.ArrayStream">ArrayStream (class in nanoarrow)</a>
+</li>
       <li><a href="reference/c.html#c.ARROW_C_DATA_INTERFACE">ARROW_C_DATA_INTERFACE (C macro)</a>
 </li>
       <li><a href="reference/device.html#c.ARROW_C_DEVICE_DATA_INTERFACE">ARROW_C_DEVICE_DATA_INTERFACE (C macro)</a>
@@ -793,10 +795,10 @@ document.write(`
 </li>
       <li><a href="reference/device.html#_CPPv4N22ArrowDeviceArrayStream10get_schemaE">ArrowDeviceArrayStream::get_schema (C++ member)</a>
 </li>
-      <li><a href="reference/device.html#_CPPv4N22ArrowDeviceArrayStream12private_dataE">ArrowDeviceArrayStream::private_data (C++ member)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference/device.html#_CPPv4N22ArrowDeviceArrayStream12private_dataE">ArrowDeviceArrayStream::private_data (C++ member)</a>
+</li>
       <li><a href="reference/device.html#_CPPv4N22ArrowDeviceArrayStream7releaseE">ArrowDeviceArrayStream::release (C++ member)</a>
 </li>
       <li><a href="reference/device.html#_CPPv420ArrowDeviceArrayView">ArrowDeviceArrayView (C++ struct)</a>
@@ -1249,10 +1251,10 @@ document.write(`
 </li>
       <li><a href="reference/python.html#nanoarrow.c_buffer">c_buffer() (in module nanoarrow)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.c_schema">c_schema() (in module nanoarrow)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.c_schema_view">c_schema_view() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.c_version">c_version() (in module nanoarrow)</a>
@@ -1260,6 +1262,8 @@ document.write(`
       <li><a href="reference/python.html#nanoarrow.Array.child">child() (Array method)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Array.chunk">chunk() (Array method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.ArrayStream.close">close() (ArrayStream method)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.TimeUnit.create">create() (TimeUnit static method)</a>
 </li>
@@ -1297,13 +1301,19 @@ document.write(`
 </li>
       <li><a href="reference/python.html#nanoarrow.fixed_size_binary">fixed_size_binary() (in module nanoarrow)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.float16">float16() (in module nanoarrow)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.float32">float32() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.float64">float64() (in module nanoarrow)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.ArrayStream.from_path">from_path() (ArrayStream static method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.ArrayStream.from_readable">from_readable() (ArrayStream static method)</a>
+</li>
+      <li><a href="reference/python.html#nanoarrow.ArrayStream.from_url">from_url() (ArrayStream static method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1325,24 +1335,36 @@ document.write(`
 </li>
       <li><a href="reference/python.html#nanoarrow.interval_day_time">interval_day_time() (in module nanoarrow)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.interval_month_day_nano">interval_month_day_nano() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.interval_months">interval_months() (in module nanoarrow)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/python.html#nanoarrow.Array.iter_children">iter_children() (Array method)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Array.iter_chunk_views">iter_chunk_views() (Array method)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Array.iter_chunks">iter_chunks() (Array method)</a>
+
+      <ul>
+        <li><a href="reference/python.html#nanoarrow.ArrayStream.iter_chunks">(ArrayStream method)</a>
 </li>
+      </ul></li>
       <li><a href="reference/python.html#nanoarrow.Array.iter_py">iter_py() (Array method)</a>
+
+      <ul>
+        <li><a href="reference/python.html#nanoarrow.ArrayStream.iter_py">(ArrayStream method)</a>
 </li>
+      </ul></li>
       <li><a href="reference/python.html#nanoarrow.Array.iter_scalar">iter_scalar() (Array method)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Array.iter_tuples">iter_tuples() (Array method)</a>
+
+      <ul>
+        <li><a href="reference/python.html#nanoarrow.ArrayStream.iter_tuples">(ArrayStream method)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -1473,6 +1495,12 @@ document.write(`
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference/python.html#nanoarrow.ArrayStream.read_all">read_all() (ArrayStream method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference/python.html#nanoarrow.ArrayStream.read_next">read_next() (ArrayStream method)</a>
+</li>
       <li><a href="reference/cpp.html#_CPPv4I0E15release_pointervP1T">release_pointer (C++ function)</a>, <a href="reference/cpp.html#_CPPv4IE15release_pointervP10ArrowArray">[1]</a>, <a href="reference/cpp.html#_CPPv4IE15release_pointervP11ArrowBitmap">[2]</a>, <a href="reference/cpp.html#_CPPv4IE15release_pointervP11ArrowBuffer">[3]</a>, <a href="reference/cpp.html#_CPPv4IE15release_pointervP11ArrowSchema">[4]</a>, <a href="reference/cpp.html#_CPPv4IE15release_pointervP14ArrowArrayView">[5]</a>, <a href="reference/cpp.html#_CPPv4IE15release_pointervP16ArrowArrayStream">[6]</a>
 </li>
   </ul></td>
@@ -1484,11 +1512,15 @@ document.write(`
       <li><a href="reference/python.html#nanoarrow.Schema.scale">scale (Schema property)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.Array.schema">schema (Array property)</a>
+
+      <ul>
+        <li><a href="reference/python.html#nanoarrow.ArrayStream.schema">(ArrayStream property)</a>
 </li>
-      <li><a href="reference/python.html#nanoarrow.Schema">Schema (class in nanoarrow)</a>
-</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference/python.html#nanoarrow.Schema">Schema (class in nanoarrow)</a>
+</li>
       <li><a href="reference/python.html#nanoarrow.schema">schema() (in module nanoarrow)</a>
 </li>
       <li><a href="reference/python.html#nanoarrow.string">string() (in module nanoarrow)</a>
