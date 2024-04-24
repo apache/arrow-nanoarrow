@@ -21,7 +21,7 @@ import nanoarrow as na
 
 
 def test_version():
-    re_py_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9+])?$")
+    re_py_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(\.dev[0-9]+)?$")
     assert re_py_version.match(na.__version__) is not None
 
 

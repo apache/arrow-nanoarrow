@@ -15,46 +15,81 @@
 # specific language governing permissions and limitations
 # under the License.
 
+"""
+Python implementations of various release tasks
+
+Use `python release_tools.py --help` for usage
+"""
+
+import argparse
+import os
 import re
 import subprocess
-
-"""
-A Python script to update CHANGELOG.md
-
-This is similar to cz changelog except is specific to the nanoarrow/Apache
-release/tag format. The usage is:
-
-mv CHANGELOG.md CHANGELOG.md.bak
-python changelog.py <new version> CHANGELOG.md.bak > CHANGELOG.md
-rm CHANGELOG.md.bak
-
-This can be run more than once (e.g., for multiple release candidates) and will
-overwrite the changelog section for <new version>. It always has one newline
-at the end and does not mangle changelog sections for previous versions. It
-groups commit types (e.g., feat, fix, refactor) and groups top-level components.
-"""
 
 
 def git(*args):
     out = subprocess.run(["git"] + list(args), stdout=subprocess.PIPE)
-    return out.stdout.decode("UTF-8").splitlines()
+    return out.stdout.decode().strip().splitlines()
 
 
-def find_last_release_sha():
-    """Finds the commit of the last release
+def src_path(*args):
+    release_dir = os.path.dirname(__file__)
+    relative_path = os.path.join(release_dir, "..", "..", *args)
+    return os.path.abspath(relative_path)
 
-    For the purposes of the changelog, this is the commit where the versions
-    were bumped. This would exclude changes that happened during the release
+
+def file_regex_replace(pattern, replacement, path):
+    with open(path) as f:
+        content = f.read()
+
+    # It is usually good to know if zero items are about to be replaced
+    if re.search(pattern, content) is None:
+        raise ValueError(f"file {path} does not contain pattern '{pattern}'")
+
+    content = re.sub(pattern, replacement, content)
+    with open(path, "w") as f:
+        f.write(content)
+
+
+def find_last_dev_tag():
+    """Finds the commit of the last version bump
+
+    Note that this excludes changes that happened during the release
     process but were not picked into the release branch.
     """
-    for commit in git("log", "--pretty=oneline"):
-        if re.search(r" chore: Update versions on", commit):
-            return commit.split(" ")[0]
+    last_dev_tag = git(
+        "describe", "--match", "apache-arrow-nanoarrow-*.dev", "--tags", "--abbrev=0"
+    )[0]
+    last_version = re.search(r"[0-9]+\.[0-9]+\.[0-9]+", last_dev_tag).group(0)
+    sha = git("rev-list", "-n", "1", last_dev_tag)[0]
+    return last_version, sha
 
 
 def find_commits_since(begin_sha, end_sha="HEAD"):
     lines = git("log", "--pretty=oneline", f"{begin_sha}..{end_sha}")
     return lines
+
+
+def add_set_python_dev_version_subparser(subparsers):
+    subparsers.add_parser(
+        "set_python_dev_version",
+        description=(
+            "Set the Python package development version based on "
+            "the number of commits since the last version bump"
+        ),
+    )
+
+
+def set_python_dev_version_command(args):
+    _, last_dev_tag = find_last_dev_tag()
+    dev_distance = len(find_commits_since(last_dev_tag))
+
+    version_file = src_path("python", "src", "nanoarrow", "_static_version.py")
+    file_regex_replace(
+        r'"([0-9]+\.[0-9]+\.[0-9]+)\.dev[0-9]+"',
+        f'"\\1.dev{dev_distance}"',
+        version_file,
+    )
 
 
 def parse_commits(lines):
@@ -142,7 +177,7 @@ def parse_changelog(content):
 
 
 def render_new_changelog(unreleased_version=None, changelog_file=None):
-    sha = find_last_release_sha()
+    _, sha = find_last_dev_tag()
     commits = find_commits_since(sha)
     parsed = parse_commits(commits)
 
@@ -176,17 +211,44 @@ def render_new_changelog(unreleased_version=None, changelog_file=None):
     return "\n".join(out_lines)
 
 
+def add_changelog_parser(subparsers):
+    parser = subparsers.add_parser(
+        "changelog", description="Generate and/or append new CHANGELOG.md content"
+    )
+    parser.add_argument(
+        "unreleased_version",
+        nargs="?",
+        help=(
+            "Prepend heading text ## nanoarrow [unreleased_version]) "
+            "to the latest entries"
+        ),
+    )
+    parser.add_argument(
+        "changelog_file",
+        nargs="?",
+        help="If specified, append new changelog content to this file",
+    )
+
+
+def changelog_command(args):
+    print(render_new_changelog(args.unreleased_version, args.changelog_file))
+
+
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) >= 3:
-        changelog_file = sys.argv[2]
-        unreleased_version = sys.argv[1]
-    elif len(sys.argv) >= 2:
-        changelog_file = None
-        unreleased_version = sys.argv[1]
-    else:
-        changelog_file = None
-        unreleased_version = None
+    parser = argparse.ArgumentParser(
+        description="Python functions automating various pieces of release tasks",
+    )
 
-    print(render_new_changelog(unreleased_version, changelog_file))
+    subparsers = parser.add_subparsers(
+        title="subcommands", dest="subcommand", required=True
+    )
+    add_changelog_parser(subparsers)
+    add_set_python_dev_version_subparser(subparsers)
+
+    args = parser.parse_args(sys.argv[1:])
+    if args.subcommand == "changelog":
+        changelog_command(args)
+    elif args.subcommand == "set_python_dev_version":
+        set_python_dev_version_command(args)

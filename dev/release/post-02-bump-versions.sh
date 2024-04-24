@@ -48,3 +48,12 @@ echo "Bumped versions on branch."
 git checkout apache-arrow-nanoarrow-${version} -- CHANGELOG.md
 git commit -m "chore: update changelog for ${version}"
 echo "Updated changelog on branch."
+
+############### Remind to tag main with a dev tag after merge ###############
+
+dev_tag=apache-arrow-nanoarrow-${next_version}.dev
+
+echo "After merging this PR, run:"
+echo "git pull upstream main"
+echo "git tag ${dev_tag} main"
+echo "git push upstream ${dev_tag}"
