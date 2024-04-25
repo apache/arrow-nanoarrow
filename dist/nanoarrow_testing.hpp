@@ -2946,7 +2946,6 @@ class TestingJSONComparison {
 /// @}
 
 }  // namespace testing
-
 }  // namespace nanoarrow
 
 #endif
