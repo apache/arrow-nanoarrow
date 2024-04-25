@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <iostream>
 #include <gtest/gtest.h>
+#include <iostream>
 
 #include "nanoarrow.hpp"
 
@@ -29,9 +29,7 @@
 
 namespace nanoarrow {
 
-inline void PrintTo(const Nothing&, std::ostream* os) {
-    *os << "<NA>";
-}
+inline void PrintTo(const Nothing&, std::ostream* os) { *os << "<NA>"; }
 
 template <typename T>
 void PrintTo(const Maybe<T>& m, std::ostream* os) {

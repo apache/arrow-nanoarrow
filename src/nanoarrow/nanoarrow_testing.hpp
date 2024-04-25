@@ -23,7 +23,7 @@
 #include <unordered_map>
 
 #include <nlohmann/json.hpp>
-//#include <gtest/gtest.h>
+// #include <gtest/gtest.h>
 
 #include "nanoarrow.hpp"
 
