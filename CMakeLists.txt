@@ -91,6 +91,12 @@ if(NANOARROW_BUNDLE)
   file(READ src/nanoarrow/nanoarrow_testing.hpp SRC_FILE_CONTENTS)
   file(WRITE ${NANOARROW_TESTING_HPP_TEMP} "${SRC_FILE_CONTENTS}")
 
+  # Copy nanoarrow_gtest_util.hpp
+  set(NANOARROW_GTEST_UTIL_HPP_TEMP
+      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_gtest_util.hpp)
+  file(READ src/nanoarrow/nanoarrow_gtest_util.hpp SRC_FILE_CONTENTS)
+  file(WRITE ${NANOARROW_GTEST_UTIL_HPP_TEMP} "${SRC_FILE_CONTENTS}")
+
   # Combine all source files into amalgamation/nanoarrow.c in the build directory
   if(NANOARROW_BUNDLE_AS_CPP)
     set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.cc)
@@ -116,8 +122,12 @@ if(NANOARROW_BUNDLE)
   endif()
 
   # Install the amalgamated header and source
-  install(FILES ${NANOARROW_H_TEMP} ${NANOARROW_C_TEMP} ${NANOARROW_HPP_TEMP}
-                ${NANOARROW_TESTING_HPP_TEMP} DESTINATION ".")
+  install(FILES ${NANOARROW_H_TEMP}
+                ${NANOARROW_C_TEMP}
+                ${NANOARROW_HPP_TEMP}
+                ${NANOARROW_GTEST_UTIL_HPP_TEMP}
+                ${NANOARROW_TESTING_HPP_TEMP}
+          DESTINATION ".")
 else()
   add_library(nanoarrow src/nanoarrow/array.c src/nanoarrow/schema.c
                         src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
