@@ -16,14 +16,19 @@
 # under the License.
 
 import pytest
+from nanoarrow._lib import CArrayBuilder, NanoarrowException
 
 import nanoarrow as na
-from nanoarrow._lib import CArrayBuilder, NanoarrowException
 
 
 def test_c_array_builder_init():
     builder = CArrayBuilder.allocate()
+
+    with pytest.raises(RuntimeError, match="CArrayBuilder is not initialized"):
+        builder.empty()
+
     builder.init_from_type(na.Type.INT32.value)
+    assert builder.empty()
 
     with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
         builder.init_from_type(na.Type.INT32.value)
