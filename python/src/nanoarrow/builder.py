@@ -305,7 +305,10 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
         if not isinstance(obj, CBuffer):
             obj = CBuffer.from_pybuffer(obj)
 
-        if self._schema_view.format != obj.format:
+        if (
+            self._schema_view.buffer_format in ("b", "c")
+            and obj.format not in ("b", "c")
+        ) and self._schema_view.buffer_format != obj.format:
             raise ValueError(
                 f"Expected buffer with format '{self._schema_view.buffer_format}' "
                 f"but got buffer with format '{obj.format}'"
@@ -368,7 +371,7 @@ class ArrayFromIterableBuilder(ArrayBuilder):
     def _append_using_array(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
         from array import array
 
-        py_array = array(self._schema_view.format, obj)
+        py_array = array(self._schema_view.buffer_format, obj)
         buffer = CBuffer.from_pybuffer(py_array)
         c_builder.set_buffer(1, buffer, move=True)
         c_builder.set_length(len(buffer))
@@ -379,7 +382,7 @@ class ArrayFromIterableBuilder(ArrayBuilder):
         self, c_builder: CArrayBuilder, obj: Iterable
     ) -> None:
         builder = CBufferBuilder.allocate()
-        builder.set_format(self._schema_view.format)
+        builder.set_format(self._schema_view.buffer_format)
 
         n_values = builder.write_elements(obj)
 
