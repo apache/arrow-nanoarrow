@@ -19,7 +19,7 @@ import struct
 import sys
 
 import pytest
-from nanoarrow.c_lib import CBuffer, CBufferBuilder
+from nanoarrow._lib import CBuffer, CBufferBuilder
 
 import nanoarrow as na
 

@@ -16,8 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow._lib import NanoarrowException
-from nanoarrow.c_lib import CArrayBuilder
+from nanoarrow._lib import CArrayBuilder, NanoarrowException
 
 import nanoarrow as na
 
