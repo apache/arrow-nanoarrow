@@ -2016,6 +2016,11 @@ cdef class CBufferBuilder:
         self._buffer._set_data_type(type_id, element_size_bits)
         return self
 
+    def set_format(self, str format):
+        """Set the format code used to interpret elements in :meth:`write_elements`"""
+        self._buffer._set_format(format)
+        return self
+
     @property
     def format(self):
         """The ``struct`` format code of the underlying buffer"""

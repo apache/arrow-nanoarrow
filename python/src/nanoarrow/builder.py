@@ -26,6 +26,8 @@ from nanoarrow._lib import (
     CSchema,
     CSchemaBuilder,
     NoneAwareWrapperIterator,
+    _obj_is_buffer,
+    _obj_is_capsule,
 )
 from nanoarrow.c_lib import c_array, c_buffer, c_schema, c_schema_view
 
@@ -304,6 +306,10 @@ class ArrayBuilder:
 
 
 class EmptyArrayBuilder(ArrayBuilder):
+    @classmethod
+    def infer_schema(cls, obj) -> Tuple[Any, CSchema]:
+        return obj, CSchemaBuilder.allocate().init_type(CArrowType.NA)
+
     def build_array(self, c_builder: CArrayBuilder, obj: Any) -> None:
         if len(obj) != 0:
             raise ValueError(
@@ -314,33 +320,55 @@ class EmptyArrayBuilder(ArrayBuilder):
         c_builder.start_appending()
 
 
-class ArrayFromStringIterableBuilder(ArrayBuilder):
-    def build_array(
-        self, c_builder: CArrayBuilder, obj: Iterable[Union[str, None]]
-    ) -> None:
-        c_builder.start_appending()
-        c_builder.append_strings(obj)
+class ArrayFromIterableBuilder(ArrayBuilder):
 
-
-class ArrayFromBytesIterableBuilder(ArrayBuilder):
-    def build_array(
-        self, c_builder: CArrayBuilder, obj: Iterable[Union[bytes, None]]
-    ) -> None:
-        c_builder.start_appending()
-        c_builder.append_bytes(obj)
-
-
-class ArrayFromIterableUsingPyArrayBuilder(ArrayBuilder):
     def __init__(self, schema, *, _schema_view=None):
         super().__init__(schema, _schema_view=_schema_view)
 
-        if self._schema_view.buffer_format is None:
+        type_id = self._schema_view.type_id
+        if type_id not in _ARRAY_BUILDER_FROM_ITERABLE_METHOD:
             raise ValueError(
-                f"Can't build array of type {self._schema_view.type} "
-                "using array.array()"
+                f"Can't build array of type {self._schema_view.type} from iterabld"
             )
 
-    def build_array(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
+        method_name = _ARRAY_BUILDER_FROM_ITERABLE_METHOD[type_id]
+        if method_name in _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD:
+            method_name = _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD[method_name]
+
+        self._build_array_impl = getattr(self, method_name)
+
+    def build_array(self, c_builder: CArrayBuilder, obj: Any) -> None:
+        self._build_array_impl(c_builder, obj)
+
+    def _build_array_strings(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
+        c_builder.start_appending()
+        c_builder.append_strings(obj)
+
+    def _build_array_bytes(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
+        c_builder.start_appending()
+        c_builder.append_bytes(obj)
+
+    def _build_nullable_array_using_array(
+        self, c_builder: CArrayBuilder, obj: Iterable
+    ) -> None:
+        wrapper = NoneAwareWrapperIterator(obj)
+        self._build_array_using_array(c_builder, wrapper)
+
+        _, null_count, validity = wrapper.finish()
+        c_builder.set_buffer(1, validity, move=True)
+        c_builder.set_null_count(null_count)
+
+    def _build_nullable_array_using_buffer_builder(
+        self, c_builder: CArrayBuilder, obj: Iterable
+    ) -> None:
+        wrapper = NoneAwareWrapperIterator(obj)
+        self._build_array_using_buffer_builder(c_builder, wrapper)
+
+        _, null_count, validity = wrapper.finish()
+        c_builder.set_buffer(1, validity, move=True)
+        c_builder.set_null_count(null_count)
+
+    def _build_array_using_array(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
         from array import array
 
         py_array = array(self._schema_view.format, obj)
@@ -350,10 +378,24 @@ class ArrayFromIterableUsingPyArrayBuilder(ArrayBuilder):
         c_builder.set_null_count(0)
         c_builder.set_offset(0)
 
+    def _build_array_using_buffer_builder(
+        self, c_builder: CArrayBuilder, obj: Iterable
+    ) -> None:
+        builder = CBufferBuilder.allocate()
+        builder.set_format(self._schema_view.format)
+
+        n_values = builder.write_elements(obj)
+
+        buffer = builder.finish()
+        c_builder.set_buffer(1, buffer, move=True)
+        c_builder.set_length(n_values)
+        c_builder.set_null_count(0)
+        c_builder.set_offset(0)
+
 
 class ArrayFromPyBufferBuilder(ArrayBuilder):
     @classmethod
-    def infer_schema(cls, obj) -> Tuple[CSchema, CBuffer]:
+    def infer_schema(cls, obj) -> Tuple[CBuffer, CSchema]:
         if not isinstance(obj, CBuffer):
             obj = CBuffer.from_pybuffer(obj)
 
@@ -376,7 +418,7 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
         else:
             schema = CSchemaBuilder.allocate().set_type(type_id).finish()
 
-        return schema, obj
+        return obj, schema
 
     def __init__(self, schema, *, move: bool = False, _schema_view=None):
         super().__init__(schema, _schema_view=_schema_view)
@@ -401,3 +443,61 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
         c_builder.set_length(len(obj))
         c_builder.set_null_count(0)
         c_builder.set_offset(0)
+
+
+def _obj_is_iterable(obj):
+    return hasattr(obj, "__iter__")
+
+
+def _obj_is_empty(obj):
+    return hasattr(obj, "__len__") and len(obj) > 0
+
+
+def _resolve_builder(obj, schema: Union[CSchema, None] = None) -> type[ArrayBuilder]:
+    if _obj_is_empty(obj):
+        return EmptyArrayBuilder
+
+    if _obj_is_buffer(obj):
+        return ArrayFromPyBufferBuilder
+
+    if _obj_is_iterable(obj):
+        if schema is None:
+            raise ValueError(
+                "Can't resolve ArrayBuilder for object of type "
+                f"{type(obj).__name__} without explicit schema"
+            )
+
+        schema_view = c_schema_view(schema)
+
+    raise TypeError(
+        f"Can't reolve ArrayBuilder for object of type {type(obj).__name__}"
+    )
+
+
+_ARRAY_BUILDER_FROM_ITERABLE_METHOD = {
+    CArrowType.BOOL: "_build_array_using_buffer_builder",
+    CArrowType.HALF_FLOAT: "_build_array_using_buffer_builder",
+    CArrowType.INTERVAL_MONTH_DAY_NANO: "_build_array_using_buffer_builder",
+    CArrowType.INTERVAL_DAY_TIME: "_build_array_using_buffer_builder",
+    CArrowType.INTERVAL_MONTHS: "_build_array_using_buffer_builder",
+    CArrowType.BINARY: "_build_array_bytes",
+    CArrowType.LARGE_BINARY: "_build_array_bytes",
+    CArrowType.FIXED_SIZE_BINARY: "_build_array_bytes",
+    CArrowType.STRING: "_build_array_strings",
+    CArrowType.LARGE_STRING: "_build_array_strings",
+    CArrowType.INT8: "_build_array_using_array",
+    CArrowType.UINT8: "_build_array_using_array",
+    CArrowType.INT16: "_build_array_using_array",
+    CArrowType.UINT16: "_build_array_using_array",
+    CArrowType.INT32: "_build_array_using_array",
+    CArrowType.UINT32: "_build_array_using_array",
+    CArrowType.INT64: "_build_array_using_array",
+    CArrowType.UINT64: "_build_array_using_array",
+    CArrowType.FLOAT: "_build_array_using_array",
+    CArrowType.DOUBLE: "_build_array_using_array",
+}
+
+_ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD = {
+    "_build_array_using_array": "_build_nullable_array_using_array",
+    "_build_array_using_buffer_builder": "_build_nullable_array_using_buffer_builder",
+}
