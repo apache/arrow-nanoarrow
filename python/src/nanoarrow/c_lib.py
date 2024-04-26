@@ -30,7 +30,9 @@ from nanoarrow._lib import (
     CArray,
     CArrayStream,
     CArrayView,
+    CArrowType,
     CBuffer,
+    CBufferBuilder,
     CSchema,
     CSchemaView,
     _obj_is_buffer,
@@ -454,5 +456,41 @@ def _get_builder():
     return _builder
 
 
-def _c_buffer_from_iterable(obj, schema):
-    return _get_builder()._c_buffer_from_iterable(obj, schema)
+def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
+    import array
+
+    # array.typecodes is not available in all PyPy versions.
+    # Rather than guess, just don't use the array constructor if
+    # this attribute is not available.
+    if hasattr(array, "typecodes"):
+        array_typecodes = array.typecodes
+    else:
+        array_typecodes = []
+
+    if schema is None:
+        raise ValueError("CBuffer from iterable requires schema")
+
+    schema_view = c_schema_view(schema)
+    if schema_view.storage_type_id != schema_view.type_id:
+        raise ValueError(
+            f"Can't create buffer from iterable for type {schema_view.type}"
+        )
+
+    builder = CBufferBuilder()
+
+    if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
+        builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
+    else:
+        builder.set_data_type(schema_view.storage_type_id)
+
+    # If we are using a typecode supported by the array module, it has much
+    # faster implementations of safely building buffers from iterables
+    if (
+        builder.format in array_typecodes
+        and schema_view.storage_type_id != CArrowType.BOOL
+    ):
+        buf = array.array(builder.format, obj)
+        return CBuffer.from_pybuffer(buf), len(buf)
+
+    n_values = builder.write_elements(obj)
+    return builder.finish(), n_values

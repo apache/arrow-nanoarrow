@@ -141,46 +141,6 @@ def c_array_from_buffers(
     return builder.finish(validation_level=validation_level)
 
 
-def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
-    import array
-
-    # array.typecodes is not available in all PyPy versions.
-    # Rather than guess, just don't use the array constructor if
-    # this attribute is not available.
-    if hasattr(array, "typecodes"):
-        array_typecodes = array.typecodes
-    else:
-        array_typecodes = []
-
-    if schema is None:
-        raise ValueError("CBuffer from iterable requires schema")
-
-    schema_view = c_schema_view(schema)
-    if schema_view.storage_type_id != schema_view.type_id:
-        raise ValueError(
-            f"Can't create buffer from iterable for type {schema_view.type}"
-        )
-
-    builder = CBufferBuilder()
-
-    if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
-        builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
-    else:
-        builder.set_data_type(schema_view.storage_type_id)
-
-    # If we are using a typecode supported by the array module, it has much
-    # faster implementations of safely building buffers from iterables
-    if (
-        builder.format in array_typecodes
-        and schema_view.storage_type_id != CArrowType.BOOL
-    ):
-        buf = array.array(builder.format, obj)
-        return CBuffer.from_pybuffer(buf), len(buf)
-
-    n_values = builder.write_elements(obj)
-    return builder.finish(), n_values
-
-
 class ArrayBuilder:
     @classmethod
     def infer_schema(cls, obj) -> Tuple[CSchema, Any]:
@@ -226,6 +186,14 @@ def _resolve_builder(obj) -> type[ArrayBuilder]:
     )
 
 
+def _obj_is_iterable(obj):
+    return hasattr(obj, "__iter__")
+
+
+def _obj_is_empty(obj):
+    return hasattr(obj, "__len__") and len(obj) == 0
+
+
 def build_c_array(obj, schema=None) -> CArray:
     builder_cls = _resolve_builder(obj)
 
@@ -236,14 +204,6 @@ def build_c_array(obj, schema=None) -> CArray:
 
     builder = builder_cls(schema)
     return builder.build_c_array(obj)
-
-
-def _obj_is_iterable(obj):
-    return hasattr(obj, "__iter__")
-
-
-def _obj_is_empty(obj):
-    return hasattr(obj, "__len__") and len(obj) == 0
 
 
 class EmptyArrayBuilder(ArrayBuilder):
