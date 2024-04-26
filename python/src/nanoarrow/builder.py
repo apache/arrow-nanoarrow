@@ -171,7 +171,7 @@ class ArrayBuilder:
         return c_builder.finish()
 
 
-def _resolve_builder(obj) -> type[ArrayBuilder]:
+def _resolve_builder(obj):
     if _obj_is_empty(obj):
         return EmptyArrayBuilder
 
