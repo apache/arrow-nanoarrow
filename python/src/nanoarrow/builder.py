@@ -321,13 +321,17 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
 
 
 class ArrayFromIterableBuilder(ArrayBuilder):
+    @classmethod
+    def infer_schema(cls, obj) -> Tuple[CBuffer, CSchema]:
+        raise ValueError("schema is required to build array from iterable")
+
     def __init__(self, schema, *, _schema_view=None):
         super().__init__(schema, _schema_view=_schema_view)
 
         type_id = self._schema_view.type_id
         if type_id not in _ARRAY_BUILDER_FROM_ITERABLE_METHOD:
             raise ValueError(
-                f"Can't build array of type {self._schema_view.type} from iterabld"
+                f"Can't build array of type {self._schema_view.type} from iterable"
             )
 
         method_name = _ARRAY_BUILDER_FROM_ITERABLE_METHOD[type_id]
@@ -351,21 +355,29 @@ class ArrayFromIterableBuilder(ArrayBuilder):
     def _build_nullable_array_using_array(
         self, c_builder: CArrayBuilder, obj: Iterable
     ) -> None:
-        wrapper = NoneAwareWrapperIterator(obj)
+        wrapper = NoneAwareWrapperIterator(
+            obj, self._schema_view.storage_type_id, self._schema_view.fixed_size
+        )
         self._append_using_array(c_builder, wrapper)
 
         _, null_count, validity = wrapper.finish()
-        c_builder.set_buffer(1, validity, move=True)
+        if validity is not None:
+            c_builder.set_buffer(0, validity, move=True)
+
         c_builder.set_null_count(null_count)
 
     def _build_nullable_array_using_buffer_builder(
         self, c_builder: CArrayBuilder, obj: Iterable
     ) -> None:
-        wrapper = NoneAwareWrapperIterator(obj)
+        wrapper = NoneAwareWrapperIterator(
+            obj, self._schema_view.storage_type_id, self._schema_view.fixed_size
+        )
         self._append_using_buffer_builder(c_builder, wrapper)
 
         _, null_count, validity = wrapper.finish()
-        c_builder.set_buffer(1, validity, move=True)
+        if validity is not None:
+            c_builder.set_buffer(0, validity, move=True)
+
         c_builder.set_null_count(null_count)
 
     def _append_using_array(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
@@ -381,8 +393,8 @@ class ArrayFromIterableBuilder(ArrayBuilder):
     def _append_using_buffer_builder(
         self, c_builder: CArrayBuilder, obj: Iterable
     ) -> None:
-        builder = CBufferBuilder.allocate()
-        builder.set_format(self._schema_view.buffer_format)
+        builder = CBufferBuilder()
+        builder.set_data_type(self._schema_view.type_id)
 
         n_values = builder.write_elements(obj)
 
