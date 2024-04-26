@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Iterable, Any, Literal
+from typing import Any, Iterable, Literal, Tuple, Union
 
 from nanoarrow._lib import (
     CArray,
@@ -23,10 +23,11 @@ from nanoarrow._lib import (
     CArrowType,
     CBuffer,
     CBufferBuilder,
+    CSchema,
     CSchemaBuilder,
     NoneAwareWrapperIterator,
 )
-from nanoarrow.c_lib import c_array, c_schema, c_buffer, c_schema_view
+from nanoarrow.c_lib import c_array, c_buffer, c_schema, c_schema_view
 
 
 def c_array_from_buffers(
@@ -276,3 +277,127 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
 
     n_values = builder.write_elements(obj)
     return builder.finish(), n_values
+
+
+class ArrayBuilder:
+    @classmethod
+    def infer_schema(cls, obj) -> Tuple[CSchema, Any]:
+        raise NotImplementedError(
+            f"Object of type {type(obj).__name__} "
+            f"with {cls.__name__} requires an explicit schema"
+        )
+
+    def __init__(self, schema, *, _schema_view=None):
+        self._schema = c_schema(schema)
+
+        if _schema_view is not None:
+            self._schema_view = _schema_view
+        else:
+            self._schema_view = c_schema_view(schema)
+
+    @property
+    def schema(self) -> CSchema:
+        return self._schema
+
+    def build_array(self, c_builder: CArrayBuilder, obj: Any) -> None:
+        raise NotImplementedError()
+
+
+class EmptyArrayBuilder(ArrayBuilder):
+    def build_array(self, c_builder: CArrayBuilder, obj: Any) -> None:
+        if len(obj) != 0:
+            raise ValueError(
+                f"Can't build empty array from {type(obj).__name__} "
+                f"with length {len(obj)}"
+            )
+
+        c_builder.start_appending()
+
+
+class ArrayFromStringIterableBuilder(ArrayBuilder):
+    def build_array(
+        self, c_builder: CArrayBuilder, obj: Iterable[Union[str, None]]
+    ) -> None:
+        c_builder.start_appending()
+        c_builder.append_strings(obj)
+
+
+class ArrayFromBytesIterableBuilder(ArrayBuilder):
+    def build_array(
+        self, c_builder: CArrayBuilder, obj: Iterable[Union[bytes, None]]
+    ) -> None:
+        c_builder.start_appending()
+        c_builder.append_bytes(obj)
+
+
+class ArrayFromIterableUsingPyArrayBuilder(ArrayBuilder):
+    def __init__(self, schema, *, _schema_view=None):
+        super().__init__(schema, _schema_view=_schema_view)
+
+        if self._schema_view.buffer_format is None:
+            raise ValueError(
+                f"Can't build array of type {self._schema_view.type} "
+                "using array.array()"
+            )
+
+    def build_array(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
+        from array import array
+
+        py_array = array(self._schema_view.format, obj)
+        buffer = CBuffer.from_pybuffer(py_array)
+        c_builder.set_buffer(1, buffer, move=True)
+        c_builder.set_length(len(buffer))
+        c_builder.set_null_count(0)
+        c_builder.set_offset(0)
+
+
+class ArrayFromPyBufferBuilder(ArrayBuilder):
+    @classmethod
+    def infer_schema(cls, obj) -> Tuple[CSchema, CBuffer]:
+        if not isinstance(obj, CBuffer):
+            obj = CBuffer.from_pybuffer(obj)
+
+        type_id = obj.data_type_id
+        element_size_bits = obj.element_size_bits
+
+        # Fixed-size binary needs a schema
+        if type_id == CArrowType.BINARY and element_size_bits != 0:
+            schema = (
+                CSchemaBuilder.allocate()
+                .set_type_fixed_size(
+                    CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8
+                )
+                .finish()
+            )
+        elif type_id == CArrowType.STRING:
+            schema = CSchemaBuilder.allocate().set_type(CArrowType.INT8).finish()
+        elif type_id == CArrowType.BINARY:
+            schema = CSchemaBuilder.allocate().set_type(CArrowType.UINT8).finish()
+        else:
+            schema = CSchemaBuilder.allocate().set_type(type_id).finish()
+
+        return schema, obj
+
+    def __init__(self, schema, *, move: bool = False, _schema_view=None):
+        super().__init__(schema, _schema_view=_schema_view)
+        self._move = move
+
+        if self._schema_view.buffer_format is None:
+            raise ValueError(
+                f"Can't build array of type {self._schema_view.type} from PyBuffer"
+            )
+
+    def build_array(self, c_builder: CArrayBuilder, obj: Any) -> None:
+        if not isinstance(obj, CBuffer):
+            obj = CBuffer.from_pybuffer(obj)
+
+        if self._schema_view.format != obj.format:
+            raise ValueError(
+                f"Expected buffer with format '{self._schema_view.buffer_format}' "
+                f"but got buffer with format '{obj.format}'"
+            )
+
+        c_builder.set_buffer(1, obj, move=self._move)
+        c_builder.set_length(len(obj))
+        c_builder.set_null_count(0)
+        c_builder.set_offset(0)

@@ -859,6 +859,24 @@ cdef class CSchemaView:
         return self._schema_view.storage_type
 
     @property
+    def buffer_format(self):
+        if not self.extension_name and self._schema_view.type == self._schema_view.storage_type:
+            return self.storage_buffer_format
+
+    @property
+    def storage_buffer_format(self):
+        cdef char out[128]
+        cdef int element_size_bits = 0
+        if self._schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
+            element_size_bits = self._schema_view.fixed_size * 8
+
+        try:
+            c_format_from_arrow_type(self._schema_view.type, element_size_bits, sizeof(out), out)
+            return out.decode()
+        except ValueError:
+            pass
+
+    @property
     def type(self):
         cdef const char* type_str = ArrowTypeString(self._schema_view.type)
         if type_str != NULL:
