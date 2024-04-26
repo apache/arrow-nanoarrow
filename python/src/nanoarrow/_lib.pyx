@@ -2298,6 +2298,12 @@ cdef class CArrayBuilder:
     def allocate():
         return CArrayBuilder(CArray.allocate(CSchema.allocate()))
 
+    def empty(self):
+        if self._ptr.release == NULL:
+            raise RuntimeError("CArrayBuilder is not initialized")
+
+        return self._ptr.length == 0
+
     def init_from_type(self, int type_id):
         if self._ptr.release != NULL:
             raise RuntimeError("CArrayBuilder is already initialized")
