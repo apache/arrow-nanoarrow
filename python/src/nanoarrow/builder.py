@@ -141,105 +141,6 @@ def c_array_from_buffers(
     return builder.finish(validation_level=validation_level)
 
 
-# Invokes the buffer protocol on obj
-def _c_array_from_pybuffer(obj) -> CArray:
-    buffer = CBuffer.from_pybuffer(obj)
-    type_id = buffer.data_type_id
-    element_size_bits = buffer.element_size_bits
-
-    builder = CArrayBuilder.allocate()
-
-    # Fixed-size binary needs a schema
-    if type_id == CArrowType.BINARY and element_size_bits != 0:
-        c_schema = (
-            CSchemaBuilder.allocate()
-            .set_type_fixed_size(CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8)
-            .finish()
-        )
-        builder.init_from_schema(c_schema)
-    elif type_id == CArrowType.STRING:
-        builder.init_from_type(int(CArrowType.INT8))
-    elif type_id == CArrowType.BINARY:
-        builder.init_from_type(int(CArrowType.UINT8))
-    else:
-        builder.init_from_type(int(type_id))
-
-    # Set the length
-    builder.set_length(len(buffer))
-
-    # Move ownership of the ArrowBuffer wrapped by buffer to builder.buffer(1)
-    builder.set_buffer(1, buffer)
-
-    # No nulls or offset from a PyBuffer
-    builder.set_null_count(0)
-    builder.set_offset(0)
-
-    return builder.finish()
-
-
-def _c_array_from_iterable(obj, schema=None) -> CArray:
-    if schema is None:
-        raise ValueError("schema is required for CArray import from iterable")
-
-    obj_len = -1
-    if hasattr(obj, "__len__"):
-        obj_len = len(obj)
-
-    # We can always create an array from an empty iterable, even for types
-    # not supported by _c_buffer_from_iterable()
-    if obj_len == 0:
-        builder = CArrayBuilder.allocate()
-        builder.init_from_schema(schema)
-        builder.start_appending()
-        return builder.finish()
-
-    # We need to know a few things about the data type to choose the appropriate
-    # strategy for building the array.
-    schema_view = c_schema_view(schema)
-
-    if schema_view.storage_type_id != schema_view.type_id:
-        raise ValueError(
-            f"Can't create array from iterable for type {schema_view.type}"
-        )
-
-    # Handle variable-size binary types (string, binary)
-    if schema_view.type_id in (CArrowType.STRING, CArrowType.LARGE_STRING):
-        builder = CArrayBuilder.allocate()
-        builder.init_from_schema(schema)
-        builder.start_appending()
-        builder.append_strings(obj)
-        return builder.finish()
-    elif schema_view.type_id in (CArrowType.BINARY, CArrowType.LARGE_BINARY):
-        builder = CArrayBuilder.allocate()
-        builder.init_from_schema(schema)
-        builder.start_appending()
-        builder.append_bytes(obj)
-        return builder.finish()
-
-    # Creating a buffer from an iterable does not handle None values,
-    # but we can do so here with the NoneAwareWrapperIterator() wrapper.
-    # This approach is quite a bit slower, so only do it for a nullable
-    # type.
-    if schema_view.nullable:
-        obj_wrapper = NoneAwareWrapperIterator(
-            obj, schema_view.storage_type_id, schema_view.fixed_size
-        )
-
-        if obj_len > 0:
-            obj_wrapper.reserve(obj_len)
-
-        data, _ = _c_buffer_from_iterable(obj_wrapper, schema_view)
-        n_values, null_count, validity = obj_wrapper.finish()
-    else:
-        data, n_values = _c_buffer_from_iterable(obj, schema_view)
-        null_count = 0
-        validity = None
-
-    return c_array_from_buffers(
-        schema, n_values, buffers=(validity, data), null_count=null_count, move=True
-    )
-
-
 def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
     import array
 
@@ -328,7 +229,7 @@ def _resolve_builder(obj) -> type[ArrayBuilder]:
 def build_c_array(obj, schema=None) -> CArray:
     builder_cls = _resolve_builder(obj)
 
-    if schema is not None:
+    if schema is None:
         obj, schema = builder_cls.infer_schema(obj)
     else:
         schema = c_schema(schema)
@@ -342,13 +243,13 @@ def _obj_is_iterable(obj):
 
 
 def _obj_is_empty(obj):
-    return hasattr(obj, "__len__") and len(obj) > 0
+    return hasattr(obj, "__len__") and len(obj) == 0
 
 
 class EmptyArrayBuilder(ArrayBuilder):
     @classmethod
     def infer_schema(cls, obj) -> Tuple[Any, CSchema]:
-        return obj, CSchemaBuilder.allocate().init_type(CArrowType.NA)
+        return obj, CSchemaBuilder.allocate().set_type(CArrowType.NA)
 
     def start_building(self, c_builder: CArrayBuilder) -> None:
         c_builder.start_appending()
@@ -432,15 +333,16 @@ class ArrayFromIterableBuilder(ArrayBuilder):
 
         self._append_impl = getattr(self, method_name)
 
+    def start_building(self, c_builder: CArrayBuilder) -> None:
+        c_builder.start_appending()
+
     def append(self, c_builder: CArrayBuilder, obj: Any) -> None:
         self._append_impl(c_builder, obj)
 
     def _append_strings(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
-        c_builder.start_appending()
         c_builder.append_strings(obj)
 
     def _append_bytes(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
-        c_builder.start_appending()
         c_builder.append_bytes(obj)
 
     def _build_nullable_array_using_array(

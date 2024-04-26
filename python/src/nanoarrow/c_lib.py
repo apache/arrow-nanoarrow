@@ -150,10 +150,6 @@ def c_array(obj, schema=None) -> CArray:
             *obj.__arrow_c_array__(requested_schema=schema_capsule)
         )
 
-    # Try buffer protocol (e.g., numpy arrays or a c_buffer())
-    if _obj_is_buffer(obj):
-        return _c_array_from_pybuffer(obj)
-
     # Try import of bare capsule
     if _obj_is_capsule(obj, "arrow_array"):
         if schema is None:
@@ -169,13 +165,8 @@ def c_array(obj, schema=None) -> CArray:
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
 
-    # Try import of iterable
-    if _obj_is_iterable(obj):
-        return _c_array_from_iterable(obj, schema)
-
-    raise TypeError(
-        f"Can't convert object of type {type(obj).__name__} to nanoarrow.c_array"
-    )
+    # e.g., iterable, empty
+    return _get_builder().build_c_array(obj, schema)
 
 
 def c_array_stream(obj=None, schema=None) -> CArrayStream:
@@ -461,14 +452,6 @@ def _get_builder():
     if _builder is None:
         from nanoarrow import builder as _builder
     return _builder
-
-
-def _c_array_from_pybuffer(obj):
-    return _get_builder()._c_array_from_pybuffer(obj)
-
-
-def _c_array_from_iterable(obj, schema):
-    return _get_builder()._c_array_from_iterable(obj, schema)
 
 
 def _c_buffer_from_iterable(obj, schema):
