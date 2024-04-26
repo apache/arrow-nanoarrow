@@ -68,7 +68,7 @@ def test_c_array_from_old_pyarrow():
 
     # Make sure that this heuristic won't result in trying to import
     # something else that has an _export_to_c method
-    with pytest.raises(TypeError, match="Can't convert object of type DataType"):
+    with pytest.raises(TypeError, match="Can't resolve ArrayBuilder"):
         not_array = pa.int32()
         assert hasattr(not_array, "_export_to_c")
         na.c_array(not_array)
@@ -94,7 +94,8 @@ def test_c_array_from_bare_capsule():
 
 
 def test_c_array_type_not_supported():
-    with pytest.raises(TypeError, match="Can't convert object of type NoneType"):
+    msg = "Can't resolve ArrayBuilder for object of type NoneType"
+    with pytest.raises(TypeError, match=msg):
         na.c_array(None)
 
 

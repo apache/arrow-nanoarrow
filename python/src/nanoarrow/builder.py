@@ -222,7 +222,7 @@ def _resolve_builder(obj) -> type[ArrayBuilder]:
         return ArrayFromIterableBuilder
 
     raise TypeError(
-        f"Can't reolve ArrayBuilder for object of type {type(obj).__name__}"
+        f"Can't resolve ArrayBuilder for object of type {type(obj).__name__}"
     )
 
 
