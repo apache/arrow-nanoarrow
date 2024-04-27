@@ -136,6 +136,8 @@ class ExtensionAccessor:
     def storage(self):
         """Storage type for this extension type"""
         metadata = dict(self._schema.metadata.items())
+
+        # Remove metadata keys that cause this type to be treated as an extension
         del metadata[b"ARROW:extension:name"]
         if b"ARROW:extension:metadata" in metadata:
             del metadata[b"ARROW:extension:metadata"]
