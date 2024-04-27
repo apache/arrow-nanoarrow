@@ -111,7 +111,8 @@ def c_array(obj, schema=None) -> CArray:
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
 
-    # e.g., iterable, pybuffer, empty
+    # Use the ArrayBuilder classes to handle various strategies for other
+    # types of objects (e.g., iterable, pybuffer, empty).
     builder_cls = _resolve_builder(obj)
 
     if schema is None:
