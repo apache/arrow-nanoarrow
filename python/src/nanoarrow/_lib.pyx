@@ -34,7 +34,7 @@ generally have better autocomplete + documentation available to IDEs).
 from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
-from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString, PyBytes_Size
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
@@ -769,6 +769,28 @@ cdef class CSchema:
         else:
             return None
 
+    def modify(self, *, name=None, flags=None, nullable=None, metadata=None,
+               validate=True):
+        builder = CSchemaBuilder.copy(self)
+
+        if name is not None:
+            builder.set_name(name)
+
+        if flags is not None:
+            builder.set_flags(flags)
+
+        if nullable is not None:
+            builder.set_nullable(nullable)
+
+        if metadata is not None:
+            builder.clear_metadata()
+            builder.append_metadata(metadata)
+
+        if validate:
+            builder.validate()
+
+        return builder.finish()
+
 
 cdef class CSchemaView:
     """Low-level ArrowSchemaView wrapper
@@ -968,8 +990,48 @@ cdef class CSchemaBuilder:
             ArrowSchemaInit(self._ptr)
 
     @staticmethod
+    def copy(CSchema schema):
+        return CSchemaBuilder(schema.__deepcopy__())
+
+    @staticmethod
     def allocate():
         return CSchemaBuilder(CSchema.allocate())
+
+    def clear_metadata(self):
+        cdef int code = ArrowSchemaSetMetadata(self.c_schema._ptr, NULL)
+        Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
+        return self
+
+    def append_metadata(self, metadata):
+        cdef CBuffer buffer = CBuffer.empty()
+
+        cdef const char* existing_metadata = self.c_schema._ptr.metadata
+        cdef int code = ArrowMetadataBuilderInit(buffer._ptr, existing_metadata)
+        Error.raise_error_not_ok("ArrowMetadataBuilderInit()", code)
+
+        cdef ArrowStringView key
+        cdef ArrowStringView value
+        cdef int32_t keys_added = 0
+
+        for k, v in metadata.items():
+            k = k.encode() if isinstance(k, str) else bytes(k)
+            key.data = PyBytes_AsString(k)
+            key.size_bytes = PyBytes_Size(k)
+
+            v = v.encode() if isinstance(v, str) else bytes(v)
+            value.data = PyBytes_AsString(v)
+            value.size_bytes = PyBytes_Size(v)
+
+            code = ArrowMetadataBuilderAppend(buffer._ptr, key, value)
+            Error.raise_error_not_ok("ArrowMetadataBuilderAppend()", code)
+
+            keys_added += 1
+
+        if keys_added > 0:
+            code = ArrowSchemaSetMetadata(self.c_schema._ptr, <const char*>buffer._ptr.data)
+            Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
+
+        return self
 
     def child(self, int64_t i):
         return CSchemaBuilder(self.c_schema.child(i))
@@ -1058,6 +1120,10 @@ cdef class CSchemaBuilder:
 
         return self
 
+    def set_flags(self, flags):
+        self._ptr.flags = flags
+        return self
+
     def set_nullable(self, nullable):
         if nullable:
             self._ptr.flags = self._ptr.flags | ARROW_FLAG_NULLABLE
@@ -1065,6 +1131,9 @@ cdef class CSchemaBuilder:
             self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_NULLABLE
 
         return self
+
+    def validate(self):
+        return CSchemaView(self.c_schema)
 
     def finish(self):
         self.c_schema._assert_valid()
@@ -1463,7 +1532,11 @@ cdef class SchemaMetadata:
         self._base = base
         self._metadata = <const char*>ptr
 
-    def _init_reader(self):
+    @staticmethod
+    def empty():
+        return SchemaMetadata(None, 0)
+
+    cdef _init_reader(self):
         cdef int code = ArrowMetadataReaderInit(&self._reader, self._metadata)
         Error.raise_error_not_ok("ArrowMetadataReaderInit()", code)
 
@@ -1471,13 +1544,36 @@ cdef class SchemaMetadata:
         self._init_reader()
         return self._reader.remaining_keys
 
+    def __contains__(self, item):
+        for key, _ in self.items():
+            if item == key:
+                return True
+
+        return False
+
+    def __getitem__(self, k):
+        out = None
+
+        for key, value in self.items():
+            if k == key:
+                if out is None:
+                    out = value
+                else:
+                    raise KeyError(f"key {k} matches more than one value in metadata")
+
+        return out
+
     def __iter__(self):
+        for key, _ in self.items():
+            yield key
+
+    def items(self):
         cdef ArrowStringView key
         cdef ArrowStringView value
         self._init_reader()
         while self._reader.remaining_keys > 0:
             ArrowMetadataReaderRead(&self._reader, &key, &value)
-            key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes).decode('UTF-8')
+            key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
 

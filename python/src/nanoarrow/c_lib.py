@@ -681,7 +681,11 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
         raise ValueError("CBuffer from iterable requires schema")
 
     schema_view = c_schema_view(schema)
-    if schema_view.storage_type_id != schema_view.type_id:
+    if schema_view.extension_name is not None:
+        raise ValueError(
+            f"Can't create buffer from extension type {schema_view.extension_name}"
+        )
+    elif schema_view.storage_type_id != schema_view.type_id:
         raise ValueError(
             f"Can't create buffer from iterable for type {schema_view.type}"
         )

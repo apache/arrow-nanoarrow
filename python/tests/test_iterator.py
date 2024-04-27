@@ -23,6 +23,7 @@ from nanoarrow.iterator import (
     ArrayViewBaseIterator,
     InvalidArrayWarning,
     LossyConversionWarning,
+    UnregisteredExtensionWarning,
     iter_array_views,
     iter_py,
     iter_tuples,
@@ -493,3 +494,13 @@ def test_iterator_duration():
     items[0] = datetime.timedelta(days=-12, seconds=-345)
     array = pa.array(items, pa.duration("s"))
     assert list(iter_py(array)) == items
+
+
+def test_iterator_extension():
+    schema = na.extension_type(na.int32(), "arrow.test")
+    storage_array = na.c_array([1, 2, 3], na.int32())
+    _, storage_array_capsule = na.c_array(storage_array).__arrow_c_array__()
+    extension_array = na.c_array(storage_array_capsule, schema)
+
+    with pytest.warns(UnregisteredExtensionWarning):
+        assert list(iter_py(extension_array)) == [1, 2, 3]

@@ -37,19 +37,26 @@ def test_time_unit_create():
 def test_schema_create_c_schema():
     schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32
+    assert schema_obj.name == ""
+    assert ("some key" in schema_obj.metadata) is False
 
     schema_obj2 = na.Schema(schema_obj._c_schema)
     assert schema_obj2.type == schema_obj2.type
     assert schema_obj2._c_schema is schema_obj._c_schema
 
-    with pytest.raises(ValueError, match="must be unspecified"):
+    schema_obj_non_nullable = na.Schema(na.int32(), nullable=False)
+    assert schema_obj_non_nullable.nullable is False
+
+    schema_named = na.Schema(na.int32(), name="some_name")
+    assert schema_named.name == "some_name"
+
+    schema_metad = na.Schema(na.int32(), metadata={"some key": "some value"})
+    assert b"some key" in schema_metad.metadata
+    assert schema_metad.metadata[b"some key"] == b"some value"
+    assert dict(schema_metad.metadata.items()) == {b"some key": b"some value"}
+
+    with pytest.raises(ValueError):
         na.Schema(schema_obj._c_schema, some_parameter="some_value")
-
-    with pytest.raises(ValueError, match="must be unspecified"):
-        na.Schema(schema_obj._c_schema, nullable=True)
-
-    with pytest.raises(ValueError, match="must be unspecified"):
-        na.Schema(schema_obj._c_schema, name="")
 
 
 def test_schema_create_no_params():
@@ -183,3 +190,34 @@ def test_schema_struct():
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.field(0).type == na.Type.INT32
     assert schema_obj.field(0).name == "col_name"
+
+
+def test_schema_extension():
+    schema_obj = na.int32()
+    assert schema_obj.extension is None
+
+    # Check with metadata manually added
+    schema_obj = na.Schema(
+        na.int32(),
+        metadata={
+            "ARROW:extension:name": "arrow.test",
+            "ARROW:extension:metadata": "abcdefg",
+        },
+    )
+    assert schema_obj.extension.name == "arrow.test"
+    assert schema_obj.extension.metadata == b"abcdefg"
+
+    # Check from extension_type constructor
+    schema_obj = na.extension_type(na.int32(), "arrow.test", "abcdefg")
+    assert schema_obj.type == na.Type.EXTENSION
+    assert schema_obj.extension is not None
+    assert schema_obj.extension.name == "arrow.test"
+    assert schema_obj.extension.metadata == b"abcdefg"
+    assert schema_obj.extension.storage.type == na.Type.INT32
+    assert schema_obj.nullable is True
+
+    schema_obj = na.extension_type(na.int32(), "arrow.test", nullable=False)
+    assert schema_obj.extension.name == "arrow.test"
+    assert schema_obj.extension.metadata is None
+    assert schema_obj.extension.storage.type == na.Type.INT32
+    assert schema_obj.nullable is False
