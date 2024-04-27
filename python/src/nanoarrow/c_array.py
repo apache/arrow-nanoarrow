@@ -28,7 +28,7 @@ from nanoarrow._lib import (
     CSchemaBuilder,
     NoneAwareWrapperIterator,
     _obj_is_buffer,
-    _obj_is_capsule
+    _obj_is_capsule,
 )
 from nanoarrow.c_lib import c_buffer, c_schema, c_schema_view
 
@@ -114,7 +114,6 @@ def c_array(obj, schema=None) -> CArray:
     return build_c_array(obj, schema)
 
 
-
 def allocate_c_array(schema=None) -> CArray:
     """Allocate an uninitialized ArrowArray
 
@@ -130,7 +129,6 @@ def allocate_c_array(schema=None) -> CArray:
         schema = c_schema(schema)
 
     return CArray.allocate(CSchema.allocate() if schema is None else schema)
-
 
 
 def c_array_view(obj, schema=None) -> CArrayView:
