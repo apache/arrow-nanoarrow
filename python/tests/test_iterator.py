@@ -23,6 +23,7 @@ from nanoarrow.iterator import (
     ArrayViewBaseIterator,
     InvalidArrayWarning,
     LossyConversionWarning,
+    UnregisteredExtensionWarning,
     iter_array_views,
     iter_py,
     iter_tuples,

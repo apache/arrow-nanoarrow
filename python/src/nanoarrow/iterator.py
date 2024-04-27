@@ -124,6 +124,10 @@ class LossyConversionWarning(UserWarning):
     pass
 
 
+class UnregisteredExtensionWarning(UserWarning):
+    pass
+
+
 class ArrayViewBaseIterator:
     """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
@@ -195,6 +199,17 @@ class PyIterator(ArrayViewBaseIterator):
     """
 
     def _iter_chunk(self, offset, length):
+        # Check for an extension type first since this isn't reflected by
+        # self._schema_view.type_id. Currently we just return the storage
+        # iterator with a warning for extension types.
+        maybe_extension_name = self._schema_view.extension_name
+        if maybe_extension_name:
+            self._warn(
+                f"Converting unregistered extension '{maybe_extension_name}' "
+                "as storage type",
+                UnregisteredExtensionWarning,
+            )
+
         type_id = self._schema_view.type_id
         if type_id not in _ITEMS_ITER_LOOKUP:
             raise KeyError(

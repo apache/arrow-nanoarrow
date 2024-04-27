@@ -771,7 +771,7 @@ cdef class CSchema:
 
     def modify(self, *, name=None, flags=None, nullable=None, metadata=None,
                validate=True):
-        builder = CSchemaBuilder.copy_existing(self)
+        builder = CSchemaBuilder.copy(self)
 
         if name is not None:
             builder.set_name(name)
