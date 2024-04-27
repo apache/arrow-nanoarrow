@@ -20,6 +20,7 @@ from typing import Any, Iterable, Literal, Tuple
 from nanoarrow._lib import (
     CArray,
     CArrayBuilder,
+    CArrayView,
     CArrowType,
     CBuffer,
     CBufferBuilder,
@@ -27,8 +28,140 @@ from nanoarrow._lib import (
     CSchemaBuilder,
     NoneAwareWrapperIterator,
     _obj_is_buffer,
+    _obj_is_capsule
 )
-from nanoarrow.c_lib import c_array, c_buffer, c_schema, c_schema_view
+from nanoarrow.c_lib import c_buffer, c_schema, c_schema_view
+
+
+def c_array(obj, schema=None) -> CArray:
+    """ArrowArray wrapper
+
+    This class provides a user-facing interface to access the fields of an ArrowArray
+    as defined in the Arrow C Data interface, holding an optional reference to a
+    :class:`CSchema` that can be used to safely deserialize the content.
+
+    These objects are created using :func:`c_array`, which accepts any array-like
+    object according to the Arrow PyCapsule interface, Python buffer protocol,
+    or iterable of Python objects.
+
+    This Python wrapper allows access to array fields but does not automatically
+    deserialize their content: use :func:`c_array_view` to validate and deserialize
+    the content into a more easily inspectable object.
+
+    Note that the :class:`CArray` objects returned by ``.child()`` hold strong
+    references to the original ``ArrowArray`` to avoid copies while inspecting an
+    imported structure.
+
+    Parameters
+    ----------
+    obj : array-like
+        An object supporting the Arrow PyCapsule interface, the Python buffer
+        protocol, or an iterable of Python objects.
+    schema : schema-like or None
+        A schema-like object as sanitized by :func:`c_schema` or None. This value
+        will be used to request a data type from ``obj``; however, the conversion
+        is best-effort (i.e., the data type of the returned ``CArray`` may be
+        different than ``schema``).
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> # Create from iterable
+    >>> array = na.c_array([1, 2, 3], na.int32())
+    >>> # Create from Python buffer (e.g., numpy array)
+    >>> import numpy as np
+    >>> array = na.c_array(np.array([1, 2, 3]))
+    >>> # Create from Arrow PyCapsule (e.g., pyarrow array)
+    >>> import pyarrow as pa
+    >>> array = na.c_array(pa.array([1, 2, 3]))
+    >>> # Access array fields
+    >>> array.length
+    3
+    >>> array.null_count
+    0
+    """
+
+    if schema is not None:
+        schema = c_schema(schema)
+
+    if isinstance(obj, CArray) and schema is None:
+        return obj
+
+    # Try Arrow PyCapsule protocol
+    if hasattr(obj, "__arrow_c_array__"):
+        schema_capsule = None if schema is None else schema.__arrow_c_schema__()
+        return CArray._import_from_c_capsule(
+            *obj.__arrow_c_array__(requested_schema=schema_capsule)
+        )
+
+    # Try import of bare capsule
+    if _obj_is_capsule(obj, "arrow_array"):
+        if schema is None:
+            schema_capsule = CSchema.allocate()._capsule
+        else:
+            schema_capsule = schema.__arrow_c_schema__()
+
+        return CArray._import_from_c_capsule(schema_capsule, obj)
+
+    # Try _export_to_c for Array/RecordBatch objects if pyarrow < 14.0
+    if _obj_is_pyarrow_array(obj):
+        out = CArray.allocate(CSchema.allocate())
+        obj._export_to_c(out._addr(), out.schema._addr())
+        return out
+
+    # e.g., iterable, empty
+    return build_c_array(obj, schema)
+
+
+
+def allocate_c_array(schema=None) -> CArray:
+    """Allocate an uninitialized ArrowArray
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> schema = na.allocate_c_schema()
+    >>> pa.int32()._export_to_c(schema._addr())
+    """
+    if schema is not None:
+        schema = c_schema(schema)
+
+    return CArray.allocate(CSchema.allocate() if schema is None else schema)
+
+
+
+def c_array_view(obj, schema=None) -> CArrayView:
+    """ArrowArrayView wrapper
+
+    The ``ArrowArrayView`` is a nanoarrow C library structure that provides
+    structured access to buffers addresses, buffer sizes, and buffer
+    data types. The buffer data is usually propagated from an ArrowArray
+    but can also be propagated from other types of objects (e.g., serialized
+    IPC). The offset and length of this view are independent of its parent
+    (i.e., this object can also represent a slice of its parent).
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import numpy as np
+    >>> import nanoarrow as na
+    >>> array = na.c_array(pa.array(["one", "two", "three", None]))
+    >>> array_view = na.c_array_view(array)
+    >>> np.array(array_view.buffer(1))
+    array([ 0,  3,  6, 11, 11], dtype=int32)
+    >>> np.array(array_view.buffer(2))
+    array([b'o', b'n', b'e', b't', b'w', b'o', b't', b'h', b'r', b'e', b'e'],
+          dtype='|S1')
+    """
+
+    if isinstance(obj, CArrayView) and schema is None:
+        return obj
+
+    return c_array(obj, schema).view()
 
 
 def c_array_from_buffers(
@@ -184,14 +317,6 @@ def _resolve_builder(obj):
     raise TypeError(
         f"Can't resolve ArrayBuilder for object of type {type(obj).__name__}"
     )
-
-
-def _obj_is_iterable(obj):
-    return hasattr(obj, "__iter__")
-
-
-def _obj_is_empty(obj):
-    return hasattr(obj, "__len__") and len(obj) == 0
 
 
 def build_c_array(obj, schema=None) -> CArray:
@@ -392,3 +517,26 @@ _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD = {
     "_append_using_array": "_build_nullable_array_using_array",
     "_append_using_buffer_builder": "_build_nullable_array_using_buffer_builder",
 }
+
+
+def _obj_is_iterable(obj):
+    return hasattr(obj, "__iter__")
+
+
+def _obj_is_empty(obj):
+    return hasattr(obj, "__len__") and len(obj) == 0
+
+
+# This is a heuristic for detecting a pyarrow.Array or pyarrow.RecordBatch
+# for pyarrow < 14.0.0, after which the the __arrow_c_array__ protocol
+# is sufficient to detect such an array. This check can't use isinstance()
+# to avoid importing pyarrow unnecessarily.
+def _obj_is_pyarrow_array(obj):
+    obj_type = type(obj)
+    if not obj_type.__module__.startswith("pyarrow"):
+        return False
+
+    if not obj_type.__name__.endswith("Array") and obj_type.__name__ != "RecordBatch":
+        return False
+
+    return hasattr(obj, "_export_to_c")

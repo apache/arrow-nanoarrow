@@ -16,7 +16,8 @@
 # under the License.
 
 from nanoarrow._lib import CArrayStream, _obj_is_capsule
-from nanoarrow.c_lib import c_schema, c_array
+from nanoarrow.c_array import c_array
+from nanoarrow.c_lib import c_schema
 
 
 def c_array_stream(obj=None, schema=None) -> CArrayStream:
@@ -93,6 +94,23 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
             f"An error occurred whilst converting {type(obj).__name__} "
             f"to nanoarrow.c_array_stream or nanoarrow.c_array: \n {e}"
         ) from e
+
+
+def allocate_c_array_stream() -> CArrayStream:
+    """Allocate an uninitialized ArrowArrayStream wrapper
+
+    Examples
+    --------
+
+    >>> import pyarrow as pa
+    >>> import nanoarrow as na
+    >>> pa_column = pa.array([1, 2, 3], pa.int32())
+    >>> pa_batch = pa.record_batch([pa_column], names=["col1"])
+    >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
+    >>> array_stream = na.allocate_c_array_stream()
+    >>> pa_reader._export_to_c(array_stream._addr())
+    """
+    return CArrayStream.allocate()
 
 
 def _obj_is_pyarrow_record_batch_reader(obj):

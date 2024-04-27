@@ -16,7 +16,8 @@
 # under the License.
 
 from nanoarrow._lib import DEVICE_CPU, CDeviceArray, Device, DeviceType  # noqa: F401
-from nanoarrow.c_lib import c_array, c_schema
+from nanoarrow.c_array import c_array
+from nanoarrow.c_lib import c_schema
 
 
 def cpu():

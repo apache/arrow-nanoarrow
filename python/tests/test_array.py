@@ -16,7 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow.c_lib import CArrayStream
+from nanoarrow.c_array_stream import CArrayStream
 
 import nanoarrow as na
 

@@ -25,18 +25,20 @@ Arrow C Data and Arrow C Stream interfaces.
 """
 
 from nanoarrow._lib import c_version
-from nanoarrow.builder import c_array_from_buffers
-from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_array import (
+    c_array_from_buffers,
+    c_array,
+    c_array_view,
+    allocate_c_array,
+)
+from nanoarrow.c_array_stream import c_array_stream, allocate_c_array_stream
 from nanoarrow.c_lib import (
     c_schema,
-    c_array,
     c_schema_view,
-    c_array_view,
     c_buffer,
     allocate_c_schema,
-    allocate_c_array,
-    allocate_c_array_stream,
 )
+
 from nanoarrow.schema import (
     Schema,
     Type,

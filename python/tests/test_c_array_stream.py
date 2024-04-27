@@ -17,7 +17,7 @@
 
 import pytest
 from nanoarrow._lib import NanoarrowException
-from nanoarrow.c_lib import CArrayStream
+from nanoarrow.c_array_stream import CArrayStream
 
 import nanoarrow as na
 
