@@ -146,7 +146,7 @@ class ExtensionAccessor:
 class Schema:
     """Create a nanoarrow Schema
 
-    The Schema is nanoarrow's high-level data type representation, encompasing
+    The Schema is nanoarrow's high-level data type representation, encompassing
     the role of PyArrow's ``Schema``, ``Field``, and ``DataType``. This scope
     maps to that of the ArrowSchema in the Arrow C Data interface.
 
