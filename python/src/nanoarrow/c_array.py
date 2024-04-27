@@ -111,8 +111,29 @@ def c_array(obj, schema=None) -> CArray:
         obj._export_to_c(out._addr(), out.schema._addr())
         return out
 
-    # e.g., iterable, empty
-    return build_c_array(obj, schema)
+    # e.g., iterable, pybuffer, empty
+    builder_cls = _resolve_builder(obj)
+
+    if schema is None:
+        obj, schema = builder_cls.infer_schema(obj)
+
+    builder = builder_cls(schema)
+    return builder.build_c_array(obj)
+
+
+def _resolve_builder(obj):
+    if _obj_is_empty(obj):
+        return EmptyArrayBuilder
+
+    if _obj_is_buffer(obj):
+        return ArrayFromPyBufferBuilder
+
+    if _obj_is_iterable(obj):
+        return ArrayFromIterableBuilder
+
+    raise TypeError(
+        f"Can't resolve ArrayBuilder for object of type {type(obj).__name__}"
+    )
 
 
 def allocate_c_array(schema=None) -> CArray:
@@ -274,17 +295,27 @@ def c_array_from_buffers(
 
 
 class ArrayBuilder:
+    """Internal utility to build CArrays from various types of input
+
+    This class and its subclasses are designed to help separate the code
+    that actually builds a CArray from the code that chooses the strategy
+    used to do the building.
+    """
+
     @classmethod
     def infer_schema(cls, obj) -> Tuple[CSchema, Any]:
+        """Infer the Arrow data type from a target object
+
+        Returns the type as a :class:`CSchema` and an object that can be
+        consumed in the same way by append() in the event it had to be
+        modified to infer its type (e.g., for an iterable, it would be
+        necessary to consume the first element from the original iterator).
+        """
         raise NotImplementedError()
 
-    def __init__(self, schema, *, _schema_view=None):
+    def __init__(self, schema):
         self._schema = c_schema(schema)
-
-        if _schema_view is not None:
-            self._schema_view = _schema_view
-        else:
-            self._schema_view = c_schema_view(schema)
+        self._schema_view = c_schema_view(self._schema)
 
     def build_c_array(self, obj):
         builder = CArrayBuilder.allocate()
@@ -303,34 +334,13 @@ class ArrayBuilder:
         return c_builder.finish()
 
 
-def _resolve_builder(obj):
-    if _obj_is_empty(obj):
-        return EmptyArrayBuilder
-
-    if _obj_is_buffer(obj):
-        return ArrayFromPyBufferBuilder
-
-    if _obj_is_iterable(obj):
-        return ArrayFromIterableBuilder
-
-    raise TypeError(
-        f"Can't resolve ArrayBuilder for object of type {type(obj).__name__}"
-    )
-
-
-def build_c_array(obj, schema=None) -> CArray:
-    builder_cls = _resolve_builder(obj)
-
-    if schema is None:
-        obj, schema = builder_cls.infer_schema(obj)
-    else:
-        schema = c_schema(schema)
-
-    builder = builder_cls(schema)
-    return builder.build_c_array(obj)
-
-
 class EmptyArrayBuilder(ArrayBuilder):
+    """Build an empty CArray of any type
+
+    This builder accepts any empty input and produces a valid length zero
+    array as output.
+    """
+
     @classmethod
     def infer_schema(cls, obj) -> Tuple[Any, CSchema]:
         return obj, CSchemaBuilder.allocate().set_type(CArrowType.NA)
@@ -347,6 +357,12 @@ class EmptyArrayBuilder(ArrayBuilder):
 
 
 class ArrayFromPyBufferBuilder(ArrayBuilder):
+    """Build a CArray from a Python Buffer
+
+    This builder converts a Python buffer (e.g., numpy array, bytes, array.array)
+    to a CArray (without copying the contents of the buffer).
+    """
+
     @classmethod
     def infer_schema(cls, obj) -> Tuple[CBuffer, CSchema]:
         if not isinstance(obj, CBuffer):
@@ -373,9 +389,8 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
 
         return obj, schema
 
-    def __init__(self, schema, *, move: bool = False, _schema_view=None):
-        super().__init__(schema, _schema_view=_schema_view)
-        self._move = move
+    def __init__(self, schema):
+        super().__init__(schema)
 
         if self._schema_view.buffer_format is None:
             raise ValueError(
@@ -398,20 +413,31 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
                 f"but got buffer with format '{obj.format}'"
             )
 
-        c_builder.set_buffer(1, obj, move=self._move)
+        c_builder.set_buffer(1, obj)
         c_builder.set_length(len(obj))
         c_builder.set_null_count(0)
         c_builder.set_offset(0)
 
 
 class ArrayFromIterableBuilder(ArrayBuilder):
+    """Build a CArray from an iterable of scalar objects
+
+    This builder converts an iterable to a CArray using some heuristics to pick
+    the fastest available method for converting to a particular type of array.
+    Briefly, the methods are (1) ArrowArrayAppendXXX() functions from the C
+    library (string, binary), (2) array.array() (integer/float except float16),
+    (3) CBufferBuilder.write_elements() (everything else).
+    """
+
     @classmethod
     def infer_schema(cls, obj) -> Tuple[CBuffer, CSchema]:
         raise ValueError("schema is required to build array from iterable")
 
-    def __init__(self, schema, *, _schema_view=None):
-        super().__init__(schema, _schema_view=_schema_view)
+    def __init__(self, schema):
+        super().__init__(schema)
 
+        # Resolve the method name we are going to use to do the building from
+        # the provided schema.
         type_id = self._schema_view.type_id
         if type_id not in _ARRAY_BUILDER_FROM_ITERABLE_METHOD:
             raise ValueError(
@@ -419,7 +445,12 @@ class ArrayFromIterableBuilder(ArrayBuilder):
             )
 
         method_name = _ARRAY_BUILDER_FROM_ITERABLE_METHOD[type_id]
-        if method_name in _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD:
+
+        # If there might be nulls, we may need to pick a different strategy
+        if (
+            self._schema_view.nullable
+            and method_name in _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD
+        ):
             method_name = _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD[method_name]
 
         self._append_impl = getattr(self, method_name)
