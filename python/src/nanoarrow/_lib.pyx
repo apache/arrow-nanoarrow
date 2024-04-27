@@ -990,8 +990,8 @@ cdef class CSchemaBuilder:
             ArrowSchemaInit(self._ptr)
 
     @staticmethod
-    def copy_existing(CSchema existing_schema):
-        return CSchemaBuilder(existing_schema.__deepcopy__())
+    def copy(CSchema schema):
+        return CSchemaBuilder(schema.__deepcopy__())
 
     @staticmethod
     def allocate():
