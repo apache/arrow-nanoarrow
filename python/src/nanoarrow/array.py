@@ -26,7 +26,8 @@ from nanoarrow._lib import (
     CMaterializedArrayStream,
     Device,
 )
-from nanoarrow.c_lib import c_array, c_array_stream, c_array_view
+from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_lib import c_array, c_array_view
 from nanoarrow.iterator import iter_array_views, iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
