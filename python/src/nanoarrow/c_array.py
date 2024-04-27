@@ -30,7 +30,8 @@ from nanoarrow._lib import (
     _obj_is_buffer,
     _obj_is_capsule,
 )
-from nanoarrow.c_lib import c_buffer, c_schema, c_schema_view
+from nanoarrow.c_buffer import c_buffer
+from nanoarrow.c_lib import c_schema, c_schema_view
 
 
 def c_array(obj, schema=None) -> CArray:

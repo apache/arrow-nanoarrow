@@ -35,10 +35,9 @@ from nanoarrow.c_array_stream import c_array_stream, allocate_c_array_stream
 from nanoarrow.c_lib import (
     c_schema,
     c_schema_view,
-    c_buffer,
     allocate_c_schema,
 )
-
+from nanoarrow.c_buffer import c_buffer
 from nanoarrow.schema import (
     Schema,
     Type,

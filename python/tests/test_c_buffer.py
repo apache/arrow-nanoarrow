@@ -265,7 +265,7 @@ def test_c_buffer_from_iterable():
         na.c_buffer([1, 2, 3], na.date32())
 
     with pytest.raises(ValueError, match="Can't create buffer"):
-        na.c_buffer([1, 2, 3], na.extension_type(na.null(), "arrow.test"))
+        na.c_buffer([1, 2, 3], na.extension_type(na.int32(), "arrow.test"))
 
 
 def test_c_buffer_from_fixed_size_binary_iterable():
