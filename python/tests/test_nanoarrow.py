@@ -32,11 +32,13 @@ def test_c_version():
 
 
 def test_c_schema_helper():
+    from nanoarrow.c_schema import CSchema
+
     schema = na.allocate_c_schema()
     assert na.c_schema(schema) is schema
 
     schema = na.c_schema(pa.null())
-    assert isinstance(schema, na.c_lib.CSchema)
+    assert isinstance(schema, CSchema)
 
     with pytest.raises(TypeError):
         na.c_schema(1234)

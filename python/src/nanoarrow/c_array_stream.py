@@ -17,7 +17,7 @@
 
 from nanoarrow._lib import CArrayStream, _obj_is_capsule
 from nanoarrow.c_array import c_array
-from nanoarrow.c_lib import c_schema
+from nanoarrow.c_schema import c_schema
 
 
 def c_array_stream(obj=None, schema=None) -> CArrayStream:

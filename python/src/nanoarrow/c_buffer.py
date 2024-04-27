@@ -15,14 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import (
-    CArrowType,
-    CBuffer,
-    CBufferBuilder,
-    _obj_is_buffer,
-)
-
-from nanoarrow.c_lib import c_schema_view
+from nanoarrow._lib import CArrowType, CBuffer, CBufferBuilder, _obj_is_buffer
+from nanoarrow.c_schema import c_schema_view
 
 
 def c_buffer(obj, schema=None) -> CBuffer:

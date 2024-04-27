@@ -145,7 +145,7 @@ def test_export_invalid():
 def test_import_from_c_errors():
     from nanoarrow.c_array import CArray
     from nanoarrow.c_array_stream import CArrayStream
-    from nanoarrow.c_lib import CSchema
+    from nanoarrow.c_schema import CSchema
 
     # ensure proper error is raised in case of wrong object or wrong capsule
     pa_arr = pa.array([1, 2, 3], pa.int32())

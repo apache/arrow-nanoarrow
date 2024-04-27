@@ -27,7 +27,7 @@ from nanoarrow._lib import (
     CSchemaView,
     SchemaMetadata,
 )
-from nanoarrow.c_lib import c_schema
+from nanoarrow.c_schema import c_schema
 
 
 class Type(enum.Enum):

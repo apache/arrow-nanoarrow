@@ -22,7 +22,7 @@ from typing import Iterable, Tuple
 
 from nanoarrow._lib import CArrayView, CArrowType
 from nanoarrow.c_array_stream import c_array_stream
-from nanoarrow.c_lib import c_schema, c_schema_view
+from nanoarrow.c_schema import c_schema, c_schema_view
 
 
 def iter_py(obj, schema=None) -> Iterable:

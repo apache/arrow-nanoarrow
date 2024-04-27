@@ -32,7 +32,7 @@ from nanoarrow.c_array import (
     allocate_c_array,
 )
 from nanoarrow.c_array_stream import c_array_stream, allocate_c_array_stream
-from nanoarrow.c_lib import (
+from nanoarrow.c_schema import (
     c_schema,
     c_schema_view,
     allocate_c_schema,
