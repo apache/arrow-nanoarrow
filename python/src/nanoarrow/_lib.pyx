@@ -769,22 +769,54 @@ cdef class CSchema:
         else:
             return None
 
-    def modify(self, *, name=None, flags=None, nullable=None, metadata=None,
-               validate=True):
-        builder = CSchemaBuilder.copy(self)
+    def modify(self, *, format=None, name=None, flags=None, nullable=None,
+               metadata=None, children=None, dictionary=None, validate=True):
+        cdef CSchemaBuilder builder = CSchemaBuilder.allocate()
 
-        if name is not None:
+        if format is None:
+            builder.set_format(self.format)
+        else:
+            builder.set_format(format)
+
+        if name is None:
+            builder.set_name(self.name)
+        else:
             builder.set_name(name)
 
-        if flags is not None:
+        if flags is None:
+            builder.set_flags(self.flags)
+        else:
             builder.set_flags(flags)
 
         if nullable is not None:
             builder.set_nullable(nullable)
 
-        if metadata is not None:
-            builder.clear_metadata()
+        if metadata is None:
+            if self.metadata is not None:
+                builder.append_metadata(self.metadata)
+        else:
             builder.append_metadata(metadata)
+
+        if children is None:
+            if self.n_children > 0:
+                builder.allocate_children(self.n_children)
+                for i, child in enumerate(children):
+                    builder.set_child(i, None, child)
+        elif hasattr(children, "items"):
+            builder.allocate_children(len(children))
+            for i, item in enumerate(children.items()):
+                name, child = item
+                builder.set_child(i, name, child)
+        else:
+            builder.allocate_children(len(children))
+            for i, child in enumerate(children):
+                builder.set_child(i, None, child)
+
+        if dictionary is None:
+            if self.dictionary:
+                builder.set_dictionary(self.dictionary)
+        elif dictionary is not False:
+            builder.set_dictionary(dictionary)
 
         if validate:
             builder.validate()
@@ -1037,17 +1069,8 @@ cdef class CSchemaBuilder:
             ArrowSchemaInit(self._ptr)
 
     @staticmethod
-    def copy(CSchema schema):
-        return CSchemaBuilder(schema.__deepcopy__())
-
-    @staticmethod
     def allocate():
         return CSchemaBuilder(CSchema.allocate())
-
-    def clear_metadata(self):
-        cdef int code = ArrowSchemaSetMetadata(self.c_schema._ptr, NULL)
-        Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
-        return self
 
     def append_metadata(self, metadata):
         cdef CBuffer buffer = CBuffer.empty()
@@ -1164,6 +1187,23 @@ cdef class CSchemaBuilder:
         if name is not None:
             name = str(name)
             code = ArrowSchemaSetName(self._ptr.children[i], name.encode("UTF-8"))
+            Error.raise_error_not_ok("ArrowSchemaSetName()", code)
+
+        return self
+
+    def set_dictionary(self, CSchema dictionary):
+        self.c_schema._assert_valid()
+
+        cdef int code
+        if self._ptr.dictionary == NULL:
+            code = ArrowSchemaAllocateDictionary(self._ptr)
+            Error.raise_error_not_ok("ArrowSchemaAllocateDictionary()", code)
+
+        if self._ptr.dictionary.release != NULL:
+            ArrowSchemaRelease(self._ptr.dictionary)
+
+        code = ArrowSchemaDeepCopy(dictionary._ptr, self._ptr.dictionary)
+        Error.raise_error_not_ok("ArrowSchemaDeepCopy()", code)
 
         return self
 
