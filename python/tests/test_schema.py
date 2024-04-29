@@ -189,6 +189,21 @@ def test_schema_struct():
     assert schema_obj.field(0).name == "col_name"
 
 
+def test_schema_list_of():
+    schema_obj = na.list_of(na.null())
+    assert schema_obj.type == na.Type.LIST
+
+
+def test_schema_large_list_of():
+    schema_obj = na.large_list_of(na.null())
+    assert schema_obj.type == na.Type.LARGE_LIST
+
+
+def test_schema_fixed_size_list_of():
+    schema_obj = na.fixed_size_list_of(na.null(), 123)
+    assert schema_obj.type == na.Type.FIXED_SIZE_LIST
+
+
 def test_schema_extension():
     schema_obj = na.int32()
     assert schema_obj.extension is None

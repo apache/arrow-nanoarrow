@@ -197,9 +197,7 @@ class Schema:
         **params,
     ) -> None:
         if isinstance(obj, Type):
-            self._c_schema = _c_schema_from_type_and_params(
-                obj, params
-            )
+            self._c_schema = _c_schema_from_type_and_params(obj, params)
         else:
             if params:
                 raise ValueError("params are only supported for obj of class Type")
@@ -971,8 +969,21 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
-def list_of(value, nullable=True) -> Schema:
-    pass
+def list_of(value_type, nullable=True) -> Schema:
+    return Schema(Type.LIST, value_type=value_type, nullable=nullable)
+
+
+def large_list_of(value_type, nullable=True) -> Schema:
+    return Schema(Type.LARGE_LIST, value_type=value_type, nullable=nullable)
+
+
+def fixed_size_list_of(value_type, list_size, nullable=True) -> Schema:
+    return Schema(
+        Type.FIXED_SIZE_LIST,
+        value_type=value_type,
+        list_size=list_size,
+        nullable=nullable,
+    )
 
 
 def extension_type(
@@ -1003,10 +1014,7 @@ def extension_type(
     return Schema(storage_schema, nullable=nullable, metadata=metadata)
 
 
-def _c_schema_from_type_and_params(
-    type: Type,
-    params: dict
-):
+def _c_schema_from_type_and_params(type: Type, params: dict):
     factory = CSchemaBuilder.allocate()
 
     if type.value in CSchemaView._decimal_types:
@@ -1027,6 +1035,22 @@ def _c_schema_from_type_and_params(
 
     elif type == Type.FIXED_SIZE_BINARY:
         factory.set_type_fixed_size(type.value, int(params.pop("byte_width")))
+
+    elif type == Type.LIST:
+        factory.set_format("+l")
+        factory.allocate_children(1)
+        factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.LARGE_LIST:
+        factory.set_format("+L")
+        factory.allocate_children(1)
+        factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.FIXED_SIZE_LIST:
+        fixed_size = int(params.pop("list_size"))
+        factory.set_format(f"+w:{fixed_size}")
+        factory.allocate_children(1)
+        factory.set_child(0, "item", c_schema(params.pop("value_type")))
 
     else:
         factory.set_type(type.value)
