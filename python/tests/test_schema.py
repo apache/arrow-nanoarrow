@@ -221,6 +221,7 @@ def test_schema_dictionary():
     assert schema_obj_ordered.value_type.type == na.Type.NULL
     assert schema_obj_ordered.dictionary_ordered is True
 
+
 def test_schema_extension():
     schema_obj = na.int32()
     assert schema_obj.extension is None

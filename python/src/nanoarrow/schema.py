@@ -1000,6 +1000,7 @@ def list_of(value_type, nullable=True) -> Schema:
     Parameters
     ----------
     value_type : schema-like
+        The type of values in each list element.
     nullable : bool, optional
         Use ``False`` to mark this field as non-nullable.
 
@@ -1022,6 +1023,7 @@ def large_list_of(value_type, nullable=True) -> Schema:
     Parameters
     ----------
     value_type : schema-like
+        The type of values in each list element.
     nullable : bool, optional
         Use ``False`` to mark this field as non-nullable.
 
@@ -1041,6 +1043,7 @@ def fixed_size_list_of(value_type, list_size, nullable=True) -> Schema:
     Parameters
     ----------
     value_type : schema-like
+        The type of values in each list element.
     list_size : int
         The number of values in each list element.
     nullable : bool, optional
@@ -1062,6 +1065,28 @@ def fixed_size_list_of(value_type, list_size, nullable=True) -> Schema:
 
 
 def dictionary(index_type, value_type, dictionary_ordered=False):
+    """Create a type representing dictionary-encoded values
+
+    Parameters
+    ----------
+    index_type : schema-like
+        The data type of the indices. Must be an integral type.
+    value_type : schema-like
+        The type of the dictionary array.
+    ordered: bool, optional
+        Use ``True`` if the order of values in the dictionary array is
+        meaningful.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.dictionary(na.int32(), na.string())
+    Schema(DICTIONARY, index_type=Schema(INT32), value_type=Schema(STRING), \
+dictionary_ordered=False)
+    """
     return Schema(
         Type.DICTIONARY,
         index_type=index_type,

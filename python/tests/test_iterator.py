@@ -106,10 +106,13 @@ def test_iterator_nullable_binary():
 
 def test_iter_tuples():
     array = na.c_array_from_buffers(
-        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        na.struct({"col1": na.int32(), "col2": na.boolean()}),
         length=3,
         buffers=[None],
-        children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
+        children=[
+            na.c_array([1, 2, 3], na.int32()),
+            na.c_array([1, 0, 1], na.boolean()),
+        ],
     )
 
     assert list(iter_tuples(array)) == [(1, True), (2, False), (3, True)]
@@ -131,12 +134,12 @@ def test_iter_tuples():
 
 def test_iter_tuples_nullable():
     array = na.c_array_from_buffers(
-        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        na.struct({"col1": na.int32(), "col2": na.boolean()}),
         length=4,
-        buffers=[na.c_buffer([True, True, True, False], na.bool())],
+        buffers=[na.c_buffer([True, True, True, False], na.boolean())],
         children=[
             na.c_array([1, 2, 3, 4], na.int32()),
-            na.c_array([1, 0, 1, 0], na.bool()),
+            na.c_array([1, 0, 1, 0], na.boolean()),
         ],
     )
 
@@ -148,7 +151,7 @@ def test_iter_tuples_nullable():
     sliced_child = na.c_array_from_buffers(
         array.schema,
         length=3,
-        buffers=[na.c_buffer([True, True, False], na.bool())],
+        buffers=[na.c_buffer([True, True, False], na.boolean())],
         children=[array.child(0)[1:], array.child(1)[1:]],
     )
     assert list(iter_tuples(sliced_child)) == [(2, False), (3, True), None]
@@ -164,10 +167,13 @@ def test_iter_tuples_errors():
 
 def test_iterator_struct():
     array = na.c_array_from_buffers(
-        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        na.struct({"col1": na.int32(), "col2": na.boolean()}),
         length=3,
         buffers=[None],
-        children=[na.c_array([1, 2, 3], na.int32()), na.c_array([1, 0, 1], na.bool())],
+        children=[
+            na.c_array([1, 2, 3], na.int32()),
+            na.c_array([1, 0, 1], na.boolean()),
+        ],
     )
 
     assert list(iter_py(array)) == [
@@ -185,12 +191,12 @@ def test_iterator_struct():
 
 def test_iterator_nullable_struct():
     array = na.c_array_from_buffers(
-        na.struct({"col1": na.int32(), "col2": na.bool()}),
+        na.struct({"col1": na.int32(), "col2": na.boolean()}),
         length=4,
-        buffers=[na.c_buffer([True, True, True, False], na.bool())],
+        buffers=[na.c_buffer([True, True, True, False], na.boolean())],
         children=[
             na.c_array([1, 2, 3, 4], na.int32()),
-            na.c_array([1, 0, 1, 0], na.bool()),
+            na.c_array([1, 0, 1, 0], na.boolean()),
         ],
     )
 

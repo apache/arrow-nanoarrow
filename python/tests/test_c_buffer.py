@@ -322,7 +322,7 @@ def test_c_buffer_from_decimal256_iterable():
 
 def test_c_buffer_bitmap_from_iterable():
     # Check something less than one byte
-    buffer = na.c_buffer([True, False, False, True], na.bool())
+    buffer = na.c_buffer([True, False, False, True], na.boolean())
     assert "10010000" in repr(buffer)
     assert buffer.size_bytes == 1
     assert buffer.data_type == "bool"
@@ -343,13 +343,13 @@ def test_c_buffer_bitmap_from_iterable():
     )
 
     # Check something exactly one byte
-    buffer = na.c_buffer([True, False, False, True] * 2, na.bool())
+    buffer = na.c_buffer([True, False, False, True] * 2, na.boolean())
     assert "10011001" in repr(buffer)
     assert buffer.size_bytes == 1
     assert list(buffer.elements()) == [True, False, False, True] * 2
 
     # Check something more than one byte
-    buffer = na.c_buffer([True, False, False, True] * 3, na.bool())
+    buffer = na.c_buffer([True, False, False, True] * 3, na.boolean())
     assert "1001100110010000" in repr(buffer)
     assert buffer.size_bytes == 2
     assert list(buffer.elements()) == [True, False, False, True] * 3 + [
