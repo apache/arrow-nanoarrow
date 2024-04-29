@@ -964,9 +964,8 @@ def struct(fields, nullable=True) -> Schema:
     ----------
     fields :
         * A dictionary whose keys are field names and values are schema-like objects
-        * An iterable whose items are a schema like object or a two-tuple of the
-          field name and a schema-like object. If a field name is not specified
-          from the tuple, the field name is inherited from the schema-like object.
+        * An iterable whose items are a schema like objects where the field name is
+          inherited from the schema-like object.
     nullable : bool, optional
         Use ``False`` to mark this field as non-nullable.
 
@@ -976,8 +975,6 @@ def struct(fields, nullable=True) -> Schema:
     >>> import nanoarrow as na
     >>> na.struct([na.int32()])
     Schema(STRUCT, fields=[Schema(INT32)])
-    >>> na.struct([("col1", na.int32())])
-    Schema(STRUCT, fields=[Schema(INT32, name='col1')])
     >>> na.struct({"col1": na.int32()})
     Schema(STRUCT, fields=[Schema(INT32, name='col1')])
     """
@@ -985,14 +982,64 @@ def struct(fields, nullable=True) -> Schema:
 
 
 def list_of(value_type, nullable=True) -> Schema:
+    """Create a type representing a variable-size list of some other type.
+
+    Parameters
+    ----------
+    value_type : schema-like
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.list_of(na.int32())
+    Schema(LIST, value_type=Schema(INT32, name='item'))
+    """
     return Schema(Type.LIST, value_type=value_type, nullable=nullable)
 
 
 def large_list_of(value_type, nullable=True) -> Schema:
+    """Create a type representing a variable-size list of some other type.
+
+    Unlike :func:`list_of`, the func:`large_list_of` can accomodate arrays
+    with more than ``2 ** 31 - 1`` items in the values array.
+
+    Parameters
+    ----------
+    value_type : schema-like
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.large_list_of(na.int32())
+    Schema(LARGE_LIST, value_type=Schema(INT32, name='item'))
+    """
     return Schema(Type.LARGE_LIST, value_type=value_type, nullable=nullable)
 
 
 def fixed_size_list_of(value_type, list_size, nullable=True) -> Schema:
+    """Create a type representing a fixed-size list of some other type.
+
+    Parameters
+    ----------
+    value_type : schema-like
+    list_size : int
+        The number of values in each list element.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.fixed_size_list_of(na.int32(), 123)
+    Schema(FIXED_SIZE_LIST, value_type=Schema(INT32, name='item'), list_size=123)
+    """
     return Schema(
         Type.FIXED_SIZE_LIST,
         value_type=value_type,
