@@ -780,7 +780,7 @@ cdef class CSchema:
 
         if name is None:
             builder.set_name(self.name)
-        else:
+        elif name is not False:
             builder.set_name(name)
 
         if flags is None:

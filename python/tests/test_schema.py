@@ -77,6 +77,10 @@ def test_schema_create_no_params():
     assert schema_obj.name == "not empty"
     assert "name='not empty'" in repr(schema_obj)
 
+    msg = "params are only supported for obj of class Type"
+    with pytest.raises(ValueError, match=msg):
+        na.Schema(na.fixed_size_binary(123), byte_width=12)
+
     with pytest.raises(ValueError, match=r"^Unused parameter"):
         na.Schema(na.Type.INT32, unused_param="unused_value")
 
@@ -171,13 +175,6 @@ def test_schema_struct():
 
     assert "fields=[Schema(INT32)]" in repr(schema_obj)
 
-    # Make sure we can use a list of two-tuples
-    schema_obj = na.struct([("col_name", na.Type.INT32)])
-    assert schema_obj.type == na.Type.STRUCT
-    assert schema_obj.field(0).type == na.Type.INT32
-    assert schema_obj.field(0).name == "col_name"
-    assert "fields=[Schema(INT32, name='col_name')]" in repr(schema_obj)
-
     # Make sure we can use a dictionary to specify fields
     schema_obj = na.struct({"col_name": na.Type.INT32})
     assert schema_obj.type == na.Type.STRUCT
@@ -185,7 +182,7 @@ def test_schema_struct():
     assert schema_obj.field(0).name == "col_name"
 
     # Make sure we can use a Schema when constructing fields (and that
-    # fild names are taken from the input)
+    # field names are taken from the input)
     schema_obj = na.struct([schema_obj.field(0)])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.field(0).type == na.Type.INT32

@@ -193,23 +193,29 @@ class Schema:
         name=None,
         nullable=None,
         metadata=None,
+        fields=None,
         **params,
     ) -> None:
         if isinstance(obj, Type):
             self._c_schema = _c_schema_from_type_and_params(
-                obj, params, name, nullable, metadata
+                obj, params
             )
-            self._c_schema_view = CSchemaView(self._c_schema)
-            return
+        else:
+            if params:
+                raise ValueError("params are only supported for obj of class Type")
+            self._c_schema = c_schema(obj)
 
-        if params:
-            raise ValueError("params are only supported for obj of class Type")
-
-        self._c_schema = c_schema(obj)
-
-        if name is not None or nullable is not None or metadata is not None:
+        if (
+            name is not None
+            or nullable is not None
+            or metadata is not None
+            or fields is not None
+        ):
             self._c_schema = self._c_schema.modify(
-                name=name, nullable=nullable, metadata=metadata
+                name=name,
+                nullable=nullable,
+                metadata=metadata,
+                children=_clean_fields(fields),
             )
 
         self._c_schema_view = CSchemaView(self._c_schema)
@@ -965,6 +971,10 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
+def list_of(value, nullable=True) -> Schema:
+    pass
+
+
 def extension_type(
     storage_schema,
     extension_name: str,
@@ -995,22 +1005,11 @@ def extension_type(
 
 def _c_schema_from_type_and_params(
     type: Type,
-    params: dict,
-    name: Union[bool, None, bool],
-    nullable: Union[bool, None],
-    metadata: Mapping[Union[str, bytes], Union[str, bytes]],
+    params: dict
 ):
     factory = CSchemaBuilder.allocate()
 
-    if type == Type.STRUCT:
-        fields = _clean_fields(params.pop("fields"))
-
-        factory.set_format("+s").allocate_children(len(fields))
-        for i, item in enumerate(fields):
-            child_name, c_schema = item
-            factory.set_child(i, child_name, c_schema)
-
-    elif type.value in CSchemaView._decimal_types:
+    if type.value in CSchemaView._decimal_types:
         precision = int(params.pop("precision"))
         scale = int(params.pop("scale"))
         factory.set_type_decimal(type.value, precision, scale)
@@ -1036,38 +1035,19 @@ def _c_schema_from_type_and_params(
         unused = ", ".join(f"'{item}'" for item in params.keys())
         raise ValueError(f"Unused parameters whilst constructing Schema: {unused}")
 
-    # Apply default nullability (True)
-    if nullable is None:
-        nullable = True
-    factory.set_nullable(nullable)
-
-    # Apply default name (an empty string). To explicitly set a NULL
-    # name, a caller would have to specify False.
-    if name is None:
-        name = ""
-    elif name is False:
-        name = None
-    factory.set_name(name)
-
-    # Apply metadata
-    if metadata is not None:
-        factory.append_metadata(metadata)
+    # Better default than NULL, which causes some implementations to crash
+    factory.set_name("")
 
     return factory.finish()
 
 
 def _clean_fields(fields):
-    if isinstance(fields, dict):
-        return [(str(k), c_schema(v)) for k, v in fields.items()]
+    if fields is None:
+        return None
+    elif hasattr(fields, "items"):
+        return {k: c_schema(v) for k, v in fields.items()}
     else:
-        fields_clean = []
-        for item in fields:
-            if isinstance(item, tuple) and len(item) == 2:
-                fields_clean.append((str(item[0]), c_schema(item[1])))
-            else:
-                fields_clean.append((None, c_schema(item)))
-
-        return fields_clean
+        return [c_schema(v) for v in fields]
 
 
 def _schema_repr(obj):
