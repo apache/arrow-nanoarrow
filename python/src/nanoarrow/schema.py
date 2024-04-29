@@ -348,14 +348,27 @@ class Schema:
         return self._c_schema_view.decimal_scale
 
     @property
+    def index_type(self):
+        if self._c_schema_view.type_id == CArrowType.DICTIONARY:
+            index_schema = self._c_schema.modify(
+                dictionary=False, flags=0, nullable=self.nullable
+            )
+            return Schema(index_schema)
+
+    @property
+    def dictionary_ordered(self):
+        return self._c_schema_view.dictionary_ordered
+
+    @property
     def value_type(self):
         if self._c_schema_view.type_id in (
             CArrowType.LIST,
             CArrowType.LARGE_LIST,
             CArrowType.FIXED_SIZE_LIST,
-            CArrowType.DICTIONARY,
         ):
             return self.field(0)
+        elif self._c_schema_view.type_id == CArrowType.DICTIONARY:
+            return Schema(self._c_schema.dictionary)
 
     @property
     def list_size(self):
@@ -427,7 +440,7 @@ def null(nullable: bool = True) -> Schema:
     return Schema(Type.NULL, nullable=nullable)
 
 
-def bool(nullable: bool = True) -> Schema:
+def boolean(nullable: bool = True) -> Schema:
     """Create an instance of a boolean type.
 
     Parameters
@@ -439,7 +452,7 @@ def bool(nullable: bool = True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.bool()
+    >>> na.boolean()
     Schema(BOOL)
     """
     return Schema(Type.BOOL, nullable=nullable)
@@ -1048,6 +1061,15 @@ def fixed_size_list_of(value_type, list_size, nullable=True) -> Schema:
     )
 
 
+def dictionary(index_type, value_type, dictionary_ordered=False):
+    return Schema(
+        Type.DICTIONARY,
+        index_type=index_type,
+        value_type=value_type,
+        dictionary_ordered=dictionary_ordered,
+    )
+
+
 def extension_type(
     storage_schema,
     extension_name: str,
@@ -1113,6 +1135,16 @@ def _c_schema_from_type_and_params(type: Type, params: dict):
         factory.set_format(f"+w:{fixed_size}")
         factory.allocate_children(1)
         factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.DICTIONARY:
+        index_type = c_schema(params.pop("index_type"))
+        factory.set_format(index_type.format)
+
+        value_type = c_schema(params.pop("value_type"))
+        factory.set_dictionary(value_type)
+
+        if "dictionary_ordered" in params and bool(params.pop("dictionary_ordered")):
+            factory.set_dictionary_ordered(True)
 
     else:
         factory.set_type(type.value)
@@ -1189,4 +1221,5 @@ _PARAM_NAMES = {
     CArrowType.LIST: ("value_type",),
     CArrowType.LARGE_LIST: ("value_type",),
     CArrowType.FIXED_SIZE_LIST: ("value_type", "list_size"),
+    CArrowType.DICTIONARY: ("index_type", "value_type", "dictionary_ordered"),
 }

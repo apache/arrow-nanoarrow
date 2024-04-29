@@ -1219,6 +1219,14 @@ cdef class CSchemaBuilder:
 
         return self
 
+    def set_dictionary_ordered(self, dictionary_ordered):
+        if dictionary_ordered:
+            self._ptr.flags = self._ptr.flags | ARROW_FLAG_DICTIONARY_ORDERED
+        else:
+            self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_DICTIONARY_ORDERED
+
+        return self
+
     def validate(self):
         return CSchemaView(self.c_schema)
 

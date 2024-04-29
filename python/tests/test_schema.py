@@ -87,7 +87,7 @@ def test_schema_create_no_params():
 
 def test_schema_simple():
     assert na.null().type == na.Type.NULL
-    assert na.bool().type == na.Type.BOOL
+    assert na.boolean().type == na.Type.BOOL
     assert na.int8().type == na.Type.INT8
     assert na.uint8().type == na.Type.UINT8
     assert na.int16().type == na.Type.INT16
@@ -207,6 +207,19 @@ def test_schema_fixed_size_list_of():
     assert schema_obj.value_type.type == na.Type.NULL
     assert schema_obj.list_size == 123
 
+
+def test_schema_dictionary():
+    schema_obj = na.dictionary(na.int8(), na.null())
+    assert schema_obj.type == na.Type.DICTIONARY
+    assert schema_obj.index_type.type == na.Type.INT8
+    assert schema_obj.value_type.type == na.Type.NULL
+    assert schema_obj.dictionary_ordered is False
+
+    schema_obj_ordered = na.dictionary(na.int8(), na.null(), dictionary_ordered=True)
+    assert schema_obj_ordered.type == na.Type.DICTIONARY
+    assert schema_obj_ordered.index_type.type == na.Type.INT8
+    assert schema_obj_ordered.value_type.type == na.Type.NULL
+    assert schema_obj_ordered.dictionary_ordered is True
 
 def test_schema_extension():
     schema_obj = na.int32()
