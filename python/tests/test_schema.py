@@ -192,16 +192,20 @@ def test_schema_struct():
 def test_schema_list_of():
     schema_obj = na.list_of(na.null())
     assert schema_obj.type == na.Type.LIST
+    assert schema_obj.value_type.type == na.Type.NULL
 
 
 def test_schema_large_list_of():
     schema_obj = na.large_list_of(na.null())
     assert schema_obj.type == na.Type.LARGE_LIST
+    assert schema_obj.value_type.type == na.Type.NULL
 
 
 def test_schema_fixed_size_list_of():
     schema_obj = na.fixed_size_list_of(na.null(), 123)
     assert schema_obj.type == na.Type.FIXED_SIZE_LIST
+    assert schema_obj.value_type.type == na.Type.NULL
+    assert schema_obj.list_size == 123
 
 
 def test_schema_extension():

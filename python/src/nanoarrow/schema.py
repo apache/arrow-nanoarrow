@@ -348,6 +348,21 @@ class Schema:
         return self._c_schema_view.decimal_scale
 
     @property
+    def value_type(self):
+        if self._c_schema_view.type_id in (
+            CArrowType.LIST,
+            CArrowType.LARGE_LIST,
+            CArrowType.FIXED_SIZE_LIST,
+            CArrowType.DICTIONARY,
+        ):
+            return self.field(0)
+
+    @property
+    def list_size(self):
+        if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_LIST:
+            return self._c_schema_view.fixed_size
+
+    @property
     def n_fields(self) -> int:
         """Number of child Schemas
 
@@ -1124,4 +1139,7 @@ _PARAM_NAMES = {
     CArrowType.DECIMAL128: ("precision", "scale"),
     CArrowType.DECIMAL256: ("precision", "scale"),
     CArrowType.STRUCT: ("fields",),
+    CArrowType.LIST: ("value_type",),
+    CArrowType.LARGE_LIST: ("value_type",),
+    CArrowType.FIXED_SIZE_LIST: ("value_type", "list_size"),
 }
