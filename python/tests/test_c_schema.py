@@ -133,6 +133,9 @@ def test_c_schema_modify():
     assert schema_clone is not schema
     assert schema._addr() != schema_clone._addr()
 
+    schema_formatted = schema.modify(format="i")
+    assert schema_formatted.format == "i"
+
     schema_named = schema.modify(name="something else")
     assert schema_named.name == "something else"
     assert schema_named.format == schema.format
