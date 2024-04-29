@@ -800,7 +800,7 @@ cdef class CSchema:
         if children is None:
             if self.n_children > 0:
                 builder.allocate_children(self.n_children)
-                for i, child in enumerate(children):
+                for i, child in enumerate(self.children):
                     builder.set_child(i, None, child)
         elif hasattr(children, "items"):
             builder.allocate_children(len(children))
