@@ -191,6 +191,7 @@ TEST(ArrayTest, ArrayTestSetBuffer) {
 TEST(ArrayTest, ArrayTestBuildByBuffer) {
   // the array ["a", null, "bc", null, "def", null, "ghij"]
   uint8_t validity_bitmap[] = {0x55};
+  int8_t validity_array[] = {1, 0, 1, 0, 1, 0, 1};
   int32_t offsets[] = {0, 1, 1, 3, 3, 6, 6, 10, 10};
   const char* data = "abcdefghij";
 
@@ -199,7 +200,7 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
 
   ASSERT_EQ(ArrowBitmapReserve(ArrowArrayValidityBitmap(&array), 100), NANOARROW_OK);
-  ArrowBitmapAppendInt8Unsafe(ArrowArrayValidityBitmap(&array), {1, 0, 1, 0, 1, 0, 1}, 7);
+  ArrowBitmapAppendInt8Unsafe(ArrowArrayValidityBitmap(&array), validity_array, 7);
 
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 1), 100), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 1), offsets, 8 * sizeof(int32_t));
