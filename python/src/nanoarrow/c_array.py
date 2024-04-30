@@ -399,7 +399,7 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
             )
 
     def append(self, c_builder: CArrayBuilder, obj: Any) -> None:
-        if not c_builder.empty():
+        if not c_builder.is_empty():
             raise ValueError("Can't append to non-empty ArrayFromPyBufferBuilder")
 
         if not isinstance(obj, CBuffer):

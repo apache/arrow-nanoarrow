@@ -860,11 +860,13 @@ cdef class CSchemaView:
 
     @property
     def buffer_format(self):
-        if not self.extension_name and self._schema_view.type == self._schema_view.storage_type:
-            return self.storage_buffer_format
+        """The Python struct format representing an element of this type
+        or None if there is no Python format string that can represent this
+        type.
+        """
+        if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
+            return None
 
-    @property
-    def storage_buffer_format(self):
         cdef char out[128]
         cdef int element_size_bits = 0
         if self._schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
@@ -874,24 +876,30 @@ cdef class CSchemaView:
             c_format_from_arrow_type(self._schema_view.type, element_size_bits, sizeof(out), out)
             return out.decode()
         except ValueError:
-            pass
+            return None
 
     @property
     def type(self):
         cdef const char* type_str = ArrowTypeString(self._schema_view.type)
         if type_str != NULL:
-            return type_str.decode('UTF-8')
+            return type_str.decode()
+        else:
+            raise ValueError("ArrowTypeString() returned NULL")
 
     @property
     def storage_type(self):
         cdef const char* type_str = ArrowTypeString(self._schema_view.storage_type)
         if type_str != NULL:
-            return type_str.decode('UTF-8')
+            return type_str.decode()
+        else:
+            raise ValueError("ArrowTypeString() returned NULL")
 
     @property
     def dictionary_ordered(self):
         if self._schema_view.type == NANOARROW_TYPE_DICTIONARY:
             return self._dictionary_ordered != 0
+        else:
+            return None
 
     @property
     def nullable(self):
@@ -901,47 +909,65 @@ cdef class CSchemaView:
     def map_keys_sorted(self):
         if self._schema_view.type == NANOARROW_TYPE_MAP:
             return self._map_keys_sorted != 0
+        else:
+            return None
 
     @property
     def fixed_size(self):
         if self._schema_view.type in CSchemaView._fixed_size_types:
             return self._schema_view.fixed_size
+        else:
+            return None
 
     @property
     def decimal_bitwidth(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_bitwidth
+        else:
+            return None
 
     @property
     def decimal_precision(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_precision
+        else:
+            return None
 
     @property
     def decimal_scale(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_scale
+        else:
+            return None
 
     @property
     def time_unit_id(self):
         if self._schema_view.type in CSchemaView._time_unit_types:
             return self._schema_view.time_unit
+        else:
+            return None
 
     @property
     def time_unit(self):
         if self._schema_view.type in CSchemaView._time_unit_types:
-            return ArrowTimeUnitString(self._schema_view.time_unit).decode('UTF-8')
+            return ArrowTimeUnitString(self._schema_view.time_unit).decode()
+        else:
+            return None
 
     @property
     def timezone(self):
         if self._schema_view.type == NANOARROW_TYPE_TIMESTAMP:
-            return self._schema_view.timezone.decode('UTF_8')
+            return self._schema_view.timezone.decode()
+        else:
+            return None
 
     @property
     def union_type_ids(self):
         if self._schema_view.type in CSchemaView._union_types:
-            type_ids_str = self._schema_view.union_type_ids.decode('UTF-8').split(',')
+            type_ids_str = self._schema_view.union_type_ids.decode().split(',')
             return (int(type_id) for type_id in type_ids_str)
+        else:
+            return None
 
     @property
     def extension_name(self):
@@ -950,7 +976,9 @@ cdef class CSchemaView:
                 self._schema_view.extension_name.data,
                 self._schema_view.extension_name.size_bytes
             )
-            return name_bytes.decode('UTF-8')
+            return name_bytes.decode()
+        else:
+            return None
 
     @property
     def extension_metadata(self):
@@ -959,7 +987,8 @@ cdef class CSchemaView:
                 self._schema_view.extension_metadata.data,
                 self._schema_view.extension_metadata.size_bytes
             )
-
+        else:
+            return None
 
     def __repr__(self):
         return _repr_utils.schema_view_repr(self)
@@ -2293,7 +2322,7 @@ cdef class CArrayBuilder:
     def allocate():
         return CArrayBuilder(CArray.allocate(CSchema.allocate()))
 
-    def empty(self):
+    def is_empty(self):
         if self._ptr.release == NULL:
             raise RuntimeError("CArrayBuilder is not initialized")
 

@@ -144,10 +144,10 @@ def test_c_array_builder_init():
     builder = CArrayBuilder.allocate()
 
     with pytest.raises(RuntimeError, match="CArrayBuilder is not initialized"):
-        builder.empty()
+        builder.is_empty()
 
     builder.init_from_type(na.Type.INT32.value)
-    assert builder.empty()
+    assert builder.is_empty()
 
     with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
         builder.init_from_type(na.Type.INT32.value)
