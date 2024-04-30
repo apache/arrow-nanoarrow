@@ -55,7 +55,7 @@ cmake ../apache-arrow-${ARROW_CPP_VERSION}/cpp \
   -DARROW_FILESYSTEM=OFF \
   -DCMAKE_INSTALL_PREFIX="${ARROW_CPP_INSTALL_DIR}"
 cmake --build . --parallel $(nproc)
-cmake --install . --prefix="${ARROW_CPP_INSTALL_DIR}"
+cmake --install . --prefix="${ARROW_CPP_INSTALL_DIR}" --config=Release
 
 popd
 
