@@ -117,7 +117,7 @@ def c_array(obj, schema=None) -> CArray:
         builder_cls = _resolve_builder(obj)
     except Exception as e:
         raise TypeError(
-            f"An error occurred whilst converting {type(obj).__name__} "
+            f"Can't convert object of type {type(obj).__name__} "
             f"to nanoarrow.c_array: \n {e}"
         ) from e
 
