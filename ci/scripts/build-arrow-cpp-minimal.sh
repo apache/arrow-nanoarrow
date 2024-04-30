@@ -49,6 +49,7 @@ curl -L "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/ar
   tar -zxf -
 mkdir build && cd build
 cmake ../apache-arrow-${ARROW_CPP_VERSION}/cpp \
+  -DCMAKE_BUILD_TYPE=Release \
   -DARROW_JEMALLOC=OFF \
   -DARROW_SIMD_LEVEL=NONE \
   -DARROW_FILESYSTEM=OFF \
