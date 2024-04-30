@@ -20,8 +20,8 @@ import pytest
 import nanoarrow as na
 
 
-def test_buffer_view_bool():
-    bool_array_view = na.c_array_view([1, 0, 0, 1], na.bool())
+def test_buffer_view_boolean():
+    bool_array_view = na.c_array_view([1, 0, 0, 1], na.boolean())
     view = bool_array_view.buffer(1)
 
     assert view.element_size_bits == 1
