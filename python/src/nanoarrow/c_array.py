@@ -329,22 +329,22 @@ class ArrayBuilder:
     def __init__(self, schema):
         self._schema = c_schema(schema)
         self._schema_view = c_schema_view(self._schema)
+        self._c_builder = CArrayBuilder.allocate()
+        self._c_builder.init_from_schema(self._schema)
 
     def build_c_array(self, obj):
-        builder = CArrayBuilder.allocate()
-        builder.init_from_schema(self._schema)
-        self.start_building(builder)
-        self.append(builder, obj)
-        return self.finish_building(builder)
+        self.start_building()
+        self.append(obj)
+        return self.finish_building()
 
-    def start_building(self, c_builder: CArrayBuilder) -> None:
+    def start_building(self) -> None:
         pass
 
-    def append(self, c_builder: CArrayBuilder, obj: Any) -> None:
+    def append(self, obj: Any) -> None:
         raise NotImplementedError()
 
-    def finish_building(self, c_builder: CArrayBuilder) -> CArray:
-        return c_builder.finish()
+    def finish_building(self) -> CArray:
+        return self._c_builder.finish()
 
 
 class EmptyArrayBuilder(ArrayBuilder):
@@ -358,10 +358,10 @@ class EmptyArrayBuilder(ArrayBuilder):
     def infer_schema(cls, obj) -> Tuple[Any, CSchema]:
         return obj, CSchemaBuilder.allocate().set_type(CArrowType.NA)
 
-    def start_building(self, c_builder: CArrayBuilder) -> None:
-        c_builder.start_appending()
+    def start_building(self) -> None:
+        self._c_builder.start_appending()
 
-    def append(self, c_builder: CArrayBuilder, obj: Any) -> None:
+    def append(self, obj: Any) -> None:
         if len(obj) != 0:
             raise ValueError(
                 f"Can't build empty array from {type(obj).__name__} "
@@ -410,8 +410,8 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
                 f"Can't build array of type {self._schema_view.type} from PyBuffer"
             )
 
-    def append(self, c_builder: CArrayBuilder, obj: Any) -> None:
-        if not c_builder.is_empty():
+    def append(self, obj: Any) -> None:
+        if not self._c_builder.is_empty():
             raise ValueError("Can't append to non-empty ArrayFromPyBufferBuilder")
 
         if not isinstance(obj, CBuffer):
@@ -426,10 +426,10 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
                 f"but got buffer with format '{obj.format}'"
             )
 
-        c_builder.set_buffer(1, obj)
-        c_builder.set_length(len(obj))
-        c_builder.set_null_count(0)
-        c_builder.set_offset(0)
+        self._c_builder.set_buffer(1, obj)
+        self._c_builder.set_length(len(obj))
+        self._c_builder.set_null_count(0)
+        self._c_builder.set_offset(0)
 
 
 class ArrayFromIterableBuilder(ArrayBuilder):
@@ -468,69 +468,63 @@ class ArrayFromIterableBuilder(ArrayBuilder):
 
         self._append_impl = getattr(self, method_name)
 
-    def start_building(self, c_builder: CArrayBuilder) -> None:
-        c_builder.start_appending()
+    def start_building(self) -> None:
+        self._c_builder.start_appending()
 
-    def append(self, c_builder: CArrayBuilder, obj: Any) -> None:
-        self._append_impl(c_builder, obj)
+    def append(self, obj: Any) -> None:
+        self._append_impl(obj)
 
-    def _append_strings(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
-        c_builder.append_strings(obj)
+    def _append_strings(self, obj: Iterable) -> None:
+        self._c_builder.append_strings(obj)
 
-    def _append_bytes(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
-        c_builder.append_bytes(obj)
+    def _append_bytes(self, obj: Iterable) -> None:
+        self._c_builder.append_bytes(obj)
 
-    def _build_nullable_array_using_array(
-        self, c_builder: CArrayBuilder, obj: Iterable
-    ) -> None:
+    def _build_nullable_array_using_array(self, obj: Iterable) -> None:
         wrapper = NoneAwareWrapperIterator(
             obj, self._schema_view.storage_type_id, self._schema_view.fixed_size
         )
-        self._append_using_array(c_builder, wrapper)
+        self._append_using_array(wrapper)
 
         _, null_count, validity = wrapper.finish()
         if validity is not None:
-            c_builder.set_buffer(0, validity, move=True)
+            self._c_builder.set_buffer(0, validity, move=True)
 
-        c_builder.set_null_count(null_count)
+        self._c_builder.set_null_count(null_count)
 
-    def _build_nullable_array_using_buffer_builder(
-        self, c_builder: CArrayBuilder, obj: Iterable
-    ) -> None:
+    def _build_nullable_array_using_buffer_builder(self, obj: Iterable) -> None:
         wrapper = NoneAwareWrapperIterator(
             obj, self._schema_view.storage_type_id, self._schema_view.fixed_size
         )
-        self._append_using_buffer_builder(c_builder, wrapper)
+        self._append_using_buffer_builder(wrapper)
 
         _, null_count, validity = wrapper.finish()
         if validity is not None:
-            c_builder.set_buffer(0, validity, move=True)
+            self._c_builder.set_buffer(0, validity, move=True)
 
-        c_builder.set_null_count(null_count)
+        self._c_builder.set_null_count(null_count)
 
-    def _append_using_array(self, c_builder: CArrayBuilder, obj: Iterable) -> None:
+    def _append_using_array(self, obj: Iterable) -> None:
         from array import array
 
         py_array = array(self._schema_view.buffer_format, obj)
         buffer = CBuffer.from_pybuffer(py_array)
-        c_builder.set_buffer(1, buffer, move=True)
-        c_builder.set_length(len(buffer))
-        c_builder.set_null_count(0)
-        c_builder.set_offset(0)
+        self._c_builder.set_buffer(1, buffer, move=True)
+        self._c_builder.set_length(len(buffer))
+        self._c_builder.set_null_count(0)
+        self._c_builder.set_offset(0)
 
-    def _append_using_buffer_builder(
-        self, c_builder: CArrayBuilder, obj: Iterable
-    ) -> None:
+    def _append_using_buffer_builder(self, obj: Iterable) -> None:
         builder = CBufferBuilder()
         builder.set_data_type(self._schema_view.type_id)
 
         n_values = builder.write_elements(obj)
 
         buffer = builder.finish()
-        c_builder.set_buffer(1, buffer, move=True)
-        c_builder.set_length(n_values)
-        c_builder.set_null_count(0)
-        c_builder.set_offset(0)
+        self._c_builder.set_buffer(1, buffer, move=True)
+        self._c_builder.set_length(n_values)
+        self._c_builder.set_null_count(0)
+        self._c_builder.set_offset(0)
 
 
 _ARRAY_BUILDER_FROM_ITERABLE_METHOD = {
