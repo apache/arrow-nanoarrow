@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-src/nanoarrow/vendor
+vendor/
 src/nanoarrow/_lib.c
 src/nanoarrow/_ipc_lib.c
 
