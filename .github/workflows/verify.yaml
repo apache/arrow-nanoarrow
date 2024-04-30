@@ -78,22 +78,17 @@ jobs:
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: arrow
-          key: arrow-${{ runner.os }}-6
+          # Bump the number at the end of this line to force a new Arrow C++ build
+          key: arrow-${{ runner.os }}-${{ runner.arch }}-1
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          curl https://dlcdn.apache.org/arrow/arrow-14.0.2/apache-arrow-14.0.2.tar.gz | \
-            tar -zxf -
-          mkdir arrow-build && cd arrow-build
-          cmake ../apache-arrow-14.0.2/cpp -DCMAKE_INSTALL_PREFIX=../arrow
-          cmake --build .
-          cmake --install . --prefix=../arrow ${{ matrix.config.extra_cmake_install }}
-          cd ..
+          src/ci/scripts/build-arrow-cpp-minimal.sh 15.0.2 arrow
 
       - name: Set CMake options (Windows)
         if: matrix.config.label == 'windows'

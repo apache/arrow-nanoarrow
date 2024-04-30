@@ -17,7 +17,7 @@
 
 import pytest
 from nanoarrow._lib import NanoarrowException
-from nanoarrow.c_lib import CArrayStream
+from nanoarrow.c_array_stream import CArrayStream
 
 import nanoarrow as na
 
@@ -101,7 +101,7 @@ def test_c_array_stream_from_c_array_fallback():
 
 
 def test_c_array_stream_error():
-    msg = "Can't convert object of type NoneType"
+    msg = "Can't resolve ArrayBuilder"
     with pytest.raises(TypeError, match=msg):
         na.c_array_stream(None)
 

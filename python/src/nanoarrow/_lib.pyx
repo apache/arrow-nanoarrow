@@ -34,7 +34,7 @@ generally have better autocomplete + documentation available to IDEs).
 from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from libc.string cimport memcpy
 from libc.stdio cimport snprintf
-from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString, PyBytes_Size
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
@@ -769,6 +769,28 @@ cdef class CSchema:
         else:
             return None
 
+    def modify(self, *, name=None, flags=None, nullable=None, metadata=None,
+               validate=True):
+        builder = CSchemaBuilder.copy(self)
+
+        if name is not None:
+            builder.set_name(name)
+
+        if flags is not None:
+            builder.set_flags(flags)
+
+        if nullable is not None:
+            builder.set_nullable(nullable)
+
+        if metadata is not None:
+            builder.clear_metadata()
+            builder.append_metadata(metadata)
+
+        if validate:
+            builder.validate()
+
+        return builder.finish()
+
 
 cdef class CSchemaView:
     """Low-level ArrowSchemaView wrapper
@@ -837,21 +859,47 @@ cdef class CSchemaView:
         return self._schema_view.storage_type
 
     @property
+    def buffer_format(self):
+        """The Python struct format representing an element of this type
+        or None if there is no Python format string that can represent this
+        type.
+        """
+        if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
+            return None
+
+        cdef char out[128]
+        cdef int element_size_bits = 0
+        if self._schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
+            element_size_bits = self._schema_view.fixed_size * 8
+
+        try:
+            c_format_from_arrow_type(self._schema_view.type, element_size_bits, sizeof(out), out)
+            return out.decode()
+        except ValueError:
+            return None
+
+    @property
     def type(self):
         cdef const char* type_str = ArrowTypeString(self._schema_view.type)
         if type_str != NULL:
-            return type_str.decode('UTF-8')
+            return type_str.decode()
+        else:
+            raise ValueError("ArrowTypeString() returned NULL")
 
     @property
     def storage_type(self):
         cdef const char* type_str = ArrowTypeString(self._schema_view.storage_type)
         if type_str != NULL:
-            return type_str.decode('UTF-8')
+            return type_str.decode()
+        else:
+            raise ValueError("ArrowTypeString() returned NULL")
 
     @property
     def dictionary_ordered(self):
         if self._schema_view.type == NANOARROW_TYPE_DICTIONARY:
             return self._dictionary_ordered != 0
+        else:
+            return None
 
     @property
     def nullable(self):
@@ -861,47 +909,65 @@ cdef class CSchemaView:
     def map_keys_sorted(self):
         if self._schema_view.type == NANOARROW_TYPE_MAP:
             return self._map_keys_sorted != 0
+        else:
+            return None
 
     @property
     def fixed_size(self):
         if self._schema_view.type in CSchemaView._fixed_size_types:
             return self._schema_view.fixed_size
+        else:
+            return None
 
     @property
     def decimal_bitwidth(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_bitwidth
+        else:
+            return None
 
     @property
     def decimal_precision(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_precision
+        else:
+            return None
 
     @property
     def decimal_scale(self):
         if self._schema_view.type in CSchemaView._decimal_types:
             return self._schema_view.decimal_scale
+        else:
+            return None
 
     @property
     def time_unit_id(self):
         if self._schema_view.type in CSchemaView._time_unit_types:
             return self._schema_view.time_unit
+        else:
+            return None
 
     @property
     def time_unit(self):
         if self._schema_view.type in CSchemaView._time_unit_types:
-            return ArrowTimeUnitString(self._schema_view.time_unit).decode('UTF-8')
+            return ArrowTimeUnitString(self._schema_view.time_unit).decode()
+        else:
+            return None
 
     @property
     def timezone(self):
         if self._schema_view.type == NANOARROW_TYPE_TIMESTAMP:
-            return self._schema_view.timezone.decode('UTF_8')
+            return self._schema_view.timezone.decode()
+        else:
+            return None
 
     @property
     def union_type_ids(self):
         if self._schema_view.type in CSchemaView._union_types:
-            type_ids_str = self._schema_view.union_type_ids.decode('UTF-8').split(',')
+            type_ids_str = self._schema_view.union_type_ids.decode().split(',')
             return (int(type_id) for type_id in type_ids_str)
+        else:
+            return None
 
     @property
     def extension_name(self):
@@ -910,7 +976,9 @@ cdef class CSchemaView:
                 self._schema_view.extension_name.data,
                 self._schema_view.extension_name.size_bytes
             )
-            return name_bytes.decode('UTF-8')
+            return name_bytes.decode()
+        else:
+            return None
 
     @property
     def extension_metadata(self):
@@ -919,7 +987,8 @@ cdef class CSchemaView:
                 self._schema_view.extension_metadata.data,
                 self._schema_view.extension_metadata.size_bytes
             )
-
+        else:
+            return None
 
     def __repr__(self):
         return _repr_utils.schema_view_repr(self)
@@ -968,8 +1037,48 @@ cdef class CSchemaBuilder:
             ArrowSchemaInit(self._ptr)
 
     @staticmethod
+    def copy(CSchema schema):
+        return CSchemaBuilder(schema.__deepcopy__())
+
+    @staticmethod
     def allocate():
         return CSchemaBuilder(CSchema.allocate())
+
+    def clear_metadata(self):
+        cdef int code = ArrowSchemaSetMetadata(self.c_schema._ptr, NULL)
+        Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
+        return self
+
+    def append_metadata(self, metadata):
+        cdef CBuffer buffer = CBuffer.empty()
+
+        cdef const char* existing_metadata = self.c_schema._ptr.metadata
+        cdef int code = ArrowMetadataBuilderInit(buffer._ptr, existing_metadata)
+        Error.raise_error_not_ok("ArrowMetadataBuilderInit()", code)
+
+        cdef ArrowStringView key
+        cdef ArrowStringView value
+        cdef int32_t keys_added = 0
+
+        for k, v in metadata.items():
+            k = k.encode() if isinstance(k, str) else bytes(k)
+            key.data = PyBytes_AsString(k)
+            key.size_bytes = PyBytes_Size(k)
+
+            v = v.encode() if isinstance(v, str) else bytes(v)
+            value.data = PyBytes_AsString(v)
+            value.size_bytes = PyBytes_Size(v)
+
+            code = ArrowMetadataBuilderAppend(buffer._ptr, key, value)
+            Error.raise_error_not_ok("ArrowMetadataBuilderAppend()", code)
+
+            keys_added += 1
+
+        if keys_added > 0:
+            code = ArrowSchemaSetMetadata(self.c_schema._ptr, <const char*>buffer._ptr.data)
+            Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
+
+        return self
 
     def child(self, int64_t i):
         return CSchemaBuilder(self.c_schema.child(i))
@@ -1058,6 +1167,10 @@ cdef class CSchemaBuilder:
 
         return self
 
+    def set_flags(self, flags):
+        self._ptr.flags = flags
+        return self
+
     def set_nullable(self, nullable):
         if nullable:
             self._ptr.flags = self._ptr.flags | ARROW_FLAG_NULLABLE
@@ -1065,6 +1178,9 @@ cdef class CSchemaBuilder:
             self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_NULLABLE
 
         return self
+
+    def validate(self):
+        return CSchemaView(self.c_schema)
 
     def finish(self):
         self.c_schema._assert_valid()
@@ -1463,7 +1579,11 @@ cdef class SchemaMetadata:
         self._base = base
         self._metadata = <const char*>ptr
 
-    def _init_reader(self):
+    @staticmethod
+    def empty():
+        return SchemaMetadata(None, 0)
+
+    cdef _init_reader(self):
         cdef int code = ArrowMetadataReaderInit(&self._reader, self._metadata)
         Error.raise_error_not_ok("ArrowMetadataReaderInit()", code)
 
@@ -1471,13 +1591,36 @@ cdef class SchemaMetadata:
         self._init_reader()
         return self._reader.remaining_keys
 
+    def __contains__(self, item):
+        for key, _ in self.items():
+            if item == key:
+                return True
+
+        return False
+
+    def __getitem__(self, k):
+        out = None
+
+        for key, value in self.items():
+            if k == key:
+                if out is None:
+                    out = value
+                else:
+                    raise KeyError(f"key {k} matches more than one value in metadata")
+
+        return out
+
     def __iter__(self):
+        for key, _ in self.items():
+            yield key
+
+    def items(self):
         cdef ArrowStringView key
         cdef ArrowStringView value
         self._init_reader()
         while self._reader.remaining_keys > 0:
             ArrowMetadataReaderRead(&self._reader, &key, &value)
-            key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes).decode('UTF-8')
+            key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
 
@@ -2178,6 +2321,12 @@ cdef class CArrayBuilder:
     @staticmethod
     def allocate():
         return CArrayBuilder(CArray.allocate(CSchema.allocate()))
+
+    def is_empty(self):
+        if self._ptr.release == NULL:
+            raise RuntimeError("CArrayBuilder is not initialized")
+
+        return self._ptr.length == 0
 
     def init_from_type(self, int type_id):
         if self._ptr.release != NULL:

@@ -49,12 +49,13 @@ curl -L "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/ar
   tar -zxf -
 mkdir build && cd build
 cmake ../apache-arrow-${ARROW_CPP_VERSION}/cpp \
+  -DCMAKE_BUILD_TYPE=Debug \
   -DARROW_JEMALLOC=OFF \
   -DARROW_SIMD_LEVEL=NONE \
   -DARROW_FILESYSTEM=OFF \
   -DCMAKE_INSTALL_PREFIX="${ARROW_CPP_INSTALL_DIR}"
 cmake --build . --parallel $(nproc)
-cmake --install . --prefix="${ARROW_CPP_INSTALL_DIR}"
+cmake --install . --prefix="${ARROW_CPP_INSTALL_DIR}" --config=Debug
 
 popd
 

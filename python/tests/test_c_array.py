@@ -16,21 +16,9 @@
 # under the License.
 
 import pytest
-from nanoarrow._lib import NanoarrowException
-from nanoarrow.c_lib import CArrayBuilder
+from nanoarrow._lib import CArrayBuilder, NanoarrowException
 
 import nanoarrow as na
-
-
-def test_c_array_builder_init():
-    builder = CArrayBuilder.allocate()
-    builder.init_from_type(na.Type.INT32.value)
-
-    with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
-        builder.init_from_type(na.Type.INT32.value)
-
-    with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
-        builder.init_from_schema(na.c_schema(na.int32()))
 
 
 def test_c_array_from_c_array():
@@ -81,7 +69,7 @@ def test_c_array_from_old_pyarrow():
 
     # Make sure that this heuristic won't result in trying to import
     # something else that has an _export_to_c method
-    with pytest.raises(TypeError, match="Can't convert object of type DataType"):
+    with pytest.raises(TypeError, match="Can't resolve ArrayBuilder"):
         not_array = pa.int32()
         assert hasattr(not_array, "_export_to_c")
         na.c_array(not_array)
@@ -107,7 +95,8 @@ def test_c_array_from_bare_capsule():
 
 
 def test_c_array_type_not_supported():
-    with pytest.raises(TypeError, match="Can't convert object of type NoneType"):
+    msg = "Can't resolve ArrayBuilder for object of type NoneType"
+    with pytest.raises(TypeError, match=msg):
         na.c_array(None)
 
 
@@ -149,6 +138,22 @@ def test_c_array_slice_errors():
         array[:4]
     with pytest.raises(IndexError):
         array[1:0]
+
+
+def test_c_array_builder_init():
+    builder = CArrayBuilder.allocate()
+
+    with pytest.raises(RuntimeError, match="CArrayBuilder is not initialized"):
+        builder.is_empty()
+
+    builder.init_from_type(na.Type.INT32.value)
+    assert builder.is_empty()
+
+    with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
+        builder.init_from_type(na.Type.INT32.value)
+
+    with pytest.raises(RuntimeError, match="CArrayBuilder is already initialized"):
+        builder.init_from_schema(na.c_schema(na.int32()))
 
 
 def test_c_array_from_pybuffer_uint8():
@@ -230,7 +235,7 @@ def test_c_array_from_iterable_string():
     assert len(array_view.buffer(2)) == 7
 
     # Check an item that is not a str()
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         na.c_array([b"1234"], na.string())
 
 
@@ -244,7 +249,7 @@ def test_c_array_from_iterable_bytes():
     assert len(array_view.buffer(1)) == 4
     assert len(array_view.buffer(2)) == 7
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         na.c_array(["1234"], na.binary())
 
     buf_not_bytes = na.c_buffer([1, 2, 3], na.int32())

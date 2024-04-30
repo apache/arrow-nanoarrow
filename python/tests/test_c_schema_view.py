@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow.c_lib import c_schema_view
+from nanoarrow.c_schema import c_schema_view
 
 import nanoarrow as na
 

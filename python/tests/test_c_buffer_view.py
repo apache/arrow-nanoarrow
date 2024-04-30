@@ -16,13 +16,12 @@
 # under the License.
 
 import pytest
-from nanoarrow.c_lib import c_array_view
 
 import nanoarrow as na
 
 
 def test_buffer_view_bool():
-    bool_array_view = c_array_view([1, 0, 0, 1], na.bool())
+    bool_array_view = na.c_array_view([1, 0, 0, 1], na.bool())
     view = bool_array_view.buffer(1)
 
     assert view.element_size_bits == 1
@@ -64,7 +63,7 @@ def test_buffer_view_bool():
 
 
 def test_buffer_view_non_bool():
-    array_view = c_array_view([1, 2, 3, 5], na.int32())
+    array_view = na.c_array_view([1, 2, 3, 5], na.int32())
     view = array_view.buffer(1)
 
     assert view.element_size_bits == 32

@@ -32,22 +32,26 @@ def test_c_version():
 
 
 def test_c_schema_helper():
+    from nanoarrow.c_schema import CSchema
+
     schema = na.allocate_c_schema()
     assert na.c_schema(schema) is schema
 
     schema = na.c_schema(pa.null())
-    assert isinstance(schema, na.c_lib.CSchema)
+    assert isinstance(schema, CSchema)
 
     with pytest.raises(TypeError):
         na.c_schema(1234)
 
 
 def test_c_array_helper():
+    from nanoarrow.c_array import CArray
+
     array = na.allocate_c_array()
     assert na.c_array(array) is array
 
     array = na.c_array(pa.array([], pa.null()))
-    assert isinstance(array, na.c_lib.CArray)
+    assert isinstance(array, CArray)
 
     with pytest.raises(TypeError):
         na.c_array(1234)
@@ -62,114 +66,12 @@ def test_array_stream_helper():
 
 
 def test_array_view_helper():
+    from nanoarrow.c_array import CArrayView
+
     array = na.c_array(pa.array([1, 2, 3]))
     view = na.c_array_view(array)
-    assert isinstance(view, na.c_lib.CArrayView)
+    assert isinstance(view, CArrayView)
     assert na.c_array_view(view) is view
-
-
-def test_c_schema_basic():
-    schema = na.allocate_c_schema()
-    assert schema.is_valid() is False
-    assert schema._to_string() == "[invalid: schema is released]"
-    assert repr(schema) == "<nanoarrow.c_lib.CSchema <released>>"
-
-    schema = na.c_schema(pa.schema([pa.field("some_name", pa.int32())]))
-
-    assert schema.format == "+s"
-    assert schema.flags == 0
-    assert schema.metadata is None
-    assert schema.n_children == 1
-    assert len(list(schema.children)) == 1
-    assert schema.child(0).format == "i"
-    assert schema.child(0).name == "some_name"
-    assert schema.child(0)._to_string() == "int32"
-    assert "<nanoarrow.c_lib.CSchema int32>" in repr(schema)
-    assert schema.dictionary is None
-
-    with pytest.raises(IndexError):
-        schema.child(1)
-
-
-def test_c_schema_dictionary():
-    schema = na.c_schema(pa.dictionary(pa.int32(), pa.utf8()))
-    assert schema.format == "i"
-    assert schema.dictionary.format == "u"
-    assert "dictionary: <nanoarrow.c_lib.CSchema string" in repr(schema)
-
-
-def test_schema_metadata():
-    meta = {"key1": "value1", "key2": "value2"}
-    schema = na.c_schema(pa.field("", pa.int32(), metadata=meta))
-
-    assert len(schema.metadata) == 2
-
-    meta2 = {k: v for k, v in schema.metadata}
-    assert list(meta2.keys()) == ["key1", "key2"]
-    assert list(meta2.values()) == [b"value1", b"value2"]
-    assert "'key1': b'value1'" in repr(schema)
-
-
-def test_c_schema_view():
-    schema = na.allocate_c_schema()
-    with pytest.raises(RuntimeError):
-        na.c_schema_view(schema)
-
-    schema = na.c_schema(pa.int32())
-    view = na.c_schema_view(schema)
-    assert "- type: 'int32'" in repr(view)
-    assert view.type == "int32"
-    assert view.storage_type == "int32"
-
-    assert view.fixed_size is None
-    assert view.decimal_bitwidth is None
-    assert view.decimal_scale is None
-    assert view.time_unit is None
-    assert view.timezone is None
-    assert view.union_type_ids is None
-    assert view.extension_name is None
-    assert view.extension_metadata is None
-
-
-def test_c_schema_view_extra_params():
-    schema = na.c_schema(pa.binary(12))
-    view = na.c_schema_view(schema)
-    assert view.fixed_size == 12
-
-    schema = na.c_schema(pa.list_(pa.int32(), 12))
-    assert view.fixed_size == 12
-
-    schema = na.c_schema(pa.decimal128(10, 3))
-    view = na.c_schema_view(schema)
-    assert view.decimal_bitwidth == 128
-    assert view.decimal_precision == 10
-    assert view.decimal_scale == 3
-
-    schema = na.c_schema(pa.decimal256(10, 3))
-    view = na.c_schema_view(schema)
-    assert view.decimal_bitwidth == 256
-    assert view.decimal_precision == 10
-    assert view.decimal_scale == 3
-
-    schema = na.c_schema(pa.duration("us"))
-    view = na.c_schema_view(schema)
-    assert view.time_unit == "us"
-
-    schema = na.c_schema(pa.timestamp("us", tz="America/Halifax"))
-    view = na.c_schema_view(schema)
-    assert view.type == "timestamp"
-    assert view.storage_type == "int64"
-    assert view.time_unit == "us"
-    assert view.timezone == "America/Halifax"
-
-    meta = {
-        "ARROW:extension:name": "some_name",
-        "ARROW:extension:metadata": "some_metadata",
-    }
-    schema = na.c_schema(pa.field("", pa.int32(), metadata=meta))
-    view = na.c_schema_view(schema)
-    assert view.extension_name == "some_name"
-    assert view.extension_metadata == b"some_metadata"
 
 
 def test_c_array_empty():

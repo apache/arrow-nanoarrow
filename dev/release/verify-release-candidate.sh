@@ -354,6 +354,30 @@ test_python() {
   show_info "Testing wheel"
   python -m pytest -vv
 
+  if [ ${TEST_WITH_MEMCHECK} -gt 0 ]; then
+    show_info "Setup environment for Python/valgrind"
+
+    # To have more control over exactly which dependencies are available,
+    # set up a separate venv to run. Essentially, we check for leaks in
+    # all self-contained tests but not tests involving pyarrow or numpy.
+    VALGRIND_PYTHON_VENV="${NANOARROW_TMPDIR}/python/valgrind_venv"
+    python -m venv "${VALGRIND_PYTHON_VENV}"
+    source "${VALGRIND_PYTHON_VENV}/bin/activate"
+    python -m pip install --upgrade pip
+    python -m pip install pytest
+
+    # Ensure we have debug symbols for the build we pass to valgrind
+    export NANOARROW_DEBUG_EXTENSION=1
+    pip install -e .
+
+    show_info "Run Python tests with valgrind"
+    valgrind --tool=memcheck --leak-check=full --error-exitcode=1 \
+        --suppressions="${NANOARROW_SOURCE_DIR}/valgrind.supp" \
+        python -m pytest -vv
+
+    deactivate
+  fi
+
   popd
 }
 

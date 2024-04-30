@@ -143,25 +143,29 @@ def test_export_invalid():
 
 
 def test_import_from_c_errors():
+    from nanoarrow.c_array import CArray
+    from nanoarrow.c_array_stream import CArrayStream
+    from nanoarrow.c_schema import CSchema
+
     # ensure proper error is raised in case of wrong object or wrong capsule
     pa_arr = pa.array([1, 2, 3], pa.int32())
 
     with pytest.raises(ValueError):
-        na.c_lib.CSchema._import_from_c_capsule("wrong")
+        CSchema._import_from_c_capsule("wrong")
 
     with pytest.raises(ValueError):
-        na.c_lib.CSchema._import_from_c_capsule(pa_arr.__arrow_c_array__())
+        CSchema._import_from_c_capsule(pa_arr.__arrow_c_array__())
 
     with pytest.raises(ValueError):
-        na.c_lib.CArray._import_from_c_capsule("wrong", "wrong")
+        CArray._import_from_c_capsule("wrong", "wrong")
 
     with pytest.raises(ValueError):
-        na.c_lib.CArray._import_from_c_capsule(
+        CArray._import_from_c_capsule(
             pa_arr.__arrow_c_array__(), pa_arr.type.__arrow_c_schema__()
         )
 
     with pytest.raises(ValueError):
-        na.c_lib.CArrayStream._import_from_c_capsule("wrong")
+        CArrayStream._import_from_c_capsule("wrong")
 
     with pytest.raises(ValueError):
-        na.c_lib.CArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())
+        CArrayStream._import_from_c_capsule(pa_arr.__arrow_c_array__())

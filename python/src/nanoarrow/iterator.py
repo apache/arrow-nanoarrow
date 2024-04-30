@@ -21,7 +21,8 @@ from itertools import islice
 from typing import Iterable, Tuple
 
 from nanoarrow._lib import CArrayView, CArrowType
-from nanoarrow.c_lib import c_array_stream, c_schema, c_schema_view
+from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_schema import c_schema, c_schema_view
 
 
 def iter_py(obj, schema=None) -> Iterable:
@@ -124,6 +125,10 @@ class LossyConversionWarning(UserWarning):
     pass
 
 
+class UnregisteredExtensionWarning(UserWarning):
+    pass
+
+
 class ArrayViewBaseIterator:
     """Base class for iterators that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
@@ -195,6 +200,17 @@ class PyIterator(ArrayViewBaseIterator):
     """
 
     def _iter_chunk(self, offset, length):
+        # Check for an extension type first since this isn't reflected by
+        # self._schema_view.type_id. Currently we just return the storage
+        # iterator with a warning for extension types.
+        maybe_extension_name = self._schema_view.extension_name
+        if maybe_extension_name:
+            self._warn(
+                f"Converting unregistered extension '{maybe_extension_name}' "
+                "as storage type",
+                UnregisteredExtensionWarning,
+            )
+
         type_id = self._schema_view.type_id
         if type_id not in _ITEMS_ITER_LOOKUP:
             raise KeyError(
@@ -513,7 +529,8 @@ def _get_tzinfo(tz_string, strategy=None):
             pass
 
     raise RuntimeError(
-        "zoneinfo (Python 3.9+) or dateutil is required to resolve timezone"
+        "zoneinfo (Python 3.9+, with tzdata on Windows) or "
+        "dateutil is required to resolve timezone"
     )
 
 

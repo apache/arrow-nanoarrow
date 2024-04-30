@@ -19,7 +19,7 @@ import struct
 import sys
 
 import pytest
-from nanoarrow.c_lib import CBuffer, CBufferBuilder
+from nanoarrow._lib import CBuffer, CBufferBuilder
 
 import nanoarrow as na
 
@@ -263,6 +263,9 @@ def test_c_buffer_from_iterable():
     # type will error.
     with pytest.raises(ValueError, match="Can't create buffer"):
         na.c_buffer([1, 2, 3], na.date32())
+
+    with pytest.raises(ValueError, match="Can't create buffer"):
+        na.c_buffer([1, 2, 3], na.extension_type(na.int32(), "arrow.test"))
 
 
 def test_c_buffer_from_fixed_size_binary_iterable():

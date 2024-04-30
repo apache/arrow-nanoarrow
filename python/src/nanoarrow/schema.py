@@ -17,10 +17,17 @@
 
 import enum
 import reprlib
-from typing import Union
+from functools import cached_property
+from typing import Mapping, Union
 
-from nanoarrow._lib import CArrowTimeUnit, CArrowType, CSchemaBuilder, CSchemaView
-from nanoarrow.c_lib import c_schema
+from nanoarrow._lib import (
+    CArrowTimeUnit,
+    CArrowType,
+    CSchemaBuilder,
+    CSchemaView,
+    SchemaMetadata,
+)
+from nanoarrow.c_schema import c_schema
 
 
 class Type(enum.Enum):
@@ -108,10 +115,75 @@ class TimeUnit(enum.Enum):
         return TimeUnit(obj)
 
 
+class ExtensionAccessor:
+    """Accessor for extension type parameters"""
+
+    def __init__(self, schema) -> None:
+        self._schema = schema
+
+    @property
+    def name(self) -> str:
+        """Extension name for this extension type"""
+        return self._schema._c_schema_view.extension_name
+
+    @property
+    def metadata(self) -> Union[bytes, None]:
+        """Extension metadata for this extension type if present"""
+        extension_metadata = self._schema._c_schema_view.extension_metadata
+        return extension_metadata if extension_metadata else None
+
+    @property
+    def storage(self):
+        """Storage type for this extension type"""
+        metadata = dict(self._schema.metadata.items())
+
+        # Remove metadata keys that cause this type to be treated as an extension
+        del metadata[b"ARROW:extension:name"]
+        if b"ARROW:extension:metadata" in metadata:
+            del metadata[b"ARROW:extension:metadata"]
+
+        return Schema(self._schema, metadata=metadata)
+
+
 class Schema:
-    """The Schema is nanoarrow's high-level data type representation whose scope maps to
-    that of the ArrowSchema in the Arrow C Data interface. See :func:`schema` for class
-    details.
+    """Create a nanoarrow Schema
+
+    The Schema is nanoarrow's high-level data type representation, encompassing
+    the role of PyArrow's ``Schema``, ``Field``, and ``DataType``. This scope
+    maps to that of the ArrowSchema in the Arrow C Data interface.
+
+    Parameters
+    ----------
+    obj :
+        A :class:`Type` specifier or a schema-like object. A schema-like object
+        includes:
+        * A ``pyarrow.Schema``, `pyarrow.Field``, or ``pyarrow.DataType``
+        * A nanoarrow :class:`Schema`, :class:`CSchema`, or :class:`Type`
+        * Any object implementing the Arrow PyCapsule interface protocol method.
+
+    name : str, optional
+        An optional name to bind to this field.
+
+    nullable : bool, optional
+        Explicitly specify field nullability. Fields are nullable by default.
+
+    metadata : mapping, optional
+        Explicitly specify field metadata.
+
+    params :
+        Type-specific parameters when ``obj`` is a :class:`Type`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> import pyarrow as pa
+    >>> na.Schema(na.Type.INT32)
+    Schema(INT32)
+    >>> na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
+    Schema(DURATION, unit=SECOND)
+    >>> na.Schema(pa.int32())
+    Schema(INT32)
     """
 
     def __init__(
@@ -120,18 +192,24 @@ class Schema:
         *,
         name=None,
         nullable=None,
+        metadata=None,
         **params,
     ) -> None:
         if isinstance(obj, Type):
-            self._c_schema = _c_schema_from_type_and_params(obj, params, name, nullable)
-        elif not params and nullable is None and name is None:
-            self._c_schema = c_schema(obj)
-        else:
-            # A future version could also deep copy the schema and update it if these
-            # values *are* specified.
-            raise ValueError(
-                "params, nullable, and name must be unspecified if type is not "
-                "nanoarrow.Type"
+            self._c_schema = _c_schema_from_type_and_params(
+                obj, params, name, nullable, metadata
+            )
+            self._c_schema_view = CSchemaView(self._c_schema)
+            return
+
+        if params:
+            raise ValueError("params are only supported for obj of class Type")
+
+        self._c_schema = c_schema(obj)
+
+        if name is not None or nullable is not None or metadata is not None:
+            self._c_schema = self._c_schema.modify(
+                name=name, nullable=nullable, metadata=metadata
             )
 
         self._c_schema_view = CSchemaView(self._c_schema)
@@ -144,7 +222,10 @@ class Schema:
         >>> na.int32().type
         <Type.INT32: 8>
         """
-        return Type(self._c_schema_view.type_id)
+        if self._c_schema_view.extension_name:
+            return Type.EXTENSION
+        else:
+            return Type(self._c_schema_view.type_id)
 
     @property
     def name(self) -> Union[str, None]:
@@ -168,6 +249,35 @@ class Schema:
         False
         """
         return self._c_schema_view.nullable
+
+    @cached_property
+    def metadata(self) -> Mapping[bytes, bytes]:
+        """Access field metadata of this field
+
+        >>> import nanoarrow as na
+        >>> schema = na.Schema(na.int32(), metadata={"key": "value"})
+        >>> dict(schema.metadata.items())
+        {b'key': b'value'}
+        """
+        c_schema_metadata = self._c_schema.metadata
+        return (
+            SchemaMetadata.empty() if c_schema_metadata is None else c_schema_metadata
+        )
+
+    @cached_property
+    def extension(self) -> Union[ExtensionAccessor, None]:
+        """Access extension type attributes
+
+        >>> import nanoarrow as na
+        >>> schema = na.extension_type(na.int32(), "arrow.example", b"{}")
+        >>> schema.extension.name
+        'arrow.example'
+        >>> schema.extension.metadata
+        b'{}'
+        """
+        extension_name = self._c_schema_view.extension_name
+        if extension_name:
+            return ExtensionAccessor(self)
 
     @property
     def byte_width(self) -> Union[int, None]:
@@ -278,48 +388,6 @@ class Schema:
 
     def __arrow_c_schema__(self):
         return self._c_schema.__arrow_c_schema__()
-
-
-def schema(obj, *, name=None, nullable=None, **params):
-    """Create a nanoarrow Schema
-
-    The Schema is nanoarrow's high-level data type representation, encompasing
-    the role of PyArrow's ``Schema``, ``Field``, and ``DataType``. This scope
-    maps to that of the ArrowSchema in the Arrow C Data interface.
-
-    Parameters
-    ----------
-    obj :
-        A :class:`Type` specifier or a schema-like object. A schema-like object
-        includes:
-        * A ``pyarrow.Schema``, `pyarrow.Field``, or ``pyarrow.DataType``
-        * A nanoarrow :class:`Schema`, :class:`CSchema`, or :class:`Type`
-        * Any object implementing the Arrow PyCapsule interface protocol method.
-
-    name : str, optional
-        An optional name to bind to this field.
-
-    nullable : bool, optional
-        Explicitly specify field nullability. Fields are nullable by default.
-        Only supported if ``obj`` is a :class:`Type` object (for any other input,
-        the nullability is preserved from the passed object).
-
-    params :
-        Type-specific parameters when ``obj`` is a :class:`Type`.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> import pyarrow as pa
-    >>> na.schema(na.Type.INT32)
-    Schema(INT32)
-    >>> na.schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
-    Schema(DURATION, unit=SECOND)
-    >>> na.schema(pa.int32())
-    Schema(INT32)
-    """
-    return Schema(obj, name=name, nullable=nullable, **params)
 
 
 def null(nullable: bool = True) -> Schema:
@@ -897,11 +965,40 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
+def extension_type(
+    storage_schema,
+    extension_name: str,
+    extension_metadata: Union[str, bytes, None] = None,
+    nullable: bool = True,
+) -> Schema:
+    """Create an Arrow extension type
+
+    Parameters
+    ----------
+    extension_name: str
+        The extension name to associate with this type.
+    extension_metadata: str or bytes, optional
+        Extension metadata containing extension parameters associated with this
+        extension type.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+    """
+    storage_schema = c_schema(storage_schema)
+    storage_metadata = storage_schema.metadata
+    metadata = dict(storage_metadata) if storage_metadata else {}
+    metadata["ARROW:extension:name"] = extension_name
+    if extension_metadata:
+        metadata["ARROW:extension:metadata"] = extension_metadata
+
+    return Schema(storage_schema, nullable=nullable, metadata=metadata)
+
+
 def _c_schema_from_type_and_params(
     type: Type,
     params: dict,
     name: Union[bool, None, bool],
     nullable: Union[bool, None],
+    metadata: Mapping[Union[str, bytes], Union[str, bytes]],
 ):
     factory = CSchemaBuilder.allocate()
 
@@ -951,6 +1048,10 @@ def _c_schema_from_type_and_params(
     elif name is False:
         name = None
     factory.set_name(name)
+
+    # Apply metadata
+    if metadata is not None:
+        factory.append_metadata(metadata)
 
     return factory.finish()
 
