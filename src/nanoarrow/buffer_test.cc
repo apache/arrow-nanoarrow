@@ -142,7 +142,7 @@ TEST(BufferTest, BufferTestFill) {
 
   ArrowBufferReset(&buffer);
 
-  EXPECT_EQ(ArrowBufferAppendFill(&buffer, 0, std::numeric_limits<int64_t>::max()),
+  EXPECT_EQ(ArrowBufferAppendFill(nullptr, 0, std::numeric_limits<int64_t>::max()),
             ENOMEM);
 }
 
@@ -171,7 +171,7 @@ TEST(BufferTest, BufferTestError) {
   ArrowBufferInit(&buffer);
   EXPECT_EQ(ArrowBufferResize(&buffer, std::numeric_limits<int64_t>::max(), false),
             ENOMEM);
-  EXPECT_EQ(ArrowBufferAppend(&buffer, nullptr, std::numeric_limits<int64_t>::max()),
+  EXPECT_EQ(ArrowBufferAppend(nullptr, &buffer, std::numeric_limits<int64_t>::max()),
             ENOMEM);
 
   ASSERT_EQ(ArrowBufferAppend(&buffer, "abcd", 4), NANOARROW_OK);
