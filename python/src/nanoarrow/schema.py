@@ -348,19 +348,47 @@ class Schema:
         return self._c_schema_view.decimal_scale
 
     @property
-    def index_type(self):
+    def index_type(self) -> Union["Schema", None]:
+        """Dictionary index type
+
+        For dictionary types, the type corresponding to the indices.
+        See also :attr:`value_type`.
+
+        >>> import nanoarrow as na
+        >>> na.dictionary(na.int32(), na.string()).index_type
+        Schema(INT32)
+        """
         if self._c_schema_view.type_id == CArrowType.DICTIONARY:
             index_schema = self._c_schema.modify(
                 dictionary=False, flags=0, nullable=self.nullable
             )
             return Schema(index_schema)
+        else:
+            return None
 
     @property
-    def dictionary_ordered(self):
+    def dictionary_ordered(self) -> Union[bool, None]:
+        """Dictionary ordering
+
+        For dictionary types, returns ``True`` if the order of dictionary values
+        are meaningful.
+
+        >>> import nanoarrow as na
+        >>> na.dictionary(na.int32(), na.string()).dictionary_ordered
+        False
+        """
         return self._c_schema_view.dictionary_ordered
 
     @property
     def value_type(self):
+        """Dictionary or list value type
+
+        >>> import nanoarrow as na
+        >>> na.list_(na.int32()).value_type
+        Schema(INT32, name='item')
+        >>> na.dictionary(na.int32(), na.string()).value_type
+        Schema(STRING)
+        """
         if self._c_schema_view.type_id in (
             CArrowType.LIST,
             CArrowType.LARGE_LIST,
@@ -369,11 +397,21 @@ class Schema:
             return self.field(0)
         elif self._c_schema_view.type_id == CArrowType.DICTIONARY:
             return Schema(self._c_schema.dictionary)
+        else:
+            return None
 
     @property
-    def list_size(self):
+    def list_size(self) -> Union[int, None]:
+        """Fixed-size list element size
+
+        >>> import nanoarrow as na
+        >>> na.fixed_size_list(na.int32(), 123).list_size
+        123
+        """
         if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_LIST:
             return self._c_schema_view.fixed_size
+        else:
+            return None
 
     @property
     def n_fields(self) -> int:
@@ -994,7 +1032,7 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
-def list_of(value_type, nullable=True) -> Schema:
+def list_(value_type, nullable=True) -> Schema:
     """Create a type representing a variable-size list of some other type.
 
     Parameters
@@ -1008,16 +1046,16 @@ def list_of(value_type, nullable=True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.list_of(na.int32())
+    >>> na.list_(na.int32())
     Schema(LIST, value_type=Schema(INT32, name='item'))
     """
     return Schema(Type.LIST, value_type=value_type, nullable=nullable)
 
 
-def large_list_of(value_type, nullable=True) -> Schema:
+def large_list(value_type, nullable=True) -> Schema:
     """Create a type representing a variable-size list of some other type.
 
-    Unlike :func:`list_of`, the func:`large_list_of` can accomodate arrays
+    Unlike :func:`list_`, the func:`large_list` can accomodate arrays
     with more than ``2 ** 31 - 1`` items in the values array.
 
     Parameters
@@ -1031,13 +1069,13 @@ def large_list_of(value_type, nullable=True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.large_list_of(na.int32())
+    >>> na.large_list(na.int32())
     Schema(LARGE_LIST, value_type=Schema(INT32, name='item'))
     """
     return Schema(Type.LARGE_LIST, value_type=value_type, nullable=nullable)
 
 
-def fixed_size_list_of(value_type, list_size, nullable=True) -> Schema:
+def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
     """Create a type representing a fixed-size list of some other type.
 
     Parameters
@@ -1053,7 +1091,7 @@ def fixed_size_list_of(value_type, list_size, nullable=True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.fixed_size_list_of(na.int32(), 123)
+    >>> na.fixed_size_list(na.int32(), 123)
     Schema(FIXED_SIZE_LIST, value_type=Schema(INT32, name='item'), list_size=123)
     """
     return Schema(
