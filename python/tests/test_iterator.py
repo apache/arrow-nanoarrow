@@ -17,6 +17,7 @@
 
 import datetime
 import decimal
+import os
 
 import pytest
 from nanoarrow.iterator import (
@@ -461,6 +462,8 @@ def test_get_tzinfo():
 
     pytest.importorskip("zoneinfo")
     pytest.importorskip("dateutil")
+    if os.name == "nt":
+        pytest.importorskip("tzdata")
 
     tz_zoneinfo = _get_tzinfo("America/Halifax", strategy=["zoneinfo"])
     tz_dateutil = _get_tzinfo("America/Halifax", strategy=["dateutil"])
