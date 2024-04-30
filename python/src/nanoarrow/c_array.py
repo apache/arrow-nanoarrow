@@ -113,13 +113,25 @@ def c_array(obj, schema=None) -> CArray:
 
     # Use the ArrayBuilder classes to handle various strategies for other
     # types of objects (e.g., iterable, pybuffer, empty).
-    builder_cls = _resolve_builder(obj)
+    try:
+        builder_cls = _resolve_builder(obj)
+    except Exception as e:
+        raise TypeError(
+            f"An error occurred whilst converting {type(obj).__name__} "
+            f"to nanoarrow.c_array: \n {e}"
+        ) from e
 
-    if schema is None:
-        obj, schema = builder_cls.infer_schema(obj)
+    try:
+        if schema is None:
+            obj, schema = builder_cls.infer_schema(obj)
 
-    builder = builder_cls(schema)
-    return builder.build_c_array(obj)
+        builder = builder_cls(schema)
+        return builder.build_c_array(obj)
+    except Exception as e:
+        raise ValueError(
+            f"An error occurred whilst converting {type(obj).__name__} "
+            f"to nanoarrow.c_array: \n {e}"
+        ) from e
 
 
 def _resolve_builder(obj):

@@ -235,7 +235,7 @@ def test_c_array_from_iterable_string():
     assert len(array_view.buffer(2)) == 7
 
     # Check an item that is not a str()
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         na.c_array([b"1234"], na.string())
 
 
@@ -249,7 +249,7 @@ def test_c_array_from_iterable_bytes():
     assert len(array_view.buffer(1)) == 4
     assert len(array_view.buffer(2)) == 7
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         na.c_array(["1234"], na.binary())
 
     buf_not_bytes = na.c_buffer([1, 2, 3], na.int32())
