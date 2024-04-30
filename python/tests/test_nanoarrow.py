@@ -32,22 +32,26 @@ def test_c_version():
 
 
 def test_c_schema_helper():
+    from nanoarrow.c_schema import CSchema
+
     schema = na.allocate_c_schema()
     assert na.c_schema(schema) is schema
 
     schema = na.c_schema(pa.null())
-    assert isinstance(schema, na.c_lib.CSchema)
+    assert isinstance(schema, CSchema)
 
     with pytest.raises(TypeError):
         na.c_schema(1234)
 
 
 def test_c_array_helper():
+    from nanoarrow.c_array import CArray
+
     array = na.allocate_c_array()
     assert na.c_array(array) is array
 
     array = na.c_array(pa.array([], pa.null()))
-    assert isinstance(array, na.c_lib.CArray)
+    assert isinstance(array, CArray)
 
     with pytest.raises(TypeError):
         na.c_array(1234)
@@ -62,9 +66,11 @@ def test_array_stream_helper():
 
 
 def test_array_view_helper():
+    from nanoarrow.c_array import CArrayView
+
     array = na.c_array(pa.array([1, 2, 3]))
     view = na.c_array_view(array)
-    assert isinstance(view, na.c_lib.CArrayView)
+    assert isinstance(view, CArrayView)
     assert na.c_array_view(view) is view
 
 
