@@ -172,26 +172,58 @@ cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
     array.release = NULL
 
 
-cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
-                               ArrowArray* c_array_out) noexcept:
-    """Make a shallow copy of an ArrowArray
+cdef void c_deallocate_pyobject_buffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
+    Py_DECREF(<object>allocator.private_data)
 
-    To more safely implement export of an ArrowArray whose address may be
-    depended on by some other Python object, we implement a shallow copy
-    whose constructor calls Py_INCREF() on a Python object responsible
-    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
-    the same object.
-    """
 
-    # shallow copy
-    memcpy(c_array_out, c_array, sizeof(ArrowArray))
-    c_array_out.release = NULL
-    c_array_out.private_data = NULL
-
-    # track original base
-    c_array_out.private_data = <void*>base
+cdef void c_pyobject_buffer(object base, const void* buf, int64_t size_bytes, ArrowBuffer* out):
+    out.data = <uint8_t*>buf
+    out.size_bytes = size_bytes
+    out.allocator = ArrowBufferDeallocator(
+        <ArrowBufferDeallocatorCallback>c_deallocate_pyobject_buffer,
+        <void*>base
+    )
     Py_INCREF(base)
-    c_array_out.release = arrow_array_release
+
+
+cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* dst):
+    # Allocate an ArrowArray* that will definitely be cleaned up should an exception
+    # be raised in the process of shallow copying its contents
+    cdef CArray shelter = CArray.allocate()
+    cdef ArrowArray* tmp = shelter._ptr
+    cdef int code
+
+    code = ArrowArrayInitFromType(tmp, NANOARROW_TYPE_UNINITIALIZED)
+    Error.raise_error_not_ok("ArrowArrayInitFromType()", code)
+
+    # Copy data for this array, adding a reference for each buffer
+    # This allows us to use nanoarrow's ArrowArray implementation without
+    # writing our own release callbacks/private_data.
+    tmp.length = src.length
+    tmp.offset = src.offset
+    tmp.null_count = src.null_count
+    for i in range(src.n_buffers):
+        if src.buffers[i] != NULL:
+            c_pyobject_buffer(base, src.buffers[i], 0, ArrowArrayBuffer(tmp, i))
+            tmp.buffers[i] = src.buffers[i]
+
+    # Recursive shallow copy children
+    if src.n_children > 0:
+        code = ArrowArrayAllocateChildren(tmp, src.n_children)
+        Error.raise_error_not_ok("ArrowArrayAllocateChildren()", code)
+
+        for i in range(src.n_children):
+            c_array_shallow_copy(base, src.children[i], tmp.children[i])
+
+    # Recursive shallow copy dictionary
+    if src.dictionary != NULL:
+        code = ArrowArrayAllocateDictionary(tmp)
+        Error.raise_error_not_ok("ArrowArrayAllocateDictionary()", code)
+
+        c_array_shallow_copy(base, src.dictionary, dst.dictionary)
+
+    # Move tmp into dst
+    ArrowArrayMove(tmp, dst)
 
 
 cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array,
@@ -1355,7 +1387,7 @@ cdef class CArray:
         # counted and can be released separately
         cdef ArrowArray* c_array_out
         array_capsule = alloc_c_array(&c_array_out)
-        c_array_shallow_copy(base, c_array, c_array_out)
+        c_array_shallow_copy(self._base, self._ptr, c_array_out)
 
         return self._schema.__arrow_c_schema__(), array_capsule
 
