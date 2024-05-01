@@ -156,9 +156,9 @@ def allocate_c_array(schema=None) -> CArray:
     --------
 
     >>> import pyarrow as pa
-    >>> import nanoarrow as na
-    >>> schema = na.allocate_c_schema()
-    >>> pa.int32()._export_to_c(schema._addr())
+    >>> from nanoarrow.c_array import allocate_c_array
+    >>> array = allocate_c_array()
+    >>> pa.array([1, 2, 3])._export_to_c(array._addr())
     """
     if schema is not None:
         schema = c_schema(schema)
@@ -254,9 +254,8 @@ def c_array_from_buffers(
 
     >>> import nanoarrow as na
     >>> c_array = na.c_array_from_buffers(na.uint8(), 5, [None, b"12345"])
-    >>> na.c_array_view(c_array)
-    <nanoarrow.c_lib.CArrayView>
-    - storage_type: 'uint8'
+    >>> na.Array(c_array).inspect()
+    <ArrowArray uint8>
     - length: 5
     - offset: 0
     - null_count: 0
