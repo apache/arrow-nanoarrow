@@ -206,7 +206,8 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
     for i in range(src.n_buffers):
         if src.buffers[i] != NULL:
             c_pyobject_buffer(base, src.buffers[i], 0, ArrowArrayBuffer(tmp, i))
-            tmp.buffers[i] = src.buffers[i]
+
+        tmp.buffers[i] = src.buffers[i]
 
     tmp.n_buffers = src.n_buffers
 
@@ -223,7 +224,7 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
         code = ArrowArrayAllocateDictionary(tmp)
         Error.raise_error_not_ok("ArrowArrayAllocateDictionary()", code)
 
-        c_array_shallow_copy(base, src.dictionary, dst.dictionary)
+        c_array_shallow_copy(base, src.dictionary, tmp.dictionary)
 
     # Move tmp into dst
     ArrowArrayMove(tmp, dst)
