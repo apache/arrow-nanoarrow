@@ -1815,7 +1815,7 @@ cdef class CBufferView:
         else:
             return self._iter_dispatch(offset, length)
 
-    def unpack_bits_into(self, dest, offset=0, length=None):
+    def unpack_bits_into(self, dest, offset=0, length=None, dest_offset=0):
         if self._data_type != NANOARROW_TYPE_BOOL:
             raise ValueError("Can't unpack non-boolean buffer")
 
@@ -1834,14 +1834,20 @@ cdef class CBufferView:
             PyBuffer_Release(&buffer)
             raise ValueError("Destination buffer has itemsize != 1")
 
-        if buffer.len < length:
+        if buffer.len < (dest_offset + length):
             buffer_len = buffer.len
             PyBuffer_Release(&buffer)
             raise IndexError(
                 f"Can't unpack {length} elements into buffer of size {buffer_len}"
             )
 
-        ArrowBitsUnpackInt8(self._ptr.data.as_uint8, offset, length, <int8_t*>buffer.buf)
+        ArrowBitsUnpackInt8(
+            self._ptr.data.as_uint8,
+            offset,
+            length,
+            &(<int8_t*>buffer.buf)[dest_offset]
+        )
+
         PyBuffer_Release(&buffer)
 
     def unpack_bits(self, offset=0, length=None):
