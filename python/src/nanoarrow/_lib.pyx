@@ -173,7 +173,16 @@ cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
 
 
 cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
-                                 ArrowArray* c_array_out) noexcept:
+                               ArrowArray* c_array_out) noexcept:
+    """Make a shallow copy of an ArrowArray
+
+    To more safely implement export of an ArrowArray whose address may be
+    depended on by some other Python object, we implement a shallow copy
+    whose constructor calls Py_INCREF() on a Python object responsible
+    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
+    the same object.
+    """
+
     # shallow copy
     memcpy(c_array_out, c_array, sizeof(ArrowArray))
     c_array_out.release = NULL
@@ -183,21 +192,6 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
     c_array_out.private_data = <void*>base
     Py_INCREF(base)
     c_array_out.release = arrow_array_release
-
-
-cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array):
-    """Make a shallow copy of an ArrowArray
-
-    To more safely implement export of an ArrowArray whose address may be
-    depended on by some other Python object, we implement a shallow copy
-    whose constructor calls Py_INCREF() on a Python object responsible
-    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
-    the same object.
-    """
-    cdef ArrowArray* c_array_out
-    array_capsule = alloc_c_array(&c_array_out)
-    c_array_shallow_copy(base, c_array, c_array_out)
-    return array_capsule
 
 
 cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array,
@@ -1356,9 +1350,13 @@ cdef class CArray:
 
         # Export a shallow copy pointing to the same data in a way
         # that ensures this object stays valid.
+
         # TODO optimize this to export a version where children are reference
         # counted and can be released separately
-        array_capsule = alloc_c_array_shallow_copy(self._base, self._ptr)
+        cdef ArrowArray* c_array_out
+        array_capsule = alloc_c_array(&c_array_out)
+        c_array_shallow_copy(base, c_array, c_array_out)
+
         return self._schema.__arrow_c_schema__(), array_capsule
 
     def _addr(self):
