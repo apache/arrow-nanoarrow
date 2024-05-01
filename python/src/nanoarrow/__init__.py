@@ -67,6 +67,7 @@ from nanoarrow.schema import (
     interval_month_day_nano,
     decimal128,
     decimal256,
+    schema,
     struct,
 )
 from nanoarrow.array import array, Array
@@ -114,6 +115,7 @@ __all__ = [
     "null",
     "string",
     "struct",
+    "schema",
     "time32",
     "time64",
     "timestamp",
