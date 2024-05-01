@@ -303,7 +303,7 @@ def test_c_array_from_iterable_float_with_nulls():
 
 
 def test_c_array_from_iterable_bool_with_nulls():
-    c_array = na.c_array([True, None, False], na.bool())
+    c_array = na.c_array([True, None, False], na.bool_())
     assert c_array.length == 3
     assert c_array.null_count == 1
 

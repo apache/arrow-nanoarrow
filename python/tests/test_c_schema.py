@@ -133,6 +133,9 @@ def test_c_schema_modify():
     assert schema_clone is not schema
     assert schema._addr() != schema_clone._addr()
 
+    schema_formatted = schema.modify(format="i")
+    assert schema_formatted.format == "i"
+
     schema_named = schema.modify(name="something else")
     assert schema_named.name == "something else"
     assert schema_named.format == schema.format
@@ -155,3 +158,42 @@ def test_c_schema_modify():
 
     schema_no_metad = schema_metad.modify(metadata={})
     assert schema_no_metad.metadata is None
+
+
+def test_c_schema_modify_children():
+    schema = na.c_schema(na.struct({"col1": na.null()}))
+
+    schema_same_children = schema.modify()
+    assert schema_same_children.n_children == 1
+    assert schema_same_children.child(0).name == "col1"
+    assert schema_same_children.child(0).format == "n"
+
+    schema_new_children_list = schema.modify(
+        children=[na.c_schema(na.int32()).modify(name="new name")]
+    )
+    assert schema_new_children_list.n_children == 1
+    assert schema_new_children_list.child(0).name == "new name"
+    assert schema_new_children_list.child(0).format == "i"
+
+    schema_new_children_dict = schema.modify(
+        children={"new name": na.c_schema(na.int32())}
+    )
+    assert schema_new_children_dict.n_children == 1
+    assert schema_new_children_dict.child(0).name == "new name"
+    assert schema_new_children_dict.child(0).format == "i"
+
+
+def test_c_schema_modify_dictionary():
+    schema = na.c_schema(na.int32())
+
+    schema_dictionary = schema.modify(dictionary=na.c_schema(na.string()))
+    assert schema_dictionary.format == "i"
+    assert schema_dictionary.dictionary.format == "u"
+
+    schema_same_dictionary = schema_dictionary.modify()
+    assert schema_same_dictionary.format == "i"
+    assert schema_same_dictionary.dictionary.format == "u"
+
+    schema_no_dictionary = schema_dictionary.modify(dictionary=False)
+    assert schema_no_dictionary.format == "i"
+    assert schema.dictionary is None

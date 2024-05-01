@@ -193,23 +193,27 @@ class Schema:
         name=None,
         nullable=None,
         metadata=None,
+        fields=None,
         **params,
     ) -> None:
         if isinstance(obj, Type):
-            self._c_schema = _c_schema_from_type_and_params(
-                obj, params, name, nullable, metadata
-            )
-            self._c_schema_view = CSchemaView(self._c_schema)
-            return
+            self._c_schema = _c_schema_from_type_and_params(obj, params)
+        else:
+            if params:
+                raise ValueError("params are only supported for obj of class Type")
+            self._c_schema = c_schema(obj)
 
-        if params:
-            raise ValueError("params are only supported for obj of class Type")
-
-        self._c_schema = c_schema(obj)
-
-        if name is not None or nullable is not None or metadata is not None:
+        if (
+            name is not None
+            or nullable is not None
+            or metadata is not None
+            or fields is not None
+        ):
             self._c_schema = self._c_schema.modify(
-                name=name, nullable=nullable, metadata=metadata
+                name=name,
+                nullable=nullable,
+                metadata=metadata,
+                children=_clean_fields(fields),
             )
 
         self._c_schema_view = CSchemaView(self._c_schema)
@@ -344,6 +348,72 @@ class Schema:
         return self._c_schema_view.decimal_scale
 
     @property
+    def index_type(self) -> Union["Schema", None]:
+        """Dictionary index type
+
+        For dictionary types, the type corresponding to the indices.
+        See also :attr:`value_type`.
+
+        >>> import nanoarrow as na
+        >>> na.dictionary(na.int32(), na.string()).index_type
+        Schema(INT32)
+        """
+        if self._c_schema_view.type_id == CArrowType.DICTIONARY:
+            index_schema = self._c_schema.modify(
+                dictionary=False, flags=0, nullable=self.nullable
+            )
+            return Schema(index_schema)
+        else:
+            return None
+
+    @property
+    def dictionary_ordered(self) -> Union[bool, None]:
+        """Dictionary ordering
+
+        For dictionary types, returns ``True`` if the order of dictionary values
+        are meaningful.
+
+        >>> import nanoarrow as na
+        >>> na.dictionary(na.int32(), na.string()).dictionary_ordered
+        False
+        """
+        return self._c_schema_view.dictionary_ordered
+
+    @property
+    def value_type(self):
+        """Dictionary or list value type
+
+        >>> import nanoarrow as na
+        >>> na.list_(na.int32()).value_type
+        Schema(INT32, name='item')
+        >>> na.dictionary(na.int32(), na.string()).value_type
+        Schema(STRING)
+        """
+        if self._c_schema_view.type_id in (
+            CArrowType.LIST,
+            CArrowType.LARGE_LIST,
+            CArrowType.FIXED_SIZE_LIST,
+        ):
+            return self.field(0)
+        elif self._c_schema_view.type_id == CArrowType.DICTIONARY:
+            return Schema(self._c_schema.dictionary)
+        else:
+            return None
+
+    @property
+    def list_size(self) -> Union[int, None]:
+        """Fixed-size list element size
+
+        >>> import nanoarrow as na
+        >>> na.fixed_size_list(na.int32(), 123).list_size
+        123
+        """
+        if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_LIST:
+            return self._c_schema_view.fixed_size
+        else:
+            return None
+
+    @property
     def n_fields(self) -> int:
         """Number of child Schemas
 
@@ -408,7 +478,7 @@ def null(nullable: bool = True) -> Schema:
     return Schema(Type.NULL, nullable=nullable)
 
 
-def bool(nullable: bool = True) -> Schema:
+def bool_(nullable: bool = True) -> Schema:
     """Create an instance of a boolean type.
 
     Parameters
@@ -420,7 +490,7 @@ def bool(nullable: bool = True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.bool()
+    >>> na.bool_()
     Schema(BOOL)
     """
     return Schema(Type.BOOL, nullable=nullable)
@@ -945,9 +1015,8 @@ def struct(fields, nullable=True) -> Schema:
     ----------
     fields :
         * A dictionary whose keys are field names and values are schema-like objects
-        * An iterable whose items are a schema like object or a two-tuple of the
-          field name and a schema-like object. If a field name is not specified
-          from the tuple, the field name is inherited from the schema-like object.
+        * An iterable whose items are a schema like objects where the field name is
+          inherited from the schema-like object.
     nullable : bool, optional
         Use ``False`` to mark this field as non-nullable.
 
@@ -957,12 +1026,111 @@ def struct(fields, nullable=True) -> Schema:
     >>> import nanoarrow as na
     >>> na.struct([na.int32()])
     Schema(STRUCT, fields=[Schema(INT32)])
-    >>> na.struct([("col1", na.int32())])
-    Schema(STRUCT, fields=[Schema(INT32, name='col1')])
     >>> na.struct({"col1": na.int32()})
     Schema(STRUCT, fields=[Schema(INT32, name='col1')])
     """
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
+
+
+def list_(value_type, nullable=True) -> Schema:
+    """Create a type representing a variable-size list of some other type.
+
+    Parameters
+    ----------
+    value_type : schema-like
+        The type of values in each list element.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.list_(na.int32())
+    Schema(LIST, value_type=Schema(INT32, name='item'))
+    """
+    return Schema(Type.LIST, value_type=value_type, nullable=nullable)
+
+
+def large_list(value_type, nullable=True) -> Schema:
+    """Create a type representing a variable-size list of some other type.
+
+    Unlike :func:`list_`, the func:`large_list` can accomodate arrays
+    with more than ``2 ** 31 - 1`` items in the values array.
+
+    Parameters
+    ----------
+    value_type : schema-like
+        The type of values in each list element.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.large_list(na.int32())
+    Schema(LARGE_LIST, value_type=Schema(INT32, name='item'))
+    """
+    return Schema(Type.LARGE_LIST, value_type=value_type, nullable=nullable)
+
+
+def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
+    """Create a type representing a fixed-size list of some other type.
+
+    Parameters
+    ----------
+    value_type : schema-like
+        The type of values in each list element.
+    list_size : int
+        The number of values in each list element.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.fixed_size_list(na.int32(), 123)
+    Schema(FIXED_SIZE_LIST, value_type=Schema(INT32, name='item'), list_size=123)
+    """
+    return Schema(
+        Type.FIXED_SIZE_LIST,
+        value_type=value_type,
+        list_size=list_size,
+        nullable=nullable,
+    )
+
+
+def dictionary(index_type, value_type, dictionary_ordered=False):
+    """Create a type representing dictionary-encoded values
+
+    Parameters
+    ----------
+    index_type : schema-like
+        The data type of the indices. Must be an integral type.
+    value_type : schema-like
+        The type of the dictionary array.
+    ordered: bool, optional
+        Use ``True`` if the order of values in the dictionary array is
+        meaningful.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.dictionary(na.int32(), na.string())
+    Schema(DICTIONARY, index_type=Schema(INT32), value_type=Schema(STRING), \
+dictionary_ordered=False)
+    """
+    return Schema(
+        Type.DICTIONARY,
+        index_type=index_type,
+        value_type=value_type,
+        dictionary_ordered=dictionary_ordered,
+    )
 
 
 def extension_type(
@@ -993,24 +1161,10 @@ def extension_type(
     return Schema(storage_schema, nullable=nullable, metadata=metadata)
 
 
-def _c_schema_from_type_and_params(
-    type: Type,
-    params: dict,
-    name: Union[bool, None, bool],
-    nullable: Union[bool, None],
-    metadata: Mapping[Union[str, bytes], Union[str, bytes]],
-):
+def _c_schema_from_type_and_params(type: Type, params: dict):
     factory = CSchemaBuilder.allocate()
 
-    if type == Type.STRUCT:
-        fields = _clean_fields(params.pop("fields"))
-
-        factory.set_format("+s").allocate_children(len(fields))
-        for i, item in enumerate(fields):
-            child_name, c_schema = item
-            factory.set_child(i, child_name, c_schema)
-
-    elif type.value in CSchemaView._decimal_types:
+    if type.value in CSchemaView._decimal_types:
         precision = int(params.pop("precision"))
         scale = int(params.pop("scale"))
         factory.set_type_decimal(type.value, precision, scale)
@@ -1029,6 +1183,32 @@ def _c_schema_from_type_and_params(
     elif type == Type.FIXED_SIZE_BINARY:
         factory.set_type_fixed_size(type.value, int(params.pop("byte_width")))
 
+    elif type == Type.LIST:
+        factory.set_format("+l")
+        factory.allocate_children(1)
+        factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.LARGE_LIST:
+        factory.set_format("+L")
+        factory.allocate_children(1)
+        factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.FIXED_SIZE_LIST:
+        fixed_size = int(params.pop("list_size"))
+        factory.set_format(f"+w:{fixed_size}")
+        factory.allocate_children(1)
+        factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.DICTIONARY:
+        index_type = c_schema(params.pop("index_type"))
+        factory.set_format(index_type.format)
+
+        value_type = c_schema(params.pop("value_type"))
+        factory.set_dictionary(value_type)
+
+        if "dictionary_ordered" in params and bool(params.pop("dictionary_ordered")):
+            factory.set_dictionary_ordered(True)
+
     else:
         factory.set_type(type.value)
 
@@ -1036,38 +1216,19 @@ def _c_schema_from_type_and_params(
         unused = ", ".join(f"'{item}'" for item in params.keys())
         raise ValueError(f"Unused parameters whilst constructing Schema: {unused}")
 
-    # Apply default nullability (True)
-    if nullable is None:
-        nullable = True
-    factory.set_nullable(nullable)
-
-    # Apply default name (an empty string). To explicitly set a NULL
-    # name, a caller would have to specify False.
-    if name is None:
-        name = ""
-    elif name is False:
-        name = None
-    factory.set_name(name)
-
-    # Apply metadata
-    if metadata is not None:
-        factory.append_metadata(metadata)
+    # Better default than NULL, which causes some implementations to crash
+    factory.set_name("")
 
     return factory.finish()
 
 
 def _clean_fields(fields):
-    if isinstance(fields, dict):
-        return [(str(k), c_schema(v)) for k, v in fields.items()]
+    if fields is None:
+        return None
+    elif hasattr(fields, "items"):
+        return {k: c_schema(v) for k, v in fields.items()}
     else:
-        fields_clean = []
-        for item in fields:
-            if isinstance(item, tuple) and len(item) == 2:
-                fields_clean.append((str(item[0]), c_schema(item[1])))
-            else:
-                fields_clean.append((None, c_schema(item)))
-
-        return fields_clean
+        return [c_schema(v) for v in fields]
 
 
 def _schema_repr(obj):
@@ -1120,4 +1281,8 @@ _PARAM_NAMES = {
     CArrowType.DECIMAL128: ("precision", "scale"),
     CArrowType.DECIMAL256: ("precision", "scale"),
     CArrowType.STRUCT: ("fields",),
+    CArrowType.LIST: ("value_type",),
+    CArrowType.LARGE_LIST: ("value_type",),
+    CArrowType.FIXED_SIZE_LIST: ("value_type", "list_size"),
+    CArrowType.DICTIONARY: ("index_type", "value_type", "dictionary_ordered"),
 }

@@ -77,13 +77,17 @@ def test_schema_create_no_params():
     assert schema_obj.name == "not empty"
     assert "name='not empty'" in repr(schema_obj)
 
+    msg = "params are only supported for obj of class Type"
+    with pytest.raises(ValueError, match=msg):
+        na.Schema(na.fixed_size_binary(123), byte_width=12)
+
     with pytest.raises(ValueError, match=r"^Unused parameter"):
         na.Schema(na.Type.INT32, unused_param="unused_value")
 
 
 def test_schema_simple():
     assert na.null().type == na.Type.NULL
-    assert na.bool().type == na.Type.BOOL
+    assert na.bool_().type == na.Type.BOOL
     assert na.int8().type == na.Type.INT8
     assert na.uint8().type == na.Type.UINT8
     assert na.int16().type == na.Type.INT16
@@ -171,13 +175,6 @@ def test_schema_struct():
 
     assert "fields=[Schema(INT32)]" in repr(schema_obj)
 
-    # Make sure we can use a list of two-tuples
-    schema_obj = na.struct([("col_name", na.Type.INT32)])
-    assert schema_obj.type == na.Type.STRUCT
-    assert schema_obj.field(0).type == na.Type.INT32
-    assert schema_obj.field(0).name == "col_name"
-    assert "fields=[Schema(INT32, name='col_name')]" in repr(schema_obj)
-
     # Make sure we can use a dictionary to specify fields
     schema_obj = na.struct({"col_name": na.Type.INT32})
     assert schema_obj.type == na.Type.STRUCT
@@ -185,11 +182,44 @@ def test_schema_struct():
     assert schema_obj.field(0).name == "col_name"
 
     # Make sure we can use a Schema when constructing fields (and that
-    # fild names are taken from the input)
+    # field names are taken from the input)
     schema_obj = na.struct([schema_obj.field(0)])
     assert schema_obj.type == na.Type.STRUCT
     assert schema_obj.field(0).type == na.Type.INT32
     assert schema_obj.field(0).name == "col_name"
+
+
+def test_schema_list_():
+    schema_obj = na.list_(na.null())
+    assert schema_obj.type == na.Type.LIST
+    assert schema_obj.value_type.type == na.Type.NULL
+
+
+def test_schema_large_list():
+    schema_obj = na.large_list(na.null())
+    assert schema_obj.type == na.Type.LARGE_LIST
+    assert schema_obj.value_type.type == na.Type.NULL
+
+
+def test_schema_fixed_size_list():
+    schema_obj = na.fixed_size_list(na.null(), 123)
+    assert schema_obj.type == na.Type.FIXED_SIZE_LIST
+    assert schema_obj.value_type.type == na.Type.NULL
+    assert schema_obj.list_size == 123
+
+
+def test_schema_dictionary():
+    schema_obj = na.dictionary(na.int8(), na.null())
+    assert schema_obj.type == na.Type.DICTIONARY
+    assert schema_obj.index_type.type == na.Type.INT8
+    assert schema_obj.value_type.type == na.Type.NULL
+    assert schema_obj.dictionary_ordered is False
+
+    schema_obj_ordered = na.dictionary(na.int8(), na.null(), dictionary_ordered=True)
+    assert schema_obj_ordered.type == na.Type.DICTIONARY
+    assert schema_obj_ordered.index_type.type == na.Type.INT8
+    assert schema_obj_ordered.value_type.type == na.Type.NULL
+    assert schema_obj_ordered.dictionary_ordered is True
 
 
 def test_schema_extension():
