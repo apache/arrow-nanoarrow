@@ -48,7 +48,7 @@ pushd "${ARROW_CPP_SCRATCH_DIR}"
 curl -L "https://github.com/apache/arrow/archive/refs/heads/main.tar.gz" | \
   tar -zxf -
 mkdir build && cd build
-cmake ../apache-arrow-${ARROW_CPP_VERSION}/cpp \
+cmake ../arrow-main/cpp \
   -DCMAKE_BUILD_TYPE=Debug \
   -DARROW_JEMALLOC=OFF \
   -DARROW_SIMD_LEVEL=NONE \
