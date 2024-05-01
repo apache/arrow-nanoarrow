@@ -62,6 +62,44 @@ def test_buffer_view_bool_():
     assert "10010000" in repr(view)
 
 
+def test_buffer_view_bool_unpack():
+    from array import array
+
+    bool_array_view = na.c_array_view([1, 0, 0, 1], na.bool_())
+    view = bool_array_view.buffer(1)
+
+    # Check unpacking
+    unpacked_all = view.unpack_bits()
+    assert len(unpacked_all) == view.n_elements
+    assert unpacked_all.data_type == "uint8"
+    assert list(unpacked_all) == [1, 0, 0, 1, 0, 0, 0, 0]
+
+    unpacked_some = view.unpack_bits(1, 4)
+    assert len(unpacked_some) == 4
+    assert list(unpacked_some) == [0, 0, 1, 0]
+
+    # Check errors from requesting out-of-bounds slices
+    msg = "do not describe a valid slice"
+    with pytest.raises(IndexError, match=msg):
+        view.unpack_bits(-1, None)
+    with pytest.raises(IndexError, match=msg):
+        view.unpack_bits(0, -1)
+    with pytest.raises(IndexError, match=msg):
+        view.unpack_bits(0, 9)
+
+    # Check errors from an output buffer of insufficient length
+    out = bytearray()
+    msg = "Can't unpack 8 elements into buffer of size 0"
+    with pytest.raises(IndexError, match=msg):
+        view.unpack_bits_into(out)
+
+    # Check errors from an output buffer with the wrong data type
+    out = array("i", [0, 0, 0, 0])
+    msg = "Destination buffer has itemsize != 1"
+    with pytest.raises(ValueError, match=msg):
+        view.unpack_bits_into(out)
+
+
 def test_buffer_view_non_bool():
     array_view = na.c_array([1, 2, 3, 5], na.int32()).view()
     view = array_view.buffer(1)
@@ -98,6 +136,10 @@ def test_buffer_view_non_bool():
         view.elements(0, -1)
     with pytest.raises(IndexError, match="do not describe a valid slice"):
         view.elements(1, 4)
+
+    # Check that unpacking will error
+    with pytest.raises(ValueError, match="Can't unpack non-boolean buffer"):
+        view.unpack_bits()
 
     # Check repr
     assert "1 2 3 5" in repr(view)
