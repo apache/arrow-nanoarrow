@@ -189,8 +189,8 @@ cdef void c_pyobject_buffer(object base, const void* buf, int64_t size_bytes, Ar
 cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* dst):
     # Allocate an ArrowArray* that will definitely be cleaned up should an exception
     # be raised in the process of shallow copying its contents
-    cdef CArray shelter = CArray.allocate()
-    cdef ArrowArray* tmp = shelter._ptr
+    cdef ArrowArray* tmp
+    shelter = alloc_c_array(&tmp)
     cdef int code
 
     code = ArrowArrayInitFromType(tmp, NANOARROW_TYPE_UNINITIALIZED)
@@ -202,10 +202,13 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
     tmp.length = src.length
     tmp.offset = src.offset
     tmp.null_count = src.null_count
+
     for i in range(src.n_buffers):
         if src.buffers[i] != NULL:
             c_pyobject_buffer(base, src.buffers[i], 0, ArrowArrayBuffer(tmp, i))
             tmp.buffers[i] = src.buffers[i]
+
+    tmp.n_buffers = src.n_buffers
 
     # Recursive shallow copy children
     if src.n_children > 0:
