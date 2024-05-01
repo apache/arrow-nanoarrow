@@ -182,8 +182,10 @@ def c_array_view(obj, schema=None) -> CArrayView:
     >>> import pyarrow as pa
     >>> import numpy as np
     >>> import nanoarrow as na
+    >>> from nanoarrow.c_array import c_array_view
+    >>>
     >>> array = na.c_array(pa.array(["one", "two", "three", None]))
-    >>> array_view = na.c_array_view(array)
+    >>> array_view = c_array_view(array)
     >>> np.array(array_view.buffer(1))
     array([ 0,  3,  6, 11, 11], dtype=int32)
     >>> np.array(array_view.buffer(2))

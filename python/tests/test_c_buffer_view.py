@@ -21,7 +21,7 @@ import nanoarrow as na
 
 
 def test_buffer_view_bool_():
-    bool_array_view = na.c_array_view([1, 0, 0, 1], na.bool_())
+    bool_array_view = na.c_array([1, 0, 0, 1], na.bool_()).view()
     view = bool_array_view.buffer(1)
 
     assert view.element_size_bits == 1
@@ -63,7 +63,7 @@ def test_buffer_view_bool_():
 
 
 def test_buffer_view_non_bool():
-    array_view = na.c_array_view([1, 2, 3, 5], na.int32())
+    array_view = na.c_array([1, 2, 3, 5], na.int32()).view()
     view = array_view.buffer(1)
 
     assert view.element_size_bits == 32

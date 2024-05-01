@@ -28,13 +28,11 @@ from nanoarrow._lib import c_version
 from nanoarrow.c_array import (
     c_array_from_buffers,
     c_array,
-    c_array_view,
     allocate_c_array,
 )
 from nanoarrow.c_array_stream import c_array_stream, allocate_c_array_stream
 from nanoarrow.c_schema import (
     c_schema,
-    c_schema_view,
     allocate_c_schema,
 )
 from nanoarrow.c_buffer import c_buffer
@@ -96,11 +94,9 @@ __all__ = [
     "c_array",
     "c_array_from_buffers",
     "c_array_stream",
-    "c_array_view",
     "c_buffer",
     "c_lib",
     "c_schema",
-    "c_schema_view",
     "c_version",
     "date32",
     "date64",

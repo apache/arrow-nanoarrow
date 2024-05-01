@@ -17,6 +17,7 @@
 
 import pytest
 from nanoarrow._lib import CArrayBuilder, NanoarrowException
+from nanoarrow.c_schema import c_schema_view
 
 import nanoarrow as na
 
@@ -162,9 +163,9 @@ def test_c_array_from_pybuffer_uint8():
     assert c_array.length == len(data)
     assert c_array.null_count == 0
     assert c_array.offset == 0
-    assert na.c_schema_view(c_array.schema).type == "uint8"
+    assert c_schema_view(c_array.schema).type == "uint8"
 
-    c_array_view = na.c_array_view(c_array)
+    c_array_view = c_array.view()
     assert list(c_array_view.buffer(1)) == list(data)
 
 
@@ -175,9 +176,9 @@ def test_c_array_from_pybuffer_string():
     assert c_array.length == len(data)
     assert c_array.null_count == 0
     assert c_array.offset == 0
-    assert na.c_schema_view(c_array.schema).type == "int8"
+    assert c_schema_view(c_array.schema).type == "int8"
 
-    c_array_view = na.c_array_view(c_array)
+    c_array_view = c_array.view()
     assert list(c_array_view.buffer(1)) == list(data)
 
 
@@ -190,10 +191,10 @@ def test_c_array_from_pybuffer_fixed_size_binary():
     assert c_array.length == len(items)
     assert c_array.null_count == 0
     assert c_array.offset == 0
-    assert na.c_schema_view(c_array.schema).type == "fixed_size_binary"
-    assert na.c_schema_view(c_array.schema).fixed_size == 4
+    assert c_schema_view(c_array.schema).type == "fixed_size_binary"
+    assert c_schema_view(c_array.schema).fixed_size == 4
 
-    c_array_view = na.c_array_view(c_array)
+    c_array_view = c_array.view()
     assert list(c_array_view.buffer(1)) == items
 
 
@@ -205,9 +206,9 @@ def test_c_array_from_pybuffer_numpy():
     assert c_array.length == len(data)
     assert c_array.null_count == 0
     assert c_array.offset == 0
-    assert na.c_schema_view(c_array.schema).type == "int32"
+    assert c_schema_view(c_array.schema).type == "int32"
 
-    c_array_view = na.c_array_view(c_array)
+    c_array_view = c_array.view()
     assert list(c_array_view.buffer(1)) == list(data)
 
 
@@ -218,7 +219,7 @@ def test_c_array_from_iterable_empty():
     assert empty_string.offset == 0
     assert empty_string.n_buffers == 3
 
-    array_view = na.c_array_view(empty_string)
+    array_view = empty_string.view()
     assert len(array_view.buffer(0)) == 0
     assert len(array_view.buffer(1)) == 0
     assert len(array_view.buffer(2)) == 0
@@ -229,7 +230,7 @@ def test_c_array_from_iterable_string():
     assert string.length == 3
     assert string.null_count == 1
 
-    array_view = na.c_array_view(string)
+    array_view = string.view()
     assert len(array_view.buffer(0)) == 1
     assert len(array_view.buffer(1)) == 4
     assert len(array_view.buffer(2)) == 7
@@ -244,7 +245,7 @@ def test_c_array_from_iterable_bytes():
     assert string.length == 3
     assert string.null_count == 1
 
-    array_view = na.c_array_view(string)
+    array_view = string.view()
     assert len(array_view.buffer(0)) == 1
     assert len(array_view.buffer(1)) == 4
     assert len(array_view.buffer(2)) == 7
@@ -267,7 +268,7 @@ def test_c_array_from_iterable_non_empty_nullable_without_nulls():
     assert c_array.length == 3
     assert c_array.null_count == 0
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0)) == []
     assert list(view.buffer(1)) == [1, 2, 3]
 
@@ -277,7 +278,7 @@ def test_c_array_from_iterable_non_empty_non_nullable():
     assert c_array.length == 3
     assert c_array.null_count == 0
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0)) == []
     assert list(view.buffer(1)) == [1, 2, 3]
 
@@ -287,7 +288,7 @@ def test_c_array_from_iterable_int_with_nulls():
     assert c_array.length == 3
     assert c_array.null_count == 1
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
     assert list(view.buffer(1)) == [1, 0, 3]
 
@@ -297,7 +298,7 @@ def test_c_array_from_iterable_float_with_nulls():
     assert c_array.length == 3
     assert c_array.null_count == 1
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
     assert list(view.buffer(1)) == [1.0, 0.0, 3.0]
 
@@ -307,7 +308,7 @@ def test_c_array_from_iterable_bool_with_nulls():
     assert c_array.length == 3
     assert c_array.null_count == 1
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
     assert list(view.buffer(1).elements()) == [True, False, False] + [False] * 5
 
@@ -317,7 +318,7 @@ def test_c_array_from_iterable_fixed_size_binary_with_nulls():
     assert c_array.length == 3
     assert c_array.null_count == 1
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
     assert list(view.buffer(1)) == [b"1234", b"\x00\x00\x00\x00", b"5678"]
 
@@ -327,7 +328,7 @@ def test_c_array_from_iterable_day_time_interval_with_nulls():
     assert c_array.length == 3
     assert c_array.null_count == 1
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
     assert list(view.buffer(1)) == [(1, 2), (0, 0), (3, 4)]
 
@@ -337,7 +338,7 @@ def test_c_array_from_iterable_month_day_nano_interval_with_nulls():
     assert c_array.length == 3
     assert c_array.null_count == 1
 
-    view = na.c_array_view(c_array)
+    view = c_array.view()
     assert list(view.buffer(0).elements()) == [True, False, True] + [False] * 5
     assert list(view.buffer(1)) == [(1, 2, 3), (0, 0, 0), (4, 5, 6)]
 
@@ -353,7 +354,7 @@ def test_c_array_from_buffers():
     assert c_array.null_count == 0
     assert c_array.offset == 0
 
-    array_view = na.c_array_view(c_array)
+    array_view = c_array.view()
     assert array_view.storage_type == "uint8"
     assert bytes(array_view.buffer(0)) == b""
     assert bytes(array_view.buffer(1)) == b"12345"
@@ -393,7 +394,7 @@ def test_c_array_from_buffers_recursive():
     assert c_array.length == 5
     assert c_array.n_children == 1
 
-    array_view = na.c_array_view(c_array)
+    array_view = c_array.view()
     assert bytes(array_view.child(0).buffer(1)) == b"12345"
 
     with pytest.raises(ValueError, match="Expected 1 children but got 0"):

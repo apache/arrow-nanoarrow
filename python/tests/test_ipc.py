@@ -49,7 +49,7 @@ def test_ipc_stream_example():
 
         assert stream.is_valid() is False
         assert len(batches) == 1
-        batch = na.c_array_view(batches[0])
+        batch = na.c_array(batches[0]).view()
         assert list(batch.child(0).buffer(1)) == [1, 2, 3]
 
 
