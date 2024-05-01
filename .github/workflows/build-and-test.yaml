@@ -143,7 +143,7 @@ jobs:
         with:
           path: arrow
           # Bump the number at the end of this line to force a new Arrow C++ build
-          key: arrow-${{ runner.os }}-${{ runner.arch }}-1
+          key: arrow-${{ runner.os }}-${{ runner.arch }}-2
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
