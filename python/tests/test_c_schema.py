@@ -16,13 +16,13 @@
 # under the License.
 
 import pytest
-from nanoarrow.c_schema import c_schema_view
+from nanoarrow.c_schema import allocate_c_schema, c_schema_view
 
 import nanoarrow as na
 
 
 def test_c_schema_basic():
-    schema = na.allocate_c_schema()
+    schema = allocate_c_schema()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
     assert repr(schema) == "<nanoarrow.c_lib.CSchema <released>>"
@@ -66,7 +66,7 @@ def test_schema_metadata():
 
 
 def test_c_schema_view():
-    schema = na.allocate_c_schema()
+    schema = allocate_c_schema()
     with pytest.raises(RuntimeError):
         c_schema_view(schema)
 

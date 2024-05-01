@@ -16,6 +16,9 @@
 # under the License.
 
 import pytest
+from nanoarrow.c_array import allocate_c_array
+from nanoarrow.c_array_stream import allocate_c_array_stream
+from nanoarrow.c_schema import allocate_c_schema
 
 import nanoarrow as na
 
@@ -125,18 +128,18 @@ def test_array_stream_requested_schema():
 
 
 def test_export_invalid():
-    schema = na.allocate_c_schema()
+    schema = allocate_c_schema()
     assert schema.is_valid() is False
 
     with pytest.raises(RuntimeError, match="schema is released"):
         pa.schema(schema)
 
-    array = na.allocate_c_array()
+    array = allocate_c_array()
     assert array.is_valid() is False
     with pytest.raises(RuntimeError, match="CArray is released"):
         pa.array(array)
 
-    array_stream = na.allocate_c_array_stream()
+    array_stream = allocate_c_array_stream()
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError, match="array stream is released"):
         pa.table(array_stream)
