@@ -478,7 +478,7 @@ def null(nullable: bool = True) -> Schema:
     return Schema(Type.NULL, nullable=nullable)
 
 
-def boolean(nullable: bool = True) -> Schema:
+def bool_(nullable: bool = True) -> Schema:
     """Create an instance of a boolean type.
 
     Parameters
@@ -490,7 +490,7 @@ def boolean(nullable: bool = True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.boolean()
+    >>> na.bool_()
     Schema(BOOL)
     """
     return Schema(Type.BOOL, nullable=nullable)
