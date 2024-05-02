@@ -141,6 +141,44 @@ def test_c_array_slice_errors():
         array[1:0]
 
 
+def test_c_array_shallow_copy():
+    import gc
+
+    from nanoarrow._lib import get_pyobject_buffer_count
+
+    gc.collect()
+
+    initial_ref_count = get_pyobject_buffer_count()
+
+    # Create an array with children
+    array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.int64()}),
+        3,
+        [None],
+        children=[na.c_array([1, 2, 3], na.int32()), na.c_array([4, 5, 6], na.int32())],
+        move=True,
+    )
+
+    # The move=True should have prevented a shallow copy of the children
+    # when constructing the array.
+    assert get_pyobject_buffer_count() == initial_ref_count
+
+    # Force a shallow copy via the array protocol and ensure we saved
+    # references to two additional buffers.
+    _, col1_capsule = array.child(0).__arrow_c_array__()
+    assert get_pyobject_buffer_count() == (initial_ref_count + 1)
+
+    _, col2_capsule = array.child(1).__arrow_c_array__()
+    assert get_pyobject_buffer_count() == (initial_ref_count + 2)
+
+    # Ensure that the references can be removed
+    del col1_capsule
+    assert get_pyobject_buffer_count() == (initial_ref_count + 1)
+
+    del col2_capsule
+    assert get_pyobject_buffer_count() == initial_ref_count
+
+
 def test_c_array_builder_init():
     builder = CArrayBuilder.allocate()
 
