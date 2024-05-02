@@ -1815,6 +1815,52 @@ cdef class CBufferView:
         else:
             return self._iter_dispatch(offset, length)
 
+    def unpack_bits_into(self, dest, offset=0, length=None, dest_offset=0):
+        if self._data_type != NANOARROW_TYPE_BOOL:
+            raise ValueError("Can't unpack non-boolean buffer")
+
+        if length is None:
+            length = self.n_elements
+
+        if offset < 0 or length < 0 or (offset + length) > self.n_elements:
+            raise IndexError(
+                f"offset {offset} and length {length} do not describe a valid slice "
+                f"of buffer with {self.n_elements} elements"
+            )
+
+        cdef Py_buffer buffer
+        PyObject_GetBuffer(dest, &buffer, PyBUF_WRITABLE | PyBUF_ANY_CONTIGUOUS)
+        if buffer.itemsize != 1:
+            PyBuffer_Release(&buffer)
+            raise ValueError("Destination buffer has itemsize != 1")
+
+        if dest_offset < 0 or buffer.len < (dest_offset + length):
+            buffer_len = buffer.len
+            PyBuffer_Release(&buffer)
+            raise IndexError(
+                f"Can't unpack {length} elements into buffer of size {buffer_len} "
+                f"with dest_offset = {dest_offset}"
+            )
+
+        ArrowBitsUnpackInt8(
+            self._ptr.data.as_uint8,
+            offset,
+            length,
+            &(<int8_t*>buffer.buf)[dest_offset]
+        )
+
+        PyBuffer_Release(&buffer)
+
+    def unpack_bits(self, offset=0, length=None):
+        if length is None:
+            length = self.n_elements
+
+        out = CBufferBuilder().set_data_type(NANOARROW_TYPE_UINT8)
+        out.reserve_bytes(length)
+        self.unpack_bits_into(out, offset, length)
+        out.advance(length)
+        return out.finish()
+
     def _iter_bitmap(self, int64_t offset, int64_t length):
         cdef uint8_t item
         cdef int64_t i
