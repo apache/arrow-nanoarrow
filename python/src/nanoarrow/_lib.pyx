@@ -166,14 +166,19 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view):
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
 
 
-cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
-    Py_DECREF(<object>array.private_data)
-    array.private_data = NULL
-    array.release = NULL
+# Provide a way to validate that we release all references we create
+cdef int64_t pyobject_buffer_count = 0
+
+def get_pyobject_buffer_count():
+    global pyobject_buffer_count
+    return pyobject_buffer_count
 
 
 cdef void c_deallocate_pyobject_buffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
     Py_DECREF(<object>allocator.private_data)
+
+    global pyobject_buffer_count
+    pyobject_buffer_count -= 1
 
 
 cdef void c_pyobject_buffer(object base, const void* buf, int64_t size_bytes, ArrowBuffer* out):
@@ -184,6 +189,9 @@ cdef void c_pyobject_buffer(object base, const void* buf, int64_t size_bytes, Ar
         <void*>base
     )
     Py_INCREF(base)
+
+    global pyobject_buffer_count
+    pyobject_buffer_count += 1
 
 
 cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* dst):
@@ -230,28 +238,15 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
     ArrowArrayMove(tmp, dst)
 
 
-cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array,
-                                      ArrowDeviceArray* c_array_out) noexcept:
-    # shallow copy
-    memcpy(c_array_out, c_array, sizeof(ArrowDeviceArray))
-    c_array_out.array.release = NULL
-    c_array_out.array.private_data = NULL
+cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* src,
+                                      ArrowDeviceArray* dst) noexcept:
+    # Copy top-level information but leave the array marked as released
+    # TODO: Should the sync event be copied here too?
+    memcpy(dst, src, sizeof(ArrowDeviceArray))
+    dst.array.release = NULL
 
-    # track original base
-    c_array_out.array.private_data = <void*>base
-    Py_INCREF(base)
-    c_array_out.array.release = arrow_array_release
-
-
-cdef object alloc_c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array):
-    """Make a shallow copy of an ArrowDeviceArray
-
-    See :func:`arrow_c_array_shallow_copy()`
-    """
-    cdef ArrowDeviceArray* c_array_out
-    array_capsule = alloc_c_device_array(&c_array_out)
-    c_device_array_shallow_copy(base, c_array, c_array_out)
-    return array_capsule
+    # Shallow copy the array
+    c_array_shallow_copy(base, &src.array, &dst.array)
 
 
 cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
@@ -2988,7 +2983,10 @@ cdef class CDeviceArray:
 
         # TODO: evaluate whether we need to synchronize here or whether we should
         # move device arrays instead of shallow-copying them
-        device_array_capsule = alloc_c_device_array_shallow_copy(self._base, self._ptr)
+        cdef ArrowDeviceArray* c_array_out
+        device_array_capsule = alloc_c_device_array(&c_array_out)
+        c_device_array_shallow_copy(self._base, self._ptr, c_array_out)
+
         return self._schema.__arrow_c_schema__(), device_array_capsule
 
     @staticmethod
