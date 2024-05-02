@@ -251,3 +251,8 @@ def test_schema_extension():
     assert schema_obj.extension.metadata is None
     assert schema_obj.extension.storage.type == na.Type.INT32
     assert schema_obj.nullable is False
+
+
+def test_schema_alias_constructor():
+    schema = na.schema(na.Type.INT32)
+    assert isinstance(schema, na.Schema)

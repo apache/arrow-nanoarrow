@@ -38,7 +38,7 @@ def test_array_construct():
         iter(array)
 
 
-def test_array_constructor():
+def test_array_alias_constructor():
     array = na.array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
 

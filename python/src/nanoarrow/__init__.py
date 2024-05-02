@@ -25,18 +25,9 @@ Arrow C Data and Arrow C Stream interfaces.
 """
 
 from nanoarrow._lib import c_version
-from nanoarrow.c_array import (
-    c_array_from_buffers,
-    c_array,
-    c_array_view,
-    allocate_c_array,
-)
-from nanoarrow.c_array_stream import c_array_stream, allocate_c_array_stream
-from nanoarrow.c_schema import (
-    c_schema,
-    c_schema_view,
-    allocate_c_schema,
-)
+from nanoarrow.c_array import c_array_from_buffers, c_array
+from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_schema import c_schema
 from nanoarrow.c_buffer import c_buffer
 from nanoarrow.schema import (
     Schema,
@@ -76,6 +67,7 @@ from nanoarrow.schema import (
     interval_month_day_nano,
     decimal128,
     decimal256,
+    schema,
     struct,
 )
 from nanoarrow.array import array, Array
@@ -88,19 +80,14 @@ __all__ = [
     "Schema",
     "TimeUnit",
     "Type",
-    "allocate_c_array",
-    "allocate_c_array_stream",
-    "allocate_c_schema",
     "binary",
     "bool_",
     "c_array",
     "c_array_from_buffers",
     "c_array_stream",
-    "c_array_view",
     "c_buffer",
     "c_lib",
     "c_schema",
-    "c_schema_view",
     "c_version",
     "date32",
     "date64",
@@ -128,6 +115,7 @@ __all__ = [
     "null",
     "string",
     "struct",
+    "schema",
     "time32",
     "time64",
     "timestamp",

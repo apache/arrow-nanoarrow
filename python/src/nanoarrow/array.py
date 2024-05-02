@@ -527,39 +527,9 @@ class Array:
         print(_repr_utils.array_inspect(c_array(self)))
 
 
-def array(obj, schema=None, device=None) -> Array:
+def array(obj, schema=None) -> Array:
     """
-    Create a nanoarrow.Array from array-like input.
-
-    The :class:`Array` class is nanoarrow's high-level in-memory array
-    representation whose scope maps to that of a fully-consumed
-    ArrowArrayStream in the Arrow C Data interface. Note that an
-    :class:`Array` is not necessarily contiguous in memory (i.e.,
-    it may consist of zero or more ``ArrowArray``s).
-    See :class:`Array` for class details.
-
-    Parameters
-    ----------
-    obj : array or array stream-like
-        An array-like or array stream-like object. This can be any object
-        supporting the Arrow PyCapsule interface, the Python buffer
-        protocol, or an iterable of Python objects.
-    schema : schema-like, optional
-        An optional schema. This can be a Schema object, or object
-        implementing the Arrow PyCapsule interface for schemas
-        (i.e. having the ``__arrow_c_schema__`` protocol method).
-    device : Device, optional
-        The device associated with the buffers held by this Array.
-        Defaults to the CPU device.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> na.array([1, 2, 3], na.int32())
-    nanoarrow.Array<int32>[3]
-    1
-    2
-    3
+    Alias for the :class:`Array` class constructor. The use of
+    ``nanoarrow.Array()`` is preferred over ``nanoarrow.array()``.
     """
-    return Array(obj, schema=schema, device=device)
+    return Array(obj, schema=schema)

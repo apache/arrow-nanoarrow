@@ -91,8 +91,9 @@ def c_schema_view(obj) -> CSchemaView:
 
     >>> import pyarrow as pa
     >>> import nanoarrow as na
+    >>> from nanoarrow.c_schema import c_schema_view
     >>> schema = na.c_schema(pa.decimal128(10, 3))
-    >>> schema_view = na.c_schema_view(schema)
+    >>> schema_view = c_schema_view(schema)
     >>> schema_view.type
     'decimal128'
     >>> schema_view.decimal_bitwidth
@@ -116,8 +117,8 @@ def allocate_c_schema() -> CSchema:
     --------
 
     >>> import pyarrow as pa
-    >>> import nanoarrow as na
-    >>> schema = na.allocate_c_schema()
+    >>> from nanoarrow.c_schema import allocate_c_schema
+    >>> schema = allocate_c_schema()
     >>> pa.int32()._export_to_c(schema._addr())
     """
     return CSchema.allocate()

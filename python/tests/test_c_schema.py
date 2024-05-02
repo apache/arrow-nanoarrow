@@ -16,12 +16,13 @@
 # under the License.
 
 import pytest
+from nanoarrow.c_schema import allocate_c_schema, c_schema_view
 
 import nanoarrow as na
 
 
 def test_c_schema_basic():
-    schema = na.allocate_c_schema()
+    schema = allocate_c_schema()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
     assert repr(schema) == "<nanoarrow.c_lib.CSchema <released>>"
@@ -65,12 +66,12 @@ def test_schema_metadata():
 
 
 def test_c_schema_view():
-    schema = na.allocate_c_schema()
+    schema = allocate_c_schema()
     with pytest.raises(RuntimeError):
-        na.c_schema_view(schema)
+        c_schema_view(schema)
 
     schema = na.c_schema(na.int32())
-    view = na.c_schema_view(schema)
+    view = c_schema_view(schema)
     assert "- type: 'int32'" in repr(view)
     assert view.type == "int32"
     assert view.storage_type == "int32"
@@ -86,23 +87,23 @@ def test_c_schema_view():
 
 
 def test_c_schema_view_extra_params():
-    view = na.c_schema_view(na.fixed_size_binary(12))
+    view = c_schema_view(na.fixed_size_binary(12))
     assert view.fixed_size == 12
 
-    view = na.c_schema_view(na.decimal128(10, 3))
+    view = c_schema_view(na.decimal128(10, 3))
     assert view.decimal_bitwidth == 128
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    view = na.c_schema_view(na.decimal256(10, 3))
+    view = c_schema_view(na.decimal256(10, 3))
     assert view.decimal_bitwidth == 256
     assert view.decimal_precision == 10
     assert view.decimal_scale == 3
 
-    view = na.c_schema_view(na.duration("us"))
+    view = c_schema_view(na.duration("us"))
     assert view.time_unit == "us"
 
-    view = na.c_schema_view(na.timestamp("us", "America/Halifax"))
+    view = c_schema_view(na.timestamp("us", "America/Halifax"))
     assert view.type == "timestamp"
     assert view.storage_type == "int64"
     assert view.time_unit == "us"
@@ -110,7 +111,7 @@ def test_c_schema_view_extra_params():
 
     pa = pytest.importorskip("pyarrow")
 
-    view = na.c_schema_view(pa.list_(pa.int32(), 12))
+    view = c_schema_view(pa.list_(pa.int32(), 12))
     assert view.fixed_size == 12
 
 
@@ -121,7 +122,7 @@ def test_c_schema_metadata():
     }
 
     schema = na.c_schema(na.int32()).modify(metadata=meta)
-    view = na.c_schema_view(schema)
+    view = c_schema_view(schema)
     assert view.extension_name == "some_name"
     assert view.extension_metadata == b"some_metadata"
 
