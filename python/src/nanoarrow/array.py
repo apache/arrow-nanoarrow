@@ -527,9 +527,9 @@ class Array:
         print(_repr_utils.array_inspect(c_array(self)))
 
 
-def array(*args, **kwargs) -> Array:
+def array(obj, schema=None) -> Array:
     """
     Alias for the :class:`Array` class constructor. The use of
     ``nanoarrow.Array()`` is preferred over ``nanoarrow.array()``.
     """
-    return Array(*args, **kwargs)
+    return Array(obj, schema=schema)

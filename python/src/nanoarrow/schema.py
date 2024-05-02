@@ -460,12 +460,12 @@ class Schema:
         return self._c_schema.__arrow_c_schema__()
 
 
-def schema(*args, **kwargs) -> Schema:
+def schema(obj, **kwargs) -> Schema:
     """
     Alias for the :class:`Schema` class constructor. The use of
     ``nanoarrow.Schema()`` is preferred over ``nanoarrow.schema()``.
     """
-    return Schema(*args, **kwargs)
+    return Schema(obj, **kwargs)
 
 
 def null(nullable: bool = True) -> Schema:
