@@ -15,8 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 #include <cmath>
+#include <cstdint>
 
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
@@ -29,9 +31,11 @@
 #include <arrow/compare.h>
 #include <arrow/util/decimal.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
 
 using namespace arrow;
+using nanoarrow::NA;
+using testing::ElementsAre;
 
 // Lightweight versions of ArrowTesting's ARROW_EXPECT_OK. This
 // version accomplishes the task of making sure the status message
@@ -603,20 +607,9 @@ TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
 
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 0);
-  auto data_buffer = reinterpret_cast<const uint32_t*>(array.buffers[1]);
   EXPECT_EQ(array.buffers[0], nullptr);
-  EXPECT_EQ(data_buffer[0], 1);
-  EXPECT_EQ(data_buffer[1], 3);
-
-  auto arrow_array = ImportArray(&array, uint32());
-  ARROW_EXPECT_OK(arrow_array);
-
-  auto builder = UInt32Builder();
-  ARROW_EXPECT_OK(builder.Append(1));
-  ARROW_EXPECT_OK(builder.Append(3));
-  auto expected_array = builder.Finish();
-
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+  EXPECT_THAT(nanoarrow::ViewArrayAs<uint32_t>(&array), ElementsAre(1, 3));
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
@@ -806,24 +799,8 @@ TEST(ArrayTest, ArrayTestAppendToBoolArray) {
 
   EXPECT_EQ(array.length, 4);
   EXPECT_EQ(array.null_count, 2);
-  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
-  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
-  EXPECT_EQ(validity_buffer[0], 0x01 | 0x08);
-  EXPECT_EQ(ArrowBitGet(data_buffer, 0), 0x01);
-  EXPECT_EQ(ArrowBitGet(data_buffer, 1), 0x00);
-  EXPECT_EQ(ArrowBitGet(data_buffer, 2), 0x00);
-  EXPECT_EQ(ArrowBitGet(data_buffer, 3), 0x00);
-
-  auto arrow_array = ImportArray(&array, boolean());
-  ARROW_EXPECT_OK(arrow_array);
-
-  auto builder = BooleanBuilder();
-  ARROW_EXPECT_OK(builder.Append(true));
-  ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append(false));
-  auto expected_array = builder.Finish();
-
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+  EXPECT_THAT(nanoarrow::ViewArrayAs<bool>(&array), ElementsAre(true, NA, NA, false));
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
@@ -855,17 +832,9 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(offset_buffer[4], 9);
   EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
 
-  auto arrow_array = ImportArray(&array, large_utf8());
-  ARROW_EXPECT_OK(arrow_array);
-
-  auto builder = LargeStringBuilder();
-  ARROW_EXPECT_OK(builder.Append("1234"));
-  ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append("56789"));
-  ARROW_EXPECT_OK(builder.AppendEmptyValue());
-  auto expected_array = builder.Finish();
-
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
+              ElementsAre("1234"_v, NA, NA, "56789"_v, ""_v));
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
@@ -899,18 +868,10 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
                           '9',  '0',  0x00, 0x00, 0x00, 0x00, 0x00};
   EXPECT_EQ(memcmp(data_buffer, expected_data, 25), 0);
 
-  auto arrow_array = ImportArray(&array, &schema);
-  ARROW_EXPECT_OK(arrow_array);
-
-  auto builder = FixedSizeBinaryBuilder(fixed_size_binary(5));
-  ARROW_EXPECT_OK(builder.Append("12345"));
-  ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append("67890"));
-  ARROW_EXPECT_OK(builder.AppendEmptyValue());
-  auto expected_array = builder.Finish();
-  ARROW_EXPECT_OK(expected_array);
-
-  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+  EXPECT_THAT(nanoarrow::ViewArrayAsFixedSizeBytes(&array, 5),
+              ElementsAre("12345"_v, NA, NA, "67890"_v, "\0\0\0\0\0"_v));
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 }
 
 TEST(ArrayTest, ArrayTestAppendToBinaryArrayErrors) {
@@ -932,7 +893,7 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   const int32_t months = 42;
   struct ArrowInterval interval;
   ArrowIntervalInit(&interval, ArrowType::NANOARROW_TYPE_INTERVAL_MONTHS);
-  interval.months = 42;
+  interval.months = months;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INTERVAL_MONTHS), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
@@ -943,14 +904,8 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   EXPECT_EQ(array.length, 2);
   EXPECT_EQ(array.null_count, 1);
 
-  auto data_buffer = reinterpret_cast<const int32_t*>(array.buffers[1]);
-  EXPECT_EQ(data_buffer[0], months);
-
-  auto arrow_array = ImportArray(&array, month_interval());
-  ARROW_EXPECT_OK(arrow_array);
-
-  // TODO: arrow does not have a builder for MonthIntervals
-  // so no comparison is done after creating the array
+  EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(&array), ElementsAre(months, NA));
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {

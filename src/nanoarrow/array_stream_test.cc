@@ -15,9 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
+
+using testing::ElementsAre;
 
 TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   struct ArrowArrayStream array_stream;
@@ -44,16 +47,14 @@ TEST(ArrayStreamTest, ArrayStreamTestBasic) {
   EXPECT_STREQ(schema_copy.format, "i");
   ArrowSchemaRelease(&schema_copy);
 
-  struct ArrowArray array_copy;
-  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array_copy, nullptr), NANOARROW_OK);
-  EXPECT_EQ(array_copy.length, 1);
-  EXPECT_EQ(array_copy.n_buffers, 2);
-  ArrowArrayRelease(&array_copy);
-
-  EXPECT_EQ(ArrowArrayStreamGetNext(&array_stream, &array_copy, nullptr), NANOARROW_OK);
-  EXPECT_EQ(array_copy.release, nullptr);
-
-  EXPECT_EQ(array_stream.get_last_error(&array_stream), nullptr);
+  nanoarrow::ViewArrayStream array_stream_view(&array_stream);
+  for (ArrowArray& array : array_stream_view) {
+    EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(&array), ElementsAre(123));
+    EXPECT_EQ(array.n_buffers, 2);
+  }
+  EXPECT_EQ(array_stream_view.count(), 1);
+  EXPECT_EQ(array_stream_view.code(), NANOARROW_OK);
+  EXPECT_STREQ(array_stream_view.error()->message, "");
 
   ArrowArrayStreamRelease(&array_stream);
   EXPECT_EQ(array_stream.release, nullptr);

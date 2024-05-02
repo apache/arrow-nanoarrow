@@ -19,9 +19,11 @@
 #include <string>
 
 #include <arrow/util/decimal.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
+#include "nanoarrow/nanoarrow_testing.hpp"
 
 using namespace arrow;
 
@@ -551,4 +553,70 @@ TEST(UtilsTest, ArrowResolveChunk64Test) {
   EXPECT_EQ(ArrowResolveChunk64(3, offsets, 0, n_offsets), 2);
   EXPECT_EQ(ArrowResolveChunk64(4, offsets, 0, n_offsets), 2);
   EXPECT_EQ(ArrowResolveChunk64(5, offsets, 0, n_offsets), 2);
+}
+
+TEST(MaybeTest, ConstructionAndConversion) {
+  using nanoarrow::NA;
+  using nanoarrow::internal::Maybe;
+
+  Maybe<int> na, three{3}, five{5};
+  EXPECT_FALSE(na);
+  EXPECT_TRUE(three);
+  EXPECT_TRUE(five);
+
+  EXPECT_EQ(na, NA);
+  EXPECT_NE(na, 0);
+  EXPECT_EQ(na.value_or(0), 0);
+
+  EXPECT_EQ(three, 3);
+  EXPECT_EQ(five, 5);
+  EXPECT_NE(five, NA);
+
+  for (auto* l : {&na, &three, &five}) {
+    for (auto* r : {&na, &three, &five}) {
+      if (l == r) {
+        EXPECT_EQ(*l, *r);
+      } else {
+        EXPECT_NE(*l, *r);
+      }
+    }
+  }
+
+  EXPECT_EQ(*three, 3);
+  EXPECT_EQ(*five, 5);
+}
+
+TEST(RandomAccessRangeTest, ConstructionAndPrinting) {
+  auto square = [](int i) { return i * i; };
+
+  // the range is usable as a constant
+  const nanoarrow::internal::RandomAccessRange<decltype(square)> squares{square, 4};
+
+  // gtest recognizes the range as a container and can print it
+  EXPECT_THAT(squares, testing::ElementsAre(0, 1, 4, 9));
+
+  // since the range is usable as a constant, we can iterate through it multiple times and
+  // it will work
+  int sum = 0;
+  for (int i : squares) {
+    sum += i;
+  }
+  EXPECT_EQ(sum, 1 + 4 + 9);
+}
+
+TEST(InputRangeTest, ConstructionAndPrinting) {
+  auto factorial = [i = 1, f = 1]() mutable {
+    f *= i++;
+    return f < 1000 ? &f : nullptr;
+  };
+  nanoarrow::internal::InputRange<decltype(factorial)> factorials{factorial};
+
+  // GTest's range utils require a constant range, which this is not
+  // EXPECT_THAT(factorials, testing::ElementsAre(1, 2, 6, 24, 120, 720));
+
+  std::vector<int> factorials_vector;
+  for (int i : factorials) {
+    factorials_vector.push_back(i);
+  }
+  EXPECT_THAT(factorials_vector, testing::ElementsAre(1, 2, 6, 24, 120, 720));
 }
