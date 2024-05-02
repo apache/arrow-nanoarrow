@@ -89,7 +89,7 @@ cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
     ArrowFree(schema)
 
 
-cdef object alloc_c_schema(ArrowSchema** c_schema) noexcept:
+cdef object alloc_c_schema(ArrowSchema** c_schema):
     c_schema[0] = <ArrowSchema*> ArrowMalloc(sizeof(ArrowSchema))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_schema[0].release = NULL
@@ -107,7 +107,7 @@ cdef void pycapsule_array_deleter(object array_capsule) noexcept:
     ArrowFree(array)
 
 
-cdef object alloc_c_array(ArrowArray** c_array) noexcept:
+cdef object alloc_c_array(ArrowArray** c_array):
     c_array[0] = <ArrowArray*> ArrowMalloc(sizeof(ArrowArray))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_array[0].release = NULL
@@ -125,7 +125,7 @@ cdef void pycapsule_array_stream_deleter(object stream_capsule) noexcept:
     ArrowFree(stream)
 
 
-cdef object alloc_c_array_stream(ArrowArrayStream** c_stream) noexcept:
+cdef object alloc_c_array_stream(ArrowArrayStream** c_stream):
     c_stream[0] = <ArrowArrayStream*> ArrowMalloc(sizeof(ArrowArrayStream))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_stream[0].release = NULL
@@ -143,7 +143,7 @@ cdef void pycapsule_device_array_deleter(object device_array_capsule) noexcept:
     ArrowFree(device_array)
 
 
-cdef object alloc_c_device_array(ArrowDeviceArray** c_device_array) noexcept:
+cdef object alloc_c_device_array(ArrowDeviceArray** c_device_array):
     c_device_array[0] = <ArrowDeviceArray*> ArrowMalloc(sizeof(ArrowDeviceArray))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_device_array[0].array.release = NULL
@@ -160,7 +160,7 @@ cdef void pycapsule_array_view_deleter(object array_capsule) noexcept:
     ArrowFree(array_view)
 
 
-cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
+cdef object alloc_c_array_view(ArrowArrayView** c_array_view):
     c_array_view[0] = <ArrowArrayView*> ArrowMalloc(sizeof(ArrowArrayView))
     ArrowArrayViewInitFromType(c_array_view[0], NANOARROW_TYPE_UNINITIALIZED)
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
