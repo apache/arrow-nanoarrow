@@ -36,7 +36,7 @@ class CArrayBuilderSuite:
 
     def time_build_c_array_bool(self):
         """Create a bool array from 1,000,000 Python booleans"""
-        na.c_array(self.py_bools, na.bool())
+        na.c_array(self.py_bools, na.bool_())
 
     def time_build_c_array_struct_wide(self):
         """Create a struct array with 10,000 columns"""
