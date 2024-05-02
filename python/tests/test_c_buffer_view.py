@@ -83,6 +83,10 @@ def test_buffer_view_bool_unpack():
     view.unpack_bits_into(out, dest_offset=2)
     assert list(out) == [255, 255, 1, 0, 0, 1, 0, 0, 0, 0]
 
+    # Check error requesting out-of-bounds dest_offset
+    with pytest.raises(IndexError, match="Can't unpack"):
+        view.unpack_bits_into(out, dest_offset=-1)
+
     # Check errors from requesting out-of-bounds slices
     msg = "do not describe a valid slice"
     with pytest.raises(IndexError, match=msg):

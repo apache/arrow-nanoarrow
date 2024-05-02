@@ -1834,11 +1834,12 @@ cdef class CBufferView:
             PyBuffer_Release(&buffer)
             raise ValueError("Destination buffer has itemsize != 1")
 
-        if buffer.len < (dest_offset + length):
+        if dest_offset < 0 or buffer.len < (dest_offset + length):
             buffer_len = buffer.len
             PyBuffer_Release(&buffer)
             raise IndexError(
-                f"Can't unpack {length} elements into buffer of size {buffer_len}"
+                f"Can't unpack {length} elements into buffer of size {buffer_len} "
+                f"with dest_offset = {dest_offset}"
             )
 
         ArrowBitsUnpackInt8(
