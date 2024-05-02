@@ -65,7 +65,7 @@ def test_buffer_view_bool_():
 def test_buffer_view_bool_unpack():
     from array import array
 
-    bool_array_view = na.c_array_view([1, 0, 0, 1], na.bool_())
+    bool_array_view = na.c_array([1, 0, 0, 1], na.bool_()).view()
     view = bool_array_view.buffer(1)
 
     # Check unpacking
