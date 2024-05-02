@@ -195,6 +195,23 @@ cdef void c_pyobject_buffer(object base, const void* buf, int64_t size_bytes, Ar
 
 
 cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* dst):
+    """Make the shallowest (safe) copy possible
+
+    Once a CArray exists at the Python level, nanoarrow makes it very difficult
+    to perform an operation that might render the pointed-to ArrowArray invalid.
+    Performing a deep copy (i.e., copying buffer content) would be unexpected and
+    prohibitively expensive, and performing a truly shallow copy (i.e., adding
+    an ArrowArray implementation that simply PyINCREF/pyDECREFs the original array)
+    is not safe because the Arrow C Data interface specification allows children
+    to be "move"d. Even though nanoarrow's Python bindings do not do this unless
+    explicitly requested, when passed to some other library they are free to do so.
+
+    This implementation of a shallow copy creates a recursive copy of the original
+    array, including any children and dictionary (if present). It uses the
+    C library's ArrowArray implementation, which takes care of releasing children,
+    and allows us to use the ArrowBufferDeallocator mechanism to add/remove
+    references to the appropriate PyObject.
+    """
     # Allocate an ArrowArray* that will definitely be cleaned up should an exception
     # be raised in the process of shallow copying its contents
     cdef ArrowArray* tmp
@@ -205,16 +222,25 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
     Error.raise_error_not_ok("ArrowArrayInitFromType()", code)
 
     # Copy data for this array, adding a reference for each buffer
-    # This allows us to use nanoarrow's ArrowArray implementation without
-    # writing our own release callbacks/private_data.
+    # This allows us to use the nanoarrow C library's ArrowArray
+    # implementation without writing our own release callbacks/private_data.
     tmp.length = src.length
     tmp.offset = src.offset
     tmp.null_count = src.null_count
 
     for i in range(src.n_buffers):
         if src.buffers[i] != NULL:
+            # The purpose of this buffer is soley so that we can use the
+            # ArrowBufferDeallocator mechanism to add a reference to base.
+            # The ArrowArray release callback that exists here after
+            # because of ArrowArrayInitFromType() will call ArrowBufferReset()
+            # on any buffer that was injected in this way (and thus release the
+            # reference to base). We don't actually know the size of the buffer
+            # (and our release callback doesn't use it), so it is set to 0.
             c_pyobject_buffer(base, src.buffers[i], 0, ArrowArrayBuffer(tmp, i))
 
+        # The actual pointer value is tracked separately from the ArrowBuffer
+        # (which is only concerned with object lifecycle).
         tmp.buffers[i] = src.buffers[i]
 
     tmp.n_buffers = src.n_buffers
