@@ -28,6 +28,7 @@
 /// Utilities for testing nanoarrow structures and functions.
 
 namespace nanoarrow {
+namespace internal {
 
 inline void PrintTo(const Nothing&, std::ostream* os) { *os << "<NA>"; }
 
@@ -40,6 +41,7 @@ void PrintTo(const Maybe<T>& m, std::ostream* os) {
   }
 }
 
+}  // namespace internal
 }  // namespace nanoarrow
 
 inline void PrintTo(const ArrowStringView& sv, std::ostream* os) {

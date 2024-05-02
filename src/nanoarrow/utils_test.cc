@@ -556,7 +556,7 @@ TEST(UtilsTest, ArrowResolveChunk64Test) {
 }
 
 TEST(MaybeTest, ConstructionAndConversion) {
-  using nanoarrow::Maybe;
+  using nanoarrow::internal::Maybe;
   using nanoarrow::NA;
 
   Maybe<int> na, three{3}, five{5};

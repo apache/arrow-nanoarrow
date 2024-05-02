@@ -550,8 +550,8 @@ class VectorArrayStream {
 
 /// @}
 
+namespace internal {
 struct Nothing {};
-constexpr Nothing NA{};
 
 template <typename T>
 class Maybe {
@@ -585,7 +585,6 @@ class Maybe {
   bool is_something_;
 };
 
-namespace internal {
 template <typename Get>
 struct RandomAccessRange {
   Get get;
@@ -636,7 +635,20 @@ struct InputRange {
 };
 }  // namespace internal
 
-// C++17 could do all of this with a lambda
+/// \defgroup nanoarrow_hpp-range_for Range-for helpers
+///
+/// The Arrow C Data interface and the Arrow C Stream interface represent
+/// data which can be iterated through using C++'s range-for statement.
+///
+/// @{
+
+/// \brief An object convertible to any empty optional
+constexpr internal::Nothing NA{};
+
+/// \brief A range-for compatible wrapper for ArrowArray of fixed size type
+///
+/// Provides a sequence of optional<T> copied from each non-null
+/// slot of the wrapped array (null slots result in empty optionals).
 template <typename T>
 class ViewArrayAs {
  private:
@@ -645,7 +657,7 @@ class ViewArrayAs {
     const void* values;
     int64_t offset;
 
-    Maybe<T> operator()(int64_t i) const {
+    internal::Maybe<T> operator()(int64_t i) const {
       i += offset;
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         if (std::is_same<T, bool>::value) {
@@ -654,7 +666,7 @@ class ViewArrayAs {
           return static_cast<const T*>(values)[i];
         }
       }
-      return Nothing{};
+      return NA;
     }
   };
 
@@ -688,6 +700,12 @@ class ViewArrayAs {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
+/// \brief A range-for compatible wrapper for ArrowArray of binary or utf8
+///
+/// Provides a sequence of optional<ArrowStringView> referencing each non-null
+/// slot of the wrapped array (null slots result in empty optionals). Large
+/// binary and utf8 arrays can be wrapped by specifying 64 instead of 32 for
+/// the template argument.
 template <int OffsetSize>
 class ViewArrayAsBytes {
  private:
@@ -700,13 +718,13 @@ class ViewArrayAsBytes {
     const char* data;
     int64_t offset;
 
-    Maybe<ArrowStringView> operator()(int64_t i) const {
+    internal::Maybe<ArrowStringView> operator()(int64_t i) const {
       i += offset;
       auto* offsets = static_cast<const OffsetType*>(this->offsets);
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         return ArrowStringView{data + offsets[i], offsets[i + 1] - offsets[i]};
       }
-      return Nothing{};
+      return NA;
     }
   };
 
@@ -742,6 +760,10 @@ class ViewArrayAsBytes {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
+/// \brief A range-for compatible wrapper for ArrowArray of fixed size binary
+///
+/// Provides a sequence of optional<ArrowStringView> referencing each non-null
+/// slot of the wrapped array (null slots result in empty optionals).
 class ViewArrayAsFixedSizeBytes {
  private:
   struct Get {
@@ -750,12 +772,12 @@ class ViewArrayAsFixedSizeBytes {
     int64_t offset;
     int fixed_size;
 
-    Maybe<ArrowStringView> operator()(int64_t i) const {
+    internal::Maybe<ArrowStringView> operator()(int64_t i) const {
       i += offset;
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         return ArrowStringView{data + i * fixed_size, fixed_size};
       }
-      return Nothing{};
+      return NA;
     }
   };
 
@@ -791,6 +813,15 @@ class ViewArrayAsFixedSizeBytes {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
+/// \brief A range-for compatible wrapper for ArrowArrayStream
+///
+/// Provides a sequence of ArrowArray& referencing the most recent array drawn
+/// from the wrapped stream. (Each array may be moved from if necessary.)
+/// When streams terminate due to an error, the error code and message are
+/// available for inspection through the code() and error() member functions
+/// respectively. Failure to inspect the error code will result in
+/// an assertion failure. The number of arrays drawn from the stream is also
+/// available through the count() member function.
 class ViewArrayStream {
  public:
   ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
@@ -836,7 +867,7 @@ class ViewArrayStream {
   ArrowErrorCode* code_;
   ArrowError internal_error_ = {};
   ArrowErrorCode internal_code_;
-  bool code_was_accessed_;
+  bool code_was_accessed_ = false;
   int count_ = 0;
 
  public:
@@ -845,24 +876,38 @@ class ViewArrayStream {
   iterator begin() { return range_.begin(); }
   iterator end() { return range_.end(); }
 
+  /// The error code which caused this stream to terminate, if any.
   ArrowErrorCode code() {
     code_was_accessed_ = true;
     return *code_;
   }
+  /// The error message which caused this stream to terminate, if any.
   ArrowError* error() { return error_; }
 
+  /// The number of arrays streamed so far.
   int count() const { return count_; }
 };
 
+/// @}
+
 }  // namespace nanoarrow
 
+/// \defgroup nanoarrow_hpp-string_view_helpers ArrowStringView helpers
+///
+/// Factories and equality comparison for ArrowStringView.
+///
+/// @{
+
+/// \brief Equality comparison operator between ArrowStringView
 inline bool operator==(ArrowStringView l, ArrowStringView r) {
   if (l.size_bytes != r.size_bytes) return false;
   return memcmp(l.data, r.data, l.size_bytes) == 0;
 }
 
+/// \brief User literal operator allowing ArrowStringView construction like "str"_sv
 inline ArrowStringView operator""_v(const char* data, std::size_t size_bytes) {
   return {data, static_cast<int64_t>(size_bytes)};
 }
+/// @}
 
 #endif
