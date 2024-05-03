@@ -143,11 +143,15 @@ def test_c_array_slice_errors():
 
 def test_c_array_shallow_copy():
     import gc
-
+    import platform
     from nanoarrow._lib import get_pyobject_buffer_count
 
-    gc.collect()
+    if platform.python_implementation() == "PyPy":
+        pytest.skip(
+            "Reference counting/garbage collection is non-deterministic on PyPy"
+        )
 
+    gc.collect()
     initial_ref_count = get_pyobject_buffer_count()
 
     # Create an array with children
