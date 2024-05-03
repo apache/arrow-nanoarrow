@@ -20,7 +20,7 @@ from functools import cached_property
 from itertools import islice
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import CArray, CArrayView, CArrowType, CSchema, CSchemaView
+from nanoarrow._lib import CArrayView, CArrowType
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema, c_schema_view
 
@@ -192,37 +192,6 @@ class ArrayViewBaseIterator:
 
     def _warn(self, message, category):
         warnings.warn(f"{self._object_label}: {message}", category)
-
-
-class ArrayStreamVisitor:
-    def __init__(self, iterator_cls=ArrayViewBaseIterator) -> None:
-        self._iterator_cls = iterator_cls
-
-    def visit(self, obj, schema=None):
-        with c_array_stream(obj, schema=schema) as stream:
-            iterator = self._iterator_cls(stream._get_cached_schema())
-            self.visit_schema(iterator._schema, iterator._schema_view)
-
-            iterator_set_array = iterator._set_array
-            visit_array = self.visit_array
-            array_view = iterator._array_view
-
-            for array in stream:
-                iterator_set_array(array)
-                visit_array(array, array_view, iterator)
-
-        return self.finish()
-
-    def visit_schema(self, schema: CSchema, schema_view: CSchemaView):
-        pass
-
-    def visit_array(
-        self, array: CArray, array_view: CArrayView, iterator: ArrayViewBaseIterator
-    ):
-        pass
-
-    def finish(self):
-        pass
 
 
 class PyIterator(ArrayViewBaseIterator):
