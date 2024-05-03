@@ -61,6 +61,77 @@ class ArrayStreamVisitor:
         return state
 
 
+class ColumnsBuilder(ArrayStreamVisitor):
+
+    def __init__(self, *, total_elements=None) -> None:
+        super().__init__(iterator_cls=PyIterator)
+
+        self._total_elements = total_elements
+
+    def _resolve_visitor(self, schema_view, nullable=None):
+        if nullable is None:
+            nullable = schema_view.nullable
+
+        if schema_view.buffer_format is not None and not nullable:
+            return BufferConcatenator(buffer=1, total_elements=self._total_elements)
+
+        elif schema_view.type_id == CArrowType.BOOL and not nullable:
+            return UnpackedBitmapConcatenator(
+                buffer=1, total_elements=self._total_elements
+            )
+
+        elif (
+            schema_view.buffer_format is not None
+            or schema_view.type_id == CArrowType.BOOL
+        ):
+            return NullableBufferConcatenator(
+                parent=self._resolve_visitor(schema_view, nullable=False),
+                total_elements=self._total_elements,
+            )
+
+        else:
+            return ListBuilder()
+
+    def _handle_nullable_buffer(self, mask, buffer):
+        return mask, buffer
+
+    def begin(self, iterator: ArrayViewBaseIterator):
+        if iterator._schema_view.type != "struct":
+            raise ValueError(
+                f"Can't build columns from type '{iterator._schema_view.type}'"
+            )
+
+        state = []
+        for child_iterator in iterator._children:
+            child = self._resolve_visitor(child_iterator._schema_view)
+            state.append((child, child.begin(child_iterator), iterator._schema.name))
+
+        return state
+
+    def visit_array(
+        self,
+        array_view: CArrayView,
+        iterator: Callable[[int, int], Iterable],
+        state: Any,
+    ):
+        for i in range(len(state)):
+            child, child_state, name = state[i]
+            child_state = child.visit_array(array_view.child(i), None, child_state)
+            state[i] = child, child_state, name
+
+    def finish(self, state):
+        out = {}
+        for i in range(len(state)):
+            child, child_state, name = state[i]
+            child_state = child.finish(child_state)
+            if isinstance(child, NullableBufferConcatenator):
+                child_state = self._handle_nullable_buffer(*child_state)
+
+            out[name] = child_state
+
+        return out
+
+
 class ListBuilder(ArrayStreamVisitor):
     def __init__(self, *, iterator_cls=PyIterator, total_elements=None) -> None:
         super().__init__(iterator_cls=iterator_cls)
@@ -84,32 +155,13 @@ class BufferConcatenator(ArrayStreamVisitor):
         self._buffer = buffer
         self._total_elements = total_elements
 
-    def _copy_method_bitmap(self, buffer_view, builder, offset, length, dest_offset):
-        buffer_view.unpack_bits_into(builder, offset, length, dest_offset)
-        builder.advance(length)
-
-    def _copy_method_non_bitmap(
-        self, buffer_view, builder, offset, length, dest_offset
-    ):
-        src = memoryview(buffer_view)[offset : offset + length]
-        dst = memoryview(builder).cast(src.format)
-        dst[dest_offset : dest_offset + length] = src
-        builder.advance(len(src))
-
     def begin(self, iterator: ArrayViewBaseIterator):
         buffer_index = self._buffer
         buffer_data_type = iterator._schema_view.layout.buffer_data_type_id[
             buffer_index
         ]
         element_size_bits = iterator._schema_view.layout.element_size_bits[buffer_index]
-
-        if buffer_data_type == CArrowType.BOOL:
-            element_size_bytes = 1
-            buffer_data_type = CArrowType.UINT8
-            copy_method = self._copy_method_bitmap
-        else:
-            element_size_bytes = element_size_bits // 8
-            copy_method = self._copy_method_non_bitmap
+        element_size_bytes = element_size_bits // 8
 
         builder = CBufferBuilder()
         builder.set_data_type(buffer_data_type)
@@ -117,7 +169,7 @@ class BufferConcatenator(ArrayStreamVisitor):
         if self._total_elements is not None:
             builder.reserve_bytes(self._total_elements * element_size_bytes)
 
-        return 0, buffer_index, builder, copy_method
+        return 0, buffer_index, builder
 
     def visit_array(
         self,
@@ -125,29 +177,35 @@ class BufferConcatenator(ArrayStreamVisitor):
         iterator: Callable[[int, int], Iterable],
         state: Any,
     ):
-        out_start, buffer_index, writable_buffer, copy_method = state
+        out_start, buffer_index, writable_buffer = state
         offset = array_view.offset
         length = array_view.length
-        copy_method(
-            array_view.buffer(buffer_index), writable_buffer, offset, length, out_start
-        )
 
-        return out_start + length, buffer_index, writable_buffer, copy_method
+        src = memoryview(array_view.buffer(buffer_index))[offset : offset + length]
+        dst_bytes = len(src) * src.itemsize
+        writable_buffer.reserve_bytes(dst_bytes)
+
+        dst = memoryview(writable_buffer).cast(src.format)
+        dst[out_start : out_start + length] = src
+        writable_buffer.advance(dst_bytes)
+
+        return out_start + length, buffer_index, writable_buffer
 
     def finish(self, state):
         return state[2].finish()
 
 
-class NumpyObjectArrayBuilder(ArrayStreamVisitor):
-    def __init__(self, *, iterator_cls=PyIterator, total_elements=None) -> None:
-        super().__init__(iterator_cls=iterator_cls)
-        self._total_elements = total_elements
+class UnpackedBitmapConcatenator(BufferConcatenator):
 
     def begin(self, iterator: ArrayViewBaseIterator):
-        from numpy import empty, fromiter
+        buffer_index = self._buffer
+        builder = CBufferBuilder()
+        builder.set_data_type(CArrowType.UINT8)
 
-        array = empty(self._total_elements, "O")
-        return 0, array, array.dtype, fromiter
+        if self._total_elements is not None:
+            builder.reserve_bytes(self._total_elements)
+
+        return 0, buffer_index, builder
 
     def visit_array(
         self,
@@ -155,12 +213,39 @@ class NumpyObjectArrayBuilder(ArrayStreamVisitor):
         iterator: Callable[[int, int], Iterable],
         state: Any,
     ):
-        start, array, dtype, fromiter = state
+        out_start, buffer_index, writable_buffer = state
+        offset = array_view.offset
         length = array_view.length
-        end = start + length
-        array[start:end] = fromiter(iterator(0, length), dtype, length)
 
-        return end, array, dtype, fromiter
+        writable_buffer.reserve_bytes(length)
+        array_view.buffer(buffer_index).unpack_bits_into(
+            writable_buffer, offset, length, out_start
+        )
+        writable_buffer.advance(length)
+
+        return out_start + length, buffer_index, writable_buffer
+
+
+class NullableBufferConcatenator(UnpackedBitmapConcatenator):
+
+    def __init__(self, *, parent=None, total_elements=None) -> None:
+        super().__init__(buffer=0, total_elements=total_elements)
+        self._parent = parent
+
+    def begin(self, iterator: ArrayViewBaseIterator):
+        return self._parent, self._parent.begin(iterator), super().begin(iterator)
+
+    def visit_array(
+        self,
+        array_view: CArrayView,
+        iterator: Callable[[int, int], Iterable],
+        state: Any,
+    ):
+        parent, parent_state, super_state = state
+        parent_state = parent.visit_array(array_view, iterator, parent_state)
+        super_state = super().visit_array(array_view, iterator, state)
+        return parent, parent_state, super_state
 
     def finish(self, state):
-        return state[1]
+        parent, parent_state, super_state = state
+        return parent.finish(parent_state), super().finish(super_state)
