@@ -15,41 +15,91 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CArray, CArrayView, CSchema, CSchemaView
+from typing import Any, Callable, Iterable
+
+from nanoarrow._lib import CArrayView, CSchema, CSchemaView
 from nanoarrow.c_array_stream import c_array_stream
-from nanoarrow.iterator import ArrayViewBaseIterator
+from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 
 
 class ArrayStreamVisitor:
-    def __init__(self, iterator_cls=ArrayViewBaseIterator) -> None:
-        self._iterator_cls = iterator_cls
+    @classmethod
+    def visit(cls, obj, schema=None, **kwargs):
+        visitor = cls(**kwargs)
 
-    def visit(self, obj, schema=None):
         with c_array_stream(obj, schema=schema) as stream:
-            iterator = self._iterator_cls(stream._get_cached_schema())
-            state = self.visit_schema(iterator._schema, iterator._schema_view)
+            iterator = visitor._iterator_cls(stream._get_cached_schema())
+            state = visitor.visit_schema(iterator._schema, iterator._schema_view)
 
             iterator_set_array = iterator._set_array
-            visit_array = self.visit_array
+            iterator_iter_chunk = iterator._iter_chunk
+            visit_array = visitor.visit_array
             array_view = iterator._array_view
 
             for array in stream:
                 iterator_set_array(array)
-                visit_array(array, array_view, iterator, state)
+                state = visit_array(array_view, iterator_iter_chunk, state)
 
-        return self.finish(state)
+        return visitor.finish(state)
+
+    def __init__(self, *, iterator_cls=ArrayViewBaseIterator) -> None:
+        self._iterator_cls = iterator_cls
 
     def visit_schema(self, schema: CSchema, schema_view: CSchemaView):
         return None
 
     def visit_array(
         self,
-        array: CArray,
         array_view: CArrayView,
-        iterator: ArrayViewBaseIterator,
-        state,
+        iterator: Callable[[int, int], Iterable],
+        state: Any,
     ):
-        pass
+        return state
 
     def finish(self, state):
         return state
+
+
+class ListBuilder(ArrayStreamVisitor):
+    def __init__(self, *, iterator_cls=PyIterator) -> None:
+        super().__init__(iterator_cls=iterator_cls)
+
+    def visit_schema(self, schema: CSchema, schema_view: CSchemaView):
+        return []
+
+    def visit_array(
+        self,
+        array_view: CArrayView,
+        iterator: Callable[[int, int], Iterable],
+        state: Any,
+    ):
+        state.extend(iterator(0, array_view.length))
+        return state
+
+
+class NumpyObjectArrayBuilder(ListBuilder):
+    def __init__(self, *, iterator_cls=PyIterator, n=None) -> None:
+        super().__init__(iterator_cls=iterator_cls)
+        self._n = n
+
+    def visit_schema(self, schema: CSchema, schema_view: CSchemaView):
+        from numpy import empty, fromiter
+
+        array = empty(self._n, "O")
+        return 0, array, array.dtype, fromiter
+
+    def visit_array(
+        self,
+        array_view: CArrayView,
+        iterator: Callable[[int, int], Iterable],
+        state: Any,
+    ):
+        start, array, dtype, fromiter = state
+        length = array_view.length
+        end = start + length
+        array[start:end] = fromiter(iterator(0, length), dtype, length)
+
+        return end, array, dtype, fromiter
+
+    def finish(self, state):
+        return state[1]
