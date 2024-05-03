@@ -151,26 +151,8 @@ class ArrayViewBaseIterator:
         else:
             self._array_view = _array_view
 
-        self._children = list(
-            map(self._make_child, self._schema.children, self._array_view.children)
-        )
-
-        if self._schema.dictionary is None:
-            self._dictionary = None
-        else:
-            self._dictionary = self._make_child(
-                self._schema.dictionary, self._array_view.dictionary
-            )
-
-    def _make_child(self, schema, array_view):
-        return type(self)(schema, _array_view=array_view)
-
     def _iter_chunk(self, offset, length) -> Iterable:
         yield self._array_view
-
-    @cached_property
-    def _child_names(self):
-        return [child.name for child in self._schema.children]
 
     @cached_property
     def _object_label(self):
@@ -198,6 +180,27 @@ class PyIterator(ArrayViewBaseIterator):
     """Iterate over the Python object version of values in an ArrowArrayView.
     Intended for internal use.
     """
+
+    def __init__(self, schema, *, _array_view=None):
+        super().__init__(schema, _array_view=_array_view)
+
+        self._children = list(
+            map(self._make_child, self._schema.children, self._array_view.children)
+        )
+
+        if self._schema.dictionary is None:
+            self._dictionary = None
+        else:
+            self._dictionary = self._make_child(
+                self._schema.dictionary, self._array_view.dictionary
+            )
+
+    def _make_child(self, schema, array_view):
+        return type(self)(schema, _array_view=array_view)
+
+    @cached_property
+    def _child_names(self):
+        return [child.name for child in self._schema.children]
 
     def _iter_chunk(self, offset, length):
         # Check for an extension type first since this isn't reflected by
