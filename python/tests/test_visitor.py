@@ -51,8 +51,22 @@ def test_buffer_concatenator():
     assert list(buffer) == [1, 2, 3, 4, 5, 6]
 
 
+def test_buffer_concatenator_with_offsets():
+    src = [na.c_array([1, 2, 3], na.int32())[1:], na.c_array([4, 5, 6], na.int32())[2:]]
+    stream = CArrayStream.from_array_list(src, na.c_schema(na.int32()))
+    buffer = visitor.BufferConcatenator.visit(stream, buffer_index=1)
+    assert list(buffer) == [2, 3, 6]
+
+
 def test_unpacked_bitmap_concatenator():
     src = [na.c_array([0, 1, 1], na.bool_()), na.c_array([1, 0, 0], na.bool_())]
     stream = CArrayStream.from_array_list(src, na.c_schema(na.bool_()))
     buffer = visitor.UnpackedBitmapConcatenator.visit(stream, buffer_index=1)
     assert list(buffer) == [False, True, True, True, False, False]
+
+
+def test_unpacked_bitmap_concatenator_with_offsets():
+    src = [na.c_array([0, 1, 1], na.bool_())[1:], na.c_array([1, 0, 0], na.bool_())[2:]]
+    stream = CArrayStream.from_array_list(src, na.c_schema(na.bool_()))
+    buffer = visitor.UnpackedBitmapConcatenator.visit(stream, buffer_index=1)
+    assert list(buffer) == [True, True, False]

@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Any, Callable, Iterable, List, Mapping, Sequence, Union
+from typing import Any, List, Mapping, Sequence, Union
 
 from nanoarrow._lib import CArrayView, CArrowType, CBuffer
 from nanoarrow.c_array_stream import c_array_stream
@@ -161,7 +161,7 @@ class BufferConcatenator(ArrayStreamVisitor):
 
 
 class UnpackedBitmapConcatenator(BufferConcatenator):
-    def begin(self, total_elements: int | None = None):
+    def begin(self, total_elements: Union[int, None] = None):
         buffer_index = self._buffer_index
         builder = CBufferBuilder()
         builder.set_data_type(CArrowType.UINT8)
@@ -183,27 +183,3 @@ class UnpackedBitmapConcatenator(BufferConcatenator):
         writable_buffer.advance(length)
 
         return out_start + length, buffer_index, writable_buffer
-
-
-class NullableBufferConcatenator(UnpackedBitmapConcatenator):
-    def __init__(self, *, parent=None, total_elements=None) -> None:
-        super().__init__(buffer=0, total_elements=total_elements)
-        self._parent = parent
-
-    def begin(self, iterator: ArrayViewBaseIterator):
-        return self._parent, self._parent.begin(iterator), super().begin(iterator)
-
-    def visit_array(
-        self,
-        array_view: CArrayView,
-        iterator: Callable[[int, int], Iterable],
-        state: Any,
-    ):
-        parent, parent_state, super_state = state
-        parent_state = parent.visit_array(array_view, iterator, parent_state)
-        super_state = super().visit_array(array_view, iterator, state)
-        return parent, parent_state, super_state
-
-    def finish(self, state):
-        parent, parent_state, super_state = state
-        return parent.finish(parent_state), super().finish(super_state)
