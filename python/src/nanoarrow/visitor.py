@@ -20,6 +20,7 @@ from typing import Any, List, Mapping, Sequence, Union
 from nanoarrow._lib import CArrayView, CArrowType, CBuffer
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_buffer import CBufferBuilder
+from nanoarrow.c_schema import c_schema_view
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 
 
@@ -78,7 +79,15 @@ class ColumnsBuilder(ArrayStreamVisitor):
             self._child_array_views.append(child_array_view)
 
     def _resolve_child_visitor(self, child_schema, child_array_view):
-        return ListBuilder(child_schema, _array_view=child_array_view)
+        view = c_schema_view(child_schema)
+        if view.type_id == CArrowType.BOOL:
+            return UnpackedBitmapConcatenator(
+                child_schema, _array_view=child_array_view
+            )
+        elif view.buffer_format is not None:
+            return BufferConcatenator(child_schema, _array_view=child_array_view)
+        else:
+            return ListBuilder(child_schema, _array_view=child_array_view)
 
     def begin(self, total_elements: Union[int, None] = None):
         child_visitors = self._child_visitors

@@ -39,8 +39,8 @@ def test_to_columms():
 
     columns = visitor.to_columns(array)
     assert list(columns.keys()) == ["col1", "col2", "col3"]
-    assert columns["col1"] == [1, 2, 3]
-    assert columns["col2"] == [True, False, True]
+    assert list(columns["col1"]) == [1, 2, 3]
+    assert list(columns["col2"]) == [True, False, True]
     assert columns["col3"] == ["abc", "def", "ghi"]
 
 
