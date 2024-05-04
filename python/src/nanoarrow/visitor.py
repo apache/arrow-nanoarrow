@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, List, Mapping, Sequence, Union
 
 from nanoarrow._lib import CArrayView, CArrowType
 from nanoarrow.c_array_stream import c_array_stream
@@ -23,130 +23,103 @@ from nanoarrow.c_buffer import CBufferBuilder
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 
 
-class ArrayStreamVisitor:
+def to_pylist(obj, schema=None) -> List:
+    return ListBuilder.visit(obj, schema)
+
+
+def to_columns(obj, schema=None) -> Mapping[str, Sequence]:
+    return ColumnsBuilder.visit(obj, schema)
+
+
+class ArrayStreamVisitor(ArrayViewBaseIterator):
     @classmethod
     def visit(cls, obj, schema=None, **kwargs):
-        visitor = cls(**kwargs)
+        if hasattr(obj, "__len__"):
+            total_elements = len(obj)
+        else:
+            total_elements = None
 
         with c_array_stream(obj, schema=schema) as stream:
-            iterator = visitor._iterator_cls(stream._get_cached_schema())
-            state = visitor.begin(iterator)
+            visitor = cls(stream._get_cached_schema(), **kwargs)
+            state = visitor.begin(total_elements)
 
-            iterator_set_array = iterator._set_array
-            iterator_iter_chunk = iterator._iter_chunk
-            visit_array = visitor.visit_array
-            array_view = iterator._array_view
+            iterator_set_array = visitor._set_array
+            visit_chunk_view = visitor.visit_chunk_view
+            array_view = visitor._array_view
 
             for array in stream:
                 iterator_set_array(array)
-                state = visit_array(array_view, iterator_iter_chunk, state)
+                state = visit_chunk_view(array_view, state)
 
         return visitor.finish(state)
 
-    def __init__(self, *, iterator_cls=ArrayViewBaseIterator) -> None:
-        self._iterator_cls = iterator_cls
-
-    def begin(self, iterator: ArrayViewBaseIterator):
+    def begin(self, total_elements: Union[int, None] = None):
         return None
 
-    def visit_array(
-        self,
-        array_view: CArrayView,
-        iterator: Callable[[int, int], Iterable],
-        state: Any,
-    ):
+    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
         return state
 
-    def finish(self, state):
+    def finish(self, state: Any) -> Any:
         return state
-
-
-class ColumnsBuilder(ArrayStreamVisitor):
-
-    def __init__(self, *, total_elements=None) -> None:
-        super().__init__(iterator_cls=PyIterator)
-
-        self._total_elements = total_elements
-
-    def _resolve_visitor(self, schema_view, nullable=None):
-        if nullable is None:
-            nullable = schema_view.nullable
-
-        if schema_view.buffer_format is not None and not nullable:
-            return BufferConcatenator(buffer=1, total_elements=self._total_elements)
-
-        elif schema_view.type_id == CArrowType.BOOL and not nullable:
-            return UnpackedBitmapConcatenator(
-                buffer=1, total_elements=self._total_elements
-            )
-
-        elif (
-            schema_view.buffer_format is not None
-            or schema_view.type_id == CArrowType.BOOL
-        ):
-            return NullableBufferConcatenator(
-                parent=self._resolve_visitor(schema_view, nullable=False),
-                total_elements=self._total_elements,
-            )
-
-        else:
-            return ListBuilder()
-
-    def _handle_nullable_buffer(self, mask, buffer):
-        return mask, buffer
-
-    def begin(self, iterator: ArrayViewBaseIterator):
-        if iterator._schema_view.type != "struct":
-            raise ValueError(
-                f"Can't build columns from type '{iterator._schema_view.type}'"
-            )
-
-        state = []
-        for child_iterator in iterator._children:
-            child = self._resolve_visitor(child_iterator._schema_view)
-            state.append((child, child.begin(child_iterator), iterator._schema.name))
-
-        return state
-
-    def visit_array(
-        self,
-        array_view: CArrayView,
-        iterator: Callable[[int, int], Iterable],
-        state: Any,
-    ):
-        for i in range(len(state)):
-            child, child_state, name = state[i]
-            child_state = child.visit_array(array_view.child(i), None, child_state)
-            state[i] = child, child_state, name
-
-    def finish(self, state):
-        out = {}
-        for i in range(len(state)):
-            child, child_state, name = state[i]
-            child_state = child.finish(child_state)
-            if isinstance(child, NullableBufferConcatenator):
-                child_state = self._handle_nullable_buffer(*child_state)
-
-            out[name] = child_state
-
-        return out
 
 
 class ListBuilder(ArrayStreamVisitor):
-    def __init__(self, *, iterator_cls=PyIterator, total_elements=None) -> None:
-        super().__init__(iterator_cls=iterator_cls)
+    def __init__(self, schema, *, iterator_cls=PyIterator, _array_view=None):
+        super().__init__(schema, _array_view=_array_view)
+        self._iterator = iterator_cls(schema, _array_view=self._array_view)
 
-    def begin(self, iterator: ArrayViewBaseIterator):
-        return []
+    def begin(self, total_elements: Union[int, None] = None):
+        return self._iterator._iter_chunk, []
 
-    def visit_array(
-        self,
-        array_view: CArrayView,
-        iterator: Callable[[int, int], Iterable],
-        state: Any,
-    ):
-        state.extend(iterator(0, array_view.length))
+    def visit_chunk_view(self, array_view: CArrayView, state: Any):
+        iter_chunk, out = state
+        out.extend(iter_chunk(0, array_view.length))
+        return iter_chunk, out
+
+    def finish(self, state: Any):
+        return state[1]
+
+
+class ColumnsBuilder(ArrayStreamVisitor):
+    def __init__(self, schema, *, _array_view=None):
+        super().__init__(schema, _array_view=_array_view)
+
+        self._child_visitors = []
+        self._child_array_views = []
+        for child_schema, child_array_view in zip(
+            self._schema.children, self._array_view.children
+        ):
+            self._child_visitors.append(
+                self._resolve_child_visitor(child_schema, child_array_view)
+            )
+            self._child_array_views.append(child_array_view)
+
+    def _resolve_child_visitor(self, child_schema, child_array_view):
+        return ListBuilder(child_schema, _array_view=child_array_view)
+
+    def begin(self, total_elements: Union[int, None] = None):
+        child_visitors = self._child_visitors
+        child_state = [child.begin(total_elements) for child in child_visitors]
+        return child_visitors, child_state, self._child_array_views
+
+    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
+        child_visitors, child_state, child_array_views = state
+
+        for i in range(len(child_visitors)):
+            child_state[i] = child_visitors[i].visit_chunk_view(
+                child_array_views[i], child_state[i]
+            )
+
         return state
+
+    def finish(self, state: Any) -> Any:
+        child_visitors, child_state, _ = state
+
+        out = {}
+        for i, schema in enumerate(self._schema.children):
+            out[schema.name] = child_visitors[i].finish(child_state[i])
+
+        return out
 
 
 class BufferConcatenator(ArrayStreamVisitor):
@@ -196,7 +169,6 @@ class BufferConcatenator(ArrayStreamVisitor):
 
 
 class UnpackedBitmapConcatenator(BufferConcatenator):
-
     def begin(self, iterator: ArrayViewBaseIterator):
         buffer_index = self._buffer
         builder = CBufferBuilder()
@@ -227,7 +199,6 @@ class UnpackedBitmapConcatenator(BufferConcatenator):
 
 
 class NullableBufferConcatenator(UnpackedBitmapConcatenator):
-
     def __init__(self, *, parent=None, total_elements=None) -> None:
         super().__init__(buffer=0, total_elements=total_elements)
         self._parent = parent

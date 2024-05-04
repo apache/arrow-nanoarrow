@@ -134,14 +134,6 @@ class ArrayViewBaseIterator:
     as the basis for conversion to Python objects. Intended for internal use.
     """
 
-    @classmethod
-    def get_iterator(cls, obj, schema=None):
-        with c_array_stream(obj, schema=schema) as stream:
-            iterator = cls(stream._get_cached_schema())
-            for array in stream:
-                iterator._set_array(array)
-                yield from iterator._iter_chunk(0, len(array))
-
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
         self._schema_view = c_schema_view(schema)
@@ -150,9 +142,6 @@ class ArrayViewBaseIterator:
             self._array_view = CArrayView.from_schema(self._schema)
         else:
             self._array_view = _array_view
-
-    def _iter_chunk(self, offset, length) -> Iterable:
-        yield self._array_view
 
     @cached_property
     def _object_label(self):
@@ -180,6 +169,14 @@ class PyIterator(ArrayViewBaseIterator):
     """Iterate over the Python object version of values in an ArrowArrayView.
     Intended for internal use.
     """
+
+    @classmethod
+    def get_iterator(cls, obj, schema=None):
+        with c_array_stream(obj, schema=schema) as stream:
+            iterator = cls(stream._get_cached_schema())
+            for array in stream:
+                iterator._set_array(array)
+                yield from iterator._iter_chunk(0, array.length)
 
     def __init__(self, schema, *, _array_view=None):
         super().__init__(schema, _array_view=_array_view)
