@@ -161,22 +161,17 @@ class BufferConcatenator(ArrayStreamVisitor):
 
 
 class UnpackedBitmapConcatenator(BufferConcatenator):
-    def begin(self, iterator: ArrayViewBaseIterator):
-        buffer_index = self._buffer
+    def begin(self, total_elements: int | None = None):
+        buffer_index = self._buffer_index
         builder = CBufferBuilder()
         builder.set_data_type(CArrowType.UINT8)
 
-        if self._total_elements is not None:
-            builder.reserve_bytes(self._total_elements)
+        if total_elements is not None:
+            builder.reserve_bytes(total_elements)
 
         return 0, buffer_index, builder
 
-    def visit_array(
-        self,
-        array_view: CArrayView,
-        iterator: Callable[[int, int], Iterable],
-        state: Any,
-    ):
+    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
         out_start, buffer_index, writable_buffer = state
         offset = array_view.offset
         length = array_view.length
