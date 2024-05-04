@@ -198,7 +198,6 @@ class UnpackedBitmapConcatenator(BufferConcatenator):
 
 
 class ValidityBufferConcatenator(UnpackedBitmapConcatenator):
-
     def __init__(self, schema, *, _array_view=None):
         super().__init__(schema, buffer_index=0, _array_view=_array_view)
 
