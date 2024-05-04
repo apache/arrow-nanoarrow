@@ -17,18 +17,18 @@
 
 from typing import Any, Callable, Iterable, List, Mapping, Sequence, Union
 
-from nanoarrow._lib import CArrayView, CArrowType
+from nanoarrow._lib import CArrayView, CArrowType, CBuffer
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_buffer import CBufferBuilder
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 
 
-def to_pylist(obj, schema=None) -> List:
-    return ListBuilder.visit(obj, schema)
-
-
 def to_columns(obj, schema=None) -> Mapping[str, Sequence]:
     return ColumnsBuilder.visit(obj, schema)
+
+
+def to_pylist(obj, schema=None) -> List:
+    return ListBuilder.visit(obj, schema)
 
 
 class ArrayStreamVisitor(ArrayViewBaseIterator):
@@ -61,23 +61,6 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
 
     def finish(self, state: Any) -> Any:
         return state
-
-
-class ListBuilder(ArrayStreamVisitor):
-    def __init__(self, schema, *, iterator_cls=PyIterator, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
-        self._iterator = iterator_cls(schema, _array_view=self._array_view)
-
-    def begin(self, total_elements: Union[int, None] = None):
-        return self._iterator._iter_chunk, []
-
-    def visit_chunk_view(self, array_view: CArrayView, state: Any):
-        iter_chunk, out = state
-        out.extend(iter_chunk(0, array_view.length))
-        return iter_chunk, out
-
-    def finish(self, state: Any):
-        return state[1]
 
 
 class ColumnsBuilder(ArrayStreamVisitor):
@@ -122,34 +105,43 @@ class ColumnsBuilder(ArrayStreamVisitor):
         return out
 
 
-class BufferConcatenator(ArrayStreamVisitor):
-    def __init__(self, *, buffer=1, total_elements=None) -> None:
-        super().__init__(iterator_cls=ArrayViewBaseIterator)
-        self._buffer = buffer
-        self._total_elements = total_elements
+class ListBuilder(ArrayStreamVisitor):
+    def __init__(self, schema, *, iterator_cls=PyIterator, _array_view=None):
+        super().__init__(schema, _array_view=_array_view)
+        self._iterator = iterator_cls(schema, _array_view=self._array_view)
 
-    def begin(self, iterator: ArrayViewBaseIterator):
-        buffer_index = self._buffer
-        buffer_data_type = iterator._schema_view.layout.buffer_data_type_id[
-            buffer_index
-        ]
-        element_size_bits = iterator._schema_view.layout.element_size_bits[buffer_index]
+    def begin(self, total_elements: Union[int, None] = None):
+        return self._iterator._iter_chunk, []
+
+    def visit_chunk_view(self, array_view: CArrayView, state: Any):
+        iter_chunk, out = state
+        out.extend(iter_chunk(0, array_view.length))
+        return iter_chunk, out
+
+    def finish(self, state: Any):
+        return state[1]
+
+
+class BufferConcatenator(ArrayStreamVisitor):
+    def __init__(self, schema, *, buffer_index=1, _array_view=None):
+        super().__init__(schema, _array_view=_array_view)
+        self._buffer_index = buffer_index
+
+    def begin(self, total_elements: Union[int, None] = None):
+        buffer_index = self._buffer_index
+        buffer_data_type = self._schema_view.layout.buffer_data_type_id[buffer_index]
+        element_size_bits = self._schema_view.layout.element_size_bits[buffer_index]
         element_size_bytes = element_size_bits // 8
 
         builder = CBufferBuilder()
         builder.set_data_type(buffer_data_type)
 
-        if self._total_elements is not None:
-            builder.reserve_bytes(self._total_elements * element_size_bytes)
+        if total_elements is not None:
+            builder.reserve_bytes(total_elements * element_size_bytes)
 
         return 0, buffer_index, builder
 
-    def visit_array(
-        self,
-        array_view: CArrayView,
-        iterator: Callable[[int, int], Iterable],
-        state: Any,
-    ):
+    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
         out_start, buffer_index, writable_buffer = state
         offset = array_view.offset
         length = array_view.length
@@ -164,7 +156,7 @@ class BufferConcatenator(ArrayStreamVisitor):
 
         return out_start + length, buffer_index, writable_buffer
 
-    def finish(self, state):
+    def finish(self, state: Any) -> CBuffer:
         return state[2].finish()
 
 
