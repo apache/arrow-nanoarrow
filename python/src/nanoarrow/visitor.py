@@ -183,3 +183,47 @@ class UnpackedBitmapConcatenator(BufferConcatenator):
         writable_buffer.advance(length)
 
         return out_start + length, buffer_index, writable_buffer
+
+    def finish(self, state: Any) -> CBuffer:
+        return memoryview(super().finish(state)).cast("?")
+
+
+class ValidityBufferConcatenator(UnpackedBitmapConcatenator):
+
+    def __init__(self, schema, *, _array_view=None):
+        super().__init__(schema, buffer_index=0, _array_view=_array_view)
+
+    def begin(self, total_elements: Union[int, None] = None):
+        return 0, total_elements, None
+
+    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
+        total_count, total_elements, super_state = state
+
+        length = array_view.length
+
+        if self._contains_nulls():
+            if super_state is None:
+                super_state = super().begin(total_elements)
+                super_state = self._fill_valid(super_state, total_count)
+
+            super_state = super().visit_chunk_view(array_view, super_state)
+        elif super_state is not None:
+            super_state = self._fill_valid(super_state, length)
+
+        total_count += length
+        return total_count, total_elements, super_state
+
+    def finish(self, state: Any) -> Union[CBuffer, None]:
+        _, _, super_state = state
+        if super_state is None:
+            return None
+        else:
+            return super().finish(super_state)
+
+    def _fill_valid(self, super_state, length):
+        out_start, buffer_index, writable_buffer = super_state
+        writable_buffer.reserve_bytes(length)
+        memoryview(writable_buffer)[out_start : out_start + length] = b"\x01" * length
+        writable_buffer.advance(length)
+        out_start += length
+        return out_start, buffer_index, writable_buffer

@@ -70,3 +70,28 @@ def test_unpacked_bitmap_concatenator_with_offsets():
     stream = CArrayStream.from_array_list(src, na.c_schema(na.bool_()))
     buffer = visitor.UnpackedBitmapConcatenator.visit(stream, buffer_index=1)
     assert list(buffer) == [True, True, False]
+
+
+def test_unpacked_validity_bitmap_concatenator():
+    # All valid
+    src = [na.c_array([1, 2, 3], na.int32()), na.c_array([4, 5, 6], na.int32())]
+    stream = CArrayStream.from_array_list(src, na.c_schema(na.int32()))
+    assert visitor.ValidityBufferConcatenator.visit(stream) is None
+
+    # Only nulls in the first chunk
+    src = [na.c_array([1, None, 3], na.int32()), na.c_array([4, 5, 6], na.int32())]
+    stream = CArrayStream.from_array_list(src, na.c_schema(na.int32()))
+    buffer = visitor.ValidityBufferConcatenator.visit(stream)
+    assert list(buffer) == [True, False, True, True, True, True]
+
+    # Only nulls in the second chunk
+    src = [na.c_array([1, 2, 3], na.int32()), na.c_array([4, None, 6], na.int32())]
+    stream = CArrayStream.from_array_list(src, na.c_schema(na.int32()))
+    buffer = visitor.ValidityBufferConcatenator.visit(stream)
+    assert list(buffer) == [True, True, True, True, False, True]
+
+    # Nulls in both chunks
+    src = [na.c_array([1, None, 3], na.int32()), na.c_array([4, None, 6], na.int32())]
+    stream = CArrayStream.from_array_list(src, na.c_schema(na.int32()))
+    buffer = visitor.ValidityBufferConcatenator.visit(stream)
+    assert list(buffer) == [True, False, True, True, False, True]
