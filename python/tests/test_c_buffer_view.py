@@ -80,7 +80,7 @@ def test_buffer_view_bool_unpack():
 
     # Check with non-zero destination offset
     out = bytearray([255] * 10)
-    view.unpack_bits_into(out, dest_offset=2)
+    assert view.unpack_bits_into(out, dest_offset=2) == 8
     assert list(out) == [255, 255, 1, 0, 0, 1, 0, 0, 0, 0]
 
     # Check error requesting out-of-bounds dest_offset
@@ -172,7 +172,7 @@ def test_buffer_view_copy():
 
     # Check with non-zero destination offset
     out = array(view.format, [0, 0, 0, 0, 0, 0])
-    view.copy_into(out, dest_offset=2)
+    assert view.copy_into(out, dest_offset=2) == 16
     assert list(out) == [0, 0, 1, 2, 3, 4]
 
     # Check error requesting out-of-bounds dest_offset
