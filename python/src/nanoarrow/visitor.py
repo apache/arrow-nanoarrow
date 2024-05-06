@@ -24,16 +24,73 @@ from nanoarrow.schema import Type
 
 
 def to_pylist(obj, schema=None) -> List:
+    """Convert ``obj`` to a ``list()` of Python objects
+
+    Computes an identical value to ``list(iterator.iter_py())`` but is several
+    times faster.
+
+    Paramters
+    ---------
+    obj : array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow import visitor
+    >>> array = na.c_array([1, 2, 3], na.int32())
+    >>> visitor.to_pylist(array)
+    [1, 2, 3]
+    """
     return ListBuilder.visit(obj, schema)
 
 
 def to_columns(obj, schema=None) -> Tuple[List[str], List[Sequence]]:
+    """Convert ``obj`` to a ``list()` of sequences
+
+    Converts a stream of struct arrays into its column-wise representation
+    such that each column is either a contiguous buffer or a ``list()``.
+
+    Paramters
+    ---------
+    obj : array stream-like
+        An array-like or array stream-like object as sanitized by
+        :func:`c_array_stream`.
+    schema : schema-like, optional
+        An optional schema, passed to :func:`c_array_stream`.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> from nanoarrow import visitor
+    >>> import pyarrow as pa
+    >>> array = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
+    >>> names, columns = visitor.to_columns(array)
+    >>> names
+    ["col1"]
+    >>> columns
+    [[1, 2, 3]]
+    """
     return ColumnsBuilder.visit(obj, schema)
 
 
 class ArrayStreamVisitor(ArrayViewBaseIterator):
+    """Compute a value from one or more arrays in an ArrowArrayStream
+
+    This class supports a (currently internal) pattern for building
+    output from a zero or more arrays in a stream.
+
+    """
+
     @classmethod
     def visit(cls, obj, schema=None, total_elements=None, **kwargs):
+        """Visit all chunks in ``obj`` as a :func:`c_array_stream`."""
+
         if total_elements is None and hasattr(obj, "__len__"):
             total_elements = len(obj)
 
@@ -52,12 +109,18 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
         return visitor.finish()
 
     def begin(self, total_elements: Union[int, None] = None):
+        """Called after the schema has been resolved but before any
+        chunks have been visited. If the total number of elements
+        (i.e., the sum of all chunk lengths) is known, it is provided here.
+        """
         pass
 
     def visit_chunk_view(self, array_view: CArrayView) -> None:
+        """Called exactly one for each chunk seen."""
         pass
 
     def finish(self) -> Any:
+        """Called exactly once after all chunks have been visited."""
         return None
 
 
