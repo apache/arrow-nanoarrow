@@ -788,7 +788,7 @@ cdef class CSchema:
             if not child.type_equals(other_child):
                 return False
 
-        if self.dictionary is None != other.dictionary is None:
+        if (self.dictionary is None) != (other.dictionary is None):
             return False
 
         if self.dictionary is not None:
