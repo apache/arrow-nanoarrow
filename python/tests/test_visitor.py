@@ -14,6 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+import pytest
 
 import nanoarrow as na
 from nanoarrow import visitor
@@ -35,8 +36,11 @@ def test_to_columms():
         ],
     )
 
-    columns = visitor.to_columns(array)
-    assert list(columns.keys()) == ["col1", "col2", "col3"]
-    assert list(columns["col1"]) == [1, 2, 3]
-    assert list(columns["col2"]) == [True, False, True]
-    assert columns["col3"] == ["abc", "def", "ghi"]
+    names, columns = visitor.to_columns(array)
+    assert names == ["col1", "col2", "col3"]
+    assert columns[0] == [1, 2, 3]
+    assert columns[1] == [True, False, True]
+    assert columns[2] == ["abc", "def", "ghi"]
+
+    with pytest.raises(ValueError, match="can only be used on a struct array"):
+        visitor.to_columns([], na.int32())

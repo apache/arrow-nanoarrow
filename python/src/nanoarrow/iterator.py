@@ -23,6 +23,7 @@ from typing import Iterable, Tuple
 from nanoarrow._lib import CArrayView, CArrowType
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema, c_schema_view
+from nanoarrow.schema import Schema
 
 
 def iter_py(obj, schema=None) -> Iterable:
@@ -130,7 +131,7 @@ class UnregisteredExtensionWarning(UserWarning):
 
 
 class ArrayViewBaseIterator:
-    """Base class for iterators that use an internal ArrowArrayView
+    """Base class for iterators and visitors that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
     """
 
@@ -142,6 +143,10 @@ class ArrayViewBaseIterator:
             self._array_view = CArrayView.from_schema(self._schema)
         else:
             self._array_view = _array_view
+
+    @cached_property
+    def schema(self) -> Schema:
+        return Schema(self._schema)
 
     @cached_property
     def _object_label(self):
@@ -176,7 +181,7 @@ class PyIterator(ArrayViewBaseIterator):
             iterator = cls(stream._get_cached_schema())
             for array in stream:
                 iterator._set_array(array)
-                yield from iterator._iter_chunk(0, array.length)
+                yield from iterator
 
     def __init__(self, schema, *, _array_view=None):
         super().__init__(schema, _array_view=_array_view)
@@ -199,7 +204,12 @@ class PyIterator(ArrayViewBaseIterator):
     def _child_names(self):
         return [child.name for child in self._schema.children]
 
+    def __iter__(self):
+        """Iterate over all elements in the current chunk"""
+        return self._iter_chunk(0, self._array_view.length)
+
     def _iter_chunk(self, offset, length):
+        """Iterate over all elements in a slice of the current chunk"""
         # Check for an extension type first since this isn't reflected by
         # self._schema_view.type_id. Currently we just return the storage
         # iterator with a warning for extension types.
