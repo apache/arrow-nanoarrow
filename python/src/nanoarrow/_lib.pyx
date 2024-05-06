@@ -1009,9 +1009,6 @@ cdef class CSchemaView:
         if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
             return None
 
-        if self.layout.n_buffers != 2:
-            return None
-
         cdef char out[128]
         cdef int element_size_bits = 0
         if self._schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
