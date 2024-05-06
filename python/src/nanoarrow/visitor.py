@@ -17,19 +17,17 @@
 
 from typing import Any, List, Mapping, Sequence, Union
 
-from nanoarrow._lib import CArrayView, CArrowType, CBuffer
+from nanoarrow._lib import CArrayView
 from nanoarrow.c_array_stream import c_array_stream
-from nanoarrow.c_buffer import CBufferBuilder
-from nanoarrow.c_schema import c_schema_view
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
-
-
-def to_columns(obj, schema=None) -> Mapping[str, Sequence]:
-    return ColumnsBuilder.visit(obj, schema)
 
 
 def to_pylist(obj, schema=None) -> List:
     return ListBuilder.visit(obj, schema)
+
+
+def to_columns(obj, schema=None) -> Mapping[str, Sequence]:
+    return ColumnsBuilder.visit(obj, schema)
 
 
 class ArrayStreamVisitor(ArrayViewBaseIterator):
@@ -64,6 +62,23 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
         return state
 
 
+class ListBuilder(ArrayStreamVisitor):
+    def __init__(self, schema, *, iterator_cls=PyIterator, _array_view=None):
+        super().__init__(schema, _array_view=_array_view)
+        self._iterator = iterator_cls(schema, _array_view=self._array_view)
+
+    def begin(self, total_elements: Union[int, None] = None):
+        return self._iterator._iter_chunk, []
+
+    def visit_chunk_view(self, array_view: CArrayView, state: Any):
+        iter_chunk, out = state
+        out.extend(iter_chunk(0, array_view.length))
+        return iter_chunk, out
+
+    def finish(self, state: Any):
+        return state[1]
+
+
 class ColumnsBuilder(ArrayStreamVisitor):
     def __init__(self, schema, *, _array_view=None):
         super().__init__(schema, _array_view=_array_view)
@@ -79,15 +94,8 @@ class ColumnsBuilder(ArrayStreamVisitor):
             self._child_array_views.append(child_array_view)
 
     def _resolve_child_visitor(self, child_schema, child_array_view):
-        view = c_schema_view(child_schema)
-        if view.type_id == CArrowType.BOOL:
-            return UnpackedBitmapConcatenator(
-                child_schema, _array_view=child_array_view
-            )
-        elif view.buffer_format is not None:
-            return BufferConcatenator(child_schema, _array_view=child_array_view)
-        else:
-            return ListBuilder(child_schema, _array_view=child_array_view)
+        # TODO: Resolve more efficient builders for single-buffer types
+        return ListBuilder(child_schema, _array_view=child_array_view)
 
     def begin(self, total_elements: Union[int, None] = None):
         child_visitors = self._child_visitors
@@ -112,126 +120,3 @@ class ColumnsBuilder(ArrayStreamVisitor):
             out[schema.name] = child_visitors[i].finish(child_state[i])
 
         return out
-
-
-class ListBuilder(ArrayStreamVisitor):
-    def __init__(self, schema, *, iterator_cls=PyIterator, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
-        self._iterator = iterator_cls(schema, _array_view=self._array_view)
-
-    def begin(self, total_elements: Union[int, None] = None):
-        return self._iterator._iter_chunk, []
-
-    def visit_chunk_view(self, array_view: CArrayView, state: Any):
-        iter_chunk, out = state
-        out.extend(iter_chunk(0, array_view.length))
-        return iter_chunk, out
-
-    def finish(self, state: Any):
-        return state[1]
-
-
-class BufferConcatenator(ArrayStreamVisitor):
-    def __init__(self, schema, *, buffer_index=1, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
-        self._buffer_index = buffer_index
-
-    def begin(self, total_elements: Union[int, None] = None):
-        buffer_index = self._buffer_index
-        buffer_data_type = self._schema_view.layout.buffer_data_type_id[buffer_index]
-        element_size_bits = self._schema_view.layout.element_size_bits[buffer_index]
-        element_size_bytes = element_size_bits // 8
-
-        builder = CBufferBuilder()
-        builder.set_data_type(buffer_data_type)
-
-        if total_elements is not None:
-            builder.reserve_bytes(total_elements * element_size_bytes)
-
-        return 0, buffer_index, builder
-
-    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
-        out_start, buffer_index, writable_buffer = state
-        offset = array_view.offset
-        length = array_view.length
-
-        src = memoryview(array_view.buffer(buffer_index))[offset : offset + length]
-        dst_bytes = len(src) * src.itemsize
-        writable_buffer.reserve_bytes(dst_bytes)
-
-        dst = memoryview(writable_buffer).cast(src.format)
-        dst[out_start : out_start + length] = src
-        writable_buffer.advance(dst_bytes)
-
-        return out_start + length, buffer_index, writable_buffer
-
-    def finish(self, state: Any) -> CBuffer:
-        return state[2].finish()
-
-
-class UnpackedBitmapConcatenator(BufferConcatenator):
-    def begin(self, total_elements: Union[int, None] = None):
-        buffer_index = self._buffer_index
-        builder = CBufferBuilder()
-        builder.set_data_type(CArrowType.UINT8)
-
-        if total_elements is not None:
-            builder.reserve_bytes(total_elements)
-
-        return 0, buffer_index, builder
-
-    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
-        out_start, buffer_index, writable_buffer = state
-        offset = array_view.offset
-        length = array_view.length
-
-        writable_buffer.reserve_bytes(length)
-        array_view.buffer(buffer_index).unpack_bits_into(
-            writable_buffer, offset, length, out_start
-        )
-        writable_buffer.advance(length)
-
-        return out_start + length, buffer_index, writable_buffer
-
-    def finish(self, state: Any) -> CBuffer:
-        return memoryview(super().finish(state)).cast("?")
-
-
-class ValidityBufferConcatenator(UnpackedBitmapConcatenator):
-    def __init__(self, schema, *, _array_view=None):
-        super().__init__(schema, buffer_index=0, _array_view=_array_view)
-
-    def begin(self, total_elements: Union[int, None] = None):
-        return 0, total_elements, None
-
-    def visit_chunk_view(self, array_view: CArrayView, state: Any) -> Any:
-        total_count, total_elements, super_state = state
-
-        length = array_view.length
-
-        if self._contains_nulls():
-            if super_state is None:
-                super_state = super().begin(total_elements)
-                super_state = self._fill_valid(super_state, total_count)
-
-            super_state = super().visit_chunk_view(array_view, super_state)
-        elif super_state is not None:
-            super_state = self._fill_valid(super_state, length)
-
-        total_count += length
-        return total_count, total_elements, super_state
-
-    def finish(self, state: Any) -> Union[CBuffer, None]:
-        _, _, super_state = state
-        if super_state is None:
-            return None
-        else:
-            return super().finish(super_state)
-
-    def _fill_valid(self, super_state, length):
-        out_start, buffer_index, writable_buffer = super_state
-        writable_buffer.reserve_bytes(length)
-        memoryview(writable_buffer)[out_start : out_start + length] = b"\x01" * length
-        writable_buffer.advance(length)
-        out_start += length
-        return out_start, buffer_index, writable_buffer
