@@ -2729,7 +2729,7 @@ cdef class CArrayStream:
         return CArrayStream(base, <uintptr_t>c_array_stream_out)
 
     @staticmethod
-    def from_array_list(arrays, CSchema schema, move=False, validate=True):
+    def from_c_arrays(arrays, CSchema schema, move=False, validate=True):
         cdef ArrowArrayStream* c_array_stream_out
         base = alloc_c_array_stream(&c_array_stream_out)
 
@@ -2949,7 +2949,7 @@ cdef class CMaterializedArrayStream:
     def __arrow_c_stream__(self, requested_schema=None):
         # When an array stream from iterable is supported, that could be used here
         # to avoid unnessary shallow copies.
-        stream = CArrayStream.from_array_list(
+        stream = CArrayStream.from_c_arrays(
             self._arrays,
             self._schema,
             move=False,

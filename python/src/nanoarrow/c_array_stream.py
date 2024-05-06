@@ -88,7 +88,7 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
 
     try:
         array = c_array(obj, schema=schema)
-        return CArrayStream.from_array_list([array], array.schema, validate=False)
+        return CArrayStream.from_c_arrays([array], array.schema, validate=False)
     except Exception as e:
         raise TypeError(
             f"An error occurred whilst converting {type(obj).__name__} "

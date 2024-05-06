@@ -23,12 +23,12 @@ import nanoarrow as na
 
 def test_c_array_stream_from_c_array_stream():
     # Wrapping an existing stream is a no-op
-    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    array_stream = CArrayStream.from_c_arrays([], na.c_schema(na.int32()))
     stream_from_stream = na.c_array_stream(array_stream)
     assert stream_from_stream is array_stream
 
     # With requested_schema should go through capsule
-    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    array_stream = CArrayStream.from_c_arrays([], na.c_schema(na.int32()))
     with pytest.raises(NotImplementedError):
         na.c_array_stream(array_stream, na.int64())
 
@@ -42,7 +42,7 @@ def test_c_array_stream_from_capsule_protocol():
         def __arrow_c_stream__(self, *args, **kwargs):
             return self.obj.__arrow_c_stream__(*args, **kwargs)
 
-    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    array_stream = CArrayStream.from_c_arrays([], na.c_schema(na.int32()))
     array_stream_wrapper = CArrayStreamWrapper(array_stream)
     from_protocol = na.c_array_stream(array_stream_wrapper)
     assert array_stream.is_valid() is False
@@ -69,14 +69,14 @@ def test_c_array_stream_from_old_pyarrow():
 
 
 def test_c_array_stream_from_bare_capsule():
-    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    array_stream = CArrayStream.from_c_arrays([], na.c_schema(na.int32()))
 
     # Check from bare capsule without supplying a schema
     capsule = array_stream.__arrow_c_stream__()
     from_capsule = na.c_array_stream(capsule)
     assert from_capsule.get_schema().format == "i"
 
-    array_stream = CArrayStream.from_array_list([], na.c_schema(na.int32()))
+    array_stream = CArrayStream.from_c_arrays([], na.c_schema(na.int32()))
     capsule = array_stream.__arrow_c_stream__()
 
     with pytest.raises(TypeError, match="Can't import c_array_stream"):
@@ -108,13 +108,13 @@ def test_c_array_stream_error():
 def test_array_stream_from_arrays_schema():
     schema_in = na.c_schema(na.int32())
 
-    stream = CArrayStream.from_array_list([], schema_in)
+    stream = CArrayStream.from_c_arrays([], schema_in)
     assert schema_in.is_valid()
     assert list(stream) == []
     assert stream.get_schema().format == "i"
 
     # Check move of schema
-    CArrayStream.from_array_list([], schema_in, move=True)
+    CArrayStream.from_c_arrays([], schema_in, move=True)
     assert schema_in.is_valid() is False
     assert stream.get_schema().format == "i"
 
@@ -124,14 +124,14 @@ def test_array_stream_from_arrays():
     array_in = na.c_array([1, 2, 3], na.int32())
     array_in_buffers = array_in.buffers
 
-    stream = CArrayStream.from_array_list([array_in], schema_in)
+    stream = CArrayStream.from_c_arrays([array_in], schema_in)
     assert array_in.is_valid()
     arrays = list(stream)
     assert len(arrays) == 1
     assert arrays[0].buffers == array_in_buffers
 
     # Check move of array
-    stream = CArrayStream.from_array_list([array_in], schema_in, move=True)
+    stream = CArrayStream.from_c_arrays([array_in], schema_in, move=True)
     assert array_in.is_valid() is False
     arrays = list(stream)
     assert len(arrays) == 1
@@ -143,7 +143,7 @@ def test_array_stream_from_arrays_validate():
     array_in = na.c_array([1, 2, 3], na.int32())
 
     # Check that we can skip validation and proceed without error
-    stream = CArrayStream.from_array_list([array_in], schema_in, validate=False)
+    stream = CArrayStream.from_c_arrays([array_in], schema_in, validate=False)
     arrays = list(stream)
     assert len(arrays) == 1
     assert arrays[0].n_buffers == 2
@@ -151,4 +151,4 @@ def test_array_stream_from_arrays_validate():
     # ...but that validation does happen by default
     msg = "Expected schema na but got int32"
     with pytest.raises(ValueError, match=msg):
-        CArrayStream.from_array_list([array_in], schema_in)
+        CArrayStream.from_c_arrays([array_in], schema_in)

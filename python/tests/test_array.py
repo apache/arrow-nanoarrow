@@ -125,7 +125,7 @@ def test_array_contiguous():
 def test_array_chunked():
     src = [na.c_array([1, 2, 3], na.int32()), na.c_array([4, 5, 6], na.int32())]
 
-    array = na.Array(CArrayStream.from_array_list(src, na.c_schema(na.int32())))
+    array = na.Array(CArrayStream.from_c_arrays(src, na.c_schema(na.int32())))
     assert array.schema.type == na.Type.INT32
     assert len(array) == 6
 
@@ -176,7 +176,7 @@ def test_array_children():
         children=[na.c_array([123456], na.int32())] * 100,
     )
     src = [c_array, c_array]
-    array = na.Array(CArrayStream.from_array_list(src, c_array.schema))
+    array = na.Array(CArrayStream.from_c_arrays(src, c_array.schema))
 
     assert array.n_children == 100
     assert array.child(0).schema.type == na.Type.INT32
