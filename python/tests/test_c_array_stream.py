@@ -16,7 +16,6 @@
 # under the License.
 
 import pytest
-from nanoarrow._lib import NanoarrowException
 from nanoarrow.c_array_stream import CArrayStream
 
 import nanoarrow as na
@@ -122,7 +121,7 @@ def test_array_stream_from_arrays_schema():
 
 def test_array_stream_from_arrays():
     schema_in = na.c_schema(na.int32())
-    array_in = na.c_array([1, 2, 3], schema_in)
+    array_in = na.c_array([1, 2, 3], na.int32())
     array_in_buffers = array_in.buffers
 
     stream = CArrayStream.from_array_list([array_in], schema_in)
@@ -150,6 +149,6 @@ def test_array_stream_from_arrays_validate():
     assert arrays[0].n_buffers == 2
 
     # ...but that validation does happen by default
-    msg = "Expected array with 0 buffer"
-    with pytest.raises(NanoarrowException, match=msg):
+    msg = "Expected schema na but got int32"
+    with pytest.raises(ValueError, match=msg):
         CArrayStream.from_array_list([array_in], schema_in)
