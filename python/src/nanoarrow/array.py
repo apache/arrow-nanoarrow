@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import itertools
 from functools import cached_property
 from typing import Iterable, Tuple
 
@@ -28,6 +29,7 @@ from nanoarrow._lib import (
 )
 from nanoarrow.c_array import c_array, c_array_view
 from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_schema import c_schema
 from nanoarrow.iterator import iter_array_views, iter_py, iter_tuples
 from nanoarrow.schema import Schema
 
@@ -160,6 +162,27 @@ class Array:
 
         with c_array_stream(obj, schema=schema) as stream:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
+
+    @staticmethod
+    def from_chunks(obj, schema=None, validate=True):
+        obj = iter(obj)
+
+        if schema is None:
+            first = next(obj, None)
+            if first is None:
+                raise ValueError("Can't create empty Array from chunks without schema")
+
+            first = c_array(first)
+            out_schema = first.schema
+            obj = itertools.chain([first], obj)
+        else:
+            out_schema = c_schema(schema)
+
+        data = CMaterializedArrayStream.from_c_arrays(
+            (c_array(item, schema) for item in obj), out_schema, validate=validate
+        )
+
+        return Array(data)
 
     def _assert_one_chunk(self, op):
         if self._data.n_arrays != 1:

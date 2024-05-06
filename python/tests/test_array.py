@@ -43,6 +43,30 @@ def test_array_alias_constructor():
     assert array.schema.type == na.Type.INT32
 
 
+def test_array_from_chunks():
+    # Check with explicit schema
+    array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
+    assert array.schema.type == na.Type.INT32
+    assert array.n_chunks == 2
+    assert list(array.iter_py()) == [1, 2, 3, 4, 5, 6]
+
+    # Check with schema inferred from first chunk
+    array = na.Array.from_chunks(array.iter_chunks())
+    assert array.schema.type == na.Type.INT32
+    assert array.n_chunks == 2
+    assert list(array.iter_py()) == [1, 2, 3, 4, 5, 6]
+
+    # Check empty
+    array = na.Array.from_chunks([], na.int32())
+    assert array.schema.type == na.Type.INT32
+    assert len(array) == 0
+    assert array.n_chunks == 0
+
+    msg = "Can't create empty Array from chunks without schema"
+    with pytest.raises(ValueError, match=msg):
+        na.Array.from_chunks([])
+
+
 def test_array_empty():
     array = na.Array([], na.int32())
     assert array.schema.type == na.Type.INT32
