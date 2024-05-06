@@ -67,6 +67,18 @@ def test_array_from_chunks():
         na.Array.from_chunks([])
 
 
+def test_array_from_chunks_validate():
+    chunks = [na.c_array([1, 2, 3], na.uint32()), na.c_array([1, 2, 3], na.int32())]
+    # Check that we get validation by default
+    msg = "Expected schema uint32 but got int32"
+    with pytest.raises(ValueError, match=msg):
+        na.Array.from_chunks(chunks)
+
+    # ...but that one can opt out
+    array = na.Array.from_chunks(chunks, validate=False)
+    assert list(array.iter_py()) == [1, 2, 3, 1, 2, 3]
+
+
 def test_array_empty():
     array = na.Array([], na.int32())
     assert array.schema.type == na.Type.INT32
