@@ -104,7 +104,7 @@ def test_buffer_view_bool_unpack():
 
     # Check errors from an output buffer with the wrong data type
     out = array("i", [0, 0, 0, 0])
-    msg = "Destination buffer has itemsize != 1"
+    msg = "Destination buffer must have itemsize == 1"
     with pytest.raises(ValueError, match=msg):
         view.unpack_bits_into(out)
 
@@ -152,3 +152,50 @@ def test_buffer_view_non_bool():
 
     # Check repr
     assert "1 2 3 5" in repr(view)
+
+
+def test_buffer_view_copy():
+    from array import array
+
+    array_view = na.c_array([1, 2, 3, 4], na.int32()).view()
+    view = array_view.buffer(1)
+
+    # Check copying
+    copied_all = view.copy()
+    assert len(copied_all) == view.n_elements
+    assert copied_all.data_type == "int32"
+    assert list(copied_all) == [1, 2, 3, 4]
+
+    copied_some = view.copy(1, 3)
+    assert len(copied_some) == 3
+    assert list(copied_some) == [2, 3, 4]
+
+    # Check with non-zero destination offset
+    out = array(view.format, [0, 0, 0, 0, 0, 0])
+    view.copy_into(out, dest_offset=2)
+    assert list(out) == [0, 0, 1, 2, 3, 4]
+
+    # Check error requesting out-of-bounds dest_offset
+    with pytest.raises(IndexError, match="Can't unpack"):
+        view.copy_into(out, dest_offset=-1)
+
+    # Check errors from requesting out-of-bounds slices
+    msg = "do not describe a valid slice"
+    with pytest.raises(IndexError, match=msg):
+        view.copy(-1, None)
+    with pytest.raises(IndexError, match=msg):
+        view.copy(0, -1)
+    with pytest.raises(IndexError, match=msg):
+        view.copy(0, 9)
+
+    # Check errors from an output buffer of insufficient length
+    out = array("i")
+    msg = "Can't unpack 4 elements into buffer of size 0"
+    with pytest.raises(IndexError, match=msg):
+        view.copy_into(out)
+
+    # Check errors from an output buffer with the wrong data type
+    out = array("d", [0, 0, 0, 0])
+    msg = "Destination buffer must have itemsize == 1 or itemsize == 4"
+    with pytest.raises(ValueError, match=msg):
+        view.copy_into(out)
