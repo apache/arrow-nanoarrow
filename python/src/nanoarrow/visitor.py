@@ -72,7 +72,7 @@ def to_columns(obj, schema=None) -> Tuple[List[str], List[Sequence]]:
     >>> array = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
     >>> names, columns = visitor.to_columns(array)
     >>> names
-    ["col1"]
+    ['col1']
     >>> columns
     [[1, 2, 3]]
     """
