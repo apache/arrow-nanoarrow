@@ -117,11 +117,18 @@ def test_c_schema_view_extra_params():
 
 def test_c_schema_metadata():
     meta = {
-        "ARROW:extension:name": "some_name",
-        "ARROW:extension:metadata": "some_metadata",
+        b"ARROW:extension:name": b"some_name",
+        b"ARROW:extension:metadata": b"some_metadata",
     }
 
     schema = na.c_schema(na.int32()).modify(metadata=meta)
+    assert "b'some_name'" in repr(schema)
+    assert "b'some_name'" in repr(schema.metadata)
+    assert list(schema.metadata) == list(meta)
+    assert list(schema.metadata.items()) == list(meta.items())
+    assert list(schema.metadata.keys()) == list(meta.keys())
+    assert list(schema.metadata.values()) == list(meta.values())
+
     view = c_schema_view(schema)
     assert view.extension_name == "some_name"
     assert view.extension_metadata == b"some_metadata"

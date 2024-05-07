@@ -1717,6 +1717,13 @@ cdef class SchemaMetadata:
         for key, _ in self.items():
             yield key
 
+    def keys(self):
+        return list(self)
+
+    def values(self):
+        for _, value in self.items():
+            yield value
+
     def items(self):
         cdef ArrowStringView key
         cdef ArrowStringView value
@@ -1726,6 +1733,13 @@ cdef class SchemaMetadata:
             key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
+
+    def __repr__(self):
+        lines = [
+            f"<{_repr_utils.make_class_label(self)}>",
+            _repr_utils.metadata_repr(self)
+        ]
+        return "\n".join(lines)
 
 
 cdef class CBufferView:
