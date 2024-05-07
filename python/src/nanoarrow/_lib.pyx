@@ -335,7 +335,7 @@ cdef c_arrow_type_from_format(format):
         return item_size, NANOARROW_TYPE_DOUBLE
 
     # Check for signed integers
-    if format in ("b", "?", "h", "i", "l", "q", "n"):
+    if format in ("b", "h", "i", "l", "q", "n"):
         if item_size == 1:
             return item_size, NANOARROW_TYPE_INT8
         elif item_size == 2:
@@ -346,7 +346,7 @@ cdef c_arrow_type_from_format(format):
             return item_size, NANOARROW_TYPE_INT64
 
     # Check for unsinged integers
-    if format in ("B", "H", "I", "L", "Q", "N"):
+    if format in ("B", "?", "H", "I", "L", "Q", "N"):
         if item_size == 1:
             return item_size, NANOARROW_TYPE_UINT8
         elif item_size == 2:
@@ -1910,7 +1910,7 @@ cdef class CBufferView:
         if length is None:
             length = self.n_elements
 
-        out = CBufferBuilder().set_data_type(NANOARROW_TYPE_UINT8)
+        out = CBufferBuilder().set_format("?")
         out.reserve_bytes(length)
         self.unpack_bits_into(out, offset, length)
         out.advance(length)
@@ -2192,6 +2192,13 @@ cdef class CBufferBuilder:
     def set_data_type(self, ArrowType type_id, int element_size_bits=0):
         """Set the data type used to interpret elements in :meth:`write_elements`."""
         self._buffer._set_data_type(type_id, element_size_bits)
+        return self
+
+    def set_format(self, str format):
+        """Set the Python buffer format used to interpret elements in
+        :meth:`write_elements`.
+        """
+        self._buffer._set_format(format)
         return self
 
     @property

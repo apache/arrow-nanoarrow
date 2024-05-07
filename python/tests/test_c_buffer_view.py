@@ -72,6 +72,7 @@ def test_buffer_view_bool_unpack():
     unpacked_all = view.unpack_bits()
     assert len(unpacked_all) == view.n_elements
     assert unpacked_all.data_type == "uint8"
+    assert unpacked_all.format == "?"
     assert list(unpacked_all) == [1, 0, 0, 1, 0, 0, 0, 0]
 
     unpacked_some = view.unpack_bits(1, 4)
