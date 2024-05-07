@@ -2030,6 +2030,8 @@ cdef class CBuffer:
             self._device
         )
 
+        snprintf(self._view._format, sizeof(self._view._format), "%s", self._format)
+
     @staticmethod
     def empty():
         cdef CBuffer out = CBuffer()
