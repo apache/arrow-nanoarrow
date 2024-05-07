@@ -1261,11 +1261,6 @@ def _schema_repr(obj, max_char_width=80):
     lines = []
 
     modifiers = []
-    if obj.name:
-        name = f": {reprlib.Repr().repr(obj.name)}"
-        modifiers.append("named")
-    else:
-        name = ""
 
     if not obj.nullable:
         modifiers.append("non-nullable")
@@ -1278,12 +1273,15 @@ def _schema_repr(obj, max_char_width=80):
 
     modifiers_str = " ".join(modifiers)
 
-    lines.append(f"<Schema{name}>")
+    lines.append("<nanoarrow.Schema>")
 
     schema_str = _repr_utils.c_schema_to_string(
         obj._c_schema, max_char_width - len(modifiers_str)
     )
     lines.append(f"{modifiers_str}{schema_str}")
+
+    if obj.name:
+        lines.append(f"- name: {reprlib.Repr().repr(obj.name)}")
 
     metadata_dict = dict(obj.metadata.items())
     if metadata_dict:

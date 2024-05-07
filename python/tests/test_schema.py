@@ -63,19 +63,18 @@ def test_schema_create_no_params():
     schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32
     assert schema_obj.nullable is True
-    assert repr(schema_obj) == "Schema(INT32)"
+    assert repr(schema_obj) == "<nanoarrow.Schema>\nint32"
 
     schema_obj = na.int32(nullable=False)
     assert schema_obj.nullable is False
-    assert "nullable=False" in repr(schema_obj)
+    assert "non-nullable" in repr(schema_obj)
 
     schema_obj = na.Schema(na.Type.INT32, name=False)
     assert schema_obj.name is None
-    assert "name=False" in repr(schema_obj)
 
     schema_obj = na.Schema(na.Type.INT32, name="not empty")
     assert schema_obj.name == "not empty"
-    assert "name='not empty'" in repr(schema_obj)
+    assert "- name: 'not empty'" in repr(schema_obj)
 
     msg = "params are only supported for obj of class Type"
     with pytest.raises(ValueError, match=msg):
@@ -114,19 +113,16 @@ def test_schema_fixed_size_binary():
     schema_obj = na.fixed_size_binary(byte_width=123)
     assert schema_obj.type == na.Type.FIXED_SIZE_BINARY
     assert schema_obj.byte_width == 123
-    assert "byte_width=123" in repr(schema_obj)
 
 
 def test_schema_time():
     schema_obj = na.time32(na.TimeUnit.SECOND)
     assert schema_obj.type == na.Type.TIME32
     assert schema_obj.unit == na.TimeUnit.SECOND
-    assert "unit=SECOND" in repr(schema_obj)
 
     schema_obj = na.time64(na.TimeUnit.MICRO)
     assert schema_obj.type == na.Type.TIME64
     assert schema_obj.unit == na.TimeUnit.MICRO
-    assert "unit=MICRO" in repr(schema_obj)
 
 
 def test_schema_timestamp():
@@ -137,14 +133,12 @@ def test_schema_timestamp():
 
     schema_obj = na.timestamp(na.TimeUnit.SECOND, timezone="America/Halifax")
     assert schema_obj.timezone == "America/Halifax"
-    assert "timezone='America/Halifax'" in repr(schema_obj)
 
 
 def test_schema_duration():
     schema_obj = na.duration(na.TimeUnit.SECOND)
     assert schema_obj.type == na.Type.DURATION
     assert schema_obj.unit == na.TimeUnit.SECOND
-    assert "unit=SECOND" in repr(schema_obj)
 
 
 def test_schema_decimal():
@@ -152,15 +146,11 @@ def test_schema_decimal():
     assert schema_obj.type == na.Type.DECIMAL128
     assert schema_obj.precision == 10
     assert schema_obj.scale == 3
-    assert "precision=10" in repr(schema_obj)
-    assert "scale=3" in repr(schema_obj)
 
     schema_obj = na.decimal256(10, 3)
     assert schema_obj.type == na.Type.DECIMAL256
     assert schema_obj.precision == 10
     assert schema_obj.scale == 3
-    assert "precision=10" in repr(schema_obj)
-    assert "scale=3" in repr(schema_obj)
 
 
 def test_schema_struct():
@@ -172,8 +162,6 @@ def test_schema_struct():
     assert schema_obj.field(0).name == ""
     for field in schema_obj.fields:
         assert isinstance(field, na.Schema)
-
-    assert "fields=[Schema(INT32)]" in repr(schema_obj)
 
     # Make sure we can use a dictionary to specify fields
     schema_obj = na.struct({"col_name": na.Type.INT32})

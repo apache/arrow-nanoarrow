@@ -25,7 +25,7 @@ def test_c_schema_basic():
     schema = allocate_c_schema()
     assert schema.is_valid() is False
     assert schema._to_string() == "[invalid: schema is released]"
-    assert repr(schema) == "<nanoarrow.c_lib.CSchema <released>>"
+    assert repr(schema) == "<nanoarrow.c_schema.CSchema <released>>"
 
     schema = na.c_schema(na.struct({"some_name": na.int32()}))
 
@@ -37,7 +37,7 @@ def test_c_schema_basic():
     assert schema.child(0).format == "i"
     assert schema.child(0).name == "some_name"
     assert schema.child(0)._to_string() == "int32"
-    assert "<nanoarrow.c_lib.CSchema int32>" in repr(schema)
+    assert "<nanoarrow.c_schema.CSchema int32>" in repr(schema)
     assert schema.dictionary is None
 
     with pytest.raises(IndexError):
@@ -50,7 +50,7 @@ def test_c_schema_dictionary():
     schema = na.c_schema(pa.dictionary(pa.int32(), pa.utf8()))
     assert schema.format == "i"
     assert schema.dictionary.format == "u"
-    assert "dictionary: <nanoarrow.c_lib.CSchema string" in repr(schema)
+    assert "dictionary: <nanoarrow.c_schema.CSchema string" in repr(schema)
 
 
 def test_schema_metadata():
