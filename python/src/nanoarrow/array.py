@@ -330,7 +330,7 @@ class Array:
         ... )
         >>> array = na.Array(batch)
         >>> array.child(1)
-        nanoarrow.Array<string>[3]
+        nanoarrow.Array<'col2': string>[3]
         'a'
         'b'
         'c'
@@ -352,11 +352,11 @@ class Array:
         >>> array = na.Array(batch)
         >>> for child in array.iter_children():
         ...     print(child)
-        nanoarrow.Array<int64>[3]
+        nanoarrow.Array<'col1': int64>[3]
         1
         2
         3
-        nanoarrow.Array<string>[3]
+        nanoarrow.Array<'col2': string>[3]
         'a'
         'b'
         'c'
@@ -496,11 +496,14 @@ class Array:
     def to_string(self, width_hint=80, items_hint=10) -> str:
         cls_name = _repr_utils.make_class_label(self, module="nanoarrow")
         len_text = f"[{len(self)}]"
-        c_schema_string = _repr_utils.c_schema_to_string(
-            self._data.schema, width_hint - len(cls_name) - len(len_text) - 2
+        schema_repr = _schema_repr(
+            self.schema,
+            max_char_width=width_hint - len(cls_name) - len(len_text) - 2,
+            prefix="",
+            include_metadata=False,
         )
 
-        lines = [f"{cls_name}<{c_schema_string}>{len_text}"]
+        lines = [f"{cls_name}<{schema_repr}>{len_text}"]
 
         for i, item in enumerate(self.iter_py()):
             if i >= items_hint:

@@ -213,7 +213,7 @@ class ArrayStream:
         >>> from nanoarrow.ipc import Stream
         >>> with na.ArrayStream.from_readable(Stream.example_bytes()) as stream:
         ...     stream.read_all()
-        nanoarrow.Array<struct<some_col: int32>>[3]
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
         {'some_col': 1}
         {'some_col': 2}
         {'some_col': 3}
@@ -240,7 +240,7 @@ class ArrayStream:
         ...
         ...     with na.ArrayStream.from_path(path) as stream:
         ...         stream.read_all()
-        nanoarrow.Array<struct<some_col: int32>>[3]
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
         {'some_col': 1}
         {'some_col': 2}
         {'some_col': 3}
@@ -269,7 +269,7 @@ class ArrayStream:
         ...     uri = pathlib.Path(path).as_uri()
         ...     with na.ArrayStream.from_url(uri) as stream:
         ...         stream.read_all()
-        nanoarrow.Array<struct<some_col: int32>>[3]
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
         {'some_col': 1}
         {'some_col': 2}
         {'some_col': 3}
