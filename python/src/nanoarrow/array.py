@@ -29,7 +29,7 @@ from nanoarrow._lib import (
 from nanoarrow.c_array import c_array, c_array_view
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.iterator import iter_array_views, iter_py, iter_tuples
-from nanoarrow.schema import Schema
+from nanoarrow.schema import Schema, _schema_repr
 
 from nanoarrow import _repr_utils
 
@@ -56,7 +56,7 @@ class Scalar:
     >>> array[0].as_py()
     1
     >>> array[0].schema
-    Schema(INT32)
+    <Schema> int32
     """
 
     def __init__(self):
@@ -80,11 +80,14 @@ class Scalar:
         return next(iter_py(self))
 
     def to_string(self, width_hint=80) -> str:
-        c_schema_string = _repr_utils.c_schema_to_string(
-            self._c_array.schema, width_hint // 4
+        schema_repr = _schema_repr(
+            self.schema,
+            max_char_width=width_hint // 4,
+            prefix="",
+            include_metadata=False,
         )
 
-        prefix = f"Scalar<{c_schema_string}> "
+        prefix = f"Scalar<{schema_repr}> "
         width_hint -= len(prefix)
 
         py_repr = repr(self.as_py())

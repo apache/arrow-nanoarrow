@@ -23,7 +23,7 @@ from nanoarrow._repr_utils import make_class_label
 from nanoarrow.array import Array
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.iterator import iter_py, iter_tuples
-from nanoarrow.schema import Schema
+from nanoarrow.schema import Schema, _schema_repr
 
 
 class ArrayStream:
@@ -52,7 +52,7 @@ class ArrayStream:
 
     >>> import nanoarrow as na
     >>> na.ArrayStream([1, 2, 3], na.int32())
-    <nanoarrow.ArrayStream: Schema(INT32)>
+    nanoarrow.ArrayStream<int32>
     """
 
     def __init__(self, obj, schema=None) -> None:
@@ -65,7 +65,7 @@ class ArrayStream:
         >>> import nanoarrow as na
         >>> stream = na.ArrayStream([1, 2, 3], na.int32())
         >>> stream.schema
-        Schema(INT32)
+        <Schema> int32
         """
         return Schema(self._c_array_stream._get_cached_schema())
 
@@ -200,7 +200,8 @@ class ArrayStream:
 
     def __repr__(self) -> str:
         cls = make_class_label(self, "nanoarrow")
-        return f"<{cls}: {self.schema}>"
+        schema_repr = _schema_repr(self.schema, prefix="", include_metadata=False)
+        return f"{cls}<{schema_repr}>"
 
     @staticmethod
     def from_readable(obj):
