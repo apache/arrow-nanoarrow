@@ -1262,26 +1262,26 @@ def _schema_repr(obj, max_char_width=80):
 
     modifiers = []
 
+    if obj.name:
+        name = reprlib.Repr().repr(obj.name)
+        modifiers.append(f"{name}:")
+
     if not obj.nullable:
         modifiers.append("non-nullable")
 
     if obj.dictionary_ordered:
         modifiers.append("ordered")
 
-    if modifiers:
-        modifiers.append("")
+    # Ensure extra space at the end of the modifiers
+    modifiers.append("")
 
     modifiers_str = " ".join(modifiers)
-
-    lines.append("<nanoarrow.Schema>")
+    first_line_prefix = f"<Schema> {modifiers_str}"
 
     schema_str = _repr_utils.c_schema_to_string(
-        obj._c_schema, max_char_width - len(modifiers_str)
+        obj._c_schema, max_char_width - len(first_line_prefix)
     )
-    lines.append(f"{modifiers_str}{schema_str}")
-
-    if obj.name:
-        lines.append(f"- name: {reprlib.Repr().repr(obj.name)}")
+    lines.append(f"{first_line_prefix}{schema_str}")
 
     metadata_dict = dict(obj.metadata.items())
     if metadata_dict:

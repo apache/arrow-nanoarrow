@@ -63,7 +63,7 @@ def test_schema_create_no_params():
     schema_obj = na.int32()
     assert schema_obj.type == na.Type.INT32
     assert schema_obj.nullable is True
-    assert repr(schema_obj) == "<nanoarrow.Schema>\nint32"
+    assert repr(schema_obj) == "<Schema> int32"
 
     schema_obj = na.int32(nullable=False)
     assert schema_obj.nullable is False
@@ -74,7 +74,7 @@ def test_schema_create_no_params():
 
     schema_obj = na.Schema(na.Type.INT32, name="not empty")
     assert schema_obj.name == "not empty"
-    assert "- name: 'not empty'" in repr(schema_obj)
+    assert "'not empty': " in repr(schema_obj)
 
     msg = "params are only supported for obj of class Type"
     with pytest.raises(ValueError, match=msg):
