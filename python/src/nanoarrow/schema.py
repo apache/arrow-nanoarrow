@@ -18,7 +18,7 @@
 import enum
 import reprlib
 from functools import cached_property
-from typing import Mapping, Union
+from typing import List, Mapping, Union
 
 from nanoarrow._lib import (
     CArrowTimeUnit,
@@ -28,6 +28,8 @@ from nanoarrow._lib import (
     SchemaMetadata,
 )
 from nanoarrow.c_schema import c_schema
+
+from nanoarrow import _repr_utils
 
 
 class Type(enum.Enum):
@@ -217,6 +219,23 @@ class Schema:
             )
 
         self._c_schema_view = CSchemaView(self._c_schema)
+
+    @property
+    def params(self) -> Mapping:
+        """Get parameter names and values for this type
+
+        Returns a dictionary of parameters that can be used to reconstruct
+        this type together with its type identifier.
+
+        >>> import nanoarrow as na
+        >>> na.fixed_size_binary(123).params
+        {'byte_width': 123}
+        """
+        if self._c_schema_view.type_id not in _PARAM_NAMES:
+            return {}
+
+        param_names = _PARAM_NAMES[self._c_schema_view.type_id]
+        return {k: getattr(self, k) for k in param_names}
 
     @property
     def type(self) -> Type:
@@ -425,7 +444,7 @@ class Schema:
 
         return self._c_schema.n_children
 
-    def field(self, i):
+    def field(self, i) -> "Schema":
         """Extract a child Schema
 
         >>> import nanoarrow as na
@@ -440,7 +459,7 @@ class Schema:
         return Schema(self._c_schema.child(i).__deepcopy__())
 
     @property
-    def fields(self):
+    def fields(self) -> List["Schema"]:
         """Iterate over child Schemas
 
         >>> import nanoarrow as na
@@ -450,8 +469,7 @@ class Schema:
         ...
         col1
         """
-        for i in range(self.n_fields):
-            yield self.field(i)
+        return [self.field(i) for i in range(self.n_fields)]
 
     def __repr__(self) -> str:
         return _schema_repr(self)
@@ -1239,45 +1257,41 @@ def _clean_fields(fields):
         return [c_schema(v) for v in fields]
 
 
-def _schema_repr(obj):
-    out = f"Schema({_schema_param_repr('type', obj.type)}"
+def _schema_repr(obj, max_char_width=80):
+    lines = []
 
-    if obj.name is None:
-        out += ", name=False"
-    elif obj.name:
-        out += f", name={_schema_param_repr('name', obj.name)}"
-
-    if obj._c_schema_view.type_id not in _PARAM_NAMES:
-        param_names = []
+    modifiers = []
+    if obj.name:
+        name = f": {reprlib.Repr().repr(obj.name)}"
+        modifiers.append("named")
     else:
-        param_names = _PARAM_NAMES[obj._c_schema_view.type_id]
-
-    for name in param_names:
-        value = getattr(obj, name)
-        if value is None:
-            continue
-        out += ", "
-        param_repr = f"{name}={_schema_param_repr(name, getattr(obj, name))}"
-        out += param_repr
+        name = ""
 
     if not obj.nullable:
-        out += ", nullable=False"
+        modifiers.append("non-nullable")
 
-    out += ")"
-    return out
+    if obj.dictionary_ordered:
+        modifiers.append("ordered")
 
+    if modifiers:
+        modifiers.append("")
 
-def _schema_param_repr(name, value):
-    if name == "type":
-        return f"{value.name}"
-    elif name == "unit":
-        return f"{value.name}"
-    elif name == "fields":
-        # It would be nice to indent this/get it on multiple lines since
-        # most output will be uncomfortably wide even with the abbreviated repr
-        return reprlib.Repr().repr(list(value))
-    else:
-        return reprlib.Repr().repr(value)
+    modifiers_str = " ".join(modifiers)
+
+    lines.append(f"<Schema{name}>")
+
+    schema_str = _repr_utils.c_schema_to_string(
+        obj._c_schema, max_char_width - len(modifiers_str)
+    )
+    lines.append(f"{modifiers_str}{schema_str}")
+
+    metadata_dict = dict(obj.metadata.items())
+    if metadata_dict:
+        metadata_dict_repr = reprlib.Repr().repr(metadata_dict)
+        metadata_line = f"- metadata: {metadata_dict_repr[:max_char_width]}"
+        lines.append(metadata_line[:max_char_width])
+
+    return "\n".join(lines)
 
 
 _PARAM_NAMES = {
