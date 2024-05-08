@@ -21,26 +21,16 @@
 
 Building the nanoarrow documentation requires [Python](https://python.org), [R](https://r-project.org), [Doxygen](https://doxygen.nl), and [pandoc](https://pandoc.org/). In addition, several Python and R packages are required. You can install the Python dependencies using `pip install -r requirements.txt` in this directory; you can install the R dependencies using `R -e 'install.packages("pkgdown")`.
 
+The `ci/scripts/build-docs.sh` script (or the `docker compose run --rm docs` compose service) can be used to run all steps at once, after which `sphinx-build source _build/html` can be used to iterate on changes.
+
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git
-cd arrow-nanoarrow/docs
 
-# run doxygen for the C API
-pushd ../src/apidoc
-doxygen
-popd
+# Usually easiest to start with one of the docs build scripts
+docker compose run --rm docs
+# or install prerequisites and run
+ci/scripts/build-docs.sh
 
-# run doxygen for the IPC extension
-pushd ../extensions/nanoarrow_ipc/src/apidoc
-doxygen
-popd
-
-# copy the readme into rst so that we can include it from sphinx
-pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
-
-# Run sphinx to generate the main site
+# Iterate on Sphinx documentation
 sphinx-build source _build/html
-
-# Run pkgdown to generate R package documentation
-R -e 'pkgdown::build_site("../r")'
 ```
