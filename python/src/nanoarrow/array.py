@@ -164,7 +164,36 @@ class Array:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
 
     @staticmethod
-    def from_chunks(obj, schema=None, validate=True):
+    def from_chunks(obj: Iterable, schema=None, validate: bool=True):
+        """Create an Array with explicit chunks
+
+        Creates an :class:`Array` with explicit chunking from an iterable of
+        objects that can be converted to a :func:`c_array`.
+
+        Parameters
+        ----------
+        obj : iterable of array-like
+            An iterable of objects that can be passed to :func:`c_array`.
+        schema : schema-like, optional
+            An optional schema. If present, will be passed to :func:`c_array`
+            for each item in obj; if not present it will be inferred from the first
+            chunk.
+        validate : bool
+            Use ``False`` to opt out of validation steps performed when constructing
+            this array.
+
+        Examples
+        --------
+        >>> import nanoarrow as na
+        >>> na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
+        nanoarrow.Array<int32>[6]
+        1
+        2
+        3
+        4
+        5
+        6
+        """
         obj = iter(obj)
 
         if schema is None:
