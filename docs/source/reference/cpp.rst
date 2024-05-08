@@ -37,7 +37,14 @@ Array Stream utilities
 .. doxygengroup:: nanoarrow_hpp-array-stream
    :members:
 
-Base classes and utilities
---------------------------
-.. doxygengroup:: nanoarrow_hpp-unique_base
+Buffer utilities
+----------------
+
+.. doxygengroup:: nanoarrow_hpp-buffer
+   :members:
+
+Range-for utilities
+-------------------
+
+.. doxygengroup:: nanoarrow_hpp-range_for
    :members:
