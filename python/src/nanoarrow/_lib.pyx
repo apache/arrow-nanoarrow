@@ -903,6 +903,22 @@ cdef class CSchema:
 
         return builder.finish()
 
+    @staticmethod
+    def assert_type_equal(actual, expected):
+        if not isinstance(actual, CSchema):
+            raise TypeError(f"expected is {type(actual).__name__}, not CSchema")
+
+        if not isinstance(expected, CSchema):
+            raise TypeError(f"expected is {type(expected).__name__}, not CSchema")
+
+        if not actual.type_equals(expected):
+            actual_label = actual._to_string(max_chars=80, recursive=True)
+            expected_label = expected._to_string(max_chars=80, recursive=True)
+            raise ValueError(
+                f"Expected schema\n  '{expected_label}'"
+                f"\nbut got\n  '{actual_label}'"
+            )
+
 
 cdef class CSchemaView:
     """Low-level ArrowSchemaView wrapper
@@ -2753,11 +2769,8 @@ cdef class CArrayStream:
         for i in range(len(arrays)):
             array = arrays[i]
 
-            if validate and not validate_schema.type_equals(array.schema):
-                raise ValueError(
-                    f"Expected schema {validate_schema._to_string()} "
-                    f"but got {array.schema._to_string()}"
-                )
+            if validate:
+                CSchema.assert_type_equal(array.schema, validate_schema)
 
             if not move:
                 c_array_shallow_copy(array._base, array._ptr, &tmp)
@@ -2976,20 +2989,14 @@ cdef class CMaterializedArrayStream:
     def from_c_arrays(arrays, CSchema schema, bint validate=True):
         cdef CMaterializedArrayStream out = CMaterializedArrayStream()
 
-        cdef CArray array
-        for item in arrays:
-            array = item
-
-            if array._ptr.length == 0:
+        for array in arrays:
+            if array.length == 0:
                 continue
 
             if validate and not schema.type_equals(array.schema):
-                raise ValueError(
-                    f"Expected schema {schema._to_string()} "
-                    f"but got {array.schema._to_string()}"
-                )
+                CSchema.assert_type_equal(array.schema, schema)
 
-            out._total_length += array._ptr.length
+            out._total_length += array.length
             code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
             Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
             out._arrays.append(array)
@@ -3000,22 +3007,11 @@ cdef class CMaterializedArrayStream:
 
     @staticmethod
     def from_c_array(CArray array):
-        array._assert_valid()
-
-        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
-        out._schema = array._schema
-
-        if array._ptr.length == 0:
-            out._finalize()
-            return out
-
-        out._arrays.append(array)
-        out._total_length += array._ptr.length
-        cdef int code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
-        Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
-
-        out._finalize()
-        return out
+        return CMaterializedArrayStream.from_c_arrays(
+            [array],
+            array.schema,
+            validate=False
+        )
 
     @staticmethod
     def from_c_array_stream(CArrayStream stream):

@@ -149,6 +149,5 @@ def test_array_stream_from_arrays_validate():
     assert arrays[0].n_buffers == 2
 
     # ...but that validation does happen by default
-    msg = "Expected schema na but got int32"
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match="Expected schema"):
         CArrayStream.from_c_arrays([array_in], schema_in)
