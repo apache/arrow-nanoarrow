@@ -206,7 +206,7 @@ class PyIterator(ArrayViewBaseIterator):
 
     def __iter__(self):
         """Iterate over all elements in the current chunk"""
-        return self._iter_chunk(0, self._array_view.length)
+        return self._iter_chunk(0, len(self._array_view))
 
     def _iter_chunk(self, offset, length):
         """Iterate over all elements in a slice of the current chunk"""
