@@ -760,8 +760,7 @@ static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
 /// When shrinking the size of the bitmap, the bitmap is only reallocated
 /// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
-                                               int64_t new_size_bits,
-                                               char shrink_to_fit);
+                                               int64_t new_size_bits, char shrink_to_fit);
 
 /// \brief Reserve space for and append zero or more of the same boolean value to a bitmap
 static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
