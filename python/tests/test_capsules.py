@@ -74,7 +74,7 @@ def test_array():
         array = na.c_array(arr_obj)
         # some basic validation
         assert array.is_valid()
-        assert array.length == 3
+        assert len(array) == 3
         assert array.schema._to_string(recursive=True) == "int32"
 
         # roundtrip
@@ -98,7 +98,7 @@ def test_array_stream():
         # some basic validation
         assert array_stream.is_valid()
         array = array_stream.get_next()
-        assert array.length == 3
+        assert len(array) == 3
         assert (
             array_stream.get_schema()._to_string(recursive=True)
             == "struct<some_column: int32>"

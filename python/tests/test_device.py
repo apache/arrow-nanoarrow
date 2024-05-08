@@ -43,12 +43,12 @@ def test_c_device_array():
 
     assert darray.schema.format == "i"
 
-    assert darray.array.length == 3
+    assert len(darray.array) == 3
     assert darray.array.device_type == device.cpu().device_type
     assert darray.array.device_id == device.cpu().device_id
 
     darray_view = darray.view()
-    assert darray_view.length == 3
+    assert len(darray_view) == 3
     assert list(darray_view.buffer(1)) == [1, 2, 3]
 
     # A CDeviceArray should be returned as is
@@ -75,7 +75,7 @@ def test_c_device_array_protocol():
 
     darray2 = device.c_device_array(wrapper)
     assert darray2.schema.format == "i"
-    assert darray2.array.length == 3
+    assert len(darray2.array) == 3
     assert darray2.array.buffers == darray.array.buffers
 
     with pytest.raises(NotImplementedError):

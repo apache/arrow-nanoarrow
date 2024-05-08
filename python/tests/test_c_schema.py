@@ -127,6 +127,70 @@ def test_c_schema_metadata():
     assert view.extension_metadata == b"some_metadata"
 
 
+def test_c_schema_equals():
+    int32 = na.c_schema(na.int32())
+    struct = na.c_schema(na.struct({"col1": na.int32()}))
+    dictionary = na.c_schema(na.dictionary(na.int32(), na.string()))
+    ordered_dictionary = na.c_schema(
+        na.dictionary(na.int32(), na.string(), dictionary_ordered=True)
+    )
+
+    # Check schemas pointing to the same ArrowSchema
+    assert int32.type_equals(int32)
+
+    # Check equality with deep copies
+    assert int32.type_equals(int32.__deepcopy__())
+    assert struct.type_equals(struct.__deepcopy__())
+    assert dictionary.type_equals(dictionary.__deepcopy__())
+
+    # Check inequality because of format
+    assert int32.type_equals(struct) is False
+
+    # Check inequality because of nullability
+    assert int32.type_equals(int32.modify(flags=0), check_nullability=True) is False
+    # ...but not by default
+    assert int32.type_equals(int32.modify(flags=0)) is True
+
+    # Check inequality of type information encoded in flags
+    assert dictionary.type_equals(ordered_dictionary) is False
+
+    # Check inequality because of number of children
+    assert struct.type_equals(struct.modify(children=[])) is False
+
+    # Check inequality because of a difference in the children
+    assert struct.type_equals(struct.modify(children=[dictionary])) is False
+
+    # Check inequality because of dictionary presence
+    assert int32.type_equals(dictionary) is False
+    assert dictionary.type_equals(int32) is False
+
+    # Check inequality because of dictionary index type
+    assert (
+        dictionary.type_equals(na.c_schema(na.dictionary(na.int64(), na.string())))
+        is False
+    )
+
+    # Check inequality because of dictionary value type
+    assert dictionary.type_equals(dictionary.modify(dictionary=struct)) is False
+
+
+def test_c_schema_assert_type_equal():
+    from nanoarrow._lib import assert_type_equal
+
+    int32 = na.c_schema(na.int32())
+    string = na.c_schema(na.string())
+
+    with pytest.raises(TypeError):
+        assert_type_equal(None, int32)
+
+    with pytest.raises(TypeError):
+        assert_type_equal(int32, None)
+
+    msg = "Expected schema\n  'string'\nbut got\n  'int32'"
+    with pytest.raises(ValueError, match=msg):
+        assert_type_equal(int32, string)
+
+
 def test_c_schema_modify():
     schema = na.c_schema(na.null())
 

@@ -769,6 +769,47 @@ cdef class CSchema:
     def __repr__(self):
         return _repr_utils.schema_repr(self)
 
+    def type_equals(self, CSchema other, check_nullability=False):
+        self._assert_valid()
+
+        if self._ptr == other._ptr:
+            return True
+
+        if self.format != other.format:
+            return False
+
+        # Nullability is not strictly part of the "type"; however, performing
+        # this check recursively is verbose to otherwise accomplish and
+        # sometimes this does matter.
+        cdef int64_t flags = self.flags
+        cdef int64_t other_flags = other.flags
+        if not check_nullability:
+            flags &= ~ARROW_FLAG_NULLABLE
+            other_flags &= ~ARROW_FLAG_NULLABLE
+
+        if flags != other_flags:
+            return False
+
+        if self.n_children != other.n_children:
+            return False
+
+        for child, other_child in zip(self.children, other.children):
+            if not child.type_equals(other_child, check_nullability=check_nullability):
+                return False
+
+        if (self.dictionary is None) != (other.dictionary is None):
+            return False
+
+        if self.dictionary is not None:
+            if not self.dictionary.type_equals(
+                other.dictionary,
+                check_nullability=check_nullability
+            ):
+                return False
+
+        return True
+
+
     @property
     def format(self):
         self._assert_valid()
@@ -873,6 +914,24 @@ cdef class CSchema:
             builder.validate()
 
         return builder.finish()
+
+# This is likely a better fit for a dedicated testing module; however, we need
+# it in _lib.pyx to produce nice error messages when ensuring that one or
+# more arrays conform to a given or inferred schema.
+def assert_type_equal(actual, expected):
+    if not isinstance(actual, CSchema):
+        raise TypeError(f"expected is {type(actual).__name__}, not CSchema")
+
+    if not isinstance(expected, CSchema):
+        raise TypeError(f"expected is {type(expected).__name__}, not CSchema")
+
+    if not actual.type_equals(expected):
+        actual_label = actual._to_string(max_chars=80, recursive=True)
+        expected_label = expected._to_string(max_chars=80, recursive=True)
+        raise ValueError(
+            f"Expected schema\n  '{expected_label}'"
+            f"\nbut got\n  '{actual_label}'"
+        )
 
 
 cdef class CSchemaView:
@@ -1359,9 +1418,9 @@ cdef class CArray:
         cdef int64_t start = 0 if k.start is None else k.start
         cdef int64_t stop = self._ptr.length if k.stop is None else k.stop
         if start < 0:
-            start = self.length + start
+            start = self._ptr.length + start
         if stop < 0:
-            stop = self.length + stop
+            stop = self._ptr.length + stop
 
         if start > self._ptr.length or stop > self._ptr.length or stop < start:
             raise IndexError(
@@ -1448,10 +1507,13 @@ cdef class CArray:
     def device_id(self):
         return self._device_id
 
-    @property
-    def length(self):
+    def __len__(self):
         self._assert_valid()
         return self._ptr.length
+
+    @property
+    def length(self):
+        return len(self)
 
     @property
     def offset(self):
@@ -1557,9 +1619,12 @@ cdef class CArrayView:
     def layout(self):
         return CLayout(self, <uintptr_t>&self._ptr.layout)
 
+    def __len__(self):
+        return self._ptr.length
+
     @property
     def length(self):
-        return self._ptr.length
+        return len(self)
 
     @property
     def offset(self):
@@ -2700,20 +2765,33 @@ cdef class CArrayStream:
         return CArrayStream(base, <uintptr_t>c_array_stream_out)
 
     @staticmethod
-    def from_array_list(arrays, CSchema schema, move=False, validate=True):
+    def from_c_arrays(arrays, CSchema schema, move=False, validate=True):
         cdef ArrowArrayStream* c_array_stream_out
         base = alloc_c_array_stream(&c_array_stream_out)
 
-        if not move:
-            schema = schema.__deepcopy__()
+        # Don't create more copies than we have to (but make sure
+        # one exists for validation if requested)
+        cdef CSchema out_schema = schema
+        if validate and not move:
+            validate_schema = schema
+            out_schema = schema.__deepcopy__()
+        elif validate:
+            validate_schema = schema.__deepcopy__()
+            out_schema = schema
+        elif not move:
+            out_schema = schema.__deepcopy__()
 
-        cdef int code = ArrowBasicArrayStreamInit(c_array_stream_out, schema._ptr, len(arrays))
+        cdef int code = ArrowBasicArrayStreamInit(c_array_stream_out, out_schema._ptr, len(arrays))
         Error.raise_error_not_ok("ArrowBasicArrayStreamInit()", code)
 
         cdef ArrowArray tmp
         cdef CArray array
         for i in range(len(arrays)):
             array = arrays[i]
+
+            if validate:
+                assert_type_equal(array.schema, validate_schema)
+
             if not move:
                 c_array_shallow_copy(array._base, array._ptr, &tmp)
                 ArrowBasicArrayStreamSetArray(c_array_stream_out, i, &tmp)
@@ -2887,7 +2965,7 @@ cdef class CMaterializedArrayStream:
 
     def __iter__(self):
         for c_array in self._arrays:
-            for item_i in range(c_array.length):
+            for item_i in range(len(c_array)):
                 yield c_array, item_i
 
     def array(self, int64_t i):
@@ -2904,7 +2982,13 @@ cdef class CMaterializedArrayStream:
     def __arrow_c_stream__(self, requested_schema=None):
         # When an array stream from iterable is supported, that could be used here
         # to avoid unnessary shallow copies.
-        stream = CArrayStream.from_array_list(self._arrays, self._schema, move=False)
+        stream = CArrayStream.from_c_arrays(
+            self._arrays,
+            self._schema,
+            move=False,
+            validate=False
+        )
+
         return stream.__arrow_c_stream__(requested_schema=requested_schema)
 
     def child(self, int64_t i):
@@ -2914,7 +2998,7 @@ cdef class CMaterializedArrayStream:
         out._schema = self._schema.child(i)
         out._arrays = [chunk.child(i) for chunk in self._arrays]
         for child_chunk in out._arrays:
-            out._total_length += child_chunk.length
+            out._total_length += len(child_chunk)
             code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
             Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
 
@@ -2922,45 +3006,44 @@ cdef class CMaterializedArrayStream:
         return out
 
     @staticmethod
-    def from_c_array(CArray array):
-        array._assert_valid()
-
+    def from_c_arrays(arrays, CSchema schema, bint validate=True):
         cdef CMaterializedArrayStream out = CMaterializedArrayStream()
-        out._schema = array._schema
 
-        if array._ptr.length == 0:
-            out._finalize()
-            return out
+        for array in arrays:
+            if not isinstance(array, CArray):
+                raise TypeError(f"Expected CArray but got {type(array).__name__}")
 
-        out._arrays.append(array)
-        out._total_length += array._ptr.length
-        cdef int code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
-        Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+            if len(array) == 0:
+                continue
 
+            if validate:
+                assert_type_equal(array.schema, schema)
+
+            out._total_length += len(array)
+            code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+            Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+            out._arrays.append(array)
+
+        out._schema = schema
         out._finalize()
         return out
 
     @staticmethod
+    def from_c_array(CArray array):
+        return CMaterializedArrayStream.from_c_arrays(
+            [array],
+            array.schema,
+            validate=False
+        )
+
+    @staticmethod
     def from_c_array_stream(CArrayStream stream):
-        stream._assert_valid()
-        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
-        cdef int code
-        cdef CArray array
-
         with stream:
-            for array in stream:
-                if array._ptr.length == 0:
-                    continue
-
-                out._total_length += array._ptr.length
-                code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
-                Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
-                out._arrays.append(array)
-
-            out._schema = stream._get_cached_schema()
-
-        out._finalize()
-        return out
+            return CMaterializedArrayStream.from_c_arrays(
+                stream,
+                stream._get_cached_schema(),
+                validate=False
+            )
 
 
 cdef class CDeviceArray:
