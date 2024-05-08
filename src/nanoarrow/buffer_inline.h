@@ -91,29 +91,29 @@ static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* 
 }
 
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
-                                               int64_t new_capacity_bytes,
+                                               int64_t new_size_bytes,
                                                char shrink_to_fit) {
-  if (new_capacity_bytes < 0) {
+  if (new_size_bytes < 0) {
     return EINVAL;
   }
 
-  if (new_capacity_bytes > buffer->capacity_bytes || shrink_to_fit) {
-    buffer->data = buffer->allocator.reallocate(
-        &buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
-    if (buffer->data == NULL && new_capacity_bytes > 0) {
+  int needs_reallocation = new_size_bytes > buffer->capacity_bytes ||
+                           (shrink_to_fit && new_size_bytes < buffer->capacity_bytes);
+
+  if (needs_reallocation) {
+    buffer->data = buffer->allocator.reallocate(&buffer->allocator, buffer->data,
+                                                buffer->capacity_bytes, new_size_bytes);
+
+    if (buffer->data == NULL && new_size_bytes > 0) {
       buffer->capacity_bytes = 0;
       buffer->size_bytes = 0;
       return ENOMEM;
     }
 
-    buffer->capacity_bytes = new_capacity_bytes;
+    buffer->capacity_bytes = new_size_bytes;
   }
 
-  // Ensures that when shrinking that size <= capacity
-  if (new_capacity_bytes < buffer->size_bytes) {
-    buffer->size_bytes = new_capacity_bytes;
-  }
-
+  buffer->size_bytes = new_size_bytes;
   return NANOARROW_OK;
 }
 
@@ -124,8 +124,19 @@ static inline ArrowErrorCode ArrowBufferReserve(struct ArrowBuffer* buffer,
     return NANOARROW_OK;
   }
 
-  return ArrowBufferResize(
-      buffer, _ArrowGrowByFactor(buffer->capacity_bytes, min_capacity_bytes), 0);
+  int64_t new_capacity_bytes =
+      _ArrowGrowByFactor(buffer->capacity_bytes, min_capacity_bytes);
+  buffer->data = buffer->allocator.reallocate(&buffer->allocator, buffer->data,
+                                              buffer->capacity_bytes, new_capacity_bytes);
+
+  if (buffer->data == NULL && new_capacity_bytes > 0) {
+    buffer->capacity_bytes = 0;
+    buffer->size_bytes = 0;
+    return ENOMEM;
+  }
+
+  buffer->capacity_bytes = new_capacity_bytes;
+  return NANOARROW_OK;
 }
 
 static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const void* data,

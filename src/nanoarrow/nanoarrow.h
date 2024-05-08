@@ -620,14 +620,12 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer);
 /// address and resets buffer.
 static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst);
 
-/// \brief Grow or shrink a buffer to a given capacity
+/// \brief Grow or shrink a buffer to a given size
 ///
 /// When shrinking the capacity of the buffer, the buffer is only reallocated
-/// if shrink_to_fit is non-zero. Calling ArrowBufferResize() does not
-/// adjust the buffer's size member except to ensure that the invariant
-/// capacity >= size remains true.
+/// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
-                                               int64_t new_capacity_bytes,
+                                               int64_t new_size_bytes,
                                                char shrink_to_fit);
 
 /// \brief Ensure a buffer has at least a given additional capacity
