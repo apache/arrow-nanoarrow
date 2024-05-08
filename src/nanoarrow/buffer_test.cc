@@ -528,8 +528,8 @@ TEST(BitmapTest, BitmapTestResize) {
 
   // Check normal usage, which is resize to the final length
   // after appending a bunch of values
-  ASSERT_EQ(ArrowBitmapResize(&bitmap, 200, false), NANOARROW_OK);
-  EXPECT_EQ(bitmap.buffer.size_bytes, 200 / 8);
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 200), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 0);
   EXPECT_EQ(bitmap.buffer.capacity_bytes, 200 / 8);
   EXPECT_EQ(bitmap.size_bits, 0);
 

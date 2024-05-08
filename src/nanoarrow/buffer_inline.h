@@ -479,32 +479,36 @@ static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits) {
   int64_t min_capacity_bits = bitmap->size_bits + additional_size_bits;
-  if (min_capacity_bits <= (bitmap->buffer.capacity_bytes * 8)) {
+  int64_t min_capacity_bytes = _ArrowBytesForBits(min_capacity_bits);
+
+  if (min_capacity_bytes <= bitmap->buffer.capacity_bytes) {
     return NANOARROW_OK;
   }
 
-  NANOARROW_RETURN_NOT_OK(
-      ArrowBufferReserve(&bitmap->buffer, _ArrowBytesForBits(additional_size_bits)));
+  int64_t additional_capacity_bytes = min_capacity_bytes - bitmap->buffer.size_bytes;
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&bitmap->buffer, additional_capacity_bytes));
 
-  bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
+  // Zero out the last byte for deterministic output for the common case
+  // of reserving a known remaining size.
+  if (bitmap->buffer.capacity_bytes > 0) {
+    bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
+  }
+
   return NANOARROW_OK;
 }
 
 static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
-                                               int64_t new_capacity_bits,
+                                               int64_t new_size_bits,
                                                char shrink_to_fit) {
-  if (new_capacity_bits < 0) {
+  if (new_size_bits < 0) {
     return EINVAL;
   }
 
-  int64_t new_capacity_bytes = _ArrowBytesForBits(new_capacity_bits);
+  int64_t new_size_bytes = _ArrowBytesForBits(new_size_bits);
   NANOARROW_RETURN_NOT_OK(
-      ArrowBufferResize(&bitmap->buffer, new_capacity_bytes, shrink_to_fit));
+      ArrowBufferResize(&bitmap->buffer, new_size_bytes, shrink_to_fit));
 
-  if (new_capacity_bits < bitmap->size_bits) {
-    bitmap->size_bits = new_capacity_bits;
-  }
-
+  bitmap->size_bits = new_size_bits;
   return NANOARROW_OK;
 }
 
