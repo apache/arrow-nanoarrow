@@ -15,16 +15,15 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-API Reference
-=============
+Python API reference
+====================
+
+.. automodule:: nanoarrow
 
 .. toctree::
    :maxdepth: 2
 
-   R API Reference <r>
-   Python API Reference <python/index>
-   C API Reference <c>
-   C++ API Reference <cpp>
-   Testing API Reference <testing>
-   IPC Extension Reference <ipc>
-   Device Extension Reference <device>
+   Schema/DataType Objects <schema>
+   High-level Array Implementation <array>
+   High-level ArrayStream Implementation <array-stream>
+   Low-level Helpers <advanced>

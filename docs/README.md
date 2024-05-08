@@ -32,5 +32,6 @@ docker compose run --rm docs
 ci/scripts/build-docs.sh
 
 # Iterate on Sphinx documentation
+cd docs
 sphinx-build source _build/html
 ```

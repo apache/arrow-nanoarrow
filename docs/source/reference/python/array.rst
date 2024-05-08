@@ -15,8 +15,8 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-Python API reference
-====================
+High-level ArrayStream Implementation
+=====================================
 
-.. automodule:: nanoarrow
-   :members:
+.. automodule:: nanoarrow.array
+    :members:
