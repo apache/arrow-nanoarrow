@@ -769,7 +769,7 @@ cdef class CSchema:
     def __repr__(self):
         return _repr_utils.schema_repr(self)
 
-    def type_equals(self, CSchema other):
+    def type_equals(self, CSchema other, check_nullability=False):
         self._assert_valid()
 
         if self._ptr == other._ptr:
@@ -778,21 +778,33 @@ cdef class CSchema:
         if self.format != other.format:
             return False
 
-        if self.flags != other.flags:
+        # Nullability is not strictly part of the "type"; however, performing
+        # this check recursively is verbose to otherwise accomplish and
+        # sometimes this does matter.
+        cdef int64_t flags = self.flags
+        cdef int64_t other_flags = other.flags
+        if not check_nullability:
+            flags &= ~ARROW_FLAG_NULLABLE
+            other_flags &= ~ARROW_FLAG_NULLABLE
+
+        if flags != other_flags:
             return False
 
         if self.n_children != other.n_children:
             return False
 
         for child, other_child in zip(self.children, other.children):
-            if not child.type_equals(other_child):
+            if not child.type_equals(other_child, check_nullability=check_nullability):
                 return False
 
         if (self.dictionary is None) != (other.dictionary is None):
             return False
 
         if self.dictionary is not None:
-            if not self.dictionary.type_equals(other.dictionary):
+            if not self.dictionary.type_equals(
+                other.dictionary,
+                check_nullability=check_nullability
+            ):
                 return False
 
         return True
@@ -903,21 +915,23 @@ cdef class CSchema:
 
         return builder.finish()
 
-    @staticmethod
-    def assert_type_equal(actual, expected):
-        if not isinstance(actual, CSchema):
-            raise TypeError(f"expected is {type(actual).__name__}, not CSchema")
+# This is likely a better fit for a dedicated testing module; however, we need
+# it in _lib.pyx to produce nice error messages when ensuring that one or
+# more arrays conform to a given or inferred schema.
+def assert_type_equal(actual, expected):
+    if not isinstance(actual, CSchema):
+        raise TypeError(f"expected is {type(actual).__name__}, not CSchema")
 
-        if not isinstance(expected, CSchema):
-            raise TypeError(f"expected is {type(expected).__name__}, not CSchema")
+    if not isinstance(expected, CSchema):
+        raise TypeError(f"expected is {type(expected).__name__}, not CSchema")
 
-        if not actual.type_equals(expected):
-            actual_label = actual._to_string(max_chars=80, recursive=True)
-            expected_label = expected._to_string(max_chars=80, recursive=True)
-            raise ValueError(
-                f"Expected schema\n  '{expected_label}'"
-                f"\nbut got\n  '{actual_label}'"
-            )
+    if not actual.type_equals(expected):
+        actual_label = actual._to_string(max_chars=80, recursive=True)
+        expected_label = expected._to_string(max_chars=80, recursive=True)
+        raise ValueError(
+            f"Expected schema\n  '{expected_label}'"
+            f"\nbut got\n  '{actual_label}'"
+        )
 
 
 cdef class CSchemaView:
@@ -2776,7 +2790,7 @@ cdef class CArrayStream:
             array = arrays[i]
 
             if validate:
-                CSchema.assert_type_equal(array.schema, validate_schema)
+                assert_type_equal(array.schema, validate_schema)
 
             if not move:
                 c_array_shallow_copy(array._base, array._ptr, &tmp)
@@ -3002,8 +3016,8 @@ cdef class CMaterializedArrayStream:
             if len(array) == 0:
                 continue
 
-            if validate and not schema.type_equals(array.schema):
-                CSchema.assert_type_equal(array.schema, schema)
+            if validate:
+                assert_type_equal(array.schema, schema)
 
             out._total_length += len(array)
             code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)

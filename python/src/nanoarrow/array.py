@@ -164,7 +164,7 @@ class Array:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
 
     @staticmethod
-    def from_chunks(obj: Iterable, schema=None, validate: bool=True):
+    def from_chunks(obj: Iterable, schema=None, validate: bool = True):
         """Create an Array with explicit chunks
 
         Creates an :class:`Array` with explicit chunking from an iterable of
