@@ -89,6 +89,7 @@ def test_c_array():
     array = na.c_array(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
     assert array.length == 3
+    assert len(array) == 3
     assert array.offset == 0
     assert array.null_count == 0
     assert array.n_buffers == 2

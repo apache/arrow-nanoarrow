@@ -106,7 +106,7 @@ def test_array_empty():
         assert len(arrays) == 0
 
     c_array = na.c_array(array)
-    assert c_array.length == 0
+    assert len(c_array) == 0
     assert c_array.schema.format == "i"
 
 
@@ -153,7 +153,7 @@ def test_array_contiguous():
         assert len(arrays) == 1
 
     c_array = na.c_array(array)
-    assert c_array.length == 3
+    assert len(c_array) == 3
     assert c_array.schema.format == "i"
 
 
@@ -233,7 +233,7 @@ def test_scalar_to_array():
     assert scalar.device is array.device
     as_array = na.c_array(scalar)
     assert as_array.offset == 1
-    assert as_array.length == 1
+    assert len(as_array) == 1
     assert as_array.buffers == na.c_array(array).buffers
 
     with pytest.raises(NotImplementedError):

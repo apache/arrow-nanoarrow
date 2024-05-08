@@ -301,9 +301,9 @@ class Array:
         >>> import nanoarrow as na
         >>> array = na.Array([1, 2, 3], na.int32())
         >>> for view in array.iter_chunk_views():
-        ...     offset, length = view.offset, view.length
+        ...     offset, length = view.offset, len(view)
         ...     validity, data = view.buffers
-        ...     print(view.offset, view.length)
+        ...     print(offset, length)
         ...     print(validity)
         ...     print(data)
         0 3

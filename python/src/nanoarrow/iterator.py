@@ -140,7 +140,7 @@ class ArrayViewBaseIterator:
             iterator = cls(stream._get_cached_schema())
             for array in stream:
                 iterator._set_array(array)
-                yield from iterator._iter_chunk(0, array.length)
+                yield from iterator._iter_chunk(0, len(array))
 
     def __init__(self, schema, *, _array_view=None):
         self._schema = c_schema(schema)
@@ -222,7 +222,7 @@ class PyIterator(ArrayViewBaseIterator):
 
     def _dictionary_iter(self, offset, length):
         dictionary = list(
-            self._dictionary._iter_chunk(0, self._dictionary._array_view.length)
+            self._dictionary._iter_chunk(0, len(self._dictionary._array_view))
         )
         for dict_index in self._primitive_iter(offset, length):
             yield None if dict_index is None else dictionary[dict_index]
