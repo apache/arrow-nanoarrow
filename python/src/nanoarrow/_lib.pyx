@@ -1404,9 +1404,9 @@ cdef class CArray:
         cdef int64_t start = 0 if k.start is None else k.start
         cdef int64_t stop = self._ptr.length if k.stop is None else k.stop
         if start < 0:
-            start = self.length + start
+            start = self._ptr.length + start
         if stop < 0:
-            stop = self.length + stop
+            stop = self._ptr.length + stop
 
         if start > self._ptr.length or stop > self._ptr.length or stop < start:
             raise IndexError(
@@ -1493,10 +1493,13 @@ cdef class CArray:
     def device_id(self):
         return self._device_id
 
-    @property
-    def length(self):
+    def __len__(self):
         self._assert_valid()
         return self._ptr.length
+
+    @property
+    def length(self):
+        return len(self)
 
     @property
     def offset(self):
@@ -1602,9 +1605,12 @@ cdef class CArrayView:
     def layout(self):
         return CLayout(self, <uintptr_t>&self._ptr.layout)
 
+    def __len__(self):
+        return self._ptr.length
+
     @property
     def length(self):
-        return self._ptr.length
+        return len(self)
 
     @property
     def offset(self):
@@ -2945,7 +2951,7 @@ cdef class CMaterializedArrayStream:
 
     def __iter__(self):
         for c_array in self._arrays:
-            for item_i in range(c_array.length):
+            for item_i in range(len(c_array)):
                 yield c_array, item_i
 
     def array(self, int64_t i):
@@ -2978,7 +2984,7 @@ cdef class CMaterializedArrayStream:
         out._schema = self._schema.child(i)
         out._arrays = [chunk.child(i) for chunk in self._arrays]
         for child_chunk in out._arrays:
-            out._total_length += child_chunk.length
+            out._total_length += len(child_chunk)
             code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
             Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
 
@@ -2990,13 +2996,13 @@ cdef class CMaterializedArrayStream:
         cdef CMaterializedArrayStream out = CMaterializedArrayStream()
 
         for array in arrays:
-            if array.length == 0:
+            if len(array) == 0:
                 continue
 
             if validate and not schema.type_equals(array.schema):
                 CSchema.assert_type_equal(array.schema, schema)
 
-            out._total_length += array.length
+            out._total_length += len(array)
             code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
             Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
             out._arrays.append(array)
