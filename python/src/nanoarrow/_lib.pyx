@@ -2996,6 +2996,9 @@ cdef class CMaterializedArrayStream:
         cdef CMaterializedArrayStream out = CMaterializedArrayStream()
 
         for array in arrays:
+            if not isinstance(array, CArray):
+                raise TypeError(f"Expected CArray but got {type(array).__name__}")
+
             if len(array) == 0:
                 continue
 
