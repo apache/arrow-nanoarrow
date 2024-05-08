@@ -16,7 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow.c_schema import allocate_c_schema, c_schema_view
+from nanoarrow.c_schema import CSchema, allocate_c_schema, c_schema_view
 
 import nanoarrow as na
 
@@ -164,6 +164,21 @@ def test_c_schema_equals():
 
     # Check inequality because of dictionary value type
     assert dictionary.type_equals(dictionary.modify(dictionary=struct)) is False
+
+
+def test_c_schema_assert_type_equal():
+    int32 = na.c_schema(na.int32())
+    string = na.c_schema(na.string())
+
+    with pytest.raises(TypeError):
+        CSchema.assert_type_equal(None, int32)
+
+    with pytest.raises(TypeError):
+        CSchema.assert_type_equal(int32, None)
+
+    msg = "Expected schema\n  'string'\nbut got\n  'int32'"
+    with pytest.raises(ValueError, match=msg):
+        CSchema.assert_type_equal(int32, string)
 
 
 def test_c_schema_modify():
