@@ -330,7 +330,13 @@ document.write(`
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="r.html">R API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="python.html">Python API Reference</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="python/index.html">Python API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="python/schema.html">Schema/DataType Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python/array.html">High-level Array Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python/array-stream.html">High-level ArrayStream Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python/advanced.html">Low-level Helpers</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="c.html">C API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cpp.html">C++ API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing API Reference</a></li>
@@ -395,55 +401,11 @@ document.write(`
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="r.html">R API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="python.html">Python API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.Array"><code class="docutils literal notranslate"><span class="pre">Array</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.ArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrayStream</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.Schema"><code class="docutils literal notranslate"><span class="pre">Schema</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.TimeUnit"><code class="docutils literal notranslate"><span class="pre">TimeUnit</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.Type"><code class="docutils literal notranslate"><span class="pre">Type</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.array"><code class="docutils literal notranslate"><span class="pre">array()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.binary"><code class="docutils literal notranslate"><span class="pre">binary()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.bool_"><code class="docutils literal notranslate"><span class="pre">bool_()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.c_array"><code class="docutils literal notranslate"><span class="pre">c_array()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.c_array_from_buffers"><code class="docutils literal notranslate"><span class="pre">c_array_from_buffers()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.c_array_stream"><code class="docutils literal notranslate"><span class="pre">c_array_stream()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.c_buffer"><code class="docutils literal notranslate"><span class="pre">c_buffer()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.c_schema"><code class="docutils literal notranslate"><span class="pre">c_schema()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.c_version"><code class="docutils literal notranslate"><span class="pre">c_version()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.date32"><code class="docutils literal notranslate"><span class="pre">date32()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.date64"><code class="docutils literal notranslate"><span class="pre">date64()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.decimal128"><code class="docutils literal notranslate"><span class="pre">decimal128()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.decimal256"><code class="docutils literal notranslate"><span class="pre">decimal256()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.dictionary"><code class="docutils literal notranslate"><span class="pre">dictionary()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.duration"><code class="docutils literal notranslate"><span class="pre">duration()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.extension_type"><code class="docutils literal notranslate"><span class="pre">extension_type()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.fixed_size_binary"><code class="docutils literal notranslate"><span class="pre">fixed_size_binary()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.fixed_size_list"><code class="docutils literal notranslate"><span class="pre">fixed_size_list()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.float16"><code class="docutils literal notranslate"><span class="pre">float16()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.float32"><code class="docutils literal notranslate"><span class="pre">float32()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.float64"><code class="docutils literal notranslate"><span class="pre">float64()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.int16"><code class="docutils literal notranslate"><span class="pre">int16()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.int32"><code class="docutils literal notranslate"><span class="pre">int32()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.int64"><code class="docutils literal notranslate"><span class="pre">int64()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.int8"><code class="docutils literal notranslate"><span class="pre">int8()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.interval_day_time"><code class="docutils literal notranslate"><span class="pre">interval_day_time()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.interval_month_day_nano"><code class="docutils literal notranslate"><span class="pre">interval_month_day_nano()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.interval_months"><code class="docutils literal notranslate"><span class="pre">interval_months()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.large_binary"><code class="docutils literal notranslate"><span class="pre">large_binary()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.large_list"><code class="docutils literal notranslate"><span class="pre">large_list()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.large_string"><code class="docutils literal notranslate"><span class="pre">large_string()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.list_"><code class="docutils literal notranslate"><span class="pre">list_()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.null"><code class="docutils literal notranslate"><span class="pre">null()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.schema"><code class="docutils literal notranslate"><span class="pre">schema()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.string"><code class="docutils literal notranslate"><span class="pre">string()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.struct"><code class="docutils literal notranslate"><span class="pre">struct()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.time32"><code class="docutils literal notranslate"><span class="pre">time32()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.time64"><code class="docutils literal notranslate"><span class="pre">time64()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.timestamp"><code class="docutils literal notranslate"><span class="pre">timestamp()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.uint16"><code class="docutils literal notranslate"><span class="pre">uint16()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.uint32"><code class="docutils literal notranslate"><span class="pre">uint32()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.uint64"><code class="docutils literal notranslate"><span class="pre">uint64()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="python.html#nanoarrow.uint8"><code class="docutils literal notranslate"><span class="pre">uint8()</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="python/index.html">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python/schema.html">Schema/DataType Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python/array.html">High-level Array Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python/array-stream.html">High-level ArrayStream Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python/advanced.html">Low-level Helpers</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="c.html">C API Reference</a><ul>
@@ -464,7 +426,8 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="cpp.html#error-handling">Error handling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cpp.html#owning-object-wrappers">Owning object wrappers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cpp.html#array-stream-utilities">Array Stream utilities</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cpp.html#base-classes-and-utilities">Base classes and utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpp.html#buffer-utilities">Buffer utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpp.html#range-for-utilities">Range-for utilities</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing API Reference</a><ul>
