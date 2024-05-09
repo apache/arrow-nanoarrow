@@ -50,6 +50,27 @@ static inline int64_t ArrowResolveChunk64(int64_t index, const int64_t* offsets,
   return lo;
 }
 
+static inline int64_t ArrowResolveChunk32(int32_t index, const int32_t* offsets,
+                                          int32_t lo, int32_t hi) {
+  // Similar to std::upper_bound(), but slightly different as our offsets
+  // array always starts with 0.
+  int32_t n = hi - lo;
+  // First iteration does not need to check for n > 1
+  // (lo < hi is guaranteed by the precondition).
+  NANOARROW_DCHECK(n > 1);
+  do {
+    const int32_t m = n >> 1;
+    const int32_t mid = lo + m;
+    if (index >= offsets[mid]) {
+      lo = mid;
+      n -= m;
+    } else {
+      n = m;
+    }
+  } while (n > 1);
+  return lo;
+}
+
 static inline int64_t _ArrowGrowByFactor(int64_t current_capacity, int64_t new_capacity) {
   int64_t doubled_capacity = current_capacity * 2;
   if (doubled_capacity > new_capacity) {
