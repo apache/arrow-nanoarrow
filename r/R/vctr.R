@@ -26,7 +26,8 @@
 #' @export
 #'
 #' @examples
-#' as_nanoarrow_vctr(1:5)
+#' array <- as_nanoarrow_array(1:5)
+#' as_nanoarrow_vctr(array)
 #'
 as_nanoarrow_vctr <- function(x, ..., schema = NULL) {
   if (inherits(x, "nanoarrow_vctr") && is.null(schema)) {
@@ -81,11 +82,12 @@ new_nanoarrow_vctr <- function(chunks, schema, indices = NULL) {
 #' @export
 format.nanoarrow_vctr <- function(x, ...) {
   # Technically we can do better here
-  format(convert_array_stream(x), ...)
+  stream <- as_nanoarrow_array_stream(x)
+  format(convert_array_stream(stream), ...)
 }
 
 # Because RStudio's viewer uses this, we want to use the potentially abbreviated
-# WKT from the format method
+# format string.
 #' @export
 as.character.nanoarrow_vctr <- function(x, ...) {
   format(x, ...)
@@ -98,7 +100,6 @@ infer_nanoarrow_schema.nanoarrow_vctr <- function(x, ...) {
 
 # Because zero-length vctrs are R's way of communicating "type", implement
 # as_nanoarrow_schema() here so that it works in places that expect a type
-#' @importFrom nanoarrow as_nanoarrow_schema
 #' @export
 as_nanoarrow_schema.nanoarrow_vctr <- function(x, ...) {
   attr(x, "schema", exact = TRUE)
@@ -109,7 +110,6 @@ as_nanoarrow_array_stream.nanoarrow_vctr <- function(x, ..., schema = NULL) {
   as_nanoarrow_array_stream.nanoarrow_vctr(x, ..., schema = schema)
 }
 
-#' @importFrom nanoarrow as_nanoarrow_array_stream
 #' @export
 as_nanoarrow_array_stream.nanoarrow_vctr <- function(x, ..., schema = NULL) {
   if (!is.null(schema)) {

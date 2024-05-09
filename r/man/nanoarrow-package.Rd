@@ -11,6 +11,7 @@ Provides an 'R' interface to the 'nanoarrow' 'C' library and the 'Apache Arrow' 
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://arrow.apache.org/nanoarrow/latest/r/}
   \item \url{https://github.com/apache/arrow-nanoarrow}
   \item Report bugs at \url{https://github.com/apache/arrow-nanoarrow/issues}
 }
