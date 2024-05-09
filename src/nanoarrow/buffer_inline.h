@@ -480,20 +480,22 @@ static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits) {
   int64_t min_capacity_bits = bitmap->size_bits + additional_size_bits;
   int64_t min_capacity_bytes = _ArrowBytesForBits(min_capacity_bits);
+  int64_t current_size_bytes = bitmap->buffer.size_bytes;
+  int64_t current_capacity_bytes = bitmap->buffer.capacity_bytes;
 
-  if (min_capacity_bytes <= bitmap->buffer.capacity_bytes) {
+  if (min_capacity_bytes <= current_capacity_bytes) {
     return NANOARROW_OK;
   }
 
-  int64_t additional_capacity_bytes = min_capacity_bytes - bitmap->buffer.size_bytes;
+  int64_t additional_capacity_bytes = min_capacity_bytes - current_size_bytes;
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&bitmap->buffer, additional_capacity_bytes));
 
-  // Zero out the last byte for deterministic output for the common case
-  // of reserving a known remaining size.
-  if (bitmap->buffer.capacity_bytes > 0) {
-    bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
-  }
-
+  // Zero out the last byte for deterministic output in the common case
+  // of reserving a known remaining size. We should have returned above
+  // if there was not at least one additional byte to allocate; however,
+  // DCHECK() just to be sure.
+  NANOARROW_DCHECK(bitmap->buffer.capacity_bytes > current_capacity_bytes);
+  bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
   return NANOARROW_OK;
 }
 
