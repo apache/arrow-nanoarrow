@@ -15,36 +15,8 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-C++ API Reference
-==================
+Schema/Data Type Objects
+========================
 
-.. doxygengroup:: nanoarrow_hpp
-
-Error handling
---------------
-
-.. doxygengroup:: nanoarrow_hpp-errors
-   :members:
-
-Owning object wrappers
-----------------------
-.. doxygengroup:: nanoarrow_hpp-unique
-   :members:
-
-Array Stream utilities
-----------------------
-
-.. doxygengroup:: nanoarrow_hpp-array-stream
-   :members:
-
-Buffer utilities
-----------------
-
-.. doxygengroup:: nanoarrow_hpp-buffer
-   :members:
-
-Range-for utilities
--------------------
-
-.. doxygengroup:: nanoarrow_hpp-range_for
-   :members:
+.. automodule:: nanoarrow.schema
+    :members:

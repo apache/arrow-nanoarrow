@@ -96,6 +96,7 @@ html_theme_options = {
         "version_match": get_version(),
     },
     "navbar_start": ["navbar-logo", "version-switcher"],
+    "navigation_with_keys": False,
 }
 
 html_context = {

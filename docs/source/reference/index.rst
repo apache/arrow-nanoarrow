@@ -22,7 +22,7 @@ API Reference
    :maxdepth: 2
 
    R API Reference <r>
-   Python API Reference <python>
+   Python API Reference <python/index>
    C API Reference <c>
    C++ API Reference <cpp>
    Testing API Reference <testing>

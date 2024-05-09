@@ -15,36 +15,15 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-C++ API Reference
-==================
+Python API reference
+====================
 
-.. doxygengroup:: nanoarrow_hpp
+.. automodule:: nanoarrow
 
-Error handling
---------------
+.. toctree::
+   :maxdepth: 2
 
-.. doxygengroup:: nanoarrow_hpp-errors
-   :members:
-
-Owning object wrappers
-----------------------
-.. doxygengroup:: nanoarrow_hpp-unique
-   :members:
-
-Array Stream utilities
-----------------------
-
-.. doxygengroup:: nanoarrow_hpp-array-stream
-   :members:
-
-Buffer utilities
-----------------
-
-.. doxygengroup:: nanoarrow_hpp-buffer
-   :members:
-
-Range-for utilities
--------------------
-
-.. doxygengroup:: nanoarrow_hpp-range_for
-   :members:
+   Schema/DataType Objects <schema>
+   High-level Array Implementation <array>
+   High-level ArrayStream Implementation <array-stream>
+   Low-level Helpers <advanced>
