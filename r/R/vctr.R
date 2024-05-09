@@ -39,6 +39,16 @@ as_nanoarrow_vctr <- function(x, ..., schema = NULL) {
   new_nanoarrow_vctr(chunks, stream$get_schema())
 }
 
+#' @rdname as_nanoarrow_vctr
+#' @export
+nanoarrow_vctr <- function(schema = NULL) {
+  if (is.null(schema)) {
+    new_nanoarrow_vctr(list(), NULL)
+  } else {
+    new_nanoarrow_vctr(list(), as_nanoarrow_schema(schema))
+  }
+}
+
 new_nanoarrow_vctr <- function(chunks, schema, indices = NULL) {
   offsets <- .Call(nanoarrow_c_vctr_chunk_offsets, chunks)
   if (is.null(indices)) {
@@ -50,7 +60,7 @@ new_nanoarrow_vctr <- function(chunks, schema, indices = NULL) {
     schema = schema,
     chunks = chunks,
     offsets = offsets,
-    class = c("nanoarrow_vctr", "wk_vctr")
+    class = "nanoarrow_vctr"
   )
 }
 
@@ -197,6 +207,62 @@ as_nanoarrow_array_stream.nanoarrow_vctr <- function(x, ..., schema = NULL) {
   )
 }
 
+#' @export
+c.nanoarrow_vctr <- function(...) {
+  stop("c() not implemented for nanoarrow_vctr()")
+}
+
+# Ensures that nanoarrow_vctr can fit in a data.frame
+#' @export
+as.data.frame.nanoarrow_vctr <- function(x, ..., optional = FALSE) {
+  if (!optional) {
+    stop(sprintf("cannot coerce object of tyoe '%s' to data.frame", class(x)[1]))
+  } else {
+    new_data_frame(list(x))
+  }
+}
+
+#' @export
+print.nanoarrow_vctr <- function(x, ...) {
+  schema <- attr(x, "schema", exact = TRUE)
+  if (is.null(schema)) {
+    cat("<nanoarrow_vctr sentinel>\n")
+    return(invisible(x))
+  }
+
+  formatted <- nanoarrow_schema_formatted(schema, recursive = FALSE)
+  cat(sprintf("<nanoarrow_vctr %s[%d]>\n", formatted, length(x)))
+
+  n_values <- min(length(x), 20)
+  more_values <- length(x) - n_values
+  stream <- as_nanoarrow_array_stream(utils::head(x, n_values))
+  converted_head <- convert_array_stream(stream)
+
+  print(converted_head)
+  if (more_values > 0) {
+    cat(sprintf("...and %d more values\n", more_values))
+  }
+
+  invisible(x)
+}
+
+#' @export
+str.nanoarrow_vctr <- function(object, ...) {
+  schema <- attr(object, "schema", exact = TRUE)
+  if (is.null(schema)) {
+    cat("<nanoarrow_vctr sentinel>\n")
+    return(invisible(object))
+  }
+
+  formatted <- nanoarrow_schema_formatted(schema, recursive = FALSE)
+  cat(sprintf("<nanoarrow_vctr %s[%d]>\n", formatted, length(object)))
+
+  for (chunk in attr(object, "chunks")) {
+    str(chunk, ...)
+  }
+
+  invisible(object)
+}
 
 # Utilities for vctr methods
 

@@ -140,6 +140,12 @@ convert_fallback_other <- function(array, offset, length, to) {
 }
 
 #' @export
+convert_array.nanoarrow_vctr <- function(array, to, ...) {
+  schema <- infer_nanoarrow_schema(to)
+  as_nanoarrow_vctr(stream, schema = schema)
+}
+
+#' @export
 convert_array.double <- function(array, to, ...) {
   # Handle conversion from decimal128 via arrow
   schema <- infer_nanoarrow_schema(array)

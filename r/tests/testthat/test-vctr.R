@@ -25,6 +25,42 @@ test_that("as_nanoarrow_vctr() works for basic input", {
   expect_identical(as_nanoarrow_schema(vctr)$format, "u")
 })
 
+test_that("nanorrow_vctr() creates an empty sentinel", {
+  vctr <- nanoarrow_vctr()
+  expect_identical(
+    expect_output(
+      print(vctr),
+      "<nanoarrow_vctr sentinel>"
+    ),
+    vctr
+  )
+
+  expect_identical(
+    expect_output(
+      str(vctr),
+      "<nanoarrow_vctr sentinel>"
+    ),
+    vctr
+  )
+
+  vctr <- nanoarrow_vctr(na_int32())
+  expect_identical(
+    expect_output(
+      print(vctr),
+      "^<nanoarrow_vctr int32"
+    ),
+    vctr
+  )
+
+  expect_identical(
+    expect_output(
+      str(vctr),
+      "^<nanoarrow_vctr int32"
+    ),
+    vctr
+  )
+})
+
 test_that("format() works for nanoarrow_vctr", {
   array <- as_nanoarrow_array(c("one", "two"))
   vctr <- as_nanoarrow_vctr(array)

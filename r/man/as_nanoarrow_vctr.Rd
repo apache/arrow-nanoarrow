@@ -2,9 +2,12 @@
 % Please edit documentation in R/vctr.R
 \name{as_nanoarrow_vctr}
 \alias{as_nanoarrow_vctr}
+\alias{nanoarrow_vctr}
 \title{Experimental Arrow encoded arrays as R vectors}
 \usage{
 as_nanoarrow_vctr(x, ..., schema = NULL)
+
+nanoarrow_vctr(schema = NULL)
 }
 \arguments{
 \item{x}{An object that works with \code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}. Most
