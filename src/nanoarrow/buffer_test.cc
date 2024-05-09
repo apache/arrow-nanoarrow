@@ -553,6 +553,8 @@ TEST(BitmapTest, BitmapTestReserve) {
   EXPECT_EQ(bitmap.size_bits, 0);
   EXPECT_EQ(bitmap.buffer.data[0], 0xff);
   EXPECT_EQ(bitmap.buffer.data[1], 0x00);
+
+  ArrowBitmapReset(&bitmap);
 }
 
 TEST(BitmapTest, BitmapTestResize) {
