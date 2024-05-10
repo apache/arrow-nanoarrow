@@ -1948,6 +1948,33 @@ cdef class CBufferView:
         else:
             return self._iter_dispatch(offset, length)
 
+    def copy_into(self, dest, offset=0, length=None, dest_offset=0):
+        if length is None:
+            length = self.n_elements
+
+        cdef Py_buffer buffer
+        PyObject_GetBuffer(dest, &buffer, PyBUF_WRITABLE | PyBUF_ANY_CONTIGUOUS)
+
+        cdef int64_t c_offset = offset
+        cdef int64_t c_length = length
+        cdef int64_t c_item_size = self.item_size
+        cdef int64_t c_dest_offset = dest_offset
+        self._check_copy_into_bounds(&buffer, c_offset, c_length, dest_offset, c_item_size)
+
+        cdef uint8_t* dest_uint8 = <uint8_t*>buffer.buf
+        cdef int64_t dest_offset_bytes = c_dest_offset * c_item_size
+        cdef int64_t src_offset_bytes = c_offset * c_item_size
+        cdef int64_t bytes_to_copy = c_length * c_item_size
+
+        memcpy(
+            &(dest_uint8[dest_offset_bytes]),
+            &(self._ptr.data.as_uint8[src_offset_bytes]),
+            bytes_to_copy
+        )
+
+        PyBuffer_Release(&buffer)
+        return bytes_to_copy
+
     def unpack_bits_into(self, dest, offset=0, length=None, dest_offset=0):
         if self._data_type != NANOARROW_TYPE_BOOL:
             raise ValueError("Can't unpack non-boolean buffer")
@@ -1955,25 +1982,9 @@ cdef class CBufferView:
         if length is None:
             length = self.n_elements
 
-        if offset < 0 or length < 0 or (offset + length) > self.n_elements:
-            raise IndexError(
-                f"offset {offset} and length {length} do not describe a valid slice "
-                f"of buffer with {self.n_elements} elements"
-            )
-
         cdef Py_buffer buffer
         PyObject_GetBuffer(dest, &buffer, PyBUF_WRITABLE | PyBUF_ANY_CONTIGUOUS)
-        if buffer.itemsize != 1:
-            PyBuffer_Release(&buffer)
-            raise ValueError("Destination buffer has itemsize != 1")
-
-        if dest_offset < 0 or buffer.len < (dest_offset + length):
-            buffer_len = buffer.len
-            PyBuffer_Release(&buffer)
-            raise IndexError(
-                f"Can't unpack {length} elements into buffer of size {buffer_len} "
-                f"with dest_offset = {dest_offset}"
-            )
+        self._check_copy_into_bounds(&buffer, offset, length, dest_offset, 1)
 
         ArrowBitsUnpackInt8(
             self._ptr.data.as_uint8,
@@ -1983,6 +1994,7 @@ cdef class CBufferView:
         )
 
         PyBuffer_Release(&buffer)
+        return length
 
     def unpack_bits(self, offset=0, length=None):
         if length is None:
@@ -1993,6 +2005,42 @@ cdef class CBufferView:
         self.unpack_bits_into(out, offset, length)
         out.advance(length)
         return out.finish()
+
+    def copy(self, offset=0, length=None):
+        if length is None:
+            length = self.n_elements
+
+        cdef int64_t bytes_to_copy = length * self.item_size
+        out = CBufferBuilder().set_data_type(self.data_type_id)
+        out.reserve_bytes(bytes_to_copy)
+        self.copy_into(out, offset, length)
+        out.advance(bytes_to_copy)
+        return out.finish()
+
+    cdef _check_copy_into_bounds(self, Py_buffer* dest, int64_t offset, int64_t length,
+                                 int64_t dest_offset, int64_t dest_itemsize):
+        if offset < 0 or length < 0 or (offset + length) > self.n_elements:
+            PyBuffer_Release(dest)
+            raise IndexError(
+                f"offset {offset} and length {length} do not describe a valid slice "
+                f"of buffer with {self.n_elements} elements"
+            )
+
+        if dest.itemsize != 1 and dest.itemsize != dest_itemsize:
+            raise ValueError(
+                "Destination buffer must have itemsize == 1 or "
+                f"itemsize == {dest_itemsize}"
+            )
+
+        cdef int64_t dest_offset_bytes = dest_offset * dest_itemsize
+        cdef int64_t bytes_to_copy = dest_itemsize * length
+        if dest_offset < 0 or dest.len < (dest_offset_bytes + bytes_to_copy):
+            buffer_len = dest.len
+            PyBuffer_Release(dest)
+            raise IndexError(
+                f"Can't unpack {length} elements into buffer of size {buffer_len} "
+                f"with dest_offset = {dest_offset}"
+            )
 
     def _iter_bitmap(self, int64_t offset, int64_t length):
         cdef uint8_t item
