@@ -160,6 +160,41 @@ test_that("convert to vector works for tibble", {
   )
 })
 
+test_that("convert to vector works for nanoarrow_vctr()", {
+  array <- as_nanoarrow_array(c("one", "two", "three"))
+
+  # Check implicit/inferred nanoarrow_vctr() schema
+  vctr <- convert_array(array, nanoarrow_vctr())
+  expect_s3_class(vctr, "nanoarrow_vctr")
+  expect_length(vctr, 3)
+  schema <- infer_nanoarrow_schema(vctr)
+  expect_identical(schema$format, "u")
+
+  # Check with explicit schema of the correct type
+  vctr <- convert_array(array, nanoarrow_vctr(na_string()))
+  expect_s3_class(vctr, "nanoarrow_vctr")
+  expect_length(vctr, 3)
+  schema <- infer_nanoarrow_schema(vctr)
+  expect_identical(schema$format, "u")
+
+  # Check nested conversion from a data.frame
+  df <- data.frame(x = c("one", "two", "three"))
+  array <- as_nanoarrow_array(df)
+
+  vctr <- convert_array(array, nanoarrow_vctr())
+  expect_s3_class(vctr, "nanoarrow_vctr")
+  expect_length(vctr, 3)
+  schema <- infer_nanoarrow_schema(vctr)
+  expect_identical(schema$format, "+s")
+
+
+  vctr <- convert_array(array, nanoarrow_vctr(na_struct(list(x = na_string()))))
+  expect_s3_class(vctr, "nanoarrow_vctr")
+  expect_length(vctr, 3)
+  schema <- infer_nanoarrow_schema(vctr)
+  expect_identical(schema$format, "+s")
+})
+
 test_that("convert to vector works for struct-style vectors", {
   array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))
   expect_identical(
