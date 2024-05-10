@@ -82,7 +82,7 @@ def test_c_array_empty():
 
     array = allocate_c_array()
     assert array.is_valid() is False
-    assert repr(array) == "<nanoarrow.c_lib.CArray <released>>"
+    assert repr(array) == "<nanoarrow.c_array.CArray <released>>"
 
 
 def test_c_array():
@@ -98,7 +98,7 @@ def test_c_array():
     assert array.n_children == 0
     assert len(list(array.children)) == 0
     assert array.dictionary is None
-    assert "<nanoarrow.c_lib.CArray int32" in repr(array)
+    assert "<nanoarrow.c_array.CArray int32" in repr(array)
 
 
 def test_c_array_recursive():
@@ -107,7 +107,7 @@ def test_c_array_recursive():
     assert len(list(array.children)) == 1
     assert array.child(0).length == 3
     assert array.child(0).schema._to_string() == "int32"
-    assert "'col': <nanoarrow.c_lib.CArray int32" in repr(array)
+    assert "'col': <nanoarrow.c_array.CArray int32" in repr(array)
 
     with pytest.raises(IndexError):
         array.child(-1)
@@ -117,7 +117,7 @@ def test_c_array_dictionary():
     array = na.c_array(pa.array(["a", "b", "b"]).dictionary_encode())
     assert array.length == 3
     assert array.dictionary.length == 2
-    assert "dictionary: <nanoarrow.c_lib.CArray string>" in repr(array)
+    assert "dictionary: <nanoarrow.c_array.CArray string>" in repr(array)
 
 
 def test_c_array_view():
@@ -180,7 +180,7 @@ def test_c_array_view_dictionary():
     view = array.view()
     assert view.n_buffers == 2
     assert view.dictionary.n_buffers == 3
-    assert "- dictionary: <nanoarrow.c_lib.CArrayView>" in repr(view)
+    assert "- dictionary: <nanoarrow.c_array.CArrayView>" in repr(view)
 
 
 def test_buffers_integer():
@@ -381,7 +381,7 @@ def test_c_array_stream():
 
     array_stream = allocate_c_array_stream()
     assert na.c_array_stream(array_stream) is array_stream
-    assert repr(array_stream) == "<nanoarrow.c_lib.CArrayStream <released>>"
+    assert repr(array_stream) == "<nanoarrow.c_array_stream.CArrayStream <released>>"
 
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):

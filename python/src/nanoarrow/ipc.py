@@ -43,7 +43,7 @@ class Stream:
     >>> from nanoarrow.ipc import Stream
     >>> with Stream.example() as inp, na.c_array_stream(inp) as stream:
     ...     stream
-    <nanoarrow.c_lib.CArrayStream>
+    <nanoarrow.c_array_stream.CArrayStream>
     - get_schema(): struct<some_col: int32>
     """
 
@@ -96,7 +96,7 @@ class Stream:
         >>> from nanoarrow.ipc import Stream
         >>> ipc_stream = Stream.from_readable(Stream.example_bytes())
         >>> na.c_array_stream(ipc_stream)
-        <nanoarrow.c_lib.CArrayStream>
+        <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
         if not hasattr(obj, "readinto") and _obj_is_buffer(obj):
@@ -137,7 +137,7 @@ class Stream:
         ...
         ...     with Stream.from_path(path) as inp, na.c_array_stream(inp) as stream:
         ...         stream
-        <nanoarrow.c_lib.CArrayStream>
+        <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
         out = Stream()
@@ -176,7 +176,7 @@ class Stream:
         ...     uri = pathlib.Path(path).as_uri()
         ...     with Stream.from_url(uri) as inp, na.c_array_stream(inp) as stream:
         ...         stream
-        <nanoarrow.c_lib.CArrayStream>
+        <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
         import urllib.request

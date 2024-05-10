@@ -18,7 +18,7 @@
 import enum
 import reprlib
 from functools import cached_property
-from typing import Mapping, Union
+from typing import List, Mapping, Union
 
 from nanoarrow._lib import (
     CArrowTimeUnit,
@@ -28,6 +28,8 @@ from nanoarrow._lib import (
     SchemaMetadata,
 )
 from nanoarrow.c_schema import c_schema
+
+from nanoarrow import _repr_utils
 
 
 class Type(enum.Enum):
@@ -179,11 +181,11 @@ class Schema:
     >>> import nanoarrow as na
     >>> import pyarrow as pa
     >>> na.Schema(na.Type.INT32)
-    Schema(INT32)
+    <Schema> int32
     >>> na.Schema(na.Type.DURATION, unit=na.TimeUnit.SECOND)
-    Schema(DURATION, unit=SECOND)
+    <Schema> duration('s')
     >>> na.Schema(pa.int32())
-    Schema(INT32)
+    <Schema> int32
     """
 
     def __init__(
@@ -217,6 +219,23 @@ class Schema:
             )
 
         self._c_schema_view = CSchemaView(self._c_schema)
+
+    @property
+    def params(self) -> Mapping:
+        """Get parameter names and values for this type
+
+        Returns a dictionary of parameters that can be used to reconstruct
+        this type together with its type identifier.
+
+        >>> import nanoarrow as na
+        >>> na.fixed_size_binary(123).params
+        {'byte_width': 123}
+        """
+        if self._c_schema_view.type_id not in _PARAM_NAMES:
+            return {}
+
+        param_names = _PARAM_NAMES[self._c_schema_view.type_id]
+        return {k: getattr(self, k) for k in param_names}
 
     @property
     def type(self) -> Type:
@@ -356,7 +375,7 @@ class Schema:
 
         >>> import nanoarrow as na
         >>> na.dictionary(na.int32(), na.string()).index_type
-        Schema(INT32)
+        <Schema> int32
         """
         if self._c_schema_view.type_id == CArrowType.DICTIONARY:
             index_schema = self._c_schema.modify(
@@ -385,9 +404,9 @@ class Schema:
 
         >>> import nanoarrow as na
         >>> na.list_(na.int32()).value_type
-        Schema(INT32, name='item')
+        <Schema> 'item': int32
         >>> na.dictionary(na.int32(), na.string()).value_type
-        Schema(STRING)
+        <Schema> string
         """
         if self._c_schema_view.type_id in (
             CArrowType.LIST,
@@ -425,13 +444,13 @@ class Schema:
 
         return self._c_schema.n_children
 
-    def field(self, i):
+    def field(self, i) -> "Schema":
         """Extract a child Schema
 
         >>> import nanoarrow as na
         >>> schema = na.struct({"col1": na.int32()})
         >>> schema.field(0)
-        Schema(INT32, name='col1')
+        <Schema> 'col1': int32
         """
 
         # Returning a copy to reduce interdependence between Schema instances:
@@ -440,7 +459,7 @@ class Schema:
         return Schema(self._c_schema.child(i).__deepcopy__())
 
     @property
-    def fields(self):
+    def fields(self) -> List["Schema"]:
         """Iterate over child Schemas
 
         >>> import nanoarrow as na
@@ -450,8 +469,7 @@ class Schema:
         ...
         col1
         """
-        for i in range(self.n_fields):
-            yield self.field(i)
+        return [self.field(i) for i in range(self.n_fields)]
 
     def __repr__(self) -> str:
         return _schema_repr(self)
@@ -481,7 +499,7 @@ def null(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.null()
-    Schema(NULL)
+    <Schema> na
     """
     return Schema(Type.NULL, nullable=nullable)
 
@@ -499,7 +517,7 @@ def bool_(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.bool_()
-    Schema(BOOL)
+    <Schema> bool
     """
     return Schema(Type.BOOL, nullable=nullable)
 
@@ -517,7 +535,7 @@ def int8(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.int8()
-    Schema(INT8)
+    <Schema> int8
     """
     return Schema(Type.INT8, nullable=nullable)
 
@@ -535,7 +553,7 @@ def uint8(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.uint8()
-    Schema(UINT8)
+    <Schema> uint8
     """
     return Schema(Type.UINT8, nullable=nullable)
 
@@ -553,7 +571,7 @@ def int16(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.int16()
-    Schema(INT16)
+    <Schema> int16
     """
     return Schema(Type.INT16, nullable=nullable)
 
@@ -571,7 +589,7 @@ def uint16(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.uint16()
-    Schema(UINT16)
+    <Schema> uint16
     """
     return Schema(Type.UINT16, nullable=nullable)
 
@@ -589,7 +607,7 @@ def int32(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.int32()
-    Schema(INT32)
+    <Schema> int32
     """
     return Schema(Type.INT32, nullable=nullable)
 
@@ -607,7 +625,7 @@ def uint32(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.uint32()
-    Schema(UINT32)
+    <Schema> uint32
     """
     return Schema(Type.UINT32, nullable=nullable)
 
@@ -625,7 +643,7 @@ def int64(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.int64()
-    Schema(INT64)
+    <Schema> int64
     """
     return Schema(Type.INT64, nullable=nullable)
 
@@ -643,7 +661,7 @@ def uint64(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.uint64()
-    Schema(UINT64)
+    <Schema> uint64
     """
     return Schema(Type.UINT64, nullable=nullable)
 
@@ -661,7 +679,7 @@ def float16(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.float16()
-    Schema(HALF_FLOAT)
+    <Schema> half_float
     """
     return Schema(Type.HALF_FLOAT, nullable=nullable)
 
@@ -679,7 +697,7 @@ def float32(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.float32()
-    Schema(FLOAT)
+    <Schema> float
     """
     return Schema(Type.FLOAT, nullable=nullable)
 
@@ -697,7 +715,7 @@ def float64(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.float64()
-    Schema(DOUBLE)
+    <Schema> double
     """
     return Schema(Type.DOUBLE, nullable=nullable)
 
@@ -715,7 +733,7 @@ def string(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.string()
-    Schema(STRING)
+    <Schema> string
     """
     return Schema(Type.STRING, nullable=nullable)
 
@@ -734,7 +752,7 @@ def large_string(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.large_string()
-    Schema(LARGE_STRING)
+    <Schema> large_string
     """
     return Schema(Type.LARGE_STRING, nullable=nullable)
 
@@ -752,7 +770,7 @@ def binary(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.binary()
-    Schema(BINARY)
+    <Schema> binary
     """
     return Schema(Type.BINARY, nullable=nullable)
 
@@ -770,7 +788,7 @@ def large_binary(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.large_binary()
-    Schema(LARGE_BINARY)
+    <Schema> large_binary
     """
     return Schema(Type.LARGE_BINARY, nullable=nullable)
 
@@ -790,7 +808,7 @@ def fixed_size_binary(byte_width: int, nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.fixed_size_binary(123)
-    Schema(FIXED_SIZE_BINARY, byte_width=123)
+    <Schema> fixed_size_binary(123)
     """
     return Schema(Type.FIXED_SIZE_BINARY, byte_width=byte_width, nullable=nullable)
 
@@ -808,7 +826,7 @@ def date32(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.date32()
-    Schema(DATE32)
+    <Schema> date32
     """
     return Schema(Type.DATE32, nullable=nullable)
 
@@ -826,7 +844,7 @@ def date64(nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.date64()
-    Schema(DATE64)
+    <Schema> date64
     """
     return Schema(Type.DATE64, nullable=nullable)
 
@@ -846,7 +864,7 @@ def time32(unit: Union[str, TimeUnit], nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.time32("s")
-    Schema(TIME32, unit=SECOND)
+    <Schema> time32('s')
     """
     return Schema(Type.TIME32, unit=unit, nullable=nullable)
 
@@ -866,7 +884,7 @@ def time64(unit: Union[str, TimeUnit], nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.time64("us")
-    Schema(TIME64, unit=MICRO)
+    <Schema> time64('us')
     """
     return Schema(Type.TIME64, unit=unit, nullable=nullable)
 
@@ -888,9 +906,9 @@ def timestamp(
 
     >>> import nanoarrow as na
     >>> na.timestamp("s")
-    Schema(TIMESTAMP, unit=SECOND)
+    <Schema> timestamp('s', '')
     >>> na.timestamp("s", timezone="America/Halifax")
-    Schema(TIMESTAMP, unit=SECOND, timezone='America/Halifax')
+    <Schema> timestamp('s', 'America/Halifax')
     """
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
@@ -910,7 +928,7 @@ def duration(unit, nullable: bool = True):
 
     >>> import nanoarrow as na
     >>> na.duration("s")
-    Schema(DURATION, unit=SECOND)
+    <Schema> duration('s')
     """
     return Schema(Type.DURATION, unit=unit, nullable=nullable)
 
@@ -928,7 +946,7 @@ def interval_months(nullable: bool = True):
 
     >>> import nanoarrow as na
     >>> na.interval_months()
-    Schema(INTERVAL_MONTHS)
+    <Schema> interval_months
     """
     return Schema(Type.INTERVAL_MONTHS, nullable=nullable)
 
@@ -946,7 +964,7 @@ def interval_day_time(nullable: bool = True):
 
     >>> import nanoarrow as na
     >>> na.interval_day_time()
-    Schema(INTERVAL_DAY_TIME)
+    <Schema> interval_day_time
     """
     return Schema(Type.INTERVAL_DAY_TIME, nullable=nullable)
 
@@ -965,7 +983,7 @@ def interval_month_day_nano(nullable: bool = True):
 
     >>> import nanoarrow as na
     >>> na.interval_month_day_nano()
-    Schema(INTERVAL_MONTH_DAY_NANO)
+    <Schema> interval_month_day_nano
     """
     return Schema(Type.INTERVAL_MONTH_DAY_NANO, nullable=nullable)
 
@@ -988,7 +1006,7 @@ def decimal128(precision: int, scale: int, nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.decimal128(10, 3)
-    Schema(DECIMAL128, precision=10, scale=3)
+    <Schema> decimal128(10, 3)
     """
     return Schema(Type.DECIMAL128, precision=precision, scale=scale, nullable=nullable)
 
@@ -1011,7 +1029,7 @@ def decimal256(precision: int, scale: int, nullable: bool = True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.decimal256(10, 3)
-    Schema(DECIMAL256, precision=10, scale=3)
+    <Schema> decimal256(10, 3)
     """
     return Schema(Type.DECIMAL256, precision=precision, scale=scale, nullable=nullable)
 
@@ -1033,9 +1051,9 @@ def struct(fields, nullable=True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.struct([na.int32()])
-    Schema(STRUCT, fields=[Schema(INT32)])
+    <Schema> struct<: int32>
     >>> na.struct({"col1": na.int32()})
-    Schema(STRUCT, fields=[Schema(INT32, name='col1')])
+    <Schema> struct<col1: int32>
     """
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
@@ -1055,7 +1073,7 @@ def list_(value_type, nullable=True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.list_(na.int32())
-    Schema(LIST, value_type=Schema(INT32, name='item'))
+    <Schema> list<item: int32>
     """
     return Schema(Type.LIST, value_type=value_type, nullable=nullable)
 
@@ -1078,7 +1096,7 @@ def large_list(value_type, nullable=True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.large_list(na.int32())
-    Schema(LARGE_LIST, value_type=Schema(INT32, name='item'))
+    <Schema> large_list<item: int32>
     """
     return Schema(Type.LARGE_LIST, value_type=value_type, nullable=nullable)
 
@@ -1100,7 +1118,7 @@ def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
 
     >>> import nanoarrow as na
     >>> na.fixed_size_list(na.int32(), 123)
-    Schema(FIXED_SIZE_LIST, value_type=Schema(INT32, name='item'), list_size=123)
+    <Schema> fixed_size_list(123)<item: int32>
     """
     return Schema(
         Type.FIXED_SIZE_LIST,
@@ -1130,8 +1148,7 @@ def dictionary(index_type, value_type, dictionary_ordered=False):
 
     >>> import nanoarrow as na
     >>> na.dictionary(na.int32(), na.string())
-    Schema(DICTIONARY, index_type=Schema(INT32), value_type=Schema(STRING), \
-dictionary_ordered=False)
+    <Schema> dictionary(int32)<string>
     """
     return Schema(
         Type.DICTIONARY,
@@ -1239,45 +1256,40 @@ def _clean_fields(fields):
         return [c_schema(v) for v in fields]
 
 
-def _schema_repr(obj):
-    out = f"Schema({_schema_param_repr('type', obj.type)}"
+def _schema_repr(obj, max_char_width=80, prefix="<Schema> ", include_metadata=True):
+    lines = []
 
-    if obj.name is None:
-        out += ", name=False"
-    elif obj.name:
-        out += f", name={_schema_param_repr('name', obj.name)}"
+    modifiers = []
 
-    if obj._c_schema_view.type_id not in _PARAM_NAMES:
-        param_names = []
-    else:
-        param_names = _PARAM_NAMES[obj._c_schema_view.type_id]
-
-    for name in param_names:
-        value = getattr(obj, name)
-        if value is None:
-            continue
-        out += ", "
-        param_repr = f"{name}={_schema_param_repr(name, getattr(obj, name))}"
-        out += param_repr
+    if obj.name:
+        name = reprlib.Repr().repr(obj.name)
+        modifiers.append(f"{name}:")
 
     if not obj.nullable:
-        out += ", nullable=False"
+        modifiers.append("non-nullable")
 
-    out += ")"
-    return out
+    if obj.dictionary_ordered:
+        modifiers.append("ordered")
 
+    # Ensure extra space at the end of the modifiers
+    modifiers.append("")
 
-def _schema_param_repr(name, value):
-    if name == "type":
-        return f"{value.name}"
-    elif name == "unit":
-        return f"{value.name}"
-    elif name == "fields":
-        # It would be nice to indent this/get it on multiple lines since
-        # most output will be uncomfortably wide even with the abbreviated repr
-        return reprlib.Repr().repr(list(value))
-    else:
-        return reprlib.Repr().repr(value)
+    modifiers_str = " ".join(modifiers)
+    first_line_prefix = f"{prefix}{modifiers_str}"
+
+    schema_str = _repr_utils.c_schema_to_string(
+        obj._c_schema, max_char_width - len(first_line_prefix)
+    )
+    lines.append(f"{first_line_prefix}{schema_str}")
+
+    if include_metadata:
+        metadata_dict = dict(obj.metadata.items())
+        if metadata_dict:
+            metadata_dict_repr = reprlib.Repr().repr(metadata_dict)
+            metadata_line = f"- metadata: {metadata_dict_repr[:max_char_width]}"
+            lines.append(metadata_line[:max_char_width])
+
+    return "\n".join(lines)
 
 
 _PARAM_NAMES = {

@@ -23,7 +23,7 @@ from nanoarrow._repr_utils import make_class_label
 from nanoarrow.array import Array
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.iterator import iter_py, iter_tuples
-from nanoarrow.schema import Schema
+from nanoarrow.schema import Schema, _schema_repr
 
 
 class ArrayStream:
@@ -52,7 +52,7 @@ class ArrayStream:
 
     >>> import nanoarrow as na
     >>> na.ArrayStream([1, 2, 3], na.int32())
-    <nanoarrow.ArrayStream: Schema(INT32)>
+    nanoarrow.ArrayStream<int32>
     """
 
     def __init__(self, obj, schema=None) -> None:
@@ -65,7 +65,7 @@ class ArrayStream:
         >>> import nanoarrow as na
         >>> stream = na.ArrayStream([1, 2, 3], na.int32())
         >>> stream.schema
-        Schema(INT32)
+        <Schema> int32
         """
         return Schema(self._c_array_stream._get_cached_schema())
 
@@ -200,7 +200,8 @@ class ArrayStream:
 
     def __repr__(self) -> str:
         cls = make_class_label(self, "nanoarrow")
-        return f"<{cls}: {self.schema}>"
+        schema_repr = _schema_repr(self.schema, prefix="", include_metadata=False)
+        return f"{cls}<{schema_repr}>"
 
     @staticmethod
     def from_readable(obj):
@@ -212,7 +213,7 @@ class ArrayStream:
         >>> from nanoarrow.ipc import Stream
         >>> with na.ArrayStream.from_readable(Stream.example_bytes()) as stream:
         ...     stream.read_all()
-        nanoarrow.Array<struct<some_col: int32>>[3]
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
         {'some_col': 1}
         {'some_col': 2}
         {'some_col': 3}
@@ -239,7 +240,7 @@ class ArrayStream:
         ...
         ...     with na.ArrayStream.from_path(path) as stream:
         ...         stream.read_all()
-        nanoarrow.Array<struct<some_col: int32>>[3]
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
         {'some_col': 1}
         {'some_col': 2}
         {'some_col': 3}
@@ -268,7 +269,7 @@ class ArrayStream:
         ...     uri = pathlib.Path(path).as_uri()
         ...     with na.ArrayStream.from_url(uri) as stream:
         ...         stream.read_all()
-        nanoarrow.Array<struct<some_col: int32>>[3]
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
         {'some_col': 1}
         {'some_col': 2}
         {'some_col': 3}
