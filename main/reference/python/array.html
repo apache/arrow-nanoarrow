@@ -494,7 +494,7 @@ Defaults to the CPU device.</p>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">child</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-<span class="go">nanoarrow.Array&lt;string&gt;[3]</span>
+<span class="go">nanoarrow.Array&lt;&#39;col2&#39;: string&gt;[3]</span>
 <span class="go">&#39;a&#39;</span>
 <span class="go">&#39;b&#39;</span>
 <span class="go">&#39;c&#39;</span>
@@ -603,11 +603,11 @@ and children arrays).</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">iter_children</span><span class="p">():</span>
 <span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
-<span class="go">nanoarrow.Array&lt;int64&gt;[3]</span>
+<span class="go">nanoarrow.Array&lt;&#39;col1&#39;: int64&gt;[3]</span>
 <span class="go">1</span>
 <span class="go">2</span>
 <span class="go">3</span>
-<span class="go">nanoarrow.Array&lt;string&gt;[3]</span>
+<span class="go">nanoarrow.Array&lt;&#39;col2&#39;: string&gt;[3]</span>
 <span class="go">&#39;a&#39;</span>
 <span class="go">&#39;b&#39;</span>
 <span class="go">&#39;c&#39;</span>
@@ -811,7 +811,7 @@ iterate over an <a class="reference internal" href="#nanoarrow.array.Array" titl
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">as_py</span><span class="p">()</span>
 <span class="go">1</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">schema</span>
-<span class="go">Schema(INT32)</span>
+<span class="go">&lt;Schema&gt; int32</span>
 </pre></div>
 </div>
 <dl class="py method">

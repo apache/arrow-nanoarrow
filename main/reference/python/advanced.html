@@ -757,14 +757,14 @@ These objects are usually created using <cite>nanoarrow.c_array_stream()</cite>.
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pa_reader</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_batches</span><span class="p">(</span><span class="n">pa_batch</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="p">[</span><span class="n">pa_batch</span><span class="p">])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array_stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array_stream</span><span class="p">(</span><span class="n">pa_reader</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array_stream</span><span class="o">.</span><span class="n">get_schema</span><span class="p">()</span>
-<span class="go">&lt;nanoarrow.c_lib.CSchema struct&gt;</span>
+<span class="go">&lt;nanoarrow.c_schema.CSchema struct&gt;</span>
 <span class="go">- format: &#39;+s&#39;</span>
 <span class="go">- name: &#39;&#39;</span>
 <span class="go">- flags: 0</span>
 <span class="go">- metadata: NULL</span>
 <span class="go">- dictionary: NULL</span>
 <span class="go">- children[1]:</span>
-<span class="go">  &#39;col1&#39;: &lt;nanoarrow.c_lib.CSchema int32&gt;</span>
+<span class="go">  &#39;col1&#39;: &lt;nanoarrow.c_schema.CSchema int32&gt;</span>
 <span class="go">    - format: &#39;i&#39;</span>
 <span class="go">    - name: &#39;col1&#39;</span>
 <span class="go">    - flags: 2</span>

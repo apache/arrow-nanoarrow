@@ -459,11 +459,11 @@ includes:
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">INT32</span><span class="p">)</span>
-<span class="go">Schema(INT32)</span>
+<span class="go">&lt;Schema&gt; int32</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">Type</span><span class="o">.</span><span class="n">DURATION</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">na</span><span class="o">.</span><span class="n">TimeUnit</span><span class="o">.</span><span class="n">SECOND</span><span class="p">)</span>
-<span class="go">Schema(DURATION, unit=SECOND)</span>
+<span class="go">&lt;Schema&gt; duration(&#39;s&#39;)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
-<span class="go">Schema(INT32)</span>
+<span class="go">&lt;Schema&gt; int32</span>
 </pre></div>
 </div>
 <dl class="py property">
@@ -507,19 +507,19 @@ are meaningful.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nanoarrow.schema.Schema.field">
-<span class="sig-name descname"><span class="pre">field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.schema.Schema.field" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nanoarrow.schema.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span></span><a class="headerlink" href="#nanoarrow.schema.Schema.field" title="Link to this definition">#</a></dt>
 <dd><p>Extract a child Schema</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">struct</span><span class="p">({</span><span class="s2">&quot;col1&quot;</span><span class="p">:</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-<span class="go">Schema(INT32, name=&#39;col1&#39;)</span>
+<span class="go">&lt;Schema&gt; &#39;col1&#39;: int32</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.schema.Schema.fields">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fields</span></span><a class="headerlink" href="#nanoarrow.schema.Schema.fields" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#nanoarrow.schema.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#nanoarrow.schema.Schema.fields" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over child Schemas</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">struct</span><span class="p">({</span><span class="s2">&quot;col1&quot;</span><span class="p">:</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()})</span>
@@ -539,7 +539,7 @@ are meaningful.</p>
 See also <a class="reference internal" href="#nanoarrow.schema.Schema.value_type" title="nanoarrow.schema.Schema.value_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">value_type</span></code></a>.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">dictionary</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">(),</span> <span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">())</span><span class="o">.</span><span class="n">index_type</span>
-<span class="go">Schema(INT32)</span>
+<span class="go">&lt;Schema&gt; int32</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -600,6 +600,19 @@ See also <a class="reference internal" href="#nanoarrow.schema.Schema.value_type
 <span class="go">True</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">nullable</span>
 <span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nanoarrow.schema.Schema.params">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Mapping</span></em><a class="headerlink" href="#nanoarrow.schema.Schema.params" title="Link to this definition">#</a></dt>
+<dd><p>Get parameter names and values for this type</p>
+<p>Returns a dictionary of parameters that can be used to reconstruct
+this type together with its type identifier.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">fixed_size_binary</span><span class="p">(</span><span class="mi">123</span><span class="p">)</span><span class="o">.</span><span class="n">params</span>
+<span class="go">{&#39;byte_width&#39;: 123}</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -668,9 +681,9 @@ for timezone types for which the timezone is not set.</p>
 <dd><p>Dictionary or list value type</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">list_</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span><span class="o">.</span><span class="n">value_type</span>
-<span class="go">Schema(INT32, name=&#39;item&#39;)</span>
+<span class="go">&lt;Schema&gt; &#39;item&#39;: int32</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">dictionary</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">(),</span> <span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">())</span><span class="o">.</span><span class="n">value_type</span>
-<span class="go">Schema(STRING)</span>
+<span class="go">&lt;Schema&gt; string</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -720,7 +733,7 @@ categories can be identified. Type values can be used in place of
 <h2>Examples<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">binary</span><span class="p">()</span>
-<span class="go">Schema(BINARY)</span>
+<span class="go">&lt;Schema&gt; binary</span>
 </pre></div>
 </div>
 </section>
@@ -741,7 +754,7 @@ categories can be identified. Type values can be used in place of
 <h2>Examples<a class="headerlink" href="#id4" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">bool_</span><span class="p">()</span>
-<span class="go">Schema(BOOL)</span>
+<span class="go">&lt;Schema&gt; bool</span>
 </pre></div>
 </div>
 </section>
@@ -762,7 +775,7 @@ categories can be identified. Type values can be used in place of
 <h2>Examples<a class="headerlink" href="#id6" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">date32</span><span class="p">()</span>
-<span class="go">Schema(DATE32)</span>
+<span class="go">&lt;Schema&gt; date32</span>
 </pre></div>
 </div>
 </section>
@@ -783,7 +796,7 @@ categories can be identified. Type values can be used in place of
 <h2>Examples<a class="headerlink" href="#id8" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">date64</span><span class="p">()</span>
-<span class="go">Schema(DATE64)</span>
+<span class="go">&lt;Schema&gt; date64</span>
 </pre></div>
 </div>
 </section>
@@ -809,7 +822,7 @@ between 1 and 38.</p>
 <h2>Examples<a class="headerlink" href="#id10" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-<span class="go">Schema(DECIMAL128, precision=10, scale=3)</span>
+<span class="go">&lt;Schema&gt; decimal128(10, 3)</span>
 </pre></div>
 </div>
 </section>
@@ -835,7 +848,7 @@ between 1 and 76.</p>
 <h2>Examples<a class="headerlink" href="#id12" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">decimal256</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-<span class="go">Schema(DECIMAL256, precision=10, scale=3)</span>
+<span class="go">&lt;Schema&gt; decimal256(10, 3)</span>
 </pre></div>
 </div>
 </section>
@@ -863,7 +876,7 @@ meaningful.</p>
 <h2>Examples<a class="headerlink" href="#id14" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">dictionary</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">(),</span> <span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">())</span>
-<span class="go">Schema(DICTIONARY, index_type=Schema(INT32), value_type=Schema(STRING), dictionary_ordered=False)</span>
+<span class="go">&lt;Schema&gt; dictionary(int32)&lt;string&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -886,7 +899,7 @@ meaningful.</p>
 <h2>Examples<a class="headerlink" href="#id16" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">duration</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
-<span class="go">Schema(DURATION, unit=SECOND)</span>
+<span class="go">&lt;Schema&gt; duration(&#39;s&#39;)</span>
 </pre></div>
 </div>
 </section>
@@ -927,7 +940,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id19" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">fixed_size_binary</span><span class="p">(</span><span class="mi">123</span><span class="p">)</span>
-<span class="go">Schema(FIXED_SIZE_BINARY, byte_width=123)</span>
+<span class="go">&lt;Schema&gt; fixed_size_binary(123)</span>
 </pre></div>
 </div>
 </section>
@@ -952,7 +965,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id21" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">fixed_size_list</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">(),</span> <span class="mi">123</span><span class="p">)</span>
-<span class="go">Schema(FIXED_SIZE_LIST, value_type=Schema(INT32, name=&#39;item&#39;), list_size=123)</span>
+<span class="go">&lt;Schema&gt; fixed_size_list(123)&lt;item: int32&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -973,7 +986,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id23" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">float16</span><span class="p">()</span>
-<span class="go">Schema(HALF_FLOAT)</span>
+<span class="go">&lt;Schema&gt; half_float</span>
 </pre></div>
 </div>
 </section>
@@ -994,7 +1007,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id25" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">float32</span><span class="p">()</span>
-<span class="go">Schema(FLOAT)</span>
+<span class="go">&lt;Schema&gt; float</span>
 </pre></div>
 </div>
 </section>
@@ -1015,7 +1028,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id27" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">float64</span><span class="p">()</span>
-<span class="go">Schema(DOUBLE)</span>
+<span class="go">&lt;Schema&gt; double</span>
 </pre></div>
 </div>
 </section>
@@ -1036,7 +1049,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id29" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int16</span><span class="p">()</span>
-<span class="go">Schema(INT16)</span>
+<span class="go">&lt;Schema&gt; int16</span>
 </pre></div>
 </div>
 </section>
@@ -1057,7 +1070,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id31" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()</span>
-<span class="go">Schema(INT32)</span>
+<span class="go">&lt;Schema&gt; int32</span>
 </pre></div>
 </div>
 </section>
@@ -1078,7 +1091,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id33" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int64</span><span class="p">()</span>
-<span class="go">Schema(INT64)</span>
+<span class="go">&lt;Schema&gt; int64</span>
 </pre></div>
 </div>
 </section>
@@ -1099,7 +1112,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id35" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">int8</span><span class="p">()</span>
-<span class="go">Schema(INT8)</span>
+<span class="go">&lt;Schema&gt; int8</span>
 </pre></div>
 </div>
 </section>
@@ -1120,7 +1133,7 @@ extension type.</p>
 <h2>Examples<a class="headerlink" href="#id37" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">interval_day_time</span><span class="p">()</span>
-<span class="go">Schema(INTERVAL_DAY_TIME)</span>
+<span class="go">&lt;Schema&gt; interval_day_time</span>
 </pre></div>
 </div>
 </section>
@@ -1142,7 +1155,7 @@ tuple.</p>
 <h2>Examples<a class="headerlink" href="#id39" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">interval_month_day_nano</span><span class="p">()</span>
-<span class="go">Schema(INTERVAL_MONTH_DAY_NANO)</span>
+<span class="go">&lt;Schema&gt; interval_month_day_nano</span>
 </pre></div>
 </div>
 </section>
@@ -1163,7 +1176,7 @@ tuple.</p>
 <h2>Examples<a class="headerlink" href="#id41" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">interval_months</span><span class="p">()</span>
-<span class="go">Schema(INTERVAL_MONTHS)</span>
+<span class="go">&lt;Schema&gt; interval_months</span>
 </pre></div>
 </div>
 </section>
@@ -1184,7 +1197,7 @@ tuple.</p>
 <h2>Examples<a class="headerlink" href="#id43" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">large_binary</span><span class="p">()</span>
-<span class="go">Schema(LARGE_BINARY)</span>
+<span class="go">&lt;Schema&gt; large_binary</span>
 </pre></div>
 </div>
 </section>
@@ -1209,7 +1222,7 @@ with more than <code class="docutils literal notranslate"><span class="pre">2</s
 <h2>Examples<a class="headerlink" href="#id45" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">large_list</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
-<span class="go">Schema(LARGE_LIST, value_type=Schema(INT32, name=&#39;item&#39;))</span>
+<span class="go">&lt;Schema&gt; large_list&lt;item: int32&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -1231,7 +1244,7 @@ that uses 64-bit offsets.</p>
 <h2>Examples<a class="headerlink" href="#id47" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">large_string</span><span class="p">()</span>
-<span class="go">Schema(LARGE_STRING)</span>
+<span class="go">&lt;Schema&gt; large_string</span>
 </pre></div>
 </div>
 </section>
@@ -1254,7 +1267,7 @@ that uses 64-bit offsets.</p>
 <h2>Examples<a class="headerlink" href="#id49" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">list_</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
-<span class="go">Schema(LIST, value_type=Schema(INT32, name=&#39;item&#39;))</span>
+<span class="go">&lt;Schema&gt; list&lt;item: int32&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -1275,7 +1288,7 @@ that uses 64-bit offsets.</p>
 <h2>Examples<a class="headerlink" href="#id51" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">null</span><span class="p">()</span>
-<span class="go">Schema(NULL)</span>
+<span class="go">&lt;Schema&gt; na</span>
 </pre></div>
 </div>
 </section>
@@ -1303,7 +1316,7 @@ that uses 64-bit offsets.</p>
 <h2>Examples<a class="headerlink" href="#id53" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">()</span>
-<span class="go">Schema(STRING)</span>
+<span class="go">&lt;Schema&gt; string</span>
 </pre></div>
 </div>
 </section>
@@ -1330,9 +1343,9 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id55" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">struct</span><span class="p">([</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()])</span>
-<span class="go">Schema(STRUCT, fields=[Schema(INT32)])</span>
+<span class="go">&lt;Schema&gt; struct&lt;: int32&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">struct</span><span class="p">({</span><span class="s2">&quot;col1&quot;</span><span class="p">:</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()})</span>
-<span class="go">Schema(STRUCT, fields=[Schema(INT32, name=&#39;col1&#39;)])</span>
+<span class="go">&lt;Schema&gt; struct&lt;col1: int32&gt;</span>
 </pre></div>
 </div>
 </section>
@@ -1355,7 +1368,7 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id57" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">time32</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
-<span class="go">Schema(TIME32, unit=SECOND)</span>
+<span class="go">&lt;Schema&gt; time32(&#39;s&#39;)</span>
 </pre></div>
 </div>
 </section>
@@ -1378,7 +1391,7 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id59" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">time64</span><span class="p">(</span><span class="s2">&quot;us&quot;</span><span class="p">)</span>
-<span class="go">Schema(TIME64, unit=MICRO)</span>
+<span class="go">&lt;Schema&gt; time64(&#39;us&#39;)</span>
 </pre></div>
 </div>
 </section>
@@ -1401,9 +1414,9 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id61" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">)</span>
-<span class="go">Schema(TIMESTAMP, unit=SECOND)</span>
+<span class="go">&lt;Schema&gt; timestamp(&#39;s&#39;, &#39;&#39;)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;s&quot;</span><span class="p">,</span> <span class="n">timezone</span><span class="o">=</span><span class="s2">&quot;America/Halifax&quot;</span><span class="p">)</span>
-<span class="go">Schema(TIMESTAMP, unit=SECOND, timezone=&#39;America/Halifax&#39;)</span>
+<span class="go">&lt;Schema&gt; timestamp(&#39;s&#39;, &#39;America/Halifax&#39;)</span>
 </pre></div>
 </div>
 </section>
@@ -1424,7 +1437,7 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id63" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint16</span><span class="p">()</span>
-<span class="go">Schema(UINT16)</span>
+<span class="go">&lt;Schema&gt; uint16</span>
 </pre></div>
 </div>
 </section>
@@ -1445,7 +1458,7 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id65" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint32</span><span class="p">()</span>
-<span class="go">Schema(UINT32)</span>
+<span class="go">&lt;Schema&gt; uint32</span>
 </pre></div>
 </div>
 </section>
@@ -1466,7 +1479,7 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id67" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint64</span><span class="p">()</span>
-<span class="go">Schema(UINT64)</span>
+<span class="go">&lt;Schema&gt; uint64</span>
 </pre></div>
 </div>
 </section>
@@ -1487,7 +1500,7 @@ inherited from the schema-like object.</p></li>
 <h2>Examples<a class="headerlink" href="#id69" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">uint8</span><span class="p">()</span>
-<span class="go">Schema(UINT8)</span>
+<span class="go">&lt;Schema&gt; uint8</span>
 </pre></div>
 </div>
 </section>
@@ -1559,6 +1572,7 @@ inherited from the schema-like object.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.schema.Schema.n_fields"><code class="docutils literal notranslate"><span class="pre">Schema.n_fields</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.schema.Schema.name"><code class="docutils literal notranslate"><span class="pre">Schema.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.schema.Schema.nullable"><code class="docutils literal notranslate"><span class="pre">Schema.nullable</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.schema.Schema.params"><code class="docutils literal notranslate"><span class="pre">Schema.params</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.schema.Schema.precision"><code class="docutils literal notranslate"><span class="pre">Schema.precision</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.schema.Schema.scale"><code class="docutils literal notranslate"><span class="pre">Schema.scale</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.schema.Schema.timezone"><code class="docutils literal notranslate"><span class="pre">Schema.timezone</span></code></a></li>
