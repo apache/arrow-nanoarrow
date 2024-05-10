@@ -414,11 +414,7 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SEXP current_result = VECTOR_ELT(converter_shelter, 4);
 
-  // Materialize never called (e.g., empty stream)
-  if (current_result == R_NilValue) {
-    NANOARROW_RETURN_NOT_OK(nanoarrow_converter_reserve(converter_xptr, 0));
-    current_result = VECTOR_ELT(converter_shelter, 4);
-  }
+  NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_finalize_result(converter_xptr));
 
   // Check result size. A future implementation could also shrink the length
   // or reallocate a shorter vector.
@@ -443,10 +439,6 @@ SEXP nanoarrow_converter_release_result(SEXP converter_xptr) {
   SEXP result = PROTECT(VECTOR_ELT(converter_shelter, 4));
   SET_VECTOR_ELT(converter_shelter, 4, R_NilValue);
 
-  // Perform any finalization on the vector before it is returned to R
-  SEXP final_result =
-      PROTECT(nanoarrow_materialize_finalize_result(converter_xptr, result));
-
   // Reset the converter state
   converter->dst.vec_sexp = R_NilValue;
   converter->dst.offset = 0;
@@ -454,8 +446,8 @@ SEXP nanoarrow_converter_release_result(SEXP converter_xptr) {
   converter->size = 0;
   converter->capacity = 0;
 
-  UNPROTECT(2);
-  return final_result;
+  UNPROTECT(1);
+  return result;
 }
 
 void nanoarrow_converter_stop(SEXP converter_xptr) {

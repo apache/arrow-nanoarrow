@@ -44,6 +44,6 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
 
 // Finalize an object before returning to R. Currently only used for
 // nanoarrow_vctr conversion.
-SEXP nanoarrow_materialize_finalize_result(SEXP converter_xptr, SEXP result);
+int nanoarrow_materialize_finalize_result(SEXP converter_xptr);
 
 #endif

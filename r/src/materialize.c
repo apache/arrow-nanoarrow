@@ -299,12 +299,21 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
   }
 }
 
-SEXP nanoarrow_materialize_finalize_result(SEXP converter_xptr, SEXP result) {
-  if (Rf_inherits(result, "nanoarrow_vctr")) {
+int nanoarrow_materialize_finalize_result(SEXP converter_xptr) {
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP result = VECTOR_ELT(converter_shelter, 4);
+
+  // Materialize never called (e.g., empty stream)
+  if (result == R_NilValue) {
+    NANOARROW_RETURN_NOT_OK(nanoarrow_converter_reserve(converter_xptr, 0));
+    result = VECTOR_ELT(converter_shelter, 4);
+  }
+
+  if (nanoarrow_ptype_is_nanoarrow_vctr(result)) {
     // Get the schema for this converter. Technically this will overwrite
     // a schema that was provided explicitly; however, we currently do not
     // handle that case.
-    SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+
     SEXP schema_xptr = VECTOR_ELT(converter_shelter, 1);
 
     // We no longer need to keep track of chunks_tail
@@ -333,11 +342,24 @@ SEXP nanoarrow_materialize_finalize_result(SEXP converter_xptr, SEXP result) {
         Rf_lang4(new_nanoarrow_vctr_sym, chunks_list, schema_xptr, subclass_sexp));
     SEXP final_result = PROTECT(Rf_eval(new_nanoarrow_vctr_call, nanoarrow_ns_pkg));
 
+    SET_VECTOR_ELT(converter_shelter, 4, final_result);
     UNPROTECT(6);
-    return final_result;
-  } else {
-    return result;
+  } else if (nanoarrow_ptype_is_data_frame(result)) {
+    // For each child, finalize the result and then reassign it
+    SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
+    for (R_xlen_t i = 0; i < Rf_xlength(child_converter_xptrs); i++) {
+      SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, i);
+      NANOARROW_RETURN_NOT_OK(
+          nanoarrow_materialize_finalize_result(child_converter_xptr));
+
+      SEXP child_result =
+          PROTECT(nanoarrow_converter_release_result(child_converter_xptr));
+      SET_VECTOR_ELT(result, i, child_result);
+      UNPROTECT(1);
+    }
   }
+
+  return NANOARROW_OK;
 }
 
 static int nanoarrow_materialize_nanoarrow_vctr(struct RConverter* converter,
