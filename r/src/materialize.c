@@ -146,7 +146,7 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
       Rf_setAttrib(result, chunks_sym, chunks_list);
       Rf_setAttrib(result, chunks_tail_sym, chunks_list);
 
-      UNPROTECT(4);
+      UNPROTECT(3);
     } else if (nanoarrow_ptype_is_data_frame(ptype)) {
       R_xlen_t num_cols = Rf_xlength(ptype);
       result = PROTECT(Rf_allocVector(VECSXP, num_cols));
