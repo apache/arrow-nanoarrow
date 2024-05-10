@@ -216,6 +216,50 @@ test_that("batched convert to vector works for nanoarrow_vctr()", {
   )
 })
 
+test_that("convert to vector works for data.frame(nanoarrow_vctr())", {
+  array <- as_nanoarrow_array(data.frame(x = 1:5))
+  df_vctr <- convert_array(array, data.frame(x = nanoarrow_vctr()))
+  expect_s3_class(df_vctr$x, "nanoarrow_vctr")
+  expect_identical(
+    convert_array_stream(as_nanoarrow_array_stream(df_vctr$x)),
+    1:5
+  )
+})
+
+test_that("convert to vector works for list_of(nanoarrow_vctr())", {
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
+
+  array <- as_nanoarrow_array(
+    list(1:5, 6:10, NULL, 11:13),
+    schema = na_list(na_int32())
+  )
+
+  list_vctr <- convert_array(array, vctrs::list_of(nanoarrow_vctr()))
+
+  # Each item in the list should be a vctr with one chunk that is a slice
+  # of the original array
+  expect_s3_class(list_vctr[[1]], "nanoarrow_vctr")
+  vctr_array <- attr(list_vctr[[1]], "chunks")[[1]]
+  expect_identical(vctr_array$offset, 0L)
+  expect_identical(vctr_array$length, 5L)
+  expect_identical(convert_buffer(vctr_array$buffers[[2]]), 1:5)
+
+  expect_s3_class(list_vctr[[2]], "nanoarrow_vctr")
+  vctr_array <- attr(list_vctr[[2]], "chunks")[[1]]
+  expect_identical(vctr_array$offset, 5L)
+  expect_identical(vctr_array$length, 5L)
+  expect_identical(convert_buffer(vctr_array$buffers[[2]]), 1:10)
+
+  expect_null(list_vctr[[3]])
+
+  expect_s3_class(list_vctr[[4]], "nanoarrow_vctr")
+  vctr_array <- attr(list_vctr[[4]], "chunks")[[1]]
+  expect_identical(vctr_array$offset, 10L)
+  expect_identical(vctr_array$length, 3L)
+  expect_identical(convert_buffer(vctr_array$buffers[[2]]), 1:13)
+})
+
 test_that("batched convert to vector works for nanoarrow_vctr() keeps subclass", {
   vctr_ptype <- nanoarrow_vctr(subclass = "some_subclass")
 

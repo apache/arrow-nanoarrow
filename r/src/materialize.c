@@ -375,6 +375,11 @@ static int nanoarrow_materialize_nanoarrow_vctr(struct RConverter* converter,
   array_export(array_xptr, out_array);
   R_SetExternalPtrTag(array_out_xptr, schema_xptr);
 
+  // Update the offset/length in case a slice is being requested from the
+  // converter.
+  out_array->offset += converter->src.offset;
+  out_array->length = converter->src.length;
+
   // Get the cached copy of the pairlist node at the end of the current
   // chunks list.
   SEXP chunks_tail_sym = PROTECT(Rf_install("chunks_tail"));
