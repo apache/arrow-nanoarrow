@@ -1721,8 +1721,7 @@ cdef class SchemaMetadata:
         return list(self)
 
     def values(self):
-        for _, value in self.items():
-            yield value
+        return [value for _, value in self.items()]
 
     def items(self):
         cdef ArrowStringView key
