@@ -91,9 +91,27 @@ new_nanoarrow_vctr <- function(chunks, schema, indices = NULL) {
 
 #' @export
 format.nanoarrow_vctr <- function(x, ...) {
-  # Technically we can do better here
+  if (length(x) == 0) {
+    return(character())
+  }
+
   stream <- as_nanoarrow_array_stream(x)
-  format(convert_array_stream(stream), ...)
+  converted <- convert_array_stream(stream)
+
+  # This needs to be a character() with the same length as x to work with
+  # RStudio's viewer. Data frames need special handling in this case.
+  size_stable_format(converted)
+}
+
+size_stable_format <- function(x, ...) {
+  if (inherits(x, "data.frame")) {
+    cols <- lapply(x, size_stable_format, ...)
+    cols <- Map(paste, names(x), cols, sep = ": ")
+    rows <- do.call(paste, c(cols, list(sep = ", ")))
+    paste0("{", rows, "}")
+  } else {
+    format(x, ...)
+  }
 }
 
 # Because RStudio's viewer uses this, we want to use the potentially abbreviated
@@ -218,7 +236,7 @@ as.data.frame.nanoarrow_vctr <- function(x, ..., optional = FALSE) {
   if (!optional) {
     stop(sprintf("cannot coerce object of tyoe '%s' to data.frame", class(x)[1]))
   } else {
-    new_data_frame(list(x))
+    new_data_frame(list(x), nrow = length(x))
   }
 }
 
