@@ -26,6 +26,8 @@
 #include <thread>
 #include <vector>
 
+#include "preserve.h"
+
 // Without this infrastructure, it's possible to check that all objects
 // are released by running devtools::test(); gc() in a fresh session and
 // making sure that nanoarrow:::preserved_count() is zero afterward.
@@ -35,7 +37,7 @@
 #include <unordered_map>
 #endif
 
-extern "C" void intptr_as_string(intptr_t ptr_int, char* buf) {
+void intptr_as_string(intptr_t ptr_int, char* buf) {
   std::string ptr_str = std::to_string(ptr_int);
   memcpy(buf, ptr_str.data(), ptr_str.size());
 }
@@ -166,13 +168,13 @@ class PreservedSEXPRegistry {
 #endif
 };
 
-extern "C" void nanoarrow_preserve_init(void) { PreservedSEXPRegistry::GetInstance(); }
+void nanoarrow_preserve_init(void) { PreservedSEXPRegistry::GetInstance(); }
 
-extern "C" void nanoarrow_preserve_sexp(SEXP obj) {
+void nanoarrow_preserve_sexp(SEXP obj) {
   PreservedSEXPRegistry::GetInstance().preserve(obj);
 }
 
-extern "C" void nanoarrow_release_sexp(SEXP obj) {
+void nanoarrow_release_sexp(SEXP obj) {
   try {
     PreservedSEXPRegistry::GetInstance().release(obj);
   } catch (std::exception& e) {
@@ -180,11 +182,11 @@ extern "C" void nanoarrow_release_sexp(SEXP obj) {
   }
 }
 
-extern "C" int64_t nanoarrow_preserved_count(void) {
+int64_t nanoarrow_preserved_count(void) {
   return PreservedSEXPRegistry::GetInstance().size();
 }
 
-extern "C" int64_t nanoarrow_preserved_empty(void) {
+int64_t nanoarrow_preserved_empty(void) {
   try {
     return PreservedSEXPRegistry::GetInstance().empty_trash();
   } catch (std::exception& e) {
@@ -192,11 +194,11 @@ extern "C" int64_t nanoarrow_preserved_empty(void) {
   }
 }
 
-extern "C" int nanoarrow_is_main_thread(void) {
+int nanoarrow_is_main_thread(void) {
   return PreservedSEXPRegistry::GetInstance().is_main_thread();
 }
 
-extern "C" void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {
+void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {
   nanoarrow_preserve_sexp(obj);
   std::thread worker([obj] { nanoarrow_release_sexp(obj); });
   worker.join();

@@ -23,6 +23,10 @@
 
 #include "materialize_common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // A heuristic to identify prototypes that should be treated like data frames
 // (i.e., including record-style vectors like POSIXct). This heuristic returns
 // true if ptype is a data.frame or is an S3 list with names.
@@ -41,5 +45,9 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr);
 // Shortcut to allocate a vector based on a vector type or ptype
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
 SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
