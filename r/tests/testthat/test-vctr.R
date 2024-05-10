@@ -25,46 +25,74 @@ test_that("as_nanoarrow_vctr() works for basic input", {
   expect_identical(as_nanoarrow_schema(vctr)$format, "u")
 })
 
-test_that("nanorrow_vctr() creates an empty sentinel", {
+test_that("print() and str() work on empty nanoarrow_vctr", {
   vctr <- nanoarrow_vctr()
   expect_identical(
-    expect_output(
-      print(vctr),
-      "<nanoarrow_vctr sentinel>"
-    ),
+    expect_output(print(vctr),"<nanoarrow_vctr <any>>"),
     vctr
   )
 
   expect_identical(
-    expect_output(
-      str(vctr),
-      "<nanoarrow_vctr sentinel>"
-    ),
+    expect_output(str(vctr), "<nanoarrow_vctr <any>>"),
     vctr
   )
 
   vctr <- nanoarrow_vctr(na_int32())
   expect_identical(
-    expect_output(
-      print(vctr),
-      "^<nanoarrow_vctr int32"
-    ),
+    expect_output(print(vctr), "^<nanoarrow_vctr int32"),
     vctr
   )
 
   expect_identical(
-    expect_output(
-      str(vctr),
-      "^<nanoarrow_vctr int32"
-    ),
+    expect_output(str(vctr), "^<nanoarrow_vctr int32"),
     vctr
   )
 })
 
-test_that("format() works for nanoarrow_vctr", {
+test_that("print() and str() work on non-empty nanoarrow_vctr", {
   array <- as_nanoarrow_array(c("one", "two"))
   vctr <- as_nanoarrow_vctr(array)
-  expect_identical(format(vctr),format(c("one", "two")))
+
+  expect_output(
+    expect_identical(print(vctr), vctr),
+    '"one" "two"'
+  )
+
+  expect_output(
+    expect_identical(str(vctr), vctr),
+    "List of 1"
+  )
+})
+
+test_that("nanoarrow_vctr() errors when c() is called", {
+  vctr <- nanoarrow_vctr(na_int32())
+  expect_identical(c(vctr), vctr)
+
+  expect_error(c(vctr, vctr), "not implemented")
+})
+
+test_that("nanoarrow_vctr works in a data.frame()", {
+  array <- as_nanoarrow_array(c("one", "two"))
+  vctr <- as_nanoarrow_vctr(array)
+  df <- data.frame(x = vctr)
+  expect_s3_class(df$x, "nanoarrow_vctr")
+
+  expect_error(as.data.frame(vctr), "cannot coerce object")
+})
+
+test_that("format() works for nanoarrow_vctr", {
+  empty_vctr <- nanoarrow_vctr(na_string())
+  expect_identical(format(empty_vctr), character())
+
+  array <- as_nanoarrow_array(c("one", "two"))
+  vctr <- as_nanoarrow_vctr(array)
+  expect_identical(format(vctr), format(c("one", "two")))
+
+  # Also check on a data.frame(), which needs some custom logic to work with
+  # the RStudio viewer
+  array <- as_nanoarrow_array(data.frame(x = 1:2, y = letters[1:2]))
+  vctr <- as_nanoarrow_vctr(array)
+  expect_identical(format(vctr), c("{x: 1, y: a}", "{x: 2, y: b}"))
 })
 
 test_that("nanoarrow_vctr to stream generates an empty stream for empty slice", {

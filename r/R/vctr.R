@@ -114,13 +114,6 @@ size_stable_format <- function(x, ...) {
   }
 }
 
-# Because RStudio's viewer uses this, we want to use the potentially abbreviated
-# format string.
-#' @export
-as.character.nanoarrow_vctr <- function(x, ...) {
-  format(x, ...)
-}
-
 #' @export
 infer_nanoarrow_schema.nanoarrow_vctr <- function(x, ...) {
   attr(x, "schema", exact = TRUE)
@@ -141,10 +134,14 @@ as_nanoarrow_array_stream.nanoarrow_vctr <- function(x, ..., schema = NULL) {
 #' @export
 as_nanoarrow_array_stream.nanoarrow_vctr <- function(x, ..., schema = NULL) {
   if (!is.null(schema)) {
+    # If a schema is passed, first resolve the stream as is and then use
+    # as_nanoarrow_array_stream() to either cast (when this is supported)
+    # or error.
     stream <- as_nanoarrow_array_stream(x, schema = NULL)
     return(as_nanoarrow_array_stream(stream, schema = schema))
   }
 
+  # Resolve the indices as c(1-based start, length)
   slice <- vctr_as_slice(x)
   if (is.null(slice)) {
     stop("Can't resolve non-slice nanoarrow_vctr to nanoarrow_array_stream")
@@ -227,6 +224,13 @@ as_nanoarrow_array_stream.nanoarrow_vctr <- function(x, ..., schema = NULL) {
 
 #' @export
 c.nanoarrow_vctr <- function(...) {
+  dots <- list(...)
+
+  # This one we can do safely
+  if (length(dots) == 1) {
+    return(dots[[1]])
+  }
+
   stop("c() not implemented for nanoarrow_vctr()")
 }
 
@@ -244,7 +248,7 @@ as.data.frame.nanoarrow_vctr <- function(x, ..., optional = FALSE) {
 print.nanoarrow_vctr <- function(x, ...) {
   schema <- attr(x, "schema", exact = TRUE)
   if (is.null(schema)) {
-    cat("<nanoarrow_vctr sentinel>\n")
+    cat("<nanoarrow_vctr <any>>\n")
     return(invisible(x))
   }
 
@@ -257,8 +261,10 @@ print.nanoarrow_vctr <- function(x, ...) {
   converted_head <- convert_array_stream(stream)
 
   print(converted_head)
-  if (more_values > 0) {
+  if (more_values >= 2) {
     cat(sprintf("...and %d more values\n", more_values))
+  } else if (more_values >= 1) {
+    cat(sprintf("...and %d more value\n", more_values))
   }
 
   invisible(x)
@@ -268,16 +274,16 @@ print.nanoarrow_vctr <- function(x, ...) {
 str.nanoarrow_vctr <- function(object, ...) {
   schema <- attr(object, "schema", exact = TRUE)
   if (is.null(schema)) {
-    cat("<nanoarrow_vctr sentinel>\n")
+    cat("<nanoarrow_vctr <any>>\n")
     return(invisible(object))
   }
 
   formatted <- nanoarrow_schema_formatted(schema, recursive = FALSE)
   cat(sprintf("<nanoarrow_vctr %s[%d]>\n", formatted, length(object)))
 
-  for (chunk in attr(object, "chunks")) {
-    str(chunk, ...)
-  }
+  # Prints out the C data interface dump of each chunk with the chunk
+  # index above.
+  str(attr(object, "chunks"))
 
   invisible(object)
 }
