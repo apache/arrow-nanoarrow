@@ -23,7 +23,31 @@ final class name.}
 A vctr of class 'nanoarrow_vctr'
 }
 \description{
-Experimental Arrow encoded arrays as R vectors
+This experimental vctr class allows zero or more Arrow arrays to
+present as an R vector without converting them. This is useful for arrays
+with types that do not have a non-lossy R equivalent, and helps provide an
+intermediary object type where the default conversion is prohibitively
+expensive (e.g., a nested list of data frames). These objects will not
+survive many vctr transformations; however, they can be sliced without
+copying the underlying arrays.
+}
+\details{
+The nanoarrow_vctr is currently implemented similarly to \code{factor()}: its
+storage type is an \code{integer()} that is a sequence along the total length
+of the vctr and there are attributes that are required to resolve these
+indices to an array + offset. Sequences typically have a very compact
+representation in recent version of R such that this has a cheap storage
+footprint even for large arrays. The attributes are currently:
+\itemize{
+\item \code{schema}: The \link[=as_nanoarrow_schema]{nanoarrow_schema} shared by each chunk.
+\item \code{chunks}: A \code{list()} of \code{nanoarrow_array}.
+\item \code{offsets}: An \code{integer()} vector beginning with \code{0} and followed by the
+cumulative length of each chunk. This allows the chunk index + offset
+to be resolved from a logical index with \code{log(n)} complexity.
+}
+
+This implementation is preliminary and may change; however, the result of
+\code{as_nanoarrow_array_stream(some_vctr[begin:end])} should remain stable.
 }
 \examples{
 array <- as_nanoarrow_array(1:5)

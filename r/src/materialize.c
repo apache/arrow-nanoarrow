@@ -311,7 +311,7 @@ SEXP nanoarrow_materialize_finalize_result(SEXP converter_xptr, SEXP result) {
     SEXP chunks_tail_sym = PROTECT(Rf_install("chunks_tail"));
     Rf_setAttrib(result, chunks_tail_sym, R_NilValue);
 
-    // We also want to pass on the class of the ptype we recieved
+    // We also want to pass on the class of the ptype we received
     SEXP subclass_sexp = Rf_getAttrib(result, R_ClassSymbol);
 
     // We no longer need the first element of the pairlist, which was
