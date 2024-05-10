@@ -84,9 +84,22 @@ TEST(BufferTest, BufferTestBasic) {
   EXPECT_EQ(buffer.size_bytes, 12);
   EXPECT_STREQ(reinterpret_cast<char*>(buffer.data), "12345678901");
 
+  // Resize larger without a reallocation
+  uint8_t* second_data = buffer.data;
+  EXPECT_EQ(ArrowBufferResize(&buffer, 13, false), NANOARROW_OK);
+  EXPECT_EQ(buffer.data, second_data);
+  EXPECT_EQ(buffer.capacity_bytes, 20);
+  EXPECT_EQ(buffer.size_bytes, 13);
+
+  // Resize larger with a reallocation
+  EXPECT_EQ(ArrowBufferResize(&buffer, 21, false), NANOARROW_OK);
+  EXPECT_NE(buffer.data, second_data);
+  EXPECT_EQ(buffer.capacity_bytes, 21);
+  EXPECT_EQ(buffer.size_bytes, 21);
+
   // Resize smaller without shrinking
   EXPECT_EQ(ArrowBufferResize(&buffer, 5, false), NANOARROW_OK);
-  EXPECT_EQ(buffer.capacity_bytes, 20);
+  EXPECT_EQ(buffer.capacity_bytes, 21);
   EXPECT_EQ(buffer.size_bytes, 5);
   EXPECT_EQ(strncmp(reinterpret_cast<char*>(buffer.data), "12345", 5), 0);
 
@@ -509,13 +522,48 @@ TEST(BitmapTest, BitmapTestMove) {
   ArrowBitmapReset(&bitmap2);
 }
 
+TEST(BitmapTest, BitmapTestReserve) {
+  struct ArrowBitmap bitmap;
+  ArrowBitmapInit(&bitmap);
+
+  // Reserve zero bits
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 0), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 0);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, 0);
+  EXPECT_EQ(bitmap.size_bits, 0);
+
+  // Reserve <=8 bits
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 2), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 0);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, 1);
+  EXPECT_EQ(bitmap.size_bits, 0);
+
+  // Reserve <=8 bits and ensure last byte is not zeroed
+  bitmap.buffer.data[0] = 0xff;
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 8), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 0);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, 1);
+  EXPECT_EQ(bitmap.size_bits, 0);
+  EXPECT_EQ(bitmap.buffer.data[0], 0xff);
+
+  // Reserve >8 bits and ensure last byte *is* zeroed
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 9), NANOARROW_OK);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 0);
+  EXPECT_EQ(bitmap.buffer.capacity_bytes, 2);
+  EXPECT_EQ(bitmap.size_bits, 0);
+  EXPECT_EQ(bitmap.buffer.data[0], 0xff);
+  EXPECT_EQ(bitmap.buffer.data[1], 0x00);
+
+  ArrowBitmapReset(&bitmap);
+}
+
 TEST(BitmapTest, BitmapTestResize) {
   struct ArrowBitmap bitmap;
   ArrowBitmapInit(&bitmap);
 
   // Check normal usage, which is resize to the final length
   // after appending a bunch of values
-  ASSERT_EQ(ArrowBitmapResize(&bitmap, 200, false), NANOARROW_OK);
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 200), NANOARROW_OK);
   EXPECT_EQ(bitmap.buffer.size_bytes, 0);
   EXPECT_EQ(bitmap.buffer.capacity_bytes, 200 / 8);
   EXPECT_EQ(bitmap.size_bits, 0);

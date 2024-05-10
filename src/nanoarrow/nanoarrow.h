@@ -620,14 +620,12 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer);
 /// address and resets buffer.
 static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst);
 
-/// \brief Grow or shrink a buffer to a given capacity
+/// \brief Grow or shrink a buffer to a given size
 ///
-/// When shrinking the capacity of the buffer, the buffer is only reallocated
-/// if shrink_to_fit is non-zero. Calling ArrowBufferResize() does not
-/// adjust the buffer's size member except to ensure that the invariant
-/// capacity >= size remains true.
+/// When shrinking the size of the buffer, the buffer is only reallocated
+/// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
-                                               int64_t new_capacity_bytes,
+                                               int64_t new_size_bytes,
                                                char shrink_to_fit);
 
 /// \brief Ensure a buffer has at least a given additional capacity
@@ -757,15 +755,12 @@ static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits);
 
-/// \brief Grow or shrink a bitmap to a given capacity
+/// \brief Grow or shrink a bitmap to a given size
 ///
-/// When shrinking the capacity of the bitmap, the bitmap is only reallocated
-/// if shrink_to_fit is non-zero. Calling ArrowBitmapResize() does not
-/// adjust the buffer's size member except when shrinking new_capacity_bits
-/// to a value less than the current number of bits in the bitmap.
+/// When shrinking the size of the bitmap, the bitmap is only reallocated
+/// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
-                                               int64_t new_capacity_bits,
-                                               char shrink_to_fit);
+                                               int64_t new_size_bits, char shrink_to_fit);
 
 /// \brief Reserve space for and append zero or more of the same boolean value to a bitmap
 static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
