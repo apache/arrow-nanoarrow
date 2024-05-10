@@ -114,3 +114,40 @@ test_that("as_nanoarrow_array() dispatches on registered extension spec", {
     "some_ext"
   )
 })
+
+test_that("extensions can infer a schema of a nanoarrow_vctr() subclass", {
+  register_nanoarrow_extension(
+    "some_ext",
+    nanoarrow_extension_spec(subclass = "vctr_spec_class")
+  )
+  on.exit(unregister_nanoarrow_extension("some_ext"))
+
+  infer_nanoarrow_ptype_extension.vctr_spec_class <- function(spec, x, ...) {
+    nanoarrow_vctr(subclass = "some_vctr_subclass")
+  }
+
+  s3_register(
+    "nanoarrow::infer_nanoarrow_ptype_extension",
+    "vctr_spec_class",
+    infer_nanoarrow_ptype_extension.vctr_spec_class
+  )
+
+  expect_identical(
+    infer_nanoarrow_ptype(na_extension(na_string(), "some_ext")),
+    nanoarrow_vctr(subclass = "some_vctr_subclass")
+  )
+
+  ext_array <- nanoarrow_extension_array(c("one", "two", "three"), "some_ext")
+  vctr <- convert_array(ext_array)
+  expect_s3_class(vctr, "some_vctr_subclass")
+
+  # Ensure that registering a default conversion that returns a nanoarrow_vctr
+  # does not result in infinite recursion when printing or formatting it.
+  # An extension that does this should provide these methods for the subclass
+  # they return.
+  expect_length(format(vctr), length(vctr))
+  expect_output(
+    expect_identical(print(vctr), vctr),
+    "some_vctr_subclass"
+  )
+})

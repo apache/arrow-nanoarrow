@@ -17,8 +17,9 @@
 
 #' Experimental Arrow encoded arrays as R vectors
 #'
-#' @param x An object that works with [as_nanoarrow_array_stream()]. Most
-#'   spatial objects in R already work with this method.
+#' @param x An object that works with [as_nanoarrow_array_stream()].
+#' @param subclass An optional subclass of nanoarrow_vctr to prepend to the
+#'   final class name.
 #' @param ... Passed to [as_nanoarrow_array_stream()]
 #' @param schema An optional `schema`
 #'
@@ -29,14 +30,14 @@
 #' array <- as_nanoarrow_array(1:5)
 #' as_nanoarrow_vctr(array)
 #'
-as_nanoarrow_vctr <- function(x, ..., schema = NULL) {
+as_nanoarrow_vctr <- function(x, ..., schema = NULL, subclass = character()) {
   if (inherits(x, "nanoarrow_vctr") && is.null(schema)) {
     return(x)
   }
 
   stream <- as_nanoarrow_array_stream(x, ..., schema = schema)
   chunks <- collect_array_stream(stream, validate = FALSE)
-  new_nanoarrow_vctr(chunks, stream$get_schema())
+  new_nanoarrow_vctr(chunks, stream$get_schema(), subclass)
 }
 
 #' @rdname as_nanoarrow_vctr
@@ -102,7 +103,12 @@ format.nanoarrow_vctr <- function(x, ...) {
 }
 
 size_stable_format <- function(x, ...) {
-  if (inherits(x, "data.frame")) {
+  if (inherits(x, "nanoarrow_vctr")) {
+    # Extension types could have a default convert that gives a nanoarrow_vctr.
+    # If this is the case, they should be returning a subclass with a format
+    # method that ensures we don't get here.
+    rep(sprintf("<%s[%d]>", class(x)[1], seq_along(x)))
+  } else if (inherits(x, "data.frame")) {
     cols <- lapply(x, size_stable_format, ...)
     cols <- Map(paste, names(x), cols, sep = ": ")
     rows <- do.call(paste, c(cols, list(sep = ", ")))
@@ -258,7 +264,13 @@ print.nanoarrow_vctr <- function(x, ...) {
   stream <- as_nanoarrow_array_stream(utils::head(x, n_values))
   converted_head <- convert_array_stream(stream)
 
-  print(converted_head)
+  if (inherits(converted_head, "nanoarrow_vctr")) {
+    converted_head <- format(converted_head)
+    print(converted_head, quote = FALSE)
+  } else {
+    print(converted_head)
+  }
+
   if (more_values >= 2) {
     cat(sprintf("...and %d more values\n", more_values))
   } else if (more_values >= 1) {

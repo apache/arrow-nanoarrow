@@ -216,6 +216,22 @@ test_that("batched convert to vector works for nanoarrow_vctr()", {
   )
 })
 
+test_that("batched convert to vector works for nanoarrow_vctr() keeps subclass", {
+  vctr_ptype <- nanoarrow_vctr(subclass = "some_subclass")
+
+  empty_stream <- basic_array_stream(list(), schema = na_string())
+  empty_vctr <- convert_array_stream(empty_stream, vctr_ptype)
+  expect_s3_class(empty_vctr, "some_subclass")
+
+  stream1 <- basic_array_stream(list(c("")))
+  vctr1 <- convert_array_stream(stream1, vctr_ptype)
+  expect_s3_class(vctr1, "some_subclass")
+
+  stream2 <- basic_array_stream(list(c(""), c("")))
+  vctr2 <- convert_array_stream(stream2, vctr_ptype)
+  expect_s3_class(vctr2, "some_subclass")
+})
+
 test_that("convert to vector works for struct-style vectors", {
   array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))
   expect_identical(

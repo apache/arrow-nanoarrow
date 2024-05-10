@@ -142,7 +142,11 @@ convert_fallback_other <- function(array, offset, length, to) {
 #' @export
 convert_array.nanoarrow_vctr <- function(array, to, ...) {
   schema <- attr(to, "schema", exact = TRUE)
-  as_nanoarrow_vctr(array, schema = schema)
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(array)
+  }
+
+  new_nanoarrow_vctr(list(array), schema, class(to))
 }
 
 #' @export

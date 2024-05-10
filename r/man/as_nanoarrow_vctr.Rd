@@ -5,17 +5,19 @@
 \alias{nanoarrow_vctr}
 \title{Experimental Arrow encoded arrays as R vectors}
 \usage{
-as_nanoarrow_vctr(x, ..., schema = NULL)
+as_nanoarrow_vctr(x, ..., schema = NULL, subclass = character())
 
-nanoarrow_vctr(schema = NULL)
+nanoarrow_vctr(schema = NULL, subclass = character())
 }
 \arguments{
-\item{x}{An object that works with \code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}. Most
-spatial objects in R already work with this method.}
+\item{x}{An object that works with \code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}.}
 
 \item{...}{Passed to \code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}}
 
 \item{schema}{An optional \code{schema}}
+
+\item{subclass}{An optional subclass of nanoarrow_vctr to prepend to the
+final class name.}
 }
 \value{
 A vctr of class 'nanoarrow_vctr'
