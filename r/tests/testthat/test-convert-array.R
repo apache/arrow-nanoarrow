@@ -195,6 +195,27 @@ test_that("convert to vector works for nanoarrow_vctr()", {
   expect_identical(schema$format, "+s")
 })
 
+test_that("batched convert to vector works for nanoarrow_vctr()", {
+  empty_stream <- basic_array_stream(list(), schema = na_string())
+  empty_vctr <- convert_array_stream(empty_stream, nanoarrow_vctr())
+  expect_length(empty_vctr, 0)
+  expect_identical(infer_nanoarrow_schema(empty_vctr)$format, "u")
+
+  stream1 <- basic_array_stream(list(c("one", "two", "three")))
+  vctr1 <- convert_array_stream(stream1, nanoarrow_vctr())
+  expect_length(vctr1, 3)
+
+  stream2 <- basic_array_stream(
+    list(c("one", "two", "three"), c("four", "five", "six", "seven"))
+  )
+  vctr2 <- convert_array_stream(stream2, nanoarrow_vctr())
+  expect_length(vctr2, 7)
+  expect_identical(
+    convert_array_stream(as_nanoarrow_array_stream(vctr2)),
+    c("one", "two", "three", "four", "five", "six", "seven")
+  )
+})
+
 test_that("convert to vector works for struct-style vectors", {
   array <- as_nanoarrow_array(as.POSIXlt("2021-01-01", tz = "America/Halifax"))
   expect_identical(

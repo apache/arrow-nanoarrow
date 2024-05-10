@@ -333,7 +333,7 @@ SEXP nanoarrow_materialize_finalize_result(SEXP converter_xptr, SEXP result) {
         Rf_lang4(new_nanoarrow_vctr_sym, chunks_list, schema_xptr, subclass_sexp));
     SEXP final_result = PROTECT(Rf_eval(new_nanoarrow_vctr_call, nanoarrow_ns_pkg));
 
-    UNPROTECT(8);
+    UNPROTECT(6);
     return final_result;
   } else {
     return result;
@@ -345,11 +345,13 @@ static int nanoarrow_materialize_nanoarrow_vctr(struct RConverter* converter,
   // This is a case where the callee needs ownership, which we can do via a
   // shallow copy.
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP schema_xptr = VECTOR_ELT(converter_shelter, 1);
   SEXP array_xptr = VECTOR_ELT(converter_shelter, 2);
 
   SEXP array_out_xptr = PROTECT(nanoarrow_array_owning_xptr());
-  struct ArrowArray* out_array = nanoarrow_output_array_from_xptr(array_xptr);
+  struct ArrowArray* out_array = nanoarrow_output_array_from_xptr(array_out_xptr);
   array_export(array_xptr, out_array);
+  R_SetExternalPtrTag(array_out_xptr, schema_xptr);
 
   // Get the cached copy of the pairlist node at the end of the current
   // chunks list.
