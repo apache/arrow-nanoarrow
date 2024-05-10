@@ -41,26 +41,24 @@ as_nanoarrow_vctr <- function(x, ..., schema = NULL) {
 
 #' @rdname as_nanoarrow_vctr
 #' @export
-nanoarrow_vctr <- function(schema = NULL) {
+nanoarrow_vctr <- function(schema = NULL, subclass = character()) {
   if (is.null(schema)) {
-    new_nanoarrow_vctr(list(), NULL)
+    new_nanoarrow_vctr(list(), NULL, subclass)
   } else {
-    new_nanoarrow_vctr(list(), as_nanoarrow_schema(schema))
+    new_nanoarrow_vctr(list(), as_nanoarrow_schema(schema), subclass)
   }
 }
 
-new_nanoarrow_vctr <- function(chunks, schema, indices = NULL) {
+new_nanoarrow_vctr <- function(chunks, schema, subclass = character()) {
   offsets <- .Call(nanoarrow_c_vctr_chunk_offsets, chunks)
-  if (is.null(indices)) {
-    indices <- seq_len(offsets[length(offsets)])
-  }
+  indices <- seq_len(offsets[length(offsets)])
 
   structure(
     indices,
     schema = schema,
     chunks = chunks,
     offsets = offsets,
-    class = "nanoarrow_vctr"
+    class = union(subclass, "nanoarrow_vctr")
   )
 }
 
@@ -248,12 +246,12 @@ as.data.frame.nanoarrow_vctr <- function(x, ..., optional = FALSE) {
 print.nanoarrow_vctr <- function(x, ...) {
   schema <- attr(x, "schema", exact = TRUE)
   if (is.null(schema)) {
-    cat("<nanoarrow_vctr <any>>\n")
+    cat(sprintf("<%s <any>>\n", class(x)[1]))
     return(invisible(x))
   }
 
   formatted <- nanoarrow_schema_formatted(schema, recursive = FALSE)
-  cat(sprintf("<nanoarrow_vctr %s[%d]>\n", formatted, length(x)))
+  cat(sprintf("<%s %s[%d]>\n", class(x)[1], formatted, length(x)))
 
   n_values <- min(length(x), 20)
   more_values <- length(x) - n_values
@@ -274,12 +272,12 @@ print.nanoarrow_vctr <- function(x, ...) {
 str.nanoarrow_vctr <- function(object, ...) {
   schema <- attr(object, "schema", exact = TRUE)
   if (is.null(schema)) {
-    cat("<nanoarrow_vctr <any>>\n")
+    cat(sprintf("<%s <any>>\n", class(object)[1]))
     return(invisible(object))
   }
 
   formatted <- nanoarrow_schema_formatted(schema, recursive = FALSE)
-  cat(sprintf("<nanoarrow_vctr %s[%d]>\n", formatted, length(object)))
+  cat(sprintf("<%s %s[%d]>\n", class(object)[1], formatted, length(object)))
 
   # Prints out the C data interface dump of each chunk with the chunk
   # index above.

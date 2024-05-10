@@ -437,17 +437,25 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
 SEXP nanoarrow_converter_release_result(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+
   // PROTECT()ing here because we are about to release the object from the
   // shelter of the converter and return it
   SEXP result = PROTECT(VECTOR_ELT(converter_shelter, 4));
   SET_VECTOR_ELT(converter_shelter, 4, R_NilValue);
+
+  // Perform any finalization on the vector before it is returned to R
+  SEXP final_result =
+      PROTECT(nanoarrow_materialize_finalize_result(converter_xptr, result));
+
+  // Reset the converter state
   converter->dst.vec_sexp = R_NilValue;
   converter->dst.offset = 0;
   converter->dst.length = 0;
   converter->size = 0;
   converter->capacity = 0;
-  UNPROTECT(1);
-  return result;
+
+  UNPROTECT(2);
+  return final_result;
 }
 
 void nanoarrow_converter_stop(SEXP converter_xptr) {

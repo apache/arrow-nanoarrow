@@ -42,4 +42,8 @@ int nanoarrow_materialize(struct RConverter* converter, SEXP converter_xptr);
 SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len);
 SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
 
+// Finalize an object before returning to R. Currently only used for
+// nanoarrow_vctr conversion.
+SEXP nanoarrow_materialize_finalize_result(SEXP converter_xptr, SEXP result);
+
 #endif

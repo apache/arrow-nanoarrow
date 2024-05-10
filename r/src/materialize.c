@@ -299,6 +299,47 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
   }
 }
 
+SEXP nanoarrow_materialize_finalize_result(SEXP converter_xptr, SEXP result) {
+  if (Rf_inherits(result, "nanoarrow_vctr")) {
+    // Get the schema for this converter. Technically this will overwrite
+    // a schema that was provided explicitly; however, we currently do not
+    // handle that case.
+    SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+    SEXP schema_xptr = VECTOR_ELT(converter_shelter, 1);
+
+    // We no longer need to keep track of chunks_tail
+    SEXP chunks_tail_sym = PROTECT(Rf_install("chunks_tail"));
+    Rf_setAttrib(result, chunks_tail_sym, R_NilValue);
+
+    // We also want to pass on the class of the ptype we recieved
+    SEXP subclass_sexp = Rf_getAttrib(result, R_ClassSymbol);
+
+    // We no longer need the first element of the pairlist, which was
+    // intentionally set to R_NilValue.
+    SEXP chunks_sym = PROTECT(Rf_install("chunks"));
+    SEXP chunks_pairlist0 = Rf_getAttrib(result, chunks_sym);
+
+    // If there were zero chunks, there will be no "first" node
+    SEXP chunks_list;
+    if (CDR(chunks_pairlist0) == R_NilValue) {
+      chunks_list = PROTECT(Rf_allocVector(VECSXP, 0));
+    } else {
+      chunks_list = PROTECT(Rf_PairToVectorList(CDR(chunks_pairlist0)));
+    }
+
+    // Set up the call to new_nanoarrow_vctr
+    SEXP new_nanoarrow_vctr_sym = PROTECT(Rf_install("new_nanoarrow_vctr"));
+    SEXP new_nanoarrow_vctr_call = PROTECT(
+        Rf_lang4(new_nanoarrow_vctr_sym, chunks_list, schema_xptr, subclass_sexp));
+    SEXP final_result = PROTECT(Rf_eval(new_nanoarrow_vctr_call, nanoarrow_ns_pkg));
+
+    UNPROTECT(8);
+    return final_result;
+  } else {
+    return result;
+  }
+}
+
 static int nanoarrow_materialize_nanoarrow_vctr(struct RConverter* converter,
                                                 SEXP converter_xptr) {
   // This is a case where the callee needs ownership, which we can do via a
