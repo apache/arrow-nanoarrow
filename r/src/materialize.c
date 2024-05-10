@@ -19,8 +19,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "array.h"
 #include "nanoarrow.h"
-
+#include "nanoarrow/r.h"
 #include "util.h"
 
 // Needed for the list_of materializer
@@ -268,6 +269,33 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
       Rf_error("Unhandled SEXP type in copy_vec_into()");
       break;
   }
+}
+
+static int nanoarrow_materialize_nanoarrow_vctr(struct RConverter* converter,
+                                                SEXP converter_xptr) {
+  // This is a case where the callee needs ownership, which we can do via a
+  // shallow copy.
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+
+  // TODO: Check that this SEXP has a lifecycle that is going to work with this
+  SEXP array_xptr = VECTOR_ELT(converter_shelter, 2);
+
+  SEXP array_out_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* out_array = nanoarrow_output_array_from_xptr(array_xptr);
+  array_export(array_xptr, out_array);
+
+  // Append the chunk to the pairlist
+  SEXP chunks_tail_sym = PROTECT(Rf_install("chunks_tail"));
+  SEXP chunks_tail = PROTECT(Rf_getAttrib(converter->dst.vec_sexp, chunks_tail_sym));
+
+  SEXP next_sexp = PROTECT(Rf_cons(array_out_xptr, R_NilValue));
+  SETCDR(chunks_tail, next_sexp);
+  UNPROTECT(1);
+
+  Rf_setAttrib(converter->dst.vec_sexp, chunks_tail_sym, next_sexp);
+  UNPROTECT(3);
+
+  return NANOARROW_OK;
 }
 
 static int nanoarrow_materialize_other(struct RConverter* converter,
