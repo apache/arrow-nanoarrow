@@ -1612,14 +1612,12 @@ static inline void ArrowBufferReset(struct ArrowBuffer* buffer);
 /// address and resets buffer.
 static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* dst);
 
-/// \brief Grow or shrink a buffer to a given capacity
+/// \brief Grow or shrink a buffer to a given size
 ///
-/// When shrinking the capacity of the buffer, the buffer is only reallocated
-/// if shrink_to_fit is non-zero. Calling ArrowBufferResize() does not
-/// adjust the buffer's size member except to ensure that the invariant
-/// capacity >= size remains true.
+/// When shrinking the size of the buffer, the buffer is only reallocated
+/// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
-                                               int64_t new_capacity_bytes,
+                                               int64_t new_size_bytes,
                                                char shrink_to_fit);
 
 /// \brief Ensure a buffer has at least a given additional capacity
@@ -1749,15 +1747,12 @@ static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits);
 
-/// \brief Grow or shrink a bitmap to a given capacity
+/// \brief Grow or shrink a bitmap to a given size
 ///
-/// When shrinking the capacity of the bitmap, the bitmap is only reallocated
-/// if shrink_to_fit is non-zero. Calling ArrowBitmapResize() does not
-/// adjust the buffer's size member except when shrinking new_capacity_bits
-/// to a value less than the current number of bits in the bitmap.
+/// When shrinking the size of the bitmap, the bitmap is only reallocated
+/// if shrink_to_fit is non-zero.
 static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
-                                               int64_t new_capacity_bits,
-                                               char shrink_to_fit);
+                                               int64_t new_size_bits, char shrink_to_fit);
 
 /// \brief Reserve space for and append zero or more of the same boolean value to a bitmap
 static inline ArrowErrorCode ArrowBitmapAppend(struct ArrowBitmap* bitmap,
@@ -2249,29 +2244,29 @@ static inline void ArrowBufferMove(struct ArrowBuffer* src, struct ArrowBuffer* 
 }
 
 static inline ArrowErrorCode ArrowBufferResize(struct ArrowBuffer* buffer,
-                                               int64_t new_capacity_bytes,
+                                               int64_t new_size_bytes,
                                                char shrink_to_fit) {
-  if (new_capacity_bytes < 0) {
+  if (new_size_bytes < 0) {
     return EINVAL;
   }
 
-  if (new_capacity_bytes > buffer->capacity_bytes || shrink_to_fit) {
-    buffer->data = buffer->allocator.reallocate(
-        &buffer->allocator, buffer->data, buffer->capacity_bytes, new_capacity_bytes);
-    if (buffer->data == NULL && new_capacity_bytes > 0) {
+  int needs_reallocation = new_size_bytes > buffer->capacity_bytes ||
+                           (shrink_to_fit && new_size_bytes < buffer->capacity_bytes);
+
+  if (needs_reallocation) {
+    buffer->data = buffer->allocator.reallocate(&buffer->allocator, buffer->data,
+                                                buffer->capacity_bytes, new_size_bytes);
+
+    if (buffer->data == NULL && new_size_bytes > 0) {
       buffer->capacity_bytes = 0;
       buffer->size_bytes = 0;
       return ENOMEM;
     }
 
-    buffer->capacity_bytes = new_capacity_bytes;
+    buffer->capacity_bytes = new_size_bytes;
   }
 
-  // Ensures that when shrinking that size <= capacity
-  if (new_capacity_bytes < buffer->size_bytes) {
-    buffer->size_bytes = new_capacity_bytes;
-  }
-
+  buffer->size_bytes = new_size_bytes;
   return NANOARROW_OK;
 }
 
@@ -2282,8 +2277,19 @@ static inline ArrowErrorCode ArrowBufferReserve(struct ArrowBuffer* buffer,
     return NANOARROW_OK;
   }
 
-  return ArrowBufferResize(
-      buffer, _ArrowGrowByFactor(buffer->capacity_bytes, min_capacity_bytes), 0);
+  int64_t new_capacity_bytes =
+      _ArrowGrowByFactor(buffer->capacity_bytes, min_capacity_bytes);
+  buffer->data = buffer->allocator.reallocate(&buffer->allocator, buffer->data,
+                                              buffer->capacity_bytes, new_capacity_bytes);
+
+  if (buffer->data == NULL && new_capacity_bytes > 0) {
+    buffer->capacity_bytes = 0;
+    buffer->size_bytes = 0;
+    return ENOMEM;
+  }
+
+  buffer->capacity_bytes = new_capacity_bytes;
+  return NANOARROW_OK;
 }
 
 static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const void* data,
@@ -2626,32 +2632,38 @@ static inline void ArrowBitmapMove(struct ArrowBitmap* src, struct ArrowBitmap* 
 static inline ArrowErrorCode ArrowBitmapReserve(struct ArrowBitmap* bitmap,
                                                 int64_t additional_size_bits) {
   int64_t min_capacity_bits = bitmap->size_bits + additional_size_bits;
-  if (min_capacity_bits <= (bitmap->buffer.capacity_bytes * 8)) {
+  int64_t min_capacity_bytes = _ArrowBytesForBits(min_capacity_bits);
+  int64_t current_size_bytes = bitmap->buffer.size_bytes;
+  int64_t current_capacity_bytes = bitmap->buffer.capacity_bytes;
+
+  if (min_capacity_bytes <= current_capacity_bytes) {
     return NANOARROW_OK;
   }
 
-  NANOARROW_RETURN_NOT_OK(
-      ArrowBufferReserve(&bitmap->buffer, _ArrowBytesForBits(additional_size_bits)));
+  int64_t additional_capacity_bytes = min_capacity_bytes - current_size_bytes;
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(&bitmap->buffer, additional_capacity_bytes));
 
+  // Zero out the last byte for deterministic output in the common case
+  // of reserving a known remaining size. We should have returned above
+  // if there was not at least one additional byte to allocate; however,
+  // DCHECK() just to be sure.
+  NANOARROW_DCHECK(bitmap->buffer.capacity_bytes > current_capacity_bytes);
   bitmap->buffer.data[bitmap->buffer.capacity_bytes - 1] = 0;
   return NANOARROW_OK;
 }
 
 static inline ArrowErrorCode ArrowBitmapResize(struct ArrowBitmap* bitmap,
-                                               int64_t new_capacity_bits,
+                                               int64_t new_size_bits,
                                                char shrink_to_fit) {
-  if (new_capacity_bits < 0) {
+  if (new_size_bits < 0) {
     return EINVAL;
   }
 
-  int64_t new_capacity_bytes = _ArrowBytesForBits(new_capacity_bits);
+  int64_t new_size_bytes = _ArrowBytesForBits(new_size_bits);
   NANOARROW_RETURN_NOT_OK(
-      ArrowBufferResize(&bitmap->buffer, new_capacity_bytes, shrink_to_fit));
+      ArrowBufferResize(&bitmap->buffer, new_size_bytes, shrink_to_fit));
 
-  if (new_capacity_bits < bitmap->size_bits) {
-    bitmap->size_bits = new_capacity_bits;
-  }
-
+  bitmap->size_bits = new_size_bits;
   return NANOARROW_OK;
 }
 
