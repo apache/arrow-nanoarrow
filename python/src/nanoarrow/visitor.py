@@ -17,8 +17,9 @@
 
 from typing import Any, Callable, List, Sequence, Tuple, Union
 
-from nanoarrow._lib import CArrayView, CBuffer, CBufferBuilder
+from nanoarrow._lib import CArrayView, CBuffer, CBufferBuilder, CArrowType
 from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_schema import c_schema_view
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 from nanoarrow.schema import Type
 
@@ -214,8 +215,8 @@ class ColumnsBuilder(ArrayStreamVisitor):
             )
 
     def _resolve_child_visitor(self, child_schema, child_array_view):
-        # TODO: Resolve more efficient column builders for single-buffer types
-        return ListBuilder(child_schema, array_view=child_array_view)
+        cls, kwargs = _resolve_column_builder_cls(child_schema)
+        return cls(child_schema, **kwargs, array_view=child_array_view)
 
     def begin(self, total_elements: Union[int, None] = None) -> None:
         for child_visitor in self._child_visitors:
@@ -334,3 +335,29 @@ class NullableColumnBuilder(ArrayStreamVisitor):
         out_start = len(builder)
         memoryview(builder)[out_start : out_start + length] = b"\x01" * length
         builder.advance(length)
+
+
+def _resolve_column_builder_cls(schema, handle_nulls=None):
+    schema_view = c_schema_view(schema)
+
+    if schema_view.nullable:
+        if schema_view.type_id == CArrowType.BOOL:
+            return NullableColumnBuilder, {
+                "column_builder_cls": BooleanColumnBuilder,
+                "handle_nulls": handle_nulls,
+            }
+        elif schema_view.buffer_format is not None:
+            return NullableColumnBuilder, {
+                "column_builder_cls": BufferColumnBuilder,
+                "handle_nulls": handle_nulls,
+            }
+        else:
+            return ListBuilder, {}
+    else:
+
+        if schema_view.type_id == CArrowType.BOOL:
+            return BooleanColumnBuilder, {}
+        elif schema_view.buffer_format is not None:
+            return BufferColumnBuilder, {}
+        else:
+            return ListBuilder, {}

@@ -82,8 +82,8 @@ def test_array_stream_to_columns():
     stream = na.ArrayStream(c_array)
     names, columns = stream.to_columns()
     assert names == ["col1", "col2"]
-    assert columns[0] == [1, 2, 3]
-    assert columns[1] == ["a", "b", "c"]
+    assert list(columns[0]) == [1, 2, 3]
+    assert list(columns[1]) == ["a", "b", "c"]
 
 
 def test_array_stream_read_all():

@@ -39,8 +39,8 @@ def test_to_columms():
 
     names, columns = visitor.to_columns(array)
     assert names == ["col1", "col2", "col3"]
-    assert columns[0] == [1, 2, 3]
-    assert columns[1] == [True, False, True]
+    assert list(columns[0]) == [1, 2, 3]
+    assert list(columns[1]) == [True, False, True]
     assert columns[2] == ["abc", "def", "ghi"]
 
     with pytest.raises(ValueError, match="can only be used on a struct array"):
