@@ -84,6 +84,8 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
         if len(is_valid) > 0:
             raise ValueError("Null present with null_handler=nulls_forbid()")
 
+        return data
+
     return handle
 
 
@@ -95,7 +97,7 @@ def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
 
 
 def nulls_as_sentinel(sentinel=None):
-    from numpy import array, nan
+    from numpy import array, nan, result_type
 
     if sentinel is None:
         sentinel = nan
@@ -105,9 +107,12 @@ def nulls_as_sentinel(sentinel=None):
         data = array(data, copy=False)
 
         if len(is_valid) > 0:
+            out_type = result_type(data, sentinel)
+            data = array(data, dtype=out_type, copy=True)
             data[~is_valid] = sentinel
-
-        return data
+            return data
+        else:
+            return data
 
     return handle
 
@@ -123,7 +128,7 @@ def nulls_as_masked_array():
         if len(is_valid) > 0:
             return masked_array(data, ~is_valid)
         else:
-            data
+            return data
 
     return handle
 

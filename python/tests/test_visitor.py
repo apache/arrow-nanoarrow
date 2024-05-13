@@ -105,3 +105,42 @@ def test_unpacked_validity_bitmap_concatenator():
     )
     assert list(is_valid) == [True, False, True, True, False, True]
     assert list(column) == [1, 0, 3, 4, 0, 6]
+
+
+def test_nulls_forbid():
+    is_valid_empty = na.c_buffer([], na.uint8())
+    is_valid_non_empty = na.c_buffer([1, 0, 1], na.uint8())
+    data = na.c_buffer([1, 2, 3], na.int32())
+
+    forbid_nulls = visitor.nulls_forbid()
+    assert forbid_nulls(is_valid_empty, data) is data
+    with pytest.raises(ValueError):
+        forbid_nulls(is_valid_non_empty, data)
+
+
+def test_numpy_null_handling():
+    np = pytest.importorskip("numpy")
+
+    is_valid_empty = memoryview(na.c_buffer([], na.uint8())).cast("?")
+    is_valid_non_empty = memoryview(na.c_buffer([1, 0, 1], na.uint8())).cast("?")
+    data = na.c_buffer([1, 2, 3], na.int32())
+
+    # Check nulls as sentinel
+    nulls_as_sentinel = visitor.nulls_as_sentinel()
+    np.testing.assert_array_equal(
+        nulls_as_sentinel(is_valid_empty, data), np.array([1, 2, 3], np.int32)
+    )
+    np.testing.assert_array_equal(
+        nulls_as_sentinel(is_valid_non_empty, data),
+        np.array([1, np.nan, 3], dtype=np.float64),
+    )
+
+    # Check nulls as masked array
+    nulls_as_masked_array = visitor.nulls_as_masked_array()
+    np.testing.assert_array_equal(
+        nulls_as_masked_array(is_valid_empty, data), np.array([1, 2, 3], np.int32)
+    )
+    np.testing.assert_array_equal(
+        nulls_as_masked_array(is_valid_non_empty, data),
+        np.ma.masked_array(np.array([1, 2, 3], np.int32), [False, True, False]),
+    )
