@@ -259,7 +259,7 @@ Tests use [pytest](https://docs.pytest.org/):
 
 ```shell
 # Install dependencies
-pip install -e .[test]
+pip install -e ".[test]"
 
 # Run tests
 pytest -vvx
