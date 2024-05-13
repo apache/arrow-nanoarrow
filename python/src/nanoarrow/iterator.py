@@ -156,10 +156,7 @@ class ArrayViewBaseIterator:
             return f"<unnamed {self._schema_view.type}>"
 
     def _contains_nulls(self):
-        return (
-            self._schema_view.nullable
-            and self._array_view.null_count != 0
-        )
+        return self._schema_view.nullable and self._array_view.null_count != 0
 
     def _set_array(self, array):
         self._array_view._set_array(array)

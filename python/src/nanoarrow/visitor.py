@@ -222,9 +222,11 @@ class BooleanColumnBuilder(ArrayStreamVisitor):
 
 
 class NullableColumnBuilder(ArrayStreamVisitor):
-    def __init__(self, schema, column_builder_cls, *, array_view=None):
+    def __init__(
+        self, schema, column_builder_cls=BufferColumnBuilder, *, array_view=None
+    ):
         super().__init__(schema, array_view=array_view)
-        self._column_builder = column_builder_cls(schema, array_view=None)
+        self._column_builder = column_builder_cls(schema, array_view=self._array_view)
 
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
@@ -258,8 +260,7 @@ class NullableColumnBuilder(ArrayStreamVisitor):
         self._column_builder.visit_chunk_view(array_view)
 
     def finish(self) -> Any:
-
-        return self._column_builder
+        return self._builder.finish(), self._column_builder.finish()
 
     def _fill_valid(self, length):
         builder = self._builder

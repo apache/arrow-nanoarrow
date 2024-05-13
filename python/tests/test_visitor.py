@@ -45,3 +45,55 @@ def test_to_columms():
 
     with pytest.raises(ValueError, match="can only be used on a struct array"):
         visitor.to_columns([], na.int32())
+
+
+def test_buffer_concatenator():
+    array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
+    buffer = visitor.BufferColumnBuilder.visit(array)
+    assert list(buffer) == [1, 2, 3, 4, 5, 6]
+
+
+def test_buffer_concatenator_with_offsets():
+    src = [na.c_array([1, 2, 3], na.int32())[1:], na.c_array([4, 5, 6], na.int32())[2:]]
+    array = na.Array.from_chunks(src)
+    buffer = visitor.BufferColumnBuilder.visit(array)
+    assert list(buffer) == [2, 3, 6]
+
+
+def test_unpacked_bitmap_concatenator():
+    array = na.Array.from_chunks([[0, 1, 1], [1, 0, 0]], na.bool_())
+    buffer = visitor.BooleanColumnBuilder.visit(array)
+    assert list(buffer) == [False, True, True, True, False, False]
+
+
+def test_unpacked_bitmap_concatenator_with_offsets():
+    src = [na.c_array([0, 1, 1], na.bool_())[1:], na.c_array([1, 0, 0], na.bool_())[2:]]
+    array = na.Array.from_chunks(src)
+    buffer = visitor.BooleanColumnBuilder.visit(array)
+    assert list(buffer) == [True, True, False]
+
+
+def test_unpacked_validity_bitmap_concatenator():
+    # All valid
+    array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
+    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    assert len(is_valid) == 0
+    assert list(column) == [1, 2, 3, 4, 5, 6]
+
+    # Only nulls in the first chunk
+    array = na.Array.from_chunks([[1, None, 3], [4, 5, 6]], na.int32())
+    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    assert list(is_valid) == [True, False, True, True, True, True]
+    assert list(column) == [1, 0, 3, 4, 5, 6]
+
+    # Only nulls in the second chunk
+    array = na.Array.from_chunks([[1, 2, 3], [4, None, 6]], na.int32())
+    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    assert list(is_valid) == [True, True, True, True, False, True]
+    assert list(column) == [1, 2, 3, 4, 0, 6]
+
+    # Nulls in both chunks
+    array = na.Array.from_chunks([[1, None, 3], [4, None, 6]], na.int32())
+    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    assert list(is_valid) == [True, False, True, True, False, True]
+    assert list(column) == [1, 0, 3, 4, 0, 6]
