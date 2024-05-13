@@ -17,7 +17,7 @@
 
 from typing import Any, Callable, List, Sequence, Tuple, Union
 
-from nanoarrow._lib import CArrayView, CBuffer, CBufferBuilder, CArrowType
+from nanoarrow._lib import CArrayView, CArrowType, CBuffer, CBufferBuilder
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema_view
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
@@ -50,7 +50,7 @@ def to_pylist(obj, schema=None) -> List:
     return ListBuilder.visit(obj, schema)
 
 
-def to_columns(obj, schema=None) -> Tuple[List[str], List[Sequence]]:
+def to_columns(obj, schema=None, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
     """Convert ``obj`` to a ``list()` of sequences
 
     Converts a stream of struct arrays into its column-wise representation
@@ -77,7 +77,7 @@ def to_columns(obj, schema=None) -> Tuple[List[str], List[Sequence]]:
     >>> columns
     [[1, 2, 3]]
     """
-    return ColumnsBuilder.visit(obj, schema)
+    return ColumnsBuilder.visit(obj, schema, handle_nulls=handle_nulls)
 
 
 def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
@@ -98,10 +98,7 @@ def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
 
 
 def nulls_as_sentinel(sentinel=None):
-    from numpy import array, nan, result_type
-
-    if sentinel is None:
-        sentinel = nan
+    from numpy import array, result_type
 
     def handle(is_valid, data):
         is_valid = array(is_valid, copy=False)
@@ -199,7 +196,7 @@ class ListBuilder(ArrayStreamVisitor):
 
 
 class ColumnsBuilder(ArrayStreamVisitor):
-    def __init__(self, schema, *, array_view=None):
+    def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
 
         if self.schema.type != Type.STRUCT:
@@ -211,11 +208,13 @@ class ColumnsBuilder(ArrayStreamVisitor):
             self._schema.children, self._array_view.children
         ):
             self._child_visitors.append(
-                self._resolve_child_visitor(child_schema, child_array_view)
+                self._resolve_child_visitor(
+                    child_schema, child_array_view, handle_nulls
+                )
             )
 
-    def _resolve_child_visitor(self, child_schema, child_array_view):
-        cls, kwargs = _resolve_column_builder_cls(child_schema)
+    def _resolve_child_visitor(self, child_schema, child_array_view, handle_nulls):
+        cls, kwargs = _resolve_column_builder_cls(child_schema, handle_nulls)
         return cls(child_schema, **kwargs, array_view=child_array_view)
 
     def begin(self, total_elements: Union[int, None] = None) -> None:
@@ -223,6 +222,9 @@ class ColumnsBuilder(ArrayStreamVisitor):
             child_visitor.begin(total_elements)
 
     def visit_chunk_view(self, array_view: CArrayView) -> Any:
+        if array_view.null_count > 0:
+            raise ValueError("null_count > 0 encountered in ColumnsBuilder")
+
         for child_visitor, child_array_view in zip(
             self._child_visitors, array_view.children
         ):
