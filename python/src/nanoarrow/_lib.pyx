@@ -1632,6 +1632,22 @@ cdef class CArrayView:
 
     @property
     def null_count(self):
+        if self._ptr.null_count != -1:
+            return self._ptr.null_count
+
+        cdef ArrowBufferType buffer_type = self._ptr.layout.buffer_type[0]
+        cdef uint8_t* validity_bits = self._ptr.buffer_views[0].data.as_uint8
+
+        if buffer_type != NANOARROW_BUFFER_TYPE_VALIDITY:
+            self._ptr.null_count = 0
+        elif validity_bits == NULL:
+            self._ptr.null_count = 0
+        elif self._device is DEVICE_CPU:
+            self._ptr.null_count = (
+                self._ptr.length -
+                ArrowBitCountSet(validity_bits, self.offset, self.length)
+            )
+
         return self._ptr.null_count
 
     @property

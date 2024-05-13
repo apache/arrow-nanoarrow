@@ -158,7 +158,6 @@ class ArrayViewBaseIterator:
     def _contains_nulls(self):
         return (
             self._schema_view.nullable
-            and len(self._array_view.buffer(0))
             and self._array_view.null_count != 0
         )
 

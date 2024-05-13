@@ -17,7 +17,7 @@
 
 from typing import Any, List, Sequence, Tuple, Union
 
-from nanoarrow._lib import CArrayView
+from nanoarrow._lib import CArrayView, CBufferBuilder
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 from nanoarrow.schema import Type
@@ -177,3 +177,93 @@ class ColumnsBuilder(ArrayStreamVisitor):
         return [v.schema.name for v in self._child_visitors], [
             v.finish() for v in self._child_visitors
         ]
+
+
+class BufferColumnBuilder(ArrayStreamVisitor):
+    def begin(self, total_elements: Union[int, None]):
+        self._builder = CBufferBuilder()
+        self._builder.set_format(self._schema_view.buffer_format)
+
+        if total_elements is not None:
+            element_size_bits = self._schema_view.layout.element_size_bits[1]
+            element_size_bytes = element_size_bits // 8
+            self._builder.reserve_bytes(total_elements * element_size_bytes)
+
+    def visit_chunk_view(self, array_view: CArrayView) -> None:
+        builder = self._builder
+        offset, length = array_view.offset, array_view.length
+        dst_bytes = length * builder.itemsize
+
+        builder.reserve_bytes(dst_bytes)
+        array_view.buffer(1).copy_into(builder, offset, length, len(builder))
+        builder.advance(dst_bytes)
+
+    def finish(self) -> Any:
+        return self._builder.finish()
+
+
+class BooleanColumnBuilder(ArrayStreamVisitor):
+    def begin(self, total_elements: Union[int, None]):
+        self._builder = CBufferBuilder()
+        self._builder.set_format("?")
+
+        if total_elements is not None:
+            self._builder.reserve_bytes(total_elements)
+
+    def visit_chunk_view(self, array_view: CArrayView) -> None:
+        builder = self._builder
+        offset, length = array_view.offset, array_view.length
+        builder.reserve_bytes(length)
+        array_view.buffer(1).unpack_bits_into(builder, offset, length, len(builder))
+        builder.advance(length)
+
+    def finish(self) -> Any:
+        return self._builder.finish()
+
+
+class NullableColumnBuilder(ArrayStreamVisitor):
+    def __init__(self, schema, column_builder_cls, *, array_view=None):
+        super().__init__(schema, array_view=array_view)
+        self._column_builder = column_builder_cls(schema, array_view=None)
+
+    def begin(self, total_elements: Union[int, None]):
+        self._builder = CBufferBuilder()
+        self._builder.set_format("?")
+        self._length = 0
+
+        self._column_builder.begin(total_elements)
+
+    def visit_chunk_view(self, array_view: CArrayView) -> None:
+        offset, length = array_view.offset, array_view.length
+
+        builder = self._builder
+        chunk_contains_nulls = array_view.null_count != 0
+        bitmap_allocated = len(builder) > 0
+
+        if chunk_contains_nulls:
+            current_length = self._length
+            if not bitmap_allocated:
+                self._fill_valid(current_length)
+
+            builder.reserve_bytes(length)
+            array_view.buffer(0).unpack_bits_into(
+                builder, offset, length, current_length
+            )
+            builder.advance(length)
+
+        elif bitmap_allocated:
+            self._fill_valid(length)
+
+        self._length += length
+        self._column_builder.visit_chunk_view(array_view)
+
+    def finish(self) -> Any:
+
+        return self._column_builder
+
+    def _fill_valid(self, length):
+        builder = self._builder
+        builder.reserve_bytes(length)
+        out_start = len(builder)
+        memoryview(builder)[out_start : out_start + length] = b"\x01" * length
+        builder.advance(length)
