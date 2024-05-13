@@ -21,7 +21,8 @@ from nanoarrow import visitor
 
 
 def test_to_pylist():
-    assert visitor.to_pylist([1, 2, 3], na.int32()) == [1, 2, 3]
+    array = na.c_array([1, 2, 3], na.int32())
+    assert visitor.to_pylist(array) == [1, 2, 3]
 
 
 def test_to_columms():
