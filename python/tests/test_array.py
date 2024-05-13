@@ -48,13 +48,13 @@ def test_array_from_chunks():
     array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
     assert array.schema.type == na.Type.INT32
     assert array.n_chunks == 2
-    assert list(array.iter_py()) == [1, 2, 3, 4, 5, 6]
+    assert array.to_pylist() == [1, 2, 3, 4, 5, 6]
 
     # Check with schema inferred from first chunk
     array = na.Array.from_chunks(array.iter_chunks())
     assert array.schema.type == na.Type.INT32
     assert array.n_chunks == 2
-    assert list(array.iter_py()) == [1, 2, 3, 4, 5, 6]
+    assert array.to_pylist() == [1, 2, 3, 4, 5, 6]
 
     # Check empty
     array = na.Array.from_chunks([], na.int32())
@@ -75,7 +75,7 @@ def test_array_from_chunks_validate():
 
     # ...but that one can opt out
     array = na.Array.from_chunks(chunks, validate=False)
-    assert list(array.iter_py()) == [1, 2, 3, 1, 2, 3]
+    assert array.to_pylist() == [1, 2, 3, 1, 2, 3]
 
 
 def test_array_empty():
@@ -96,7 +96,7 @@ def test_array_empty():
     with pytest.raises(IndexError):
         array.chunk(0)
 
-    assert list(array.iter_py()) == []
+    assert array.to_pylist() == []
     assert list(array.iter_scalar()) == []
     with pytest.raises(IndexError):
         array[0]
@@ -148,6 +148,9 @@ def test_array_contiguous():
     for py_item, item in zip([1, 2, 3], array.iter_py()):
         assert item == py_item
 
+    # Python objects by to_pylist()
+    assert array.to_pylist() == list(array.iter_py())
+
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
         assert len(arrays) == 1
@@ -194,6 +197,9 @@ def test_array_chunked():
     for py_item, item in zip([1, 2, 3], array.iter_py()):
         assert item == py_item
 
+    # Python objects by to_pylist()
+    assert array.to_pylist() == list(array.iter_py())
+
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
         assert len(arrays) == 2
@@ -216,7 +222,7 @@ def test_array_children():
     assert array.n_children == 100
     assert array.child(0).schema.type == na.Type.INT32
     assert array.child(0).n_chunks == 2
-    assert list(array.child(0).iter_py()) == [123456, 123456]
+    assert array.child(0).to_pylist() == [123456, 123456]
 
     children = list(array.iter_children())
     assert len(children) == array.n_children
@@ -224,6 +230,10 @@ def test_array_children():
     tuples = list(array.iter_tuples())
     assert len(tuples) == 2
     assert len(tuples[0]) == 100
+
+    names, columns = array.to_columns()
+    assert names == [f"col{i}" for i in range(100)]
+    assert all(len(col) == len(array) for col in columns)
 
 
 def test_scalar_to_array():

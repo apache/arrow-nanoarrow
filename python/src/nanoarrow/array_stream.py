@@ -16,7 +16,7 @@
 # under the License.
 
 from functools import cached_property
-from typing import Iterable, Tuple
+from typing import Iterable, List, Sequence, Tuple
 
 from nanoarrow._lib import CMaterializedArrayStream
 from nanoarrow._repr_utils import make_class_label
@@ -24,6 +24,7 @@ from nanoarrow.array import Array
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.iterator import iter_py, iter_tuples
 from nanoarrow.schema import Schema, _schema_repr
+from nanoarrow.visitor import to_columns, to_pylist
 
 
 class ArrayStream:
@@ -197,6 +198,43 @@ class ArrayStream:
         (3, 'c')
         """
         return iter_tuples(self)
+
+    def to_pylist(self) -> List:
+        """Convert this Array to a ``list()` of Python objects
+
+        Computes an identical value to list(:meth:`iter_py`) but can be several
+        times faster.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> stream = na.ArrayStream([1, 2, 3], na.int32())
+        >>> stream.to_pylist()
+        [1, 2, 3]
+        """
+        return to_pylist(self)
+
+    def to_columns(self) -> Tuple[str, Sequence]:
+        """Convert this Array to a ``list()` of sequences
+
+        Converts a stream of struct arrays into its column-wise representation
+        such that each column is either a contiguous buffer or a ``list()``.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> batch = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
+        >>> stream = na.ArrayStream(batch)
+        >>> names, columns = stream.to_columns()
+        >>> names
+        ['col1']
+        >>> columns
+        [[1, 2, 3]]
+        """
+        return to_columns(self)
 
     def __repr__(self) -> str:
         cls = make_class_label(self, "nanoarrow")
