@@ -15,9 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Any, List, Sequence, Tuple, Union
+from typing import Any, Callable, List, Sequence, Tuple, Union
 
-from nanoarrow._lib import CArrayView, CBufferBuilder
+from nanoarrow._lib import CArrayView, CBuffer, CBufferBuilder
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 from nanoarrow.schema import Type
@@ -77,6 +77,55 @@ def to_columns(obj, schema=None) -> Tuple[List[str], List[Sequence]]:
     [[1, 2, 3]]
     """
     return ColumnsBuilder.visit(obj, schema)
+
+
+def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
+    def handle(is_valid, data):
+        if len(is_valid) > 0:
+            raise ValueError("Null present with null_handler=nulls_forbid()")
+
+    return handle
+
+
+def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
+    def handle(is_valid, data):
+        return is_valid, data
+
+    return handle
+
+
+def nulls_as_sentinel(sentinel=None):
+    from numpy import array, nan
+
+    if sentinel is None:
+        sentinel = nan
+
+    def handle(is_valid, data):
+        is_valid = array(is_valid, copy=False)
+        data = array(data, copy=False)
+
+        if len(is_valid) > 0:
+            data[~is_valid] = sentinel
+
+        return data
+
+    return handle
+
+
+def nulls_as_masked_array():
+    from numpy import array
+    from numpy.ma import masked_array
+
+    def handle(is_valid, data):
+        is_valid = array(is_valid, copy=False)
+        data = array(data, copy=False)
+
+        if len(is_valid) > 0:
+            return masked_array(data, ~is_valid)
+        else:
+            data
+
+    return handle
 
 
 class ArrayStreamVisitor(ArrayViewBaseIterator):
@@ -223,10 +272,20 @@ class BooleanColumnBuilder(ArrayStreamVisitor):
 
 class NullableColumnBuilder(ArrayStreamVisitor):
     def __init__(
-        self, schema, column_builder_cls=BufferColumnBuilder, *, array_view=None
+        self,
+        schema,
+        column_builder_cls=BufferColumnBuilder,
+        handle_nulls: Union[Callable[[CBuffer, Sequence], Any], None] = None,
+        *,
+        array_view=None
     ):
         super().__init__(schema, array_view=array_view)
         self._column_builder = column_builder_cls(schema, array_view=self._array_view)
+
+        if handle_nulls is None:
+            self._handle_nulls = nulls_forbid()
+        else:
+            self._handle_nulls = handle_nulls
 
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
@@ -260,7 +319,9 @@ class NullableColumnBuilder(ArrayStreamVisitor):
         self._column_builder.visit_chunk_view(array_view)
 
     def finish(self) -> Any:
-        return self._builder.finish(), self._column_builder.finish()
+        is_valid = self._builder.finish()
+        column = self._column_builder.finish()
+        return self._handle_nulls(is_valid, column)
 
     def _fill_valid(self, length):
         builder = self._builder

@@ -76,24 +76,32 @@ def test_unpacked_bitmap_concatenator_with_offsets():
 def test_unpacked_validity_bitmap_concatenator():
     # All valid
     array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
-    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    is_valid, column = visitor.NullableColumnBuilder.visit(
+        array, handle_nulls=visitor.nulls_debug()
+    )
     assert len(is_valid) == 0
     assert list(column) == [1, 2, 3, 4, 5, 6]
 
     # Only nulls in the first chunk
     array = na.Array.from_chunks([[1, None, 3], [4, 5, 6]], na.int32())
-    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    is_valid, column = visitor.NullableColumnBuilder.visit(
+        array, handle_nulls=visitor.nulls_debug()
+    )
     assert list(is_valid) == [True, False, True, True, True, True]
     assert list(column) == [1, 0, 3, 4, 5, 6]
 
     # Only nulls in the second chunk
     array = na.Array.from_chunks([[1, 2, 3], [4, None, 6]], na.int32())
-    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    is_valid, column = visitor.NullableColumnBuilder.visit(
+        array, handle_nulls=visitor.nulls_debug()
+    )
     assert list(is_valid) == [True, True, True, True, False, True]
     assert list(column) == [1, 2, 3, 4, 0, 6]
 
     # Nulls in both chunks
     array = na.Array.from_chunks([[1, None, 3], [4, None, 6]], na.int32())
-    is_valid, column = visitor.NullableColumnBuilder.visit(array)
+    is_valid, column = visitor.NullableColumnBuilder.visit(
+        array, handle_nulls=visitor.nulls_debug()
+    )
     assert list(is_valid) == [True, False, True, True, False, True]
     assert list(column) == [1, 0, 3, 4, 0, 6]
