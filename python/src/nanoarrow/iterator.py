@@ -135,14 +135,14 @@ class ArrayViewBaseIterator:
     as the basis for conversion to Python objects. Intended for internal use.
     """
 
-    def __init__(self, schema, *, _array_view=None):
+    def __init__(self, schema, *, array_view=None):
         self._schema = c_schema(schema)
         self._schema_view = c_schema_view(schema)
 
-        if _array_view is None:
+        if array_view is None:
             self._array_view = CArrayView.from_schema(self._schema)
         else:
-            self._array_view = _array_view
+            self._array_view = array_view
 
     @cached_property
     def schema(self) -> Schema:
@@ -183,8 +183,8 @@ class PyIterator(ArrayViewBaseIterator):
                 iterator._set_array(array)
                 yield from iterator
 
-    def __init__(self, schema, *, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
+    def __init__(self, schema, *, array_view=None):
+        super().__init__(schema, array_view=array_view)
 
         self._children = list(
             map(self._make_child, self._schema.children, self._array_view.children)
@@ -198,7 +198,7 @@ class PyIterator(ArrayViewBaseIterator):
             )
 
     def _make_child(self, schema, array_view):
-        return type(self)(schema, _array_view=array_view)
+        return type(self)(schema, array_view=array_view)
 
     @cached_property
     def _child_names(self):
@@ -490,8 +490,8 @@ class RowTupleIterator(PyIterator):
     Intended for internal use.
     """
 
-    def __init__(self, schema, *, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
+    def __init__(self, schema, *, array_view=None):
+        super().__init__(schema, array_view=array_view)
         if self._schema_view.type != "struct":
             raise TypeError(
                 "RowTupleIterator can only iterate over struct arrays "
@@ -499,7 +499,7 @@ class RowTupleIterator(PyIterator):
             )
 
     def _make_child(self, schema, array_view):
-        return PyIterator(schema, _array_view=array_view)
+        return PyIterator(schema, array_view=array_view)
 
     def _iter_chunk(self, offset, length):
         return self._struct_tuple_iter(offset, length)

@@ -125,11 +125,11 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
 
 
 class ListBuilder(ArrayStreamVisitor):
-    def __init__(self, schema, *, iterator_cls=PyIterator, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
+    def __init__(self, schema, *, iterator_cls=PyIterator, array_view=None):
+        super().__init__(schema, array_view=array_view)
 
         # Ensure that self._iterator._array_view is self._array_view
-        self._iterator = iterator_cls(schema, _array_view=self._array_view)
+        self._iterator = iterator_cls(schema, array_view=self._array_view)
 
     def begin(self, total_elements: Union[int, None] = None):
         self._lst = []
@@ -144,8 +144,8 @@ class ListBuilder(ArrayStreamVisitor):
 
 
 class ColumnsBuilder(ArrayStreamVisitor):
-    def __init__(self, schema, *, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
+    def __init__(self, schema, *, array_view=None):
+        super().__init__(schema, array_view=array_view)
 
         if self.schema.type != Type.STRUCT:
             raise ValueError("ColumnsBuilder can only be used on a struct array")
@@ -161,7 +161,7 @@ class ColumnsBuilder(ArrayStreamVisitor):
 
     def _resolve_child_visitor(self, child_schema, child_array_view):
         # TODO: Resolve more efficient column builders for single-buffer types
-        return ListBuilder(child_schema, _array_view=child_array_view)
+        return ListBuilder(child_schema, array_view=child_array_view)
 
     def begin(self, total_elements: Union[int, None] = None) -> None:
         for child_visitor in self._child_visitors:
