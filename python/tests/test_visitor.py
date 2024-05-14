@@ -134,13 +134,3 @@ def test_numpy_null_handling():
         nulls_as_sentinel(is_valid_non_empty, data),
         np.array([1, np.nan, 3], dtype=np.float64),
     )
-
-    # Check nulls as masked array
-    nulls_as_masked_array = visitor.nulls_as_masked_array()
-    np.testing.assert_array_equal(
-        nulls_as_masked_array(is_valid_empty, data), np.array([1, 2, 3], np.int32)
-    )
-    np.testing.assert_array_equal(
-        nulls_as_masked_array(is_valid_non_empty, data),
-        np.ma.masked_array(np.array([1, 2, 3], np.int32), [False, True, False]),
-    )

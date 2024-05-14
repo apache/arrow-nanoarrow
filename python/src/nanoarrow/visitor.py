@@ -105,26 +105,10 @@ def nulls_as_sentinel(sentinel=None):
         data = np.array(data, copy=False)
 
         if len(is_valid) > 0:
-            out_type = result_type(data, sentinel)
-            data = array(data, dtype=out_type, copy=True)
+            out_type = np.result_type(data, sentinel)
+            data = np.array(data, dtype=out_type, copy=True)
             data[~is_valid] = sentinel
             return data
-        else:
-            return data
-
-    return handle
-
-
-def nulls_as_masked_array():
-    from numpy import array
-    from numpy.ma import masked_array
-
-    def handle(is_valid, data):
-        is_valid = array(is_valid, copy=False)
-        data = array(data, copy=False)
-
-        if len(is_valid) > 0:
-            return masked_array(data, ~is_valid)
         else:
             return data
 
