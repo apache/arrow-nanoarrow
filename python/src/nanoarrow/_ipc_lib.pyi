@@ -23,8 +23,6 @@ class PyInputStreamPrivate:
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
     def set_buffer(self, *args, **kwargs): ...
-    def __buffer__(self, *args, **kwargs):
-        """Return a buffer object that exposes the underlying memory of the object."""
     def __len__(self) -> int:
         """Return len(self)."""
     def __reduce__(self): ...

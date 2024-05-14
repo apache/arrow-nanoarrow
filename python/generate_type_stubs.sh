@@ -15,5 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+pushd "${SOURCE_DIR}"
 stubgen --module nanoarrow._lib --include-docstrings -o src
 stubgen --module nanoarrow._ipc_lib --include-docstrings -o src
+popd

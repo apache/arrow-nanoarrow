@@ -215,7 +215,7 @@ class CBuffer:
     data_type_id: Incomplete
     element_size_bits: Incomplete
     format: Incomplete
-    itemsize: Incomplete
+    item_size: Incomplete
     n_elements: Incomplete
     size_bytes: Incomplete
     @classmethod
@@ -227,8 +227,6 @@ class CBuffer:
     def empty(*args, **kwargs): ...
     @staticmethod
     def from_pybuffer(*args, **kwargs): ...
-    def __buffer__(self, *args, **kwargs):
-        """Return a buffer object that exposes the underlying memory of the object."""
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
@@ -236,14 +234,11 @@ class CBuffer:
     def __len__(self) -> int:
         """Return len(self)."""
     def __reduce__(self): ...
-    def __release_buffer__(self, *args, **kwargs):
-        """Release the buffer object that exposes the underlying memory of the object."""
 
 class CBufferBuilder:
     __pyx_vtable__: ClassVar[PyCapsule] = ...
     capacity_bytes: Incomplete
     format: Incomplete
-    itemsize: Incomplete
     size_bytes: Incomplete
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
@@ -290,13 +285,7 @@ class CBufferBuilder:
 
                 This method returns the number of elements that were written.
         '''
-    def __buffer__(self, *args, **kwargs):
-        """Return a buffer object that exposes the underlying memory of the object."""
-    def __len__(self) -> int:
-        """Return len(self)."""
     def __reduce__(self): ...
-    def __release_buffer__(self, *args, **kwargs):
-        """Release the buffer object that exposes the underlying memory of the object."""
 
 class CBufferView:
     __pyx_vtable__: ClassVar[PyCapsule] = ...
@@ -305,7 +294,7 @@ class CBufferView:
     device: Incomplete
     element_size_bits: Incomplete
     format: Incomplete
-    itemsize: Incomplete
+    item_size: Incomplete
     n_elements: Incomplete
     size_bytes: Incomplete
     @classmethod
@@ -317,8 +306,6 @@ class CBufferView:
     def elements(self, *args, **kwargs): ...
     def unpack_bits(self, *args, **kwargs): ...
     def unpack_bits_into(self, *args, **kwargs): ...
-    def __buffer__(self, *args, **kwargs):
-        """Return a buffer object that exposes the underlying memory of the object."""
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
@@ -326,8 +313,6 @@ class CBufferView:
     def __len__(self) -> int:
         """Return len(self)."""
     def __reduce__(self): ...
-    def __release_buffer__(self, *args, **kwargs):
-        """Release the buffer object that exposes the underlying memory of the object."""
 
 class CDeviceArray:
     array: Incomplete
@@ -534,10 +519,11 @@ class SchemaMetadata:
     def keys(self, *args, **kwargs): ...
     def values(self, *args, **kwargs): ...
     def __contains__(self, other) -> bool:
-        """Return bool(key in self)."""
+        """Return key in self."""
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
         """Implement iter(self)."""
     def __len__(self) -> int:
         """Return len(self)."""
+    def __reduce__(self): ...
