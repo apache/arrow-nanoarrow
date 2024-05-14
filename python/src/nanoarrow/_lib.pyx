@@ -39,6 +39,7 @@ from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_Is
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
     Py_buffer,
+    PyObject,
     PyObject_CheckBuffer,
     PyObject_GetBuffer,
     PyBuffer_Release,
@@ -46,11 +47,19 @@ from cpython cimport (
     PyBuffer_FillInfo,
     PyBUF_ANY_CONTIGUOUS,
     PyBUF_FORMAT,
-    PyBUF_WRITABLE
+    PyBUF_WRITABLE,
+    PyErr_Fetch,
+    PyErr_NoMemory,
+    PyErr_Occurred,
+    PyErr_Restore,
+    PyErr_WriteUnraisable,
+    PyMem_Free,
+    PyMem_Malloc
 )
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
+from nanoarrow_dlpack cimport *
 
 from enum import Enum
 from sys import byteorder as sys_byteorder
@@ -164,6 +173,105 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view):
     c_array_view[0] = <ArrowArrayView*> ArrowMalloc(sizeof(ArrowArrayView))
     ArrowArrayViewInitFromType(c_array_view[0], NANOARROW_TYPE_UNINITIALIZED)
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
+
+
+cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
+    cdef DLManagedTensor* dlm_tensor
+    cdef PyObject* err_type
+    cdef PyObject* err_value
+    cdef PyObject* err_traceback
+
+    # Do nothing if the capsule has been consumed
+    if PyCapsule_IsValid(dltensor, "used_dltensor"):
+        return
+
+    # An exception may be in-flight, we must save it in case
+    # we create another one
+    PyErr_Fetch(&err_type, &err_value, &err_traceback)
+
+    dlm_tensor = <DLManagedTensor*>PyCapsule_GetPointer(dltensor, 'dltensor')
+    if dlm_tensor == NULL:
+        PyErr_WriteUnraisable(dltensor)
+    # The deleter can be NULL if there is no way for the caller
+    # to provide a reasonable destructor
+    elif dlm_tensor.deleter:
+        dlm_tensor.deleter(dlm_tensor)
+        assert (not PyErr_Occurred())
+
+    # Set the error indicator from err_type, err_value, err_traceback
+    PyErr_Restore(err_type, err_value, err_traceback)
+
+cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
+    if tensor.manager_ctx is NULL:
+        return
+    #PyMem_Free(tensor.dl_tensor.shape)
+    PyMem_Free(tensor)
+    Py_DECREF(<CBufferView>tensor.manager_ctx)
+    #tensor.manager_ctx = NULL
+    #PyMem_Free(tensor)
+
+
+cpdef object view_to_dlpack(CBufferView view):
+    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*> PyMem_Malloc(sizeof(DLManagedTensor))
+
+    cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
+    dl_tensor.data = <void*>view._addr
+    dl_tensor.ndim = 1
+
+    dl_tensor.shape = <int64_t*> len(view)
+    dl_tensor.strides = NULL
+    dl_tensor.byte_offset = 0
+
+    cdef DLDevice* device = &dl_tensor.device
+    if view._device.device_type_id == ARROW_DEVICE_CPU:
+        device.device_type = kDLCPU
+    elif view._device.device_type_id == ARROW_DEVICE_CUDA:
+        device.device_type = kDLCUDA
+    elif view._device.device_type_id == ARROW_DEVICE_CUDA_HOST:
+        device.device_type = kDLCUDAHost
+    elif view._device.device_type_id == ARROW_DEVICE_OPENCL:
+        device.device_type = kDLOpenCL
+    elif view._device.device_type_id == ARROW_DEVICE_VULKAN:
+        device.device_type = kDLVulkan
+    elif view._device.device_type_id == ARROW_DEVICE_METAL:
+        device.device_type = kDLMetal
+    elif view._device.device_type_id == ARROW_DEVICE_VPI:
+        device.device_type = kDLVPI
+    elif view._device.device_type_id == ARROW_DEVICE_ROCM:
+        device.device_type = kDLROCM
+    elif view._device.device_type_id == ARROW_DEVICE_ROCM_HOST:
+        device.device_type = kDLROCMHost
+    elif view._device.device_type_id == ARROW_DEVICE_EXT_DEV:
+        device.device_type = kDLExtDev
+    elif view._device.device_type_id == ARROW_DEVICE_CUDA_MANAGED:
+        device.device_type = kDLCUDAManaged
+    elif view._device.device_type_id == ARROW_DEVICE_ONEAPI:
+        device.device_type = kDLOneAPI
+    elif view._device.device_type_id == ARROW_DEVICE_WEBGPU:
+        device.device_type = kDLWebGPU
+    elif view._device.device_type_id == ARROW_DEVICE_HEXAGON:
+        device.device_type = kDLHexagon
+    device.device_id =  view._device.device_id
+
+    cdef DLDataType* dtype = &dl_tensor.dtype
+    if view.data_type in ('uint8', 'uint16', 'uint32', 'uint64'):
+        dtype.code = kDLUInt
+    elif view.data_type in ('int8', 'int16', 'int32', 'int64'):
+        dtype.code = kDLInt
+    elif view.data_type in ('half_float', 'float', 'double'):
+        dtype.code = kDLFloat
+    elif view.data_type == 'bool':
+        raise ValueError('Bit-packed boolean data type not supported by DLPack.')
+    else:
+        raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
+    dtype.lanes = <uint16_t>1
+    dtype.bits = <uint8_t>(view.item_size * 8)
+
+    dlm_tensor.manager_ctx = <void*>view
+    Py_INCREF(view)
+    dlm_tensor.deleter = view_dlpack_deleter
+
+    return PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_dlpack_deleter)
 
 
 # Provide a way to validate that we release all references we create
@@ -2068,6 +2176,11 @@ cdef class CBufferView:
             return 1
         else:
             return self._element_size_bits // 8
+
+
+    def __dlpack__(self):
+        return view_to_dlpack(self)
+
 
     # These are special methods, which can't be cdef and we can't
     # call them from elsewhere. We implement the logic for the buffer
