@@ -17,7 +17,7 @@
 
 import itertools
 from functools import cached_property
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, Tuple
 
 from nanoarrow._lib import (
     DEVICE_CPU,
@@ -32,7 +32,7 @@ from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema
 from nanoarrow.iterator import iter_array_views, iter_py, iter_tuples
 from nanoarrow.schema import Schema, _schema_repr
-from nanoarrow.visitor import to_columns, to_pylist
+from nanoarrow.visitor import ArrayViewVisitable
 
 from nanoarrow import _repr_utils
 
@@ -106,7 +106,7 @@ class Scalar:
         return array.__arrow_c_array__(requested_schema=requested_schema)
 
 
-class Array:
+class Array(ArrayViewVisitable):
     """High-level in-memory Array representation
 
     The Array is nanoarrow's high-level in-memory array representation whose
@@ -344,42 +344,6 @@ class Array:
         nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
         """
         return iter_array_views(self)
-
-    def to_pylist(self) -> List:
-        """Convert this Array to a ``list()` of Python objects
-
-        Computes an identical value to list(:meth:`iter_py`) but can be several
-        times faster.
-
-        Examples
-        --------
-
-        >>> import nanoarrow as na
-        >>> array = na.Array([1, 2, 3], na.int32())
-        >>> array.to_pylist()
-        [1, 2, 3]
-        """
-        return to_pylist(self)
-
-    def to_columns(self) -> Tuple[str, Sequence]:
-        """Convert this Array to a ``list()` of sequences
-
-        Converts a stream of struct arrays into its column-wise representation
-        such that each column is either a contiguous buffer or a ``list()``.
-
-        Examples
-        --------
-
-        >>> import nanoarrow as na
-        >>> import pyarrow as pa
-        >>> array = na.Array(pa.record_batch([pa.array([1, 2, 3])], names=["col1"]))
-        >>> names, columns = array.to_columns()
-        >>> names
-        ['col1']
-        >>> columns
-        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
-        """
-        return to_columns(self)
 
     @property
     def n_children(self) -> int:

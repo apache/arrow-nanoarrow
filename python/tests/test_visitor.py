@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 import pytest
+from nanoarrow.c_buffer import CBuffer
 
 import nanoarrow as na
 from nanoarrow import visitor
@@ -22,10 +23,30 @@ from nanoarrow import visitor
 
 def test_to_pylist():
     array = na.c_array([1, 2, 3], na.int32())
-    assert visitor.to_pylist(array) == [1, 2, 3]
+    assert visitor.ListBuilder.visit(array) == [1, 2, 3]
 
 
-def test_to_columms():
+def test_to_column():
+    ints = na.c_array([1, 2, 3], na.int32())
+    bools = na.c_array([1, 0, 1], na.bool_())
+    strings = na.c_array(["abc", "def", "ghi"], na.string())
+
+    ints_col = visitor.SingleColumnBuilder.visit(ints)
+    assert isinstance(ints_col, CBuffer)
+    assert ints_col.format == "i"
+    assert list(ints_col) == [1, 2, 3]
+
+    bools_col = visitor.SingleColumnBuilder.visit(bools)
+    assert isinstance(bools_col, CBuffer)
+    assert bools_col.format == "?"
+    assert list(bools_col) == [True, False, True]
+
+    strings_col = visitor.SingleColumnBuilder.visit(strings)
+    assert isinstance(strings_col, list)
+    assert strings_col == ["abc", "def", "ghi"]
+
+
+def test_to_column_list():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool_(), "col3": na.string()}),
         length=3,
@@ -37,14 +58,14 @@ def test_to_columms():
         ],
     )
 
-    names, columns = visitor.to_columns(array)
+    names, columns = visitor.ColumnsBuilder.visit(array)
     assert names == ["col1", "col2", "col3"]
     assert list(columns[0]) == [1, 2, 3]
     assert list(columns[1]) == [True, False, True]
     assert columns[2] == ["abc", "def", "ghi"]
 
     with pytest.raises(ValueError, match="can only be used on a struct array"):
-        visitor.to_columns([], na.int32())
+        visitor.ColumnsBuilder.visit([], na.int32())
 
 
 def test_buffer_concatenator():

@@ -24,60 +24,80 @@ from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 from nanoarrow.schema import Type
 
 
-def to_pylist(obj, schema=None) -> List:
-    """Convert ``obj`` to a ``list()` of Python objects
+class ArrayViewVisitable:
+    def to_pylist(self) -> List:
+        """Convert to a ``list()`` of Python objects
 
-    Computes an identical value to ``list(iterator.iter_py())`` but is several
-    times faster.
+        Computes an identical value to ``list(iter_py())`` but can be much
+        faster.
 
-    Paramters
-    ---------
-    obj : array stream-like
-        An array-like or array stream-like object as sanitized by
-        :func:`c_array_stream`.
-    schema : schema-like, optional
-        An optional schema, passed to :func:`c_array_stream`.
+        Examples
+        --------
 
-    Examples
-    --------
+        >>> import nanoarrow as na
+        >>> from nanoarrow import visitor
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> array.to_pylist(array)
+        [1, 2, 3]
+        """
+        return ListBuilder.visit(self)
 
-    >>> import nanoarrow as na
-    >>> from nanoarrow import visitor
-    >>> array = na.c_array([1, 2, 3], na.int32())
-    >>> visitor.to_pylist(array)
-    [1, 2, 3]
-    """
-    return ListBuilder.visit(obj, schema)
+    def to_column_list(self, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
+        """Convert to a ``list()` of contiguous sequences
 
+        Converts a stream of struct arrays into its column-wise representation
+        according to :meth:`to_column`.
 
-def to_columns(obj, schema=None, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
-    """Convert ``obj`` to a ``list()` of sequences
+        Paramters
+        ---------
+        handle_nulls : callable
+            A function returning a sequence based on a validity bytemap and a
+            contiguous buffer of values (e.g., the callable returned by
+            :meth:`nulls_as_sentinel`).
 
-    Converts a stream of struct arrays into its column-wise representation
-    such that each column is either a contiguous buffer or a ``list()``.
+        Examples
+        --------
 
-    Paramters
-    ---------
-    obj : array stream-like
-        An array-like or array stream-like object as sanitized by
-        :func:`c_array_stream`.
-    schema : schema-like, optional
-        An optional schema, passed to :func:`c_array_stream`.
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> batch = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
+        >>> names, columns = na.Array(batch).to_column_list(array)
+        >>> names
+        ['col1']
+        >>> columns
+        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
+        """
+        return ColumnsBuilder.visit(self, handle_nulls=handle_nulls)
 
-    Examples
-    --------
+    def to_column(self, handle_nulls=None) -> Sequence:
+        """Convert to a contiguous sequence
 
-    >>> import nanoarrow as na
-    >>> from nanoarrow import visitor
-    >>> import pyarrow as pa
-    >>> array = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
-    >>> names, columns = visitor.to_columns(array)
-    >>> names
-    ['col1']
-    >>> columns
-    [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
-    """
-    return ColumnsBuilder.visit(obj, schema, handle_nulls=handle_nulls)
+        Converts a stream of arrays into a columnar representation
+        such that each column is either a contiguous buffer or a ``list()``.
+        Integer, float, and interval arrays are currently converted to their
+        contiguous buffer representation; other types are returned as a list
+        of Python objects. The sequences returned by :meth:`to_column` are
+        designed to work as input to ``pandas.Series`` and/or ``numpy.array()``.
+
+        Parameters
+        ---------
+        obj : array stream-like
+            An array-like or array stream-like object as sanitized by
+            :func:`c_array_stream`.
+        schema : schema-like, optional
+            An optional schema, passed to :func:`c_array_stream`.
+        handle_nulls : callable
+            A function returning a sequence based on a validity bytemap and a
+            contiguous buffer of values (e.g., the callable returned by
+            :meth:`nulls_as_sentinel`).
+
+        Examples
+        --------
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32()).to_column()
+        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
+        """
+        return SingleColumnBuilder.visit(self, handle_nulls=handle_nulls)
 
 
 def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
@@ -105,30 +125,6 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
             raise ValueError("Null present with null_handler=nulls_forbid()")
 
         return data
-
-    return handle
-
-
-def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
-    """Debugging null handler
-
-    A null handler that returns its input.
-
-    Examples
-    --------
-
-    >>> from nanoarrow import visitor
-    >>> import numpy as np
-    >>> handler = visitor.nulls_debug()
-    >>> data = np.array([1, 2, 3], np.int32)
-    >>> handler(np.array([], np.bool_), data)
-    (array([], dtype=bool), array([1, 2, 3], dtype=int32))
-    >>> handler(np.array([True, False, True], np.bool_), data)
-    (array([ True, False,  True]), array([1, 2, 3], dtype=int32))
-    """
-
-    def handle(is_valid, data):
-        return is_valid, data
 
     return handle
 
@@ -178,6 +174,30 @@ def nulls_as_sentinel(sentinel=None):
     return handle
 
 
+def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
+    """Debugging null handler
+
+    A null handler that returns its input.
+
+    Examples
+    --------
+
+    >>> from nanoarrow import visitor
+    >>> import numpy as np
+    >>> handler = visitor.nulls_debug()
+    >>> data = np.array([1, 2, 3], np.int32)
+    >>> handler(np.array([], np.bool_), data)
+    (array([], dtype=bool), array([1, 2, 3], dtype=int32))
+    >>> handler(np.array([True, False, True], np.bool_), data)
+    (array([ True, False,  True]), array([1, 2, 3], dtype=int32))
+    """
+
+    def handle(is_valid, data):
+        return is_valid, data
+
+    return handle
+
+
 class ArrayStreamVisitor(ArrayViewBaseIterator):
     """Compute a value from one or more arrays in an ArrowArrayStream
 
@@ -223,23 +243,22 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
         return None
 
 
-class ListBuilder(ArrayStreamVisitor):
-    def __init__(self, schema, *, iterator_cls=PyIterator, array_view=None):
+class SingleColumnBuilder(ArrayStreamVisitor):
+    def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
-
-        # Ensure that self._iterator._array_view is self._array_view
-        self._iterator = iterator_cls(schema, array_view=self._array_view)
+        cls, kwargs = _resolve_column_builder_cls(
+            self._schema, handle_nulls=handle_nulls
+        )
+        self._visitor = cls(schema, **kwargs, array_view=self._array_view)
 
     def begin(self, total_elements: Union[int, None] = None):
-        self._lst = []
+        self._visitor.begin(total_elements)
 
-    def visit_chunk_view(self, array_view: CArrayView):
-        # The constructor here ensured that self._iterator._array_view
-        # is populated when self._set_array() is called.
-        self._lst.extend(self._iterator)
+    def visit_chunk_view(self, array_view: CArrayView) -> None:
+        self._visitor.visit_chunk_view(array_view)
 
-    def finish(self) -> List:
-        return self._lst
+    def finish(self) -> Any:
+        return self._visitor.finish()
 
 
 class ColumnsBuilder(ArrayStreamVisitor):
@@ -281,6 +300,25 @@ class ColumnsBuilder(ArrayStreamVisitor):
         return [v.schema.name for v in self._child_visitors], [
             v.finish() for v in self._child_visitors
         ]
+
+
+class ListBuilder(ArrayStreamVisitor):
+    def __init__(self, schema, *, iterator_cls=PyIterator, array_view=None):
+        super().__init__(schema, array_view=array_view)
+
+        # Ensure that self._iterator._array_view is self._array_view
+        self._iterator = iterator_cls(schema, array_view=self._array_view)
+
+    def begin(self, total_elements: Union[int, None] = None):
+        self._lst = []
+
+    def visit_chunk_view(self, array_view: CArrayView):
+        # The constructor here ensured that self._iterator._array_view
+        # is populated when self._set_array() is called.
+        self._lst.extend(self._iterator)
+
+    def finish(self) -> List:
+        return self._lst
 
 
 class BufferColumnBuilder(ArrayStreamVisitor):
