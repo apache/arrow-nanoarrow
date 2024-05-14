@@ -17,7 +17,7 @@
 
 import warnings
 from functools import cached_property
-from itertools import islice
+from itertools import islice, repeat
 from typing import Iterable, Tuple
 
 from nanoarrow._lib import CArrayView, CArrowType
@@ -482,6 +482,9 @@ class PyIterator(ArrayViewBaseIterator):
         else:
             return iter(items)
 
+    def _null_iter(self, offset, length):
+        return repeat(None, length)
+
 
 class RowTupleIterator(PyIterator):
     """Iterate over rows of a struct array (stream) where each row is a
@@ -545,6 +548,7 @@ def _get_tzinfo(tz_string, strategy=None):
 
 
 _ITEMS_ITER_LOOKUP = {
+    CArrowType.NA: "_null_iter",
     CArrowType.BINARY: "_binary_iter",
     CArrowType.LARGE_BINARY: "_binary_iter",
     CArrowType.STRING: "_string_iter",
