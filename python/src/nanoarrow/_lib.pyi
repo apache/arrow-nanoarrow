@@ -30,6 +30,7 @@ class CArray:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate(*args, **kwargs): ...
     def child(self, *args, **kwargs): ...
@@ -51,16 +52,20 @@ class CArray:
             A pair of PyCapsules containing a C ArrowSchema and ArrowArray,
             respectively.
         """
+
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 class CArrayBuilder:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate(*args, **kwargs): ...
     def append_bytes(self, *args, **kwargs): ...
@@ -72,12 +77,13 @@ class CArrayBuilder:
     def resolve_null_count(self, *args, **kwargs): ...
     def set_buffer(self, *args, **kwargs):
         """Sets a buffer of this ArrowArray such the pointer at array->buffers[i] is
-                equal to buffer->data and such that the buffer's lifcycle is managed by
-                the array. If move is True, the input Python object that previously wrapped
-                the ArrowBuffer will be invalidated, which is usually the desired behaviour
-                if you built or imported a buffer specifically to build this array. If move
-                is False (the default), this function will a make a shallow copy via another
-                layer of Python object wrapping."""
+        equal to buffer->data and such that the buffer's lifcycle is managed by
+        the array. If move is True, the input Python object that previously wrapped
+        the ArrowBuffer will be invalidated, which is usually the desired behaviour
+        if you built or imported a buffer specifically to build this array. If move
+        is False (the default), this function will a make a shallow copy via another
+        layer of Python object wrapping."""
+
     def set_child(self, *args, **kwargs): ...
     def set_length(self, *args, **kwargs): ...
     def set_null_count(self, *args, **kwargs): ...
@@ -89,6 +95,7 @@ class CArrayStream:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate(*args, **kwargs): ...
     @staticmethod
@@ -96,11 +103,12 @@ class CArrayStream:
     def get_next(self, *args, **kwargs):
         """Get the next Array from this stream
 
-                Raises StopIteration when there are no more arrays in this stream.
+        Raises StopIteration when there are no more arrays in this stream.
         """
+
     def get_schema(self, *args, **kwargs):
-        """Get the schema associated with this stream
-        """
+        """Get the schema associated with this stream"""
+
     def is_valid(self, *args, **kwargs): ...
     def release(self, *args, **kwargs): ...
     def __arrow_c_stream__(self, *args, **kwargs):
@@ -117,10 +125,17 @@ class CArrayStream:
         -------
         PyCapsule
         """
+
     def __enter__(self): ...
-    def __exit__(self, type: type[BaseException] | None, value: BaseException | None, traceback: types.TracebackType | None): ...
+    def __exit__(
+        self,
+        type: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ): ...
     def __iter__(self):
         """Implement iter(self)."""
+
     def __next__(self): ...
     def __reduce__(self): ...
 
@@ -139,6 +154,7 @@ class CArrayView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def buffer(self, *args, **kwargs): ...
     def buffer_type(self, *args, **kwargs): ...
     def child(self, *args, **kwargs): ...
@@ -148,6 +164,7 @@ class CArrayView:
     def from_schema(*args, **kwargs): ...
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 class CArrowTimeUnit:
@@ -158,6 +175,7 @@ class CArrowTimeUnit:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
     def __reduce_cython__(self, *args, **kwargs): ...
     def __setstate_cython__(self, *args, **kwargs): ...
@@ -205,6 +223,7 @@ class CArrowType:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
     def __reduce_cython__(self, *args, **kwargs): ...
     def __setstate_cython__(self, *args, **kwargs): ...
@@ -221,6 +240,7 @@ class CBuffer:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def element(self, *args, **kwargs): ...
     def elements(self, *args, **kwargs): ...
     @staticmethod
@@ -229,10 +249,13 @@ class CBuffer:
     def from_pybuffer(*args, **kwargs): ...
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __iter__(self):
         """Implement iter(self)."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 class CBufferBuilder:
@@ -243,48 +266,56 @@ class CBufferBuilder:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def advance(self, *args, **kwargs):
         """Manually increase :attr:`size_bytes` by ``additional_bytes``
 
-                This can be used after writing to the buffer using the buffer protocol
-                to ensure that :attr:`size_bytes` accurately reflects the number of
-                bytes written to the buffer.
+        This can be used after writing to the buffer using the buffer protocol
+        to ensure that :attr:`size_bytes` accurately reflects the number of
+        bytes written to the buffer.
         """
+
     def finish(self, *args, **kwargs):
         """Finish building this buffer
 
-                Performs any steps required to finish building this buffer and
-                returns the result. Any behaviour resulting from calling methods
-                on this object after it has been finished is not currently
-                defined (but should not crash).
+        Performs any steps required to finish building this buffer and
+        returns the result. Any behaviour resulting from calling methods
+        on this object after it has been finished is not currently
+        defined (but should not crash).
         """
+
     def reserve_bytes(self, *args, **kwargs):
         """Ensure that the underlying buffer has space for ``additional_bytes``
-                more bytes to be written"""
+        more bytes to be written"""
+
     def set_data_type(self, *args, **kwargs):
         """Set the data type used to interpret elements in :meth:`write_elements`."""
+
     def set_format(self, *args, **kwargs):
         """Set the Python buffer format used to interpret elements in
-                :meth:`write_elements`.
+        :meth:`write_elements`.
         """
+
     def write(self, *args, **kwargs):
         """Write bytes to this buffer
 
-                Writes the bytes of ``content`` without considering the element type of
-                ``content`` or the element type of this buffer.
+        Writes the bytes of ``content`` without considering the element type of
+        ``content`` or the element type of this buffer.
 
-                This method returns the number of bytes that were written.
+        This method returns the number of bytes that were written.
         """
+
     def write_elements(self, *args, **kwargs):
-        '''"Write an iterable of elements to this buffer
+        """ "Write an iterable of elements to this buffer
 
-                Writes the elements of iterable ``obj`` according to the binary
-                representation specified by :attr:`format`. This is currently
-                powered by ``struct.pack_into()`` except when building bitmaps
-                where an internal implementation is used.
+        Writes the elements of iterable ``obj`` according to the binary
+        representation specified by :attr:`format`. This is currently
+        powered by ``struct.pack_into()`` except when building bitmaps
+        where an internal implementation is used.
 
-                This method returns the number of elements that were written.
-        '''
+        This method returns the number of elements that were written.
+        """
+
     def __reduce__(self): ...
 
 class CBufferView:
@@ -300,6 +331,7 @@ class CBufferView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def copy(self, *args, **kwargs): ...
     def copy_into(self, *args, **kwargs): ...
     def element(self, *args, **kwargs): ...
@@ -308,10 +340,13 @@ class CBufferView:
     def unpack_bits_into(self, *args, **kwargs): ...
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __iter__(self):
         """Implement iter(self)."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 class CDeviceArray:
@@ -323,6 +358,7 @@ class CDeviceArray:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def view(self, *args, **kwargs): ...
     def __arrow_c_array__(self, *args, **kwargs): ...
     def __arrow_c_device_array__(self, *args, **kwargs): ...
@@ -336,6 +372,7 @@ class CLayout:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class CMaterializedArrayStream:
@@ -346,6 +383,7 @@ class CMaterializedArrayStream:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def array(self, *args, **kwargs): ...
     def child(self, *args, **kwargs): ...
     @staticmethod
@@ -357,10 +395,13 @@ class CMaterializedArrayStream:
     def __arrow_c_stream__(self, *args, **kwargs): ...
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __iter__(self):
         """Implement iter(self)."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 class CSchema:
@@ -374,6 +415,7 @@ class CSchema:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate(*args, **kwargs): ...
     def child(self, *args, **kwargs): ...
@@ -384,6 +426,7 @@ class CSchema:
         """
         Export to a ArrowSchema PyCapsule
         """
+
     def __deepcopy__(self): ...
     def __reduce__(self): ...
 
@@ -391,6 +434,7 @@ class CSchemaBuilder:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate(*args, **kwargs): ...
     def allocate_children(self, *args, **kwargs): ...
@@ -438,6 +482,7 @@ class CSchemaView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class Device:
@@ -447,6 +492,7 @@ class Device:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def resolve(*args, **kwargs): ...
     def __reduce__(self): ...
@@ -480,15 +526,16 @@ class Error:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def raise_error(*args, **kwargs):
-        """Raise a NanoarrowException without a message
-        """
+        """Raise a NanoarrowException without a message"""
+
     @staticmethod
     def raise_error_not_ok(*args, **kwargs): ...
     def raise_message(self, *args, **kwargs):
-        """Raise a NanoarrowException from this message
-        """
+        """Raise a NanoarrowException from this message"""
+
     def raise_message_not_ok(self, *args, **kwargs): ...
     def __reduce__(self): ...
 
@@ -500,12 +547,15 @@ class NoneAwareWrapperIterator:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def finish(self, *args, **kwargs):
         """Obtain the total count, null count, and validity bitmap after
-                consuming this iterable."""
+        consuming this iterable."""
+
     def reserve(self, *args, **kwargs): ...
     def __iter__(self):
         """Implement iter(self)."""
+
     def __reduce__(self): ...
 
 class SchemaMetadata:
@@ -513,6 +563,7 @@ class SchemaMetadata:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def empty(*args, **kwargs): ...
     def items(self, *args, **kwargs): ...
@@ -520,10 +571,14 @@ class SchemaMetadata:
     def values(self, *args, **kwargs): ...
     def __contains__(self, other) -> bool:
         """Return key in self."""
+
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __iter__(self):
         """Implement iter(self)."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...

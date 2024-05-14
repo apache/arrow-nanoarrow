@@ -17,7 +17,16 @@
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Generates src/nanoarrow/*.pxi given the currently installed copy of
+# nanoarrow. Requires mypy and black.
+
 pushd "${SOURCE_DIR}"
+
+# Generate stubs using mypy
 stubgen --module nanoarrow._lib --include-docstrings -o src
 stubgen --module nanoarrow._ipc_lib --include-docstrings -o src
+
+# Reformat stubs
+black src/nanoarrow/*.pyi
+
 popd

@@ -10,6 +10,7 @@ class CIpcInputStream:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def from_readable(*args, **kwargs): ...
     def is_valid(self, *args, **kwargs): ...
@@ -22,7 +23,9 @@ class PyInputStreamPrivate:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def set_buffer(self, *args, **kwargs): ...
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
