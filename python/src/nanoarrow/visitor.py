@@ -25,6 +25,12 @@ from nanoarrow.schema import Type
 
 
 class ArrayViewVisitable:
+    """Mixin class providing conversion methods based on visitors
+
+    Can be used with classes that implement ``__arrow_c_stream__()``
+    or ``__arrow_c_array__()``.
+    """
+
     def to_pylist(self) -> List:
         """Convert to a ``list()`` of Python objects
 
@@ -108,13 +114,10 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
     Examples
     --------
 
-    >>> from nanoarrow import visitor
-    >>> import numpy as np
-    >>> handler = visitor.nulls_forbid()
-    >>> data = np.array([1, 2, 3], np.int32)
-    >>> handler(np.array([], np.bool_), data)
-    array([1, 2, 3], dtype=int32)
-    >>> handler(np.array([True, False, True], np.bool_), data)
+    >>> import nanoarrow as na
+    >>> na.Array([1, 2, 3], na.int32()).to_column(na.nulls_forbid())
+    nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
+    >>> na.Array([1, None, 3], na.int32()).to_column(na.nulls_forbid())
     Traceback (most recent call last):
     ...
     ValueError: Null present with null_handler=nulls_forbid()
@@ -146,15 +149,11 @@ def nulls_as_sentinel(sentinel=None):
     --------
 
     >>> import nanoarrow as na
-    >>> import numpy as np
-    >>> handler = na.nulls_as_sentinel()
-    >>> data = np.array([1, 2, 3], np.int32)
-    >>> handler(np.array([], np.bool_), data)
+    >>> na.Array([1, 2, 3], na.int32()).to_column(na.nulls_as_sentinel())
     array([1, 2, 3], dtype=int32)
-    >>> handler(np.array([True, False, True], np.bool_), data)
+    >>> na.Array([1, None, 3], na.int32()).to_column(na.nulls_as_sentinel())
     array([ 1., nan,  3.])
-    >>> handler = na.nulls_as_sentinel(-999)
-    >>> handler(np.array([True, False, True], np.bool_), data)
+    >>> na.Array([1, None, 3], na.int32()).to_column(na.nulls_as_sentinel(-999))
     array([   1, -999,    3], dtype=int32)
     """
     import numpy as np
@@ -183,13 +182,14 @@ def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
     --------
 
     >>> from nanoarrow import visitor
-    >>> import numpy as np
-    >>> handler = visitor.nulls_debug()
-    >>> data = np.array([1, 2, 3], np.int32)
-    >>> handler(np.array([], np.bool_), data)
-    (array([], dtype=bool), array([1, 2, 3], dtype=int32))
-    >>> handler(np.array([True, False, True], np.bool_), data)
-    (array([ True, False,  True]), array([1, 2, 3], dtype=int32))
+    >>> import nanoarrow as na
+    >>> na.Array([1, 2, 3], na.int32()).to_column(visitor.nulls_debug())
+    (nanoarrow.c_lib.CBuffer(uint8[0 b] ), nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
+    >>> result = na.Array([1, None, 3], na.int32()).to_column(visitor.nulls_debug())
+    >>> result[0]
+    nanoarrow.c_lib.CBuffer(uint8[3 b] True False True)
+    >>> result[1]
+    nanoarrow.c_lib.CBuffer(int32[12 b] 1 0 3)
     """
 
     def handle(is_valid, data):
