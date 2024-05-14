@@ -81,6 +81,25 @@ def to_columns(obj, schema=None, handle_nulls=None) -> Tuple[List[str], List[Seq
 
 
 def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
+    """Erroring null handler
+
+    A null handler that errors when it encounters nulls.
+
+    Examples
+    --------
+
+    >>> from nanoarrow import visitor
+    >>> import numpy as np
+    >>> handler = visitor.nulls_forbid()
+    >>> data = np.array([1, 2, 3], np.int32)
+    >>> handler(np.array([], np.bool_), data)
+    array([1, 2, 3], dtype=int32)
+    >>> handler(np.array([True, False, True], np.bool_), data)
+    Traceback (most recent call last):
+    ...
+    ValueError: Null present with null_handler=nulls_forbid()
+    """
+
     def handle(is_valid, data):
         if len(is_valid) > 0:
             raise ValueError("Null present with null_handler=nulls_forbid()")
@@ -91,6 +110,23 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
 
 
 def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
+    """Debugging null handler
+
+    A null handler that returns its input.
+
+    Examples
+    --------
+
+    >>> from nanoarrow import visitor
+    >>> import numpy as np
+    >>> handler = visitor.nulls_debug()
+    >>> data = np.array([1, 2, 3], np.int32)
+    >>> handler(np.array([], np.bool_), data)
+    (array([], dtype=bool), array([1, 2, 3], dtype=int32))
+    >>> handler(np.array([True, False, True], np.bool_), data)
+    (array([ True, False,  True]), array([1, 2, 3], dtype=int32))
+    """
+
     def handle(is_valid, data):
         return is_valid, data
 
@@ -98,6 +134,33 @@ def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
 
 
 def nulls_as_sentinel(sentinel=None):
+    """Sentinel null handler
+
+    A null handler that assigns a sentinel to null values. This is
+    done using numpy using the expression ``data[~is_valid] = sentinel``.
+    The default sentinel value will result in ``nan`` assigned to null
+    values in numeric and boolean outputs.
+
+    Parameters
+    ----------
+    sentinel : scalar, optional
+        The value with which nulls should be replaced.
+
+    Examples
+    --------
+
+    >>> from nanoarrow import visitor
+    >>> import numpy as np
+    >>> handler = visitor.nulls_as_sentinel()
+    >>> data = np.array([1, 2, 3], np.int32)
+    >>> handler(np.array([], np.bool_), data)
+    array([1, 2, 3], dtype=int32)
+    >>> handler(np.array([True, False, True], np.bool_), data)
+    array([ 1., nan,  3.])
+    >>> handler = visitor.nulls_as_sentinel(-999)
+    >>> handler(np.array([True, False, True], np.bool_), data)
+    array([   1, -999,    3], dtype=int32)
+    """
     import numpy as np
 
     def handle(is_valid, data):
