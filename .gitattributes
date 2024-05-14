@@ -17,3 +17,4 @@
 
 dist/* linguist-generated
 extensions/nanoarrow_ipc/thirdparty/* linguist-vendored
+python/src/nanoarrow/*.pxi linguist-generated
