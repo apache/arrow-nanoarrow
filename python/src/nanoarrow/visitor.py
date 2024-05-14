@@ -98,11 +98,11 @@ def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
 
 
 def nulls_as_sentinel(sentinel=None):
-    from numpy import array, result_type
+    import numpy as np
 
     def handle(is_valid, data):
-        is_valid = array(is_valid, copy=False)
-        data = array(data, copy=False)
+        is_valid = np.array(is_valid, copy=False)
+        data = np.array(data, copy=False)
 
         if len(is_valid) > 0:
             out_type = result_type(data, sentinel)
