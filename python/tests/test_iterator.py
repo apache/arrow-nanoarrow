@@ -513,3 +513,8 @@ def test_iterator_extension():
 
     with pytest.warns(UnregisteredExtensionWarning):
         assert list(iter_py(extension_array)) == [1, 2, 3]
+
+
+def test_iterator_null():
+    array = na.c_array_from_buffers(na.null(), 3, [])
+    assert list(iter_py(array)) == [None, None, None]
