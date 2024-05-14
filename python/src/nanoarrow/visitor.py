@@ -75,7 +75,7 @@ def to_columns(obj, schema=None, handle_nulls=None) -> Tuple[List[str], List[Seq
     >>> names
     ['col1']
     >>> columns
-    [[1, 2, 3]]
+    [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
     """
     return ColumnsBuilder.visit(obj, schema, handle_nulls=handle_nulls)
 

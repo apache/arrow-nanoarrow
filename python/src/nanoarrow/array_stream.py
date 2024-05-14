@@ -232,7 +232,7 @@ class ArrayStream:
         >>> names
         ['col1']
         >>> columns
-        [[1, 2, 3]]
+        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
         """
         return to_columns(self)
 
