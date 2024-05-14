@@ -18,7 +18,8 @@
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Generates src/nanoarrow/*.pxi given the currently installed copy of
-# nanoarrow. Requires mypy and black.
+# nanoarrow. Requires mypy and black (where black is pinned to the
+# same version as in pre-commit)
 
 pushd "${SOURCE_DIR}"
 

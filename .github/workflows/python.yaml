@@ -61,7 +61,7 @@ jobs:
       - name: Check type stubs
         if: success() && matrix.python-version == '3.12'
         run: |
-          pip install mypy black
+          pip install mypy "black==22.3.0"
           python/generate_type_stubs.sh
 
           if git diff --name-only | grep -e "\\.pxi$"; then
