@@ -37,7 +37,7 @@ class ArrayViewVisitable:
         >>> import nanoarrow as na
         >>> from nanoarrow import visitor
         >>> array = na.Array([1, 2, 3], na.int32())
-        >>> array.to_pylist(array)
+        >>> array.to_pylist()
         [1, 2, 3]
         """
         return ListBuilder.visit(self)
@@ -61,7 +61,7 @@ class ArrayViewVisitable:
         >>> import nanoarrow as na
         >>> import pyarrow as pa
         >>> batch = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
-        >>> names, columns = na.Array(batch).to_column_list(array)
+        >>> names, columns = na.Array(batch).to_column_list()
         >>> names
         ['col1']
         >>> columns
@@ -94,8 +94,8 @@ class ArrayViewVisitable:
         Examples
         --------
         >>> import nanoarrow as na
-        >>> array = na.Array([1, 2, 3], na.int32()).to_column()
-        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
+        >>> na.Array([1, 2, 3], na.int32()).to_column()
+        nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
         """
         return SingleColumnBuilder.visit(self, handle_nulls=handle_nulls)
 
@@ -145,15 +145,15 @@ def nulls_as_sentinel(sentinel=None):
     Examples
     --------
 
-    >>> from nanoarrow import visitor
+    >>> import nanoarrow as na
     >>> import numpy as np
-    >>> handler = visitor.nulls_as_sentinel()
+    >>> handler = na.nulls_as_sentinel()
     >>> data = np.array([1, 2, 3], np.int32)
     >>> handler(np.array([], np.bool_), data)
     array([1, 2, 3], dtype=int32)
     >>> handler(np.array([True, False, True], np.bool_), data)
     array([ 1., nan,  3.])
-    >>> handler = visitor.nulls_as_sentinel(-999)
+    >>> handler = na.nulls_as_sentinel(-999)
     >>> handler(np.array([True, False, True], np.bool_), data)
     array([   1, -999,    3], dtype=int32)
     """
