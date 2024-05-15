@@ -75,10 +75,16 @@ if get_option('NANOARROW_BUILD_TESTS')
   arrow_dep = dependency('arrow')
   gtest_dep = dependency('gtest', fallback: ['gtest', 'gtest_main_dep'])
   gmock_dep = dependency('gmock')
+  nlohmann_json_dep = dependency('nlohmann_json')
 
   utils_test = executable('utils_test', 'utils_test.cc',
                           link_with: nanoarrow_lib,
-                          dependencies: [arrow_dep, gtest_dep, gmock_dep],
+                          dependencies: [
+                              arrow_dep,
+                              gtest_dep,
+                              gmock_dep,
+                              nlohmann_json_dep,
+                          ],
                           include_directories: incdir)
   test('utils test', utils_test)
 
@@ -89,7 +95,7 @@ if get_option('NANOARROW_BUILD_TESTS')
   test('buffer test', buffer_test)
 
   array_test = executable('array_test', 'array_test.cc',
-                          dependencies: [arrow_dep, gtest_dep],
+                          dependencies: [arrow_dep, gtest_dep, gmock_dep],
                           link_with: nanoarrow_lib,
                           include_directories: incdir)
   test('array test', array_test)
@@ -101,18 +107,22 @@ if get_option('NANOARROW_BUILD_TESTS')
   test('schema test', schema_test)
 
   array_stream_test = executable('array_stream_test', 'array_stream_test.cc',
-                                 dependencies: [arrow_dep, gtest_dep],
+                                 dependencies: [arrow_dep, gtest_dep, gmock_dep],
                                  link_with: nanoarrow_lib,
                                  include_directories: incdir)
   test('array_stream test', array_stream_test)
 
   nanoarrow_hpp_test = executable('nanoarrow_hpp_test', 'nanoarrow_hpp_test.cc',
-                                  dependencies: [arrow_dep, gtest_dep],
+                                  dependencies: [
+                                      arrow_dep,
+                                      gtest_dep,
+                                      gmock_dep,
+                                      nlohmann_json_dep,
+                                  ],
                                   link_with: nanoarrow_lib,
                                   include_directories: incdir)
   test('nanoarrow_hpp test', nanoarrow_hpp_test)
 
-  nlohmann_json_dep = dependency('nlohmann_json')
   nanoarrow_testing_test = executable('nanoarrow_testing_test', 'nanoarrow_testing_test.cc',
                                       dependencies: [arrow_dep, gtest_dep, nlohmann_json_dep],
                                       link_with: nanoarrow_lib,

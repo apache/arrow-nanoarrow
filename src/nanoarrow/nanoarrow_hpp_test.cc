@@ -271,7 +271,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsTest) {
   struct ArrowArray array {};
   array.length = 7;
   array.null_count = 2;
-  array.n_buffers = std::size(buffers);
+  array.n_buffers = 2;
   array.buffers = buffers;
 
   int i = 0;
@@ -300,7 +300,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   struct ArrowArray array {};
   array.length = 7;
   array.null_count = 2;
-  array.n_buffers = std::size(buffers);
+  array.n_buffers = 2;
   array.buffers = buffers;
 
   int i = 0;
@@ -327,7 +327,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
   struct ArrowArray array {};
   array.length = 7;
   array.null_count = 2;
-  array.n_buffers = std::size(buffers);
+  array.n_buffers = 2;
   array.buffers = buffers;
 
   int i = 0;
