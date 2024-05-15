@@ -906,11 +906,7 @@ inline bool operator==(ArrowStringView l, ArrowStringView r) {
 }
 
 /// \brief User literal operator allowing ArrowStringView construction like "str"_sv
-inline ArrowStringView
-// clang-format off
-operator ""
-    // clang-format on
-    _v(const char* data, std::size_t size_bytes) {
+inline ArrowStringView operator"" _v(const char* data, std::size_t size_bytes) {
   return {data, static_cast<int64_t>(size_bytes)};
 }
 /// @}
