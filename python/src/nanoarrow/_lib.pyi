@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import _cython_3_0_10
 import enum
 import types
@@ -231,6 +248,8 @@ class CBuffer:
     def empty(*args, **kwargs): ...
     @staticmethod
     def from_pybuffer(*args, **kwargs): ...
+    def __buffer__(self, *args, **kwargs):
+        """Return a buffer object that exposes the underlying memory of the object."""
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
@@ -238,6 +257,8 @@ class CBuffer:
     def __len__(self) -> int:
         """Return len(self)."""
     def __reduce__(self): ...
+    def __release_buffer__(self, *args, **kwargs):
+        """Release the buffer object that exposes the underlying memory of the object."""
 
 class CBufferBuilder:
     __pyx_vtable__: ClassVar[PyCapsule] = ...
@@ -289,7 +310,11 @@ class CBufferBuilder:
 
         This method returns the number of elements that were written.
         """
+    def __buffer__(self, *args, **kwargs):
+        """Return a buffer object that exposes the underlying memory of the object."""
     def __reduce__(self): ...
+    def __release_buffer__(self, *args, **kwargs):
+        """Release the buffer object that exposes the underlying memory of the object."""
 
 class CBufferView:
     __pyx_vtable__: ClassVar[PyCapsule] = ...
@@ -310,6 +335,8 @@ class CBufferView:
     def elements(self, *args, **kwargs): ...
     def unpack_bits(self, *args, **kwargs): ...
     def unpack_bits_into(self, *args, **kwargs): ...
+    def __buffer__(self, *args, **kwargs):
+        """Return a buffer object that exposes the underlying memory of the object."""
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
@@ -317,6 +344,8 @@ class CBufferView:
     def __len__(self) -> int:
         """Return len(self)."""
     def __reduce__(self): ...
+    def __release_buffer__(self, *args, **kwargs):
+        """Release the buffer object that exposes the underlying memory of the object."""
 
 class CDeviceArray:
     array: Incomplete
@@ -521,7 +550,7 @@ class SchemaMetadata:
     def keys(self, *args, **kwargs): ...
     def values(self, *args, **kwargs): ...
     def __contains__(self, other) -> bool:
-        """Return key in self."""
+        """Return bool(key in self)."""
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
