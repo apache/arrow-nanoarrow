@@ -36,18 +36,68 @@ def test_array_stream_iter():
         next(stream_iter)
 
 
+def test_array_stream_iter_chunks():
+    stream = na.ArrayStream([1, 2, 3], na.int32())
+    chunks = list(stream.iter_chunks())
+    assert len(chunks) == 1
+    assert chunks[0].to_pylist() == [1, 2, 3]
+
+
+def test_array_stream_iter_py():
+    stream = na.ArrayStream([1, 2, 3], na.int32())
+    assert list(stream.iter_py()) == [1, 2, 3]
+
+
+def test_array_stream_iter_tuples():
+    c_array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.string()}),
+        length=3,
+        buffers=[None],
+        children=[
+            na.c_array([1, 2, 3], na.int32()),
+            na.c_array(["a", "b", "c"], na.string()),
+        ],
+    )
+
+    stream = na.ArrayStream(c_array)
+    assert list(stream.iter_tuples()) == [(1, "a"), (2, "b"), (3, "c")]
+
+
+def test_array_stream_to_pylist():
+    stream = na.ArrayStream([1, 2, 3], na.int32())
+    assert stream.to_pylist() == [1, 2, 3]
+
+
+def test_array_stream_to_columns():
+    c_array = na.c_array_from_buffers(
+        na.struct({"col1": na.int32(), "col2": na.string()}),
+        length=3,
+        buffers=[None],
+        children=[
+            na.c_array([1, 2, 3], na.int32()),
+            na.c_array(["a", "b", "c"], na.string()),
+        ],
+    )
+
+    stream = na.ArrayStream(c_array)
+    names, columns = stream.to_columns()
+    assert names == ["col1", "col2"]
+    assert columns[0] == [1, 2, 3]
+    assert columns[1] == ["a", "b", "c"]
+
+
 def test_array_stream_read_all():
     stream = na.ArrayStream([1, 2, 3], na.int32())
     array = stream.read_all()
     assert array.schema.type == na.Type.INT32
-    assert list(array.iter_py()) == [1, 2, 3]
+    assert array.to_pylist() == [1, 2, 3]
 
 
 def test_array_stream_read_next():
     stream = na.ArrayStream([1, 2, 3], na.int32())
     array = stream.read_next()
     assert array.schema.type == na.Type.INT32
-    assert list(array.iter_py()) == [1, 2, 3]
+    assert array.to_pylist() == [1, 2, 3]
 
     with pytest.raises(StopIteration):
         stream.read_next()

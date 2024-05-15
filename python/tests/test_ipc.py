@@ -49,7 +49,7 @@ def test_ipc_stream_example():
 
         assert stream.is_valid() is False
         assert len(batches) == 1
-        batch = na.c_array_view(batches[0])
+        batch = na.c_array(batches[0]).view()
         assert list(batch.child(0).buffer(1)) == [1, 2, 3]
 
 
@@ -62,7 +62,7 @@ def test_ipc_stream_from_readable():
             with na.c_array_stream(input) as stream:
                 batches = list(stream)
                 assert len(batches) == 1
-                assert batches[0].length == 3
+                assert len(batches[0]) == 3
 
 
 def test_ipc_stream_from_path():
@@ -76,7 +76,7 @@ def test_ipc_stream_from_path():
             with na.c_array_stream(input) as stream:
                 batches = list(stream)
                 assert len(batches) == 1
-                assert batches[0].length == 3
+                assert len(batches[0]) == 3
 
 
 def test_ipc_stream_from_url():
@@ -90,7 +90,7 @@ def test_ipc_stream_from_url():
             with na.c_array_stream(input) as stream:
                 batches = list(stream)
                 assert len(batches) == 1
-                assert batches[0].length == 3
+                assert len(batches[0]) == 3
 
 
 def test_ipc_stream_python_exception_on_read():

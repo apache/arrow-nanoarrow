@@ -35,9 +35,19 @@ def c_schema_to_string(obj, max_char_width=80):
         return c_schema_string
 
 
+def metadata_repr(obj, indent=0, max_char_width=80):
+    indent_str = " " * indent
+    lines = []
+    for key, value in obj.items():
+        line = f"{indent_str}- {repr(key)}: {repr(value)}"
+        lines.append(line[:max_char_width])
+
+    return "\n".join(lines)
+
+
 def schema_repr(schema, indent=0):
     indent_str = " " * indent
-    class_label = make_class_label(schema, module="nanoarrow.c_lib")
+    class_label = make_class_label(schema, module="nanoarrow.c_schema")
     if schema._addr() == 0:
         return f"<{class_label} <NULL>>"
     elif not schema.is_valid():
@@ -54,8 +64,7 @@ def schema_repr(schema, indent=0):
         lines.append(f"{indent_str}- metadata: NULL")
     else:
         lines.append(f"{indent_str}- metadata:")
-        for key, value in metadata.items():
-            lines.append(f"{indent_str}  - {repr(key)}: {repr(value)}")
+        lines.append(metadata_repr(metadata, indent + 2))
 
     if schema.dictionary:
         dictionary_repr = schema_repr(schema.dictionary, indent=indent + 2)
@@ -76,7 +85,7 @@ def array_repr(array, indent=0, max_char_width=80):
         max_char_width = 20
 
     indent_str = " " * indent
-    class_label = make_class_label(array, module="nanoarrow.c_lib")
+    class_label = make_class_label(array, module="nanoarrow.c_array")
     if array._addr() == 0:
         return f"<{class_label} <NULL>>"
     elif not array.is_valid():
@@ -105,7 +114,7 @@ def array_repr(array, indent=0, max_char_width=80):
 
 
 def schema_view_repr(schema_view):
-    class_label = make_class_label(schema_view, module="nanoarrow.c_lib")
+    class_label = make_class_label(schema_view, module="nanoarrow.c_schema")
 
     lines = [
         f"<{class_label}>",
@@ -128,7 +137,7 @@ def schema_view_repr(schema_view):
 
 def array_view_repr(array_view, max_char_width=80, indent=0):
     indent_str = " " * indent
-    class_label = make_class_label(array_view, module="nanoarrow.c_lib")
+    class_label = make_class_label(array_view, module="nanoarrow.c_array")
 
     lines = [f"<{class_label}>"]
 
@@ -210,7 +219,7 @@ def buffer_view_preview_cpu(buffer_view, max_char_width):
 
 
 def array_stream_repr(array_stream, max_char_width=80):
-    class_label = make_class_label(array_stream, module="nanoarrow.c_lib")
+    class_label = make_class_label(array_stream, module="nanoarrow.c_array_stream")
 
     if array_stream._addr() == 0:
         return f"<{class_label} <NULL>>"

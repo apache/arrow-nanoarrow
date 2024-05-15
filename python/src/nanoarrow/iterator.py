@@ -17,12 +17,13 @@
 
 import warnings
 from functools import cached_property
-from itertools import islice
+from itertools import islice, repeat
 from typing import Iterable, Tuple
 
 from nanoarrow._lib import CArrayView, CArrowType
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema, c_schema_view
+from nanoarrow.schema import Schema
 
 
 def iter_py(obj, schema=None) -> Iterable:
@@ -101,7 +102,7 @@ def iter_array_views(obj, schema=None) -> Iterable[CArrayView]:
     >>> from nanoarrow import iterator
     >>> array = na.c_array([1, 2, 3], na.int32())
     >>> list(iterator.iter_array_views(array))
-    [<nanoarrow.c_lib.CArrayView>
+    [<nanoarrow.c_array.CArrayView>
     - storage_type: 'int32'
     - length: 3
     - offset: 0
@@ -130,47 +131,22 @@ class UnregisteredExtensionWarning(UserWarning):
 
 
 class ArrayViewBaseIterator:
-    """Base class for iterators that use an internal ArrowArrayView
+    """Base class for iterators and visitors that use an internal ArrowArrayView
     as the basis for conversion to Python objects. Intended for internal use.
     """
 
-    @classmethod
-    def get_iterator(cls, obj, schema=None):
-        with c_array_stream(obj, schema=schema) as stream:
-            iterator = cls(stream._get_cached_schema())
-            for array in stream:
-                iterator._set_array(array)
-                yield from iterator._iter_chunk(0, array.length)
-
-    def __init__(self, schema, *, _array_view=None):
+    def __init__(self, schema, *, array_view=None):
         self._schema = c_schema(schema)
         self._schema_view = c_schema_view(schema)
 
-        if _array_view is None:
+        if array_view is None:
             self._array_view = CArrayView.from_schema(self._schema)
         else:
-            self._array_view = _array_view
-
-        self._children = list(
-            map(self._make_child, self._schema.children, self._array_view.children)
-        )
-
-        if self._schema.dictionary is None:
-            self._dictionary = None
-        else:
-            self._dictionary = self._make_child(
-                self._schema.dictionary, self._array_view.dictionary
-            )
-
-    def _make_child(self, schema, array_view):
-        return type(self)(schema, _array_view=array_view)
-
-    def _iter_chunk(self, offset, length) -> Iterable:
-        yield self._array_view
+            self._array_view = array_view
 
     @cached_property
-    def _child_names(self):
-        return [child.name for child in self._schema.children]
+    def schema(self) -> Schema:
+        return Schema(self._schema)
 
     @cached_property
     def _object_label(self):
@@ -199,7 +175,41 @@ class PyIterator(ArrayViewBaseIterator):
     Intended for internal use.
     """
 
+    @classmethod
+    def get_iterator(cls, obj, schema=None):
+        with c_array_stream(obj, schema=schema) as stream:
+            iterator = cls(stream._get_cached_schema())
+            for array in stream:
+                iterator._set_array(array)
+                yield from iterator
+
+    def __init__(self, schema, *, array_view=None):
+        super().__init__(schema, array_view=array_view)
+
+        self._children = list(
+            map(self._make_child, self._schema.children, self._array_view.children)
+        )
+
+        if self._schema.dictionary is None:
+            self._dictionary = None
+        else:
+            self._dictionary = self._make_child(
+                self._schema.dictionary, self._array_view.dictionary
+            )
+
+    def _make_child(self, schema, array_view):
+        return type(self)(schema, array_view=array_view)
+
+    @cached_property
+    def _child_names(self):
+        return [child.name for child in self._schema.children]
+
+    def __iter__(self):
+        """Iterate over all elements in the current chunk"""
+        return self._iter_chunk(0, len(self._array_view))
+
     def _iter_chunk(self, offset, length):
+        """Iterate over all elements in a slice of the current chunk"""
         # Check for an extension type first since this isn't reflected by
         # self._schema_view.type_id. Currently we just return the storage
         # iterator with a warning for extension types.
@@ -222,7 +232,7 @@ class PyIterator(ArrayViewBaseIterator):
 
     def _dictionary_iter(self, offset, length):
         dictionary = list(
-            self._dictionary._iter_chunk(0, self._dictionary._array_view.length)
+            self._dictionary._iter_chunk(0, len(self._dictionary._array_view))
         )
         for dict_index in self._primitive_iter(offset, length):
             yield None if dict_index is None else dictionary[dict_index]
@@ -472,6 +482,9 @@ class PyIterator(ArrayViewBaseIterator):
         else:
             return iter(items)
 
+    def _null_iter(self, offset, length):
+        return repeat(None, length)
+
 
 class RowTupleIterator(PyIterator):
     """Iterate over rows of a struct array (stream) where each row is a
@@ -480,8 +493,8 @@ class RowTupleIterator(PyIterator):
     Intended for internal use.
     """
 
-    def __init__(self, schema, *, _array_view=None):
-        super().__init__(schema, _array_view=_array_view)
+    def __init__(self, schema, *, array_view=None):
+        super().__init__(schema, array_view=array_view)
         if self._schema_view.type != "struct":
             raise TypeError(
                 "RowTupleIterator can only iterate over struct arrays "
@@ -489,7 +502,7 @@ class RowTupleIterator(PyIterator):
             )
 
     def _make_child(self, schema, array_view):
-        return PyIterator(schema, _array_view=array_view)
+        return PyIterator(schema, array_view=array_view)
 
     def _iter_chunk(self, offset, length):
         return self._struct_tuple_iter(offset, length)
@@ -535,6 +548,7 @@ def _get_tzinfo(tz_string, strategy=None):
 
 
 _ITEMS_ITER_LOOKUP = {
+    CArrowType.NA: "_null_iter",
     CArrowType.BINARY: "_binary_iter",
     CArrowType.LARGE_BINARY: "_binary_iter",
     CArrowType.STRING: "_string_iter",

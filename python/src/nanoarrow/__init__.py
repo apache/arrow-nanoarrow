@@ -25,25 +25,16 @@ Arrow C Data and Arrow C Stream interfaces.
 """
 
 from nanoarrow._lib import c_version
-from nanoarrow.c_array import (
-    c_array_from_buffers,
-    c_array,
-    c_array_view,
-    allocate_c_array,
-)
-from nanoarrow.c_array_stream import c_array_stream, allocate_c_array_stream
-from nanoarrow.c_schema import (
-    c_schema,
-    c_schema_view,
-    allocate_c_schema,
-)
+from nanoarrow.c_array import c_array_from_buffers, c_array
+from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_schema import c_schema
 from nanoarrow.c_buffer import c_buffer
 from nanoarrow.schema import (
     Schema,
     Type,
     TimeUnit,
     null,
-    bool,
+    bool_,
     int8,
     uint8,
     int16,
@@ -57,6 +48,10 @@ from nanoarrow.schema import (
     float64,
     string,
     large_string,
+    list_,
+    large_list,
+    fixed_size_list,
+    dictionary,
     binary,
     large_binary,
     fixed_size_binary,
@@ -72,6 +67,7 @@ from nanoarrow.schema import (
     interval_month_day_nano,
     decimal128,
     decimal256,
+    schema,
     struct,
 )
 from nanoarrow.array import array, Array
@@ -84,27 +80,24 @@ __all__ = [
     "Schema",
     "TimeUnit",
     "Type",
-    "allocate_c_array",
-    "allocate_c_array_stream",
-    "allocate_c_schema",
     "binary",
-    "bool",
+    "bool_",
     "c_array",
     "c_array_from_buffers",
     "c_array_stream",
-    "c_array_view",
     "c_buffer",
     "c_lib",
     "c_schema",
-    "c_schema_view",
     "c_version",
     "date32",
     "date64",
     "decimal128",
     "decimal256",
+    "dictionary",
     "duration",
     "extension_type",
     "fixed_size_binary",
+    "fixed_size_list",
     "float16",
     "float32",
     "float64",
@@ -117,9 +110,12 @@ __all__ = [
     "interval_months",
     "large_binary",
     "large_string",
+    "large_list",
+    "list_",
     "null",
     "string",
     "struct",
+    "schema",
     "time32",
     "time64",
     "timestamp",

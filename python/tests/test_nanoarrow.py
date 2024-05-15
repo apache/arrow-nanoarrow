@@ -19,6 +19,7 @@ import re
 import sys
 
 import pytest
+from nanoarrow.c_array import c_array_view
 
 import nanoarrow as na
 
@@ -32,9 +33,9 @@ def test_c_version():
 
 
 def test_c_schema_helper():
-    from nanoarrow.c_schema import CSchema
+    from nanoarrow.c_schema import CSchema, allocate_c_schema
 
-    schema = na.allocate_c_schema()
+    schema = allocate_c_schema()
     assert na.c_schema(schema) is schema
 
     schema = na.c_schema(pa.null())
@@ -45,9 +46,9 @@ def test_c_schema_helper():
 
 
 def test_c_array_helper():
-    from nanoarrow.c_array import CArray
+    from nanoarrow.c_array import CArray, allocate_c_array
 
-    array = na.allocate_c_array()
+    array = allocate_c_array()
     assert na.c_array(array) is array
 
     array = na.c_array(pa.array([], pa.null()))
@@ -58,7 +59,9 @@ def test_c_array_helper():
 
 
 def test_array_stream_helper():
-    array_stream = na.allocate_c_array_stream()
+    from nanoarrow.c_array_stream import allocate_c_array_stream
+
+    array_stream = allocate_c_array_stream()
     assert na.c_array_stream(array_stream) is array_stream
 
     with pytest.raises(TypeError):
@@ -66,24 +69,27 @@ def test_array_stream_helper():
 
 
 def test_array_view_helper():
-    from nanoarrow.c_array import CArrayView
+    from nanoarrow.c_array import CArrayView, c_array_view
 
     array = na.c_array(pa.array([1, 2, 3]))
-    view = na.c_array_view(array)
+    view = c_array_view(array)
     assert isinstance(view, CArrayView)
-    assert na.c_array_view(view) is view
+    assert c_array_view(view) is view
 
 
 def test_c_array_empty():
-    array = na.allocate_c_array()
+    from nanoarrow.c_array import allocate_c_array
+
+    array = allocate_c_array()
     assert array.is_valid() is False
-    assert repr(array) == "<nanoarrow.c_lib.CArray <released>>"
+    assert repr(array) == "<nanoarrow.c_array.CArray <released>>"
 
 
 def test_c_array():
     array = na.c_array(pa.array([1, 2, 3], pa.int32()))
     assert array.is_valid() is True
     assert array.length == 3
+    assert len(array) == 3
     assert array.offset == 0
     assert array.null_count == 0
     assert array.n_buffers == 2
@@ -92,7 +98,7 @@ def test_c_array():
     assert array.n_children == 0
     assert len(list(array.children)) == 0
     assert array.dictionary is None
-    assert "<nanoarrow.c_lib.CArray int32" in repr(array)
+    assert "<nanoarrow.c_array.CArray int32" in repr(array)
 
 
 def test_c_array_recursive():
@@ -101,7 +107,7 @@ def test_c_array_recursive():
     assert len(list(array.children)) == 1
     assert array.child(0).length == 3
     assert array.child(0).schema._to_string() == "int32"
-    assert "'col': <nanoarrow.c_lib.CArray int32" in repr(array)
+    assert "'col': <nanoarrow.c_array.CArray int32" in repr(array)
 
     with pytest.raises(IndexError):
         array.child(-1)
@@ -111,12 +117,12 @@ def test_c_array_dictionary():
     array = na.c_array(pa.array(["a", "b", "b"]).dictionary_encode())
     assert array.length == 3
     assert array.dictionary.length == 2
-    assert "dictionary: <nanoarrow.c_lib.CArray string>" in repr(array)
+    assert "dictionary: <nanoarrow.c_array.CArray string>" in repr(array)
 
 
 def test_c_array_view():
     array = na.c_array(pa.array([1, 2, 3], pa.int32()))
-    view = na.c_array_view(array)
+    view = array.view()
 
     assert view.storage_type == "int32"
     assert "- storage_type: 'int32'" in repr(view)
@@ -153,7 +159,7 @@ def test_c_array_view_recursive():
     assert array.child(0).length == 3
     assert array.child(0).schema._addr() == array.schema.child(0)._addr()
 
-    view = na.c_array_view(array)
+    view = array.view()
     assert view.n_buffers == 1
     assert len(list(view.buffers)) == 1
     assert view.n_children == 1
@@ -171,10 +177,10 @@ def test_c_array_view_dictionary():
     assert array.schema.format == "i"
     assert array.dictionary.schema.format == "u"
 
-    view = na.c_array_view(array)
+    view = array.view()
     assert view.n_buffers == 2
     assert view.dictionary.n_buffers == 3
-    assert "- dictionary: <nanoarrow.c_lib.CArrayView>" in repr(view)
+    assert "- dictionary: <nanoarrow.c_array.CArrayView>" in repr(view)
 
 
 def test_buffers_integer():
@@ -190,7 +196,7 @@ def test_buffers_integer():
     ]
 
     for pa_type, np_type in data_types:
-        view = na.c_array_view(pa.array([0, 1, 2], pa_type))
+        view = c_array_view(pa.array([0, 1, 2], pa_type))
         data_buffer = view.buffer(1)
 
         # Check via buffer interface
@@ -215,7 +221,7 @@ def test_buffers_float():
     ]
 
     for pa_type, np_type in data_types:
-        view = na.c_array_view(pa.array([0, 1, 2], pa_type))
+        view = c_array_view(pa.array([0, 1, 2], pa_type))
         data_buffer = view.buffer(1)
 
         # Check via buffer interface
@@ -236,7 +242,7 @@ def test_buffers_float():
 def test_buffers_half_float():
     # pyarrrow can only create half_float from np.float16()
     np_array = np.array([0, 1, 2], np.float16())
-    view = na.c_array_view(pa.array(np_array))
+    view = c_array_view(pa.array(np_array))
     data_buffer = view.buffer(1)
 
     # Check via buffer interface
@@ -255,7 +261,7 @@ def test_buffers_half_float():
 
 
 def test_buffers_bool():
-    view = na.c_array_view(pa.array([True, True, True, False]))
+    view = c_array_view(pa.array([True, True, True, False]))
     data_buffer = view.buffer(1)
 
     assert data_buffer.size_bytes == 1
@@ -292,7 +298,7 @@ def test_buffers_bool():
 
 
 def test_buffers_string():
-    view = na.c_array_view(pa.array(["a", "bc", "def"]))
+    view = c_array_view(pa.array(["a", "bc", "def"]))
 
     assert view.buffer(0).size_bytes == 0
     assert view.buffer(1).size_bytes == 16
@@ -316,7 +322,7 @@ def test_buffers_string():
 
 
 def test_buffers_binary():
-    view = na.c_array_view(pa.array([b"a", b"bc", b"def"]))
+    view = c_array_view(pa.array([b"a", b"bc", b"def"]))
 
     assert view.buffer(0).size_bytes == 0
     assert view.buffer(1).size_bytes == 16
@@ -341,7 +347,7 @@ def test_buffers_binary():
 
 
 def test_buffers_fixed_size_binary():
-    view = na.c_array_view(pa.array([b"abc", b"def", b"ghi"], pa.binary(3)))
+    view = c_array_view(pa.array([b"abc", b"def", b"ghi"], pa.binary(3)))
 
     assert view.buffer(1).size_bytes == 9
 
@@ -355,7 +361,7 @@ def test_buffers_fixed_size_binary():
 
 
 def test_buffers_interval_month_day_nano():
-    view = na.c_array_view(
+    view = c_array_view(
         pa.array([pa.scalar((1, 15, -30), type=pa.month_day_nano_interval())])
     )
 
@@ -371,9 +377,11 @@ def test_buffers_interval_month_day_nano():
 
 
 def test_c_array_stream():
-    array_stream = na.allocate_c_array_stream()
+    from nanoarrow.c_array_stream import allocate_c_array_stream
+
+    array_stream = allocate_c_array_stream()
     assert na.c_array_stream(array_stream) is array_stream
-    assert repr(array_stream) == "<nanoarrow.c_lib.CArrayStream <released>>"
+    assert repr(array_stream) == "<nanoarrow.c_array_stream.CArrayStream <released>>"
 
     assert array_stream.is_valid() is False
     with pytest.raises(RuntimeError):

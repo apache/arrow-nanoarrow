@@ -38,9 +38,44 @@ def test_array_construct():
         iter(array)
 
 
-def test_array_constructor():
+def test_array_alias_constructor():
     array = na.array([1, 2, 3], na.int32())
     assert array.schema.type == na.Type.INT32
+
+
+def test_array_from_chunks():
+    # Check with explicit schema
+    array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
+    assert array.schema.type == na.Type.INT32
+    assert array.n_chunks == 2
+    assert array.to_pylist() == [1, 2, 3, 4, 5, 6]
+
+    # Check with schema inferred from first chunk
+    array = na.Array.from_chunks(array.iter_chunks())
+    assert array.schema.type == na.Type.INT32
+    assert array.n_chunks == 2
+    assert array.to_pylist() == [1, 2, 3, 4, 5, 6]
+
+    # Check empty
+    array = na.Array.from_chunks([], na.int32())
+    assert array.schema.type == na.Type.INT32
+    assert len(array) == 0
+    assert array.n_chunks == 0
+
+    msg = "Can't create empty Array from chunks without schema"
+    with pytest.raises(ValueError, match=msg):
+        na.Array.from_chunks([])
+
+
+def test_array_from_chunks_validate():
+    chunks = [na.c_array([1, 2, 3], na.uint32()), na.c_array([1, 2, 3], na.int32())]
+    # Check that we get validation by default
+    with pytest.raises(ValueError, match="Expected schema"):
+        na.Array.from_chunks(chunks)
+
+    # ...but that one can opt out
+    array = na.Array.from_chunks(chunks, validate=False)
+    assert array.to_pylist() == [1, 2, 3, 1, 2, 3]
 
 
 def test_array_empty():
@@ -61,7 +96,7 @@ def test_array_empty():
     with pytest.raises(IndexError):
         array.chunk(0)
 
-    assert list(array.iter_py()) == []
+    assert array.to_pylist() == []
     assert list(array.iter_scalar()) == []
     with pytest.raises(IndexError):
         array[0]
@@ -71,7 +106,7 @@ def test_array_empty():
         assert len(arrays) == 0
 
     c_array = na.c_array(array)
-    assert c_array.length == 0
+    assert len(c_array) == 0
     assert c_array.schema.format == "i"
 
 
@@ -113,19 +148,22 @@ def test_array_contiguous():
     for py_item, item in zip([1, 2, 3], array.iter_py()):
         assert item == py_item
 
+    # Python objects by to_pylist()
+    assert array.to_pylist() == list(array.iter_py())
+
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
         assert len(arrays) == 1
 
     c_array = na.c_array(array)
-    assert c_array.length == 3
+    assert len(c_array) == 3
     assert c_array.schema.format == "i"
 
 
 def test_array_chunked():
     src = [na.c_array([1, 2, 3], na.int32()), na.c_array([4, 5, 6], na.int32())]
 
-    array = na.Array(CArrayStream.from_array_list(src, na.c_schema(na.int32())))
+    array = na.Array(CArrayStream.from_c_arrays(src, na.c_schema(na.int32())))
     assert array.schema.type == na.Type.INT32
     assert len(array) == 6
 
@@ -159,6 +197,9 @@ def test_array_chunked():
     for py_item, item in zip([1, 2, 3], array.iter_py()):
         assert item == py_item
 
+    # Python objects by to_pylist()
+    assert array.to_pylist() == list(array.iter_py())
+
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
         assert len(arrays) == 2
@@ -176,12 +217,12 @@ def test_array_children():
         children=[na.c_array([123456], na.int32())] * 100,
     )
     src = [c_array, c_array]
-    array = na.Array(CArrayStream.from_array_list(src, c_array.schema))
+    array = na.Array(CArrayStream.from_c_arrays(src, c_array.schema))
 
     assert array.n_children == 100
     assert array.child(0).schema.type == na.Type.INT32
     assert array.child(0).n_chunks == 2
-    assert list(array.child(0).iter_py()) == [123456, 123456]
+    assert array.child(0).to_pylist() == [123456, 123456]
 
     children = list(array.iter_children())
     assert len(children) == array.n_children
@@ -189,6 +230,10 @@ def test_array_children():
     tuples = list(array.iter_tuples())
     assert len(tuples) == 2
     assert len(tuples[0]) == 100
+
+    names, columns = array.to_columns()
+    assert names == [f"col{i}" for i in range(100)]
+    assert all(len(col) == len(array) for col in columns)
 
 
 def test_scalar_to_array():
@@ -198,7 +243,7 @@ def test_scalar_to_array():
     assert scalar.device is array.device
     as_array = na.c_array(scalar)
     assert as_array.offset == 1
-    assert as_array.length == 1
+    assert len(as_array) == 1
     assert as_array.buffers == na.c_array(array).buffers
 
     with pytest.raises(NotImplementedError):

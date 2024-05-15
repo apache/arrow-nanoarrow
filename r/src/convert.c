@@ -414,11 +414,7 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SEXP current_result = VECTOR_ELT(converter_shelter, 4);
 
-  // Materialize never called (e.g., empty stream)
-  if (current_result == R_NilValue) {
-    NANOARROW_RETURN_NOT_OK(nanoarrow_converter_reserve(converter_xptr, 0));
-    current_result = VECTOR_ELT(converter_shelter, 4);
-  }
+  NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_finalize_result(converter_xptr));
 
   // Check result size. A future implementation could also shrink the length
   // or reallocate a shorter vector.
@@ -437,15 +433,19 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
 SEXP nanoarrow_converter_release_result(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+
   // PROTECT()ing here because we are about to release the object from the
   // shelter of the converter and return it
   SEXP result = PROTECT(VECTOR_ELT(converter_shelter, 4));
   SET_VECTOR_ELT(converter_shelter, 4, R_NilValue);
+
+  // Reset the converter state
   converter->dst.vec_sexp = R_NilValue;
   converter->dst.offset = 0;
   converter->dst.length = 0;
   converter->size = 0;
   converter->capacity = 0;
+
   UNPROTECT(1);
   return result;
 }

@@ -91,6 +91,9 @@ extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP diction
 extern SEXP nanoarrow_c_preserved_count(void);
 extern SEXP nanoarrow_c_preserved_empty(void);
 extern SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj);
+extern SEXP nanoarrow_c_vctr_chunk_offsets(SEXP array_list);
+extern SEXP nanoarrow_c_vctr_chunk_resolve(SEXP indices_sexp, SEXP offsets_sexp);
+extern SEXP nanoarrow_c_vctr_as_slice(SEXP indices_sexp);
 extern SEXP nanoarrow_c_version(void);
 extern SEXP nanoarrow_c_version_runtime(void);
 
@@ -165,6 +168,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_preserved_empty", (DL_FUNC)&nanoarrow_c_preserved_empty, 0},
     {"nanoarrow_c_preserve_and_release_on_other_thread",
      (DL_FUNC)&nanoarrow_c_preserve_and_release_on_other_thread, 1},
+    {"nanoarrow_c_vctr_chunk_offsets", (DL_FUNC)&nanoarrow_c_vctr_chunk_offsets, 1},
+    {"nanoarrow_c_vctr_chunk_resolve", (DL_FUNC)&nanoarrow_c_vctr_chunk_resolve, 2},
+    {"nanoarrow_c_vctr_as_slice", (DL_FUNC)&nanoarrow_c_vctr_as_slice, 1},
     {"nanoarrow_c_version", (DL_FUNC)&nanoarrow_c_version, 0},
     {"nanoarrow_c_version_runtime", (DL_FUNC)&nanoarrow_c_version_runtime, 0},
     {NULL, NULL, 0}};

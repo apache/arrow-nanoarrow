@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-exclude bootstrap.py
-recursive-include src/nanoarrow/vendor *.c *.h *.pxd
+recursive-include vendor *.c *.h *.pxd
 include src/nanoarrow/nanoarrow_device_c.pxd
+
+exclude bootstrap.py
+exclude src/nanoarrow/*.c
+recursive-exclude src/nanoarrow *.o *.so

@@ -26,6 +26,46 @@
 #include "convert.h"
 #include "schema.h"
 
+static int convert_next(SEXP converter_xptr, struct ArrowArrayStream* stream,
+                        SEXP schema_xptr, int64_t* n_batches) {
+  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
+
+  // Fetch the next array
+  int result = ArrowArrayStreamGetNext(stream, array, NULL);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayStream::get_next(): %s", ArrowArrayStreamGetLastError(stream));
+  }
+
+  // Check if the stream is finished
+  if (array->release == NULL) {
+    UNPROTECT(1);
+    return 0;
+  }
+
+  // Bump the batch counter
+  (*n_batches)++;
+
+  // Set the schema of the allocated array and pass it to the converter
+  R_SetExternalPtrTag(array_xptr, schema_xptr);
+  if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
+    nanoarrow_converter_stop(converter_xptr);
+  }
+
+  // After set_array, the converter is responsible for the array_xptr
+  UNPROTECT(1);
+
+  // Materialize the array into the converter
+  int64_t n_materialized =
+      nanoarrow_converter_materialize_n(converter_xptr, array->length);
+  if (n_materialized != array->length) {
+    Rf_error("Expected to materialize %ld values in batch %ld but materialized %ld",
+             (long)array->length, (long)(*n_batches), (long)n_materialized);
+  }
+
+  return 1;
+}
+
 SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
                                       SEXP size_sexp, SEXP n_sexp) {
   struct ArrowArrayStream* array_stream =
@@ -58,49 +98,18 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
     nanoarrow_converter_stop(converter_xptr);
   }
 
-  SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
-  struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
-
   int64_t n_batches = 0;
-  int64_t n_materialized = 0;
-  if (n > 0) {
-    result = ArrowArrayStreamGetNext(array_stream, array, NULL);
-    n_batches++;
-    if (result != NANOARROW_OK) {
-      Rf_error("ArrowArrayStream::get_next(): %s",
-               ArrowArrayStreamGetLastError(array_stream));
+  do {
+    if (n_batches >= n) {
+      break;
     }
-
-    while (array->release != NULL) {
-      if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
-        nanoarrow_converter_stop(converter_xptr);
-      }
-
-      n_materialized = nanoarrow_converter_materialize_n(converter_xptr, array->length);
-      if (n_materialized != array->length) {
-        Rf_error("Expected to materialize %ld values in batch %ld but materialized %ld",
-                 (long)array->length, (long)n_batches, (long)n_materialized);
-      }
-
-      if (n_batches >= n) {
-        break;
-      }
-
-      array->release(array);
-      result = ArrowArrayStreamGetNext(array_stream, array, NULL);
-      n_batches++;
-      if (result != NANOARROW_OK) {
-        Rf_error("ArrowArrayStream::get_next(): %s",
-                 ArrowArrayStreamGetLastError(array_stream));
-      }
-    }
-  }
+  } while (convert_next(converter_xptr, array_stream, schema_xptr, &n_batches));
 
   if (nanoarrow_converter_finalize(converter_xptr) != NANOARROW_OK) {
     nanoarrow_converter_stop(converter_xptr);
   }
 
   SEXP result_sexp = PROTECT(nanoarrow_converter_release_result(converter_xptr));
-  UNPROTECT(4);
+  UNPROTECT(3);
   return result_sexp;
 }

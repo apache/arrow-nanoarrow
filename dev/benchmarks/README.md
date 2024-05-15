@@ -20,14 +20,18 @@
 # Benchmarking nanoarrow
 
 This subdirectory contains benchmarks and tools to run them. This is currently
-only implemented for the C library but may expand to include the R and Python
-bindings. The structure is as follows:
+only implemented for the C library and Python bindings but may expand to include
+the R bindings as well.
+
+## C Library
+
+The structure of the C benchmarks is as follows:
 
 - Benchmarks are documented inline using [Doxygen](https://www.doxygen.nl/).
 - Configurations are CMake build presets, and CMake handles pulling a previous
   or local nanoarrow using `FetchContent`. Benchmarks are run using `ctest`.
 - There is a bare-bones report written as a [Quarto](https://quarto.org)
-  document that renders to markdown.
+  document that renders the C library results to markdown.
 
 You can run benchmarks for a single configuration (e.g., `local`) with:
 
@@ -49,4 +53,15 @@ python generate-fixtures.py # requires pyarrow
 ./benchmark-run-all.sh
 cd apidoc && doxygen && cd ..
 quarto render benchmark-report.qmd
+```
+
+## Python bindings
+
+The Python benchmarks are a standard [asv](https://asv.readthedocs.io) project.
+You can run the benchmarks with:
+
+```shell
+# pip install asv
+python generate-fixtures.py # requires pyarrow
+asv run
 ```

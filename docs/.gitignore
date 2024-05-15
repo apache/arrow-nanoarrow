@@ -17,5 +17,7 @@
 
 _build/
 *_generated.rst
-source/getting-started.rst
 source/roadmap.rst
+source/getting-started/cpp.rst
+source/getting-started/r.rst
+source/getting-started/python.rst

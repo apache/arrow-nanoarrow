@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import itertools
 from functools import cached_property
-from typing import Iterable, Tuple
+from typing import Iterable, List, Sequence, Tuple
 
 from nanoarrow._lib import (
     DEVICE_CPU,
@@ -28,8 +29,10 @@ from nanoarrow._lib import (
 )
 from nanoarrow.c_array import c_array, c_array_view
 from nanoarrow.c_array_stream import c_array_stream
+from nanoarrow.c_schema import c_schema
 from nanoarrow.iterator import iter_array_views, iter_py, iter_tuples
-from nanoarrow.schema import Schema
+from nanoarrow.schema import Schema, _schema_repr
+from nanoarrow.visitor import to_columns, to_pylist
 
 from nanoarrow import _repr_utils
 
@@ -56,7 +59,7 @@ class Scalar:
     >>> array[0].as_py()
     1
     >>> array[0].schema
-    Schema(INT32)
+    <Schema> int32
     """
 
     def __init__(self):
@@ -80,11 +83,14 @@ class Scalar:
         return next(iter_py(self))
 
     def to_string(self, width_hint=80) -> str:
-        c_schema_string = _repr_utils.c_schema_to_string(
-            self._c_array.schema, width_hint // 4
+        schema_repr = _schema_repr(
+            self.schema,
+            max_char_width=width_hint // 4,
+            prefix="",
+            include_metadata=False,
         )
 
-        prefix = f"Scalar<{c_schema_string}> "
+        prefix = f"Scalar<{schema_repr}> "
         width_hint -= len(prefix)
 
         py_repr = repr(self.as_py())
@@ -160,6 +166,56 @@ class Array:
 
         with c_array_stream(obj, schema=schema) as stream:
             self._data = CMaterializedArrayStream.from_c_array_stream(stream)
+
+    @staticmethod
+    def from_chunks(obj: Iterable, schema=None, validate: bool = True):
+        """Create an Array with explicit chunks
+
+        Creates an :class:`Array` with explicit chunking from an iterable of
+        objects that can be converted to a :func:`c_array`.
+
+        Parameters
+        ----------
+        obj : iterable of array-like
+            An iterable of objects that can be passed to :func:`c_array`.
+        schema : schema-like, optional
+            An optional schema. If present, will be passed to :func:`c_array`
+            for each item in obj; if not present it will be inferred from the first
+            chunk.
+        validate : bool
+            Use ``False`` to opt out of validation steps performed when constructing
+            this array.
+
+        Examples
+        --------
+        >>> import nanoarrow as na
+        >>> na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
+        nanoarrow.Array<int32>[6]
+        1
+        2
+        3
+        4
+        5
+        6
+        """
+        obj = iter(obj)
+
+        if schema is None:
+            first = next(obj, None)
+            if first is None:
+                raise ValueError("Can't create empty Array from chunks without schema")
+
+            first = c_array(first)
+            out_schema = first.schema
+            obj = itertools.chain([first], obj)
+        else:
+            out_schema = c_schema(schema)
+
+        data = CMaterializedArrayStream.from_c_arrays(
+            (c_array(item, schema) for item in obj), out_schema, validate=validate
+        )
+
+        return Array(data)
 
     def _assert_one_chunk(self, op):
         if self._data.n_arrays != 1:
@@ -278,9 +334,9 @@ class Array:
         >>> import nanoarrow as na
         >>> array = na.Array([1, 2, 3], na.int32())
         >>> for view in array.iter_chunk_views():
-        ...     offset, length = view.offset, view.length
+        ...     offset, length = view.offset, len(view)
         ...     validity, data = view.buffers
-        ...     print(view.offset, view.length)
+        ...     print(offset, length)
         ...     print(validity)
         ...     print(data)
         0 3
@@ -288,6 +344,42 @@ class Array:
         nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
         """
         return iter_array_views(self)
+
+    def to_pylist(self) -> List:
+        """Convert this Array to a ``list()` of Python objects
+
+        Computes an identical value to list(:meth:`iter_py`) but can be several
+        times faster.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> array = na.Array([1, 2, 3], na.int32())
+        >>> array.to_pylist()
+        [1, 2, 3]
+        """
+        return to_pylist(self)
+
+    def to_columns(self) -> Tuple[str, Sequence]:
+        """Convert this Array to a ``list()` of sequences
+
+        Converts a stream of struct arrays into its column-wise representation
+        such that each column is either a contiguous buffer or a ``list()``.
+
+        Examples
+        --------
+
+        >>> import nanoarrow as na
+        >>> import pyarrow as pa
+        >>> array = na.Array(pa.record_batch([pa.array([1, 2, 3])], names=["col1"]))
+        >>> names, columns = array.to_columns()
+        >>> names
+        ['col1']
+        >>> columns
+        [[1, 2, 3]]
+        """
+        return to_columns(self)
 
     @property
     def n_children(self) -> int:
@@ -327,7 +419,7 @@ class Array:
         ... )
         >>> array = na.Array(batch)
         >>> array.child(1)
-        nanoarrow.Array<string>[3]
+        nanoarrow.Array<'col2': string>[3]
         'a'
         'b'
         'c'
@@ -349,11 +441,11 @@ class Array:
         >>> array = na.Array(batch)
         >>> for child in array.iter_children():
         ...     print(child)
-        nanoarrow.Array<int64>[3]
+        nanoarrow.Array<'col1': int64>[3]
         1
         2
         3
-        nanoarrow.Array<string>[3]
+        nanoarrow.Array<'col2': string>[3]
         'a'
         'b'
         'c'
@@ -493,11 +585,14 @@ class Array:
     def to_string(self, width_hint=80, items_hint=10) -> str:
         cls_name = _repr_utils.make_class_label(self, module="nanoarrow")
         len_text = f"[{len(self)}]"
-        c_schema_string = _repr_utils.c_schema_to_string(
-            self._data.schema, width_hint - len(cls_name) - len(len_text) - 2
+        schema_repr = _schema_repr(
+            self.schema,
+            max_char_width=width_hint - len(cls_name) - len(len_text) - 2,
+            prefix="",
+            include_metadata=False,
         )
 
-        lines = [f"{cls_name}<{c_schema_string}>{len_text}"]
+        lines = [f"{cls_name}<{schema_repr}>{len_text}"]
 
         for i, item in enumerate(self.iter_py()):
             if i >= items_hint:
@@ -527,39 +622,9 @@ class Array:
         print(_repr_utils.array_inspect(c_array(self)))
 
 
-def array(obj, schema=None, device=None) -> Array:
+def array(obj, schema=None) -> Array:
     """
-    Create a nanoarrow.Array from array-like input.
-
-    The :class:`Array` class is nanoarrow's high-level in-memory array
-    representation whose scope maps to that of a fully-consumed
-    ArrowArrayStream in the Arrow C Data interface. Note that an
-    :class:`Array` is not necessarily contiguous in memory (i.e.,
-    it may consist of zero or more ``ArrowArray``s).
-    See :class:`Array` for class details.
-
-    Parameters
-    ----------
-    obj : array or array stream-like
-        An array-like or array stream-like object. This can be any object
-        supporting the Arrow PyCapsule interface, the Python buffer
-        protocol, or an iterable of Python objects.
-    schema : schema-like, optional
-        An optional schema. This can be a Schema object, or object
-        implementing the Arrow PyCapsule interface for schemas
-        (i.e. having the ``__arrow_c_schema__`` protocol method).
-    device : Device, optional
-        The device associated with the buffers held by this Array.
-        Defaults to the CPU device.
-
-    Examples
-    --------
-
-    >>> import nanoarrow as na
-    >>> na.array([1, 2, 3], na.int32())
-    nanoarrow.Array<int32>[3]
-    1
-    2
-    3
+    Alias for the :class:`Array` class constructor. The use of
+    ``nanoarrow.Array()`` is preferred over ``nanoarrow.array()``.
     """
-    return Array(obj, schema=schema, device=device)
+    return Array(obj, schema=schema)

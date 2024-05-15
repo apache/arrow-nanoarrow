@@ -37,14 +37,14 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
     >>> array_stream = na.c_array_stream(pa_reader)
     >>> array_stream.get_schema()
-    <nanoarrow.c_lib.CSchema struct>
+    <nanoarrow.c_schema.CSchema struct>
     - format: '+s'
     - name: ''
     - flags: 0
     - metadata: NULL
     - dictionary: NULL
     - children[1]:
-      'col1': <nanoarrow.c_lib.CSchema int32>
+      'col1': <nanoarrow.c_schema.CSchema int32>
         - format: 'i'
         - name: 'col1'
         - flags: 2
@@ -88,7 +88,7 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
 
     try:
         array = c_array(obj, schema=schema)
-        return CArrayStream.from_array_list([array], array.schema, validate=False)
+        return CArrayStream.from_c_arrays([array], array.schema, validate=False)
     except Exception as e:
         raise TypeError(
             f"An error occurred whilst converting {type(obj).__name__} "
@@ -103,11 +103,11 @@ def allocate_c_array_stream() -> CArrayStream:
     --------
 
     >>> import pyarrow as pa
-    >>> import nanoarrow as na
+    >>> from nanoarrow.c_array_stream import allocate_c_array_stream
     >>> pa_column = pa.array([1, 2, 3], pa.int32())
     >>> pa_batch = pa.record_batch([pa_column], names=["col1"])
     >>> pa_reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
-    >>> array_stream = na.allocate_c_array_stream()
+    >>> array_stream = allocate_c_array_stream()
     >>> pa_reader._export_to_c(array_stream._addr())
     """
     return CArrayStream.allocate()

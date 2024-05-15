@@ -89,7 +89,7 @@ cdef void pycapsule_schema_deleter(object schema_capsule) noexcept:
     ArrowFree(schema)
 
 
-cdef object alloc_c_schema(ArrowSchema** c_schema) noexcept:
+cdef object alloc_c_schema(ArrowSchema** c_schema):
     c_schema[0] = <ArrowSchema*> ArrowMalloc(sizeof(ArrowSchema))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_schema[0].release = NULL
@@ -107,7 +107,7 @@ cdef void pycapsule_array_deleter(object array_capsule) noexcept:
     ArrowFree(array)
 
 
-cdef object alloc_c_array(ArrowArray** c_array) noexcept:
+cdef object alloc_c_array(ArrowArray** c_array):
     c_array[0] = <ArrowArray*> ArrowMalloc(sizeof(ArrowArray))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_array[0].release = NULL
@@ -125,7 +125,7 @@ cdef void pycapsule_array_stream_deleter(object stream_capsule) noexcept:
     ArrowFree(stream)
 
 
-cdef object alloc_c_array_stream(ArrowArrayStream** c_stream) noexcept:
+cdef object alloc_c_array_stream(ArrowArrayStream** c_stream):
     c_stream[0] = <ArrowArrayStream*> ArrowMalloc(sizeof(ArrowArrayStream))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_stream[0].release = NULL
@@ -143,7 +143,7 @@ cdef void pycapsule_device_array_deleter(object device_array_capsule) noexcept:
     ArrowFree(device_array)
 
 
-cdef object alloc_c_device_array(ArrowDeviceArray** c_device_array) noexcept:
+cdef object alloc_c_device_array(ArrowDeviceArray** c_device_array):
     c_device_array[0] = <ArrowDeviceArray*> ArrowMalloc(sizeof(ArrowDeviceArray))
     # Ensure the capsule destructor doesn't call a random release pointer
     c_device_array[0].array.release = NULL
@@ -160,68 +160,119 @@ cdef void pycapsule_array_view_deleter(object array_capsule) noexcept:
     ArrowFree(array_view)
 
 
-cdef object alloc_c_array_view(ArrowArrayView** c_array_view) noexcept:
+cdef object alloc_c_array_view(ArrowArrayView** c_array_view):
     c_array_view[0] = <ArrowArrayView*> ArrowMalloc(sizeof(ArrowArrayView))
     ArrowArrayViewInitFromType(c_array_view[0], NANOARROW_TYPE_UNINITIALIZED)
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
 
 
-cdef void arrow_array_release(ArrowArray* array) noexcept with gil:
-    Py_DECREF(<object>array.private_data)
-    array.private_data = NULL
-    array.release = NULL
+# Provide a way to validate that we release all references we create
+cdef int64_t pyobject_buffer_count = 0
+
+def get_pyobject_buffer_count():
+    global pyobject_buffer_count
+    return pyobject_buffer_count
 
 
-cdef void c_array_shallow_copy(object base, const ArrowArray* c_array,
-                                 ArrowArray* c_array_out) noexcept:
-    # shallow copy
-    memcpy(c_array_out, c_array, sizeof(ArrowArray))
-    c_array_out.release = NULL
-    c_array_out.private_data = NULL
+cdef void c_deallocate_pyobject_buffer(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
+    Py_DECREF(<object>allocator.private_data)
 
-    # track original base
-    c_array_out.private_data = <void*>base
+    global pyobject_buffer_count
+    pyobject_buffer_count -= 1
+
+
+cdef void c_pyobject_buffer(object base, const void* buf, int64_t size_bytes, ArrowBuffer* out):
+    out.data = <uint8_t*>buf
+    out.size_bytes = size_bytes
+    out.allocator = ArrowBufferDeallocator(
+        <ArrowBufferDeallocatorCallback>c_deallocate_pyobject_buffer,
+        <void*>base
+    )
     Py_INCREF(base)
-    c_array_out.release = arrow_array_release
+
+    global pyobject_buffer_count
+    pyobject_buffer_count += 1
 
 
-cdef object alloc_c_array_shallow_copy(object base, const ArrowArray* c_array):
-    """Make a shallow copy of an ArrowArray
+cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* dst):
+    """Make the shallowest (safe) copy possible
 
-    To more safely implement export of an ArrowArray whose address may be
-    depended on by some other Python object, we implement a shallow copy
-    whose constructor calls Py_INCREF() on a Python object responsible
-    for the ArrowArray's lifecycle and whose deleter calls Py_DECREF() on
-    the same object.
+    Once a CArray exists at the Python level, nanoarrow makes it very difficult
+    to perform an operation that might render the pointed-to ArrowArray invalid.
+    Performing a deep copy (i.e., copying buffer content) would be unexpected and
+    prohibitively expensive, and performing a truly shallow copy (i.e., adding
+    an ArrowArray implementation that simply PyINCREF/pyDECREFs the original array)
+    is not safe because the Arrow C Data interface specification allows children
+    to be "move"d. Even though nanoarrow's Python bindings do not do this unless
+    explicitly requested, when passed to some other library they are free to do so.
+
+    This implementation of a shallow copy creates a recursive copy of the original
+    array, including any children and dictionary (if present). It uses the
+    C library's ArrowArray implementation, which takes care of releasing children,
+    and allows us to use the ArrowBufferDeallocator mechanism to add/remove
+    references to the appropriate PyObject.
     """
-    cdef ArrowArray* c_array_out
-    array_capsule = alloc_c_array(&c_array_out)
-    c_array_shallow_copy(base, c_array, c_array_out)
-    return array_capsule
+    # Allocate an ArrowArray* that will definitely be cleaned up should an exception
+    # be raised in the process of shallow copying its contents
+    cdef ArrowArray* tmp
+    shelter = alloc_c_array(&tmp)
+    cdef int code
+
+    code = ArrowArrayInitFromType(tmp, NANOARROW_TYPE_UNINITIALIZED)
+    Error.raise_error_not_ok("ArrowArrayInitFromType()", code)
+
+    # Copy data for this array, adding a reference for each buffer
+    # This allows us to use the nanoarrow C library's ArrowArray
+    # implementation without writing our own release callbacks/private_data.
+    tmp.length = src.length
+    tmp.offset = src.offset
+    tmp.null_count = src.null_count
+
+    for i in range(src.n_buffers):
+        if src.buffers[i] != NULL:
+            # The purpose of this buffer is soley so that we can use the
+            # ArrowBufferDeallocator mechanism to add a reference to base.
+            # The ArrowArray release callback that exists here after
+            # because of ArrowArrayInitFromType() will call ArrowBufferReset()
+            # on any buffer that was injected in this way (and thus release the
+            # reference to base). We don't actually know the size of the buffer
+            # (and our release callback doesn't use it), so it is set to 0.
+            c_pyobject_buffer(base, src.buffers[i], 0, ArrowArrayBuffer(tmp, i))
+
+        # The actual pointer value is tracked separately from the ArrowBuffer
+        # (which is only concerned with object lifecycle).
+        tmp.buffers[i] = src.buffers[i]
+
+    tmp.n_buffers = src.n_buffers
+
+    # Recursive shallow copy children
+    if src.n_children > 0:
+        code = ArrowArrayAllocateChildren(tmp, src.n_children)
+        Error.raise_error_not_ok("ArrowArrayAllocateChildren()", code)
+
+        for i in range(src.n_children):
+            c_array_shallow_copy(base, src.children[i], tmp.children[i])
+
+    # Recursive shallow copy dictionary
+    if src.dictionary != NULL:
+        code = ArrowArrayAllocateDictionary(tmp)
+        Error.raise_error_not_ok("ArrowArrayAllocateDictionary()", code)
+
+        c_array_shallow_copy(base, src.dictionary, tmp.dictionary)
+
+    # Move tmp into dst
+    ArrowArrayMove(tmp, dst)
 
 
-cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array,
-                                      ArrowDeviceArray* c_array_out) noexcept:
-    # shallow copy
-    memcpy(c_array_out, c_array, sizeof(ArrowDeviceArray))
-    c_array_out.array.release = NULL
-    c_array_out.array.private_data = NULL
+cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* src,
+                                      ArrowDeviceArray* dst) noexcept:
+    # Copy top-level information but leave the array marked as released
+    # TODO: Should the sync event be copied here too?
+    memcpy(dst, src, sizeof(ArrowDeviceArray))
+    dst.array.release = NULL
 
-    # track original base
-    c_array_out.array.private_data = <void*>base
-    Py_INCREF(base)
-    c_array_out.array.release = arrow_array_release
-
-
-cdef object alloc_c_device_array_shallow_copy(object base, const ArrowDeviceArray* c_array):
-    """Make a shallow copy of an ArrowDeviceArray
-
-    See :func:`arrow_c_array_shallow_copy()`
-    """
-    cdef ArrowDeviceArray* c_array_out
-    array_capsule = alloc_c_device_array(&c_array_out)
-    c_device_array_shallow_copy(base, c_array, c_array_out)
-    return array_capsule
+    # Shallow copy the array
+    c_array_shallow_copy(base, &src.array, &dst.array)
 
 
 cdef void pycapsule_buffer_deleter(object stream_capsule) noexcept:
@@ -284,7 +335,7 @@ cdef c_arrow_type_from_format(format):
         return item_size, NANOARROW_TYPE_DOUBLE
 
     # Check for signed integers
-    if format in ("b", "?", "h", "i", "l", "q", "n"):
+    if format in ("b", "h", "i", "l", "q", "n"):
         if item_size == 1:
             return item_size, NANOARROW_TYPE_INT8
         elif item_size == 2:
@@ -295,7 +346,7 @@ cdef c_arrow_type_from_format(format):
             return item_size, NANOARROW_TYPE_INT64
 
     # Check for unsinged integers
-    if format in ("B", "H", "I", "L", "Q", "N"):
+    if format in ("B", "?", "H", "I", "L", "Q", "N"):
         if item_size == 1:
             return item_size, NANOARROW_TYPE_UINT8
         elif item_size == 2:
@@ -718,6 +769,47 @@ cdef class CSchema:
     def __repr__(self):
         return _repr_utils.schema_repr(self)
 
+    def type_equals(self, CSchema other, check_nullability=False):
+        self._assert_valid()
+
+        if self._ptr == other._ptr:
+            return True
+
+        if self.format != other.format:
+            return False
+
+        # Nullability is not strictly part of the "type"; however, performing
+        # this check recursively is verbose to otherwise accomplish and
+        # sometimes this does matter.
+        cdef int64_t flags = self.flags
+        cdef int64_t other_flags = other.flags
+        if not check_nullability:
+            flags &= ~ARROW_FLAG_NULLABLE
+            other_flags &= ~ARROW_FLAG_NULLABLE
+
+        if flags != other_flags:
+            return False
+
+        if self.n_children != other.n_children:
+            return False
+
+        for child, other_child in zip(self.children, other.children):
+            if not child.type_equals(other_child, check_nullability=check_nullability):
+                return False
+
+        if (self.dictionary is None) != (other.dictionary is None):
+            return False
+
+        if self.dictionary is not None:
+            if not self.dictionary.type_equals(
+                other.dictionary,
+                check_nullability=check_nullability
+            ):
+                return False
+
+        return True
+
+
     @property
     def format(self):
         self._assert_valid()
@@ -769,27 +861,77 @@ cdef class CSchema:
         else:
             return None
 
-    def modify(self, *, name=None, flags=None, nullable=None, metadata=None,
-               validate=True):
-        builder = CSchemaBuilder.copy(self)
+    def modify(self, *, format=None, name=None, flags=None, nullable=None,
+               metadata=None, children=None, dictionary=None, validate=True):
+        cdef CSchemaBuilder builder = CSchemaBuilder.allocate()
 
-        if name is not None:
+        if format is None:
+            builder.set_format(self.format)
+        else:
+            builder.set_format(format)
+
+        if name is None:
+            builder.set_name(self.name)
+        elif name is not False:
             builder.set_name(name)
 
-        if flags is not None:
+        if flags is None:
+            builder.set_flags(self.flags)
+        else:
             builder.set_flags(flags)
 
         if nullable is not None:
             builder.set_nullable(nullable)
 
-        if metadata is not None:
-            builder.clear_metadata()
+        if metadata is None:
+            if self.metadata is not None:
+                builder.append_metadata(self.metadata)
+        else:
             builder.append_metadata(metadata)
+
+        if children is None:
+            if self.n_children > 0:
+                builder.allocate_children(self.n_children)
+                for i, child in enumerate(self.children):
+                    builder.set_child(i, None, child)
+        elif hasattr(children, "items"):
+            builder.allocate_children(len(children))
+            for i, item in enumerate(children.items()):
+                name, child = item
+                builder.set_child(i, name, child)
+        else:
+            builder.allocate_children(len(children))
+            for i, child in enumerate(children):
+                builder.set_child(i, None, child)
+
+        if dictionary is None:
+            if self.dictionary:
+                builder.set_dictionary(self.dictionary)
+        elif dictionary is not False:
+            builder.set_dictionary(dictionary)
 
         if validate:
             builder.validate()
 
         return builder.finish()
+
+# This is likely a better fit for a dedicated testing module; however, we need
+# it in _lib.pyx to produce nice error messages when ensuring that one or
+# more arrays conform to a given or inferred schema.
+def assert_type_equal(actual, expected):
+    if not isinstance(actual, CSchema):
+        raise TypeError(f"expected is {type(actual).__name__}, not CSchema")
+
+    if not isinstance(expected, CSchema):
+        raise TypeError(f"expected is {type(expected).__name__}, not CSchema")
+
+    if not actual.type_equals(expected):
+        actual_label = actual._to_string(max_chars=80, recursive=True)
+        expected_label = expected._to_string(max_chars=80, recursive=True)
+        raise ValueError(
+            f"Expected schema\n  '{expected_label}'"
+            f"\nbut got\n  '{actual_label}'"
+        )
 
 
 cdef class CSchemaView:
@@ -1037,17 +1179,8 @@ cdef class CSchemaBuilder:
             ArrowSchemaInit(self._ptr)
 
     @staticmethod
-    def copy(CSchema schema):
-        return CSchemaBuilder(schema.__deepcopy__())
-
-    @staticmethod
     def allocate():
         return CSchemaBuilder(CSchema.allocate())
-
-    def clear_metadata(self):
-        cdef int code = ArrowSchemaSetMetadata(self.c_schema._ptr, NULL)
-        Error.raise_error_not_ok("ArrowSchemaSetMetadata()", code)
-        return self
 
     def append_metadata(self, metadata):
         cdef CBuffer buffer = CBuffer.empty()
@@ -1164,6 +1297,23 @@ cdef class CSchemaBuilder:
         if name is not None:
             name = str(name)
             code = ArrowSchemaSetName(self._ptr.children[i], name.encode("UTF-8"))
+            Error.raise_error_not_ok("ArrowSchemaSetName()", code)
+
+        return self
+
+    def set_dictionary(self, CSchema dictionary):
+        self.c_schema._assert_valid()
+
+        cdef int code
+        if self._ptr.dictionary == NULL:
+            code = ArrowSchemaAllocateDictionary(self._ptr)
+            Error.raise_error_not_ok("ArrowSchemaAllocateDictionary()", code)
+
+        if self._ptr.dictionary.release != NULL:
+            ArrowSchemaRelease(self._ptr.dictionary)
+
+        code = ArrowSchemaDeepCopy(dictionary._ptr, self._ptr.dictionary)
+        Error.raise_error_not_ok("ArrowSchemaDeepCopy()", code)
 
         return self
 
@@ -1176,6 +1326,14 @@ cdef class CSchemaBuilder:
             self._ptr.flags = self._ptr.flags | ARROW_FLAG_NULLABLE
         else:
             self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_NULLABLE
+
+        return self
+
+    def set_dictionary_ordered(self, dictionary_ordered):
+        if dictionary_ordered:
+            self._ptr.flags = self._ptr.flags | ARROW_FLAG_DICTIONARY_ORDERED
+        else:
+            self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_DICTIONARY_ORDERED
 
         return self
 
@@ -1260,9 +1418,9 @@ cdef class CArray:
         cdef int64_t start = 0 if k.start is None else k.start
         cdef int64_t stop = self._ptr.length if k.stop is None else k.stop
         if start < 0:
-            start = self.length + start
+            start = self._ptr.length + start
         if stop < 0:
-            stop = self.length + stop
+            stop = self._ptr.length + stop
 
         if start > self._ptr.length or stop > self._ptr.length or stop < start:
             raise IndexError(
@@ -1308,9 +1466,13 @@ cdef class CArray:
 
         # Export a shallow copy pointing to the same data in a way
         # that ensures this object stays valid.
+
         # TODO optimize this to export a version where children are reference
         # counted and can be released separately
-        array_capsule = alloc_c_array_shallow_copy(self._base, self._ptr)
+        cdef ArrowArray* c_array_out
+        array_capsule = alloc_c_array(&c_array_out)
+        c_array_shallow_copy(self._base, self._ptr, c_array_out)
+
         return self._schema.__arrow_c_schema__(), array_capsule
 
     def _addr(self):
@@ -1345,10 +1507,13 @@ cdef class CArray:
     def device_id(self):
         return self._device_id
 
-    @property
-    def length(self):
+    def __len__(self):
         self._assert_valid()
         return self._ptr.length
+
+    @property
+    def length(self):
+        return len(self)
 
     @property
     def offset(self):
@@ -1454,9 +1619,12 @@ cdef class CArrayView:
     def layout(self):
         return CLayout(self, <uintptr_t>&self._ptr.layout)
 
+    def __len__(self):
+        return self._ptr.length
+
     @property
     def length(self):
-        return self._ptr.length
+        return len(self)
 
     @property
     def offset(self):
@@ -1614,6 +1782,12 @@ cdef class SchemaMetadata:
         for key, _ in self.items():
             yield key
 
+    def keys(self):
+        return list(self)
+
+    def values(self):
+        return [value for _, value in self.items()]
+
     def items(self):
         cdef ArrowStringView key
         cdef ArrowStringView value
@@ -1623,6 +1797,13 @@ cdef class SchemaMetadata:
             key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
+
+    def __repr__(self):
+        lines = [
+            f"<{_repr_utils.make_class_label(self)}>",
+            _repr_utils.metadata_repr(self)
+        ]
+        return "\n".join(lines)
 
 
 cdef class CBufferView:
@@ -1767,6 +1948,100 @@ cdef class CBufferView:
         else:
             return self._iter_dispatch(offset, length)
 
+    def copy_into(self, dest, offset=0, length=None, dest_offset=0):
+        if length is None:
+            length = self.n_elements
+
+        cdef Py_buffer buffer
+        PyObject_GetBuffer(dest, &buffer, PyBUF_WRITABLE | PyBUF_ANY_CONTIGUOUS)
+
+        cdef int64_t c_offset = offset
+        cdef int64_t c_length = length
+        cdef int64_t c_item_size = self.item_size
+        cdef int64_t c_dest_offset = dest_offset
+        self._check_copy_into_bounds(&buffer, c_offset, c_length, dest_offset, c_item_size)
+
+        cdef uint8_t* dest_uint8 = <uint8_t*>buffer.buf
+        cdef int64_t dest_offset_bytes = c_dest_offset * c_item_size
+        cdef int64_t src_offset_bytes = c_offset * c_item_size
+        cdef int64_t bytes_to_copy = c_length * c_item_size
+
+        memcpy(
+            &(dest_uint8[dest_offset_bytes]),
+            &(self._ptr.data.as_uint8[src_offset_bytes]),
+            bytes_to_copy
+        )
+
+        PyBuffer_Release(&buffer)
+        return bytes_to_copy
+
+    def unpack_bits_into(self, dest, offset=0, length=None, dest_offset=0):
+        if self._data_type != NANOARROW_TYPE_BOOL:
+            raise ValueError("Can't unpack non-boolean buffer")
+
+        if length is None:
+            length = self.n_elements
+
+        cdef Py_buffer buffer
+        PyObject_GetBuffer(dest, &buffer, PyBUF_WRITABLE | PyBUF_ANY_CONTIGUOUS)
+        self._check_copy_into_bounds(&buffer, offset, length, dest_offset, 1)
+
+        ArrowBitsUnpackInt8(
+            self._ptr.data.as_uint8,
+            offset,
+            length,
+            &(<int8_t*>buffer.buf)[dest_offset]
+        )
+
+        PyBuffer_Release(&buffer)
+        return length
+
+    def unpack_bits(self, offset=0, length=None):
+        if length is None:
+            length = self.n_elements
+
+        out = CBufferBuilder().set_format("?")
+        out.reserve_bytes(length)
+        self.unpack_bits_into(out, offset, length)
+        out.advance(length)
+        return out.finish()
+
+    def copy(self, offset=0, length=None):
+        if length is None:
+            length = self.n_elements
+
+        cdef int64_t bytes_to_copy = length * self.item_size
+        out = CBufferBuilder().set_data_type(self.data_type_id)
+        out.reserve_bytes(bytes_to_copy)
+        self.copy_into(out, offset, length)
+        out.advance(bytes_to_copy)
+        return out.finish()
+
+    cdef _check_copy_into_bounds(self, Py_buffer* dest, int64_t offset, int64_t length,
+                                 int64_t dest_offset, int64_t dest_itemsize):
+        if offset < 0 or length < 0 or (offset + length) > self.n_elements:
+            PyBuffer_Release(dest)
+            raise IndexError(
+                f"offset {offset} and length {length} do not describe a valid slice "
+                f"of buffer with {self.n_elements} elements"
+            )
+
+        if dest.itemsize != 1 and dest.itemsize != dest_itemsize:
+            raise ValueError(
+                "Destination buffer must have itemsize == 1 or "
+                f"itemsize == {dest_itemsize}"
+            )
+
+        cdef int64_t dest_offset_bytes = dest_offset * dest_itemsize
+        cdef int64_t bytes_to_copy = dest_itemsize * length
+        if dest_offset < 0 or dest.len < (dest_offset_bytes + bytes_to_copy):
+            buffer_len = dest.len
+            PyBuffer_Release(dest)
+            raise IndexError(
+                f"Can't unpack {length} elements into buffer of size {buffer_len} "
+                f"with dest_offset = {dest_offset}"
+            )
+
     def _iter_bitmap(self, int64_t offset, int64_t length):
         cdef uint8_t item
         cdef int64_t i
@@ -1880,6 +2155,8 @@ cdef class CBuffer:
             self._ptr.size_bytes, self._data_type, self._element_size_bits,
             self._device
         )
+
+        snprintf(self._view._format, sizeof(self._view._format), "%s", self._format)
 
     @staticmethod
     def empty():
@@ -2043,6 +2320,13 @@ cdef class CBufferBuilder:
     def set_data_type(self, ArrowType type_id, int element_size_bits=0):
         """Set the data type used to interpret elements in :meth:`write_elements`."""
         self._buffer._set_data_type(type_id, element_size_bits)
+        return self
+
+    def set_format(self, str format):
+        """Set the Python buffer format used to interpret elements in
+        :meth:`write_elements`.
+        """
+        self._buffer._set_format(format)
         return self
 
     @property
@@ -2551,20 +2835,33 @@ cdef class CArrayStream:
         return CArrayStream(base, <uintptr_t>c_array_stream_out)
 
     @staticmethod
-    def from_array_list(arrays, CSchema schema, move=False, validate=True):
+    def from_c_arrays(arrays, CSchema schema, move=False, validate=True):
         cdef ArrowArrayStream* c_array_stream_out
         base = alloc_c_array_stream(&c_array_stream_out)
 
-        if not move:
-            schema = schema.__deepcopy__()
+        # Don't create more copies than we have to (but make sure
+        # one exists for validation if requested)
+        cdef CSchema out_schema = schema
+        if validate and not move:
+            validate_schema = schema
+            out_schema = schema.__deepcopy__()
+        elif validate:
+            validate_schema = schema.__deepcopy__()
+            out_schema = schema
+        elif not move:
+            out_schema = schema.__deepcopy__()
 
-        cdef int code = ArrowBasicArrayStreamInit(c_array_stream_out, schema._ptr, len(arrays))
+        cdef int code = ArrowBasicArrayStreamInit(c_array_stream_out, out_schema._ptr, len(arrays))
         Error.raise_error_not_ok("ArrowBasicArrayStreamInit()", code)
 
         cdef ArrowArray tmp
         cdef CArray array
         for i in range(len(arrays)):
             array = arrays[i]
+
+            if validate:
+                assert_type_equal(array.schema, validate_schema)
+
             if not move:
                 c_array_shallow_copy(array._base, array._ptr, &tmp)
                 ArrowBasicArrayStreamSetArray(c_array_stream_out, i, &tmp)
@@ -2738,7 +3035,7 @@ cdef class CMaterializedArrayStream:
 
     def __iter__(self):
         for c_array in self._arrays:
-            for item_i in range(c_array.length):
+            for item_i in range(len(c_array)):
                 yield c_array, item_i
 
     def array(self, int64_t i):
@@ -2755,7 +3052,13 @@ cdef class CMaterializedArrayStream:
     def __arrow_c_stream__(self, requested_schema=None):
         # When an array stream from iterable is supported, that could be used here
         # to avoid unnessary shallow copies.
-        stream = CArrayStream.from_array_list(self._arrays, self._schema, move=False)
+        stream = CArrayStream.from_c_arrays(
+            self._arrays,
+            self._schema,
+            move=False,
+            validate=False
+        )
+
         return stream.__arrow_c_stream__(requested_schema=requested_schema)
 
     def child(self, int64_t i):
@@ -2765,7 +3068,7 @@ cdef class CMaterializedArrayStream:
         out._schema = self._schema.child(i)
         out._arrays = [chunk.child(i) for chunk in self._arrays]
         for child_chunk in out._arrays:
-            out._total_length += child_chunk.length
+            out._total_length += len(child_chunk)
             code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
             Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
 
@@ -2773,45 +3076,44 @@ cdef class CMaterializedArrayStream:
         return out
 
     @staticmethod
-    def from_c_array(CArray array):
-        array._assert_valid()
-
+    def from_c_arrays(arrays, CSchema schema, bint validate=True):
         cdef CMaterializedArrayStream out = CMaterializedArrayStream()
-        out._schema = array._schema
 
-        if array._ptr.length == 0:
-            out._finalize()
-            return out
+        for array in arrays:
+            if not isinstance(array, CArray):
+                raise TypeError(f"Expected CArray but got {type(array).__name__}")
 
-        out._arrays.append(array)
-        out._total_length += array._ptr.length
-        cdef int code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
-        Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+            if len(array) == 0:
+                continue
 
+            if validate:
+                assert_type_equal(array.schema, schema)
+
+            out._total_length += len(array)
+            code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
+            Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
+            out._arrays.append(array)
+
+        out._schema = schema
         out._finalize()
         return out
 
     @staticmethod
+    def from_c_array(CArray array):
+        return CMaterializedArrayStream.from_c_arrays(
+            [array],
+            array.schema,
+            validate=False
+        )
+
+    @staticmethod
     def from_c_array_stream(CArrayStream stream):
-        stream._assert_valid()
-        cdef CMaterializedArrayStream out = CMaterializedArrayStream()
-        cdef int code
-        cdef CArray array
-
         with stream:
-            for array in stream:
-                if array._ptr.length == 0:
-                    continue
-
-                out._total_length += array._ptr.length
-                code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
-                Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
-                out._arrays.append(array)
-
-            out._schema = stream._get_cached_schema()
-
-        out._finalize()
-        return out
+            return CMaterializedArrayStream.from_c_arrays(
+                stream,
+                stream._get_cached_schema(),
+                validate=False
+            )
 
 
 cdef class CDeviceArray:
@@ -2860,7 +3162,10 @@ cdef class CDeviceArray:
 
         # TODO: evaluate whether we need to synchronize here or whether we should
         # move device arrays instead of shallow-copying them
-        device_array_capsule = alloc_c_device_array_shallow_copy(self._base, self._ptr)
+        cdef ArrowDeviceArray* c_array_out
+        device_array_capsule = alloc_c_device_array(&c_array_out)
+        c_device_array_shallow_copy(self._base, self._ptr, c_array_out)
+
         return self._schema.__arrow_c_schema__(), device_array_capsule
 
     @staticmethod
