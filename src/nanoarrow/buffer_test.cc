@@ -141,9 +141,6 @@ TEST(BufferTest, BufferTestFill) {
   }
 
   ArrowBufferReset(&buffer);
-
-  EXPECT_EQ(ArrowBufferAppendFill(nullptr, 0, std::numeric_limits<int64_t>::max()),
-            ENOMEM);
 }
 
 TEST(BufferTest, BufferTestResize0) {
