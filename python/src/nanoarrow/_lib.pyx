@@ -212,13 +212,15 @@ cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
 
 
 cpdef object view_to_dlpack(CBufferView view):
-    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*> PyMem_Malloc(sizeof(DLManagedTensor))
+    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyMem_Malloc(sizeof(DLManagedTensor))
 
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
     dl_tensor.data = <void*>view._addr
     dl_tensor.ndim = 1
 
-    dl_tensor.shape = <int64_t*> len(view)
+    cdef int64_t* _shape = <int64_t*>PyMem_Malloc(1 * sizeof(int64_t) * 2)
+    _shape[0] = len(view)
+    dl_tensor.shape = _shape
     dl_tensor.strides = NULL
     dl_tensor.byte_offset = 0
 
