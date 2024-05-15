@@ -177,7 +177,7 @@ test_that("convert to vector works for nanoarrow_vctr()", {
   schema <- infer_nanoarrow_schema(vctr)
   expect_identical(schema$format, "u")
 
-  # Check nested conversion from a data.frame
+  # Check conversion of a struct array
   df <- data.frame(x = c("one", "two", "three"))
   array <- as_nanoarrow_array(df)
 
@@ -186,7 +186,6 @@ test_that("convert to vector works for nanoarrow_vctr()", {
   expect_length(vctr, 3)
   schema <- infer_nanoarrow_schema(vctr)
   expect_identical(schema$format, "+s")
-
 
   vctr <- convert_array(array, nanoarrow_vctr(na_struct(list(x = na_string()))))
   expect_s3_class(vctr, "nanoarrow_vctr")

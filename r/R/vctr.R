@@ -29,7 +29,7 @@
 #' storage type is an `integer()` that is a sequence along the total length
 #' of the vctr and there are attributes that are required to resolve these
 #' indices to an array + offset. Sequences typically have a very compact
-#' representation in recent version of R such that this has a cheap storage
+#' representation in recent versions of R such that this has a cheap storage
 #' footprint even for large arrays. The attributes are currently:
 #'
 #' - `schema`: The [nanoarrow_schema][as_nanoarrow_schema] shared by each chunk.

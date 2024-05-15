@@ -20,6 +20,7 @@
 #include <Rinternals.h>
 
 #include "nanoarrow.h"
+#include "nanoarrow/r.h"
 
 SEXP nanoarrow_c_vctr_chunk_offsets(SEXP array_list) {
   int num_chunks = Rf_length(array_list);
@@ -30,7 +31,7 @@ SEXP nanoarrow_c_vctr_chunk_offsets(SEXP array_list) {
 
   struct ArrowArray* array;
   for (int i = 0; i < num_chunks; i++) {
-    array = (struct ArrowArray*)R_ExternalPtrAddr(VECTOR_ELT(array_list, i));
+    array = nanoarrow_array_from_xptr(VECTOR_ELT(array_list, i));
     cumulative_offset += array->length;
     if (cumulative_offset > INT_MAX) {
       Rf_error("Can't build nanoarrow_vctr with length > INT_MAX");  // # nocov
@@ -89,6 +90,10 @@ SEXP nanoarrow_c_vctr_as_slice(SEXP indices_sexp) {
     UNPROTECT(1);
     return slice_sexp;
   }
+
+  // It may be possible to check for the R ALTREP sequence type,
+  // which would eliminate the need for the below check for
+  // sequential values.
 
   int buf[1024];
   INTEGER_GET_REGION(indices_sexp, 0, 1024, buf);

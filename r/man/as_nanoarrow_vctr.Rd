@@ -36,7 +36,7 @@ The nanoarrow_vctr is currently implemented similarly to \code{factor()}: its
 storage type is an \code{integer()} that is a sequence along the total length
 of the vctr and there are attributes that are required to resolve these
 indices to an array + offset. Sequences typically have a very compact
-representation in recent version of R such that this has a cheap storage
+representation in recent versions of R such that this has a cheap storage
 footprint even for large arrays. The attributes are currently:
 \itemize{
 \item \code{schema}: The \link[=as_nanoarrow_schema]{nanoarrow_schema} shared by each chunk.
