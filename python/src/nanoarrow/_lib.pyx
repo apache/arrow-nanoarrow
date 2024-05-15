@@ -39,7 +39,6 @@ from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_Is
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
     Py_buffer,
-    PyObject,
     PyObject_CheckBuffer,
     PyObject_GetBuffer,
     PyBuffer_Release,
@@ -48,10 +47,6 @@ from cpython cimport (
     PyBUF_ANY_CONTIGUOUS,
     PyBUF_FORMAT,
     PyBUF_WRITABLE,
-    PyErr_Fetch,
-    PyErr_NoMemory,
-    PyErr_Occurred,
-    PyErr_Restore,
     PyErr_WriteUnraisable,
     PyMem_Free,
     PyMem_Malloc
@@ -177,17 +172,10 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view):
 
 cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
     cdef DLManagedTensor* dlm_tensor
-    cdef PyObject* err_type
-    cdef PyObject* err_value
-    cdef PyObject* err_traceback
 
     # Do nothing if the capsule has been consumed
     if PyCapsule_IsValid(dltensor, "used_dltensor"):
         return
-
-    # An exception may be in-flight, we must save it in case
-    # we create another one
-    PyErr_Fetch(&err_type, &err_value, &err_traceback)
 
     dlm_tensor = <DLManagedTensor*>PyCapsule_GetPointer(dltensor, 'dltensor')
     if dlm_tensor == NULL:
@@ -196,29 +184,23 @@ cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
     # to provide a reasonable destructor
     elif dlm_tensor.deleter:
         dlm_tensor.deleter(dlm_tensor)
-        assert (not PyErr_Occurred())
 
-    # Set the error indicator from err_type, err_value, err_traceback
-    PyErr_Restore(err_type, err_value, err_traceback)
 
 cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
     if tensor.manager_ctx is NULL:
         return
-    #PyMem_Free(tensor.dl_tensor.shape)
     PyMem_Free(tensor)
     Py_DECREF(<CBufferView>tensor.manager_ctx)
-    #tensor.manager_ctx = NULL
-    #PyMem_Free(tensor)
 
 
 cpdef object view_to_dlpack(CBufferView view):
     cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyMem_Malloc(sizeof(DLManagedTensor))
 
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
-    dl_tensor.data = <void*>view._addr
+    dl_tensor.data = <void*>view._ptr.data.data
     dl_tensor.ndim = 1
 
-    cdef int64_t* _shape = <int64_t*>PyMem_Malloc(1 * sizeof(int64_t) * 2)
+    cdef int64_t* _shape = <int64_t*>PyMem_Malloc(sizeof(int64_t))
     _shape[0] = len(view)
     dl_tensor.shape = _shape
     dl_tensor.strides = NULL
@@ -227,32 +209,8 @@ cpdef object view_to_dlpack(CBufferView view):
     cdef DLDevice* device = &dl_tensor.device
     if view._device.device_type_id == ARROW_DEVICE_CPU:
         device.device_type = kDLCPU
-    elif view._device.device_type_id == ARROW_DEVICE_CUDA:
-        device.device_type = kDLCUDA
-    elif view._device.device_type_id == ARROW_DEVICE_CUDA_HOST:
-        device.device_type = kDLCUDAHost
-    elif view._device.device_type_id == ARROW_DEVICE_OPENCL:
-        device.device_type = kDLOpenCL
-    elif view._device.device_type_id == ARROW_DEVICE_VULKAN:
-        device.device_type = kDLVulkan
-    elif view._device.device_type_id == ARROW_DEVICE_METAL:
-        device.device_type = kDLMetal
-    elif view._device.device_type_id == ARROW_DEVICE_VPI:
-        device.device_type = kDLVPI
-    elif view._device.device_type_id == ARROW_DEVICE_ROCM:
-        device.device_type = kDLROCM
-    elif view._device.device_type_id == ARROW_DEVICE_ROCM_HOST:
-        device.device_type = kDLROCMHost
-    elif view._device.device_type_id == ARROW_DEVICE_EXT_DEV:
-        device.device_type = kDLExtDev
-    elif view._device.device_type_id == ARROW_DEVICE_CUDA_MANAGED:
-        device.device_type = kDLCUDAManaged
-    elif view._device.device_type_id == ARROW_DEVICE_ONEAPI:
-        device.device_type = kDLOneAPI
-    elif view._device.device_type_id == ARROW_DEVICE_WEBGPU:
-        device.device_type = kDLWebGPU
-    elif view._device.device_type_id == ARROW_DEVICE_HEXAGON:
-        device.device_type = kDLHexagon
+    else:
+        raise ValueError('Only CPU device is currently supported.')
     device.device_id =  view._device.device_id
 
     cdef DLDataType* dtype = &dl_tensor.dtype
