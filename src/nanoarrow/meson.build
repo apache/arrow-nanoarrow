@@ -74,10 +74,11 @@ if get_option('NANOARROW_BUILD_TESTS')
 
   arrow_dep = dependency('arrow')
   gtest_dep = dependency('gtest', fallback: ['gtest', 'gtest_main_dep'])
+  gmock_dep = dependency('gmock')
 
   utils_test = executable('utils_test', 'utils_test.cc',
                           link_with: nanoarrow_lib,
-                          dependencies: [arrow_dep, gtest_dep],
+                          dependencies: [arrow_dep, gtest_dep, gmock_dep],
                           include_directories: incdir)
   test('utils test', utils_test)
 
