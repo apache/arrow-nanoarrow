@@ -48,7 +48,7 @@ pushd "${ARROW_CPP_SCRATCH_DIR}"
 curl -L "https://github.com/WillAyd/arrow/archive/refs/heads/more-redundant-move-cleanup.tar.gz" | \
   tar -zxf -
 mkdir build && cd build
-cmake ../arrow-main/cpp \
+cmake ../arrow-more-redundant-move-cleanup/cpp \
   -DCMAKE_BUILD_TYPE=Debug \
   -DARROW_JEMALLOC=OFF \
   -DARROW_SIMD_LEVEL=NONE \
