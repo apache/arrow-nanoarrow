@@ -556,11 +556,11 @@ struct Nothing {};
 template <typename T>
 class Maybe {
  public:
-  Maybe() : nothing_{Nothing{}}, is_something_{false} {}
-  Maybe(Nothing) : Maybe{} {}
+  Maybe() : nothing_(Nothing()), is_something_(false) {}
+  Maybe(Nothing) : Maybe() {}
 
   Maybe(T something)  // NOLINT(google-explicit-constructor)
-      : something_{something}, is_something_{true} {}
+      : something_(something), is_something_(true) {}
 
   explicit constexpr operator bool() const { return is_something_; }
 
@@ -575,7 +575,8 @@ class Maybe {
   T value_or(T val) const { return is_something_ ? something_ : val; }
 
  private:
-  static_assert(std::is_trivially_copyable<T>::value, "");
+  // When support for gcc 4.8 is dropped, we should also assert
+  // is_trivially_copyable<T>::value
   static_assert(std::is_trivially_destructible<T>::value, "");
 
   union {
@@ -631,7 +632,7 @@ struct InputRange {
   };
 
   iterator begin() { return {this, next()}; }
-  iterator end() { return {this, {}}; }
+  iterator end() { return {this, ValueOrFalsy()}; }
 };
 }  // namespace internal
 
@@ -825,7 +826,7 @@ class ViewArrayAsFixedSizeBytes {
 class ViewArrayStream {
  public:
   ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
-      : range_{Next{this, stream, UniqueArray{}}}, code_{code}, error_{error} {}
+      : range_{Next{this, stream, UniqueArray()}}, code_{code}, error_{error} {}
 
   ViewArrayStream(ArrowArrayStream* stream, ArrowError* error)
       : ViewArrayStream{stream, &internal_code_, error} {}
@@ -905,7 +906,7 @@ inline bool operator==(ArrowStringView l, ArrowStringView r) {
 }
 
 /// \brief User literal operator allowing ArrowStringView construction like "str"_sv
-inline ArrowStringView operator""_v(const char* data, std::size_t size_bytes) {
+inline ArrowStringView operator"" _v(const char* data, std::size_t size_bytes) {
   return {data, static_cast<int64_t>(size_bytes)};
 }
 /// @}
