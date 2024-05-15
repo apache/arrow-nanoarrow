@@ -45,7 +45,7 @@ ARROW_CPP_SCRATCH_DIR="arrow-cpp-build-${ARROW_CPP_VERSION}"
 mkdir "${ARROW_CPP_SCRATCH_DIR}"
 pushd "${ARROW_CPP_SCRATCH_DIR}"
 
-curl -L "https://github.com/apache/arrow/archive/refs/heads/main.tar.gz" | \
+curl -L "https://github.com/WillAyd/arrow/archive/refs/heads/more-redundant-move-cleanup.tar.gz" | \
   tar -zxf -
 mkdir build && cd build
 cmake ../arrow-main/cpp \
