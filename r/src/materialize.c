@@ -19,8 +19,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "array.h"
 #include "nanoarrow.h"
-
+#include "nanoarrow/r.h"
 #include "util.h"
 
 // Needed for the list_of materializer
@@ -108,6 +109,10 @@ int nanoarrow_ptype_is_data_frame(SEXP ptype) {
           (Rf_xlength(ptype) > 0 && has_attrib_safe(ptype, R_NamesSymbol)));
 }
 
+int nanoarrow_ptype_is_nanoarrow_vctr(SEXP ptype) {
+  return Rf_inherits(ptype, "nanoarrow_vctr");
+}
+
 SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   SEXP result;
 
@@ -122,7 +127,27 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
       }
     }
 
-    if (nanoarrow_ptype_is_data_frame(ptype)) {
+    if (nanoarrow_ptype_is_nanoarrow_vctr(ptype)) {
+      // The object we return here is one that will accumulate chunks and
+      // be finalized with a value (rather than being strictly copied into
+      // after every new chunk is seen).
+      result = PROTECT(Rf_allocVector(INTSXP, len));
+      Rf_copyMostAttrib(ptype, result);
+
+      // For the purposes of building the list of chunks, chunks is a pairlist
+      // (it will be converted to a regular list when this converter is finalized)
+      // Technically the first value here won't be used (this simplifies the
+      // appending).
+      SEXP chunks_list = PROTECT(Rf_list1(R_NilValue));
+
+      // To start, the chunks list and the end of the chunks list are the same node
+      SEXP chunks_tail_sym = PROTECT(Rf_install("chunks_tail"));
+      SEXP chunks_sym = PROTECT(Rf_install("chunks"));
+      Rf_setAttrib(result, chunks_sym, chunks_list);
+      Rf_setAttrib(result, chunks_tail_sym, chunks_list);
+
+      UNPROTECT(3);
+    } else if (nanoarrow_ptype_is_data_frame(ptype)) {
       R_xlen_t num_cols = Rf_xlength(ptype);
       result = PROTECT(Rf_allocVector(VECSXP, num_cols));
       for (R_xlen_t i = 0; i < num_cols; i++) {
@@ -207,6 +232,10 @@ static void fill_vec_with_nulls(SEXP x, R_xlen_t offset, R_xlen_t len) {
 }
 
 static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
+  if (nanoarrow_ptype_is_nanoarrow_vctr(dst)) {
+    Rf_error("Can't copy_vec_into() to nanoarrow_vctr");
+  }
+
   if (nanoarrow_ptype_is_data_frame(dst)) {
     if (!nanoarrow_ptype_is_data_frame(x)) {
       Rf_error("Expected record-style vctr result but got non-record-style result");
@@ -270,6 +299,107 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
   }
 }
 
+int nanoarrow_materialize_finalize_result(SEXP converter_xptr) {
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP result = VECTOR_ELT(converter_shelter, 4);
+
+  // Materialize never called (e.g., empty stream)
+  if (result == R_NilValue) {
+    NANOARROW_RETURN_NOT_OK(nanoarrow_converter_reserve(converter_xptr, 0));
+    result = VECTOR_ELT(converter_shelter, 4);
+  }
+
+  if (nanoarrow_ptype_is_nanoarrow_vctr(result)) {
+    // Get the schema for this converter. Technically this will overwrite
+    // a schema that was provided explicitly; however, we currently do not
+    // handle that case.
+
+    SEXP schema_xptr = VECTOR_ELT(converter_shelter, 1);
+
+    // We no longer need to keep track of chunks_tail
+    SEXP chunks_tail_sym = PROTECT(Rf_install("chunks_tail"));
+    Rf_setAttrib(result, chunks_tail_sym, R_NilValue);
+
+    // We also want to pass on the class of the ptype we received
+    SEXP subclass_sexp = Rf_getAttrib(result, R_ClassSymbol);
+
+    // We no longer need the first element of the pairlist, which was
+    // intentionally set to R_NilValue.
+    SEXP chunks_sym = PROTECT(Rf_install("chunks"));
+    SEXP chunks_pairlist0 = Rf_getAttrib(result, chunks_sym);
+
+    // If there were zero chunks, there will be no "first" node
+    SEXP chunks_list;
+    if (CDR(chunks_pairlist0) == R_NilValue) {
+      chunks_list = PROTECT(Rf_allocVector(VECSXP, 0));
+    } else {
+      chunks_list = PROTECT(Rf_PairToVectorList(CDR(chunks_pairlist0)));
+    }
+
+    // Set up the call to new_nanoarrow_vctr
+    SEXP new_nanoarrow_vctr_sym = PROTECT(Rf_install("new_nanoarrow_vctr"));
+    SEXP new_nanoarrow_vctr_call = PROTECT(
+        Rf_lang4(new_nanoarrow_vctr_sym, chunks_list, schema_xptr, subclass_sexp));
+    SEXP final_result = PROTECT(Rf_eval(new_nanoarrow_vctr_call, nanoarrow_ns_pkg));
+
+    SET_VECTOR_ELT(converter_shelter, 4, final_result);
+    UNPROTECT(6);
+  } else if (nanoarrow_ptype_is_data_frame(result)) {
+    // For each child, finalize the result and then reassign it
+    SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
+    for (R_xlen_t i = 0; i < Rf_xlength(child_converter_xptrs); i++) {
+      SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, i);
+      NANOARROW_RETURN_NOT_OK(
+          nanoarrow_materialize_finalize_result(child_converter_xptr));
+
+      SEXP child_result =
+          PROTECT(nanoarrow_converter_release_result(child_converter_xptr));
+      SET_VECTOR_ELT(result, i, child_result);
+      UNPROTECT(1);
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+static int nanoarrow_materialize_nanoarrow_vctr(struct RConverter* converter,
+                                                SEXP converter_xptr) {
+  // This is a case where the callee needs ownership, which we can do via a
+  // shallow copy.
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP schema_xptr = VECTOR_ELT(converter_shelter, 1);
+  SEXP array_xptr = VECTOR_ELT(converter_shelter, 2);
+
+  SEXP array_out_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* out_array = nanoarrow_output_array_from_xptr(array_out_xptr);
+  array_export(array_xptr, out_array);
+  R_SetExternalPtrTag(array_out_xptr, schema_xptr);
+
+  // Update the offset/length in case a slice is being requested from the
+  // converter.
+  out_array->offset += converter->src.offset;
+  out_array->length = converter->src.length;
+
+  // Get the cached copy of the pairlist node at the end of the current
+  // chunks list.
+  SEXP chunks_tail_sym = PROTECT(Rf_install("chunks_tail"));
+  SEXP chunks_tail = PROTECT(Rf_getAttrib(converter->dst.vec_sexp, chunks_tail_sym));
+
+  // Create a length-1 pairlist node containing the chunk
+  SEXP next_sexp = PROTECT(Rf_cons(array_out_xptr, R_NilValue));
+
+  // Append it to the end of the current pairlist
+  SETCDR(chunks_tail, next_sexp);
+  UNPROTECT(1);
+
+  // Update the cached copy of the pairlist node at the end of the current
+  // chunks list.
+  Rf_setAttrib(converter->dst.vec_sexp, chunks_tail_sym, next_sexp);
+  UNPROTECT(3);
+
+  return NANOARROW_OK;
+}
+
 static int nanoarrow_materialize_other(struct RConverter* converter,
                                        SEXP converter_xptr) {
   // Ensure that we have a ptype SEXP to send in the call back to R
@@ -280,20 +410,19 @@ static int nanoarrow_materialize_other(struct RConverter* converter,
     UNPROTECT(1);
   }
 
-  // A unique situation where we don't want owning external pointers because we know
-  // these are protected for the duration of our call into R and because we don't want
-  // the underlying array to be released and invalidate the converter. The R code in
-  // convert_fallback_other() takes care of ensuring an independent copy with the correct
-  // offset/length.
-  SEXP schema_xptr = PROTECT(R_MakeExternalPtr(
-      (struct ArrowSchema*)converter->schema_view.schema, R_NilValue, R_NilValue));
-  Rf_setAttrib(schema_xptr, R_ClassSymbol, nanoarrow_cls_schema);
-  // We do need to set the protected member of the array external pointer to signal that
-  // it is not an independent array (i.e., force a shallow copy).
-  SEXP array_xptr = PROTECT(R_MakeExternalPtr(
-      (struct ArrowArray*)converter->array_view.array, schema_xptr, converter_xptr));
-  Rf_setAttrib(array_xptr, R_ClassSymbol, nanoarrow_cls_array);
+  // Special-case the nanoarrow_vctr conversion
+  if (Rf_inherits(converter->dst.vec_sexp, "nanoarrow_vctr")) {
+    return nanoarrow_materialize_nanoarrow_vctr(converter, converter_xptr);
+  }
 
+  // We've ensured proper ownership of array_xptr and ensured that its
+  // schema is set, so we can pass these safely to the R-level
+  // convert_fallback_other.
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP array_xptr = VECTOR_ELT(converter_shelter, 2);
+
+  // The R code in convert_fallback_other() takes care of ensuring an independent copy
+  // with the correct offset/length if it is necessary to update them.
   SEXP offset_sexp = PROTECT(
       Rf_ScalarReal((double)(converter->src.array_view->offset + converter->src.offset)));
   SEXP length_sexp = PROTECT(Rf_ScalarReal((double)converter->src.length));
@@ -307,7 +436,7 @@ static int nanoarrow_materialize_other(struct RConverter* converter,
   copy_vec_into(result_src, converter->dst.vec_sexp, converter->dst.offset,
                 converter->dst.length);
 
-  UNPROTECT(7);
+  UNPROTECT(5);
   return NANOARROW_OK;
 }
 
