@@ -15,6 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
-dist/* linguist-generated
-extensions/nanoarrow_ipc/thirdparty/* linguist-vendored
-python/src/nanoarrow/*.pxi linguist-generated
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Generates src/nanoarrow/*.pxi given the currently installed copy of
+# nanoarrow. Requires mypy and black (where black is pinned to the
+# same version as in pre-commit)
+
+pushd "${SOURCE_DIR}"
+
+# Generate stubs using mypy
+stubgen --module nanoarrow._lib --include-docstrings -o src
+stubgen --module nanoarrow._ipc_lib --include-docstrings -o src
+
+# Reformat stubs
+black src/nanoarrow/*.pyi
+
+popd
