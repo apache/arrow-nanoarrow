@@ -158,10 +158,10 @@ def nulls_as_sentinel(sentinel=None):
     import numpy as np
 
     def handle(is_valid, data):
-        is_valid = np.array(is_valid, copy=False)
         data = np.array(data, copy=False)
 
-        if len(is_valid) > 0:
+        if is_valid is not None:
+            is_valid = np.array(is_valid, copy=False)
             out_type = np.result_type(data, sentinel)
             data = np.array(data, dtype=out_type, copy=True)
             data[~is_valid] = sentinel
