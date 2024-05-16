@@ -295,7 +295,7 @@ class ColumnsBuilder(ArrayStreamVisitor):
             child_visitor.visit_chunk_view(child_array_view)
 
     def finish(self) -> Tuple[List[str], List[Sequence]]:
-        return [v.schema.name for v in self._child_visitors], [
+        return [child.name for child in self._schema.children], [
             v.finish() for v in self._child_visitors
         ]
 
