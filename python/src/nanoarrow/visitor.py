@@ -134,8 +134,10 @@ def nulls_as_sentinel(sentinel=None):
 
     A null handler that assigns a sentinel to null values. This is
     done using numpy using the expression ``data[~is_valid] = sentinel``.
-    The default sentinel value will result in ``nan`` assigned to null
-    values in numeric and boolean outputs.
+    The default sentinel value of ``None`` will result in ``nan``
+    assigned to null values in numeric and boolean outputs. This
+    corresponds to numpy's handling of ``None`` in ``np.result_type()``
+    and ``result[~is_valid] = None``.
 
     Parameters
     ----------
