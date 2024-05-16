@@ -59,7 +59,8 @@ class ArrayViewVisitable:
         handle_nulls : callable
             A function returning a sequence based on a validity bytemap and a
             contiguous buffer of values (e.g., the callable returned by
-            :meth:`nulls_as_sentinel`).
+            :func:`nulls_as_sentinel`, :func:`nulls_forbid`, or
+            :func:`nulls_separate`). The default value is :func:`nulls_forbid`.
 
         Examples
         --------
@@ -90,7 +91,8 @@ class ArrayViewVisitable:
         handle_nulls : callable
             A function returning a sequence based on a validity bytemap and a
             contiguous buffer of values (e.g., the callable returned by
-            :meth:`nulls_as_sentinel`).
+            :func:`nulls_as_sentinel`, :func:`nulls_forbid`, or
+            :func:`nulls_separate`). The default value is :func:`nulls_forbid`.
 
         Examples
         --------
