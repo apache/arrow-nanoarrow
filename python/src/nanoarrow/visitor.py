@@ -32,7 +32,7 @@ class ArrayViewVisitable:
     """
 
     def to_pylist(self) -> List:
-        """Convert to a ``list()`` of Python objects
+        """Convert to a ``list`` of Python objects
 
         Computes an identical value to ``list(iter_py())`` but can be much
         faster.
@@ -49,7 +49,7 @@ class ArrayViewVisitable:
         return ListBuilder.visit(self)
 
     def to_column_list(self, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
-        """Convert to a ``list()` of contiguous sequences
+        """Convert to a ``list`` of contiguous sequences
 
         Converts a stream of struct arrays into its column-wise representation
         according to :meth:`to_column`.
@@ -79,7 +79,7 @@ class ArrayViewVisitable:
         """Convert to a contiguous sequence
 
         Converts a stream of arrays into a columnar representation
-        such that each column is either a contiguous buffer or a ``list()``.
+        such that each column is either a contiguous buffer or a ``list``.
         Integer, float, and interval arrays are currently converted to their
         contiguous buffer representation; other types are returned as a list
         of Python objects. The sequences returned by :meth:`to_column` are
@@ -87,9 +87,6 @@ class ArrayViewVisitable:
 
         Parameters
         ---------
-        obj : array stream-like
-            An array-like or array stream-like object as sanitized by
-            :func:`c_array_stream`.
         schema : schema-like, optional
             An optional schema, passed to :func:`c_array_stream`.
         handle_nulls : callable
