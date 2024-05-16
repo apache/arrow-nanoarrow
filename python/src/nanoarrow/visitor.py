@@ -173,19 +173,18 @@ def nulls_as_sentinel(sentinel=None):
     return handle
 
 
-def nulls_debug() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
-    """Debugging null handler
+def nulls_separate() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
+    """Return nulls as a tuple of is_valid, data
 
-    A null handler that returns its input.
+    A null handler that returns its components.
 
     Examples
     --------
 
-    >>> from nanoarrow import visitor
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).to_column(visitor.nulls_debug())
+    >>> na.Array([1, 2, 3], na.int32()).to_column(na.nulls_separate())
     (nanoarrow.c_lib.CBuffer(uint8[0 b] ), nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
-    >>> result = na.Array([1, None, 3], na.int32()).to_column(visitor.nulls_debug())
+    >>> result = na.Array([1, None, 3], na.int32()).to_column(na.nulls_separate())
     >>> result[0]
     nanoarrow.c_lib.CBuffer(uint8[3 b] True False True)
     >>> result[1]
