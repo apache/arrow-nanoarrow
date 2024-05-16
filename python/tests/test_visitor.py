@@ -171,14 +171,13 @@ def test_nulls_forbid():
 def test_numpy_null_handling():
     np = pytest.importorskip("numpy")
 
-    is_valid_empty = memoryview(na.c_buffer([], na.uint8())).cast("?")
     is_valid_non_empty = memoryview(na.c_buffer([1, 0, 1], na.uint8())).cast("?")
     data = na.c_buffer([1, 2, 3], na.int32())
 
     # Check nulls as sentinel
     nulls_as_sentinel = visitor.nulls_as_sentinel()
     np.testing.assert_array_equal(
-        nulls_as_sentinel(is_valid_empty, data), np.array([1, 2, 3], np.int32)
+        nulls_as_sentinel(None, data), np.array([1, 2, 3], np.int32)
     )
     np.testing.assert_array_equal(
         nulls_as_sentinel(is_valid_non_empty, data),
