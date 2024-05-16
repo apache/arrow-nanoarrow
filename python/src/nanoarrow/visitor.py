@@ -39,7 +39,6 @@ class ArrayViewVisitable:
 
         Examples
         --------
-
         >>> import nanoarrow as na
         >>> from nanoarrow import visitor
         >>> array = na.Array([1, 2, 3], na.int32())
@@ -58,13 +57,13 @@ class ArrayViewVisitable:
         ---------
         handle_nulls : callable
             A function returning a sequence based on a validity bytemap and a
-            contiguous buffer of values (e.g., the callable returned by
-            :func:`nulls_as_sentinel`, :func:`nulls_forbid`, or
+            contiguous buffer of values. If the array contains no nulls, the
+            validity bytemap will be ``None``. Built-in handlers include
+            :func:`nulls_as_sentinel`, :func:`nulls_forbid`, and
             :func:`nulls_separate`). The default value is :func:`nulls_forbid`.
 
         Examples
         --------
-
         >>> import nanoarrow as na
         >>> import pyarrow as pa
         >>> batch = pa.record_batch({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
@@ -90,8 +89,9 @@ class ArrayViewVisitable:
         ----------
         handle_nulls : callable
             A function returning a sequence based on a validity bytemap and a
-            contiguous buffer of values (e.g., the callable returned by
-            :func:`nulls_as_sentinel`, :func:`nulls_forbid`, or
+            contiguous buffer of values. If the array contains no nulls, the
+            validity bytemap will be ``None``. Built-in handlers include
+            :func:`nulls_as_sentinel`, :func:`nulls_forbid`, and
             :func:`nulls_separate`). The default value is :func:`nulls_forbid`.
 
         Examples
