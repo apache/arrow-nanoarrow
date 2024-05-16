@@ -369,80 +369,90 @@ document.write(`
   under the License.
 --><section id="nanoarrow">
 <h1>nanoarrow<a class="headerlink" href="#nanoarrow" title="Link to this heading">#</a></h1>
-<p><a class="reference external" href="https://app.codecov.io/gh/apache/arrow-nanoarrow?branch=main"><img alt="Codecov test coverage" src="https://codecov.io/gh/apache/arrow-nanoarrow/branch/main/graph/badge.svg" /></a> <a class="reference external" href="https://arrow.apache.org/nanoarrow/main"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-main-yellow" /></a> <a class="reference external" href="https://github.com/apache/arrow-nanoarrow"><img alt="nanoarrow on GitHub" src="https://img.shields.io/badge/GitHub-apache%2Farrow--nanoarrow-blue" /></a></p>
-<p>The nanoarrow library is a set of helper functions to interpret and
-generate <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C Data
-Interface</a>
-and <a class="reference external" href="https://arrow.apache.org/docs/format/CStreamInterface.html">Arrow C Stream
-Interface</a>
-structures. The library is in active early development and users should
-update regularly from the main branch of this repository.</p>
-<p>Whereas the current suite of Arrow implementations provide the basis for
-a comprehensive data analysis toolkit, this library is intended to
-support clients that wish to produce or interpret Arrow C Data and/or
-Arrow C Stream structures where linking to a higher level Arrow binding
-is difficult or impossible.</p>
-<section id="using-the-c-library">
-<h2>Using the C library<a class="headerlink" href="#using-the-c-library" title="Link to this heading">#</a></h2>
-<p>The nanoarrow C library is intended to be copied and vendored. This can
-be done using CMake or by using the bundled nanoarrow.h/nanoarrow.c
-distribution available in the dist/ directory in this repository.
-Examples of both can be found in the examples/ directory in this
-repository.</p>
-<p>A simple producer example:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;nanoarrow.h&quot;</span>
-
-<span class="kt">int</span><span class="w"> </span><span class="nf">make_simple_array</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">array_out</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="o">*</span><span class="w"> </span><span class="n">schema_out</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
-<span class="w">  </span><span class="n">array_out</span><span class="o">-&gt;</span><span class="n">release</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
-<span class="w">  </span><span class="n">schema_out</span><span class="o">-&gt;</span><span class="n">release</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
-
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayInitFromType</span><span class="p">(</span><span class="n">array_out</span><span class="p">,</span><span class="w"> </span><span class="n">NANOARROW_TYPE_INT32</span><span class="p">));</span>
-
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayStartAppending</span><span class="p">(</span><span class="n">array_out</span><span class="p">));</span>
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayAppendInt</span><span class="p">(</span><span class="n">array_out</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">));</span>
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayAppendInt</span><span class="p">(</span><span class="n">array_out</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">));</span>
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayAppendInt</span><span class="p">(</span><span class="n">array_out</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">));</span>
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayFinishBuildingDefault</span><span class="p">(</span><span class="n">array_out</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowSchemaInitFromType</span><span class="p">(</span><span class="n">schema_out</span><span class="p">,</span><span class="w"> </span><span class="n">NANOARROW_TYPE_INT32</span><span class="p">));</span>
-
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">;</span>
-<span class="p">}</span>
+<p><a class="reference external" href="https://app.codecov.io/gh/apache/arrow-nanoarrow?branch=main"><img alt="Codecov test coverage" src="https://codecov.io/gh/apache/arrow-nanoarrow/branch/main/graph/badge.svg" /></a> <a class="reference external" href="https://arrow.apache.org/nanoarrow/"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-main-yellow" /></a> <a class="reference external" href="https://github.com/apache/arrow-nanoarrow"><img alt="nanoarrow on GitHub" src="https://img.shields.io/badge/GitHub-apache%2Farrow--nanoarrow-blue" /></a></p>
+<p>The nanoarrow libraries are a set of helpers to produce and consume
+Arrow data, including the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C
+Data</a>,
+<a class="reference external" href="https://arrow.apache.org/docs/format/CStreamInterface.html">Arrow C
+Stream</a>,
+and <a class="reference external" href="https://arrow.apache.org/docs/format/CDeviceDataInterface.html">Arrow C
+Device</a>,
+structures and the <a class="reference external" href="https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc">serialized Arrow IPC
+format</a>.
+The vision of nanoarrow is that it should be trivial for libraries to
+produce and consume Arrow data: it helps fulfill this vision by
+providing high-quality, easy-to-adopt helpers to produce, consume, and
+test Arrow data types and arrays.</p>
+<p>The nanoarrow libraries were built to be:</p>
+<ul class="simple">
+<li><p>Small: nanoarrow’s C runtime compiles into a few hundred kilobytes
+and its R and Python bindings both have an installed size of ~1 MB.</p></li>
+<li><p>Easy to depend on: nanoarrow’s C library is distributed as two files
+(nanoarrow.c and nanoarrow.h) and its R and Python bindings have zero
+dependencies.</p></li>
+<li><p>Useful: The Arrow Columnar Format includes a wide range of data type
+and data encoding options. To the greatest extent practicable,
+nanoarrow strives to support the entire Arrow columnar specification
+(see the <a class="reference external" href="https://arrow.apache.org/docs/status.html">Arrow implementation
+status</a> page for
+implementation status).</p></li>
+</ul>
+<section id="getting-started">
+<h2>Getting started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h2>
+<p>The nanoarrow Python bindings are available from
+<a class="reference external" href="https://pypi.org/">PyPI</a> and
+<a class="reference external" href="https://conda-forge.org/">conda-forge</a>:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>nanoarrow
+conda<span class="w"> </span>install<span class="w"> </span>nanoarrow<span class="w"> </span>-c<span class="w"> </span>conda-forge
 </pre></div>
 </div>
-<p>A simple consumer example:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span>
-
-<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;nanoarrow.h&quot;</span>
-
-<span class="kt">int</span><span class="w"> </span><span class="nf">print_simple_array</span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArray</span><span class="o">*</span><span class="w"> </span><span class="n">array</span><span class="p">,</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowSchema</span><span class="o">*</span><span class="w"> </span><span class="n">schema</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowError</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
-<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">ArrowArrayView</span><span class="w"> </span><span class="n">array_view</span><span class="p">;</span>
-<span class="w">  </span><span class="n">NANOARROW_RETURN_NOT_OK</span><span class="p">(</span><span class="n">ArrowArrayViewInitFromSchema</span><span class="p">(</span><span class="o">&amp;</span><span class="n">array_view</span><span class="p">,</span><span class="w"> </span><span class="n">schema</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">));</span>
-
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">array_view</span><span class="p">.</span><span class="n">storage_type</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">NANOARROW_TYPE_INT32</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;Array has storage that is not int32</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-<span class="w">  </span><span class="p">}</span>
-
-<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ArrowArrayViewSetArray</span><span class="p">(</span><span class="o">&amp;</span><span class="n">array_view</span><span class="p">,</span><span class="w"> </span><span class="n">array</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">ArrowArrayViewReset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">array_view</span><span class="p">);</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
-<span class="w">  </span><span class="p">}</span>
-
-<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int64_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">array</span><span class="o">-&gt;</span><span class="n">length</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">ArrowArrayViewGetIntUnsafe</span><span class="p">(</span><span class="o">&amp;</span><span class="n">array_view</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">));</span>
-<span class="w">  </span><span class="p">}</span>
-
-<span class="w">  </span><span class="n">ArrowArrayViewReset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">array_view</span><span class="p">);</span>
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">NANOARROW_OK</span><span class="p">;</span>
-<span class="p">}</span>
+<p>The nanoarrow R package is available from
+<a class="reference external" href="https://cran.r-project.org">CRAN</a>:</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;nanoarrow&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>See the <a class="reference external" href="https://arrow.apache.org/nanoarrow/latest/">nanoarrow
+Documentation</a> for
+extended tutorials and API reference for the C, C++, Python, and R
+libraries.</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arrow.apache.org/nanoarrow/latest/getting-started/cpp.html">Getting started in
+C/C++</a></p></li>
+<li><p><a class="reference external" href="https://arrow.apache.org/nanoarrow/latest/getting-started/python.html">Getting started in
+Python</a></p></li>
+<li><p><a class="reference external" href="https://arrow.apache.org/nanoarrow/latest/getting-started/r.html">Getting started in
+R</a></p></li>
+</ul>
+<p>The <a class="reference external" href="https://github.com/apache/arrow-nanoarrow">nanoarrow GitHub
+repository</a> additionally
+provides a number of
+<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/tree/main/examples">examples</a>
+covering how to use nanoarrow in a variety of build configurations.</p>
+</section>
+<section id="development">
+<h2>Development<a class="headerlink" href="#development" title="Link to this heading">#</a></h2>
+<section id="building-with-cmake">
+<h3>Building with CMake<a class="headerlink" href="#building-with-cmake" title="Link to this heading">#</a></h3>
+<p>CMake is the primary build system used to develop and test the nanoarrow
+C library. You can build nanoarrow with:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>build
+cmake<span class="w"> </span>..
+cmake<span class="w"> </span>--build<span class="w"> </span>.
+</pre></div>
+</div>
+<p>Building nanoarrow with tests currently requires <a class="reference external" href="https://arrow.apache.org/install/">Arrow
+C++</a>. If installed via a system
+package manager like <code class="docutils literal notranslate"><span class="pre">apt</span></code>, <code class="docutils literal notranslate"><span class="pre">dnf</span></code>, or <code class="docutils literal notranslate"><span class="pre">brew</span></code>, the tests can be
+built with:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>build
+cmake<span class="w"> </span>..<span class="w"> </span>-DNANOARROW_BUILD_TESTS<span class="o">=</span>ON
+cmake<span class="w"> </span>--build<span class="w"> </span>.
+</pre></div>
+</div>
+<p>Tests can be run with <code class="docutils literal notranslate"><span class="pre">ctest</span></code>.</p>
 </section>
 <section id="building-with-meson">
-<h2>Building with Meson<a class="headerlink" href="#building-with-meson" title="Link to this heading">#</a></h2>
+<h3>Building with Meson<a class="headerlink" href="#building-with-meson" title="Link to this heading">#</a></h3>
 <p>CMake is the officially supported build system for nanoarrow. However,
 the Meson backend is an experimental feature you may also wish to try.</p>
 <p>To run the test suite with Meson, you will want to first install the
@@ -482,6 +492,7 @@ meson<span class="w"> </span><span class="nb">test</span><span class="w"> </span
 meson<span class="w"> </span><span class="nb">test</span><span class="w"> </span>nanoarrow:<span class="w"> </span>--benchmark<span class="w"> </span>--verbose<span class="w"> </span><span class="c1"># run benchmarks</span>
 </pre></div>
 </div>
+</section>
 </section>
 <section id="contents">
 <h2>Contents<a class="headerlink" href="#contents" title="Link to this heading">#</a></h2>
@@ -553,8 +564,12 @@ meson<span class="w"> </span><span class="nb">test</span><span class="w"> </span
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-the-c-library">Using the C library</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-with-meson">Building with Meson</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting started</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#development">Development</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#building-with-cmake">Building with CMake</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#building-with-meson">Building with Meson</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contents">Contents</a></li>
 </ul>
   </nav></div>
