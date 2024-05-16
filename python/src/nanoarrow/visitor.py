@@ -287,6 +287,9 @@ class ColumnsBuilder(ArrayStreamVisitor):
             child_visitor.begin(total_elements)
 
     def visit_chunk_view(self, array_view: CArrayView) -> Any:
+        # This visitor does not handle nulls because it has no way to propagate these
+        # into the child columns. It is designed to be used on top-level record batch
+        # arrays which typically are marked as non-nullable or do not contain nulls.
         if array_view.null_count > 0:
             raise ValueError("null_count > 0 encountered in ColumnsBuilder")
 
