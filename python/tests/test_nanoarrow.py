@@ -190,13 +190,15 @@ def test_c_array_view_null_count():
     )
     assert array.view().null_count == 0
 
-    # Infer null count == 0 because of null data buffer
+    # Infer null count == 0 because of null data buffer when the null count
+    # has not yet been computed by the producer.
     array = na.c_array_from_buffers(
         na.int32(), 3, (None, na.c_buffer([1, 2, 3], na.int32())), null_count=-1
     )
     assert array.view().null_count == 0
 
-    # Compute null count == 0 by counting validity bits
+    # Compute null count == 0 by counting validity bits when the null count
+    # has not yet been computed by the producer.
     array = na.c_array_from_buffers(
         na.int32(),
         3,
@@ -209,7 +211,8 @@ def test_c_array_view_null_count():
 
     assert array.view().null_count == 0
 
-    # Check computed null count with actual nulls
+    # Check computed null count with actual nulls when the null count
+    # has not yet been computed by the producer.
     array = na.c_array_from_buffers(
         na.int32(),
         3,
