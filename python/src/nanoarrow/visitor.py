@@ -121,7 +121,7 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
     """
 
     def handle(is_valid, data):
-        if len(is_valid) > 0:
+        if is_valid is not None:
             raise ValueError("Null present with null_handler=nulls_forbid()")
 
         return data
@@ -180,7 +180,7 @@ def nulls_separate() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
 
     >>> import nanoarrow as na
     >>> na.Array([1, 2, 3], na.int32()).to_column(na.nulls_separate())
-    (nanoarrow.c_lib.CBuffer(uint8[0 b] ), nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
+    (None, nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
     >>> result = na.Array([1, None, 3], na.int32()).to_column(na.nulls_separate())
     >>> result[0]
     nanoarrow.c_lib.CBuffer(uint8[3 b] True False True)
@@ -410,7 +410,7 @@ class NullableColumnBuilder(ArrayStreamVisitor):
     def finish(self) -> Any:
         is_valid = self._builder.finish()
         column = self._column_builder.finish()
-        return self._handle_nulls(is_valid, column)
+        return self._handle_nulls(is_valid if len(is_valid) > 0 else None, column)
 
     def _fill_valid(self, length):
         builder = self._builder

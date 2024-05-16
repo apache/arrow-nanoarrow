@@ -130,7 +130,7 @@ def test_unpacked_validity_bitmap_concatenator():
     is_valid, column = visitor.NullableColumnBuilder.visit(
         array, handle_nulls=na.nulls_separate()
     )
-    assert len(is_valid) == 0
+    assert is_valid is None
     assert list(column) == [1, 2, 3, 4, 5, 6]
 
     # Only nulls in the first chunk
@@ -159,12 +159,11 @@ def test_unpacked_validity_bitmap_concatenator():
 
 
 def test_nulls_forbid():
-    is_valid_empty = na.c_buffer([], na.uint8())
     is_valid_non_empty = na.c_buffer([1, 0, 1], na.uint8())
     data = na.c_buffer([1, 2, 3], na.int32())
 
     forbid_nulls = visitor.nulls_forbid()
-    assert forbid_nulls(is_valid_empty, data) is data
+    assert forbid_nulls(None, data) is data
     with pytest.raises(ValueError):
         forbid_nulls(is_valid_non_empty, data)
 
