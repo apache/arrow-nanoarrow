@@ -66,12 +66,12 @@ class ArrayViewVisitable:
 
         >>> import nanoarrow as na
         >>> import pyarrow as pa
-        >>> batch = pa.record_batch([pa.array([1, 2, 3])], names=["col1"])
+        >>> batch = pa.record_batch({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
         >>> names, columns = na.Array(batch).to_column_list()
         >>> names
-        ['col1']
+        ['col1', 'col2']
         >>> columns
-        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3)]
+        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3), ['a', 'b', 'c']]
         """
         return ColumnsBuilder.visit(self, handle_nulls=handle_nulls)
 
