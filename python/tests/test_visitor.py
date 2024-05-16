@@ -87,6 +87,16 @@ def test_to_column_list():
     with pytest.raises(ValueError, match="can only be used on a struct array"):
         visitor.ColumnsBuilder.visit([], na.int32())
 
+    # Ensure that the columns builder errors for top-level nulls
+    array_with_nulls = na.c_array_from_buffers(
+        array.schema,
+        array.length,
+        [na.c_buffer([True, False, True], na.bool_())],
+        children=array.children,
+    )
+    with pytest.raises(ValueError, match="null_count > 0"):
+        visitor.ColumnsBuilder.visit(array_with_nulls)
+
 
 def test_buffer_concatenator():
     array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
