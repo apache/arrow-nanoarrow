@@ -121,6 +121,7 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
     """
 
     def handle(is_valid, data):
+        # the is_valid bytemap is only created if there was at least one null
         if is_valid is not None:
             raise ValueError("Null present with null_handler=nulls_forbid()")
 
