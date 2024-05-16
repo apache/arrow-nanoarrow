@@ -86,9 +86,7 @@ class ArrayViewVisitable:
         designed to work as input to ``pandas.Series`` and/or ``numpy.array()``.
 
         Parameters
-        ---------
-        schema : schema-like, optional
-            An optional schema, passed to :func:`c_array_stream`.
+        ----------
         handle_nulls : callable
             A function returning a sequence based on a validity bytemap and a
             contiguous buffer of values (e.g., the callable returned by
