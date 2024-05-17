@@ -75,7 +75,7 @@ class ArrayViewVisitable:
         """
         return ColumnsConverter.visit(self, handle_nulls=handle_nulls)
 
-    def to_column(self, handle_nulls=None) -> Sequence:
+    def convert(self, handle_nulls=None) -> Sequence:
         """Convert to a contiguous sequence
 
         Converts a stream of arrays into a columnar representation
@@ -97,7 +97,7 @@ class ArrayViewVisitable:
         Examples
         --------
         >>> import nanoarrow as na
-        >>> na.Array([1, 2, 3], na.int32()).to_column()
+        >>> na.Array([1, 2, 3], na.int32()).convert()
         nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
         """
         return SingleColumnConverter.visit(self, handle_nulls=handle_nulls)
@@ -112,9 +112,9 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
     --------
 
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).to_column(na.nulls_forbid())
+    >>> na.Array([1, 2, 3], na.int32()).convert(na.nulls_forbid())
     nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
-    >>> na.Array([1, None, 3], na.int32()).to_column(na.nulls_forbid())
+    >>> na.Array([1, None, 3], na.int32()).convert(na.nulls_forbid())
     Traceback (most recent call last):
     ...
     ValueError: Null present with null_handler=nulls_forbid()
@@ -149,11 +149,11 @@ def nulls_as_sentinel(sentinel=None):
     --------
 
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).to_column(na.nulls_as_sentinel())
+    >>> na.Array([1, 2, 3], na.int32()).convert(na.nulls_as_sentinel())
     array([1, 2, 3], dtype=int32)
-    >>> na.Array([1, None, 3], na.int32()).to_column(na.nulls_as_sentinel())
+    >>> na.Array([1, None, 3], na.int32()).convert(na.nulls_as_sentinel())
     array([ 1., nan,  3.])
-    >>> na.Array([1, None, 3], na.int32()).to_column(na.nulls_as_sentinel(-999))
+    >>> na.Array([1, None, 3], na.int32()).convert(na.nulls_as_sentinel(-999))
     array([   1, -999,    3], dtype=int32)
     """
     import numpy as np
@@ -182,9 +182,9 @@ def nulls_separate() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
     --------
 
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).to_column(na.nulls_separate())
+    >>> na.Array([1, 2, 3], na.int32()).convert(na.nulls_separate())
     (None, nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
-    >>> result = na.Array([1, None, 3], na.int32()).to_column(na.nulls_separate())
+    >>> result = na.Array([1, None, 3], na.int32()).convert(na.nulls_separate())
     >>> result[0]
     nanoarrow.c_lib.CBuffer(uint8[3 b] True False True)
     >>> result[1]

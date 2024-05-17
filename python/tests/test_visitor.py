@@ -26,7 +26,7 @@ def test_to_pylist():
     assert visitor.ListConverter.visit(array) == [1, 2, 3]
 
 
-def test_to_column():
+def test_convert():
     ints = na.c_array([1, 2, 3], na.int32())
     bools = na.c_array([1, 0, 1], na.bool_())
     strings = na.c_array(["abc", "def", "ghi"], na.string())
