@@ -47,11 +47,11 @@ class ArrayViewVisitable:
         """
         return ListConverter.visit(self)
 
-    def convert_columns(self, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
+    def convert_columns(self, *, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
         """Convert to a ``list`` of contiguous sequences
 
-        Converts a stream of struct arrays into its column-wise representation
-        according to :meth:`convert`.
+        Experimentally converts a stream of struct arrays into a list of contiguous
+        sequences using the same logic as :meth:`convert`.
 
         Paramters
         ---------
@@ -75,15 +75,17 @@ class ArrayViewVisitable:
         """
         return ColumnListConverter.visit(self, handle_nulls=handle_nulls)
 
-    def convert(self, handle_nulls=None) -> Sequence:
+    def convert(self, *, handle_nulls=None) -> Sequence:
         """Convert to a contiguous sequence
 
-        Converts a stream of arrays into a columnar representation
+        Experimentally converts a stream of arrays into a columnar representation
         such that each column is either a contiguous buffer or a ``list``.
         Integer, float, and interval arrays are currently converted to their
         contiguous buffer representation; other types are returned as a list
         of Python objects. The sequences returned by :meth:`to_column` are
         designed to work as input to ``pandas.Series`` and/or ``numpy.array()``.
+        The default conversions are subject to change based on initial user
+        feedback.
 
         Parameters
         ----------
@@ -112,9 +114,9 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
     --------
 
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).convert(na.nulls_forbid())
+    >>> na.Array([1, 2, 3], na.int32()).convert(handle_nulls=na.nulls_forbid())
     nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
-    >>> na.Array([1, None, 3], na.int32()).convert(na.nulls_forbid())
+    >>> na.Array([1, None, 3], na.int32()).convert(handle_nulls=na.nulls_forbid())
     Traceback (most recent call last):
     ...
     ValueError: Null present with null_handler=nulls_forbid()
@@ -149,11 +151,12 @@ def nulls_as_sentinel(sentinel=None):
     --------
 
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).convert(na.nulls_as_sentinel())
+    >>> na_array = na.Array([1, 2, 3], na.int32())
+    >>> na_array.convert(handle_nulls=na.nulls_as_sentinel())
     array([1, 2, 3], dtype=int32)
-    >>> na.Array([1, None, 3], na.int32()).convert(na.nulls_as_sentinel())
+    >>> na_array.convert(handle_nulls=na.nulls_as_sentinel())
     array([ 1., nan,  3.])
-    >>> na.Array([1, None, 3], na.int32()).convert(na.nulls_as_sentinel(-999))
+    >>> na_array.convert(handle_nulls=na.nulls_as_sentinel(-999))
     array([   1, -999,    3], dtype=int32)
     """
     import numpy as np
