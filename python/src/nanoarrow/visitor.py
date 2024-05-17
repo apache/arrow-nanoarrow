@@ -205,12 +205,11 @@ def nulls_separate() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
     return handle
 
 
-class ArrayStreamVisitor(ArrayViewBaseIterator):
-    """Compute a value from one or more arrays in an ArrowArrayStream
+class ArrayViewVisitor(ArrayViewBaseIterator):
+    """Compute a value from one or more arrays as ArrowArrayViews
 
     This class supports a (currently internal) pattern for building
     output from a zero or more arrays in a stream.
-
     """
 
     @classmethod
@@ -250,7 +249,7 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
         return None
 
 
-class ToPySequenceConverter(ArrayStreamVisitor):
+class ToPySequenceConverter(ArrayViewVisitor):
     def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
         cls, kwargs = _resolve_converter_cls(self._schema, handle_nulls=handle_nulls)
@@ -266,7 +265,7 @@ class ToPySequenceConverter(ArrayStreamVisitor):
         return self._visitor.finish()
 
 
-class ToColumnListConverter(ArrayStreamVisitor):
+class ToColumnListConverter(ArrayViewVisitor):
     def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
 
@@ -310,7 +309,7 @@ class ToColumnListConverter(ArrayStreamVisitor):
         ]
 
 
-class ToPyListConverter(ArrayStreamVisitor):
+class ToPyListConverter(ArrayViewVisitor):
     def __init__(self, schema, *, iterator_cls=PyIterator, array_view=None):
         super().__init__(schema, array_view=array_view)
 
@@ -329,7 +328,7 @@ class ToPyListConverter(ArrayStreamVisitor):
         return self._lst
 
 
-class ToPyBufferConverter(ArrayStreamVisitor):
+class ToPyBufferConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format(self._schema_view.buffer_format)
@@ -352,7 +351,7 @@ class ToPyBufferConverter(ArrayStreamVisitor):
         return self._builder.finish()
 
 
-class ToBooleanBufferConverter(ArrayStreamVisitor):
+class ToBooleanBufferConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format("?")
@@ -371,7 +370,7 @@ class ToBooleanBufferConverter(ArrayStreamVisitor):
         return self._builder.finish()
 
 
-class ToNullableSequenceConverter(ArrayStreamVisitor):
+class ToNullableSequenceConverter(ArrayViewVisitor):
     def __init__(
         self,
         schema,
