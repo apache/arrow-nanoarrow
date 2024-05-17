@@ -78,14 +78,14 @@ def test_convert_columns():
         ],
     )
 
-    names, columns = visitor.ToColumnListConverter.visit(array)
+    names, columns = visitor.ToColumnsPysequenceConverter.visit(array)
     assert names == ["col1", "col2", "col3"]
     assert list(columns[0]) == [1, 2, 3]
     assert list(columns[1]) == [True, False, True]
     assert columns[2] == ["abc", "def", "ghi"]
 
     with pytest.raises(ValueError, match="can only be used on a struct array"):
-        visitor.ToColumnListConverter.visit([], na.int32())
+        visitor.ToColumnsPysequenceConverter.visit([], na.int32())
 
     # Ensure that the columns converter errors for top-level nulls
     array_with_nulls = na.c_array_from_buffers(
@@ -95,7 +95,7 @@ def test_convert_columns():
         children=array.children,
     )
     with pytest.raises(ValueError, match="null_count > 0"):
-        visitor.ToColumnListConverter.visit(array_with_nulls)
+        visitor.ToColumnsPysequenceConverter.visit(array_with_nulls)
 
 
 def test_contiguous_buffer_converter():

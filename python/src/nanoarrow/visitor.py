@@ -75,7 +75,7 @@ class ArrayViewVisitable:
         >>> columns
         [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3), ['a', 'b', 'c']]
         """
-        return ToColumnListConverter.visit(self, handle_nulls=handle_nulls)
+        return ToColumnsPysequenceConverter.visit(self, handle_nulls=handle_nulls)
 
     def to_pysequence(self, *, handle_nulls=None) -> Sequence:
         """Convert to a contiguous sequence
@@ -265,7 +265,7 @@ class ToPySequenceConverter(ArrayViewVisitor):
         return self._visitor.finish()
 
 
-class ToColumnListConverter(ArrayViewVisitor):
+class ToColumnsPysequenceConverter(ArrayViewVisitor):
     def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
 
