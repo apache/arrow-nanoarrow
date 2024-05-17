@@ -417,9 +417,16 @@ Stream</a>
 interfaces.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
-<p>Python bindings for nanoarrow are not yet available on PyPI. You can
-install via URL (requires a C compiler):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;git+https://github.com/apache/arrow-nanoarrow.git#egg=nanoarrow&amp;subdirectory=python&quot;</span>
+<p>The nanoarrow Python bindings are available from
+<a class="reference external" href="https://pypi.org/">PyPI</a> and
+<a class="reference external" href="https://conda-forge.org/">conda-forge</a>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>nanoarrow
+conda<span class="w"> </span>install<span class="w"> </span>nanoarrow<span class="w"> </span>-c<span class="w"> </span>conda-forge
+</pre></div>
+</div>
+<p>Development versions (based on the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch) are also available:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>--extra-index-url<span class="w"> </span>https://pypi.fury.io/arrow-nightlies/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--prefer-binary<span class="w"> </span>--pre<span class="w"> </span>nanoarrow
 </pre></div>
 </div>
 <p>If you can import the namespace, you’re good to go!</p>
@@ -427,13 +434,145 @@ install via URL (requires a C compiler):</p>
 </pre></div>
 </div>
 </section>
-<section id="low-level-c-library-bindings">
-<h2>Low-level C library bindings<a class="headerlink" href="#low-level-c-library-bindings" title="Link to this heading">#</a></h2>
+<section id="data-types-arrays-and-array-streams">
+<h2>Data types, arrays, and array streams<a class="headerlink" href="#data-types-arrays-and-array-streams" title="Link to this heading">#</a></h2>
 <p>The Arrow C Data and Arrow C Stream interfaces are comprised of three
 structures: the <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> which represents a data type of an
 array, the <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> which represents the values of an array, and
 an <code class="docutils literal notranslate"><span class="pre">ArrowArrayStream</span></code>, which represents zero or more <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code>s
-with a common <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code>.</p>
+with a common <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code>. These concepts map to the
+<code class="docutils literal notranslate"><span class="pre">nanoarrow.Schema</span></code>, <code class="docutils literal notranslate"><span class="pre">nanoarrow.Array</span></code>, and <code class="docutils literal notranslate"><span class="pre">nanoarrow.ArrayStream</span></code>
+in the Python package.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">Schema</span><span class="o">&gt;</span> <span class="n">int32</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">int32</span><span class="o">&gt;</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">nanoarrow.Array</span></code> can accommodate arrays with any number of
+chunks, reflecting the reality that many array containers (e.g.,
+<code class="docutils literal notranslate"><span class="pre">pyarrow.ChunkedArray</span></code>, <code class="docutils literal notranslate"><span class="pre">polars.Series</span></code>) support this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">chunked</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="o">.</span><span class="n">from_chunks</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="n">chunked</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">int32</span><span class="o">&gt;</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
+<span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+<span class="mi">4</span>
+<span class="mi">5</span>
+<span class="mi">6</span>
+</pre></div>
+</div>
+<p>Whereas chunks of an <code class="docutils literal notranslate"><span class="pre">Array</span></code> are always fully materialized when the
+object is constructed, the chunks of an <code class="docutils literal notranslate"><span class="pre">ArrayStream</span></code> have not
+necessarily been resolved yet.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">(</span><span class="n">chunked</span><span class="p">)</span>
+<span class="n">stream</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">&lt;</span><span class="n">int32</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">stream</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">stream</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">int32</span><span class="o">&gt;</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+<span class="n">nanoarrow</span><span class="o">.</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">int32</span><span class="o">&gt;</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">4</span>
+<span class="mi">5</span>
+<span class="mi">6</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">nanoarrow.ArrayStream</span></code> also provides an interface to nanoarrow’s
+<a class="reference external" href="https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc">Arrow
+IPC</a>
+reader:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://github.com/apache/arrow-experiments/raw/main/data/arrow-commits/arrow-commits.arrows&quot;</span>
+<span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">&lt;</span><span class="n">non</span><span class="o">-</span><span class="n">nullable</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">commit</span><span class="p">:</span> <span class="n">string</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">(</span><span class="s1">&#39;us&#39;</span><span class="p">,</span> <span class="s1">&#39;UTC&#39;</span><span class="p">),</span> <span class="n">files</span><span class="p">:</span> <span class="n">int3</span><span class="o">...&gt;</span>
+</pre></div>
+</div>
+<p>These objects implement the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html">Arrow PyCapsule
+interface</a>
+for both producing and consuming and are interchangeable with
+<code class="docutils literal notranslate"><span class="pre">pyarrow</span></code> objects in many cases:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
+
+<span class="n">pa</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pyarrow</span><span class="o">.</span><span class="n">Field</span><span class="o">&lt;</span><span class="p">:</span> <span class="n">int32</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pa</span><span class="o">.</span><span class="n">chunked_array</span><span class="p">(</span><span class="n">chunked</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">lib</span><span class="o">.</span><span class="n">ChunkedArray</span> <span class="nb">object</span> <span class="n">at</span> <span class="mh">0x12a49a250</span><span class="o">&gt;</span>
+<span class="p">[</span>
+  <span class="p">[</span>
+    <span class="mi">1</span><span class="p">,</span>
+    <span class="mi">2</span><span class="p">,</span>
+    <span class="mi">3</span>
+  <span class="p">],</span>
+  <span class="p">[</span>
+    <span class="mi">4</span><span class="p">,</span>
+    <span class="mi">5</span><span class="p">,</span>
+    <span class="mi">6</span>
+  <span class="p">]</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">chunked</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">pyarrow</span><span class="o">.</span><span class="n">lib</span><span class="o">.</span><span class="n">Int32Array</span> <span class="nb">object</span> <span class="n">at</span> <span class="mh">0x11b552500</span><span class="o">&gt;</span>
+<span class="p">[</span>
+  <span class="mi">4</span><span class="p">,</span>
+  <span class="mi">5</span><span class="p">,</span>
+  <span class="mi">6</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">]))</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">int64</span><span class="o">&gt;</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">10</span>
+<span class="mi">11</span>
+<span class="mi">12</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">string</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">Schema</span><span class="o">&gt;</span> <span class="n">string</span>
+</pre></div>
+</div>
+</section>
+<section id="low-level-c-library-bindings">
+<h2>Low-level C library bindings<a class="headerlink" href="#low-level-c-library-bindings" title="Link to this heading">#</a></h2>
+<p>The nanoarrow Python package also provides lower level wrappers around
+Arrow C interface structures. You can create these using
+<code class="docutils literal notranslate"><span class="pre">nanoarrow.c_schema()</span></code>, <code class="docutils literal notranslate"><span class="pre">nanoarrow.c_array()</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">nanoarrow.c_array_stream()</span></code>.</p>
 <section id="schemas">
 <h3>Schemas<a class="headerlink" href="#schemas" title="Link to this heading">#</a></h3>
 <p>Use <code class="docutils literal notranslate"><span class="pre">nanoarrow.c_schema()</span></code> to convert an object to an <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code>
@@ -441,12 +580,10 @@ and wrap it as a Python object. This works for any object implementing
 the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow PyCapsule
 Interface</a>
 (e.g., <code class="docutils literal notranslate"><span class="pre">pyarrow.Schema</span></code>, <code class="docutils literal notranslate"><span class="pre">pyarrow.DataType</span></code>, and <code class="docutils literal notranslate"><span class="pre">pyarrow.Field</span></code>).</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
-<span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
-<span class="n">schema</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">c_schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CSchema</span> <span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">&gt;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_schema</span><span class="o">.</span><span class="n">CSchema</span> <span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span><span class="o">&gt;</span>
 <span class="o">-</span> <span class="nb">format</span><span class="p">:</span> <span class="s1">&#39;d:10,3&#39;</span>
 <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;&#39;</span>
 <span class="o">-</span> <span class="n">flags</span><span class="p">:</span> <span class="mi">2</span>
@@ -455,38 +592,14 @@ Interface</a>
 <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
 </pre></div>
 </div>
-<p>You can extract the fields of a <code class="docutils literal notranslate"><span class="pre">CSchema</span></code> object one at a time or
-parse it into a view to extract deserialized parameters.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">c_schema_view</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+<p>Using <code class="docutils literal notranslate"><span class="pre">c_schema()</span></code> is a good fit for testing and for ephemeral schema
+objects that are being passed from one library to another. To extract
+the fields of a schema in a more convenient form, use <code class="docutils literal notranslate"><span class="pre">Schema()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="n">schema</span><span class="o">.</span><span class="n">precision</span><span class="p">,</span> <span class="n">schema</span><span class="o">.</span><span class="n">scale</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CSchemaView</span><span class="o">&gt;</span>
-<span class="o">-</span> <span class="nb">type</span><span class="p">:</span> <span class="s1">&#39;decimal128&#39;</span>
-<span class="o">-</span> <span class="n">storage_type</span><span class="p">:</span> <span class="s1">&#39;decimal128&#39;</span>
-<span class="o">-</span> <span class="n">decimal_bitwidth</span><span class="p">:</span> <span class="mi">128</span>
-<span class="o">-</span> <span class="n">decimal_precision</span><span class="p">:</span> <span class="mi">10</span>
-<span class="o">-</span> <span class="n">decimal_scale</span><span class="p">:</span> <span class="mi">3</span>
-<span class="o">-</span> <span class="n">dictionary_ordered</span><span class="p">:</span> <span class="kc">False</span>
-<span class="o">-</span> <span class="n">map_keys_sorted</span><span class="p">:</span> <span class="kc">False</span>
-<span class="o">-</span> <span class="n">nullable</span><span class="p">:</span> <span class="kc">True</span>
-<span class="o">-</span> <span class="n">storage_type_id</span><span class="p">:</span> <span class="mi">24</span>
-<span class="o">-</span> <span class="n">type_id</span><span class="p">:</span> <span class="mi">24</span>
-</pre></div>
-</div>
-<p>Advanced users can allocate an empty <code class="docutils literal notranslate"><span class="pre">CSchema</span></code> and populate its
-contents by passing its <code class="docutils literal notranslate"><span class="pre">._addr()</span></code> to a schema-exporting function.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">allocate_c_schema</span><span class="p">()</span>
-<span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">()</span><span class="o">.</span><span class="n">_export_to_c</span><span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">_addr</span><span class="p">())</span>
-<span class="n">schema</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CSchema</span> <span class="n">int32</span><span class="o">&gt;</span>
-<span class="o">-</span> <span class="nb">format</span><span class="p">:</span> <span class="s1">&#39;i&#39;</span>
-<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="s1">&#39;&#39;</span>
-<span class="o">-</span> <span class="n">flags</span><span class="p">:</span> <span class="mi">2</span>
-<span class="o">-</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">NULL</span>
-<span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
-<span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">CSchema</span></code> object cleans up after itself: when the object is
@@ -500,45 +613,52 @@ can be used to interpret its contents. This works for any object
 implementing the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow PyCapsule
 Interface</a>
 (e.g., <code class="docutils literal notranslate"><span class="pre">pyarrow.Array</span></code>, <code class="docutils literal notranslate"><span class="pre">pyarrow.RecordBatch</span></code>).</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;one&quot;</span><span class="p">,</span> <span class="s2">&quot;two&quot;</span><span class="p">,</span> <span class="s2">&quot;three&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">]))</span>
-<span class="n">array</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">([</span><span class="s2">&quot;one&quot;</span><span class="p">,</span> <span class="s2">&quot;two&quot;</span><span class="p">,</span> <span class="s2">&quot;three&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArray</span> <span class="n">string</span><span class="o">&gt;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_array</span><span class="o">.</span><span class="n">CArray</span> <span class="n">string</span><span class="o">&gt;</span>
 <span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">4</span>
 <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
 <span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">1</span>
-<span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">3678035706048</span><span class="p">,</span> <span class="mi">3678035705984</span><span class="p">,</span> <span class="mi">3678035706112</span><span class="p">)</span>
+<span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">4754305168</span><span class="p">,</span> <span class="mi">4754307808</span><span class="p">,</span> <span class="mi">4754310464</span><span class="p">)</span>
 <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
 <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
 </pre></div>
 </div>
-<p>You can extract the fields of a <code class="docutils literal notranslate"><span class="pre">CArray</span></code> one at a time or parse it
-into a view to extract deserialized content:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">c_array_view</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+<p>Using <code class="docutils literal notranslate"><span class="pre">c_array()</span></code> is a good fit for testing and for ephemeral array
+objects that are being passed from one library to another. For a higher
+level interface, use <code class="docutils literal notranslate"><span class="pre">Array()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="s2">&quot;one&quot;</span><span class="p">,</span> <span class="s2">&quot;two&quot;</span><span class="p">,</span> <span class="s2">&quot;three&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">())</span>
+<span class="n">array</span><span class="o">.</span><span class="n">to_pylist</span><span class="p">()</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArrayView</span><span class="o">&gt;</span>
-<span class="o">-</span> <span class="n">storage_type</span><span class="p">:</span> <span class="s1">&#39;string&#39;</span>
-<span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">4</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="s1">&#39;one&#39;</span><span class="p">,</span> <span class="s1">&#39;two&#39;</span><span class="p">,</span> <span class="s1">&#39;three&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">array</span><span class="o">.</span><span class="n">buffers</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CBufferView</span><span class="p">(</span><span class="nb">bool</span><span class="p">[</span><span class="mi">1</span> <span class="n">b</span><span class="p">]</span> <span class="mi">11100000</span><span class="p">),</span>
+ <span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CBufferView</span><span class="p">(</span><span class="n">int32</span><span class="p">[</span><span class="mi">20</span> <span class="n">b</span><span class="p">]</span> <span class="mi">0</span> <span class="mi">3</span> <span class="mi">6</span> <span class="mi">11</span> <span class="mi">11</span><span class="p">),</span>
+ <span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CBufferView</span><span class="p">(</span><span class="n">string</span><span class="p">[</span><span class="mi">11</span> <span class="n">b</span><span class="p">]</span> <span class="sa">b</span><span class="s1">&#39;onetwothree&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Advanced users can create arrays directly from buffers using
+<code class="docutils literal notranslate"><span class="pre">c_array_from_buffers()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">na</span><span class="o">.</span><span class="n">c_array_from_buffers</span><span class="p">(</span>
+    <span class="n">na</span><span class="o">.</span><span class="n">string</span><span class="p">(),</span>
+    <span class="mi">2</span><span class="p">,</span>
+    <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">na</span><span class="o">.</span><span class="n">c_buffer</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">()),</span> <span class="sa">b</span><span class="s2">&quot;abcdef&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_array</span><span class="o">.</span><span class="n">CArray</span> <span class="n">string</span><span class="o">&gt;</span>
+<span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">2</span>
 <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
-<span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">1</span>
-<span class="o">-</span> <span class="n">buffers</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span>
-  <span class="o">-</span> <span class="n">validity</span> <span class="o">&lt;</span><span class="nb">bool</span><span class="p">[</span><span class="mi">1</span> <span class="n">b</span><span class="p">]</span> <span class="mi">11100000</span><span class="o">&gt;</span>
-  <span class="o">-</span> <span class="n">data_offset</span> <span class="o">&lt;</span><span class="n">int32</span><span class="p">[</span><span class="mi">20</span> <span class="n">b</span><span class="p">]</span> <span class="mi">0</span> <span class="mi">3</span> <span class="mi">6</span> <span class="mi">11</span> <span class="mi">11</span><span class="o">&gt;</span>
-  <span class="o">-</span> <span class="n">data</span> <span class="o">&lt;</span><span class="n">string</span><span class="p">[</span><span class="mi">11</span> <span class="n">b</span><span class="p">]</span> <span class="sa">b</span><span class="s1">&#39;onetwothree&#39;</span><span class="o">&gt;</span>
+<span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">0</span>
+<span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5002908320</span><span class="p">,</span> <span class="mi">4999694624</span><span class="p">)</span>
 <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
 <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-</pre></div>
-</div>
-<p>Like the <code class="docutils literal notranslate"><span class="pre">CSchema</span></code>, you can allocate an empty one and access its
-address with <code class="docutils literal notranslate"><span class="pre">_addr()</span></code> to pass to other array-exporting functions.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">allocate_c_array</span><span class="p">()</span>
-<span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">_export_to_c</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">_addr</span><span class="p">(),</span> <span class="n">array</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">_addr</span><span class="p">())</span>
-<span class="n">array</span><span class="o">.</span><span class="n">length</span>
-</pre></div>
-</div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">3</span>
 </pre></div>
 </div>
 </section>
@@ -549,16 +669,15 @@ representing a sequence of <code class="docutils literal notranslate"><span clas
 <code class="docutils literal notranslate"><span class="pre">ArrowArrayStream</span></code> and wrap it as a Python object. This works for any
 object implementing the <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow PyCapsule
 Interface</a>
-(e.g., <code class="docutils literal notranslate"><span class="pre">pyarrow.RecordBatchReader</span></code>).</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pa_array_child</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
-<span class="n">pa_array</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">([</span><span class="n">pa_array_child</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;some_column&quot;</span><span class="p">])</span>
-<span class="n">reader</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_batches</span><span class="p">(</span><span class="n">pa_array</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="p">[</span><span class="n">pa_array</span><span class="p">])</span>
+(e.g., <code class="docutils literal notranslate"><span class="pre">pyarrow.RecordBatchReader</span></code>, <code class="docutils literal notranslate"><span class="pre">pyarrow.ChunkedArray</span></code>).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pa_batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">({</span><span class="s2">&quot;col1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]})</span>
+<span class="n">reader</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_batches</span><span class="p">(</span><span class="n">pa_batch</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="p">[</span><span class="n">pa_batch</span><span class="p">])</span>
 <span class="n">array_stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array_stream</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span>
 <span class="n">array_stream</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArrayStream</span><span class="o">&gt;</span>
-<span class="o">-</span> <span class="n">get_schema</span><span class="p">():</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">some_column</span><span class="p">:</span> <span class="n">int32</span><span class="o">&gt;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_array_stream</span><span class="o">.</span><span class="n">CArrayStream</span><span class="o">&gt;</span>
+<span class="o">-</span> <span class="n">get_schema</span><span class="p">():</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">col1</span><span class="p">:</span> <span class="n">int64</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 <p>You can pull the next array from the stream using <code class="docutils literal notranslate"><span class="pre">.get_next()</span></code> or use
@@ -568,31 +687,31 @@ it like an iterator. The <code class="docutils literal notranslate"><span class=
     <span class="nb">print</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArray</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">some_column</span><span class="p">:</span> <span class="n">int32</span><span class="o">&gt;&gt;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_array</span><span class="o">.</span><span class="n">CArray</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">col1</span><span class="p">:</span> <span class="n">int64</span><span class="o">&gt;&gt;</span>
 <span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">3</span>
 <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
 <span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">0</span>
 <span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,)</span>
 <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
 <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-  <span class="s1">&#39;some_column&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArray</span> <span class="n">int32</span><span class="o">&gt;</span>
+  <span class="s1">&#39;col1&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_array</span><span class="o">.</span><span class="n">CArray</span> <span class="n">int64</span><span class="o">&gt;</span>
     <span class="o">-</span> <span class="n">length</span><span class="p">:</span> <span class="mi">3</span>
     <span class="o">-</span> <span class="n">offset</span><span class="p">:</span> <span class="mi">0</span>
     <span class="o">-</span> <span class="n">null_count</span><span class="p">:</span> <span class="mi">0</span>
-    <span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3678035837056</span><span class="p">)</span>
+    <span class="o">-</span> <span class="n">buffers</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2642948588352</span><span class="p">)</span>
     <span class="o">-</span> <span class="n">dictionary</span><span class="p">:</span> <span class="n">NULL</span>
     <span class="o">-</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
 </pre></div>
 </div>
-<p>You can also get the address of a freshly-allocated stream to pass to a
-suitable exporting function:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">array_stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">allocate_c_array_stream</span><span class="p">()</span>
-<span class="n">reader</span><span class="o">.</span><span class="n">_export_to_c</span><span class="p">(</span><span class="n">array_stream</span><span class="o">.</span><span class="n">_addr</span><span class="p">())</span>
-<span class="n">array_stream</span>
+<p>Use <code class="docutils literal notranslate"><span class="pre">ArrayStream()</span></code> for a higher level interface:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">reader</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_batches</span><span class="p">(</span><span class="n">pa_batch</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="p">[</span><span class="n">pa_batch</span><span class="p">])</span>
+<span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">c_lib</span><span class="o">.</span><span class="n">CArrayStream</span><span class="o">&gt;</span>
-<span class="o">-</span> <span class="n">get_schema</span><span class="p">():</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">some_column</span><span class="p">:</span> <span class="n">int32</span><span class="o">&gt;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow</span><span class="o">.</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">non</span><span class="o">-</span><span class="n">nullable</span> <span class="n">struct</span><span class="o">&lt;</span><span class="n">col1</span><span class="p">:</span> <span class="n">int64</span><span class="o">&gt;&gt;</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="p">{</span><span class="s1">&#39;col1&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+<span class="p">{</span><span class="s1">&#39;col1&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+<span class="p">{</span><span class="s1">&#39;col1&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
 </pre></div>
 </div>
 </section>
@@ -615,6 +734,9 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 pytest<span class="w"> </span>-vvx
 </pre></div>
 </div>
+<p>CMake is currently required to ensure that the vendored copy of
+nanoarrow in the Python package stays in sync with the nanoarrow sources
+in the working tree.</p>
 </section>
 </section>
 
@@ -665,6 +787,7 @@ pytest<span class="w"> </span>-vvx
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-types-arrays-and-array-streams">Data types, arrays, and array streams</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#low-level-c-library-bindings">Low-level C library bindings</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#schemas">Schemas</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays">Arrays</a></li>

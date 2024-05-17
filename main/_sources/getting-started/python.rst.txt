@@ -37,12 +37,21 @@ interfaces.
 Installation
 ------------
 
-Python bindings for nanoarrow are not yet available on PyPI. You can
-install via URL (requires a C compiler):
+The nanoarrow Python bindings are available from
+`PyPI <https://pypi.org/>`__ and
+`conda-forge <https://conda-forge.org/>`__:
 
-.. code:: bash
+.. code:: shell
 
-   python -m pip install "git+https://github.com/apache/arrow-nanoarrow.git#egg=nanoarrow&subdirectory=python"
+   pip install nanoarrow
+   conda install nanoarrow -c conda-forge
+
+Development versions (based on the ``main`` branch) are also available:
+
+.. code:: shell
+
+   pip install --extra-index-url https://pypi.fury.io/arrow-nightlies/ \
+       --prefer-binary --pre nanoarrow
 
 If you can import the namespace, you’re good to go!
 
@@ -50,14 +59,173 @@ If you can import the namespace, you’re good to go!
 
    import nanoarrow as na
 
-Low-level C library bindings
-----------------------------
+Data types, arrays, and array streams
+-------------------------------------
 
 The Arrow C Data and Arrow C Stream interfaces are comprised of three
 structures: the ``ArrowSchema`` which represents a data type of an
 array, the ``ArrowArray`` which represents the values of an array, and
 an ``ArrowArrayStream``, which represents zero or more ``ArrowArray``\ s
-with a common ``ArrowSchema``.
+with a common ``ArrowSchema``. These concepts map to the
+``nanoarrow.Schema``, ``nanoarrow.Array``, and ``nanoarrow.ArrayStream``
+in the Python package.
+
+.. code:: python
+
+   na.int32()
+
+::
+
+   <Schema> int32
+
+.. code:: python
+
+   na.Array([1, 2, 3], na.int32())
+
+::
+
+   nanoarrow.Array<int32>[3]
+   1
+   2
+   3
+
+The ``nanoarrow.Array`` can accommodate arrays with any number of
+chunks, reflecting the reality that many array containers (e.g.,
+``pyarrow.ChunkedArray``, ``polars.Series``) support this.
+
+.. code:: python
+
+   chunked = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
+   chunked
+
+::
+
+   nanoarrow.Array<int32>[6]
+   1
+   2
+   3
+   4
+   5
+   6
+
+Whereas chunks of an ``Array`` are always fully materialized when the
+object is constructed, the chunks of an ``ArrayStream`` have not
+necessarily been resolved yet.
+
+.. code:: python
+
+   stream = na.ArrayStream(chunked)
+   stream
+
+::
+
+   nanoarrow.ArrayStream<int32>
+
+.. code:: python
+
+   with stream:
+       for chunk in stream:
+           print(chunk)
+
+::
+
+   nanoarrow.Array<int32>[3]
+   1
+   2
+   3
+   nanoarrow.Array<int32>[3]
+   4
+   5
+   6
+
+The ``nanoarrow.ArrayStream`` also provides an interface to nanoarrow’s
+`Arrow
+IPC <https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc>`__
+reader:
+
+.. code:: python
+
+   url = "https://github.com/apache/arrow-experiments/raw/main/data/arrow-commits/arrow-commits.arrows"
+   na.ArrayStream.from_url(url)
+
+::
+
+   nanoarrow.ArrayStream<non-nullable struct<commit: string, time: timestamp('us', 'UTC'), files: int3...>
+
+These objects implement the `Arrow PyCapsule
+interface <https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html>`__
+for both producing and consuming and are interchangeable with
+``pyarrow`` objects in many cases:
+
+.. code:: python
+
+   import pyarrow as pa
+
+   pa.field(na.int32())
+
+::
+
+   pyarrow.Field<: int32>
+
+.. code:: python
+
+   pa.chunked_array(chunked)
+
+::
+
+   <pyarrow.lib.ChunkedArray object at 0x12a49a250>
+   [
+     [
+       1,
+       2,
+       3
+     ],
+     [
+       4,
+       5,
+       6
+     ]
+   ]
+
+.. code:: python
+
+   pa.array(chunked.chunk(1))
+
+::
+
+   <pyarrow.lib.Int32Array object at 0x11b552500>
+   [
+     4,
+     5,
+     6
+   ]
+
+.. code:: python
+
+   na.Array(pa.array([10, 11, 12]))
+
+::
+
+   nanoarrow.Array<int64>[3]
+   10
+   11
+   12
+
+.. code:: python
+
+   na.Schema(pa.string())
+
+::
+
+   <Schema> string
+
+Low-level C library bindings
+----------------------------
+
+The nanoarrow Python package also provides lower level wrappers around
+Arrow C interface structures. You can create these using
+``nanoarrow.c_schema()``, ``nanoarrow.c_array()``, and
+``nanoarrow.c_array_stream()``.
 
 Schemas
 ~~~~~~~
@@ -70,13 +238,11 @@ Interface <https://arrow.apache.org/docs/format/CDataInterface.html>`__
 
 .. code:: python
 
-   import pyarrow as pa
-   schema = na.c_schema(pa.decimal128(10, 3))
-   schema
+   na.c_schema(pa.decimal128(10, 3))
 
 ::
 
-   <nanoarrow.c_lib.CSchema decimal128(10, 3)>
+   <nanoarrow.c_schema.CSchema decimal128(10, 3)>
    - format: 'd:10,3'
    - name: ''
    - flags: 2
@@ -84,45 +250,18 @@ Interface <https://arrow.apache.org/docs/format/CDataInterface.html>`__
    - dictionary: NULL
    - children[0]:
 
-You can extract the fields of a ``CSchema`` object one at a time or
-parse it into a view to extract deserialized parameters.
+Using ``c_schema()`` is a good fit for testing and for ephemeral schema
+objects that are being passed from one library to another. To extract
+the fields of a schema in a more convenient form, use ``Schema()``:
 
 .. code:: python
 
-   na.c_schema_view(schema)
+   schema = na.Schema(pa.decimal128(10, 3))
+   schema.precision, schema.scale
 
 ::
 
-   <nanoarrow.c_lib.CSchemaView>
-   - type: 'decimal128'
-   - storage_type: 'decimal128'
-   - decimal_bitwidth: 128
-   - decimal_precision: 10
-   - decimal_scale: 3
-   - dictionary_ordered: False
-   - map_keys_sorted: False
-   - nullable: True
-   - storage_type_id: 24
-   - type_id: 24
-
-Advanced users can allocate an empty ``CSchema`` and populate its
-contents by passing its ``._addr()`` to a schema-exporting function.
-
-.. code:: python
-
-   schema = na.allocate_c_schema()
-   pa.int32()._export_to_c(schema._addr())
-   schema
-
-::
-
-   <nanoarrow.c_lib.CSchema int32>
-   - format: 'i'
-   - name: ''
-   - flags: 2
-   - metadata: NULL
-   - dictionary: NULL
-   - children[0]:
+   (10, 3)
 
 The ``CSchema`` object cleans up after itself: when the object is
 deleted, the underlying ``ArrowSchema`` is released.
@@ -139,52 +278,61 @@ Interface <https://arrow.apache.org/docs/format/CDataInterface.html>`__
 
 .. code:: python
 
-   array = na.c_array(pa.array(["one", "two", "three", None]))
-   array
+   na.c_array(["one", "two", "three", None], na.string())
 
 ::
 
-   <nanoarrow.c_lib.CArray string>
+   <nanoarrow.c_array.CArray string>
    - length: 4
    - offset: 0
    - null_count: 1
-   - buffers: (3678035706048, 3678035705984, 3678035706112)
+   - buffers: (4754305168, 4754307808, 4754310464)
    - dictionary: NULL
    - children[0]:
 
-You can extract the fields of a ``CArray`` one at a time or parse it
-into a view to extract deserialized content:
+Using ``c_array()`` is a good fit for testing and for ephemeral array
+objects that are being passed from one library to another. For a higher
+level interface, use ``Array()``:
 
 .. code:: python
 
-   na.c_array_view(array)
+   array = na.Array(["one", "two", "three", None], na.string())
+   array.to_pylist()
 
 ::
 
-   <nanoarrow.c_lib.CArrayView>
-   - storage_type: 'string'
-   - length: 4
+   ['one', 'two', 'three', None]
+
+.. code:: python
+
+   array.buffers
+
+::
+
+   (nanoarrow.c_lib.CBufferView(bool[1 b] 11100000),
+    nanoarrow.c_lib.CBufferView(int32[20 b] 0 3 6 11 11),
+    nanoarrow.c_lib.CBufferView(string[11 b] b'onetwothree'))
+
+Advanced users can create arrays directly from buffers using
+``c_array_from_buffers()``:
+
+.. code:: python
+
+   na.c_array_from_buffers(
+       na.string(),
+       2,
+       [None, na.c_buffer([0, 3, 6], na.int32()), b"abcdef"]
+   )
+
+::
+
+   <nanoarrow.c_array.CArray string>
+   - length: 2
    - offset: 0
-   - null_count: 1
-   - buffers[3]:
-     - validity <bool[1 b] 11100000>
-     - data_offset <int32[20 b] 0 3 6 11 11>
-     - data <string[11 b] b'onetwothree'>
+   - null_count: 0
+   - buffers: (0, 5002908320, 4999694624)
    - dictionary: NULL
    - children[0]:
-
-Like the ``CSchema``, you can allocate an empty one and access its
-address with ``_addr()`` to pass to other array-exporting functions.
-
-.. code:: python
-
-   array = na.allocate_c_array()
-   pa.array([1, 2, 3])._export_to_c(array._addr(), array.schema._addr())
-   array.length
-
-::
-
-   3
 
 Array streams
 ~~~~~~~~~~~~~
@@ -194,20 +342,19 @@ representing a sequence of ``CArray``\ s with a common ``CSchema`` to an
 ``ArrowArrayStream`` and wrap it as a Python object. This works for any
 object implementing the `Arrow PyCapsule
 Interface <https://arrow.apache.org/docs/format/CDataInterface.html>`__
-(e.g., ``pyarrow.RecordBatchReader``).
+(e.g., ``pyarrow.RecordBatchReader``, ``pyarrow.ChunkedArray``).
 
 .. code:: python
 
-   pa_array_child = pa.array([1, 2, 3], pa.int32())
-   pa_array = pa.record_batch([pa_array_child], names=["some_column"])
-   reader = pa.RecordBatchReader.from_batches(pa_array.schema, [pa_array])
+   pa_batch = pa.record_batch({"col1": [1, 2, 3]})
+   reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
    array_stream = na.c_array_stream(reader)
    array_stream
 
 ::
 
-   <nanoarrow.c_lib.CArrayStream>
-   - get_schema(): struct<some_column: int32>
+   <nanoarrow.c_array_stream.CArrayStream>
+   - get_schema(): struct<col1: int64>
 
 You can pull the next array from the stream using ``.get_next()`` or use
 it like an iterator. The ``.get_next()`` method will raise
@@ -220,34 +367,34 @@ it like an iterator. The ``.get_next()`` method will raise
 
 ::
 
-   <nanoarrow.c_lib.CArray struct<some_column: int32>>
+   <nanoarrow.c_array.CArray struct<col1: int64>>
    - length: 3
    - offset: 0
    - null_count: 0
    - buffers: (0,)
    - dictionary: NULL
    - children[1]:
-     'some_column': <nanoarrow.c_lib.CArray int32>
+     'col1': <nanoarrow.c_array.CArray int64>
        - length: 3
        - offset: 0
        - null_count: 0
-       - buffers: (0, 3678035837056)
+       - buffers: (0, 2642948588352)
        - dictionary: NULL
        - children[0]:
 
-You can also get the address of a freshly-allocated stream to pass to a
-suitable exporting function:
+Use ``ArrayStream()`` for a higher level interface:
 
 .. code:: python
 
-   array_stream = na.allocate_c_array_stream()
-   reader._export_to_c(array_stream._addr())
-   array_stream
+   reader = pa.RecordBatchReader.from_batches(pa_batch.schema, [pa_batch])
+   na.ArrayStream(reader).read_all()
 
 ::
 
-   <nanoarrow.c_lib.CArrayStream>
-   - get_schema(): struct<some_column: int32>
+   nanoarrow.Array<non-nullable struct<col1: int64>>[3]
+   {'col1': 1}
+   {'col1': 2}
+   {'col1': 3}
 
 Development
 -----------
@@ -271,3 +418,7 @@ Tests use `pytest <https://docs.pytest.org/>`__:
 
    # Run tests
    pytest -vvx
+
+CMake is currently required to ensure that the vendored copy of
+nanoarrow in the Python package stays in sync with the nanoarrow sources
+in the working tree.
