@@ -200,6 +200,9 @@ def test_array_chunked():
     # Python objects by to_pylist()
     assert array.to_pylist() == list(array.iter_py())
 
+    # Sequence via to_pysequence()
+    assert list(array.to_pysequence()) == [1, 2, 3, 4, 5, 6]
+
     with na.c_array_stream(array) as stream:
         arrays = list(stream)
         assert len(arrays) == 2
@@ -231,7 +234,7 @@ def test_array_children():
     assert len(tuples) == 2
     assert len(tuples[0]) == 100
 
-    names, columns = array.to_columns()
+    names, columns = array.to_columns_pysequence()
     assert names == [f"col{i}" for i in range(100)]
     assert all(len(col) == len(array) for col in columns)
 
