@@ -53,7 +53,7 @@ class ArrayViewVisitable:
         """Convert to a ``list`` of contiguous sequences
 
         Experimentally converts a stream of struct arrays into a list of contiguous
-        sequences using the same logic as :meth:`convert`.
+        sequences using the same logic as :meth:`to_pysequence`.
 
         Paramters
         ---------
@@ -75,7 +75,7 @@ class ArrayViewVisitable:
         >>> columns
         [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3), ['a', 'b', 'c']]
         """
-        return ColumnListConverter.visit(self, handle_nulls=handle_nulls)
+        return ToColumnListConverter.visit(self, handle_nulls=handle_nulls)
 
     def to_pysequence(self, *, handle_nulls=None) -> Sequence:
         """Convert to a contiguous sequence
@@ -266,7 +266,7 @@ class ToPySequenceConverter(ArrayStreamVisitor):
         return self._visitor.finish()
 
 
-class ColumnListConverter(ArrayStreamVisitor):
+class ToColumnListConverter(ArrayStreamVisitor):
     def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
 
