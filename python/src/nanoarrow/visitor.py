@@ -73,7 +73,7 @@ class ArrayViewVisitable:
         >>> columns
         [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3), ['a', 'b', 'c']]
         """
-        return ColumnsConverter.visit(self, handle_nulls=handle_nulls)
+        return ColumnListConverter.visit(self, handle_nulls=handle_nulls)
 
     def convert(self, handle_nulls=None) -> Sequence:
         """Convert to a contiguous sequence
@@ -100,7 +100,7 @@ class ArrayViewVisitable:
         >>> na.Array([1, 2, 3], na.int32()).convert()
         nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
         """
-        return SingleColumnConverter.visit(self, handle_nulls=handle_nulls)
+        return DispatchingConverter.visit(self, handle_nulls=handle_nulls)
 
 
 def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
@@ -242,12 +242,10 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
         return None
 
 
-class SingleColumnConverter(ArrayStreamVisitor):
+class DispatchingConverter(ArrayStreamVisitor):
     def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
-        cls, kwargs = _resolve_column_converter_cls(
-            self._schema, handle_nulls=handle_nulls
-        )
+        cls, kwargs = _resolve_converter_cls(self._schema, handle_nulls=handle_nulls)
         self._visitor = cls(schema, **kwargs, array_view=self._array_view)
 
     def begin(self, total_elements: Union[int, None] = None):
@@ -260,12 +258,12 @@ class SingleColumnConverter(ArrayStreamVisitor):
         return self._visitor.finish()
 
 
-class ColumnsConverter(ArrayStreamVisitor):
+class ColumnListConverter(ArrayStreamVisitor):
     def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
 
         if self.schema.type != Type.STRUCT:
-            raise ValueError("ColumnsConverter can only be used on a struct array")
+            raise ValueError("ColumnListConverter can only be used on a struct array")
 
         # Resolve the appropriate visitor for each column
         self._child_visitors = []
@@ -279,7 +277,7 @@ class ColumnsConverter(ArrayStreamVisitor):
             )
 
     def _resolve_child_visitor(self, child_schema, child_array_view, handle_nulls):
-        cls, kwargs = _resolve_column_converter_cls(child_schema, handle_nulls)
+        cls, kwargs = _resolve_converter_cls(child_schema, handle_nulls)
         return cls(child_schema, **kwargs, array_view=child_array_view)
 
     def begin(self, total_elements: Union[int, None] = None) -> None:
@@ -291,7 +289,7 @@ class ColumnsConverter(ArrayStreamVisitor):
         # into the child columns. It is designed to be used on top-level record batch
         # arrays which typically are marked as non-nullable or do not contain nulls.
         if array_view.null_count > 0:
-            raise ValueError("null_count > 0 encountered in ColumnsConverter")
+            raise ValueError("null_count > 0 encountered in ColumnListConverter")
 
         for child_visitor, child_array_view in zip(
             self._child_visitors, array_view.children
@@ -323,18 +321,18 @@ class ListConverter(ArrayStreamVisitor):
         return self._lst
 
 
-class BufferColumnConverter(ArrayStreamVisitor):
+class ContiguousBufferConverter(ArrayStreamVisitor):
     def begin(self, total_elements: Union[int, None]):
-        self._converter = CBufferBuilder()
-        self._converter.set_format(self._schema_view.buffer_format)
+        self._builder = CBufferBuilder()
+        self._builder.set_format(self._schema_view.buffer_format)
 
         if total_elements is not None:
             element_size_bits = self._schema_view.layout.element_size_bits[1]
             element_size_bytes = element_size_bits // 8
-            self._converter.reserve_bytes(total_elements * element_size_bytes)
+            self._builder.reserve_bytes(total_elements * element_size_bytes)
 
     def visit_chunk_view(self, array_view: CArrayView) -> None:
-        converter = self._converter
+        converter = self._builder
         offset, length = array_view.offset, array_view.length
         dst_bytes = length * converter.itemsize
 
@@ -343,41 +341,39 @@ class BufferColumnConverter(ArrayStreamVisitor):
         converter.advance(dst_bytes)
 
     def finish(self) -> Any:
-        return self._converter.finish()
+        return self._builder.finish()
 
 
-class BooleanColumnConverter(ArrayStreamVisitor):
+class BooleanBytesConverter(ArrayStreamVisitor):
     def begin(self, total_elements: Union[int, None]):
-        self._converter = CBufferBuilder()
-        self._converter.set_format("?")
+        self._builder = CBufferBuilder()
+        self._builder.set_format("?")
 
         if total_elements is not None:
-            self._converter.reserve_bytes(total_elements)
+            self._builder.reserve_bytes(total_elements)
 
     def visit_chunk_view(self, array_view: CArrayView) -> None:
-        converter = self._converter
+        converter = self._builder
         offset, length = array_view.offset, array_view.length
         converter.reserve_bytes(length)
         array_view.buffer(1).unpack_bits_into(converter, offset, length, len(converter))
         converter.advance(length)
 
     def finish(self) -> Any:
-        return self._converter.finish()
+        return self._builder.finish()
 
 
-class NullableColumnConverter(ArrayStreamVisitor):
+class NullableConverter(ArrayStreamVisitor):
     def __init__(
         self,
         schema,
-        column_converter_cls=BufferColumnConverter,
+        converter_cls=ContiguousBufferConverter,
         handle_nulls: Union[Callable[[CBuffer, Sequence], Any], None] = None,
         *,
         array_view=None
     ):
         super().__init__(schema, array_view=array_view)
-        self._column_converter = column_converter_cls(
-            schema, array_view=self._array_view
-        )
+        self._converter = converter_cls(schema, array_view=self._array_view)
 
         if handle_nulls is None:
             self._handle_nulls = nulls_forbid()
@@ -385,61 +381,61 @@ class NullableColumnConverter(ArrayStreamVisitor):
             self._handle_nulls = handle_nulls
 
     def begin(self, total_elements: Union[int, None]):
-        self._converter = CBufferBuilder()
-        self._converter.set_format("?")
+        self._builder = CBufferBuilder()
+        self._builder.set_format("?")
         self._length = 0
 
-        self._column_converter.begin(total_elements)
+        self._converter.begin(total_elements)
 
     def visit_chunk_view(self, array_view: CArrayView) -> None:
         offset, length = array_view.offset, array_view.length
 
-        converter = self._converter
+        builder = self._builder
         chunk_contains_nulls = array_view.null_count != 0
-        bitmap_allocated = len(converter) > 0
+        bitmap_allocated = len(builder) > 0
 
         if chunk_contains_nulls:
             current_length = self._length
             if not bitmap_allocated:
                 self._fill_valid(current_length)
 
-            converter.reserve_bytes(length)
+            builder.reserve_bytes(length)
             array_view.buffer(0).unpack_bits_into(
-                converter, offset, length, current_length
+                builder, offset, length, current_length
             )
-            converter.advance(length)
+            builder.advance(length)
 
         elif bitmap_allocated:
             self._fill_valid(length)
 
         self._length += length
-        self._column_converter.visit_chunk_view(array_view)
+        self._converter.visit_chunk_view(array_view)
 
     def finish(self) -> Any:
-        is_valid = self._converter.finish()
-        column = self._column_converter.finish()
-        return self._handle_nulls(is_valid if len(is_valid) > 0 else None, column)
+        is_valid = self._builder.finish()
+        data = self._converter.finish()
+        return self._handle_nulls(is_valid if len(is_valid) > 0 else None, data)
 
     def _fill_valid(self, length):
-        converter = self._converter
-        converter.reserve_bytes(length)
-        out_start = len(converter)
-        memoryview(converter)[out_start : out_start + length] = b"\x01" * length
-        converter.advance(length)
+        builder = self._builder
+        builder.reserve_bytes(length)
+        out_start = len(builder)
+        memoryview(builder)[out_start : out_start + length] = b"\x01" * length
+        builder.advance(length)
 
 
-def _resolve_column_converter_cls(schema, handle_nulls=None):
+def _resolve_converter_cls(schema, handle_nulls=None):
     schema_view = c_schema_view(schema)
 
     if schema_view.nullable:
         if schema_view.type_id == CArrowType.BOOL:
-            return NullableColumnConverter, {
-                "column_converter_cls": BooleanColumnConverter,
+            return NullableConverter, {
+                "converter_cls": BooleanBytesConverter,
                 "handle_nulls": handle_nulls,
             }
         elif schema_view.buffer_format is not None:
-            return NullableColumnConverter, {
-                "column_converter_cls": BufferColumnConverter,
+            return NullableConverter, {
+                "converter_cls": ContiguousBufferConverter,
                 "handle_nulls": handle_nulls,
             }
         else:
@@ -447,8 +443,8 @@ def _resolve_column_converter_cls(schema, handle_nulls=None):
     else:
 
         if schema_view.type_id == CArrowType.BOOL:
-            return BooleanColumnConverter, {}
+            return BooleanBytesConverter, {}
         elif schema_view.buffer_format is not None:
-            return BufferColumnConverter, {}
+            return ContiguousBufferConverter, {}
         else:
             return ListConverter, {}
