@@ -154,6 +154,7 @@ def nulls_as_sentinel(sentinel=None):
     >>> na_array = na.Array([1, 2, 3], na.int32())
     >>> na_array.convert(handle_nulls=na.nulls_as_sentinel())
     array([1, 2, 3], dtype=int32)
+    >>> na_array = na.Array([1, None, 3], na.int32())
     >>> na_array.convert(handle_nulls=na.nulls_as_sentinel())
     array([ 1., nan,  3.])
     >>> na_array.convert(handle_nulls=na.nulls_as_sentinel(-999))
@@ -185,9 +186,11 @@ def nulls_separate() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
     --------
 
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).convert(na.nulls_separate())
+    >>> na_array = na.Array([1, 2, 3], na.int32())
+    >>> na_array.convert(handle_nulls=na.nulls_separate())
     (None, nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
-    >>> result = na.Array([1, None, 3], na.int32()).convert(na.nulls_separate())
+    >>> na_array = na.Array([1, None, 3], na.int32())
+    >>> result = na_array.convert(handle_nulls=na.nulls_separate())
     >>> result[0]
     nanoarrow.c_lib.CBuffer(uint8[3 b] True False True)
     >>> result[1]
