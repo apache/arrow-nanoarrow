@@ -23,7 +23,7 @@ from nanoarrow import visitor
 
 def test_to_pylist():
     array = na.c_array([1, 2, 3], na.int32())
-    assert visitor.ListConverter.visit(array) == [1, 2, 3]
+    assert visitor.ToPyListConverter.visit(array) == [1, 2, 3]
 
 
 def test_convert():
@@ -31,17 +31,17 @@ def test_convert():
     bools = na.c_array([1, 0, 1], na.bool_())
     strings = na.c_array(["abc", "def", "ghi"], na.string())
 
-    ints_col = visitor.DispatchingConverter.visit(ints)
+    ints_col = visitor.ToPySequenceConverter.visit(ints)
     assert isinstance(ints_col, CBuffer)
     assert ints_col.format == "i"
     assert list(ints_col) == [1, 2, 3]
 
-    bools_col = visitor.DispatchingConverter.visit(bools)
+    bools_col = visitor.ToPySequenceConverter.visit(bools)
     assert isinstance(bools_col, CBuffer)
     assert bools_col.format == "?"
     assert list(bools_col) == [True, False, True]
 
-    strings_col = visitor.DispatchingConverter.visit(strings)
+    strings_col = visitor.ToPySequenceConverter.visit(strings)
     assert isinstance(strings_col, list)
     assert strings_col == ["abc", "def", "ghi"]
 
@@ -51,17 +51,17 @@ def test_convert_non_nullable():
     bools = na.c_array([1, 0, 1], na.bool_(nullable=False))
     strings = na.c_array(["abc", "def", "ghi"], na.string(nullable=False))
 
-    ints_col = visitor.DispatchingConverter.visit(ints)
+    ints_col = visitor.ToPySequenceConverter.visit(ints)
     assert isinstance(ints_col, CBuffer)
     assert ints_col.format == "i"
     assert list(ints_col) == [1, 2, 3]
 
-    bools_col = visitor.DispatchingConverter.visit(bools)
+    bools_col = visitor.ToPySequenceConverter.visit(bools)
     assert isinstance(bools_col, CBuffer)
     assert bools_col.format == "?"
     assert list(bools_col) == [True, False, True]
 
-    strings_col = visitor.DispatchingConverter.visit(strings)
+    strings_col = visitor.ToPySequenceConverter.visit(strings)
     assert isinstance(strings_col, list)
     assert strings_col == ["abc", "def", "ghi"]
 
@@ -100,34 +100,34 @@ def test_convert_columns():
 
 def test_contiguous_buffer_converter():
     array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
-    buffer = visitor.ContiguousBufferConverter.visit(array)
+    buffer = visitor.ToPyBufferConverter.visit(array)
     assert list(buffer) == [1, 2, 3, 4, 5, 6]
 
 
 def test_contiguous_buffer_converter_with_offsets():
     src = [na.c_array([1, 2, 3], na.int32())[1:], na.c_array([4, 5, 6], na.int32())[2:]]
     array = na.Array.from_chunks(src)
-    buffer = visitor.ContiguousBufferConverter.visit(array)
+    buffer = visitor.ToPyBufferConverter.visit(array)
     assert list(buffer) == [2, 3, 6]
 
 
 def test_boolean_bytes_converter():
     array = na.Array.from_chunks([[0, 1, 1], [1, 0, 0]], na.bool_())
-    buffer = visitor.BooleanBytesConverter.visit(array)
+    buffer = visitor.ToBooleanBufferConverter.visit(array)
     assert list(buffer) == [False, True, True, True, False, False]
 
 
 def test_boolean_bytes_converter_with_offsets():
     src = [na.c_array([0, 1, 1], na.bool_())[1:], na.c_array([1, 0, 0], na.bool_())[2:]]
     array = na.Array.from_chunks(src)
-    buffer = visitor.BooleanBytesConverter.visit(array)
+    buffer = visitor.ToBooleanBufferConverter.visit(array)
     assert list(buffer) == [True, True, False]
 
 
 def test_nullable_converter():
     # All valid
     array = na.Array.from_chunks([[1, 2, 3], [4, 5, 6]], na.int32())
-    is_valid, column = visitor.NullableConverter.visit(
+    is_valid, column = visitor.ToNullableSequenceConverter.visit(
         array, handle_nulls=na.nulls_separate()
     )
     assert is_valid is None
@@ -135,7 +135,7 @@ def test_nullable_converter():
 
     # Only nulls in the first chunk
     array = na.Array.from_chunks([[1, None, 3], [4, 5, 6]], na.int32())
-    is_valid, column = visitor.NullableConverter.visit(
+    is_valid, column = visitor.ToNullableSequenceConverter.visit(
         array, handle_nulls=na.nulls_separate()
     )
     assert list(is_valid) == [True, False, True, True, True, True]
@@ -143,7 +143,7 @@ def test_nullable_converter():
 
     # Only nulls in the second chunk
     array = na.Array.from_chunks([[1, 2, 3], [4, None, 6]], na.int32())
-    is_valid, column = visitor.NullableConverter.visit(
+    is_valid, column = visitor.ToNullableSequenceConverter.visit(
         array, handle_nulls=na.nulls_separate()
     )
     assert list(is_valid) == [True, True, True, True, False, True]
@@ -151,7 +151,7 @@ def test_nullable_converter():
 
     # Nulls in both chunks
     array = na.Array.from_chunks([[1, None, 3], [4, None, 6]], na.int32())
-    is_valid, column = visitor.NullableConverter.visit(
+    is_valid, column = visitor.ToNullableSequenceConverter.visit(
         array, handle_nulls=na.nulls_separate()
     )
     assert list(is_valid) == [True, False, True, True, False, True]

@@ -45,7 +45,7 @@ class ArrayViewVisitable:
         >>> array.to_pylist()
         [1, 2, 3]
         """
-        return ListConverter.visit(self)
+        return ToPyListConverter.visit(self)
 
     def convert_columns(self, *, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
         """Convert to a ``list`` of contiguous sequences
@@ -102,7 +102,7 @@ class ArrayViewVisitable:
         >>> na.Array([1, 2, 3], na.int32()).convert()
         nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
         """
-        return DispatchingConverter.visit(self, handle_nulls=handle_nulls)
+        return ToPySequenceConverter.visit(self, handle_nulls=handle_nulls)
 
 
 def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
@@ -248,7 +248,7 @@ class ArrayStreamVisitor(ArrayViewBaseIterator):
         return None
 
 
-class DispatchingConverter(ArrayStreamVisitor):
+class ToPySequenceConverter(ArrayStreamVisitor):
     def __init__(self, schema, handle_nulls=None, *, array_view=None):
         super().__init__(schema, array_view=array_view)
         cls, kwargs = _resolve_converter_cls(self._schema, handle_nulls=handle_nulls)
@@ -308,7 +308,7 @@ class ColumnListConverter(ArrayStreamVisitor):
         ]
 
 
-class ListConverter(ArrayStreamVisitor):
+class ToPyListConverter(ArrayStreamVisitor):
     def __init__(self, schema, *, iterator_cls=PyIterator, array_view=None):
         super().__init__(schema, array_view=array_view)
 
@@ -327,7 +327,7 @@ class ListConverter(ArrayStreamVisitor):
         return self._lst
 
 
-class ContiguousBufferConverter(ArrayStreamVisitor):
+class ToPyBufferConverter(ArrayStreamVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format(self._schema_view.buffer_format)
@@ -350,7 +350,7 @@ class ContiguousBufferConverter(ArrayStreamVisitor):
         return self._builder.finish()
 
 
-class BooleanBytesConverter(ArrayStreamVisitor):
+class ToBooleanBufferConverter(ArrayStreamVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format("?")
@@ -369,11 +369,11 @@ class BooleanBytesConverter(ArrayStreamVisitor):
         return self._builder.finish()
 
 
-class NullableConverter(ArrayStreamVisitor):
+class ToNullableSequenceConverter(ArrayStreamVisitor):
     def __init__(
         self,
         schema,
-        converter_cls=ContiguousBufferConverter,
+        converter_cls=ToPyBufferConverter,
         handle_nulls: Union[Callable[[CBuffer, Sequence], Any], None] = None,
         *,
         array_view=None
@@ -435,22 +435,22 @@ def _resolve_converter_cls(schema, handle_nulls=None):
 
     if schema_view.nullable:
         if schema_view.type_id == CArrowType.BOOL:
-            return NullableConverter, {
-                "converter_cls": BooleanBytesConverter,
+            return ToNullableSequenceConverter, {
+                "converter_cls": ToBooleanBufferConverter,
                 "handle_nulls": handle_nulls,
             }
         elif schema_view.buffer_format is not None:
-            return NullableConverter, {
-                "converter_cls": ContiguousBufferConverter,
+            return ToNullableSequenceConverter, {
+                "converter_cls": ToPyBufferConverter,
                 "handle_nulls": handle_nulls,
             }
         else:
-            return ListConverter, {}
+            return ToPyListConverter, {}
     else:
 
         if schema_view.type_id == CArrowType.BOOL:
-            return BooleanBytesConverter, {}
+            return ToBooleanBufferConverter, {}
         elif schema_view.buffer_format is not None:
-            return ContiguousBufferConverter, {}
+            return ToPyBufferConverter, {}
         else:
-            return ListConverter, {}
+            return ToPyListConverter, {}
