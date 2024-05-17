@@ -642,45 +642,6 @@ in this stream.</p>
 </div>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.to_columns">
-<span class="sig-name descname"><span class="pre">to_columns</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.to_columns" title="Link to this definition">#</a></dt>
-<dd><p>Convert this Array to a <a href="#id8"><span class="problematic" id="id9">``</span></a>list()` of sequences</p>
-<p>Converts a stream of struct arrays into its column-wise representation
-such that each column is either a contiguous buffer or a <code class="docutils literal notranslate"><span class="pre">list()</span></code>.</p>
-<section id="id10">
-<h3>Examples<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">([</span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;col1&quot;</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">names</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">to_columns</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">names</span>
-<span class="go">[&#39;col1&#39;]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">columns</span>
-<span class="go">[[1, 2, 3]]</span>
-</pre></div>
-</div>
-</section>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.to_pylist">
-<span class="sig-name descname"><span class="pre">to_pylist</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.to_pylist" title="Link to this definition">#</a></dt>
-<dd><p>Convert this Array to a <a href="#id11"><span class="problematic" id="id12">``</span></a>list()` of Python objects</p>
-<p>Computes an identical value to list(<a class="reference internal" href="#nanoarrow.array_stream.ArrayStream.iter_py" title="nanoarrow.array_stream.ArrayStream.iter_py"><code class="xref py py-meth docutils literal notranslate"><span class="pre">iter_py()</span></code></a>) but can be several
-times faster.</p>
-<section id="id13">
-<h3>Examples<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">to_pylist</span><span class="p">()</span>
-<span class="go">[1, 2, 3]</span>
-</pre></div>
-</div>
-</section>
-</dd></dl>
-
 </section>
 </dd></dl>
 
@@ -743,8 +704,6 @@ times faster.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.read_all"><code class="docutils literal notranslate"><span class="pre">ArrayStream.read_all()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.read_next"><code class="docutils literal notranslate"><span class="pre">ArrayStream.read_next()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.schema"><code class="docutils literal notranslate"><span class="pre">ArrayStream.schema</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.to_columns"><code class="docutils literal notranslate"><span class="pre">ArrayStream.to_columns()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.to_pylist"><code class="docutils literal notranslate"><span class="pre">ArrayStream.to_pylist()</span></code></a></li>
 </ul>
 </li>
 </ul>
