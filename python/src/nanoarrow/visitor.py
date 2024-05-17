@@ -47,7 +47,9 @@ class ArrayViewVisitable:
         """
         return ToPyListConverter.visit(self)
 
-    def convert_columns(self, *, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
+    def to_columns_pysequence(
+        self, *, handle_nulls=None
+    ) -> Tuple[List[str], List[Sequence]]:
         """Convert to a ``list`` of contiguous sequences
 
         Experimentally converts a stream of struct arrays into a list of contiguous
@@ -67,7 +69,7 @@ class ArrayViewVisitable:
         >>> import nanoarrow as na
         >>> import pyarrow as pa
         >>> batch = pa.record_batch({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
-        >>> names, columns = na.Array(batch).convert_columns()
+        >>> names, columns = na.Array(batch).to_columns_pysequence()
         >>> names
         ['col1', 'col2']
         >>> columns
@@ -75,7 +77,7 @@ class ArrayViewVisitable:
         """
         return ColumnListConverter.visit(self, handle_nulls=handle_nulls)
 
-    def convert(self, *, handle_nulls=None) -> Sequence:
+    def to_pysequence(self, *, handle_nulls=None) -> Sequence:
         """Convert to a contiguous sequence
 
         Experimentally converts a stream of arrays into a columnar representation
@@ -99,7 +101,7 @@ class ArrayViewVisitable:
         Examples
         --------
         >>> import nanoarrow as na
-        >>> na.Array([1, 2, 3], na.int32()).convert()
+        >>> na.Array([1, 2, 3], na.int32()).to_pysequence()
         nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
         """
         return ToPySequenceConverter.visit(self, handle_nulls=handle_nulls)
@@ -114,9 +116,9 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
     --------
 
     >>> import nanoarrow as na
-    >>> na.Array([1, 2, 3], na.int32()).convert(handle_nulls=na.nulls_forbid())
+    >>> na.Array([1, 2, 3], na.int32()).to_pysequence(handle_nulls=na.nulls_forbid())
     nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
-    >>> na.Array([1, None, 3], na.int32()).convert(handle_nulls=na.nulls_forbid())
+    >>> na.Array([1, None, 3], na.int32()).to_pysequence(handle_nulls=na.nulls_forbid())
     Traceback (most recent call last):
     ...
     ValueError: Null present with null_handler=nulls_forbid()
@@ -152,12 +154,12 @@ def nulls_as_sentinel(sentinel=None):
 
     >>> import nanoarrow as na
     >>> na_array = na.Array([1, 2, 3], na.int32())
-    >>> na_array.convert(handle_nulls=na.nulls_as_sentinel())
+    >>> na_array.to_pysequence(handle_nulls=na.nulls_as_sentinel())
     array([1, 2, 3], dtype=int32)
     >>> na_array = na.Array([1, None, 3], na.int32())
-    >>> na_array.convert(handle_nulls=na.nulls_as_sentinel())
+    >>> na_array.to_pysequence(handle_nulls=na.nulls_as_sentinel())
     array([ 1., nan,  3.])
-    >>> na_array.convert(handle_nulls=na.nulls_as_sentinel(-999))
+    >>> na_array.to_pysequence(handle_nulls=na.nulls_as_sentinel(-999))
     array([   1, -999,    3], dtype=int32)
     """
     import numpy as np
@@ -187,10 +189,10 @@ def nulls_separate() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
 
     >>> import nanoarrow as na
     >>> na_array = na.Array([1, 2, 3], na.int32())
-    >>> na_array.convert(handle_nulls=na.nulls_separate())
+    >>> na_array.to_pysequence(handle_nulls=na.nulls_separate())
     (None, nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
     >>> na_array = na.Array([1, None, 3], na.int32())
-    >>> result = na_array.convert(handle_nulls=na.nulls_separate())
+    >>> result = na_array.to_pysequence(handle_nulls=na.nulls_separate())
     >>> result[0]
     nanoarrow.c_lib.CBuffer(uint8[3 b] True False True)
     >>> result[1]
