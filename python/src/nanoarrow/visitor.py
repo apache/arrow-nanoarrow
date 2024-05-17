@@ -47,11 +47,11 @@ class ArrayViewVisitable:
         """
         return ListConverter.visit(self)
 
-    def to_column_list(self, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
+    def convert_columns(self, handle_nulls=None) -> Tuple[List[str], List[Sequence]]:
         """Convert to a ``list`` of contiguous sequences
 
         Converts a stream of struct arrays into its column-wise representation
-        according to :meth:`to_column`.
+        according to :meth:`convert`.
 
         Paramters
         ---------
@@ -67,7 +67,7 @@ class ArrayViewVisitable:
         >>> import nanoarrow as na
         >>> import pyarrow as pa
         >>> batch = pa.record_batch({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
-        >>> names, columns = na.Array(batch).to_column_list()
+        >>> names, columns = na.Array(batch).convert_columns()
         >>> names
         ['col1', 'col2']
         >>> columns

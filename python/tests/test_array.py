@@ -234,7 +234,7 @@ def test_array_children():
     assert len(tuples) == 2
     assert len(tuples[0]) == 100
 
-    names, columns = array.to_column_list()
+    names, columns = array.convert_columns()
     assert names == [f"col{i}" for i in range(100)]
     assert all(len(col) == len(array) for col in columns)
 

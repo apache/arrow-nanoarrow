@@ -80,7 +80,7 @@ def test_array_stream_to_columns():
     )
 
     stream = na.ArrayStream(c_array)
-    names, columns = stream.to_column_list()
+    names, columns = stream.convert_columns()
     assert names == ["col1", "col2"]
     assert list(columns[0]) == [1, 2, 3]
     assert list(columns[1]) == ["a", "b", "c"]

@@ -66,7 +66,7 @@ def test_to_column_non_nullable():
     assert strings_col == ["abc", "def", "ghi"]
 
 
-def test_to_column_list():
+def test_convert_columns():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool_(), "col3": na.string()}),
         length=3,
