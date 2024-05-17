@@ -84,7 +84,7 @@ class ArrayViewVisitable:
         such that each column is either a contiguous buffer or a ``list``.
         Integer, float, and interval arrays are currently converted to their
         contiguous buffer representation; other types are returned as a list
-        of Python objects. The sequences returned by :meth:`to_column` are
+        of Python objects. The sequences returned by :meth:`to_pysequence` are
         designed to work as input to ``pandas.Series`` and/or ``numpy.array()``.
         The default conversions are subject to change based on initial user
         feedback.
@@ -270,7 +270,7 @@ class ToColumnListConverter(ArrayViewVisitor):
         super().__init__(schema, array_view=array_view)
 
         if self.schema.type != Type.STRUCT:
-            raise ValueError("ColumnListConverter can only be used on a struct array")
+            raise ValueError("ToColumnListConverter can only be used on a struct array")
 
         # Resolve the appropriate visitor for each column
         self._child_visitors = []
@@ -296,7 +296,7 @@ class ToColumnListConverter(ArrayViewVisitor):
         # into the child columns. It is designed to be used on top-level record batch
         # arrays which typically are marked as non-nullable or do not contain nulls.
         if array_view.null_count > 0:
-            raise ValueError("null_count > 0 encountered in ColumnListConverter")
+            raise ValueError("null_count > 0 encountered in ToColumnListConverter")
 
         for child_visitor, child_array_view in zip(
             self._child_visitors, array_view.children

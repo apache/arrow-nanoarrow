@@ -200,7 +200,7 @@ def test_array_chunked():
     # Python objects by to_pylist()
     assert array.to_pylist() == list(array.iter_py())
 
-    # Sequence via convert()
+    # Sequence via to_pysequence()
     assert list(array.to_pysequence()) == [1, 2, 3, 4, 5, 6]
 
     with na.c_array_stream(array) as stream:
