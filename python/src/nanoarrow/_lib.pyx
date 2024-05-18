@@ -2311,10 +2311,22 @@ cdef class CBufferBuilder:
     """
     cdef CBuffer _buffer
     cdef bint _locked
+    cdef bint _lock_enabled
 
     def __cinit__(self):
         self._buffer = CBuffer.empty()
         self._locked = False
+        self._lock_enabled = True
+
+    def _disable_lock_on_aquire_writable(self):
+        """Disable buffer protocol locking
+
+        When running on PyPy, the locking causes problems because the
+        releasebuffer callback does not appear to be called promptly.
+        Often the passing of this object is done in a way where it is
+        written to in controlled ways, so allow bypassing the lock.
+        """
+        self._lock_enabled = False
 
     cdef _assert_unlocked(self):
         if self._locked:
@@ -2333,7 +2345,9 @@ cdef class CBufferBuilder:
             0,
             flags
         )
-        self._locked = True
+
+        if self._lock_enabled:
+            self._locked = True
 
     def __releasebuffer__(self, Py_buffer* buffer):
         self._locked = False

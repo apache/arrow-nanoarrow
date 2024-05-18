@@ -333,6 +333,11 @@ class ToPyBufferConverter(ArrayViewVisitor):
         self._builder = CBufferBuilder()
         self._builder.set_format(self._schema_view.buffer_format)
 
+        # On PyPy, the lock-on-write behaviour causes problems because the
+        # lock is not released promptly. We control all the calls here, so
+        # disable this check.
+        self._builder._disable_lock_on_aquire_writable()
+
         if total_elements is not None:
             element_size_bits = self._schema_view.layout.element_size_bits[1]
             element_size_bytes = element_size_bits // 8
@@ -355,6 +360,11 @@ class ToBooleanBufferConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format("?")
+
+        # On PyPy, the lock-on-write behaviour causes problems because the
+        # lock is not released promptly. We control all the calls here, so
+        # disable this check.
+        self._builder._disable_lock_on_aquire_writable()
 
         if total_elements is not None:
             self._builder.reserve_bytes(total_elements)
@@ -390,6 +400,12 @@ class ToNullableSequenceConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format("?")
+
+        # On PyPy, the lock-on-write behaviour causes problems because the
+        # lock is not released promptly. We control all the calls here, so
+        # disable this check.
+        self._builder._disable_lock_on_aquire_writable()
+
         self._length = 0
 
         self._converter.begin(total_elements)
