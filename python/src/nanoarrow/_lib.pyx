@@ -189,7 +189,6 @@ cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
 cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
     if tensor.manager_ctx is NULL:
         return
-    PyMem_Free(tensor.dl_tensor.shape)
     Py_DECREF(<CBufferView>tensor.manager_ctx)
     tensor.manager_ctx = NULL
     PyMem_Free(tensor)
@@ -226,10 +225,8 @@ cdef object view_to_dlpack(CBufferView view):
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
     dl_tensor.data = <void*>view._ptr.data.data
     dl_tensor.ndim = 1
-    # Allocate memory for dl_tensor shape
-    cdef int64_t* _shape = <int64_t*>PyMem_Malloc(sizeof(int64_t))
-    _shape[0] = len(view)
-    dl_tensor.shape = _shape
+
+    dl_tensor.shape = &view._n_elements
     dl_tensor.strides = NULL
     dl_tensor.byte_offset = 0
 
@@ -1920,6 +1917,7 @@ cdef class CBufferView:
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
+    cdef int64_t _n_elements
     cdef char _format[128]
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
@@ -1939,6 +1937,10 @@ cdef class CBufferView:
         )
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            self._n_elements = self._shape * 8
+        else:
+            self._n_elements = self._shape
 
     def _addr(self):
         return <uintptr_t>self._ptr.data.data
@@ -2019,10 +2021,7 @@ cdef class CBufferView:
 
     @property
     def n_elements(self):
-        if self._data_type == NANOARROW_TYPE_BOOL:
-            return self._shape * 8
-        else:
-            return self._shape
+        return self._n_elements
 
     def element(self, i):
         if self._data_type == NANOARROW_TYPE_BOOL:
