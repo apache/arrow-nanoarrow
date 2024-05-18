@@ -2333,7 +2333,6 @@ cdef class CBufferBuilder:
             0,
             flags
         )
-
         self._locked = True
 
     def __releasebuffer__(self, Py_buffer* buffer):
