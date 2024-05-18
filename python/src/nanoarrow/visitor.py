@@ -333,24 +333,19 @@ class ToPyBufferConverter(ArrayViewVisitor):
         self._builder = CBufferBuilder()
         self._builder.set_format(self._schema_view.buffer_format)
 
-        # On PyPy, the lock-on-write behaviour causes problems because the
-        # lock is not released promptly. We control all the calls here, so
-        # disable this check.
-        self._builder._disable_lock_on_aquire_writable()
-
         if total_elements is not None:
             element_size_bits = self._schema_view.layout.element_size_bits[1]
             element_size_bytes = element_size_bits // 8
             self._builder.reserve_bytes(total_elements * element_size_bytes)
 
     def visit_chunk_view(self, array_view: CArrayView) -> None:
-        converter = self._builder
+        builder = self._builder
         offset, length = array_view.offset, array_view.length
-        dst_bytes = length * converter.itemsize
+        dst_bytes = length * builder.itemsize
 
-        converter.reserve_bytes(dst_bytes)
-        array_view.buffer(1).copy_into(converter, offset, length, len(converter))
-        converter.advance(dst_bytes)
+        builder.reserve_bytes(dst_bytes)
+        array_view.buffer(1).copy_into(builder, offset, length, len(builder))
+        builder.advance(dst_bytes)
 
     def finish(self) -> Any:
         return self._builder.finish()
@@ -360,21 +355,15 @@ class ToBooleanBufferConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format("?")
-
-        # On PyPy, the lock-on-write behaviour causes problems because the
-        # lock is not released promptly. We control all the calls here, so
-        # disable this check.
-        self._builder._disable_lock_on_aquire_writable()
-
         if total_elements is not None:
             self._builder.reserve_bytes(total_elements)
 
     def visit_chunk_view(self, array_view: CArrayView) -> None:
-        converter = self._builder
+        builder = self._builder
         offset, length = array_view.offset, array_view.length
-        converter.reserve_bytes(length)
-        array_view.buffer(1).unpack_bits_into(converter, offset, length, len(converter))
-        converter.advance(length)
+        builder.reserve_bytes(length)
+        array_view.buffer(1).unpack_bits_into(builder, offset, length, len(builder))
+        builder.advance(length)
 
     def finish(self) -> Any:
         return self._builder.finish()
@@ -400,12 +389,6 @@ class ToNullableSequenceConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
         self._builder = CBufferBuilder()
         self._builder.set_format("?")
-
-        # On PyPy, the lock-on-write behaviour causes problems because the
-        # lock is not released promptly. We control all the calls here, so
-        # disable this check.
-        self._builder._disable_lock_on_aquire_writable()
-
         self._length = 0
 
         self._converter.begin(total_elements)
@@ -420,7 +403,7 @@ class ToNullableSequenceConverter(ArrayViewVisitor):
         if chunk_contains_nulls:
             current_length = self._length
             if not bitmap_allocated:
-                self._fill_valid(current_length)
+                builder.write_fill(1, current_length)
 
             builder.reserve_bytes(length)
             array_view.buffer(0).unpack_bits_into(
@@ -429,7 +412,7 @@ class ToNullableSequenceConverter(ArrayViewVisitor):
             builder.advance(length)
 
         elif bitmap_allocated:
-            self._fill_valid(length)
+            builder.write_fill(1, length)
 
         self._length += length
         self._converter.visit_chunk_view(array_view)
@@ -438,13 +421,6 @@ class ToNullableSequenceConverter(ArrayViewVisitor):
         is_valid = self._builder.finish()
         data = self._converter.finish()
         return self._handle_nulls(is_valid if len(is_valid) > 0 else None, data)
-
-    def _fill_valid(self, length):
-        builder = self._builder
-        builder.reserve_bytes(length)
-        out_start = len(builder)
-        memoryview(builder)[out_start : out_start + length] = b"\x01" * length
-        builder.advance(length)
 
 
 def _resolve_converter_cls(schema, handle_nulls=None):
