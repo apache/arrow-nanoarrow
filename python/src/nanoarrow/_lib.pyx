@@ -189,31 +189,15 @@ cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
 cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
     if tensor.manager_ctx is NULL:
         return
-    PyMem_Free(tensor)
+    PyMem_Free(tensor.dl_tensor.shape)
     Py_DECREF(<CBufferView>tensor.manager_ctx)
+    tensor.manager_ctx = NULL
+    PyMem_Free(tensor)
 
 
-cpdef object view_to_dlpack(CBufferView view):
-    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyMem_Malloc(sizeof(DLManagedTensor))
-
-    cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
-    dl_tensor.data = <void*>view._ptr.data.data
-    dl_tensor.ndim = 1
-
-    cdef int64_t* _shape = <int64_t*>PyMem_Malloc(sizeof(int64_t))
-    _shape[0] = len(view)
-    dl_tensor.shape = _shape
-    dl_tensor.strides = NULL
-    dl_tensor.byte_offset = 0
-
-    cdef DLDevice* device = &dl_tensor.device
-    if view._device.device_type_id == ARROW_DEVICE_CPU:
-        device.device_type = kDLCPU
-    else:
-        raise ValueError('Only CPU device is currently supported.')
-    device.device_id =  view._device.device_id
-
-    cdef DLDataType* dtype = &dl_tensor.dtype
+cdef DLDataType view_to_dlpack_data_type(CBufferView view):
+    cdef DLDataType dtype
+    # Define DLDataType struct
     if view.data_type in ('uint8', 'uint16', 'uint32', 'uint64'):
         dtype.code = kDLUInt
     elif view.data_type in ('int8', 'int16', 'int32', 'int64'):
@@ -227,11 +211,58 @@ cpdef object view_to_dlpack(CBufferView view):
     dtype.lanes = <uint16_t>1
     dtype.bits = <uint8_t>(view.item_size * 8)
 
+    return dtype
+
+
+cdef object view_to_dlpack(CBufferView view):
+    # Define DLDevice and DLDataType struct and
+    # with that check for data type support first
+    cdef DLDevice device = view_to_dlpack_device(view)
+    cdef DLDataType dtype = view_to_dlpack_data_type(view)
+
+    # Allocate memory for DLManagedTensor
+    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyMem_Malloc(sizeof(DLManagedTensor))
+    # Define DLManagedTensor struct
+    cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
+    dl_tensor.data = <void*>view._ptr.data.data
+    dl_tensor.ndim = 1
+    # Allocate memory for dl_tensor shape
+    cdef int64_t* _shape = <int64_t*>PyMem_Malloc(sizeof(int64_t))
+    _shape[0] = len(view)
+    dl_tensor.shape = _shape
+    dl_tensor.strides = NULL
+    dl_tensor.byte_offset = 0
+
+    dl_tensor.device = device
+    dl_tensor.dtype = dtype
+
     dlm_tensor.manager_ctx = <void*>view
     Py_INCREF(view)
     dlm_tensor.deleter = view_dlpack_deleter
 
     return PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_dlpack_deleter)
+
+
+cdef DLDevice view_to_dlpack_device(CBufferView view):
+    cdef DLDevice device
+
+    # Check data type support
+    if view.data_type == 'bool':
+        raise ValueError('Bit-packed boolean data type not supported by DLPack.')
+    elif view.data_type not in ('uint8', 'uint16', 'uint32', 'uint64',
+                                'int8', 'int16', 'int32', 'int64',
+                                'half_float', 'float', 'double'):
+        raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
+
+    # Define DLDevice struct
+    if view._device.device_type_id == ARROW_DEVICE_CPU:
+        device.device_type = kDLCPU
+        device.device_id =  0
+    else:
+        raise ValueError('Only CPU device is currently supported.')
+    
+
+    return device
 
 
 # Provide a way to validate that we release all references we create
@@ -2140,6 +2171,11 @@ cdef class CBufferView:
 
     def __dlpack__(self):
         return view_to_dlpack(self)
+
+
+    def __dlpack_device__(self):
+        return (view_to_dlpack_device(self).device_type,
+                view_to_dlpack_device(self).device_id)
 
 
     # These are special methods, which can't be cdef and we can't

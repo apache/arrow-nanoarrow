@@ -20,7 +20,7 @@ from nanoarrow_c cimport *
 cdef extern from "./dlpack_abi.h" nogil:
     cdef int DLPACK_VERSION
 
-    cdef enum DLDeviceType:
+    ctypedef enum DLDeviceType:
         kDLCPU
         kDLCUDA
         kDLCUDAHost
