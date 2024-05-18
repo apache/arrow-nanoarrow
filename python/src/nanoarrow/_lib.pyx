@@ -2311,12 +2311,10 @@ cdef class CBufferBuilder:
     """
     cdef CBuffer _buffer
     cdef bint _locked
-    cdef bint _lock_enabled
 
     def __cinit__(self):
         self._buffer = CBuffer.empty()
         self._locked = False
-        self._lock_enabled = True
 
     cdef _assert_unlocked(self):
         if self._locked:
@@ -2336,8 +2334,7 @@ cdef class CBufferBuilder:
             flags
         )
 
-        if self._lock_enabled:
-            self._locked = True
+        self._locked = True
 
     def __releasebuffer__(self, Py_buffer* buffer):
         self._locked = False
