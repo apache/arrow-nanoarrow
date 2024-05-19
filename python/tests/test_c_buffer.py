@@ -238,10 +238,8 @@ def test_c_buffer_builder_buffer_protocol():
 
         mv[builder.size_bytes] = ord("k")
 
-    if platform.python_implementation() == "PyPy" and platform.python_version_tuple()[
-        :2
-    ] == ("3", "8"):
-        pytest.skip("memoryview() release is not guaranteed on PyPy 3.8")
+    if platform.python_implementation() == "PyPy":
+        pytest.skip("memoryview() release is not guaranteed on PyPy")
 
     builder.advance(1)
     assert bytes(builder.finish()) == b"k"
