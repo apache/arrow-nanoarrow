@@ -236,7 +236,7 @@ class CBuffer:
     data_type_id: Incomplete
     element_size_bits: Incomplete
     format: Incomplete
-    item_size: Incomplete
+    itemsize: Incomplete
     n_elements: Incomplete
     size_bytes: Incomplete
     @classmethod
@@ -264,6 +264,7 @@ class CBufferBuilder:
     __pyx_vtable__: ClassVar[PyCapsule] = ...
     capacity_bytes: Incomplete
     format: Incomplete
+    itemsize: Incomplete
     size_bytes: Incomplete
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
@@ -310,8 +311,15 @@ class CBufferBuilder:
 
         This method returns the number of elements that were written.
         """
+    def write_fill(self, *args, **kwargs):
+        """Write fill bytes to this buffer
+
+        Appends the byte ``value`` to this buffer ``size_bytes`` times.
+        """
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
+    def __len__(self) -> int:
+        """Return len(self)."""
     def __reduce__(self): ...
     def __release_buffer__(self, *args, **kwargs):
         """Release the buffer object that exposes the underlying memory of the object."""
@@ -323,7 +331,7 @@ class CBufferView:
     device: Incomplete
     element_size_bits: Incomplete
     format: Incomplete
-    item_size: Incomplete
+    itemsize: Incomplete
     n_elements: Incomplete
     size_bytes: Incomplete
     @classmethod

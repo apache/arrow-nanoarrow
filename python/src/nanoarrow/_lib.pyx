@@ -2394,6 +2394,15 @@ cdef class CBufferBuilder:
         self._buffer._ptr.size_bytes = new_size
         return self
 
+    def write_fill(self, uint8_t value, int64_t size_bytes):
+        """Write fill bytes to this buffer
+
+        Appends the byte ``value`` to this buffer ``size_bytes`` times.
+        """
+        self._assert_unlocked()
+        cdef int code = ArrowBufferAppendFill(self._buffer._ptr, value, size_bytes)
+        Error.raise_error_not_ok("ArrowBufferAppendFill", code)
+
     def write(self, content):
         """Write bytes to this buffer
 
