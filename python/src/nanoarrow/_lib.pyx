@@ -208,7 +208,7 @@ cdef DLDataType view_to_dlpack_data_type(CBufferView view):
     else:
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
     dtype.lanes = <uint16_t>1
-    dtype.bits = <uint8_t>(view.item_size * 8)
+    dtype.bits = <uint8_t>(view._item_size() * 8)
 
     return dtype
 
