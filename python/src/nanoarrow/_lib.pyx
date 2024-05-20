@@ -2169,6 +2169,7 @@ cdef class CBufferView:
 
 
     def __dlpack__(self):
+        # Note: parent offset not applied!
         return view_to_dlpack(self)
 
 
