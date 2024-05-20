@@ -19,11 +19,9 @@ import ctypes
 from functools import wraps
 
 import numpy as np
-import pyarrow as pa
 import pytest
 
 import nanoarrow as na
-
 
 pa = pytest.importorskip("pyarrow")
 
@@ -69,7 +67,7 @@ def check_bytes_allocated(f):
         (pa.float16(), np.float16),
         (pa.float32(), np.float32),
         (pa.float64(), np.float64),
-    ]
+    ],
 )
 def test_dlpack(value_type, np_type):
     if np.__version__ < "1.24.0":
