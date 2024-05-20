@@ -17,11 +17,13 @@
 
 import ctypes
 from functools import wraps
+
+import numpy as np
+import pyarrow as pa
 import pytest
 
-import pyarrow as pa
 import nanoarrow as na
-import numpy as np
+
 
 pa = pytest.importorskip("pyarrow")
 
@@ -48,12 +50,13 @@ def check_bytes_allocated(f):
             return f(*args, **kwargs)
         finally:
             assert pa.total_allocated_bytes() == allocated_bytes
+
     return wrapper
 
 
 @check_bytes_allocated
 @pytest.mark.parametrize(
-    ('value_type', 'np_type'),
+    ("value_type", "np_type"),
     [
         (pa.uint8(), np.uint8),
         (pa.uint16(), np.uint16),
@@ -69,10 +72,12 @@ def check_bytes_allocated(f):
     ]
 )
 def test_dlpack(value_type, np_type):
-    if np.__version__ < '1.24.0':
-        pytest.skip("No dlpack support in numpy versions older than 1.22.0, "
-                    "strict keyword in assert_array_equal added in numpy version "
-                    "1.24.0")
+    if np.__version__ < "1.24.0":
+        pytest.skip(
+            "No dlpack support in numpy versions older than 1.22.0, "
+            "strict keyword in assert_array_equal added in numpy version "
+            "1.24.0"
+        )
 
     expected = np.array([1, 2, 3], dtype=np_type)
     pa_arr = pa.array(expected, type=value_type)
@@ -82,12 +87,13 @@ def test_dlpack(value_type, np_type):
 
 
 def test_dlpack_not_supported():
-    if np.__version__ < '1.22.0':
+    if np.__version__ < "1.22.0":
         pytest.skip("No dlpack support in numpy versions older than 1.22.0.")
 
     # DLPack doesn't support bit-packed boolean values
     pa_arr = pa.array([True, False, True])
     view = na.c_array(pa_arr).view().buffer(1)
-    with pytest.raises(ValueError, match="Bit-packed boolean data type "
-                       "not supported by DLPack."):
+    with pytest.raises(
+        ValueError, match="Bit-packed boolean data type not supported by DLPack."
+    ):
         np.from_dlpack(view)

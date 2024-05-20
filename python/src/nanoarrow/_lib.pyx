@@ -257,7 +257,6 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
         device.device_id =  0
     else:
         raise ValueError('Only CPU device is currently supported.')
-    
 
     return device
 
