@@ -16,14 +16,14 @@
 # under the License.
 
 import ctypes
-from functools import wraps
 
-import numpy as np
+# from functools import wraps
+
 import pytest
 
 import nanoarrow as na
 
-pa = pytest.importorskip("pyarrow")
+np = pytest.importorskip("numpy")
 
 
 def PyCapsule_IsValid(capsule, name):
@@ -40,33 +40,33 @@ def check_dlpack_export(view, expected_arr):
     assert view.__dlpack_device__() == (1, 0)
 
 
-def check_bytes_allocated(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        allocated_bytes = pa.total_allocated_bytes()
-        try:
-            return f(*args, **kwargs)
-        finally:
-            assert pa.total_allocated_bytes() == allocated_bytes
+# def check_bytes_allocated(f):
+#     @wraps(f)
+#     def wrapper(*args, **kwargs):
+#         allocated_bytes = pa.total_allocated_bytes()
+#         try:
+#             return f(*args, **kwargs)
+#         finally:
+#             assert pa.total_allocated_bytes() == allocated_bytes
 
-    return wrapper
+#     return wrapper
 
 
-@check_bytes_allocated
+# @check_bytes_allocated
 @pytest.mark.parametrize(
     ("value_type", "np_type"),
     [
-        (pa.uint8(), np.uint8),
-        (pa.uint16(), np.uint16),
-        (pa.uint32(), np.uint32),
-        (pa.uint64(), np.uint64),
-        (pa.int8(), np.int8),
-        (pa.int16(), np.int16),
-        (pa.int32(), np.int32),
-        (pa.int64(), np.int64),
-        (pa.float16(), np.float16),
-        (pa.float32(), np.float32),
-        (pa.float64(), np.float64),
+        (na.uint8(), np.uint8),
+        (na.uint16(), np.uint16),
+        (na.uint32(), np.uint32),
+        (na.uint64(), np.uint64),
+        (na.int8(), np.int8),
+        (na.int16(), np.int16),
+        (na.int32(), np.int32),
+        (na.int64(), np.int64),
+        (na.float16(), np.float16),
+        (na.float32(), np.float32),
+        (na.float64(), np.float64),
     ],
 )
 def test_dlpack(value_type, np_type):
@@ -78,9 +78,8 @@ def test_dlpack(value_type, np_type):
         )
 
     expected = np.array([1, 2, 3], dtype=np_type)
-    pa_arr = pa.array(expected, type=value_type)
     # Use the value buffer of the nanoarrow CArray
-    view = na.c_array(pa_arr).view().buffer(1)
+    view = na.c_array([1, 2, 3], value_type).view().buffer(1)
     check_dlpack_export(view, expected)
 
 
@@ -98,7 +97,5 @@ def test_dlpack_not_supported():
     ):
         view.__dlpack_device__()
 
-    with pytest.raises(
-        NotImplementedError, match="Only stream=None is supported."
-    ):
+    with pytest.raises(NotImplementedError, match="Only stream=None is supported."):
         view.__dlpack__(stream=3)
