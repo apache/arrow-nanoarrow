@@ -61,6 +61,7 @@ def check_dlpack_export(view, expected_arr):
         (na.int16(), np.int16),
         (na.int32(), np.int32),
         (na.int64(), np.int64),
+        (na.interval_months(), np.int32),
         (na.float16(), np.float16),
         (na.float32(), np.float32),
         (na.float64(), np.float64),
