@@ -32,6 +32,11 @@ set(NANOARROW_VERSION_MAJOR "${nanoarrow_VERSION_MAJOR}")
 set(NANOARROW_VERSION_MINOR "${nanoarrow_VERSION_MINOR}")
 set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
+# Feature options
+option(NANOARROW_IPC "Build IPC extension" OFF)
+option(NANOARROW_DEVICE "Build device extension" OFF)
+
+# Development options
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
 option(NANOARROW_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(NANOARROW_BUILD_INTEGRATION_TESTS
@@ -305,6 +310,14 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 10)
+endif()
+
+if(NANOARROW_BUILD_BENCHMARKS OR NANOARROW_IPC)
+  add_subdirectory(extensions/nanoarrow_ipc)
+endif()
+
+if(NANOARROW_DEVICE)
+  add_subdirectory(extensions/nanoarrow_device)
 endif()
 
 if(NANOARROW_BUILD_BENCHMARKS)
