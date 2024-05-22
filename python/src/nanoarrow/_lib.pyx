@@ -191,17 +191,20 @@ cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
     tensor.manager_ctx = NULL
     ArrowFree(tensor)
 
+_uint = (NANOARROW_TYPE_UINT8, NANOARROW_TYPE_UINT16, NANOARROW_TYPE_UINT32, NANOARROW_TYPE_UINT64)
+_int = (NANOARROW_TYPE_INT8, NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32, NANOARROW_TYPE_INT64)
+_float = (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE)
 
 cdef DLDataType view_to_dlpack_data_type(CBufferView view):
     cdef DLDataType dtype
     # Define DLDataType struct
-    if view.data_type in ('uint8', 'uint16', 'uint32', 'uint64'):
+    if view.data_type_id in _uint:
         dtype.code = kDLUInt
-    elif view.data_type in ('int8', 'int16', 'int32', 'int64'):
+    elif view.data_type_id in _int:
         dtype.code = kDLInt
-    elif view.data_type in ('half_float', 'float', 'double'):
+    elif view.data_type_id in _float:
         dtype.code = kDLFloat
-    elif view.data_type == 'bool':
+    elif view.data_type_id == NANOARROW_TYPE_BOOL:
         raise ValueError('Bit-packed boolean data type not supported by DLPack.')
     else:
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
@@ -242,11 +245,9 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
     cdef DLDevice device
 
     # Check data type support
-    if view.data_type == 'bool':
+    if view.data_type_id == NANOARROW_TYPE_BOOL:
         raise ValueError('Bit-packed boolean data type not supported by DLPack.')
-    elif view.data_type not in ('uint8', 'uint16', 'uint32', 'uint64',
-                                'int8', 'int16', 'int32', 'int64',
-                                'half_float', 'float', 'double'):
+    elif view.data_type_id not in _uint + _int + _float:
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
 
     # Define DLDevice struct
