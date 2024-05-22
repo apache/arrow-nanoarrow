@@ -48,8 +48,6 @@ from cpython cimport (
     PyBUF_FORMAT,
     PyBUF_WRITABLE,
     PyErr_WriteUnraisable,
-    PyMem_Free,
-    PyMem_Malloc
 )
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
@@ -191,7 +189,7 @@ cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
         return
     Py_DECREF(<CBufferView>tensor.manager_ctx)
     tensor.manager_ctx = NULL
-    PyMem_Free(tensor)
+    ArrowFree(tensor)
 
 
 cdef DLDataType view_to_dlpack_data_type(CBufferView view):
@@ -220,7 +218,7 @@ cdef object view_to_dlpack(CBufferView view):
     cdef DLDataType dtype = view_to_dlpack_data_type(view)
 
     # Allocate memory for DLManagedTensor
-    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyMem_Malloc(sizeof(DLManagedTensor))
+    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>ArrowMalloc(sizeof(DLManagedTensor))
     # Define DLManagedTensor struct
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
     dl_tensor.data = <void*>view._ptr.data.data
