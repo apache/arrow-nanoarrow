@@ -15,14 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import ctypes
-
 # from functools import wraps
 
 import pytest
+from nanoarrow._lib import _obj_is_capsule
 
 import nanoarrow as na
-from nanoarrow._lib import _obj_is_capsule
 
 np = pytest.importorskip("numpy")
 
