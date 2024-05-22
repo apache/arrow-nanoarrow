@@ -2166,12 +2166,43 @@ cdef class CBufferView:
             return self._element_size_bits // 8
 
 
-    def __dlpack__(self):
+    def __dlpack__(self, stream=None):
+        """
+        Export CBufferView as a DLPack capsule.
+
+        Parameters
+        ----------
+        stream : int, optional
+            A Python integer representing a pointer to a stream. Currently not supported.
+            Stream is provided by the consumer to the producer to instruct the producer
+            to ensure that operations can safely be performed on the array.
+
+        Returns
+        -------
+        capsule : PyCapsule
+            A DLPack capsule for the array, pointing to a DLManagedTensor.
+        """
         # Note: parent offset not applied!
-        return view_to_dlpack(self)
+
+        if stream is None:
+            return view_to_dlpack(self)
+        else:
+            raise NotImplementedError(
+                "Only stream=None is supported."
+            )
 
 
     def __dlpack_device__(self):
+        """
+        Return the DLPack device tuple this CBufferView resides on.
+
+        Returns
+        -------
+        tuple : Tuple[int, int]
+            Tuple with index specifying the type of the device (where
+            CPU = 1, see python/src/nanoarrow/dpack_abi.h) and index of the
+            device which is 0 by default for CPU.
+        """
         return (view_to_dlpack_device(self).device_type,
                 view_to_dlpack_device(self).device_id)
 

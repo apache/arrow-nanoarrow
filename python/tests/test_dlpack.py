@@ -87,6 +87,7 @@ def test_dlpack(value_type, np_type):
 def test_dlpack_not_supported():
     # DLPack doesn't support bit-packed boolean values
     view = na.c_array([True, False, True], na.bool_()).view().buffer(1)
+
     with pytest.raises(
         ValueError, match="Bit-packed boolean data type not supported by DLPack."
     ):
@@ -96,3 +97,8 @@ def test_dlpack_not_supported():
         ValueError, match="Bit-packed boolean data type not supported by DLPack."
     ):
         view.__dlpack_device__()
+
+    with pytest.raises(
+        NotImplementedError, match="Only stream=None is supported."
+    ):
+        view.__dlpack__(stream=3)
