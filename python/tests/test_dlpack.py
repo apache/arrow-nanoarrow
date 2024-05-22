@@ -85,13 +85,14 @@ def test_dlpack(value_type, np_type):
 
 
 def test_dlpack_not_supported():
-    if np.__version__ < "1.22.0":
-        pytest.skip("No dlpack support in numpy versions older than 1.22.0.")
-
     # DLPack doesn't support bit-packed boolean values
-    pa_arr = pa.array([True, False, True])
-    view = na.c_array(pa_arr).view().buffer(1)
+    view = na.c_array([True, False, True], na.bool_()).view().buffer(1)
     with pytest.raises(
         ValueError, match="Bit-packed boolean data type not supported by DLPack."
     ):
-        np.from_dlpack(view)
+        view.__dlpack__()
+
+    with pytest.raises(
+        ValueError, match="Bit-packed boolean data type not supported by DLPack."
+    ):
+        view.__dlpack_device__()
