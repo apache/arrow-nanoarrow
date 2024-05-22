@@ -22,17 +22,14 @@ import ctypes
 import pytest
 
 import nanoarrow as na
+from nanoarrow._lib import _obj_is_capsule
 
 np = pytest.importorskip("numpy")
 
 
-def PyCapsule_IsValid(capsule, name):
-    return ctypes.pythonapi.PyCapsule_IsValid(ctypes.py_object(capsule), name) == 1
-
-
 def check_dlpack_export(view, expected_arr):
     DLTensor = view.__dlpack__()
-    assert PyCapsule_IsValid(DLTensor, b"dltensor") is True
+    assert _obj_is_capsule(DLTensor, "dltensor") is True
 
     result = np.from_dlpack(view)
     np.testing.assert_array_equal(result, expected_arr, strict=True)
