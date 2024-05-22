@@ -35,8 +35,8 @@ option(NANOARROW_DEVICE_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(device_coverage_config INTERFACE)
 
 if(NANOARROW_DEVICE_BUILD_TESTS OR NOT NANOARROW_DEVICE_BUNDLE)
-   # Lazily add the nanoarrow dependency
-   if(NOT TARGET nanoarrow)
+  # Lazily add the nanoarrow dependency
+  if(NOT TARGET nanoarrow)
     fetchcontent_declare(nanoarrow SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 
     # Don't install nanoarrow because of this configuration
