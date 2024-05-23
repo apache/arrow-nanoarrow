@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# from functools import wraps
-
 import pytest
 from nanoarrow._lib import _obj_is_capsule
 
@@ -35,19 +33,6 @@ def check_dlpack_export(view, expected_arr):
     assert view.__dlpack_device__() == (1, 0)
 
 
-# def check_bytes_allocated(f):
-#     @wraps(f)
-#     def wrapper(*args, **kwargs):
-#         allocated_bytes = pa.total_allocated_bytes()
-#         try:
-#             return f(*args, **kwargs)
-#         finally:
-#             assert pa.total_allocated_bytes() == allocated_bytes
-
-#     return wrapper
-
-
-# @check_bytes_allocated
 @pytest.mark.parametrize(
     ("value_type", "np_type"),
     [
