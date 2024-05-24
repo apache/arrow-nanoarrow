@@ -18,7 +18,6 @@
 #include <cuda.h>
 
 #include "nanoarrow_device.h"
-#include "nanoarrow_types.h"
 
 static inline void ArrowDeviceCudaSetError(CUresult err, const char* op,
                                            struct ArrowError* error) {
