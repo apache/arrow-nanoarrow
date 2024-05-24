@@ -345,6 +345,33 @@ class CBufferView:
     def unpack_bits_into(self, *args, **kwargs): ...
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
+    def __dlpack__(self, *args, **kwargs):
+        """
+        Export CBufferView as a DLPack capsule.
+
+        Parameters
+        ----------
+        stream : int, optional
+            A Python integer representing a pointer to a stream. Currently not supported.
+            Stream is provided by the consumer to the producer to instruct the producer
+            to ensure that operations can safely be performed on the array.
+
+        Returns
+        -------
+        capsule : PyCapsule
+            A DLPack capsule for the array, pointing to a DLManagedTensor.
+        """
+    def __dlpack_device__(self, *args, **kwargs):
+        """
+        Return the DLPack device tuple this CBufferView resides on.
+
+        Returns
+        -------
+        tuple : Tuple[int, int]
+            Tuple with index specifying the type of the device (where
+            CPU = 1, see python/src/nanoarrow/dpack_abi.h) and index of the
+            device which is 0 by default for CPU.
+        """
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
