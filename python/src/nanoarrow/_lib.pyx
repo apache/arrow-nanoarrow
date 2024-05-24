@@ -1735,7 +1735,7 @@ cdef class CArrayView:
             return self._ptr.null_count
 
         cdef ArrowBufferType buffer_type = self._ptr.layout.buffer_type[0]
-        cdef uint8_t* validity_bits = self._ptr.buffer_views[0].data.as_uint8
+        cdef const uint8_t* validity_bits = self._ptr.buffer_views[0].data.as_uint8
 
         if buffer_type != NANOARROW_BUFFER_TYPE_VALIDITY:
             self._ptr.null_count = 0
