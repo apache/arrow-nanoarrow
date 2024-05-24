@@ -46,6 +46,7 @@ class CudaTemporaryContext {
     if (initialized_) {
       CUcontext unused;
       cuCtxPopCurrent(&unused);
+      cuDevicePrimaryCtxRelease(device_);
     }
   }
 
@@ -72,6 +73,8 @@ TEST(NanoarrowDeviceCuda, GetDevice) {
 TEST(NanoarrowDeviceCuda, DeviceCudaBufferInit) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
+  ASSERT_NE(gpu, nullptr);
+
   struct ArrowBuffer buffer_gpu;
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
@@ -101,6 +104,8 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferInit) {
 TEST(NanoarrowDeviceCuda, DeviceCudaHostBufferInit) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA_HOST, 0);
+  ASSERT_NE(gpu, nullptr);
+
   struct ArrowBuffer buffer_gpu;
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
@@ -129,13 +134,15 @@ TEST(NanoarrowDeviceCuda, DeviceCudaHostBufferInit) {
 }
 
 TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
-  CudaTemporaryContext ctx(0);
-  ASSERT_TRUE(ctx.valid());
-
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
+  ASSERT_NE(gpu, nullptr);
+
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowBufferView cpu_view = {data, sizeof(data)};
+
+  CudaTemporaryContext ctx(0);
+  ASSERT_TRUE(ctx.valid());
 
   CUdeviceptr gpu_dest;
   CUresult result = cuMemAlloc(&gpu_dest, sizeof(data));
