@@ -146,13 +146,13 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
 
 struct ArrowDeviceCudaArrayPrivate {
   struct ArrowArray parent;
-  cudaEvent_t sync_event;
+  cudaEvent_t cu_event;
 };
 
 static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)array->private_data;
-  cudaEventDestroy(private_data->sync_event);
+  cuEventDestroy(private_data->cu_event);
   ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
   array->release = NULL;
@@ -161,32 +161,19 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
 static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
                                                struct ArrowDeviceArray* device_array,
                                                struct ArrowArray* array) {
+  CUevent cu_event;
+  NANOARROW_CUDA_RETURN_NOT_OK(cuEventCreate(&cu_event, CU_EVENT_DEFAULT),
+                               "cuEventCreate", NULL);
+
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceCudaArrayPrivate));
   if (private_data == NULL) {
+    cuEventDestroy(cu_event);
     return ENOMEM;
   }
 
-  int prev_device = 0;
-  cudaError_t result = cudaGetDevice(&prev_device);
-  if (result != cudaSuccess) {
-    ArrowFree(private_data);
-    return EINVAL;
-  }
-
-  result = cudaSetDevice((int)device->device_id);
-  if (result != cudaSuccess) {
-    cudaSetDevice(prev_device);
-    ArrowFree(private_data);
-    return EINVAL;
-  }
-
-  cudaError_t error = cudaEventCreate(&private_data->sync_event);
-  if (error != cudaSuccess) {
-    ArrowFree(private_data);
-    return EINVAL;
-  }
+  private_data->cu_event = cu_event;
 
   memset(device_array, 0, sizeof(struct ArrowDeviceArray));
   device_array->array = *array;
@@ -196,9 +183,8 @@ static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
 
   device_array->device_id = device->device_id;
   device_array->device_type = device->device_type;
-  device_array->sync_event = &private_data->sync_event;
+  device_array->sync_event = &private_data->cu_event;
 
-  cudaSetDevice(prev_device);
   return NANOARROW_OK;
 }
 
@@ -314,13 +300,9 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
   }
 
   // Memory for cuda_event is owned by the ArrowArray member of the ArrowDeviceArray
-  cudaEvent_t* cuda_event = (cudaEvent_t*)sync_event;
-  cudaError_t result = cudaEventSynchronize(*cuda_event);
-
-  if (result != cudaSuccess) {
-    ArrowErrorSet(error, "cudaEventSynchronize() failed: %s", cudaGetErrorString(result));
-    return EINVAL;
-  }
+  CUevent* cuda_event = (cudaEvent_t*)sync_event;
+  NANOARROW_CUDA_RETURN_NOT_OK(cuEventSynchronize(*cuda_event), "cuEventSynchronize",
+                               error);
 
   return NANOARROW_OK;
 }
