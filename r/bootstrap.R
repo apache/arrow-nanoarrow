@@ -76,14 +76,14 @@ files_to_vendor <- file.path(
 )
 
 if (all(file.exists(files_to_vendor))) {
-  files_dst <- file.path("src", basename(files_to_vendor))
+  files_dst <- file.path("src", "nanoarrow", basename(files_to_vendor))
 
   # Clean previous files/dirs
   for (f in files_dst) {
     unlink(f, recursive = TRUE)
   }
 
-  cat("Vendoring files from arrow-nanoarrow to src/:\n")
+  cat("Vendoring files from arrow-nanoarrow to src/nanoarrow/:\n")
 
   for (f in files_to_vendor) {
     cat(sprintf("- %s\n", basename(f)))

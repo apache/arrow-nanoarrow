@@ -181,7 +181,7 @@ class NanoarrowPxdGenerator:
 def copy_or_generate_nanoarrow_c():
     this_dir = os.path.abspath(os.path.dirname(__file__))
     source_dir = os.path.dirname(this_dir)
-    vendor_dir = os.path.join(this_dir, "vendor")
+    vendor_dir = os.path.join(this_dir, "vendor", "nanoarrow")
 
     vendored_files = [
         "nanoarrow.h",
