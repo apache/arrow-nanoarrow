@@ -59,7 +59,7 @@ endif()
 configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
 
 if(NANOARROW_BUNDLE)
-  # Combine all headers into amalgamation/nanoarrow.h in the build directory
+  # Combine all headers into amalgamation/nanoarrow/nanoarrow.h in the build directory
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation)
   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow)
   set(NANOARROW_H_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.h)
@@ -76,7 +76,7 @@ if(NANOARROW_BUNDLE)
 
   # Remove includes that aren't needed when the headers are concatenated
   file(READ ${NANOARROW_H_TEMP} SRC_FILE_CONTENTS)
-  string(REGEX REPLACE "#include \"[a-z_.]+\"" "" SRC_FILE_CONTENTS
+  string(REGEX REPLACE "#include \"(nanoarrow/)?[a-z_.]+\"" "" SRC_FILE_CONTENTS
                        "${SRC_FILE_CONTENTS}")
   file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
 
