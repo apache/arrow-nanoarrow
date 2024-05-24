@@ -43,7 +43,7 @@ static inline void ArrowDeviceCudaSetError(CUresult err, const char* op,
 
 #define _NANOARROW_CUDA_RETURN_NOT_OK_IMPL(NAME, EXPR, OP, ERROR) \
   do {                                                            \
-    const CUresult NAME = (EXPR);                                 \
+    CUresult NAME = (EXPR);                                       \
     if (NAME != CUDA_SUCCESS) {                                   \
       ArrowDeviceCudaSetError(NAME, OP, ERROR);                   \
       return EIO;                                                 \
@@ -162,9 +162,16 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
 static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
                                                struct ArrowDeviceArray* device_array,
                                                struct ArrowArray* array) {
+  struct ArrowDeviceCudaPrivate* device_private =
+      (struct ArrowDeviceCudaPrivate*)device->private_data;
+  NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(device_private->cu_context),
+                               "cuCtxPushCurrent", NULL);
+
   CUevent cu_event;
-  NANOARROW_CUDA_RETURN_NOT_OK(cuEventCreate(&cu_event, CU_EVENT_DEFAULT),
-                               "cuEventCreate", NULL);
+  CUresult err = cuEventCreate(&cu_event, CU_EVENT_DEFAULT);
+  CUcontext unused;
+  cuCtxPopCurrent(&unused);
+  NANOARROW_CUDA_RETURN_NOT_OK(err, "cuEventCreate", NULL);
 
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)ArrowMalloc(
@@ -317,19 +324,41 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
   }
 }
 
-static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
-                                                struct ArrowBufferView src,
-                                                struct ArrowDevice* device_dst,
-                                                struct ArrowBufferView dst) {
+static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(struct ArrowDevice* device_src,
+                                                        struct ArrowBufferView src,
+                                                        struct ArrowDevice* device_dst,
+                                                        struct ArrowBufferView dst,
+                                                        int* n_pop_context,
+                                                        struct ArrowError* error) {
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_CUDA) {
+    struct ArrowDeviceCudaPrivate* dst_private =
+        (struct ArrowDeviceCudaPrivate*)device_dst->private_data;
+    NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(dst_private->cu_context),
+                                 "cuCtxPushCurrent", error);
+    (*n_pop_context)++;
+
     NANOARROW_CUDA_RETURN_NOT_OK(
         cuMemcpyHtoD((CUdeviceptr)dst.data.data, src.data.data, (size_t)src.size_bytes),
-        "cuMemcpyHtoD", NULL);
+        "cuMemcpyHtoD", error);
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CUDA &&
              device_src->device_id == device_dst->device_id) {
+    struct ArrowDeviceCudaPrivate* dst_private =
+        (struct ArrowDeviceCudaPrivate*)device_dst->private_data;
+
+    NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(dst_private->cu_context),
+                                 "cuCtxPushCurrent", error);
+    (*n_pop_context)++;
+
+    NANOARROW_CUDA_RETURN_NOT_OK(
+        cuMemcpyDtoD((CUdeviceptr)dst.data.data, (CUdeviceptr)src.data.data,
+                     (size_t)src.size_bytes),
+        "cuMemcpytoD", error);
+
+  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
+             device_dst->device_type == ARROW_DEVICE_CUDA) {
     struct ArrowDeviceCudaPrivate* src_private =
         (struct ArrowDeviceCudaPrivate*)device_src->private_data;
     struct ArrowDeviceCudaPrivate* dst_private =
@@ -339,17 +368,24 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
         cuMemcpyPeer((CUdeviceptr)dst.data.data, dst_private->cu_context,
                      (CUdeviceptr)src.data.data, src_private->cu_context,
                      (size_t)src.size_bytes),
-        "cuMemcpyPeer", NULL);
+        "cuMemcpyPeer", error);
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
+    struct ArrowDeviceCudaPrivate* src_private =
+        (struct ArrowDeviceCudaPrivate*)device_src->private_data;
+
+    NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(src_private->cu_context),
+                                 "cuCtxPushCurrent", error);
+    (*n_pop_context)++;
     NANOARROW_CUDA_RETURN_NOT_OK(
         cuMemcpyDtoH((void*)dst.data.data, (CUdeviceptr)src.data.data,
                      (size_t)src.size_bytes),
-        "cuMemcpyDtoH", NULL);
+        "cuMemcpyDtoH", error);
 
   } else if (device_src->device_type == ARROW_DEVICE_CPU &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
+    // TODO: Synchronize device_src?
     memcpy((void*)dst.data.data, src.data.data, (size_t)src.size_bytes);
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
@@ -367,6 +403,23 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
   }
 
   return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
+                                                struct ArrowBufferView src,
+                                                struct ArrowDevice* device_dst,
+                                                struct ArrowBufferView dst) {
+  int n_pop_context = 0;
+  struct ArrowError error;
+
+  int result = ArrowDeviceCudaBufferCopyInternal(device_src, src, device_dst, dst,
+                                                 &n_pop_context, &error);
+  for (int i = 0; i < n_pop_context; i++) {
+    CUcontext unused;
+    cuCtxPopCurrent(&unused);
+  }
+
+  return result;
 }
 
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
@@ -470,18 +523,18 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
 }
 
 struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_id) {
-  CUresult cu_result;
+  CUresult err;
   int n_devices;
 
   static struct ArrowDevice* devices_singleton = NULL;
   if (devices_singleton == NULL) {
-    cu_result = cuInit(0);
-    if (cu_result != CUDA_SUCCESS) {
+    err = cuInit(0);
+    if (err != CUDA_SUCCESS) {
       return NULL;
     }
 
-    cu_result = cuDeviceGetCount(&n_devices);
-    if (cu_result != CUDA_SUCCESS) {
+    err = cuDeviceGetCount(&n_devices);
+    if (err != CUDA_SUCCESS) {
       return NULL;
     }
 
@@ -525,8 +578,8 @@ struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_
     }
 
   } else {
-    cu_result = cuDeviceGetCount(&n_devices);
-    if (cu_result != CUDA_SUCCESS) {
+    err = cuDeviceGetCount(&n_devices);
+    if (err != CUDA_SUCCESS) {
       return NULL;
     }
   }
