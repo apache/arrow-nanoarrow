@@ -297,130 +297,37 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
   return result;
 }
 
-
-static ArrowErrorCode ArrowDeviceCudaBufferInitInternal(struct ArrowDevice* device_src,
-                                                        struct ArrowBufferView src,
-                                                        struct ArrowDevice* device_dst,
-                                                        struct ArrowBuffer* dst,
-                                                        int* n_pop_context,
-                                                        struct ArrowError* error) {
-  if (device_src->device_type == ARROW_DEVICE_CPU &&
-      device_dst->device_type == ARROW_DEVICE_CUDA) {
-    struct ArrowDeviceCudaPrivate* dst_private =
-        (struct ArrowDeviceCudaPrivate*)device_dst->private_data;
-
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceCudaAllocateBuffer(device_dst, dst, src.size_bytes));
-
-    NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(dst_private->cu_context),
-                                 "cuCtxPushCurrent", error);
-    (*n_pop_context)++;
-
-    NANOARROW_CUDA_RETURN_NOT_OK(
-        cuMemcpyHtoD((CUdeviceptr)dst->data, src.data.data, (size_t)src.size_bytes),
-        "cuMemcpyHtoD", error);
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
-             device_dst->device_type == ARROW_DEVICE_CUDA &&
-             device_src->device_id == device_dst->device_id) {
-    struct ArrowDeviceCudaPrivate* dst_private =
-        (struct ArrowDeviceCudaPrivate*)device_dst->private_data;
-
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceCudaAllocateBuffer(device_dst, dst, src.size_bytes));
-
-    NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(dst_private->cu_context),
-                                 "cuCtxPushCurrent", error);
-    (*n_pop_context)++;
-
-    NANOARROW_CUDA_RETURN_NOT_OK(
-        cuMemcpyDtoD((CUdeviceptr)dst->data, (CUdeviceptr)src.data.data,
-                     (size_t)src.size_bytes),
-        "cuMemcpytoD", error);
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
-             device_dst->device_type == ARROW_DEVICE_CUDA) {
-    struct ArrowDeviceCudaPrivate* src_private =
-        (struct ArrowDeviceCudaPrivate*)device_src->private_data;
-    struct ArrowDeviceCudaPrivate* dst_private =
-        (struct ArrowDeviceCudaPrivate*)device_dst->private_data;
-
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceCudaAllocateBuffer(device_dst, dst, src.size_bytes));
-
-    NANOARROW_CUDA_RETURN_NOT_OK(
-        cuMemcpyPeer((CUdeviceptr)dst->data, dst_private->cu_context,
-                     (CUdeviceptr)src.data.data, src_private->cu_context,
-                     (size_t)src.size_bytes),
-        "cuMemcpyPeer", error);
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
-             device_dst->device_type == ARROW_DEVICE_CPU) {
-    struct ArrowDeviceCudaPrivate* src_private =
-        (struct ArrowDeviceCudaPrivate*)device_src->private_data;
-
-    ArrowBufferInit(dst);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(dst, src.size_bytes));
-
-    NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(src_private->cu_context),
-                                 "cuCtxPushCurrent", error);
-    (*n_pop_context)++;
-    NANOARROW_CUDA_RETURN_NOT_OK(
-        cuMemcpyDtoH(dst->data, (CUdeviceptr)src.data.data, (size_t)src.size_bytes),
-        "cuMemcpyDtoH", error);
-    dst->size_bytes = src.size_bytes;
-
-  } else if (device_src->device_type == ARROW_DEVICE_CPU &&
-             device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceCudaAllocateBuffer(device_dst, dst, src.size_bytes));
-    memcpy(dst->data, src.data.data, (size_t)src.size_bytes);
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
-             device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    // TODO: Synchronize device_src?
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceCudaAllocateBuffer(device_dst, dst, src.size_bytes));
-    memcpy(dst->data, src.data.data, (size_t)src.size_bytes);
-
-  } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
-             device_dst->device_type == ARROW_DEVICE_CPU) {
-    // TODO: Synchronize device_src?
-    ArrowBufferInit(dst);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(dst, src.size_bytes));
-    memcpy(dst->data, src.data.data, (size_t)src.size_bytes);
-    dst->size_bytes = src.size_bytes;
-
-  } else {
-    return ENOTSUP;
-  }
-
-  return NANOARROW_OK;
-}
-
 static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
                                                 struct ArrowBufferView src,
                                                 struct ArrowDevice* device_dst,
                                                 struct ArrowBuffer* dst) {
   struct ArrowBuffer tmp;
-  ArrowBufferInit(&tmp);
-  int n_pop_context = 0;
-  struct ArrowError error;
 
-  int result = ArrowDeviceCudaBufferInitInternal(device_src, src, device_dst, &tmp,
-                                                 &n_pop_context, &error);
-  for (int i = 0; i < n_pop_context; i++) {
-    CUcontext unused;
-    cuCtxPopCurrent(&unused);
+  switch (device_dst->device_type) {
+    case ARROW_DEVICE_CUDA:
+    case ARROW_DEVICE_CUDA_HOST:
+      NANOARROW_RETURN_NOT_OK(
+          ArrowDeviceCudaAllocateBuffer(device_dst, &tmp, src.size_bytes));
+      break;
+    case ARROW_DEVICE_CPU:
+      ArrowBufferInit(&tmp);
+      NANOARROW_RETURN_NOT_OK(ArrowBufferResize(&tmp, src.size_bytes, 0));
+      break;
+    default:
+      return ENOTSUP;
   }
 
+  struct ArrowBufferView tmp_view;
+  tmp_view.data.data = tmp.data;
+  tmp_view.size_bytes = tmp.size_bytes;
+  int result = ArrowDeviceCudaBufferCopy(device_src, src, device_dst, tmp_view);
   if (result != NANOARROW_OK) {
     ArrowBufferReset(&tmp);
     return result;
-  } else {
-    ArrowBufferMove(&tmp, dst);
-    return NANOARROW_OK;
   }
+
+  ArrowBufferMove(&tmp, dst);
+  return NANOARROW_OK;
 }
 
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
