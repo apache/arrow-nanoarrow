@@ -72,6 +72,7 @@ from nanoarrow.schema import (
 )
 from nanoarrow.array import array, Array
 from nanoarrow.array_stream import ArrayStream
+from nanoarrow.visitor import nulls_as_sentinel, nulls_forbid, nulls_separate
 from nanoarrow._version import __version__  # noqa: F401
 
 # Helps Sphinx automatically populate an API reference section
@@ -113,6 +114,9 @@ __all__ = [
     "large_list",
     "list_",
     "null",
+    "nulls_as_sentinel",
+    "nulls_forbid",
+    "nulls_separate",
     "string",
     "struct",
     "schema",

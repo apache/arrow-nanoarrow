@@ -1009,6 +1009,11 @@ cdef class CSchemaView:
         if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
             return None
 
+        # String/binary types do not have format strings as far as the Python
+        # buffer protocol is concerned
+        if self.layout.n_buffers != 2:
+            return None
+
         cdef char out[128]
         cdef int element_size_bits = 0
         if self._schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
@@ -1632,6 +1637,22 @@ cdef class CArrayView:
 
     @property
     def null_count(self):
+        if self._ptr.null_count != -1:
+            return self._ptr.null_count
+
+        cdef ArrowBufferType buffer_type = self._ptr.layout.buffer_type[0]
+        cdef uint8_t* validity_bits = self._ptr.buffer_views[0].data.as_uint8
+
+        if buffer_type != NANOARROW_BUFFER_TYPE_VALIDITY:
+            self._ptr.null_count = 0
+        elif validity_bits == NULL:
+            self._ptr.null_count = 0
+        elif self._device is DEVICE_CPU:
+            self._ptr.null_count = (
+                self._ptr.length -
+                ArrowBitCountSet(validity_bits, self.offset, self.length)
+            )
+
         return self._ptr.null_count
 
     @property
@@ -1869,7 +1890,7 @@ cdef class CBufferView:
         return self._format.decode("UTF-8")
 
     @property
-    def item_size(self):
+    def itemsize(self):
         return self._strides
 
     def __len__(self):
@@ -1957,7 +1978,7 @@ cdef class CBufferView:
 
         cdef int64_t c_offset = offset
         cdef int64_t c_length = length
-        cdef int64_t c_item_size = self.item_size
+        cdef int64_t c_item_size = self.itemsize
         cdef int64_t c_dest_offset = dest_offset
         self._check_copy_into_bounds(&buffer, c_offset, c_length, dest_offset, c_item_size)
 
@@ -2010,7 +2031,7 @@ cdef class CBufferView:
         if length is None:
             length = self.n_elements
 
-        cdef int64_t bytes_to_copy = length * self.item_size
+        cdef int64_t bytes_to_copy = length * self.itemsize
         out = CBufferBuilder().set_data_type(self.data_type_id)
         out.reserve_bytes(bytes_to_copy)
         self.copy_into(out, offset, length)
@@ -2224,9 +2245,9 @@ cdef class CBuffer:
         return self._element_size_bits
 
     @property
-    def item_size(self):
+    def itemsize(self):
         self._assert_valid()
-        return self._view.item_size
+        return self._view.itemsize
 
     @property
     def format(self):
@@ -2340,6 +2361,13 @@ cdef class CBufferBuilder:
         return self._buffer.size_bytes
 
     @property
+    def itemsize(self):
+        return self._buffer.itemsize
+
+    def __len__(self):
+        return self._buffer.size_bytes // self.itemsize
+
+    @property
     def capacity_bytes(self):
         """The number of bytes allocated in the underlying buffer"""
         return self._buffer._ptr.capacity_bytes
@@ -2365,6 +2393,15 @@ cdef class CBufferBuilder:
 
         self._buffer._ptr.size_bytes = new_size
         return self
+
+    def write_fill(self, uint8_t value, int64_t size_bytes):
+        """Write fill bytes to this buffer
+
+        Appends the byte ``value`` to this buffer ``size_bytes`` times.
+        """
+        self._assert_unlocked()
+        cdef int code = ArrowBufferAppendFill(self._buffer._ptr, value, size_bytes)
+        Error.raise_error_not_ok("ArrowBufferAppendFill", code)
 
     def write(self, content):
         """Write bytes to this buffer

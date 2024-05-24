@@ -16,6 +16,7 @@
 # under the License.
 
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -29,7 +30,7 @@ class NanoarrowPxdGenerator:
         self._define_regexes()
 
     def generate_nanoarrow_pxd(self, file_in, file_out):
-        file_in_name = os.path.basename(file_in)
+        file_in_name = pathlib.Path(file_in).name
 
         # Read the nanoarrow.h header
         content = None
@@ -179,9 +180,9 @@ class NanoarrowPxdGenerator:
 # any changes from nanoarrow C library sources in the checkout but is not
 # strictly necessary for things like installing from GitHub.
 def copy_or_generate_nanoarrow_c():
-    this_dir = os.path.abspath(os.path.dirname(__file__))
-    source_dir = os.path.dirname(this_dir)
-    vendor_dir = os.path.join(this_dir, "vendor")
+    this_dir = pathlib.Path(__file__).parent.resolve()
+    source_dir = this_dir.parent
+    vendor_dir = this_dir / "vendor"
 
     vendored_files = [
         "nanoarrow.h",
@@ -191,15 +192,14 @@ def copy_or_generate_nanoarrow_c():
         "nanoarrow_device.h",
         "nanoarrow_device.c",
     ]
-    dst = {name: os.path.join(vendor_dir, name) for name in vendored_files}
+    dst = {name: vendor_dir / name for name in vendored_files}
 
     for f in dst.values():
-        if os.path.exists(f):
-            os.unlink(f)
+        f.unlink(missing_ok=True)
 
-    is_cmake_dir = "CMakeLists.txt" in os.listdir(source_dir)
-    is_in_nanoarrow_repo = is_cmake_dir and "nanoarrow.h" in os.listdir(
-        os.path.join(source_dir, "src", "nanoarrow")
+    is_cmake_dir = (source_dir / "CMakeLists.txt").exists()
+    is_in_nanoarrow_repo = (
+        is_cmake_dir and (source_dir / "src" / "nanoarrow" / "nanoarrow.h").exists()
     )
 
     if not is_in_nanoarrow_repo:
@@ -217,20 +217,20 @@ def copy_or_generate_nanoarrow_c():
     # The C library, IPC extension, and Device extension all currently have slightly
     # different methods of bundling (hopefully this can be unified)
 
-    if not os.path.exists(vendor_dir):
-        os.mkdir(vendor_dir)
+    vendor_dir.mkdir(exist_ok=True)
 
     # Copy device files
-    device_ext_src = os.path.join(
-        source_dir, "extensions/nanoarrow_device/src/nanoarrow"
+    device_ext_src = (
+        source_dir / "extensions" / "nanoarrow_device" / "src" / "nanoarrow"
     )
+
     for device_file in ["nanoarrow_device.h", "nanoarrow_device.c"]:
         shutil.copyfile(
-            os.path.join(device_ext_src, device_file),
+            device_ext_src / device_file,
             dst[device_file],
         )
 
-    ipc_source_dir = os.path.join(source_dir, "extensions/nanoarrow_ipc")
+    ipc_source_dir = source_dir / "extensions/nanoarrow_ipc"
 
     for cmake_project in [source_dir, ipc_source_dir]:
         with tempfile.TemporaryDirectory() as build_dir:
@@ -259,15 +259,15 @@ def copy_or_generate_nanoarrow_c():
             except Exception as e:
                 warnings.warn(f"cmake call failed: {e}")
 
-    if not os.path.exists(dst["nanoarrow.h"]):
+    if not dst["nanoarrow.h"].exists():
         raise ValueError("Attempt to vendor nanoarrow.c/h failed")
 
 
 # Runs the pxd generator with some information about the file name
 def generate_nanoarrow_pxd():
-    this_dir = os.path.abspath(os.path.dirname(__file__))
-    maybe_nanoarrow_h = os.path.join(this_dir, "vendor/nanoarrow.h")
-    maybe_nanoarrow_pxd = os.path.join(this_dir, "vendor/nanoarrow_c.pxd")
+    this_dir = pathlib.Path(__file__).parent.resolve()
+    maybe_nanoarrow_h = this_dir / "vendor/nanoarrow.h"
+    maybe_nanoarrow_pxd = this_dir / "vendor/nanoarrow_c.pxd"
 
     NanoarrowPxdGenerator().generate_nanoarrow_pxd(
         maybe_nanoarrow_h, maybe_nanoarrow_pxd

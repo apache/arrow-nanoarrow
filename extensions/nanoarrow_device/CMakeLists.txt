@@ -35,16 +35,16 @@ option(NANOARROW_DEVICE_CODE_COVERAGE "Enable coverage reporting" OFF)
 add_library(device_coverage_config INTERFACE)
 
 if(NANOARROW_DEVICE_BUILD_TESTS OR NOT NANOARROW_DEVICE_BUNDLE)
-  # Add the nanoarrow dependency. nanoarrow is not linked into the
-  # nanoarrow_device library (the caller must link this themselves);
-  # however, we need nanoarrow.h to build nanoarrow_device.c.
-  fetchcontent_declare(nanoarrow SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
+  # Lazily add the nanoarrow dependency
+  if(NOT TARGET nanoarrow)
+    fetchcontent_declare(nanoarrow SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 
-  # Don't install nanoarrow because of this configuration
-  fetchcontent_getproperties(nanoarrow)
-  if(NOT nanoarrow_POPULATED)
-    fetchcontent_populate(nanoarrow)
-    add_subdirectory(${nanoarrow_SOURCE_DIR} ${nanoarrow_BINARY_DIR} EXCLUDE_FROM_ALL)
+    # Don't install nanoarrow because of this configuration
+    fetchcontent_getproperties(nanoarrow)
+    if(NOT nanoarrow_POPULATED)
+      fetchcontent_populate(nanoarrow)
+      add_subdirectory(${nanoarrow_SOURCE_DIR} ${nanoarrow_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
   endif()
 endif()
 

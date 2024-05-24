@@ -183,6 +183,48 @@ def test_c_array_view_dictionary():
     assert "- dictionary: <nanoarrow.c_array.CArrayView>" in repr(view)
 
 
+def test_c_array_view_null_count():
+    # With explicit null count == 0
+    array = na.c_array_from_buffers(
+        na.int32(), 3, (None, na.c_buffer([1, 2, 3], na.int32())), null_count=0
+    )
+    assert array.view().null_count == 0
+
+    # Infer null count == 0 because of null data buffer when the null count
+    # has not yet been computed by the producer.
+    array = na.c_array_from_buffers(
+        na.int32(), 3, (None, na.c_buffer([1, 2, 3], na.int32())), null_count=-1
+    )
+    assert array.view().null_count == 0
+
+    # Compute null count == 0 by counting validity bits when the null count
+    # has not yet been computed by the producer.
+    array = na.c_array_from_buffers(
+        na.int32(),
+        3,
+        (
+            na.c_buffer([True, True, True], na.bool_()),
+            na.c_buffer([1, 2, 3], na.int32()),
+        ),
+        null_count=-1,
+    )
+
+    assert array.view().null_count == 0
+
+    # Check computed null count with actual nulls when the null count
+    # has not yet been computed by the producer.
+    array = na.c_array_from_buffers(
+        na.int32(),
+        3,
+        (
+            na.c_buffer([True, False, True], na.bool_()),
+            na.c_buffer([1, 2, 3], na.int32()),
+        ),
+        null_count=-1,
+    )
+    assert array.view().null_count == 1
+
+
 def test_buffers_integer():
     data_types = [
         (pa.uint8(), np.uint8()),

@@ -20,83 +20,85 @@
 # nanoarrow
 
 [![Codecov test coverage](https://codecov.io/gh/apache/arrow-nanoarrow/branch/main/graph/badge.svg)](https://app.codecov.io/gh/apache/arrow-nanoarrow?branch=main)
-[![Documentation](https://img.shields.io/badge/Documentation-main-yellow)](https://arrow.apache.org/nanoarrow/main)
+[![Documentation](https://img.shields.io/badge/Documentation-main-yellow)](https://arrow.apache.org/nanoarrow/)
 [![nanoarrow on GitHub](https://img.shields.io/badge/GitHub-apache%2Farrow--nanoarrow-blue)](https://github.com/apache/arrow-nanoarrow)
 
-The nanoarrow library is a set of helper functions to interpret and generate
-[Arrow C Data Interface](https://arrow.apache.org/docs/format/CDataInterface.html)
-and [Arrow C Stream Interface](https://arrow.apache.org/docs/format/CStreamInterface.html)
-structures. The library is in active early development and users should update regularly
-from the main branch of this repository.
+The nanoarrow libraries are a set of helpers to produce and consume Arrow data,
+including the
+[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html),
+[Arrow C Stream](https://arrow.apache.org/docs/format/CStreamInterface.html),
+and [Arrow C Device](https://arrow.apache.org/docs/format/CDeviceDataInterface.html),
+structures and the
+[serialized Arrow IPC format](https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc).
+The vision of nanoarrow is that it should be trivial for libraries to produce and consume
+Arrow data: it helps fulfill this vision by providing high-quality, easy-to-adopt
+helpers to produce, consume, and test Arrow data types and arrays.
 
-Whereas the current suite of Arrow implementations provide the basis for a
-comprehensive data analysis toolkit, this library is intended to support clients
-that wish to produce or interpret Arrow C Data and/or Arrow C Stream structures
-where linking to a higher level Arrow binding is difficult or impossible.
+The nanoarrow libraries were built to be:
 
-## Using the C library
+- Small: nanoarrow’s C runtime compiles into a few hundred kilobytes and its R and Python
+  bindings both have an installed size of ~1 MB.
+- Easy to depend on: nanoarrow's C library is distributed as two files (nanoarrow.c and
+  nanoarrow.h) and its R and Python bindings have zero dependencies.
+- Useful: The Arrow Columnar Format includes a wide range of data type and data encoding
+  options. To the greatest extent practicable, nanoarrow strives to support the entire
+  Arrow columnar specification (see the
+  [Arrow implementation status](https://arrow.apache.org/docs/status.html) page for
+  implementation status).
 
-The nanoarrow C library is intended to be copied and vendored. This can be done using
-CMake or by using the bundled nanoarrow.h/nanoarrow.c distribution available in the
-dist/ directory in this repository. Examples of both can be found in the examples/
-directory in this repository.
+## Getting started
 
-A simple producer example:
+The nanoarrow Python bindings are available from [PyPI](https://pypi.org/) and
+[conda-forge](https://conda-forge.org/):
 
-```c
-#include "nanoarrow.h"
-
-int make_simple_array(struct ArrowArray* array_out, struct ArrowSchema* schema_out) {
-  struct ArrowError error;
-  array_out->release = NULL;
-  schema_out->release = NULL;
-
-  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array_out, NANOARROW_TYPE_INT32));
-
-  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array_out));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 1));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 2));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendInt(array_out, 3));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayFinishBuildingDefault(array_out, &error));
-
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema_out, NANOARROW_TYPE_INT32));
-
-  return NANOARROW_OK;
-}
+```sh
+pip install nanoarrow
+conda install nanoarrow -c conda-forge
 ```
 
-A simple consumer example:
+The nanoarrow R package is available from [CRAN](https://cran.r-project.org):
 
-```c
-#include <stdio.h>
-
-#include "nanoarrow.h"
-
-int print_simple_array(struct ArrowArray* array, struct ArrowSchema* schema) {
-  struct ArrowError error;
-  struct ArrowArrayView array_view;
-  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&array_view, schema, &error));
-
-  if (array_view.storage_type != NANOARROW_TYPE_INT32) {
-    printf("Array has storage that is not int32\n");
-  }
-
-  int result = ArrowArrayViewSetArray(&array_view, array, &error);
-  if (result != NANOARROW_OK) {
-    ArrowArrayViewReset(&array_view);
-    return result;
-  }
-
-  for (int64_t i = 0; i < array->length; i++) {
-    printf("%d\n", (int)ArrowArrayViewGetIntUnsafe(&array_view, i));
-  }
-
-  ArrowArrayViewReset(&array_view);
-  return NANOARROW_OK;
-}
+```r
+install.packages("nanoarrow")
 ```
 
-## Building with Meson
+See the [nanoarrow Documentation](https://arrow.apache.org/nanoarrow/latest/) for
+extended tutorials and API reference for the C, C++, Python, and R libraries.
+
+- [Getting started in C/C++](https://arrow.apache.org/nanoarrow/latest/getting-started/cpp.html)
+- [Getting started in Python](https://arrow.apache.org/nanoarrow/latest/getting-started/python.html)
+- [Getting started in R](https://arrow.apache.org/nanoarrow/latest/getting-started/r.html)
+
+The [nanoarrow GitHub repository](https://github.com/apache/arrow-nanoarrow) additionally
+provides a number of [examples](https://github.com/apache/arrow-nanoarrow/tree/main/examples)
+covering how to use nanoarrow in a variety of build configurations.
+
+## Development
+
+### Building with CMake
+
+CMake is the primary build system used to develop and test the nanoarrow C library. You can build
+nanoarrow with:
+
+```sh
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+Building nanoarrow with tests currently requires [Arrow C++](https://arrow.apache.org/install/).
+If installed via a system package manager like `apt`, `dnf`, or `brew`, the tests can be
+built with:
+
+```sh
+mkdir build && cd build
+cmake .. -DNANOARROW_BUILD_TESTS=ON
+cmake --build .
+```
+
+Tests can be run with `ctest`.
+
+### Building with Meson
 
 CMake is the officially supported build system for nanoarrow. However, the Meson backend is an experimental feature you may also wish to try.
 
@@ -118,15 +120,17 @@ meson setup builddir
 cd builddir
 ```
 
-And configure your project (this could have also been done inline with ``setup``)
+And configure your project (this could have also been done inline with `setup`)
 
 ```sh
 meson configure -DNANOARROW_BUILD_TESTS=true -DNANOARROW_BUILD_BENCHMARKS=true
 ```
 
-Note that if your Arrow pkg-config profile is installed in a non-standard location on your system, you may pass the ``--pkg-config-path <path to directory with arrow.pc>`` to either the setup or configure steps above.
+Note that if your Arrow pkg-config profile is installed in a non-standard location
+on your system, you may pass the `--pkg-config-path <path to directory with arrow.pc>`
+to either the setup or configure steps above.
 
-With the above out of the way, the ``compile`` command should take care of the rest:
+With the above out of the way, the `compile` command should take care of the rest:
 
 ```sh
 meson compile

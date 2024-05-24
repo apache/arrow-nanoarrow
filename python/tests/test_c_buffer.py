@@ -227,23 +227,21 @@ def test_c_buffer_builder_buffer_protocol():
     builder = CBufferBuilder()
     builder.reserve_bytes(1)
 
-    mv = memoryview(builder)
-    assert len(mv) == 1
+    with memoryview(builder) as mv:
+        assert len(mv) == 1
 
-    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
-        memoryview(builder)
+        with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+            memoryview(builder)
 
-    with pytest.raises(BufferError, match="CBufferBuilder is locked"):
-        assert bytes(builder.finish()) == b"abcdefghij"
+        with pytest.raises(BufferError, match="CBufferBuilder is locked"):
+            assert bytes(builder.finish()) == b"abcdefghij"
 
-    # On at least some versions of PyPy the call to mv.release() does not seem
-    # to deterministically call the CBufferBuilder's __releasebuffer__().
+        mv[builder.size_bytes] = ord("k")
+
     if platform.python_implementation() == "PyPy":
-        pytest.skip("CBufferBuilder buffer release is non-deterministic on PyPy")
+        pytest.skip("memoryview() release is not guaranteed on PyPy")
 
-    mv[builder.size_bytes] = ord("k")
     builder.advance(1)
-    mv.release()
     assert bytes(builder.finish()) == b"k"
 
 
@@ -252,7 +250,7 @@ def test_c_buffer_from_iterable():
     assert buffer.size_bytes == 12
     assert buffer.data_type == "int32"
     assert buffer.element_size_bits == 32
-    assert buffer.item_size == 4
+    assert buffer.itemsize == 4
     assert list(buffer) == [1, 2, 3]
 
     # An Arrow type that does not make sense as a buffer type will error
@@ -273,7 +271,7 @@ def test_c_buffer_from_fixed_size_binary_iterable():
     buffer = na.c_buffer(items, na.fixed_size_binary(4))
     assert buffer.data_type == "binary"
     assert buffer.element_size_bits == 32
-    assert buffer.item_size == 4
+    assert buffer.itemsize == 4
     assert bytes(buffer) == b"".join(items)
     assert list(buffer) == items
 
@@ -282,7 +280,7 @@ def test_c_buffer_from_day_time_iterable():
     buffer = na.c_buffer([(1, 2), (3, 4), (5, 6)], na.interval_day_time())
     assert buffer.data_type == "interval_day_time"
     assert buffer.element_size_bits == 64
-    assert buffer.item_size == 8
+    assert buffer.itemsize == 8
     assert list(buffer) == [(1, 2), (3, 4), (5, 6)]
 
 
@@ -290,7 +288,7 @@ def test_c_buffer_from_month_day_nano_iterable():
     buffer = na.c_buffer([(1, 2, 3), (4, 5, 6)], na.interval_month_day_nano())
     assert buffer.data_type == "interval_month_day_nano"
     assert buffer.element_size_bits == 128
-    assert buffer.item_size == 16
+    assert buffer.itemsize == 16
     assert list(buffer) == [(1, 2, 3), (4, 5, 6)]
 
 
@@ -302,7 +300,7 @@ def test_c_buffer_from_decimal128_iterable():
     )
     assert buffer.data_type == "decimal128"
     assert buffer.element_size_bits == 128
-    assert buffer.item_size == 16
+    assert buffer.itemsize == 16
     assert list(buffer) == [
         bytes64[0:16],
         bytes64[16:32],
@@ -316,7 +314,7 @@ def test_c_buffer_from_decimal256_iterable():
     buffer = na.c_buffer([bytes64[0:32], bytes64[32:64]], na.decimal256(10, 3))
     assert buffer.data_type == "decimal256"
     assert buffer.element_size_bits == 256
-    assert buffer.item_size == 32
+    assert buffer.itemsize == 32
     assert list(buffer) == [bytes64[0:32], bytes64[32:64]]
 
 
@@ -326,7 +324,7 @@ def test_c_buffer_bitmap_from_iterable():
     assert "10010000" in repr(buffer)
     assert buffer.size_bytes == 1
     assert buffer.data_type == "bool"
-    assert buffer.item_size == 1
+    assert buffer.itemsize == 1
     assert buffer.element_size_bits == 1
     assert list(buffer.elements()) == [
         True,
