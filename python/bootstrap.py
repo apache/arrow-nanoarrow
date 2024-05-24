@@ -197,9 +197,9 @@ def copy_or_generate_nanoarrow_c():
     for f in dst.values():
         f.unlink(missing_ok=True)
 
-    is_cmake_dir = "CMakeLists.txt" in source_dir.iterdir()
+    is_cmake_dir = (source_dir / "CMakeLists.txt").exists()
     is_in_nanoarrow_repo = (
-        is_cmake_dir and "nanoarrow.h" in (source_dir / "src" / "nanorrow").iterdir()
+        is_cmake_dir and (source_dir / "src" / "nanoarrow" / "nanoarrow.h").exists()
     )
 
     if not is_in_nanoarrow_repo:
