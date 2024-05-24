@@ -29,6 +29,9 @@ on:
       - 'src/nanoarrow/**'
       - 'python/**'
 
+permissions:
+  contents: read
+
 jobs:
   test-python:
 
@@ -39,7 +42,7 @@ jobs:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -75,3 +78,34 @@ jobs:
         if: success() && matrix.python-version == '3.12'
         run: |
           pytest --pyargs nanoarrow --doctest-modules
+
+  # Make sure we can build a source distribution and install from it
+  python-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - name: Install packaging tools
+        run: |
+          pip install build twine
+
+      - name: Build
+        run: |
+          cd python
+          python -m build --sdist --wheel
+
+      - name: Check install from sdist
+        run: |
+          pip install python/dist/nanoarrow-*.tar.gz
+          python -c "import nanoarrow; print(nanoarrow.__version__)"
+          pip uninstall nanoarrow
+
+      - name: Check install from wheel
+        run: |
+          pip install python/dist/nanoarrow-*.whl
+          python -c "import nanoarrow; print(nanoarrow.__version__)"
+          pip uninstall nanoarrow
+
+      - name: Run twine check
+        run: |
+          twine check --strict python/dist/*
