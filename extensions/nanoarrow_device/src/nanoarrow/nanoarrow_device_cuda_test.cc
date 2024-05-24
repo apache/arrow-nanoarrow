@@ -17,11 +17,43 @@
 
 #include <errno.h>
 
-#include <cuda_runtime_api.h>
+#include <cuda.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow_device.h"
 #include "nanoarrow_device_cuda.h"
+
+class CudaTemporaryContext {
+ public:
+  CudaTemporaryContext(int device_id) : initialized_(false) {
+    CUresult err = cuDeviceGet(&device_, device_id);
+    if (err != CUDA_SUCCESS) {
+      return;
+    }
+
+    err = cuDevicePrimaryCtxRetain(&context_, device_);
+    if (err != CUDA_SUCCESS) {
+      return;
+    }
+
+    cuCtxPushCurrent(context_);
+    initialized_ = true;
+  }
+
+  bool valid() { return initialized_; }
+
+  ~CudaTemporaryContext() {
+    if (initialized_) {
+      CUcontext unused;
+      cuCtxPopCurrent(&unused);
+    }
+  }
+
+ private:
+  bool initialized_;
+  CUdevice device_;
+  CUcontext context_;
+};
 
 TEST(NanoarrowDeviceCuda, GetDevice) {
   struct ArrowDevice* cuda = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
@@ -97,23 +129,26 @@ TEST(NanoarrowDeviceCuda, DeviceCudaHostBufferInit) {
 }
 
 TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
+  CudaTemporaryContext ctx(0);
+  ASSERT_TRUE(ctx.valid());
+
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
-  void* gpu_dest;
-  cudaError_t result = cudaMalloc(&gpu_dest, sizeof(data));
-  struct ArrowBufferView gpu_view = {gpu_dest, sizeof(data)};
-  if (result != cudaSuccess) {
-    GTEST_FAIL() << "cudaMalloc(&gpu_dest) failed";
+  CUdeviceptr gpu_dest;
+  CUresult result = cuMemAlloc(&gpu_dest, sizeof(data));
+  struct ArrowBufferView gpu_view = {reinterpret_cast<void*>(gpu_dest), sizeof(data)};
+  if (result != CUDA_SUCCESS) {
+    GTEST_FAIL() << "cuMemAlloc() failed";
   }
 
-  void* gpu_dest2;
-  result = cudaMalloc(&gpu_dest2, sizeof(data));
-  struct ArrowBufferView gpu_view2 = {gpu_dest2, sizeof(data)};
-  if (result != cudaSuccess) {
-    GTEST_FAIL() << "cudaMalloc(&gpu_dest2) failed";
+  CUdeviceptr gpu_dest2;
+  result = cuMemAlloc(&gpu_dest2, sizeof(data));
+  struct ArrowBufferView gpu_view2 = {reinterpret_cast<void*>(gpu_dest), sizeof(data)};
+  if (result != CUDA_SUCCESS) {
+    GTEST_FAIL() << "cuMemAlloc() failed";
   }
 
   // CPU -> GPU
@@ -131,14 +166,14 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
   EXPECT_EQ(memcmp(cpu_dest, data, sizeof(data)), 0);
 
   // Clean up
-  result = cudaFree(gpu_dest);
-  if (result != cudaSuccess) {
-    GTEST_FAIL() << "cudaFree(gpu_dest) failed";
+  result = cuMemFree(gpu_dest);
+  if (result != CUDA_SUCCESS) {
+    GTEST_FAIL() << "cuMemFree() failed";
   }
 
-  result = cudaFree(gpu_dest2);
-  if (result != cudaSuccess) {
-    GTEST_FAIL() << "cudaFree(gpu_dest2) failed";
+  result = cuMemFree(gpu_dest2);
+  if (result != CUDA_SUCCESS) {
+    GTEST_FAIL() << "cuMemFree() failed";
   }
 }
 

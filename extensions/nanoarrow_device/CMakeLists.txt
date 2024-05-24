@@ -119,7 +119,7 @@ else()
   if(NANOARROW_DEVICE_WITH_CUDA)
     find_package(CUDAToolkit REQUIRED)
     set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
-    set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cudart_static)
+    set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cuda_driver)
     set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
   endif()
 
