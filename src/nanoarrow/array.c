@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
   // Release buffers held by this array

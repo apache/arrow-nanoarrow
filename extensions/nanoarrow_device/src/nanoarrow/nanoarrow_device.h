@@ -18,7 +18,7 @@
 #ifndef NANOARROW_DEVICE_H_INCLUDED
 #define NANOARROW_DEVICE_H_INCLUDED
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 #ifdef __cplusplus
 extern "C" {

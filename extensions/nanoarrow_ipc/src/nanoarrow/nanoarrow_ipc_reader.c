@@ -19,8 +19,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "nanoarrow.h"
-#include "nanoarrow_ipc.h"
+#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow_ipc.h"
 
 // R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
 #if defined(_WIN32) && !defined(_MSC_VER) && !defined(ENODATA)

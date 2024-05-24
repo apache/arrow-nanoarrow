@@ -19,7 +19,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device.h"
 
 TEST(NanoarrowDevice, CheckRuntime) {
   EXPECT_EQ(ArrowDeviceCheckRuntime(nullptr), NANOARROW_OK);

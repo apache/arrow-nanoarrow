@@ -168,8 +168,8 @@ std::pair<int, std::string> linesplitter_write(struct ArrowArray* input);
   You may notice that we don't include or mention nanoarrow in any way in the header
   that is exposed to users. Because nanoarrow is designed to be vendored and is not
   distributed as a system library, it is not safe for users of your library to
-  ``#include "nanoarrow.h"`` because it might conflict with another library that does
-  the same (with possibly a different version of nanoarrow).
+  ``#include "nanoarrow/nanoarrow.h"`` because it might conflict with another library
+  that does the same (with possibly a different version of nanoarrow).
 
 ```
 

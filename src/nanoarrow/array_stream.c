@@ -17,7 +17,7 @@
 
 #include <errno.h>
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 struct BasicArrayStreamPrivate {
   struct ArrowSchema schema;

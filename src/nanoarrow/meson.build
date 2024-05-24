@@ -47,10 +47,9 @@ nanoarrow_lib = library(
     'utils.c',
     install: true)
 
-curdir = include_directories('.')  # only needed when used as subproject?
 incdir = include_directories('..')
 
-nanoarrow_dep = declare_dependency(include_directories: [curdir, incdir],
+nanoarrow_dep = declare_dependency(include_directories: [incdir],
                                    link_with: nanoarrow_lib)
 
 if get_option('NANOARROW_BUILD_TESTS') or get_option('NANOARROW_BUILD_INTEGRATION_TESTS')

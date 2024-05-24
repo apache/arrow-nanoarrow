@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 #ifndef NANOARROW_HPP_INCLUDED
 #define NANOARROW_HPP_INCLUDED

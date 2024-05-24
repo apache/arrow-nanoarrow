@@ -18,7 +18,7 @@
 #ifndef NANOARROW_DEVICE_CUDA_H_INCLUDED
 #define NANOARROW_DEVICE_CUDA_H_INCLUDED
 
-#include "nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device.h"
 
 #ifdef NANOARROW_NAMESPACE
 

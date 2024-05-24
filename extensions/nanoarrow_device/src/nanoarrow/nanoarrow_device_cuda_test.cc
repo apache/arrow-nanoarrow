@@ -20,8 +20,8 @@
 #include <cuda_runtime_api.h>
 #include <gtest/gtest.h>
 
-#include "nanoarrow_device.h"
-#include "nanoarrow_device_cuda.h"
+#include "nanoarrow/nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device_cuda.h"
 
 TEST(NanoarrowDeviceCuda, GetDevice) {
   struct ArrowDevice* cuda = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);

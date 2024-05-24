@@ -72,7 +72,7 @@ if(NANOARROW_DEVICE_BUNDLE)
 
     target_include_directories(nanoarrow_device
                                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                                      $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
+                                      $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src>
                                       $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
                                       $<BUILD_INTERFACE:${NANOARROW_DEVICE_FLATCC_INCLUDE_DIR}>
     )
@@ -128,8 +128,8 @@ else()
               ${NANOARROW_DEVICE_SOURCES_CUDA})
 
   target_include_directories(nanoarrow_device
-                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
-                                    $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
+                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                    $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src>
                                     $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
                                     $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
                                     $<INSTALL_INTERFACE:include>)

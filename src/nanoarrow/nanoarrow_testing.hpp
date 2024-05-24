@@ -24,7 +24,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "nanoarrow.hpp"
+#include "nanoarrow/nanoarrow.hpp"
 
 #ifndef NANOARROW_TESTING_HPP_INCLUDED
 #define NANOARROW_TESTING_HPP_INCLUDED

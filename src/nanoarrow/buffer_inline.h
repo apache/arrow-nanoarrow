@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nanoarrow_types.h"
+#include "nanoarrow/nanoarrow_types.h"
 
 #ifdef __cplusplus
 extern "C" {

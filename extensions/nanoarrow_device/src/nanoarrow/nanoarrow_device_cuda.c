@@ -17,7 +17,7 @@
 
 #include <cuda_runtime_api.h>
 
-#include "nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device.h"
 
 struct ArrowDeviceCudaAllocatorPrivate {
   ArrowDeviceType device_type;

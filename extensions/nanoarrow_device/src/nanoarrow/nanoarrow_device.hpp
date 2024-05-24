@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device.h"
 
 #ifndef NANOARROW_DEVICE_HPP_INCLUDED
 #define NANOARROW_DEVICE_HPP_INCLUDED
@@ -89,7 +89,7 @@ static inline void release_pointer(struct ArrowDevice* data) {
 }  // namespace internal
 }  // namespace nanoarrow
 
-#include "nanoarrow.hpp"
+#include "nanoarrow/nanoarrow.hpp"
 
 namespace nanoarrow {
 
