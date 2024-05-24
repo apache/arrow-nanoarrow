@@ -99,13 +99,13 @@ jobs:
         run: |
           pip install python/dist/nanoarrow-*.tar.gz
           python -c "import nanoarrow; print(nanoarrow.__version__)"
-          pip uninstall nanoarrow
+          pip uninstall --yes nanoarrow
 
       - name: Check install from wheel
         run: |
           pip install python/dist/nanoarrow-*.whl
           python -c "import nanoarrow; print(nanoarrow.__version__)"
-          pip uninstall nanoarrow
+          pip uninstall --yes nanoarrow
 
       - name: Run twine check
         run: |
