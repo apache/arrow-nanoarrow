@@ -181,3 +181,62 @@
 - Add wrappers around callbacks to improve syntax and debuggability (#338)
 - Improve syntax for implementing `ArrowArrayStream` from C++ (#336)
 - **python**: Document, prefix, and add reprs for C-wrapping classes (#340)
+
+## nanoarrow 0.5.0
+
+### Docs
+
+- Update top-level documentation (#473)
+- **python**: Update Python bindings readme (#474)
+
+### Feat
+
+- Add `ArrowArray` and `ArrowArrayStream` C++ iterators  (#404)
+- Meson support (#413)
+- **python**: Add column-wise buffer builder (#464)
+- **python**: Add visitor pattern + builders for column sequences (#454)
+- **python**: Add copy_into() to CBufferView (#455)
+- **python**: Ensure that buffer produced by `CBufferView.unpack_bits()` has a boolean type (#457)
+- **python**: Unify printing of type information across classes (#458)
+- **python**: Add `Array.from_chunks()` constructor (#456)
+- **python**: Implement bitmap unpacking (#450)
+- **python**: Allow creation of dictionary and list types (#445)
+- **python**: Implement extension type and Schema metadata support (#431)
+- **python**: Add user-facing ArrayStream class (#439)
+- **python**: Iterate over array buffers (#433)
+- **python**: add back nanoarrow.array(..) constructor (#441)
+- **python**: function to inspect a single-chunk Array (#436)
+- **python**: Create string/binary arrays from iterables (#430)
+- **python**: Support Decimal types in convert to Python (#425)
+- **python**: Add Arrow->Python datetime support (#417)
+- **python**: Clarify interaction between the CDeviceArray, the CArrayView, and the CArray (#409)
+- **python**: Add user-facing `Array` class (#396)
+- **python**: Add CArrayView -> Python conversion (#391)
+- **python**: Add bindings for IPC reader (#388)
+- **python**: Add array creation/building from buffers (#378)
+- **r**: Add experimental `nanoarrow_vctr` to wrap a list of arrays (#461)
+- **r**: Add bindings for IPC reader (#390)
+
+### Fix
+
+- Ensure nanoarrow.hpp compiles on gcc 4.8 (#472)
+- Ensure negative return values from snprintf() are not used as indexes (#418)
+- Relax comparison strictness such that integration tests pass (#399)
+- Make build and install dirs proper CMake package, fix C++ header inclusion, and add proper tests (#406)
+- Ensure that the deallocator called by ArrowBufferDeallocator() is called exactly once (#387)
+- **ci**: Use cached Arrow C++ build in CI (#410)
+- **docs**: Fix typo in documentation for `ArrowSchemaSetTypeUnion()` (#432)
+- **docs**: Correct typo in README.md (#414)
+- **python**: Skip test relying on memoryview context manager on PyPy 3.8 (#479)
+- **python**: Fix use of memoryview to write fill to the buffer builder (#477)
+- **python**: Add iterator for null/na type (#467)
+- **python**: Ensure reference-counting tests are skipped on PyPy (#453)
+- **python**: Make shallow CArray copies less shallow to accommodate moving children (#451)
+- **python**: Update tests for pyarrow 16 (#440)
+- **r**: Fix tests for platforms where arrow dataset and/or zip is not available (#415)
+
+### Refactor
+
+- **docs**: Shuffle organization of sections to multiple pages (#460)
+- **python**: Reorganize strategies for building arrays (#444)
+- **r**: remove unnecessary package name call (#381)
