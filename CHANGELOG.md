@@ -231,7 +231,7 @@
 - **python**: Fix use of memoryview to write fill to the buffer builder (#477)
 - **python**: Add iterator for null/na type (#467)
 - **python**: Ensure reference-counting tests are skipped on PyPy (#453)
-- **python**: Make shallow CArray copies less shallow to accomodate moving children (#451)
+- **python**: Make shallow CArray copies less shallow to accommodate moving children (#451)
 - **python**: Update tests for pyarrow 16 (#440)
 - **r**: Fix tests for platforms where arrow dataset and/or zip is not available (#415)
 
