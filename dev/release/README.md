@@ -329,6 +329,8 @@ start a
 At this point the release candidate is suitable for a vote on the Apache Arrow developer mailing list.
 
 ```
+[VOTE] Release nanoarrow 0.5.0
+
 Hello,
 
 I would like to propose the following release candidate (rc0) of Apache Arrow nanoarrow [0] version 0.5.0. This is an initial release consisting of 44 resolved GitHub issues from 5 contributors [1].
@@ -366,6 +368,7 @@ After a passing release vote, the following tasks must be completed:
 [ ] Submit R package to CRAN
 [ ] Submit Python package to PyPI
 [ ] Update Python package on conda-forge
+[ ] Update release documentation
 [ ] Release blog post at https://github.com/apache/arrow-site/pull/288
 [ ] Sent announcement to announce@apache.org
 [ ] Removed old artifacts from SVN
@@ -419,6 +422,82 @@ cherry-picked into the `r-cran-maint-XXX` packaging branch. (i.e.,
 `git cherry-pick 01234abcdef`). If any changes
 to the source are required, bump the "tweak" version (e.g., `Version: 0.5.0.1`
 in `DESCRIPTION`).
+
+### Submit Python package to PyPI
+
+The Python package source distribution and wheels are built using the [Build Python Wheels](https://github.com/apache/arrow-nanoarrow/actions/workflows/python-wheels.yaml) action on the `maint-0.5.0` branch after cutting the release candidate.
+
+To submit these to PyPI, download all assets from the run into a folder (e.g., `python/dist`) and run:
+
+```shell
+# pip install twine
+twine upload python/dist/*.tar.gz python/dist/*.whl
+```
+
+You will need to enter a token with "upload packages" permissions for the [nanoarrow PyPI project](https://pypi.org/project/nanoarrow/).
+
+This can/should be automated for future releases using one or more GitHub API calls.
+
+### Update Python package on conda-forge
+
+The [conda-forge feedstock](https://github.com/conda-forge/nanoarrow-feedstock) is updated automatically by a conda-forge bot after the source distribution has been uploaded to PyPI (typically this takes several hours). This will also start a CI run to ensure that the updated version will build on PyPI.
+
+### Update release documentation
+
+The [nanoarrow documentation](https://arrow.apache.org/nanoarrow) is populated from the [asf-site branch](https://github.com/apache/arrow-nanoarrow/tree/asf-site) of this repository. To update the documentation, first clone just the asf-site branch:
+
+```shell
+git clone -b asf-site --single-branch https://github.com/apache/arrow-nanoarrow.git
+cd arrow-nanoarrow
+```
+
+Download the [0.5.0 documentation](https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.5.0/docs.tgz):
+
+```shell
+curl -L https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.5.0/docs.tgz \
+  -o docs.tgz
+```
+
+Extract the documentation and rename the directory to `0.5.0`:
+
+```shell
+tar -xvzf docs.tgz
+mv nanoarrow-docs 0.5.0
+```
+
+Then remove the existing `latest` directory and run the extraction again, renaming to `latest` instead:
+
+```shell
+rm -rf latest
+tar -xvzf docs.tgz
+mv nanoarrow-docs latest
+```
+
+Finally, update `switcher.json` with entries pointing `/latest/` and `/0.5.0/` to `"version": "0.5.0"`:
+
+```json
+[
+    {
+        "version": "dev",
+        "url": "https://arrow.apache.org/nanoarrow/main/"
+    },
+    {
+        "version": "0.5.0",
+        "url": "https://arrow.apache.org/nanoarrow/latest/"
+    },
+    {
+        "version": "0.5.0",
+        "url": "https://arrow.apache.org/nanoarrow/0.5.0/"
+    },
+    {
+        "version": "0.4.0",
+        "url": "https://arrow.apache.org/nanoarrow/0.4.0/"
+    },
+    ...
+]
+```
+
+This can/should be automated for future releases.
 
 ### Release blog post
 
