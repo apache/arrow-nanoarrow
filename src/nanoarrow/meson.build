@@ -39,13 +39,24 @@ configure_file(input: 'nanoarrow_config.h.in',
                output: 'nanoarrow_config.h',
                configuration: conf_data)
 
-nanoarrow_lib = library(
+# Windows shared libraries are not exporting the right symbols
+# See https://github.com/mesonbuild/wrapdb/pull/1536#issuecomment-2136011408
+# and https://github.com/apache/arrow-nanoarrow/issues/495
+if host_machine.system() == 'windows'
+    libtype = 'static_library'
+else
+    libtype = 'library'
+endif
+
+nanoarrow_lib = build_target(
     'nanoarrow',
     'array.c',
     'schema.c',
     'array_stream.c',
     'utils.c',
-    install: true)
+    install: true,
+    target_type: libtype,
+)
 
 curdir = include_directories('.')  # only needed when used as subproject?
 incdir = include_directories('..')
