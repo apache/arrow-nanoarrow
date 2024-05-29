@@ -272,10 +272,19 @@ One can verify a nanoarrow release candidate on big endian by setting
 The first step to creating a nanoarrow release is to create a `maint-VERSION` branch
 (e.g., `usethis::pr_init("maint-0.5.0")`) and push the branch to `upstream`. This is
 a good opportunity to run though the above instructions to make sure the verification
-script and instructions are up-to-date. You may also wish to start a manual dispatch
-of the [Verification workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/verify.yaml)
+script and instructions are up-to-date.
 targeting the maint-XX branch that was just pushed.
-When this is complete, run
+
+This is a good time to run other final checks such as:
+
+- Run through some R packaging release checks (e.g., urlchecker, winbuilder)
+- Manually dispatch the [Verification workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/verify.yaml).
+- Manually dispatch the [Python wheels workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/python-wheels.yaml).
+- Create a draft [PR into WrapDB](#update-the-wrapdb-entry) to make sure tests pass in their CI
+- Draft a release blog post and make a draft PR into [arrow-site](https://github.com/apache/arrow-site).
+- Review [nanoarrow dev documentation](https://arrow.apache.org/nanoarrow/main/) for obvious holes/typos.
+
+When these steps are complete, run
 [01-prepare.R](https://github.com/apache/arrow-nanoarrow/blob/main/dev/release/01-prepare.sh):
 
 ```bash
@@ -288,7 +297,9 @@ This will update version numbers, the changelong, and create the git tag
 `apache-arrow-nanoarrow-0.5.0-rc0`. Check to make sure that the changelog
 and versions are what you expect them to be before pushing the tag (you
 may wish to do this by opening a dummy PR to run CI and look at the diff
-from the main branch). When you are satisfied that the code at this tag
+from the main branch).
+
+When you are satisfied that the code at this tag
 is release-candidate worthy, `git push` the tag to the `upstream` repository
 (or whatever your remote name is for the `apache/arrow-nanoarrow` repo).
 This will kick off a
@@ -368,6 +379,7 @@ After a passing release vote, the following tasks must be completed:
 [ ] Submit R package to CRAN
 [ ] Submit Python package to PyPI
 [ ] Update Python package on conda-forge
+[ ] Update the WrapDB entry
 [ ] Update release documentation
 [ ] Release blog post at https://github.com/apache/arrow-site/pull/288
 [ ] Sent announcement to announce@apache.org
@@ -442,6 +454,10 @@ This can/should be automated for future releases using one or more GitHub API ca
 
 The [conda-forge feedstock](https://github.com/conda-forge/nanoarrow-feedstock) is updated automatically by a conda-forge bot after the source distribution has been uploaded to PyPI (typically this takes several hours). This will also start a CI run to ensure that the updated version will build on PyPI.
 
+### Update the WrapDB Entry
+
+The nanoarrow C library is available for users of the [Meson build system](https://mesonbuild.com/) via [WrapDB](https://mesonbuild.com/Wrapdb-projects.html). When a new release is added, PR into the [WrapDB repository](https://github.com/mesonbuild/wrapdb) is required to make the new version available to users. See https://github.com/mesonbuild/wrapdb/pull/1536 for a template PR. It is also a good idea to do this step before the release candidate is cut to cach packaging issues before finalizing the content of the version.
+
 ### Update release documentation
 
 The [nanoarrow documentation](https://arrow.apache.org/nanoarrow) is populated from the [asf-site branch](https://github.com/apache/arrow-nanoarrow/tree/asf-site) of this repository. To update the documentation, first clone just the asf-site branch:
@@ -506,7 +522,7 @@ the release candidate.
 
 ### Send announcement
 
-This email should be sent to announce@apache.org and dev@arrow.apache.org. It
+This email should be sent to `announce@apache.org` and `dev@arrow.apache.org`. It
 **must** be sent from your Apache email address and **must** be sent through
 the `mail-relay.apache.org` outgoing server.
 
@@ -515,32 +531,49 @@ Email template:
 ```
 [ANNOUNCE] Apache Arrow nanoarrow 0.5.0 Released
 
-The Apache Arrow community is pleased to announce the 0.5.0 release of Apache Arrow nanoarrow. This initial release covers 44 resolved issues from 5 contributors[1].
+The Apache Arrow community is pleased to announce the 0.5.0 release of
+Apache Arrow nanoarrow. This initial release covers 79 resolved issues
+from 9 contributors[1].
 
-The release is available now from [2].
-
-Release notes are available at:
-https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.5.0/CHANGELOG.md
+The release is available now from [2], release notes are available at
+[3], and a blog post highlighting new features and breaking changes is
+available at [4].
 
 What is Apache Arrow?
 ---------------------
-Apache Arrow is a columnar in-memory analytics layer designed to accelerate big data. It houses a set of canonical in-memory representations of flat and hierarchical data along with multiple language-bindings for structure manipulation. It also provides low-overhead streaming and batch messaging, zero-copy interprocess communication (IPC), and vectorized in-memory analytics libraries. Languages currently supported include C, C++, C#, Go, Java, JavaScript, Julia, MATLAB, Python, R, Ruby, and Rust.
+Apache Arrow is a columnar in-memory analytics layer designed to
+accelerate big data. It houses a set of canonical in-memory
+representations of flat and hierarchical data along with multiple
+language-bindings for structure manipulation. It also provides
+low-overhead streaming and batch messaging, zero-copy interprocess
+communication (IPC), and vectorized in-memory analytics libraries.
+Languages currently supported include C, C++, C#, Go, Java,
+JavaScript, Julia, MATLAB, Python, R, Ruby, and Rust.
 
 What is Apache Arrow nanoarrow?
 --------------------------
-Apache Arrow nanoarrow is a C library for building and interpreting Arrow C Data interface structures with bindings for users of R and Python. The vision of nanoarrow is that it should be trivial for a library or application to implement an Arrow-based interface. The library provides helpers to create types, schemas, and metadata, an API for building arrays element-wise,
-and an API to extract elements element-wise from an array. For a more detailed description of the features nanoarrow provides and motivation for its development, see [3].
+Apache Arrow nanoarrow is a C library for building and interpreting
+Arrow C Data interface structures with bindings for users of R and
+Python. The vision of nanoarrow is that it should be trivial for a
+library or application to implement an Arrow-based interface. The
+library provides helpers to create types, schemas, and metadata, an
+API for building arrays element-wise,
+and an API to extract elements element-wise from an array. For a more
+detailed description of the features nanoarrow provides and motivation
+for its development, see [5].
 
-Please report any feedback to the mailing lists ([4], [5]).
+Please report any feedback to the mailing lists ([6], [7]).
 
 Regards,
 The Apache Arrow Community
 
-[1]: https://github.com/apache/arrow-nanoarrow/issues?q=is%3Aissue+milestone%3A%22nanoarrow+0.5.0%22+is%3Aclosed
-[2]: https://www.apache.org/dyn/closer.cgi/arrow/apache-arrow-nanoarrow-0.5.0
-[3]: https://github.com/apache/arrow-nanoarrow
-[4]: https://lists.apache.org/list.html?user@arrow.apache.org
-[5]: https://lists.apache.org/list.html?dev@arrow.apache.org
+[1] https://github.com/apache/arrow-nanoarrow/issues?q=milestone%3A%22nanoarrow+0.5.0%22+is%3Aclosed
+[2] https://www.apache.org/dyn/closer.cgi/arrow/apache-arrow-nanoarrow-0.5.0
+[3] https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.5.0/CHANGELOG.md
+[4] https://arrow.apache.org/blog/2024/05/27/nanoarrow-0.5.0-release/
+[5] https://arrow.apache.org/nanoarrow/
+[6] https://lists.apache.org/list.html?user@arrow.apache.org
+[7] https://lists.apache.org/list.html?dev@arrow.apache.org
 ```
 
 ### Remove old artifacts from SVN
