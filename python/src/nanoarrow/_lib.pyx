@@ -483,13 +483,13 @@ cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size
     elif type_id == NANOARROW_TYPE_UINT16:
         format_const = "H"
         element_size_bits_calc = 16
-    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS):
+    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS, NANOARROW_TYPE_DATE32):
         format_const = "i"
         element_size_bits_calc = 32
     elif type_id == NANOARROW_TYPE_UINT32:
         format_const = "I"
         element_size_bits_calc = 32
-    elif type_id == NANOARROW_TYPE_INT64:
+    elif type_id in (NANOARROW_TYPE_INT64, NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64):
         format_const = "q"
         element_size_bits_calc = 64
     elif type_id == NANOARROW_TYPE_UINT64:
@@ -1069,6 +1069,12 @@ cdef class CSchemaView:
         NANOARROW_TYPE_SPARSE_UNION
     )
 
+    _buffer_protocol_supported_types = (
+        NANOARROW_TYPE_DATE32,
+        NANOARROW_TYPE_DATE64,
+        NANOARROW_TYPE_TIMESTAMP
+    )
+
     def __cinit__(self, CSchema schema):
         self._base = schema
         self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
@@ -1101,7 +1107,8 @@ cdef class CSchemaView:
         type.
         """
         if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
-            return None
+            if self._schema_view.type not in self._buffer_protocol_supported_types:
+                return None
 
         # String/binary types do not have format strings as far as the Python
         # buffer protocol is concerned
