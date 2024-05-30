@@ -220,6 +220,9 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(struct ArrowDevice* devi
                                                         struct ArrowBufferView dst,
                                                         int* n_pop_context,
                                                         struct ArrowError* error) {
+  // Note: the device_src/sync event must be synchronized before calling these methods,
+  // even though the cuMemcpyXXX() functions may do this automatically in some cases.
+
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_CUDA) {
     struct ArrowDeviceCudaPrivate* dst_private =
@@ -275,17 +278,14 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(struct ArrowDevice* devi
 
   } else if (device_src->device_type == ARROW_DEVICE_CPU &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    // TODO: Synchronize device_src?
     memcpy((void*)dst.data.data, src.data.data, (size_t)src.size_bytes);
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
-    // TODO: Synchronize device_src?
     memcpy((void*)dst.data.data, src.data.data, (size_t)src.size_bytes);
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA_HOST &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
-    // TODO: Synchronize device_src?
     memcpy((void*)dst.data.data, src.data.data, (size_t)src.size_bytes);
 
   } else {
