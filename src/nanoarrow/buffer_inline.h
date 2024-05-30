@@ -122,7 +122,7 @@ static inline float ArrowHalfFloatToFloat(uint16_t value) {
   } else if (exp == 0x1f) {
     res = 0xff;
   }
-  
+
   union {
     float f;
     uint32_t b;
@@ -276,7 +276,6 @@ static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
                                                     float value) {
   return ArrowBufferAppend(buffer, &value, sizeof(float));
 }
-
 
 static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
                                                          struct ArrowStringView value) {

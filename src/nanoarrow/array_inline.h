@@ -365,7 +365,8 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
     case NANOARROW_TYPE_HALF_FLOAT:
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
       break;
     case NANOARROW_TYPE_BOOL:
       NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
@@ -418,7 +419,8 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
     case NANOARROW_TYPE_HALF_FLOAT:
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
       break;
     case NANOARROW_TYPE_BOOL:
       NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
@@ -450,7 +452,8 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
     case NANOARROW_TYPE_HALF_FLOAT:
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
       break;
     default:
       return EINVAL;
