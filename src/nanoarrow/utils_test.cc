@@ -547,30 +547,11 @@ TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
 // https://github.com/apache/arrow/blob/main/go/arrow/float16/float16_test.go
 TEST(HalfFloatTest, FloatAndHalfFloatRoundTrip) {
   uint16_t cases_bits[] = {
-    0x8000,
-    0x7c00,
-    0xfc00,
-    0x3c00,
-    0x4000,
-    0xc000,
-    0x0000,
-    0x5b8f,
-    0xdb8f,
-    0x48c8,
-    0xc8c8,
+      0x8000,  0x7c00, 0xfc00, 0x3c00, 0x4000, 0xc000,
+      +0x0000, 0x5b8f, 0xdb8f, 0x48c8, 0xc8c8,
   };
   float cases_float[] = {
-    -0.0,
-    INFINITY,
-    -INFINITY,
-    1,
-    2,
-    -2,
-    0,
-    241.875,
-    -241.875,
-    9.5625,
-    -9.5625,
+      -0.0, INFINITY, -INFINITY, 1, 2, -2, 0, 241.875, -241.875, 9.5625, -9.5625,
   };
 
   for (size_t i = 0; i < sizeof(cases_float) / sizeof(float); i++) {

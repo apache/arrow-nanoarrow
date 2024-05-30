@@ -816,7 +816,8 @@ TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[3]), 3.0);
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[4]), 3.138672);
-  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[5]), std::numeric_limits<float>::max());
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[5]),
+                  std::numeric_limits<float>::max());
   EXPECT_TRUE(std::isnan(ArrowHalfFloatToFloat(data_buffer[6])));
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[7]), INFINITY);
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[8]), -INFINITY);
