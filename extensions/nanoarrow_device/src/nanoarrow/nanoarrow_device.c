@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <asm-generic/errno-base.h>
 #include <errno.h>
 
 #include "nanoarrow.h"
