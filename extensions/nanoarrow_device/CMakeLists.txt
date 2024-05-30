@@ -138,6 +138,7 @@ else()
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
   target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL}
                                                 ${NANOARROW_DEVICE_LIBS_CUDA})
+  target_compile_definitions(nanoarrow_device PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)

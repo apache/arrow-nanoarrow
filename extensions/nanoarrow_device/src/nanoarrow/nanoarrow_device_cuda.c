@@ -53,6 +53,19 @@ static inline void ArrowDeviceCudaSetError(CUresult err, const char* op,
   _NANOARROW_CUDA_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(cuda_err_, __COUNTER__), EXPR, \
                                      OP, ERROR)
 
+#if defined(NANOARROW_DEBUG)
+#define _NANOARROW_CUDA_ASSERT_OK_IMPL(NAME, EXPR, EXPR_STR)           \
+  do {                                                                 \
+    const CUresult NAME = (EXPR);                                      \
+    if (NAME != CUDA_SUCCESS) NANOARROW_PRINT_AND_DIE(NAME, EXPR_STR); \
+  } while (0)
+#define NANOARROW_CUDA_ASSERT_OK(EXPR)                                                   \
+  _NANOARROW_CUDA_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, \
+                                 #EXPR)
+#else
+#define NANOARROW_CUDA_ASSERT_OK(EXPR) (void)(EXPR)
+#endif
+
 struct ArrowDeviceCudaPrivate {
   CUdevice cu_device;
   CUcontext cu_context;
@@ -76,7 +89,7 @@ static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
       cuMemFree((CUdeviceptr)allocator_private->allocated_ptr);
       break;
     case ARROW_DEVICE_CUDA_HOST:
-      cuMemFreeHost(allocator_private->allocated_ptr);
+      NANOARROW_CUDA_ASSERT_OK(cuMemFreeHost(allocator_private->allocated_ptr));
       break;
     default:
       break;
@@ -99,7 +112,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
       (struct ArrowDeviceCudaAllocatorPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceCudaAllocatorPrivate));
   if (allocator_private == NULL) {
-    cuCtxPopCurrent(&unused);
+    NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
     return ENOMEM;
   }
 
@@ -125,7 +138,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
   }
 
   if (err != CUDA_SUCCESS) {
-    cuCtxPopCurrent(&unused);
+    NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
     ArrowFree(allocator_private);
     return EIO;
   }
@@ -140,7 +153,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
   buffer->allocator =
       ArrowBufferDeallocator(&ArrowDeviceCudaDeallocator, allocator_private);
 
-  cuCtxPopCurrent(&unused);
+  NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
   return NANOARROW_OK;
 }
 
@@ -152,7 +165,7 @@ struct ArrowDeviceCudaArrayPrivate {
 static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)array->private_data;
-  cuEventDestroy(private_data->cu_event);
+  NANOARROW_CUDA_ASSERT_OK(cuEventDestroy(private_data->cu_event));
   ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
   array->release = NULL;
@@ -169,14 +182,14 @@ static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
   CUevent cu_event;
   CUresult err = cuEventCreate(&cu_event, CU_EVENT_DEFAULT);
   CUcontext unused;
-  cuCtxPopCurrent(&unused);
+  NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
   NANOARROW_CUDA_RETURN_NOT_OK(err, "cuEventCreate", NULL);
 
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceCudaArrayPrivate));
   if (private_data == NULL) {
-    cuEventDestroy(cu_event);
+    NANOARROW_CUDA_ASSERT_OK(cuEventDestroy(cu_event));
     return ENOMEM;
   }
 
@@ -290,7 +303,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
                                                  &n_pop_context, &error);
   for (int i = 0; i < n_pop_context; i++) {
     CUcontext unused;
-    cuCtxPopCurrent(&unused);
+    NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
   }
 
   return result;
@@ -379,7 +392,7 @@ static ArrowErrorCode ArrowDeviceCudaArrayMove(struct ArrowDevice* device_src,
 static void ArrowDeviceCudaRelease(struct ArrowDevice* device) {
   struct ArrowDeviceCudaPrivate* private_data =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
-  cuDevicePrimaryCtxRelease(private_data->cu_device);
+  NANOARROW_CUDA_ASSERT_OK(cuDevicePrimaryCtxRelease(private_data->cu_device));
   ArrowFree(device->private_data);
   device->release = NULL;
 }
@@ -407,7 +420,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   struct ArrowDeviceCudaPrivate* private_data =
       (struct ArrowDeviceCudaPrivate*)ArrowMalloc(sizeof(struct ArrowDeviceCudaPrivate));
   if (private_data == NULL) {
-    cuDevicePrimaryCtxRelease(cu_device);
+    NANOARROW_CUDA_ASSERT_OK(cuDevicePrimaryCtxRelease(cu_device));
     ArrowErrorSet(error, "out of memory");
     return ENOMEM;
   }
