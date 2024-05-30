@@ -450,32 +450,3 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
 
   return NANOARROW_OK;
 }
-
-// float to half float conversion, adapted from Arrow Go
-// https://github.com/apache/arrow/blob/main/go/arrow/float16/float16.go
-uint16_t ArrowFloatToHalfFloat(float value) {
-  union {
-    float f;
-    uint32_t b;
-  } u;
-  u.f = value;
-
-  uint16_t sn = (u.b >> 31) & 0x1;
-  uint16_t exp = (u.b >> 23) & 0xff;
-  uint16_t res = (int16_t)exp - 127 + 15;
-  uint16_t fc = (uint16_t)(u.b >> 13) & 0x3ff;
-
-  if (exp == 0) {
-    res = 0;
-  } else if (exp == 0xff) {
-    res = 0x1f;
-  } else if (res > 0x1e) {
-    res = 0x1f;
-    fc = 0;
-  } else if (res < 0x01) {
-    res = 0;
-    fc = 0;
-  }
-
-  return (uint16_t)((sn << 15) | (uint16_t)(res << 10) | fc);
-}

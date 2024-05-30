@@ -811,17 +811,17 @@ TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
   auto data_buffer = reinterpret_cast<const uint16_t*>(array.buffers[1]);
   EXPECT_EQ(validity_buffer[0], 0b11111001);
   EXPECT_EQ(validity_buffer[1], 0b00000111);
-  EXPECT_EQ(data_buffer[0], 15360);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[0]), 1);
   EXPECT_EQ(data_buffer[1], 0);
   EXPECT_EQ(data_buffer[2], 0);
-  EXPECT_EQ(data_buffer[3], 16896);
-  EXPECT_EQ(data_buffer[4], 16967);
-  EXPECT_EQ(data_buffer[5], 31744);
-  EXPECT_EQ(data_buffer[6], 32256);
-  EXPECT_EQ(data_buffer[7], 31744);
-  EXPECT_EQ(data_buffer[8], 64512);
-  EXPECT_EQ(data_buffer[9], 48128);
-  EXPECT_EQ(data_buffer[10], 0);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[3]), 3.0);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[4]), 3.138672);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[5]), std::numeric_limits<float>::max());
+  EXPECT_TRUE(std::isnan(ArrowHalfFloatToFloat(data_buffer[6])));
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[7]), INFINITY);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[8]), -INFINITY);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[9]), -1);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[10]), 0);
 }
 
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {

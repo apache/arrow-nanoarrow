@@ -290,7 +290,10 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
                                                 struct ArrowBuffer* buffer);
 
 /// \brief Get the half float value of a float
-uint16_t ArrowFloatToHalfFloat(float value);
+static inline uint16_t ArrowFloatToHalfFloat(float value);
+
+/// \brief Get the float value of a half float
+static inline float ArrowHalfFloatToFloat(uint16_t value);
 
 /// \brief Resolve a chunk index from increasing int64_t offsets
 ///
