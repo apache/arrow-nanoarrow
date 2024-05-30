@@ -165,7 +165,11 @@ struct ArrowDeviceCudaArrayPrivate {
 static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)array->private_data;
-  NANOARROW_CUDA_ASSERT_OK(cuEventDestroy(private_data->cu_event));
+
+  if (private_data->cu_event != NULL) {
+    NANOARROW_CUDA_ASSERT_OK(cuEventDestroy(private_data->cu_event));
+  }
+
   ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
   array->release = NULL;
@@ -173,27 +177,19 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
 
 static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
                                                struct ArrowDeviceArray* device_array,
-                                               struct ArrowArray* array) {
+                                               struct ArrowArray* array,
+                                               void* sync_event) {
   struct ArrowDeviceCudaPrivate* device_private =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
-  NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(device_private->cu_context),
-                               "cuCtxPushCurrent", NULL);
-
-  CUevent cu_event;
-  CUresult err = cuEventCreate(&cu_event, CU_EVENT_DEFAULT);
-  CUcontext unused;
-  NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
-  NANOARROW_CUDA_RETURN_NOT_OK(err, "cuEventCreate", NULL);
+  // One can create an event with cuEventCreate(&cu_event, CU_EVENT_DEFAULT);
+  // Requires cuCtxPushCurrent() + cuEventCreate() + cuCtxPopCurrent()
 
   struct ArrowDeviceCudaArrayPrivate* private_data =
       (struct ArrowDeviceCudaArrayPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceCudaArrayPrivate));
   if (private_data == NULL) {
-    NANOARROW_CUDA_ASSERT_OK(cuEventDestroy(cu_event));
     return ENOMEM;
   }
-
-  private_data->cu_event = cu_event;
 
   memset(device_array, 0, sizeof(struct ArrowDeviceArray));
   device_array->array = *array;
@@ -203,7 +199,14 @@ static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
 
   device_array->device_id = device->device_id;
   device_array->device_type = device->device_type;
-  device_array->sync_event = &private_data->cu_event;
+
+  if (sync_event != NULL) {
+    private_data->cu_event = *((CUevent*)sync_event);
+    device_array->sync_event = sync_event;
+  } else {
+    private_data->cu_event = NULL;
+    device_array->sync_event = NULL;
+  }
 
   return NANOARROW_OK;
 }

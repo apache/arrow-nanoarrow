@@ -153,7 +153,8 @@ static void ArrowDeviceMetalArrayRelease(struct ArrowArray* array) {
 
 static ArrowErrorCode ArrowDeviceMetalArrayInit(struct ArrowDevice* device,
                                                 struct ArrowDeviceArray* device_array,
-                                                struct ArrowArray* array) {
+                                                struct ArrowArray* array,
+                                                void* sync_event) {
   struct ArrowDeviceMetalArrayPrivate* private_data =
       (struct ArrowDeviceMetalArrayPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceMetalArrayPrivate));
@@ -161,8 +162,8 @@ static ArrowErrorCode ArrowDeviceMetalArrayInit(struct ArrowDevice* device,
     return ENOMEM;
   }
 
-  auto mtl_device = reinterpret_cast<MTL::Device*>(device->private_data);
-  private_data->event = mtl_device->newSharedEvent();
+  // One can create a new event with mtl_device->newSharedEvent();
+  private_data->event = sync_event;
 
   memset(device_array, 0, sizeof(struct ArrowDeviceArray));
   device_array->array = *array;
