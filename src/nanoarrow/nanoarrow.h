@@ -289,6 +289,9 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
                                                 struct ArrowBuffer* buffer);
 
+/// \brief Get the half float value of a float
+uint16_t ArrowFloatToHalfFloat(float value);
+
 /// \brief Resolve a chunk index from increasing int64_t offsets
 ///
 /// Given a buffer of increasing int64_t offsets that begin with 0 (e.g., offset buffer

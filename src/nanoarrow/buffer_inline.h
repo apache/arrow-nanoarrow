@@ -226,6 +226,12 @@ static inline ArrowErrorCode ArrowBufferAppendFloat(struct ArrowBuffer* buffer,
   return ArrowBufferAppend(buffer, &value, sizeof(float));
 }
 
+static inline ArrowErrorCode ArrowBufferAppendHalfFloat(struct ArrowBuffer* buffer,
+                                                        float value) {
+  uint16_t half_value = ArrowFloatToHalfFloat(value);
+  return ArrowBufferAppend(buffer, &half_value, sizeof(uint16_t));
+}
+
 static inline ArrowErrorCode ArrowBufferAppendStringView(struct ArrowBuffer* buffer,
                                                          struct ArrowStringView value) {
   return ArrowBufferAppend(buffer, value.data, value.size_bytes);
