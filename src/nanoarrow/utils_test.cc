@@ -547,6 +547,8 @@ TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
 // https://github.com/apache/arrow/blob/main/go/arrow/float16/float16_test.go
 TEST(HalfFloatTest, FloatAndHalfFloatRoundTrip) {
   uint16_t cases_bits[] = {
+    0x7c00,
+    0xfc00,
     0x3c00,
     0x4000,
     0xc000,
@@ -557,6 +559,8 @@ TEST(HalfFloatTest, FloatAndHalfFloatRoundTrip) {
     0xc8c8,
   };
   float cases_float[] = {
+    INFINITY,
+    -INFINITY,
     1,
     2,
     -2,
@@ -571,8 +575,15 @@ TEST(HalfFloatTest, FloatAndHalfFloatRoundTrip) {
     uint16_t bits = ArrowFloatToHalfFloat(cases_float[i]);
     EXPECT_EQ(bits, cases_bits[i]);
     float floats = ArrowHalfFloatToFloat(bits);
-    EXPECT_EQ(floats, cases_float[i]);
+    EXPECT_FLOAT_EQ(floats, cases_float[i]);
   }
+}
+
+TEST(HalfFloatTest, NegativeZero) {
+  uint16_t bits = ArrowFloatToHalfFloat(-0.0);
+  EXPECT_EQ(bits, 0x8000);
+  float floats = ArrowHalfFloatToFloat(0x8000);
+  EXPECT_FLOAT_EQ(floats, -0.0f);
 }
 
 TEST(UtilsTest, ArrowResolveChunk64Test) {
