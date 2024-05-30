@@ -823,6 +823,9 @@ TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[8]), -INFINITY);
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[9]), -1);
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[10]), 0);
+
+  auto arrow_array = ImportArray(&array, float16());
+  ARROW_EXPECT_OK(arrow_array);
 }
 
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {
