@@ -787,6 +787,47 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe(), options));
 }
 
+TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<float>::max()),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, NAN), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 11);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint16_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0b11111001);
+  EXPECT_EQ(validity_buffer[1], 0b00000111);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[0]), 1);
+  EXPECT_EQ(data_buffer[1], 0);
+  EXPECT_EQ(data_buffer[2], 0);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[3]), 3.0);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[4]), 3.138672);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[5]),
+                  std::numeric_limits<float>::max());
+  EXPECT_TRUE(std::isnan(ArrowHalfFloatToFloat(data_buffer[6])));
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[7]), INFINITY);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[8]), -INFINITY);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[9]), -1);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[10]), 0);
+
+  auto arrow_array = ImportArray(&array, float16());
+  ARROW_EXPECT_OK(arrow_array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {
   struct ArrowArray array;
 
