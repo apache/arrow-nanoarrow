@@ -260,8 +260,8 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
-    # with pytest.raises(ValueError, match="Can't create buffer"):
-    #     na.c_buffer([1, 2, 3], na.date32())
+    with pytest.raises(ValueError, match="Can't create buffer"):
+         na.c_buffer([1, 2, 3], na.duration("s"))
 
     with pytest.raises(ValueError, match="Can't create buffer"):
         na.c_buffer([1, 2, 3], na.extension_type(na.int32(), "arrow.test"))
@@ -366,7 +366,9 @@ def test_c_buffer_bitmap_from_iterable():
 
 
 def test_c_buffer_from_timestamp_iterable():
-
+    # Timestamp is a 64-bit signed integer representing an elapsed time since a
+    # fixed epoch, stored in either of four units: seconds, milliseconds,
+    # microseconds or nanoseconds
     d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
     d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
     d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))

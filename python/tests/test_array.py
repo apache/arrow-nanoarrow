@@ -413,7 +413,7 @@ def test_pyarrow_table_to_pandas():
     schema = na.struct({"name": na.string(),
                         "age": na.int64(),
                         "creation_timestamp": na.timestamp("ms"),
-                        "number_of_days": na.date32()})
+                        "updated_date": na.date32()})
 
     d1 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
     d2 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
@@ -425,7 +425,7 @@ def test_pyarrow_table_to_pandas():
         na.c_array([40, 45], na.date32())
     ]
     pa_table = pa.Table.from_arrays(columns, 
-        names=["name", "age", "creation_timestamp", "number_of_days"])
+        names=["name", "age", "creation_timestamp", "updated_date"])
     
     left_df = pa_table.to_pandas()
 
@@ -433,9 +433,7 @@ def test_pyarrow_table_to_pandas():
         "name": ["John Doe", "Jane Doe"],
         "age": [34, 33],
         "creation_timestamp": [pd.Timestamp(d1, unit='ms'), pd.Timestamp(d2, unit='ms')],
-        "number_of_days": [pd.Timestamp(40, unit='D').date(), pd.Timestamp(45, unit='D').date()]
+        "updated_date": [pd.Timestamp(40, unit='D').date(), pd.Timestamp(45, unit='D').date()]
     })
     # check_dtype=False for creation_timestamp
     pd.testing.assert_frame_equal(left_df, right_df, check_dtype=False)
-
-    
