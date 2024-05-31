@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from datetime import datetime
+
 import pytest
 from nanoarrow._lib import CArrayBuilder, NanoarrowException
 from nanoarrow.c_schema import c_schema_view
@@ -514,3 +516,36 @@ def test_c_array_from_buffers_validation():
             validation_level=validation_level,
         )
         assert c_array.length == 2
+
+def test_c_array_timestamp_seconds():
+    # Timestamp is a 64-bit signed integer representing 
+    # an elapsed time since a fixed epoch
+    d1 = int(round(datetime(1970, 1, 1).timestamp()))
+    d2 = int(round(datetime(1985, 12, 31).timestamp()))
+    d3 = int(round(datetime(2005, 3, 4).timestamp()))
+
+    c_array = na.c_array([d1, d2, d3], na.timestamp('s'))
+    c_array_from_c_array = na.c_array(c_array)
+    assert c_array_from_c_array.length == c_array.length
+    assert c_array_from_c_array.buffers == c_array.buffers
+    assert list(c_array.view().buffer(1)) == [28800, 504864000, 1109923200]
+
+def test_c_array_timestamp_milliseconds():    
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    c_array = na.c_array([d1, d2, d3], na.timestamp('ms'))
+    c_array_from_c_array = na.c_array(c_array)
+    assert c_array_from_c_array.length == c_array.length
+    assert c_array_from_c_array.buffers == c_array.buffers
+    assert list(c_array.view().buffer(1)) == [28800e3, 504864000e3, 1109923200e3]
+
+def test_c_array_timestamp_microseconds():    
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e6))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e6))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e6))
+    c_array = na.c_array([d1, d2, d3], na.timestamp('us'))
+    c_array_from_c_array = na.c_array(c_array)
+    assert c_array_from_c_array.length == c_array.length
+    assert c_array_from_c_array.buffers == c_array.buffers
+    assert list(c_array.view().buffer(1)) == [28800e6, 504864000e6, 1109923200e6]

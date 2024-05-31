@@ -14,7 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
+from datetime import datetime
 import pytest
 from nanoarrow.c_array_stream import CArrayStream
 
@@ -354,3 +354,88 @@ def test_array_inspect(capsys):
     array.inspect()
     captured = capsys.readouterr()
     assert captured.out.startswith("<ArrowArray struct<col0: int32")
+
+
+def test_array_using_struct(capsys):
+    schema = na.struct({"name": na.string(),
+                        "age": na.int64(),
+                        "creation_timestamp": na.timestamp("ms")})
+
+    d1 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d2 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+
+    columns = [
+        na.c_array(["John Doe", "Jane Doe"], na.string()),
+        na.c_array([34, 33], na.int64()),
+        na.c_array([d1, d2], na.timestamp('ms'))
+    ]
+
+    c_array = na.c_array_from_buffers(
+        schema,
+        length=columns[0].length,
+        buffers=[None],
+        children=columns
+    )
+    array = na.Array(c_array)
+    names, columns = array.to_columns_pysequence()
+    assert names == ['name', 'age', 'creation_timestamp']
+
+    assert array.to_pylist() == list(array.iter_py())
+
+    array.inspect()
+    captured = capsys.readouterr()
+    assert captured.out.startswith("<ArrowArray struct<name: string, age: int64, creation_timestamp: time>")
+
+
+def test_pyarrow_table_using_array():
+    pa = pytest.importorskip("pyarrow")
+    schema = na.struct({"name": na.string(),
+                        "age": na.int64(),
+                        "creation_timestamp": na.timestamp("ms"),
+                        "number_of_days": na.date32()})
+
+    d1 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d2 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+
+    columns = [
+        na.c_array(["John Doe", "Jane Doe"], na.string()),
+        na.c_array([34, 33], na.int64()),
+        na.c_array([d1, d2], na.timestamp('ms')),
+        na.c_array([40, 45], na.date32())
+    ]
+    pa_table = pa.Table.from_arrays(columns, 
+        names=["name", "age", "creation_timestamp", "number_of_days"])
+
+
+def test_pyarrow_table_to_pandas():
+    pa = pytest.importorskip("pyarrow")
+    pd = pytest.importorskip("pandas")
+    schema = na.struct({"name": na.string(),
+                        "age": na.int64(),
+                        "creation_timestamp": na.timestamp("ms"),
+                        "number_of_days": na.date32()})
+
+    d1 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d2 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+
+    columns = [
+        na.c_array(["John Doe", "Jane Doe"], na.string()),
+        na.c_array([34, 33], na.int64()),
+        na.c_array([d1, d2], na.timestamp('ms')),
+        na.c_array([40, 45], na.date32())
+    ]
+    pa_table = pa.Table.from_arrays(columns, 
+        names=["name", "age", "creation_timestamp", "number_of_days"])
+    
+    left_df = pa_table.to_pandas()
+
+    right_df = pd.DataFrame.from_dict({
+        "name": ["John Doe", "Jane Doe"],
+        "age": [34, 33],
+        "creation_timestamp": [pd.Timestamp(d1, unit='ms'), pd.Timestamp(d2, unit='ms')],
+        "number_of_days": [pd.Timestamp(40, unit='D').date(), pd.Timestamp(45, unit='D').date()]
+    })
+    # check_dtype=False for creation_timestamp
+    pd.testing.assert_frame_equal(left_df, right_df, check_dtype=False)
+
+    
