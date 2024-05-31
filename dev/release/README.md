@@ -456,7 +456,7 @@ The [conda-forge feedstock](https://github.com/conda-forge/nanoarrow-feedstock) 
 
 ### Update the WrapDB Entry
 
-The nanoarrow C library is available for users of the [Meson build system](https://mesonbuild.com/) via [WrapDB](https://mesonbuild.com/Wrapdb-projects.html). When a new release is added, PR into the [WrapDB repository](https://github.com/mesonbuild/wrapdb) is required to make the new version available to users. See https://github.com/mesonbuild/wrapdb/pull/1536 for a template PR. It is also a good idea to do this step before the release candidate is cut to cach packaging issues before finalizing the content of the version.
+The nanoarrow C library is available for users of the [Meson build system](https://mesonbuild.com/) via [WrapDB](https://mesonbuild.com/Wrapdb-projects.html). When a new release is added, PR into the [WrapDB repository](https://github.com/mesonbuild/wrapdb) is required to make the new version available to users. See https://github.com/mesonbuild/wrapdb/pull/1536 for a template PR. It is also a good idea to do this step before the release candidate is cut to catch packaging issues before finalizing the content of the version.
 
 ### Update release documentation
 
