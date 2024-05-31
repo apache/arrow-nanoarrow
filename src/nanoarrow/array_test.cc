@@ -2506,6 +2506,72 @@ TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
   TestGetFromNumericArrayView<FloatType>();
 }
 
+TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 4), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 3), 4.0);
+
+  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 0);
+  EXPECT_EQ(string_view.data, nullptr);
+  EXPECT_EQ(string_view.size_bytes, 0);
+  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 0);
+  EXPECT_EQ(buffer_view.data.data, nullptr);
+  EXPECT_EQ(buffer_view.size_bytes, 0);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+
+  // Array without nulls (Arrow does not allocate the validity buffer)
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  schema.flags &= ~ARROW_FLAG_NULLABLE;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // We're trying to test behavior with no validity buffer, so make sure that's true
+  ASSERT_EQ(array_view.buffer_views[0].data.data, nullptr);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 1), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 1);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 1), 2);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 1), 2);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+}
+
 template <typename BuilderClass>
 void TestGetFromBinary(BuilderClass& builder) {
   struct ArrowArray array;
