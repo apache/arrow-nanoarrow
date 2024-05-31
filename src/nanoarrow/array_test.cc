@@ -2565,6 +2565,7 @@ TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
 
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 1);
   EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 1), 2);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 1), 2);
 
   ArrowArrayViewReset(&array_view);
   ArrowArrayRelease(&array);
