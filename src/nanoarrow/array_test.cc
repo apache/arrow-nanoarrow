@@ -2493,6 +2493,76 @@ void TestGetFromNumericArrayView() {
   ArrowSchemaRelease(&schema);
 }
 
+void TestGetFromNumericArrayViewWithHalfFloatType() {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto type = TypeTraits<HalfFloatType>::type_singleton();
+
+  // Array with nulls
+  auto builder = NumericBuilder<HalfFloatType>();
+  ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1.0)));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(4)));
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 3), 4.0);
+
+  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 0);
+  EXPECT_EQ(string_view.data, nullptr);
+  EXPECT_EQ(string_view.size_bytes, 0);
+  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 0);
+  EXPECT_EQ(buffer_view.data.data, nullptr);
+  EXPECT_EQ(buffer_view.size_bytes, 0);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+
+  // Array without nulls (Arrow does not allocate the validity buffer)
+  builder = NumericBuilder<HalfFloatType>();
+  ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1)));
+  ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(2)));
+  maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // We're trying to test behavior with no validity buffer, so make sure that's true
+  ASSERT_EQ(array_view.buffer_views[0].data.data, nullptr);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 1), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 1);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 1), 2);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 1), 2);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+}
+
 TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
   TestGetFromNumericArrayView<Int64Type>();
   TestGetFromNumericArrayView<UInt64Type>();
@@ -2504,6 +2574,7 @@ TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
   TestGetFromNumericArrayView<UInt32Type>();
   TestGetFromNumericArrayView<DoubleType>();
   TestGetFromNumericArrayView<FloatType>();
+  TestGetFromNumericArrayViewWithHalfFloatType();
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
