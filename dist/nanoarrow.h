@@ -1281,6 +1281,12 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
                                                 struct ArrowBuffer* buffer);
 
+/// \brief Get the half float value of a float
+static inline uint16_t ArrowFloatToHalfFloat(float value);
+
+/// \brief Get the float value of a half float
+static inline float ArrowHalfFloatToFloat(uint16_t value);
+
 /// \brief Resolve a chunk index from increasing int64_t offsets
 ///
 /// Given a buffer of increasing int64_t offsets that begin with 0 (e.g., offset buffer
@@ -2233,6 +2239,57 @@ static inline int64_t _ArrowGrowByFactor(int64_t current_capacity, int64_t new_c
   }
 }
 
+// float to half float conversion, adapted from Arrow Go
+// https://github.com/apache/arrow/blob/main/go/arrow/float16/float16.go
+static inline uint16_t ArrowFloatToHalfFloat(float value) {
+  union {
+    float f;
+    uint32_t b;
+  } u;
+  u.f = value;
+
+  uint16_t sn = (uint16_t)((u.b >> 31) & 0x1);
+  uint16_t exp = (u.b >> 23) & 0xff;
+  int16_t res = (int16_t)exp - 127 + 15;
+  uint16_t fc = (uint16_t)(u.b >> 13) & 0x3ff;
+
+  if (exp == 0) {
+    res = 0;
+  } else if (exp == 0xff) {
+    res = 0x1f;
+  } else if (res > 0x1e) {
+    res = 0x1f;
+    fc = 0;
+  } else if (res < 0x01) {
+    res = 0;
+    fc = 0;
+  }
+
+  return (uint16_t)((sn << 15) | (uint16_t)(res << 10) | fc);
+}
+
+// half float to float conversion, adapted from Arrow Go
+// https://github.com/apache/arrow/blob/main/go/arrow/float16/float16.go
+static inline float ArrowHalfFloatToFloat(uint16_t value) {
+  uint32_t sn = (uint32_t)((value >> 15) & 0x1);
+  uint32_t exp = (value >> 10) & 0x1f;
+  uint32_t res = exp + 127 - 15;
+  uint32_t fc = value & 0x3ff;
+
+  if (exp == 0) {
+    res = 0;
+  } else if (exp == 0x1f) {
+    res = 0xff;
+  }
+
+  union {
+    float f;
+    uint32_t b;
+  } u;
+  u.b = (uint32_t)(sn << 31) | (uint32_t)(res << 23) | (uint32_t)(fc << 13);
+  return u.f;
+}
+
 static inline void ArrowBufferInit(struct ArrowBuffer* buffer) {
   buffer->data = NULL;
   buffer->size_bytes = 0;
@@ -3173,6 +3230,10 @@ static inline ArrowErrorCode ArrowArrayAppendInt(struct ArrowArray* array,
     case NANOARROW_TYPE_FLOAT:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
+    case NANOARROW_TYPE_HALF_FLOAT:
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
+      break;
     case NANOARROW_TYPE_BOOL:
       NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
       break;
@@ -3223,6 +3284,10 @@ static inline ArrowErrorCode ArrowArrayAppendUInt(struct ArrowArray* array,
     case NANOARROW_TYPE_FLOAT:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
       break;
+    case NANOARROW_TYPE_HALF_FLOAT:
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
+      break;
     case NANOARROW_TYPE_BOOL:
       NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, 1, value != 0, 1));
       break;
@@ -3251,6 +3316,10 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
       break;
     case NANOARROW_TYPE_FLOAT:
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFloat(data_buffer, (float)value));
+      break;
+    case NANOARROW_TYPE_HALF_FLOAT:
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendUInt16(data_buffer, ArrowFloatToHalfFloat((float)value)));
       break;
     default:
       return EINVAL;
@@ -3607,6 +3676,8 @@ static inline int64_t ArrowArrayViewGetIntUnsafe(const struct ArrowArrayView* ar
       return (int64_t)data_view->data.as_double[i];
     case NANOARROW_TYPE_FLOAT:
       return (int64_t)data_view->data.as_float[i];
+    case NANOARROW_TYPE_HALF_FLOAT:
+      return (int64_t)ArrowHalfFloatToFloat(data_view->data.as_uint16[i]);
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
@@ -3640,6 +3711,8 @@ static inline uint64_t ArrowArrayViewGetUIntUnsafe(
       return (uint64_t)data_view->data.as_double[i];
     case NANOARROW_TYPE_FLOAT:
       return (uint64_t)data_view->data.as_float[i];
+    case NANOARROW_TYPE_HALF_FLOAT:
+      return (uint64_t)ArrowHalfFloatToFloat(data_view->data.as_uint16[i]);
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
@@ -3672,6 +3745,8 @@ static inline double ArrowArrayViewGetDoubleUnsafe(
       return data_view->data.as_double[i];
     case NANOARROW_TYPE_FLOAT:
       return data_view->data.as_float[i];
+    case NANOARROW_TYPE_HALF_FLOAT:
+      return ArrowHalfFloatToFloat(data_view->data.as_uint16[i]);
     case NANOARROW_TYPE_BOOL:
       return ArrowBitGet(data_view->data.as_uint8, i);
     default:
