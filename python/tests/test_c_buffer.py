@@ -17,7 +17,7 @@
 
 import struct
 import sys
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from nanoarrow._lib import CBuffer, CBufferBuilder
@@ -256,7 +256,7 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type that does not make sense as a buffer type will error
     with pytest.raises(ValueError, match="Unsupported Arrow type_id"):
-        na.c_buffer([], na.struct([]))
+         na.c_buffer([], na.struct([]))
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
@@ -366,21 +366,17 @@ def test_c_buffer_bitmap_from_iterable():
 
 
 def test_c_buffer_from_timestamp_iterable():
-    # Timestamp is a 64-bit signed integer representing an elapsed time since a
-    # fixed epoch, stored in either of four units: seconds, milliseconds,
-    # microseconds or nanoseconds
     d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
     d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
     d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
-    buffer = na.c_buffer([d1, d2, d3], na.timestamp('ms'))
+    buffer = na.c_buffer([d1, d2, d3], na.timestamp("ms"))
     assert buffer.data_type == "int64"
     assert buffer.element_size_bits == 64
     assert buffer.itemsize == 8
-    assert list(buffer) == [28800e3, 504864000e3, 1109923200e3]
+    assert list(buffer) == [d1, d2, d3]
+
 
 def test_c_buffer_from_date64_iterable():
-    # Date64 is a 64-bit signed integer type representing an elapsed time 
-    # since UNIX epoch (1970-01-01), stored in milliseconds
     unix_epoch = date(1970, 1, 1)
     d1 = date(1970, 1, 2)
     diff_in_milliseconds = int(round((d1 - unix_epoch).total_seconds() * 1e3))
@@ -390,9 +386,8 @@ def test_c_buffer_from_date64_iterable():
     assert buffer.itemsize == 8
     assert list(buffer) == [86400000]
 
+
 def test_c_buffer_from_date32_iterable():
-    # Date32 is a 32-bit signed integer type representing an elapsed time 
-    # since UNIX epoch (1970-01-01), stored in days
     unix_epoch = date(1970, 1, 1)
     d1 = date(1970, 1, 2)
     diff_in_days = (d1 - unix_epoch).days

@@ -551,7 +551,7 @@ _ARRAY_BUILDER_FROM_ITERABLE_METHOD = {
     CArrowType.DOUBLE: "_append_using_array",
     CArrowType.TIMESTAMP: "_append_using_array",
     CArrowType.DATE32: "_append_using_array",
-    CArrowType.DATE64: "_append_using_array"
+    CArrowType.DATE64: "_append_using_array",
 }
 
 _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD = {
