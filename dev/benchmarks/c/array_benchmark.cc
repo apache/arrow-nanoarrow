@@ -415,3 +415,5 @@ BENCHMARK(BenchmarkArrayAppendInt16);
 BENCHMARK(BenchmarkArrayAppendInt32);
 BENCHMARK(BenchmarkArrayAppendInt64);
 BENCHMARK(BenchmarkArrayAppendNulls);
+
+BENCHMARK_MAIN();

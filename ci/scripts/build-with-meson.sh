@@ -60,30 +60,18 @@ function main() {
     fi
     mkdir "${SANDBOX_DIR}"
 
-    SUBPROJ_DIR="subprojects"
-    if [ -d "${SUBPROJ_DIR}" ]; then
-        rm -rf "${SUBPROJ_DIR}"
-    fi
-    mkdir "${SUBPROJ_DIR}"
-
-    show_header "Install subprojects"
-    meson wrap install gtest
-    meson wrap install google-benchmark
-    meson wrap install nlohmann_json
-
     show_header "Compile project with meson"
     meson setup "${SANDBOX_DIR}" --pkg-config-path $PKG_CONFIG_PATH
 
     pushd "${SANDBOX_DIR}"
 
     show_header "Run test suite"
-    meson configure -DNANOARROW_BUILD_TESTS=true \
-          -Db_coverage=true
+    meson configure -Dtests=true -Db_coverage=true
     meson compile
     meson test --wrap valgrind
 
     show_header "Run benchmarks"
-    meson configure -DNANOARROW_BUILD_BENCHMARKS=true
+    meson configure -Dbenchmarks=true
     meson compile
     meson test --benchmark
 
