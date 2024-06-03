@@ -60,14 +60,6 @@ function main() {
     fi
     mkdir "${SANDBOX_DIR}"
 
-    SUBPROJ_DIR="subprojects"
-    if [ -d "${SUBPROJ_DIR}" ]; then
-        rm -rf "${SUBPROJ_DIR}"
-    fi
-    mkdir "${SUBPROJ_DIR}"
-
-    show_header "Install subprojects"
-
     show_header "Compile project with meson"
     meson setup "${SANDBOX_DIR}" --pkg-config-path $PKG_CONFIG_PATH
 
