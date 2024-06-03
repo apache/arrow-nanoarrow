@@ -1,0 +1,37 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+[wrap-file]
+directory = arrow-nanoarrow-apache-arrow-nanoarrow-0.5.0
+source_url = https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.5.0.tar.gz
+source_filename = apache-arrow-nanoarrow-0.5.0.tar.gz
+source_hash = 0ceeaa1fb005dbc89c8c7d1b39f2dba07344e40aa9d885ee25fb55b4d57e331a
+source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/nanoarrow_0.5.0-1/apache-arrow-nanoarrow-0.5.0.tar.gz
+wrapdb_version = 0.5.0-1
+
+[provide]
+nanoarrow = nanoarrow_dep
+
+# For development in the arrow-nanoarrow source tree, you may want to provide
+# an alternate wrap specification. The following example will pull whatever
+# local project is committed to HEAD
+# [wrap-git]
+# url = ../..
+# revision = HEAD
+
+# [provide]
+# nanoarrow = nanoarrow_dep

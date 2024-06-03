@@ -15,13 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import os
+import argparse
 import pathlib
 import re
-import shutil
-import subprocess
-import tempfile
-import warnings
 
 
 # Generate the nanoarrow_c.pxd file used by the Cython extensions
@@ -29,14 +25,7 @@ class NanoarrowPxdGenerator:
     def __init__(self):
         self._define_regexes()
 
-    def generate_nanoarrow_pxd(self, file_in, file_out):
-        file_in_name = pathlib.Path(file_in).name
-
-        # Read the nanoarrow.h header
-        content = None
-        with open(file_in, "r") as input:
-            content = input.read()
-
+    def generate_nanoarrow_pxd(self, content: str, build_dir: pathlib.Path) -> None:
         # Strip comments
         content = self.re_comment.sub("", content)
 
@@ -57,12 +46,11 @@ class NanoarrowPxdGenerator:
         header = self.re_newline_plus_indent.sub("\n", self._pxd_header())
 
         # Write nanoarrow_c.pxd
+        file_out = build_dir / "nanoarrow_c.pxd"
         with open(file_out, "wb") as output:
             output.write(header.encode("UTF-8"))
 
-            output.write(
-                f'\ncdef extern from "{file_in_name}" nogil:\n'.encode("UTF-8")
-            )
+            output.write('\ncdef extern from "nanoarrow.h" nogil:\n'.encode("UTF-8"))
 
             # A few things we add in manually
             output.write(b"\n")
@@ -175,105 +163,40 @@ class NanoarrowPxdGenerator:
         """
 
 
-# Runs cmake -DNANOARROW_BUNDLE=ON if cmake exists or copies nanoarrow.c/h
-# from ../dist if it does not. Running cmake is safer because it will sync
-# any changes from nanoarrow C library sources in the checkout but is not
-# strictly necessary for things like installing from GitHub.
-def copy_or_generate_nanoarrow_c():
+def generate_nanoarrow_c() -> str:
     this_dir = pathlib.Path(__file__).parent.resolve()
-    source_dir = this_dir.parent
-    vendor_dir = this_dir / "vendor"
+    nanoarrow_dir = this_dir / "subprojects" / "nanoarrow" / "src" / "nanoarrow"
 
-    vendored_files = [
+    # This should match the NANOARROW_BUNDLE code in CMakeLists.txt
+    # With the only thing missing being the nanoarrow namespace. However, we
+    # assume the Python installation is sandboxed so should not be required (?)
+    header_data: list[str] = []
+
+    files = [
+        # TODO: - do we need the config file for Cython?
+        # 'nanoarrow_config.h',
+        "nanoarrow_types.h",
         "nanoarrow.h",
-        "nanoarrow.c",
-        "nanoarrow_ipc.h",
-        "nanoarrow_ipc.c",
-        "nanoarrow_device.h",
-        "nanoarrow_device.c",
+        "buffer_inline.h",
+        "array_inline.h",
     ]
-    dst = {name: vendor_dir / name for name in vendored_files}
 
-    for f in dst.values():
-        f.unlink(missing_ok=True)
+    for file in files:
+        with open(nanoarrow_dir / file) as f:
+            header_data.append(f.read())
 
-    is_cmake_dir = (source_dir / "CMakeLists.txt").exists()
-    is_in_nanoarrow_repo = (
-        is_cmake_dir and (source_dir / "src" / "nanoarrow" / "nanoarrow.h").exists()
-    )
+    contents = "\n".join(header_data)
+    # Remove includes that aren't needed when the headers are concatenated
+    contents = re.sub(r"#include \".*", "", contents)
 
-    if not is_in_nanoarrow_repo:
-        raise ValueError(
-            "Attempt to build source distribution outside the nanoarrow repo"
-        )
-
-    cmake_bin = os.getenv("CMAKE_BIN")
-    if not cmake_bin:
-        cmake_bin = "cmake"
-    has_cmake = os.system(f"{cmake_bin} --version") == 0
-    if not has_cmake:
-        raise ValueError("Attempt to build source distribution without CMake")
-
-    # The C library, IPC extension, and Device extension all currently have slightly
-    # different methods of bundling (hopefully this can be unified)
-
-    vendor_dir.mkdir(exist_ok=True)
-
-    # Copy device files
-    device_ext_src = (
-        source_dir / "extensions" / "nanoarrow_device" / "src" / "nanoarrow"
-    )
-
-    for device_file in ["nanoarrow_device.h", "nanoarrow_device.c"]:
-        shutil.copyfile(
-            device_ext_src / device_file,
-            dst[device_file],
-        )
-
-    ipc_source_dir = source_dir / "extensions/nanoarrow_ipc"
-
-    for cmake_project in [source_dir, ipc_source_dir]:
-        with tempfile.TemporaryDirectory() as build_dir:
-            try:
-                subprocess.run(
-                    [
-                        cmake_bin,
-                        "-B",
-                        build_dir,
-                        "-S",
-                        cmake_project,
-                        "-DNANOARROW_IPC_BUNDLE=ON",
-                        "-DNANOARROW_BUNDLE=ON",
-                        "-DNANOARROW_NAMESPACE=PythonPkg",
-                    ]
-                )
-                subprocess.run(
-                    [
-                        cmake_bin,
-                        "--install",
-                        build_dir,
-                        "--prefix",
-                        vendor_dir,
-                    ]
-                )
-            except Exception as e:
-                warnings.warn(f"cmake call failed: {e}")
-
-    if not dst["nanoarrow.h"].exists():
-        raise ValueError("Attempt to vendor nanoarrow.c/h failed")
-
-
-# Runs the pxd generator with some information about the file name
-def generate_nanoarrow_pxd():
-    this_dir = pathlib.Path(__file__).parent.resolve()
-    maybe_nanoarrow_h = this_dir / "vendor/nanoarrow.h"
-    maybe_nanoarrow_pxd = this_dir / "vendor/nanoarrow_c.pxd"
-
-    NanoarrowPxdGenerator().generate_nanoarrow_pxd(
-        maybe_nanoarrow_h, maybe_nanoarrow_pxd
-    )
+    return contents
 
 
 if __name__ == "__main__":
-    copy_or_generate_nanoarrow_c()
-    generate_nanoarrow_pxd()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("build_dir", type=str)
+    args = parser.parse_args()
+    build_dir = pathlib.Path(args.build_dir).resolve()
+
+    contents = generate_nanoarrow_c()
+    NanoarrowPxdGenerator().generate_nanoarrow_pxd(contents, build_dir)

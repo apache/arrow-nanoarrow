@@ -38,7 +38,7 @@ Changelog = "https://github.com/apache/arrow-nanoarrow/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = [
-    "setuptools >= 61.0.0",
+    "meson-python",
     "Cython"
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "mesonpy"
