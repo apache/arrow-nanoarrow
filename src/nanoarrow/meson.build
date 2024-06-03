@@ -17,7 +17,7 @@
 
 conf_data = configuration_data()
 
-ns = get_option('NANOARROW_NAMESPACE')
+ns = get_option('namespace')
 conf_data.set('NANOARROW_NAMESPACE_DEFINE', '#define NANOARROW_NAMESPACE ' + ns)
 
 version = meson.project_version()
@@ -64,7 +64,7 @@ incdir = include_directories('..')
 nanoarrow_dep = declare_dependency(include_directories: [curdir, incdir],
                                    link_with: nanoarrow_lib)
 
-if get_option('NANOARROW_BUILD_TESTS') or get_option('NANOARROW_BUILD_INTEGRATION_TESTS')
+if get_option('tests') or get_option('integration_tests')
   nlohmann_json_dep = dependency('nlohmann_json')
 
   c_data_integration_lib = library('nanoarrow_c_data_integration',
@@ -75,7 +75,7 @@ if get_option('NANOARROW_BUILD_TESTS') or get_option('NANOARROW_BUILD_INTEGRATIO
 
 endif
 
-if get_option('NANOARROW_BUILD_TESTS')
+if get_option('tests')
   # CMake configuration sets MEMORYCHECK_COMMAND_OPTIONS but with meson you instead
   # wrap the tests with valgrind via `meson test --wrap=valgrind`. See
   # https://mesonbuild.com/Unit-tests.html

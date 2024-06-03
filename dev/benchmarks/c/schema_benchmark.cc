@@ -93,3 +93,4 @@ static void BenchmarkSchemaViewInitWideStruct(benchmark::State& state) {
 BENCHMARK(BenchmarkSchemaViewInitWideStruct);
 
 /// @}
+BENCHMARK_MAIN();
