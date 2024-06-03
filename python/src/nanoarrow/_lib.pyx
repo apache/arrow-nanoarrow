@@ -489,7 +489,7 @@ cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size
     elif type_id == NANOARROW_TYPE_UINT32:
         format_const = "I"
         element_size_bits_calc = 32
-    elif type_id in (NANOARROW_TYPE_INT64, NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64):
+    elif type_id in (NANOARROW_TYPE_INT64, NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
         format_const = "q"
         element_size_bits_calc = 64
     elif type_id == NANOARROW_TYPE_UINT64:
@@ -1072,7 +1072,8 @@ cdef class CSchemaView:
     _buffer_protocol_supported_types = (
         NANOARROW_TYPE_DATE32,
         NANOARROW_TYPE_DATE64,
-        NANOARROW_TYPE_TIMESTAMP
+        NANOARROW_TYPE_TIMESTAMP,
+        NANOARROW_TYPE_DURATION
     )
 
     def __cinit__(self, CSchema schema):

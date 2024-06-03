@@ -260,8 +260,8 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
-    with pytest.raises(ValueError, match="Can't create buffer"):
-         na.c_buffer([1, 2, 3], na.duration("s"))
+    # with pytest.raises(ValueError, match="Can't create buffer"):
+    #     na.c_buffer([1, 2, 3], na.duration("s"))
 
     with pytest.raises(ValueError, match="Can't create buffer"):
         na.c_buffer([1, 2, 3], na.extension_type(na.int32(), "arrow.test"))
@@ -396,3 +396,14 @@ def test_c_buffer_from_date32_iterable():
     assert buffer.element_size_bits == 32
     assert buffer.itemsize == 4
     assert list(buffer) == [1]
+
+
+def test_c_buffer_from_duration_iterable():
+    unix_epoch = date(1970, 1, 1)
+    d1 = date(1970, 1, 2)
+    diff_in_milliseconds = int(round((d1 - unix_epoch).total_seconds() * 1e3))
+    buffer = na.c_buffer([diff_in_milliseconds], na.duration("ms"))
+    assert buffer.data_type == "int64"
+    assert buffer.element_size_bits == 64
+    assert buffer.itemsize == 8
+    assert list(buffer) == [86400000]

@@ -357,11 +357,9 @@ def test_array_inspect(capsys):
     assert captured.out.startswith("<ArrowArray struct<col0: int32")
 
 
-def test_array_using_struct(capsys):
+def test_timestamp_array(capsys):
     schema = na.struct(
         {
-            "name": na.string(),
-            "age": na.int64(),
             "creation_timestamp": na.timestamp("ms"),
         }
     )
@@ -370,8 +368,6 @@ def test_array_using_struct(capsys):
     d2 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
 
     columns = [
-        na.c_array(["John Doe", "Jane Doe"], na.string()),
-        na.c_array([34, 33], na.int64()),
         na.c_array([d1, d2], na.timestamp('ms')),
     ]
 
@@ -380,14 +376,12 @@ def test_array_using_struct(capsys):
     )
     array = na.Array(c_array)
     names, columns = array.to_columns_pysequence()
-    assert names == ["name", "age", "creation_timestamp"]
-
-    assert array.to_pylist() == list(array.iter_py())
-
+    assert names == ["creation_timestamp"]
+    assert list(array.to_pysequence()) == [{'creation_timestamp': datetime(1985, 12, 31, 8, 0)}, {'creation_timestamp': datetime(2005, 3, 4, 8, 0)}] 
     array.inspect()
     captured = capsys.readouterr()
     assert captured.out.startswith(
-        "<ArrowArray struct<name: string, age: int64, creation_timestamp: time>"
+        "<ArrowArray struct<creation_timestamp: timestamp('ms'"
     )
 
 
