@@ -455,31 +455,17 @@ cmake<span class="w"> </span>--build<span class="w"> </span>.
 <h3>Building with Meson<a class="headerlink" href="#building-with-meson" title="Link to this heading">#</a></h3>
 <p>CMake is the officially supported build system for nanoarrow. However,
 the Meson backend is an experimental feature you may also wish to try.</p>
-<p>To run the test suite with Meson, you will want to first install the
-testing dependencies via the wrap database (n.b. no wrap database entry
-exists for Arrow - that must be installed separately).</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>subprojects
-meson<span class="w"> </span>wrap<span class="w"> </span>install<span class="w"> </span>gtest
-meson<span class="w"> </span>wrap<span class="w"> </span>install<span class="w"> </span>google-benchmark
-meson<span class="w"> </span>wrap<span class="w"> </span>install<span class="w"> </span>nlohmann_json
-</pre></div>
-</div>
-<p>The Arrow C++ library must also be discoverable via pkg-config build
-tests.</p>
-<p>You can then set up your build directory:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>setup<span class="w"> </span>builddir
 <span class="nb">cd</span><span class="w"> </span>builddir
 </pre></div>
 </div>
-<p>And configure your project (this could have also been done inline with
-<code class="docutils literal notranslate"><span class="pre">setup</span></code>)</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>configure<span class="w"> </span>-DNANOARROW_BUILD_TESTS<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-DNANOARROW_BUILD_BENCHMARKS<span class="o">=</span><span class="nb">true</span>
+<p>After setting up your project, be sure to enable the options you want:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>configure<span class="w"> </span>-Dtests<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-Dbenchmarks<span class="o">=</span><span class="nb">true</span>
 </pre></div>
 </div>
-<p>Note that if your Arrow pkg-config profile is installed in a
-non-standard location on your system, you may pass the
-<code class="docutils literal notranslate"><span class="pre">--pkg-config-path</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">directory</span> <span class="pre">with</span> <span class="pre">arrow.pc&gt;</span></code> to either the
-setup or configure steps above.</p>
+<p>If Arrow is installed in a non-standard location on your system, you may
+need to pass the <code class="docutils literal notranslate"><span class="pre">--pkg-config-path</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">directory</span> <span class="pre">with</span> <span class="pre">arrow.pc&gt;</span></code>
+argument to either the setup or configure steps above.</p>
 <p>With the above out of the way, the <code class="docutils literal notranslate"><span class="pre">compile</span></code> command should take care
 of the rest:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>compile
