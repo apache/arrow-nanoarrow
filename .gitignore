@@ -29,6 +29,7 @@ CMakeUserPresets.json
 __pycache__
 
 # meson subprojects
-subprojects
+subprojects/*
+!subprojects/*.wrap
 
 compile_commands.json
