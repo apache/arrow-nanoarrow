@@ -804,6 +804,7 @@ class TestingJSONWriter {
         }
         break;
 
+      case NANOARROW_TYPE_HALF_FLOAT:
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE: {
         // JSON number to float_precision_ decimal places
@@ -2146,6 +2147,8 @@ class TestingJSONReader {
           case NANOARROW_TYPE_UINT64:
             return SetBufferInt<uint64_t, uint64_t>(data, buffer, error);
 
+          case NANOARROW_TYPE_HALF_FLOAT:
+            return SetBufferFloatingPoint<float>(data, buffer, error);
           case NANOARROW_TYPE_FLOAT:
             return SetBufferFloatingPoint<float>(data, buffer, error);
           case NANOARROW_TYPE_DOUBLE:

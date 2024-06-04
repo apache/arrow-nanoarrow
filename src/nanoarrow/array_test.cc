@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <cstdint>
+#include <type_traits>
 
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
@@ -2423,6 +2424,20 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   ArrowArrayRelease(&array);
 }
 
+template <
+    typename TypeClass, typename ValueType,
+    typename std::enable_if<std::is_same_v<TypeClass, HalfFloatType>, bool>::type = true>
+auto transform_value(ValueType t) -> uint16_t {
+  return ArrowFloatToHalfFloat(t);
+}
+
+template <
+    typename TypeClass, typename ValueType,
+    typename std::enable_if<!std::is_same_v<TypeClass, HalfFloatType>, bool>::type = true>
+auto transform_value(ValueType t) -> ValueType {
+  return t;
+}
+
 template <typename TypeClass>
 void TestGetFromNumericArrayView() {
   struct ArrowArray array;
@@ -2434,9 +2449,9 @@ void TestGetFromNumericArrayView() {
 
   // Array with nulls
   auto builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(1));
+  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(1)));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append(4));
+  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(4)));
   auto maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   auto arrow_array = maybe_arrow_array.ValueUnsafe();
@@ -2467,8 +2482,8 @@ void TestGetFromNumericArrayView() {
 
   // Array without nulls (Arrow does not allocate the validity buffer)
   builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(1));
-  ARROW_EXPECT_OK(builder.Append(2));
+  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(1)));
+  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(2)));
   maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   arrow_array = maybe_arrow_array.ValueUnsafe();
@@ -2504,6 +2519,7 @@ TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
   TestGetFromNumericArrayView<UInt32Type>();
   TestGetFromNumericArrayView<DoubleType>();
   TestGetFromNumericArrayView<FloatType>();
+  TestGetFromNumericArrayView<HalfFloatType>();
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
