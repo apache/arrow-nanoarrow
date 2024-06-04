@@ -81,7 +81,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
-  ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array), NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array, nullptr), NANOARROW_OK);
 
   ArrowDeviceArrayViewInit(&device_array_view);
   ArrowArrayViewInitFromType(&device_array_view.array_view, string_type);
