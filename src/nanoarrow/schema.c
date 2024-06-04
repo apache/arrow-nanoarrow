@@ -124,6 +124,8 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType type) {
       return "+s";
     case NANOARROW_TYPE_MAP:
       return "+m";
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      return "+r";
 
     default:
       return NULL;
@@ -155,6 +157,13 @@ static int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaSetName(schema->children[0]->children[1], "value"));
       break;
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 2));
+      ArrowSchemaInit(schema->children[0]);
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "run_ends"));
+      schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+      ArrowSchemaInit(schema->children[1]);
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[1], "values"));
     default:
       break;
   }
@@ -275,6 +284,28 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
 
   buffer[n_chars] = '\0';
   return ArrowSchemaSetFormat(schema, buffer);
+}
+
+ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
+                                               enum ArrowType run_end_type,
+                                               enum ArrowType value_type) {
+  switch (run_end_type) {
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_INT64:
+      break;
+    default:
+      return EINVAL;
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(
+      schema, ArrowSchemaFormatTemplate(NANOARROW_TYPE_RUN_END_ENCODED)));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowSchemaInitChildrenIfNeeded(schema, NANOARROW_TYPE_RUN_END_ENCODED));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema->children[0], run_end_type));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema->children[1], value_type));
+
+  return NANOARROW_OK;
 }
 
 static const char* ArrowTimeUnitFormatString(enum ArrowTimeUnit time_unit) {
@@ -750,6 +781,13 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           *format_end_out = format + 2;
           return NANOARROW_OK;
 
+        // run end encoded has no buffer at all
+        case 'r':
+          schema_view->storage_type = NANOARROW_TYPE_RUN_END_ENCODED;
+          schema_view->type = NANOARROW_TYPE_RUN_END_ENCODED;
+          *format_end_out = format + 2;
+          return NANOARROW_OK;
+
         // just validity buffer
         case 'w':
           if (format[2] != ':' || format[3] == '\0') {
@@ -1123,6 +1161,9 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       return ArrowSchemaViewValidateNChildren(schema_view, 1, error);
+
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      return ArrowSchemaViewValidateNChildren(schema_view, 2, error);
 
     case NANOARROW_TYPE_STRUCT:
       return ArrowSchemaViewValidateNChildren(schema_view, -1, error);

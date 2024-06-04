@@ -219,6 +219,27 @@ TEST(SchemaTest, SchemaInitDecimal) {
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal256(3, 4)));
 }
 
+TEST(SchemaTest, SchemaInitRunEndEncoded) {
+  struct ArrowSchema schema;
+  ArrowSchemaInit(&schema);
+
+  EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_DOUBLE,
+                                            NANOARROW_TYPE_FLOAT),
+            EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_UINT16,
+                                            NANOARROW_TYPE_DOUBLE),
+            EINVAL);
+
+  EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32,
+                                            NANOARROW_TYPE_FLOAT),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+r");
+
+  auto arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int32(), float32())));
+}
+
 TEST(SchemaTest, SchemaInitDateTime) {
   struct ArrowSchema schema;
 
@@ -496,6 +517,26 @@ TEST(SchemaTest, SchemaCopyDictType) {
   ASSERT_STREQ(schema_copy.format, "i");
   ASSERT_NE(schema_copy.dictionary, nullptr);
   EXPECT_STREQ(schema_copy.dictionary->format, "l");
+
+  ArrowSchemaRelease(&schema);
+  ArrowSchemaRelease(&schema_copy);
+}
+
+TEST(SchemaTest, SchemaCopyRunEndEncodedType) {
+  struct ArrowSchema schema;
+  auto struct_type = run_end_encoded(int32(), float32());
+  ARROW_EXPECT_OK(ExportType(*struct_type, &schema));
+
+  struct ArrowSchema schema_copy;
+  ASSERT_EQ(ArrowSchemaDeepCopy(&schema, &schema_copy), NANOARROW_OK);
+
+  ASSERT_NE(schema_copy.release, nullptr);
+  EXPECT_STREQ(schema_copy.format, "+r");
+  EXPECT_EQ(schema_copy.n_children, 2);
+  EXPECT_STREQ(schema_copy.children[0]->format, "i");
+  EXPECT_STREQ(schema_copy.children[0]->name, "run_ends");
+  EXPECT_STREQ(schema_copy.children[1]->format, "f");
+  EXPECT_STREQ(schema_copy.children[1]->name, "values");
 
   ArrowSchemaRelease(&schema);
   ArrowSchemaRelease(&schema_copy);

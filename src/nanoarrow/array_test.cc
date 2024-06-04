@@ -26,6 +26,7 @@
 #include <arrow/array/builder_decimal.h>
 #include <arrow/array/builder_nested.h>
 #include <arrow/array/builder_primitive.h>
+#include <arrow/array/builder_run_end.h>
 #include <arrow/array/builder_time.h>
 #include <arrow/array/builder_union.h>
 #include <arrow/c/bridge.h>
@@ -1438,6 +1439,82 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32,
+                                            NANOARROW_TYPE_FLOAT),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 4), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 6), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 7), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendDouble(array.children[1], 1.0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array.children[1], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendDouble(array.children[1], 2.0), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 2 child of run_end_encoded array but found 0 child arrays");
+  array.n_children = 2;
+
+  // Make sure final child size is checked at finish
+  array.children[0]->length = array.children[0]->length - 1;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected the 2 children of run-end encoded array to have equal length but "
+      "found mismatched lengths: run_ends->length=2, values->length=3");
+
+  array.children[0]->length = array.children[0]->length + 1;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  // Make sure the run_ends array length is validated
+  struct ArrowArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, NULL), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, NULL), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  array_view.length -= 1;
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Run End value 7 at index 2 exceeds the logical length of the run-end "
+               "encoded array 6");
+  array_view.length += 1;
+  ArrowArrayViewReset(&array_view);
+
+  auto arrow_array = ImportArray(&array, &schema);
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto run_ends_builder = std::make_shared<Int32Builder>();
+  auto values_builder = std::make_shared<FloatBuilder>();
+  auto builder =
+      RunEndEncodedBuilder(default_memory_pool(), run_ends_builder, values_builder,
+                           run_end_encoded(int32(), float32()));
+  ARROW_EXPECT_OK(run_ends_builder->Append(4));
+  ARROW_EXPECT_OK(run_ends_builder->Append(6));
+  ARROW_EXPECT_OK(run_ends_builder->Append(7));
+  ARROW_EXPECT_OK(values_builder->Append(1.0));
+  ARROW_EXPECT_OK(values_builder->AppendNull());
+  ARROW_EXPECT_OK(values_builder->Append(2.0));
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_STREQ(arrow_array.ValueUnsafe()->ToString().c_str(),
+               expected_array.ValueUnsafe()->ToString().c_str());
 }
 
 TEST(ArrayTest, ArrayTestUnionUtils) {

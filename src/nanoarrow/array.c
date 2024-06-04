@@ -69,6 +69,7 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
   switch (storage_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
     case NANOARROW_TYPE_NA:
+    case NANOARROW_TYPE_RUN_END_ENCODED:
       array->n_buffers = 0;
       break;
 
@@ -811,6 +812,15 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                       (long)array_view->n_children);
         return EINVAL;
       }
+      break;
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      if (array_view->n_children != 2) {
+        ArrowErrorSet(error, "Expected 2 child of %s array but found %ld child arrays",
+                      ArrowTypeString(array_view->storage_type),
+                      (long)array_view->n_children);
+        return EINVAL;
+      }
+      break;
     default:
       break;
   }
@@ -843,6 +853,22 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                       "Expected child of fixed_size_list array to have length >= %ld but "
                       "found array with length %ld",
                       (long)child_min_length, (long)array_view->children[0]->length);
+        return EINVAL;
+      }
+      break;
+
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      if (array_view->children[0]->null_count != 0) {
+        ArrowErrorSet(error, "Run Ends cannot be null but found null_count value %ld",
+                      (long)array_view->children[0]->null_count);
+        return EINVAL;
+      }
+      if (array_view->children[0]->length < array_view->children[1]->length) {
+        ArrowErrorSet(
+            error,
+            "Expected the 2 children of run-end encoded array to have equal length "
+            "but found mismatched lengths: run_ends->length=%ld, values->length=%ld",
+            (long)array_view->children[0]->length, (long)array_view->children[1]->length);
         return EINVAL;
       }
       break;
@@ -995,6 +1021,31 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
       }
       break;
+
+    case NANOARROW_TYPE_RUN_END_ENCODED: {
+      struct ArrowArrayView* run_ends_view;
+      run_ends_view = array_view->children[0];
+      if (run_ends_view->null_count != 0) {
+        ArrowErrorSet(error, "Run Ends cannot be null but found null_count value %ld",
+                      (long)run_ends_view->null_count);
+        return EINVAL;
+      }
+      for (int64_t i = 0, prev_run_end = 0; i < run_ends_view->length; i++) {
+        int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
+        if (run_end < 0 || run_end < prev_run_end) {
+          return EINVAL;
+        }
+        prev_run_end = run_end;
+        if (i == run_ends_view->length - 1 && run_end != array_view->length) {
+          ArrowErrorSet(error,
+                        "Run End value %ld at index %ld exceeds the logical "
+                        "length of the run-end encoded array %ld",
+                        (long)run_end, (long)i, (long)array_view->length);
+          return EINVAL;
+        }
+      }
+      break;
+    }
     default:
       break;
   }
@@ -1160,6 +1211,40 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
             (long)i, (int)child_id, (long)child_length, (long)offset);
         return EINVAL;
       }
+    }
+  }
+
+  if (array_view->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
+    struct ArrowArrayView* run_ends_view = array_view->children[0];
+    switch (run_ends_view->storage_type) {
+      case NANOARROW_TYPE_INT16:
+      case NANOARROW_TYPE_INT32:
+      case NANOARROW_TYPE_INT64:
+        break;
+      default:
+        ArrowErrorSet(
+            error,
+            "Run-end encoded array only supports INT16, INT32 or INT64 run-ends "
+            "but found run-ends type %s",
+            ArrowTypeString(run_ends_view->storage_type));
+        return EINVAL;
+    }
+    int64_t prev_run_end = 0;
+    for (int64_t i = 0; i < run_ends_view->length; i++) {
+      int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
+      if (run_end < 0 || run_end < prev_run_end) {
+        return EINVAL;
+      }
+      prev_run_end = run_end;
+    }
+    if (prev_run_end != array_view->length) {
+      ArrowErrorSet(error,
+                    "The last run end value of a run-end encoded array must be equal to "
+                    "the logical length"
+                    "of the values array but found the last run end value %ld while the "
+                    "logical length is %ld",
+                    (long)prev_run_end, (long)array_view->length);
+      return EINVAL;
     }
   }
 
