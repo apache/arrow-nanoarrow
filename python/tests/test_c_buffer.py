@@ -17,7 +17,7 @@
 
 import struct
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 import pytest
 from nanoarrow._lib import CBuffer, CBufferBuilder
