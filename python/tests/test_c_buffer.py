@@ -256,7 +256,7 @@ def test_c_buffer_from_iterable():
 
     # An Arrow type that does not make sense as a buffer type will error
     with pytest.raises(ValueError, match="Unsupported Arrow type_id"):
-         na.c_buffer([], na.struct([]))
+        na.c_buffer([], na.struct([]))
 
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.

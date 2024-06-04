@@ -14,7 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from nanoarrow.c_array_stream import CArrayStream
@@ -364,11 +364,11 @@ def test_timestamp_array(capsys):
         }
     )
 
-    d1 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
-    d2 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    d1 = int(round(datetime(1985, 12, 31, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
+    d2 = int(round(datetime(2005, 3, 4, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
 
     columns = [
-        na.c_array([d1, d2], na.timestamp('ms')),
+        na.c_array([d1, d2], na.timestamp("ms")),
     ]
 
     c_array = na.c_array_from_buffers(
@@ -377,7 +377,10 @@ def test_timestamp_array(capsys):
     array = na.Array(c_array)
     names, columns = array.to_columns_pysequence()
     assert names == ["creation_timestamp"]
-    assert list(array.to_pysequence()) == [{'creation_timestamp': datetime(1985, 12, 31, 8, 0)}, {'creation_timestamp': datetime(2005, 3, 4, 8, 0)}] 
+    assert list(array.to_pysequence()) == [
+        {"creation_timestamp": datetime(1985, 12, 31, 0, 0)},
+        {"creation_timestamp": datetime(2005, 3, 4, 0, 0)},
+    ]
     array.inspect()
     captured = capsys.readouterr()
     assert captured.out.startswith(
@@ -393,12 +396,13 @@ def test_pyarrow_table_using_array():
     columns = [
         na.c_array(["John Doe", "Jane Doe"], na.string()),
         na.c_array([34, 33], na.int64()),
-        na.c_array([d1, d2], na.timestamp('ms')),
+        na.c_array([d1, d2], na.timestamp("ms")),
         na.c_array([40, 45], na.date32()),
     ]
     pa_table = pa.Table.from_arrays(
-        columns, names=["name", "age", "creation_timestamp", "number_of_days"]
+        columns, names=["name", "age", "creation_timestamp", "updated_date"]
     )
+    pa_table.validate(full=True)
 
 
 def test_pyarrow_table_to_pandas():
@@ -410,13 +414,13 @@ def test_pyarrow_table_to_pandas():
     columns = [
         na.c_array(["John Doe", "Jane Doe"], na.string()),
         na.c_array([34, 33], na.int64()),
-        na.c_array([d1, d2], na.timestamp('ms')),
+        na.c_array([d1, d2], na.timestamp("ms")),
         na.c_array([40, 45], na.date32()),
     ]
     pa_table = pa.Table.from_arrays(
         columns, names=["name", "age", "creation_timestamp", "updated_date"]
     )
-    
+
     left_df = pa_table.to_pandas()
 
     right_df = pd.DataFrame.from_dict(

@@ -530,7 +530,7 @@ def test_c_array_timestamp_seconds():
     assert list(c_array.view().buffer(1)) == [d1, d2, d3]
 
 
-def test_c_array_timestamp_milliseconds():    
+def test_c_array_timestamp_milliseconds():
     d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
     d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
     d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
@@ -541,7 +541,7 @@ def test_c_array_timestamp_milliseconds():
     assert list(c_array.view().buffer(1)) == [d1, d2, d3]
 
 
-def test_c_array_timestamp_microseconds():    
+def test_c_array_timestamp_microseconds():
     d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e6))
     d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e6))
     d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e6))
