@@ -49,7 +49,8 @@ cdef extern from "nanoarrow_device.h" nogil:
         int64_t device_id
         ArrowErrorCode (*array_init)(ArrowDevice* device,
                                      ArrowDeviceArray* device_array,
-                                     ArrowArray* array)
+                                     ArrowArray* array,
+                                     void* sync_event)
         ArrowErrorCode (*array_move)(ArrowDevice* device_src,
                                      ArrowDeviceArray* src,
                                      ArrowDevice* device_dst,
@@ -76,7 +77,8 @@ cdef extern from "nanoarrow_device.h" nogil:
 
     ArrowErrorCode ArrowDeviceArrayInit(ArrowDevice* device,
                                         ArrowDeviceArray* device_array,
-                                        ArrowArray* array)
+                                        ArrowArray* array,
+                                        void* sync_event)
 
     void ArrowDeviceArrayViewInit(ArrowDeviceArrayView* device_array_view)
 
