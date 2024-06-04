@@ -177,7 +177,7 @@ struct ArrowDevice {
   /// device_array->sync_event (if sync_event applies to this device type).
   ArrowErrorCode (*array_init)(struct ArrowDevice* device,
                                struct ArrowDeviceArray* device_array,
-                               struct ArrowArray* array);
+                               struct ArrowArray* array, void* sync_event);
 
   /// \brief Move an ArrowDeviceArray between devices without copying buffers
   ///
@@ -243,7 +243,7 @@ struct ArrowDeviceArrayView {
 /// initialize an ArrowDeviceArray.
 ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
                                     struct ArrowDeviceArray* device_array,
-                                    struct ArrowArray* array);
+                                    struct ArrowArray* array, void* sync_event);
 
 /// \brief Initialize an ArrowDeviceArrayView
 ///

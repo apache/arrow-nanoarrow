@@ -717,8 +717,9 @@ cdef class Device:
     def _array_init(self, uintptr_t array_addr, CSchema schema):
         cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
         cdef ArrowDeviceArray* device_array_ptr
+        cdef void* sync_event = NULL
         holder = alloc_c_device_array(&device_array_ptr)
-        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
+        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr, sync_event)
         Error.raise_error_not_ok("ArrowDevice::init_array", code)
 
         return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)

@@ -119,7 +119,7 @@ else()
   if(NANOARROW_DEVICE_WITH_CUDA)
     find_package(CUDAToolkit REQUIRED)
     set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
-    set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cudart_static)
+    set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cuda_driver)
     set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
   endif()
 
@@ -138,6 +138,7 @@ else()
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
   target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL}
                                                 ${NANOARROW_DEVICE_LIBS_CUDA})
+  target_compile_definitions(nanoarrow_device PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
