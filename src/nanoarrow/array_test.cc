@@ -1475,30 +1475,48 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Expected 2 children of run_end_encoded array but found 0 child arrays");
+               "Expected 2 children for run_end_encoded array but found 0 child arrays");
   array.n_children = 2;
 
-  // Make sure final child size is checked at finish
-  array.children[0]->length = array.children[0]->length - 1;
+  array.offset = INT32_MAX;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Last run end is 6 but it should >= 7 (offset: 0, length: 7)");
+               "Offset + length of a run-end encoded array must fit in a value of the "
+               "run end type int32, but offset + length is 2147483654 while the allowed "
+               "maximum is 2147483647");
+  array.offset = 0;
 
-  array.children[0]->length = array.children[0]->length + 1;
-  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  // Make sure final child size is checked at finish
+  array.children[0]->length += 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Length of run_ends is greater than the length of values: 4 > 3");
+  array.children[0]->length -= 1;
 
-  // run-end encoded array with offsets
-  struct ArrowArrayView array_view;
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, NULL), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, NULL), NANOARROW_OK);
+  array.children[0]->length = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Run-end encoded array has zero length 3, but values array has non-zero length");
+  array.children[0]->length = 3;
+
+  array.children[0]->null_count = 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Null count must be 0 for run ends array, but is 1");
+  array.children[0]->null_count = 0;
+
   // it can be a projection of the virtual big array
   //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
   //        ^                          ^
   //        |- offset = 1              |- length = 6
-  array_view.length = 6;
-  array_view.offset = 1;
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+  array.length = 6;
+  array.offset = 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
   // checks for one-off errors
@@ -1506,9 +1524,9 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
   //        ^                               ^
   //        |- offset = 1                   |- length = 7 (out of bound)
-  array_view.length = 7;
-  array_view.offset = 1;
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+  array.length = 7;
+  array.offset = 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Last run end is 7 but it should >= 8 (offset: 1, length: 7)");
@@ -1516,17 +1534,17 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
   //   ^                                    ^
   //   |- offset = 1                        |- length = 8 (out of bound)
-  array_view.length = 8;
-  array_view.offset = 0;
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+  array.length = 8;
+  array.offset = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
                "Last run end is 7 but it should >= 8 (offset: 0, length: 8)");
 
-  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, NULL), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+  array.length = 7;
+  array.offset = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
-  ArrowArrayViewReset(&array_view);
 
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);

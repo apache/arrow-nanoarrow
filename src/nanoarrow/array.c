@@ -815,9 +815,9 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       break;
     case NANOARROW_TYPE_RUN_END_ENCODED:
       if (array_view->n_children != 2) {
-        ArrowErrorSet(error, "Expected 2 children of %s array but found %ld child arrays",
-                      ArrowTypeString(array_view->storage_type),
-                      (long)array_view->n_children);
+        ArrowErrorSet(
+            error, "Expected 2 children for %s array but found %ld child arrays",
+            ArrowTypeString(array_view->storage_type), (long)array_view->n_children);
         return EINVAL;
       }
       break;
@@ -907,7 +907,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       if (run_ends_view->length == 0 && values_view->length != 0) {
         ArrowErrorSet(error,
                       "Run-end encoded array has zero length %ld, but values array has "
-                      "non-zero length ",
+                      "non-zero length",
                       (long)values_view->length);
         return EINVAL;
       }
@@ -1257,7 +1257,7 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       last_run_end = run_end;
     }
     last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
-    if (last_run_end < array_view->offset + array_view->length) {
+    if (last_run_end < (array_view->offset + array_view->length)) {
       ArrowErrorSet(error,
                     "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
                     (long)last_run_end, (long)(array_view->offset + array_view->length),
