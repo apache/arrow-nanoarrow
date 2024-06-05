@@ -287,8 +287,7 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
 }
 
 ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
-                                               enum ArrowType run_end_type,
-                                               enum ArrowType value_type) {
+                                               enum ArrowType run_end_type) {
   switch (run_end_type) {
     case NANOARROW_TYPE_INT16:
     case NANOARROW_TYPE_INT32:
@@ -303,7 +302,8 @@ ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
   NANOARROW_RETURN_NOT_OK(
       ArrowSchemaInitChildrenIfNeeded(schema, NANOARROW_TYPE_RUN_END_ENCODED));
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema->children[0], run_end_type));
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema->children[1], value_type));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_UNINITIALIZED));
 
   return NANOARROW_OK;
 }

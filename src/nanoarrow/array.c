@@ -815,7 +815,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       break;
     case NANOARROW_TYPE_RUN_END_ENCODED:
       if (array_view->n_children != 2) {
-        ArrowErrorSet(error, "Expected 2 child of %s array but found %ld child arrays",
+        ArrowErrorSet(error, "Expected 2 children of %s array but found %ld child arrays",
                       ArrowTypeString(array_view->storage_type),
                       (long)array_view->n_children);
         return EINVAL;
@@ -857,26 +857,16 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       }
       break;
 
-    case NANOARROW_TYPE_RUN_END_ENCODED:
+    case NANOARROW_TYPE_RUN_END_ENCODED: {
       if (array_view->n_children != 2) {
         ArrowErrorSet(error,
                       "Expected 2 children for run-end encoded array but found %ld",
                       (long)array_view->n_children);
         return EINVAL;
       }
-      struct ArrowArrayView* run_ends_view;
-      struct ArrowArrayView* values_view;
-      run_ends_view = array_view->children[0];
-      values_view = array_view->children[1];
-      if (run_ends_view == NULL) {
-        ArrowErrorSet(error, "Run ends array is null pointer");
-        return EINVAL;
-      }
-      if (values_view == NULL) {
-        ArrowErrorSet(error, "Values array is null pointer");
-        return EINVAL;
-      }
-      uint64_t max_length;
+      struct ArrowArrayView* run_ends_view = array_view->children[0];
+      struct ArrowArrayView* values_view = array_view->children[1];
+      int64_t max_length;
       switch (run_ends_view->storage_type) {
         case NANOARROW_TYPE_INT16:
           max_length = INT16_MAX;
@@ -895,7 +885,9 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
               ArrowTypeString(run_ends_view->storage_type));
           return EINVAL;
       }
-      if ((uint64_t)array_view->offset + (uint64_t)array_view->length > max_length) {
+      // uint64_t is used here to avoid overflow when adding the offset and length
+      if ((uint64_t)array_view->offset + (uint64_t)array_view->length >
+          (uint64_t)max_length) {
         ArrowErrorSet(
             error,
             "Offset + length of a run-end encoded array must fit in a value"
@@ -925,6 +917,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
         return EINVAL;
       }
       break;
+    }
     default:
       break;
   }
@@ -1075,39 +1068,6 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
       }
       break;
 
-    case NANOARROW_TYPE_RUN_END_ENCODED: {
-      struct ArrowArrayView* run_ends_view;
-      run_ends_view = array_view->children[0];
-      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
-      if (last_run_end < 1) {
-        ArrowErrorSet(error,
-                      "All run ends must be greater than 0 but the first run end is %ld",
-                      (long)last_run_end);
-        return EINVAL;
-      }
-      for (int64_t i = 1; i < run_ends_view->length; i++) {
-        const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
-        if (run_end <= last_run_end) {
-          ArrowErrorSet(
-              error,
-              "Every run end must be strictly greater than the previous run end, "
-              "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
-              (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
-          return EINVAL;
-        }
-        last_run_end = run_end;
-      }
-      last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
-      if (last_run_end < array_view->offset + array_view->length) {
-        ArrowErrorSet(
-            error,
-            "Last run end is %ld but it should match %ld (offset: %ld, length: %ld)",
-            (long)last_run_end, (long)(array_view->offset + array_view->length),
-            (long)array_view->offset, (long)array_view->length);
-        return EINVAL;
-      }
-      break;
-    }
     default:
       break;
   }
@@ -1273,6 +1233,36 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
             (long)i, (int)child_id, (long)child_length, (long)offset);
         return EINVAL;
       }
+    }
+  }
+
+  if (array_view->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
+    struct ArrowArrayView* run_ends_view = array_view->children[0];
+    int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+    if (last_run_end < 1) {
+      ArrowErrorSet(error,
+                    "All run ends must be greater than 0 but the first run end is %ld",
+                    (long)last_run_end);
+      return EINVAL;
+    }
+    for (int64_t i = 1; i < run_ends_view->length; i++) {
+      const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
+      if (run_end <= last_run_end) {
+        ArrowErrorSet(error,
+                      "Every run end must be strictly greater than the previous run end, "
+                      "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
+                      (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
+        return EINVAL;
+      }
+      last_run_end = run_end;
+    }
+    last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
+    if (last_run_end < array_view->offset + array_view->length) {
+      ArrowErrorSet(error,
+                    "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
+                    (long)last_run_end, (long)(array_view->offset + array_view->length),
+                    (long)array_view->offset, (long)array_view->length);
+      return EINVAL;
     }
   }
 

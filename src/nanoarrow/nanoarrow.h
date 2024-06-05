@@ -379,9 +379,9 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
 /// Returns EINVAL for scale <= 0 or for run_end_type that is not
 /// NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32 or NANOARROW_TYPE_INT64.
 /// Schema must have been initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+/// The run-end encoded array must be finished using ArrowArrayFinishAppending()
 ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
-                                               enum ArrowType run_end_type,
-                                               enum ArrowType value_type);
+                                               enum ArrowType run_end_type);
 
 /// \brief Set the format field of a time, timestamp, or duration schema
 ///
@@ -976,6 +976,15 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array);
 /// or if child sizes after appending are inconsistent.
 static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* array,
                                                           int8_t type_id);
+
+/// \brief Finish a run-end encoded array
+///
+/// Finishes a run-end encoded array and set its logicial length and offset.
+/// EINVAL if the logical length + offset exceeds the maximum allowed length
+/// of the run-ends buffer.
+static inline ArrowErrorCode ArrowArrayFinishRunEndEncoded(struct ArrowArray* array,
+                                                           int64_t logical_length,
+                                                           int64_t offset);
 
 /// \brief Shrink buffer capacity to the size required
 ///

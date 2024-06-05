@@ -661,43 +661,6 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
         }
       }
       break;
-
-    case NANOARROW_TYPE_RUN_END_ENCODED:
-      if (array->children[0]->length != array->children[1]->length) {
-        return EINVAL;
-      }
-      if (array->children[0]->null_count != 0) {
-        return EINVAL;
-      }
-      array->length = 0;
-      struct ArrowBuffer* data_buffer;
-      data_buffer = ArrowArrayBuffer(array->children[0], 1);
-      for (int64_t i = 0; i < array->children[0]->length; i++) {
-        int64_t run_end = -1;
-        switch (((struct ArrowArrayPrivateData*)array->children[0]->private_data)
-                    ->storage_type) {
-          case NANOARROW_TYPE_INT16:
-            run_end = ((int16_t*)data_buffer->data)[i];
-            break;
-          case NANOARROW_TYPE_INT32:
-            run_end = ((int32_t*)data_buffer->data)[i];
-            break;
-          case NANOARROW_TYPE_INT64:
-            run_end = ((int64_t*)data_buffer->data)[i];
-            break;
-          default:
-            break;
-        }
-        if (run_end < 0) {
-          return EINVAL;
-        }
-        array->length = run_end;
-      }
-
-      if (private_data->bitmap.buffer.data != NULL) {
-        NANOARROW_RETURN_NOT_OK(ArrowBitmapAppend(ArrowArrayValidityBitmap(array), 1, 1));
-      }
-
       return NANOARROW_OK;
     default:
       return EINVAL;
@@ -752,6 +715,34 @@ static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* arr
   NANOARROW_RETURN_NOT_OK(
       ArrowBufferAppendInt8(ArrowArrayBuffer(array, 0), (int8_t)type_id));
   array->length++;
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode ArrowArrayFinishRunEndEncoded(struct ArrowArray* array,
+                                                           int64_t logical_length,
+                                                           int64_t offset) {
+  if (logical_length < 0 || offset < 0) return EINVAL;
+  int64_t max_length;
+  struct ArrowArrayPrivateData* run_ends_private_data =
+      (struct ArrowArrayPrivateData*)array->children[0]->private_data;
+  switch (run_ends_private_data->storage_type) {
+    case NANOARROW_TYPE_INT16:
+      max_length = INT16_MAX;
+      break;
+    case NANOARROW_TYPE_INT32:
+      max_length = INT32_MAX;
+      break;
+    case NANOARROW_TYPE_INT64:
+      max_length = INT64_MAX;
+      break;
+    default:
+      return EINVAL;
+  }
+  if ((uint64_t)offset + (uint64_t)logical_length > (uint64_t)max_length) {
+    return EINVAL;
+  }
+  array->length = logical_length;
+  array->offset = offset;
   return NANOARROW_OK;
 }
 
