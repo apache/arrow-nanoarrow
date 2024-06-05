@@ -1471,29 +1471,33 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
 
   // Make sure final child size is checked at finish
   array.children[0]->length = array.children[0]->length - 1;
-  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
-  EXPECT_STREQ(
-      ArrowErrorMessage(&error),
-      "Expected the 2 children of run-end encoded array to have equal length but "
-      "found mismatched lengths: run_ends->length=2, values->length=3");
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Last run end is 6 but it should match 7 (offset: 0, length: 7)");
 
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
-  // Make sure the run_ends array length is validated
+  // run-end encoded array with offsets
   struct ArrowArrayView array_view;
   ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, NULL), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, NULL), NANOARROW_OK);
+  array_view.length = 4;
+  array_view.offset = 1;
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
-  array_view.length -= 1;
+  array_view.length = 10;
+  array_view.offset = 1;
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Run End value 7 at index 2 exceeds the logical length of the run-end "
-               "encoded array 6");
-  array_view.length += 1;
+               "Last run end is 7 but it should match 11 (offset: 1, length: 10)");
+
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, NULL), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
   ArrowArrayViewReset(&array_view);
 
   auto arrow_array = ImportArray(&array, &schema);
