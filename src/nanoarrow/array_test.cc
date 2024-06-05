@@ -1469,7 +1469,7 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   ASSERT_EQ(ArrowArrayAppendDouble(array.children[1], 1.0), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(array.children[1], 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendDouble(array.children[1], 2.0), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishRunEndEncoded(&array, 7, 0), NANOARROW_OK);
+  array.length = 7;
 
   // Make sure number of children is checked at finish
   array.n_children = 0;

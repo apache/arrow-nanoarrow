@@ -718,34 +718,6 @@ static inline ArrowErrorCode ArrowArrayFinishUnionElement(struct ArrowArray* arr
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode ArrowArrayFinishRunEndEncoded(struct ArrowArray* array,
-                                                           int64_t logical_length,
-                                                           int64_t offset) {
-  if (logical_length < 0 || offset < 0) return EINVAL;
-  int64_t max_length;
-  struct ArrowArrayPrivateData* run_ends_private_data =
-      (struct ArrowArrayPrivateData*)array->children[0]->private_data;
-  switch (run_ends_private_data->storage_type) {
-    case NANOARROW_TYPE_INT16:
-      max_length = INT16_MAX;
-      break;
-    case NANOARROW_TYPE_INT32:
-      max_length = INT32_MAX;
-      break;
-    case NANOARROW_TYPE_INT64:
-      max_length = INT64_MAX;
-      break;
-    default:
-      return EINVAL;
-  }
-  if ((uint64_t)offset + (uint64_t)logical_length > (uint64_t)max_length) {
-    return EINVAL;
-  }
-  array->length = logical_length;
-  array->offset = offset;
-  return NANOARROW_OK;
-}
-
 static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
                                       struct ArrowArrayView* dst) {
   memcpy(dst, src, sizeof(struct ArrowArrayView));
