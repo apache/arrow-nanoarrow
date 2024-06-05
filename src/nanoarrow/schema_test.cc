@@ -222,16 +222,24 @@ TEST(SchemaTest, SchemaInitDecimal) {
 TEST(SchemaTest, SchemaInitRunEndEncoded) {
   struct ArrowSchema schema;
   struct ArrowArray array;
-  ArrowSchemaInit(&schema);
 
   // run-ends type has to be one of INT16, INT32, INT64
+  ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_DOUBLE), EINVAL);
+  ArrowSchemaRelease(&schema);
+
+  ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_UINT16), EINVAL);
+  ArrowSchemaRelease(&schema);
+
+  ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
   ArrowSchemaRelease(&schema);
+
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   ArrowSchemaRelease(&schema);
+
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+r");
