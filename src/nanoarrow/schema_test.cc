@@ -228,7 +228,11 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_DOUBLE), EINVAL);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_UINT16), EINVAL);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
+  ArrowSchemaRelease(&schema);
+  ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ArrowSchemaRelease(&schema);
+  ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+r");
 
@@ -239,7 +243,7 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
 
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
-  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int32(), float32())));
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int64(), float32())));
 }
 
 TEST(SchemaTest, SchemaInitDateTime) {
