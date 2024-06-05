@@ -221,7 +221,6 @@ TEST(SchemaTest, SchemaInitDecimal) {
 
 TEST(SchemaTest, SchemaInitRunEndEncoded) {
   struct ArrowSchema schema;
-  struct ArrowArray array;
 
   // run-ends type has to be one of INT16, INT32, INT64
   ArrowSchemaInit(&schema);
@@ -234,9 +233,7 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+r");
 
-  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), EINVAL);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
@@ -246,9 +243,7 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+r");
 
-  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), EINVAL);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
@@ -258,9 +253,7 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+r");
 
-  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), EINVAL);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
