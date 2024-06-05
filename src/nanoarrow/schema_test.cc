@@ -226,30 +226,43 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
   // run-ends type has to be one of INT16, INT32, INT64
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_DOUBLE), EINVAL);
-  ArrowSchemaRelease(&schema);
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_UINT16), EINVAL);
-  ArrowSchemaRelease(&schema);
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
-  ArrowSchemaRelease(&schema);
-
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ArrowSchemaRelease(&schema);
-
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+r");
 
-  // values type has to be set to something
   EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), EINVAL);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
 
   auto arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int16(), float32())));
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+r");
+
+  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), EINVAL);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int32(), float32())));
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+r");
+
+  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), EINVAL);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int64(), float32())));
 }
