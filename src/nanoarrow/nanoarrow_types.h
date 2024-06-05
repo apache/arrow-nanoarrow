@@ -956,16 +956,6 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   memcpy(decimal->words, value, decimal->n_words * sizeof(uint64_t));
 }
 
-/// \brief A representation of a run of the run end encoded array
-/// \ingroup nanoarrow-utils
-///
-struct ArrowRunEndEncoded {
-  /// \brief The length of this run
-  int64_t length;
-
-  /// \brief The value of this run
-};
-
 #ifdef __cplusplus
 }
 #endif
