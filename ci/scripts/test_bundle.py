@@ -24,14 +24,12 @@ import pytest
 import bundle
 
 
-def test_read_content():
+def test_read_write_content():
     assert bundle.read_content("one two three") == "one two three"
 
     with tempfile.TemporaryDirectory() as td:
         file1 = os.path.join(td, "test1.txt")
-        with open(file1, "w") as f:
-            f.write("One\nTwo\nThree\n")
-
+        bundle.write_content("One\nTwo\nThree\n", file1)
         assert bundle.read_content(pathlib.Path(file1)) == "One\nTwo\nThree\n"
 
 
