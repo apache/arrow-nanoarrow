@@ -376,10 +376,12 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
 
 /// \brief Set the format field of a run-end encoded schema
 ///
-/// Returns EINVAL for scale <= 0 or for run_end_type that is not
+/// Returns EINVAL for run_end_type that is not
 /// NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32 or NANOARROW_TYPE_INT64.
 /// Schema must have been initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-/// The run-end encoded array's logical length must be updated manually.
+/// The caller must call `ArrowSchemaSetTypeXXX(schema->children[1])` to
+/// set the value type. Note that when building arrays using the `ArrowArrayAppendXXX()`
+/// functions, the run-end encoded array's logical length must be updated manually.
 ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
                                                enum ArrowType run_end_type);
 

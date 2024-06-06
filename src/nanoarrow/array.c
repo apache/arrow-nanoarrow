@@ -1068,6 +1068,17 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
       }
       break;
 
+    case NANOARROW_TYPE_RUN_END_ENCODED: {
+      struct ArrowArrayView* run_ends_view = array_view->children[0];
+      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      if (last_run_end < 1) {
+        ArrowErrorSet(error,
+                      "All run ends must be greater than 0 but the first run end is %ld",
+                      (long)last_run_end);
+        return EINVAL;
+      }
+      break;
+    }
     default:
       break;
   }
@@ -1239,12 +1250,6 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
   if (array_view->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
     struct ArrowArrayView* run_ends_view = array_view->children[0];
     int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
-    if (last_run_end < 1) {
-      ArrowErrorSet(error,
-                    "All run ends must be greater than 0 but the first run end is %ld",
-                    (long)last_run_end);
-      return EINVAL;
-    }
     for (int64_t i = 1; i < run_ends_view->length; i++) {
       const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
       if (run_end <= last_run_end) {
