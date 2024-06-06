@@ -52,3 +52,11 @@ def test_concatenate_files():
         ["One\nTwo\nThree\n", "Four\nFive\nSix\n"]
     )
     assert concatenated == "One\nTwo\nThree\nFour\nFive\nSix\n"
+
+
+def test_cmakelist_version():
+    extracted = bundle.cmakelist_version('set(NANOARROW_VERSION "0.1.2-SNAPSHOT")')
+    assert extracted == ("0.1.2-SNAPSHOT", 0, 1, 2)
+
+    this_cmakelists = pathlib.Path(__file__).parent.parent.parent / "CMakeLists.txt"
+    assert bundle.cmakelist_version(this_cmakelists) == ("0.6.0-SNAPSHOT", 0, 6, 0)

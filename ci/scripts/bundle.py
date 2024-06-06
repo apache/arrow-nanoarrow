@@ -17,6 +17,7 @@
 
 import io
 import pathlib
+import re
 
 
 def read_content(path_or_content):
@@ -27,14 +28,14 @@ def read_content(path_or_content):
         return str(path_or_content)
 
 
-def configure_content(path, args):
-    content = read_content(path)
+def configure_content(paths_or_content, args):
+    content = read_content(paths_or_content)
 
     for key, value in args.items():
         replace_key = f"@{key}@"
         if content.count(replace_key) != 1:
             raise ValueError(
-                f"Expected exactly one occurrence of '{replace_key}' in '{path}'"
+                f"Expected exactly one occurrence of '{replace_key}' in '{paths_or_content}'"
             )
 
         content = content.replace(replace_key, value)
@@ -49,3 +50,15 @@ def concatenate_content(paths_or_content):
         out.write(read_content(path))
 
     return out.getvalue()
+
+
+def cmakelist_version(path_or_content):
+    content = read_content(path_or_content)
+    version_match = re.search(r'set\(NANOARROW_VERSION "(.*?)"\)', content)
+    if version_match is None:
+        raise ValueError(f"Can't find NANOARROW_VERSION in '{path_or_content}'")
+
+    version = version_match.group(1)
+
+    component_match = re.search(r"^([0-9]+)\.([0-9]+)\.([0-9]+)", version)
+    return (version,) + tuple(int(component) for component in component_match.groups())
