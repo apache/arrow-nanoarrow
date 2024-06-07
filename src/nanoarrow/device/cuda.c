@@ -100,9 +100,10 @@ static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
   ArrowFree(allocator_private);
 }
 
-static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
-                                                    struct ArrowBuffer* buffer,
-                                                    int64_t size_bytes) {
+static ArrowErrorCode ArrowDeviceCudaAllocateBufferAsync(struct ArrowDevice* device,
+                                                         struct ArrowBuffer* buffer,
+                                                         int64_t size_bytes,
+                                                         CUstream* stream) {
   struct ArrowDeviceCudaPrivate* private_data =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
 
@@ -163,6 +164,12 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
+                                                    struct ArrowBuffer* buffer,
+                                                    int64_t size_bytes) {
+  return ArrowDeviceCudaAllocateBufferAsync(device, buffer, size_bytes, (CUstream*)0);
+}
+
 struct ArrowDeviceCudaArrayPrivate {
   struct ArrowArray parent;
   CUevent cu_event;
@@ -220,12 +227,10 @@ static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
 // TODO: All these buffer copiers would benefit from cudaMemcpyAsync but there is
 // no good way to incorporate that just yet
 
-static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(struct ArrowDevice* device_src,
-                                                        struct ArrowBufferView src,
-                                                        struct ArrowDevice* device_dst,
-                                                        struct ArrowBufferView dst,
-                                                        int* n_pop_context,
-                                                        struct ArrowError* error) {
+static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(
+    struct ArrowDevice* device_src, struct ArrowBufferView src,
+    struct ArrowDevice* device_dst, struct ArrowBufferView dst, int* n_pop_context,
+    struct ArrowError* error, CUstream* stream) {
   // Note: the device_src/sync event must be synchronized before calling these methods,
   // even though the cuMemcpyXXX() functions may do this automatically in some cases.
 
@@ -301,21 +306,29 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(struct ArrowDevice* devi
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
-                                                struct ArrowBufferView src,
-                                                struct ArrowDevice* device_dst,
-                                                struct ArrowBufferView dst) {
+static ArrowErrorCode ArrowDeviceCudaBufferCopyAsync(struct ArrowDevice* device_src,
+                                                     struct ArrowBufferView src,
+                                                     struct ArrowDevice* device_dst,
+                                                     struct ArrowBufferView dst,
+                                                     CUstream* stream) {
   int n_pop_context = 0;
   struct ArrowError error;
 
   int result = ArrowDeviceCudaBufferCopyInternal(device_src, src, device_dst, dst,
-                                                 &n_pop_context, &error);
+                                                 &n_pop_context, &error, stream);
   for (int i = 0; i < n_pop_context; i++) {
     CUcontext unused;
     NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
   }
 
   return result;
+}
+
+static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
+                                                struct ArrowBufferView src,
+                                                struct ArrowDevice* device_dst,
+                                                struct ArrowBufferView dst) {
+  return ArrowDeviceCudaBufferCopyAsync(device_src, src, device_dst, dst, (CUstream*)0);
 }
 
 static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
