@@ -514,11 +514,9 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopyBuffers(
 
     // buffer_size will be -1 if it is unknown (i.e., string/binary
     // data buffer when copying from CUDA -> CPU)
-    if (unknown_buffer_size_count != NULL && buffer_size < 0) {
+    if (buffer_size < 0) {
       (*unknown_buffer_size_count)++;
       continue;
-    } else if (buffer_size < 0) {
-      return EINVAL;
     }
 
     struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(dst, i);
@@ -681,6 +679,10 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopy(struct ArrowDeviceArrayView* 
                                                    struct ArrowDevice* device_dst,
                                                    struct ArrowDeviceArray* dst) {
   // For CUDA_HOST, the default implementation is sufficient
+  // TODO: Make sure we've synchronized here when CUDA_HOST is the source.
+  // cuCtxSynchronize() is probaby necessary there (since the implementation
+  // calls raw memcpys)
+
   switch (src->device->device_type) {
     case ARROW_DEVICE_CUDA:
     case ARROW_DEVICE_CPU:
@@ -701,6 +703,8 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopy(struct ArrowDeviceArrayView* 
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&tmp, &src->array_view, &error));
 
+  // TODO: We could either create the stream at this scope or create an event at this
+  // scope for a CPU -> CUDA copy such that we can maybe return without synchronizing.
   int result =
       ArrowDeviceCudaArrayViewCopyInternal(src->device, src, device_dst, &tmp, &error);
   if (result != NANOARROW_OK) {
