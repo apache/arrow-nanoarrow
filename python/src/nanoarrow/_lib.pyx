@@ -1097,7 +1097,9 @@ cdef class CSchemaView:
 
     @property
     def storage_buffer_format(self):
-        if self._schema_view.type == NANOARROW_TYPE_DATE32:
+        if self.buffer_format is not None:
+            return self.buffer_format
+        elif self._schema_view.type == NANOARROW_TYPE_DATE32:
             return 'i'
         elif self._schema_view.type in (NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
             return 'q'

@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import array
 from datetime import date, datetime
 
 import pytest
@@ -530,11 +531,35 @@ def test_c_array_timestamp_seconds():
     assert list(view.buffer(1)) == [d1, d2, d3]
 
 
+def test_c_array_timestamp_seconds_from_pybuffer():
+    d1 = int(round(datetime(1970, 1, 1).timestamp()))
+    d2 = int(round(datetime(1985, 12, 31).timestamp()))
+    d3 = int(round(datetime(2005, 3, 4).timestamp()))
+    c_array = na.c_array(array.array("q", [d1, d2, d3]), na.timestamp("s"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
 def test_c_array_timestamp_milliseconds():
     d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
     d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
     d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
     c_array = na.c_array([d1, d2, d3], na.timestamp("ms"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
+def test_c_array_timestamp_milliseconds_from_pybuffer():
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    c_array = na.c_array(array.array("q", [d1, d2, d3]), na.timestamp("ms"))
     assert c_array.length == 3
     assert c_array.null_count == 0
     view = c_array.view()
