@@ -168,6 +168,11 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 
+struct ArrowDeviceArrayView {
+  struct ArrowDevice* device;
+  struct ArrowArrayView array_view;
+};
+
 /// \brief A Device wrapper with callbacks for basic memory management tasks
 ///
 /// All device objects are currently implemented as singletons; however, this
@@ -197,6 +202,11 @@ struct ArrowDevice {
   /// than that of an explicitly copied one depending on the device.
   ArrowErrorCode (*array_move)(struct ArrowDevice* device_src,
                                struct ArrowDeviceArray* src,
+                               struct ArrowDevice* device_dst,
+                               struct ArrowDeviceArray* dst);
+
+  /// \brief Copy an ArrowDeviceArray to a device
+  ArrowErrorCode (*array_copy)(struct ArrowDeviceArrayView* src,
                                struct ArrowDevice* device_dst,
                                struct ArrowDeviceArray* dst);
 
@@ -241,11 +251,6 @@ struct ArrowDevice {
 
   /// \brief Opaque, implementation-specific data.
   void* private_data;
-};
-
-struct ArrowDeviceArrayView {
-  struct ArrowDevice* device;
-  struct ArrowArrayView array_view;
 };
 
 /// \brief Initialize an ArrowDeviceArray

@@ -118,6 +118,7 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->device_id = -1;
   device->array_init = NULL;
   device->array_move = NULL;
+  device->array_copy = NULL;
   device->buffer_init = &ArrowDeviceCpuBufferInit;
   device->buffer_move = &ArrowDeviceCpuBufferMove;
   device->buffer_copy = &ArrowDeviceCpuBufferCopy;
@@ -430,9 +431,9 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
-                                        struct ArrowDevice* device_dst,
-                                        struct ArrowDeviceArray* dst) {
+static ArrowErrorCode ArrowDeviceArrayViewCopyDefault(struct ArrowDeviceArrayView* src,
+                                                      struct ArrowDevice* device_dst,
+                                                      struct ArrowDeviceArray* dst) {
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&tmp, &src->array_view, NULL));
 
@@ -456,6 +457,32 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
   }
 
   return result;
+}
+
+ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
+                                        struct ArrowDevice* device_dst,
+                                        struct ArrowDeviceArray* dst) {
+  struct ArrowDevice* device_src = src->device;
+
+  // See if the source knows how to copy
+  int result;
+  if (device_src->array_copy != NULL) {
+    result = device_src->array_copy(src, device_dst, dst);
+    if (result != ENOTSUP) {
+      return result;
+    }
+  }
+
+  // See if the destination knows how to copy
+  if (device_dst->array_copy != NULL) {
+    result = device_dst->array_copy(src, device_dst, dst);
+    if (result != ENOTSUP) {
+      return result;
+    }
+  }
+
+  // Fall back to default implementation (copy buffer-by-buffer)
+  return ArrowDeviceArrayViewCopyDefault(src, device_dst, dst);
 }
 
 ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
