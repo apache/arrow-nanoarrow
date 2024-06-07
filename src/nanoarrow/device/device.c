@@ -343,6 +343,12 @@ static ArrowErrorCode ArrowDeviceArrayViewResolveBufferSizes(
         ArrowDeviceArrayViewResolveBufferSizes(device, array_view->children[i]));
   }
 
+  // ...and for dictionary
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceArrayViewResolveBufferSizes(device, array_view->dictionary));
+  }
+
   return NANOARROW_OK;
 }
 

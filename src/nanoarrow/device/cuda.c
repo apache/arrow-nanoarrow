@@ -332,20 +332,22 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
                                                 struct ArrowBufferView src,
                                                 struct ArrowDevice* device_dst,
                                                 struct ArrowBufferView dst) {
-  return ArrowDeviceCudaBufferCopyAsync(device_src, src, device_dst, dst, NANOARROW_CUDA_DEFAULT_STREAM);
+  return ArrowDeviceCudaBufferCopyAsync(device_src, src, device_dst, dst,
+                                        NANOARROW_CUDA_DEFAULT_STREAM);
 }
 
-static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
-                                                struct ArrowBufferView src,
-                                                struct ArrowDevice* device_dst,
-                                                struct ArrowBuffer* dst) {
+static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_src,
+                                                     struct ArrowBufferView src,
+                                                     struct ArrowDevice* device_dst,
+                                                     struct ArrowBuffer* dst,
+                                                     CUstream hstream) {
   struct ArrowBuffer tmp;
 
   switch (device_dst->device_type) {
     case ARROW_DEVICE_CUDA:
     case ARROW_DEVICE_CUDA_HOST:
       NANOARROW_RETURN_NOT_OK(
-          ArrowDeviceCudaAllocateBuffer(device_dst, &tmp, src.size_bytes));
+          ArrowDeviceCudaAllocateBufferAsync(device_dst, &tmp, src.size_bytes, hstream));
       break;
     case ARROW_DEVICE_CPU:
       ArrowBufferInit(&tmp);
@@ -358,7 +360,8 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
   struct ArrowBufferView tmp_view;
   tmp_view.data.data = tmp.data;
   tmp_view.size_bytes = tmp.size_bytes;
-  int result = ArrowDeviceCudaBufferCopy(device_src, src, device_dst, tmp_view);
+  int result =
+      ArrowDeviceCudaBufferCopyAsync(device_src, src, device_dst, tmp_view, hstream);
   if (result != NANOARROW_OK) {
     ArrowBufferReset(&tmp);
     return result;
@@ -366,6 +369,14 @@ static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
 
   ArrowBufferMove(&tmp, dst);
   return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
+                                                struct ArrowBufferView src,
+                                                struct ArrowDevice* device_dst,
+                                                struct ArrowBuffer* dst) {
+  return ArrowDeviceCudaBufferInitAsync(device_src, src, device_dst, dst,
+                                        NANOARROW_CUDA_DEFAULT_STREAM);
 }
 
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
@@ -413,6 +424,224 @@ static ArrowErrorCode ArrowDeviceCudaArrayMove(struct ArrowDevice* device_src,
   // TODO: We can theoretically also do a move from CUDA_HOST to CUDA
 
   return ENOTSUP;
+}
+
+static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
+    struct ArrowDevice* device, struct ArrowArrayView* array_view, CUstream hstream) {
+  // Calculate buffer sizes that require accessing the offset buffer
+  // (at this point all other sizes have been resolved).
+  int64_t offset_plus_length = array_view->offset + array_view->length;
+
+  struct ArrowBufferView src_view;
+  struct ArrowBufferView dst_view;
+
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+      array_view->buffer_views[2].size_bytes = 0;
+
+      // Note that this strategy (copying four bytes into an int64_t)
+      // only works on little-endian (should be checked at a higher level).
+      if (array_view->buffer_views[2].size_bytes == -1) {
+        src_view.data.as_int32 =
+            array_view->buffer_views[1].data.as_int32 + offset_plus_length;
+        src_view.size_bytes = sizeof(int32_t);
+
+        dst_view.data.data = &(array_view->buffer_views[2].size_bytes);
+        dst_view.size_bytes = sizeof(int32_t);
+
+        NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferCopyAsync(
+            device, src_view, ArrowDeviceCpu(), dst_view, hstream));
+      }
+
+      break;
+
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      array_view->buffer_views[2].size_bytes = 0;
+
+      if (array_view->buffer_views[2].size_bytes == -1) {
+        src_view.data.as_int64 =
+            array_view->buffer_views[1].data.as_int64 + offset_plus_length;
+        src_view.size_bytes = sizeof(int64_t);
+
+        dst_view.data.data = &(array_view->buffer_views[2].size_bytes);
+        dst_view.size_bytes = sizeof(int64_t);
+
+        NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferCopyAsync(
+            device, src_view, ArrowDeviceCpu(), dst_view, hstream));
+      }
+      break;
+    default:
+      break;
+  }
+
+  // Recurse for children
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceCudaResolveBufferSizesAsync(device, array_view->children[i], hstream));
+  }
+
+  // ...and for dictionary
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceCudaResolveBufferSizesAsync(device, array_view->dictionary, hstream));
+  }
+
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceCudaArrayViewCopyInternal(
+    struct ArrowDevice* device_src, struct ArrowArrayView* src,
+    struct ArrowDevice* device_dst, struct ArrowArray* dst, CUstream hstream,
+    int64_t* unknown_buffer_size_count) {
+  // Currently no attempt to minimize the amount of memory copied (i.e.,
+  // by applying offset + length and copying potentially fewer bytes)
+  dst->length = src->length;
+  dst->offset = src->offset;
+  dst->null_count = src->null_count;
+
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+    if (src->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
+      break;
+    }
+
+    struct ArrowBufferView src_view = src->buffer_views[i];
+    int64_t buffer_size = src_view.size_bytes;
+
+    // No need to initialize a buffer of zero bytes
+    if (buffer_size == 0) {
+      continue;
+    }
+
+    // buffer_size will be -1 if it is unknown (i.e., string/binary
+    // data buffer when copying from CUDA -> CPU)
+    if (unknown_buffer_size_count != NULL && buffer_size < 0) {
+      (*unknown_buffer_size_count)++;
+      continue;
+    } else if (buffer_size < 0) {
+      return EINVAL;
+    }
+
+    struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(dst, i);
+
+    // Don't initialize a buffer that has already been initialized
+    if (buffer_dst->size_bytes > 0) {
+      continue;
+    }
+
+    // Otherwise, initialize the buffer
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferInitAsync(
+        device_src, src_view, device_dst, buffer_dst, hstream));
+  }
+
+  // Recurse for children
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaArrayViewCopyInternal(
+        device_src, src->children[i], device_dst, dst->children[i], hstream,
+        unknown_buffer_size_count));
+  }
+
+  // ...and for dictionary
+  if (src->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaArrayViewCopyInternal(
+        device_src, src->dictionary, device_dst, dst->dictionary, hstream,
+        unknown_buffer_size_count));
+  }
+
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceCudaArrayViewCopyAsync(struct ArrowDevice* device_src,
+                                                        struct ArrowDeviceArrayView* src,
+                                                        struct ArrowDevice* device_dst,
+                                                        struct ArrowDeviceArray* dst,
+                                                        struct ArrowError* error) {
+  CUresult err;
+  int code;
+  int64_t unknown_buffer_size_count = 0;
+
+  // Create a stream to do the first (and maybe only) round of buffer copying.
+  // The ArrowDeviceArrayView should probably have a sync_event so that we can
+  // force the stream we just created to wait on the event.
+  CUstream hstream;
+  NANOARROW_CUDA_RETURN_NOT_OK(cuStreamCreate(&hstream, CU_STREAM_NON_BLOCKING),
+                               "cuStreamCreate", error);
+
+  code = ArrowDeviceCudaArrayViewCopyInternal(device_src, &src->array_view, device_dst,
+                                              &dst->array, hstream,
+                                              &unknown_buffer_size_count);
+  if (code != NANOARROW_OK) {
+    NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream));
+    ArrowErrorSet(error, "ArrowDeviceCudaArrayViewCopyInternal() failed");
+    return code;
+  }
+
+
+  CUstream hstream_data = NANOARROW_CUDA_DEFAULT_STREAM;
+
+  if (unknown_buffer_size_count > 0) {
+    // If buffers with unknown size were encountered, we need to copy all of their
+    // sizes to the CPU, synchronize, then copy all of the buffers once the CPU
+    // knows how many bytes from each buffer need to be copied.
+
+    err = cuStreamCreate(&hstream_data, CU_STREAM_NON_BLOCKING);
+    if (err != CUDA_SUCCESS) {
+      NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream));
+      NANOARROW_CUDA_RETURN_NOT_OK(err, "cudaStreamCreate", error);
+    }
+
+    // Issue all required async copies
+    code = ArrowDeviceCudaResolveBufferSizesAsync(device_src, &src->array_view,
+                                                  hstream_data);
+    if (code != NANOARROW_OK) {
+      NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream));
+      ArrowErrorSet(error, "ArrowDeviceCudaResolveBufferSizesAsync() failed");
+      return code;
+    }
+
+    // Wait for them all to complete
+    err = cuStreamSynchronize(hstream);
+    if (err != CUDA_SUCCESS) {
+      NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream));
+      NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream_data));
+      NANOARROW_CUDA_RETURN_NOT_OK(err, "cuStreamSynchronize()", error);
+    }
+
+    // Issue async copies for data buffers. This will skip buffers that are already
+    // being copied.
+    unknown_buffer_size_count = 0;
+    code = ArrowDeviceCudaArrayViewCopyInternal(device_src, &src->array_view, device_dst,
+                                                &dst->array, hstream,
+                                                &unknown_buffer_size_count);
+    if (code != NANOARROW_OK) {
+      NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream));
+      NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream_data));
+      ArrowErrorSet(error,
+                    "ArrowDeviceCudaArrayViewCopyInternal() for data buffers failed");
+      return code;
+    }
+
+    // There should not have been any buffers with unknown size in this round of copying
+    NANOARROW_DCHECK(unknown_buffer_size_count == 0);
+  }
+
+  // TODO: Populate dst->sync_event and record the copying work
+  // instead of synchronizing here.
+  err = cuStreamSynchronize(hstream);
+  NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream));
+  if (err != CUDA_SUCCESS) {
+    NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream_data));
+    NANOARROW_CUDA_RETURN_NOT_OK(err, "cuStreamSynchronize(hstream)", error);
+  }
+
+  err = cuStreamSynchronize(hstream_data);
+  NANOARROW_CUDA_ASSERT_OK(cuStreamDestroy(hstream_data));
+  if (err != CUDA_SUCCESS) {
+    NANOARROW_CUDA_RETURN_NOT_OK(err, "cuStreamSynchronize(hstream_data)", error);
+  }
+
+  return NANOARROW_OK;
 }
 
 static void ArrowDeviceCudaRelease(struct ArrowDevice* device) {
