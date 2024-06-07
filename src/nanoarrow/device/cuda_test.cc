@@ -240,9 +240,10 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
 
   ASSERT_NE(device_array2.array.release, nullptr);
   ASSERT_EQ(device_array2.device_id, gpu->device_id);
-  ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
-            NANOARROW_OK);
-  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
+  ASSERT_EQ(
+      ArrowDeviceArrayViewSetArrayMinimal(&device_array_view, &device_array2, nullptr),
+      NANOARROW_OK);
+  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, -1);
   EXPECT_EQ(device_array_view.array_view.length, 3);
   EXPECT_EQ(device_array2.array.length, 3);
 
@@ -261,7 +262,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
             NANOARROW_OK);
 
-  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
+  ASSERT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
 
   if (include_null) {
     EXPECT_EQ(

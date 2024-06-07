@@ -438,10 +438,6 @@ static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      array_view->buffer_views[2].size_bytes = 0;
-
-      // Note that this strategy (copying four bytes into an int64_t)
-      // only works on little-endian (should be checked at a higher level).
       if (array_view->buffer_views[2].size_bytes == -1) {
         src_view.data.as_int32 =
             array_view->buffer_views[1].data.as_int32 + offset_plus_length;
@@ -450,6 +446,9 @@ static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
         dst_view.data.data = &(array_view->buffer_views[2].size_bytes);
         dst_view.size_bytes = sizeof(int32_t);
 
+        // Note that this strategy (copying four bytes into an int64_t)
+        // only works on little-endian (should be checked at a higher level).
+        array_view->buffer_views[2].size_bytes = 0;
         NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferCopyAsync(
             device, src_view, ArrowDeviceCpu(), dst_view, hstream));
       }
@@ -458,8 +457,6 @@ static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
 
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      array_view->buffer_views[2].size_bytes = 0;
-
       if (array_view->buffer_views[2].size_bytes == -1) {
         src_view.data.as_int64 =
             array_view->buffer_views[1].data.as_int64 + offset_plus_length;
@@ -468,6 +465,7 @@ static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
         dst_view.data.data = &(array_view->buffer_views[2].size_bytes);
         dst_view.size_bytes = sizeof(int64_t);
 
+        array_view->buffer_views[2].size_bytes = 0;
         NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferCopyAsync(
             device, src_view, ArrowDeviceCpu(), dst_view, hstream));
       }
@@ -682,13 +680,12 @@ static void ArrowDeviceCudaRelease(struct ArrowDevice* device) {
 static ArrowErrorCode ArrowDeviceCudaArrayViewCopy(struct ArrowDeviceArrayView* src,
                                                    struct ArrowDevice* device_dst,
                                                    struct ArrowDeviceArray* dst) {
+  // For CUDA_HOST, the default implementation is sufficient
   switch (src->device->device_type) {
     case ARROW_DEVICE_CUDA:
-    case ARROW_DEVICE_CUDA_HOST:
     case ARROW_DEVICE_CPU:
       switch (device_dst->device_type) {
         case ARROW_DEVICE_CUDA:
-        case ARROW_DEVICE_CUDA_HOST:
         case ARROW_DEVICE_CPU:
           break;
         default:
