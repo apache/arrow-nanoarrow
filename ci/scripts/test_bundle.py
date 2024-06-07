@@ -16,12 +16,11 @@
 # under the License.
 
 import os
-import tempfile
 import pathlib
-
-import pytest
+import tempfile
 
 import bundle
+import pytest
 
 
 def test_read_write_content():

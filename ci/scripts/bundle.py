@@ -40,7 +40,8 @@ def configure_content(paths_or_content, args):
         replace_key = f"@{key}@"
         if content.count(replace_key) != 1:
             raise ValueError(
-                f"Expected exactly one occurrence of '{replace_key}' in '{paths_or_content}'"
+                "Expected exactly one occurrence of "
+                f"'{replace_key}' in '{paths_or_content}'"
             )
 
         content = content.replace(replace_key, str(value))
