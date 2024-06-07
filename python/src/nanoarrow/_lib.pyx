@@ -483,13 +483,13 @@ cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size
     elif type_id == NANOARROW_TYPE_UINT16:
         format_const = "H"
         element_size_bits_calc = 16
-    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS, NANOARROW_TYPE_DATE32):
+    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS):
         format_const = "i"
         element_size_bits_calc = 32
     elif type_id == NANOARROW_TYPE_UINT32:
         format_const = "I"
         element_size_bits_calc = 32
-    elif type_id in (NANOARROW_TYPE_INT64, NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
+    elif type_id == NANOARROW_TYPE_INT64:
         format_const = "q"
         element_size_bits_calc = 64
     elif type_id == NANOARROW_TYPE_UINT64:
@@ -1070,13 +1070,6 @@ cdef class CSchemaView:
         NANOARROW_TYPE_SPARSE_UNION
     )
 
-    _buffer_protocol_supported_types = (
-        NANOARROW_TYPE_DATE32,
-        NANOARROW_TYPE_DATE64,
-        NANOARROW_TYPE_TIMESTAMP,
-        NANOARROW_TYPE_DURATION
-    )
-
     def __cinit__(self, CSchema schema):
         self._base = schema
         self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
@@ -1103,14 +1096,22 @@ cdef class CSchemaView:
         return self._schema_view.storage_type
 
     @property
+    def storage_buffer_format(self):
+        if self._schema_view.type == NANOARROW_TYPE_DATE32:
+            return 'i'
+        elif self._schema_view.type in (NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
+            return 'q'
+        else:
+            return None
+
+    @property
     def buffer_format(self):
         """The Python struct format representing an element of this type
         or None if there is no Python format string that can represent this
         type.
         """
         if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
-            if self._schema_view.type not in self._buffer_protocol_supported_types:
-                return None
+            return None
 
         # String/binary types do not have format strings as far as the Python
         # buffer protocol is concerned

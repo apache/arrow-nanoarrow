@@ -508,7 +508,10 @@ class ArrayFromIterableBuilder(ArrayBuilder):
     def _append_using_array(self, obj: Iterable) -> None:
         from array import array
 
-        py_array = array(self._schema_view.buffer_format, obj)
+        py_array = array(
+            self._schema_view.storage_buffer_format or self._schema_view.buffer_format,
+            obj,
+        )
         buffer = CBuffer.from_pybuffer(py_array)
         self._c_builder.set_buffer(1, buffer, move=True)
         self._c_builder.set_length(len(buffer))

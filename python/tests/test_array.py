@@ -361,7 +361,10 @@ def test_timestamp_array():
     d1 = int(round(datetime(1985, 12, 31, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
     d2 = int(round(datetime(2005, 3, 4, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
     array = na.Array([d1, d2], na.timestamp("ms"))
-    assert list(array.to_pysequence()) == [d1, d2]
+    assert list(array.to_pysequence()) == [
+        datetime(1985, 12, 31, 0, 0),
+        datetime(2005, 3, 4, 0, 0),
+    ]
     assert array.to_pylist() == [
         datetime(1985, 12, 31, 0, 0),
         datetime(2005, 3, 4, 0, 0),
@@ -375,7 +378,7 @@ def test_date64_array():
     d1_date64 = int(round((d1 - unix_epoch).total_seconds() * 1e3))
     d2_date64 = int(round((d2 - unix_epoch).total_seconds() * 1e3))
     array = na.Array([d1_date64, d2_date64], na.date64())
-    assert list(array.to_pysequence()) == [d1_date64, d2_date64]
+    assert list(array.to_pysequence()) == [d1, d2]
     assert array.to_pylist() == [d1, d2]
 
 
@@ -385,7 +388,7 @@ def test_duration_array():
     d1_date64 = int(round((d1 - unix_epoch).total_seconds() * 1e3))
     d2_date64 = int(round((d2 - unix_epoch).total_seconds() * 1e3))
     array = na.Array([d1_date64, d2_date64], na.duration("ms"))
-    assert list(array.to_pysequence()) == [d1_date64, d2_date64]
+    assert list(array.to_pysequence()) == [timedelta(days=1), timedelta(days=2)]
     assert array.to_pylist() == [timedelta(days=1), timedelta(days=2)]
 
 

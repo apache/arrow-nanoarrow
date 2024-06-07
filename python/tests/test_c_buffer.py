@@ -369,41 +369,29 @@ def test_c_buffer_from_timestamp_iterable():
     d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
     d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
     d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
-    buffer = na.c_buffer([d1, d2, d3], na.timestamp("ms"))
-    assert buffer.data_type == "int64"
-    assert buffer.element_size_bits == 64
-    assert buffer.itemsize == 8
-    assert list(buffer) == [d1, d2, d3]
+    with pytest.raises(ValueError):
+        na.c_buffer([d1, d2, d3], na.timestamp("ms"))
 
 
 def test_c_buffer_from_date64_iterable():
     unix_epoch = date(1970, 1, 1)
     d1 = date(1970, 1, 2)
     diff_in_milliseconds = int(round((d1 - unix_epoch).total_seconds() * 1e3))
-    buffer = na.c_buffer([diff_in_milliseconds], na.date64())
-    assert buffer.data_type == "int64"
-    assert buffer.element_size_bits == 64
-    assert buffer.itemsize == 8
-    assert list(buffer) == [86400000]
+    with pytest.raises(ValueError):
+        na.c_buffer([diff_in_milliseconds], na.date64())
 
 
 def test_c_buffer_from_date32_iterable():
     unix_epoch = date(1970, 1, 1)
     d1 = date(1970, 1, 2)
     diff_in_days = (d1 - unix_epoch).days
-    buffer = na.c_buffer([diff_in_days], na.date32())
-    assert buffer.data_type == "int32"
-    assert buffer.element_size_bits == 32
-    assert buffer.itemsize == 4
-    assert list(buffer) == [1]
+    with pytest.raises(ValueError):
+        na.c_buffer([diff_in_days], na.date32())
 
 
 def test_c_buffer_from_duration_iterable():
     unix_epoch = date(1970, 1, 1)
     d1 = date(1970, 1, 2)
     diff_in_milliseconds = int(round((d1 - unix_epoch).total_seconds() * 1e3))
-    buffer = na.c_buffer([diff_in_milliseconds], na.duration("ms"))
-    assert buffer.data_type == "int64"
-    assert buffer.element_size_bits == 64
-    assert buffer.itemsize == 8
-    assert list(buffer) == [86400000]
+    with pytest.raises(ValueError):
+        na.c_buffer([diff_in_milliseconds], na.duration("ms"))
