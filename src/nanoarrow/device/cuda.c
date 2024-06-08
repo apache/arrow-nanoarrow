@@ -680,7 +680,7 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopy(struct ArrowDeviceArrayView* 
                                                    struct ArrowDeviceArray* dst) {
   // For CUDA_HOST, the default implementation is sufficient
   // TODO: Make sure we've synchronized here when CUDA_HOST is the source.
-  // cuCtxSynchronize() is probaby necessary there (since the implementation
+  // cuCtxSynchronize() is probably necessary there (since the implementation
   // calls raw memcpys)
 
   switch (src->device->device_type) {
