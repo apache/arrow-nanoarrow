@@ -66,6 +66,7 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   switch (storage_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
     case NANOARROW_TYPE_NA:
+    case NANOARROW_TYPE_RUN_END_ENCODED:
       layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_NONE;
       layout->buffer_data_type[0] = NANOARROW_TYPE_UNINITIALIZED;
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_NONE;
@@ -576,6 +577,8 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType type) {
       return "+s";
     case NANOARROW_TYPE_MAP:
       return "+m";
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      return "+r";
 
     default:
       return NULL;
@@ -607,6 +610,13 @@ static int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaSetName(schema->children[0]->children[1], "value"));
       break;
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 2));
+      ArrowSchemaInit(schema->children[0]);
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "run_ends"));
+      schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+      ArrowSchemaInit(schema->children[1]);
+      NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[1], "values"));
     default:
       break;
   }
@@ -727,6 +737,28 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
 
   buffer[n_chars] = '\0';
   return ArrowSchemaSetFormat(schema, buffer);
+}
+
+ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
+                                               enum ArrowType run_end_type) {
+  switch (run_end_type) {
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_INT64:
+      break;
+    default:
+      return EINVAL;
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetFormat(
+      schema, ArrowSchemaFormatTemplate(NANOARROW_TYPE_RUN_END_ENCODED)));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowSchemaInitChildrenIfNeeded(schema, NANOARROW_TYPE_RUN_END_ENCODED));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema->children[0], run_end_type));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_UNINITIALIZED));
+
+  return NANOARROW_OK;
 }
 
 static const char* ArrowTimeUnitFormatString(enum ArrowTimeUnit time_unit) {
@@ -1202,6 +1234,13 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           *format_end_out = format + 2;
           return NANOARROW_OK;
 
+        // run end encoded has no buffer at all
+        case 'r':
+          schema_view->storage_type = NANOARROW_TYPE_RUN_END_ENCODED;
+          schema_view->type = NANOARROW_TYPE_RUN_END_ENCODED;
+          *format_end_out = format + 2;
+          return NANOARROW_OK;
+
         // just validity buffer
         case 'w':
           if (format[2] != ':' || format[3] == '\0') {
@@ -1575,6 +1614,9 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       return ArrowSchemaViewValidateNChildren(schema_view, 1, error);
+
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      return ArrowSchemaViewValidateNChildren(schema_view, 2, error);
 
     case NANOARROW_TYPE_STRUCT:
       return ArrowSchemaViewValidateNChildren(schema_view, -1, error);
@@ -2123,6 +2165,7 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
   switch (storage_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
     case NANOARROW_TYPE_NA:
+    case NANOARROW_TYPE_RUN_END_ENCODED:
       array->n_buffers = 0;
       break;
 
@@ -2865,6 +2908,15 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                       (long)array_view->n_children);
         return EINVAL;
       }
+      break;
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      if (array_view->n_children != 2) {
+        ArrowErrorSet(
+            error, "Expected 2 children for %s array but found %ld child arrays",
+            ArrowTypeString(array_view->storage_type), (long)array_view->n_children);
+        return EINVAL;
+      }
+      break;
     default:
       break;
   }
@@ -2900,6 +2952,68 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
         return EINVAL;
       }
       break;
+
+    case NANOARROW_TYPE_RUN_END_ENCODED: {
+      if (array_view->n_children != 2) {
+        ArrowErrorSet(error,
+                      "Expected 2 children for run-end encoded array but found %ld",
+                      (long)array_view->n_children);
+        return EINVAL;
+      }
+      struct ArrowArrayView* run_ends_view = array_view->children[0];
+      struct ArrowArrayView* values_view = array_view->children[1];
+      int64_t max_length;
+      switch (run_ends_view->storage_type) {
+        case NANOARROW_TYPE_INT16:
+          max_length = INT16_MAX;
+          break;
+        case NANOARROW_TYPE_INT32:
+          max_length = INT32_MAX;
+          break;
+        case NANOARROW_TYPE_INT64:
+          max_length = INT64_MAX;
+          break;
+        default:
+          ArrowErrorSet(
+              error,
+              "Run-end encoded array only supports INT16, INT32 or INT64 run-ends "
+              "but found run-ends type %s",
+              ArrowTypeString(run_ends_view->storage_type));
+          return EINVAL;
+      }
+      // uint64_t is used here to avoid overflow when adding the offset and length
+      if ((uint64_t)array_view->offset + (uint64_t)array_view->length >
+          (uint64_t)max_length) {
+        ArrowErrorSet(
+            error,
+            "Offset + length of a run-end encoded array must fit in a value"
+            " of the run end type %s, but offset + length is %lu while the "
+            "allowed maximum is %lu",
+            ArrowTypeString(run_ends_view->storage_type),
+            (unsigned long)array_view->offset + (unsigned long)array_view->length,
+            (unsigned long)max_length);
+        return EINVAL;
+      }
+      if (run_ends_view->length > values_view->length) {
+        ArrowErrorSet(
+            error, "Length of run_ends is greater than the length of values: %ld > %ld",
+            (long)run_ends_view->length, (long)values_view->length);
+        return EINVAL;
+      }
+      if (run_ends_view->length == 0 && values_view->length != 0) {
+        ArrowErrorSet(error,
+                      "Run-end encoded array has zero length %ld, but values array has "
+                      "non-zero length",
+                      (long)values_view->length);
+        return EINVAL;
+      }
+      if (run_ends_view->null_count != 0) {
+        ArrowErrorSet(error, "Null count must be 0 for run ends array, but is %ld",
+                      (long)run_ends_view->null_count);
+        return EINVAL;
+      }
+      break;
+    }
     default:
       break;
   }
@@ -3049,6 +3163,18 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
       }
       break;
+
+    case NANOARROW_TYPE_RUN_END_ENCODED: {
+      struct ArrowArrayView* run_ends_view = array_view->children[0];
+      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      if (last_run_end < 1) {
+        ArrowErrorSet(error,
+                      "All run ends must be greater than 0 but the first run end is %ld",
+                      (long)last_run_end);
+        return EINVAL;
+      }
+      break;
+    }
     default:
       break;
   }
@@ -3214,6 +3340,30 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
             (long)i, (int)child_id, (long)child_length, (long)offset);
         return EINVAL;
       }
+    }
+  }
+
+  if (array_view->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
+    struct ArrowArrayView* run_ends_view = array_view->children[0];
+    int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+    for (int64_t i = 1; i < run_ends_view->length; i++) {
+      const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
+      if (run_end <= last_run_end) {
+        ArrowErrorSet(error,
+                      "Every run end must be strictly greater than the previous run end, "
+                      "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
+                      (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
+        return EINVAL;
+      }
+      last_run_end = run_end;
+    }
+    last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
+    if (last_run_end < (array_view->offset + array_view->length)) {
+      ArrowErrorSet(error,
+                    "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
+                    (long)last_run_end, (long)(array_view->offset + array_view->length),
+                    (long)array_view->offset, (long)array_view->length);
+      return EINVAL;
     }
   }
 
