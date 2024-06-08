@@ -1096,6 +1096,17 @@ cdef class CSchemaView:
         return self._schema_view.storage_type
 
     @property
+    def storage_buffer_format(self):
+        if self.buffer_format is not None:
+            return self.buffer_format
+        elif self._schema_view.type == NANOARROW_TYPE_DATE32:
+            return 'i'
+        elif self._schema_view.type in (NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
+            return 'q'
+        else:
+            return None
+
+    @property
     def buffer_format(self):
         """The Python struct format representing an element of this type
         or None if there is no Python format string that can represent this

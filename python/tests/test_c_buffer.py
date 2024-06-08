@@ -17,6 +17,7 @@
 
 import struct
 import sys
+from datetime import date, datetime
 
 import pytest
 from nanoarrow._lib import CBuffer, CBufferBuilder
@@ -260,7 +261,7 @@ def test_c_buffer_from_iterable():
     # An Arrow type whose storage type is not the same as its top-level
     # type will error.
     with pytest.raises(ValueError, match="Can't create buffer"):
-        na.c_buffer([1, 2, 3], na.date32())
+        na.c_buffer([1, 2, 3], na.dictionary(na.int32(), na.string()))
 
     with pytest.raises(ValueError, match="Can't create buffer"):
         na.c_buffer([1, 2, 3], na.extension_type(na.int32(), "arrow.test"))
@@ -362,3 +363,35 @@ def test_c_buffer_bitmap_from_iterable():
     builder.write_elements([True, False])
     with pytest.raises(NotImplementedError, match="Append to bitmap"):
         builder.write_elements([True])
+
+
+def test_c_buffer_from_timestamp_iterable():
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    with pytest.raises(ValueError):
+        na.c_buffer([d1, d2, d3], na.timestamp("ms"))
+
+
+def test_c_buffer_from_date64_iterable():
+    unix_epoch = date(1970, 1, 1)
+    d1 = date(1970, 1, 2)
+    diff_in_milliseconds = int(round((d1 - unix_epoch).total_seconds() * 1e3))
+    with pytest.raises(ValueError):
+        na.c_buffer([diff_in_milliseconds], na.date64())
+
+
+def test_c_buffer_from_date32_iterable():
+    unix_epoch = date(1970, 1, 1)
+    d1 = date(1970, 1, 2)
+    diff_in_days = (d1 - unix_epoch).days
+    with pytest.raises(ValueError):
+        na.c_buffer([diff_in_days], na.date32())
+
+
+def test_c_buffer_from_duration_iterable():
+    unix_epoch = date(1970, 1, 1)
+    d1 = date(1970, 1, 2)
+    diff_in_milliseconds = int(round((d1 - unix_epoch).total_seconds() * 1e3))
+    with pytest.raises(ValueError):
+        na.c_buffer([diff_in_milliseconds], na.duration("ms"))

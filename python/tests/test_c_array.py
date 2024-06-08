@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import array
+from datetime import date, datetime
+
 import pytest
 from nanoarrow._lib import CArrayBuilder, NanoarrowException
 from nanoarrow.c_schema import c_schema_view
@@ -514,3 +517,95 @@ def test_c_array_from_buffers_validation():
             validation_level=validation_level,
         )
         assert c_array.length == 2
+
+
+def test_c_array_timestamp_seconds():
+    d1 = int(round(datetime(1970, 1, 1).timestamp()))
+    d2 = int(round(datetime(1985, 12, 31).timestamp()))
+    d3 = int(round(datetime(2005, 3, 4).timestamp()))
+    c_array = na.c_array([d1, d2, d3], na.timestamp("s"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
+def test_c_array_timestamp_seconds_from_pybuffer():
+    d1 = int(round(datetime(1970, 1, 1).timestamp()))
+    d2 = int(round(datetime(1985, 12, 31).timestamp()))
+    d3 = int(round(datetime(2005, 3, 4).timestamp()))
+    c_array = na.c_array(array.array("q", [d1, d2, d3]), na.timestamp("s"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
+def test_c_array_timestamp_milliseconds():
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    c_array = na.c_array([d1, d2, d3], na.timestamp("ms"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
+def test_c_array_timestamp_milliseconds_from_pybuffer():
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    c_array = na.c_array(array.array("q", [d1, d2, d3]), na.timestamp("ms"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
+def test_c_array_timestamp_microseconds():
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e6))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e6))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e6))
+    c_array = na.c_array([d1, d2, d3], na.timestamp("us"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
+def test_c_array_timestamp_nanoseconds():
+    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e9))
+    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e9))
+    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e9))
+    c_array = na.c_array([d1, d2, d3], na.timestamp("ns"))
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [d1, d2, d3]
+
+
+def test_c_array_duration():
+    unix_epoch = date(1970, 1, 1)
+    d1, d2, d3 = date(1970, 1, 2), date(1970, 1, 3), date(1970, 1, 4)
+    d1_duration_in_ms = int(round((d1 - unix_epoch).total_seconds() * 1e3))
+    d2_duration_in_ms = int(round((d2 - unix_epoch).total_seconds() * 1e3))
+    d3_duration_in_ms = int(round((d3 - unix_epoch).total_seconds() * 1e3))
+    c_array = na.c_array(
+        [d1_duration_in_ms, d2_duration_in_ms, d3_duration_in_ms], na.duration("ms")
+    )
+    assert c_array.length == 3
+    assert c_array.null_count == 0
+    view = c_array.view()
+    assert list(view.buffer(0)) == []
+    assert list(view.buffer(1)) == [
+        d1_duration_in_ms,
+        d2_duration_in_ms,
+        d3_duration_in_ms,
+    ]
