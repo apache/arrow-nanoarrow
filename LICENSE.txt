@@ -203,7 +203,6 @@
 
 --------------------------------------------------------------------------------
 
-extensions/nanoarrow_ipc/thirdparty/flatcc, dist/flatcc.c,
-  and dist/flatcc: Apache 2.0
+thirdparty/flatcc, dist/flatcc.c, and dist/flatcc: Apache 2.0
 
 Copyright 2015-2023 Mikkel F. Jørgensen, dvide.com

@@ -31,8 +31,8 @@ fetchcontent_declare(# The name 'nanoarrow' is important here: it allows the IPC
                      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 fetchcontent_makeavailable(nanoarrow)
 
-fetchcontent_declare(nanoarrow_ipc_example_cmake
-                     SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../../extensions/nanoarrow_ipc)
+fetchcontent_declare(nanoarrow_ipc_example_cmake SOURCE_DIR
+                                                 ${CMAKE_CURRENT_LIST_DIR}/../../)
 fetchcontent_makeavailable(nanoarrow_ipc_example_cmake)
 
 # Add the library and link it against nanoarrow and nanoarrow_ipc

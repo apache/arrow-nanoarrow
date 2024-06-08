@@ -28,7 +28,6 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/build-and-test-ipc.yaml'
       - 'src/nanoarrow/**'
-      - 'extensions/nanoarrow_ipc/**'
 
 permissions:
   contents: read
@@ -50,7 +49,6 @@ jobs:
           - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
 
     env:
-      SUBDIR: 'extensions/nanoarrow_ipc'
       NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
@@ -147,4 +145,4 @@ jobs:
         uses: actions/upload-artifact@main
         with:
           name: nanoarrow-ipc-memcheck
-          path: extensions/nanoarrow_ipc/build/Testing/Temporary/MemoryChecker.*.log
+          path: build/Testing/Temporary/MemoryChecker.*.log

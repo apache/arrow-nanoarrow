@@ -29,7 +29,6 @@ on:
       - 'ci/scripts/coverage.sh'
       - 'ci/docker/ubuntu.dockerfile'
       - 'docker-compose.yml'
-      - 'extensions/nanoarrow_ipc/src/**'
       - 'src/**'
       - 'r/**'
       - 'docs/source/**'
