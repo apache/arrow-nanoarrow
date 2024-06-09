@@ -17,7 +17,7 @@
 
 import struct
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import pytest
 from nanoarrow._lib import CBuffer, CBufferBuilder
@@ -366,9 +366,9 @@ def test_c_buffer_bitmap_from_iterable():
 
 
 def test_c_buffer_from_timestamp_iterable():
-    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
-    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
-    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4, tzinfo=timezone.utc).timestamp() * 1e3))
     with pytest.raises(ValueError):
         na.c_buffer([d1, d2, d3], na.timestamp("ms"))
 

@@ -16,7 +16,7 @@
 # under the License.
 
 import array
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import pytest
 from nanoarrow._lib import CArrayBuilder, NanoarrowException
@@ -520,9 +520,9 @@ def test_c_array_from_buffers_validation():
 
 
 def test_c_array_timestamp_seconds():
-    d1 = int(round(datetime(1970, 1, 1).timestamp()))
-    d2 = int(round(datetime(1985, 12, 31).timestamp()))
-    d3 = int(round(datetime(2005, 3, 4).timestamp()))
+    d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp()))
+    d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp()))
+    d3 = int(round(datetime(2005, 3, 4, tzinfo=timezone.utc).timestamp()))
     c_array = na.c_array([d1, d2, d3], na.timestamp("s"))
     assert c_array.length == 3
     assert c_array.null_count == 0
@@ -532,9 +532,9 @@ def test_c_array_timestamp_seconds():
 
 
 def test_c_array_timestamp_seconds_from_pybuffer():
-    d1 = int(round(datetime(1970, 1, 1).timestamp()))
-    d2 = int(round(datetime(1985, 12, 31).timestamp()))
-    d3 = int(round(datetime(2005, 3, 4).timestamp()))
+    d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp()))
+    d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp()))
+    d3 = int(round(datetime(2005, 3, 4, tzinfo=timezone.utc).timestamp()))
     c_array = na.c_array(array.array("q", [d1, d2, d3]), na.timestamp("s"))
     assert c_array.length == 3
     assert c_array.null_count == 0
@@ -544,9 +544,9 @@ def test_c_array_timestamp_seconds_from_pybuffer():
 
 
 def test_c_array_timestamp_milliseconds():
-    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
-    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
-    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4, tzinfo=timezone.utc).timestamp() * 1e3))
     c_array = na.c_array([d1, d2, d3], na.timestamp("ms"))
     assert c_array.length == 3
     assert c_array.null_count == 0
@@ -556,9 +556,9 @@ def test_c_array_timestamp_milliseconds():
 
 
 def test_c_array_timestamp_milliseconds_from_pybuffer():
-    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e3))
-    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e3))
-    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e3))
+    d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp() * 1e3))
+    d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp() * 1e3))
+    d3 = int(round(datetime(2005, 3, 4, tzinfo=timezone.utc).timestamp() * 1e3))
     c_array = na.c_array(array.array("q", [d1, d2, d3]), na.timestamp("ms"))
     assert c_array.length == 3
     assert c_array.null_count == 0
@@ -568,9 +568,9 @@ def test_c_array_timestamp_milliseconds_from_pybuffer():
 
 
 def test_c_array_timestamp_microseconds():
-    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e6))
-    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e6))
-    d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e6))
+    d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp() * 1e6))
+    d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp() * 1e6))
+    d3 = int(round(datetime(2005, 3, 4, tzinfo=timezone.utc).timestamp() * 1e6))
     c_array = na.c_array([d1, d2, d3], na.timestamp("us"))
     assert c_array.length == 3
     assert c_array.null_count == 0
@@ -580,8 +580,8 @@ def test_c_array_timestamp_microseconds():
 
 
 def test_c_array_timestamp_nanoseconds():
-    d1 = int(round(datetime(1970, 1, 1).timestamp() * 1e9))
-    d2 = int(round(datetime(1985, 12, 31).timestamp() * 1e9))
+    d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp() * 1e9))
+    d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp() * 1e9))
     d3 = int(round(datetime(2005, 3, 4).timestamp() * 1e9))
     c_array = na.c_array([d1, d2, d3], na.timestamp("ns"))
     assert c_array.length == 3
