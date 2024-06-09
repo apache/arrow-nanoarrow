@@ -60,6 +60,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeFixedSize)
 #define ArrowSchemaSetTypeDecimal \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDecimal)
+#define ArrowSchemaSetTypeRunEndEncoded \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeRunEndEncoded)
 #define ArrowSchemaSetTypeDateTime \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDateTime)
 #define ArrowSchemaSetTypeUnion \
@@ -371,6 +373,17 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
 ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
                                          int32_t decimal_precision,
                                          int32_t decimal_scale);
+
+/// \brief Set the format field of a run-end encoded schema
+///
+/// Returns EINVAL for run_end_type that is not
+/// NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32 or NANOARROW_TYPE_INT64.
+/// Schema must have been initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+/// The caller must call `ArrowSchemaSetTypeXXX(schema->children[1])` to
+/// set the value type. Note that when building arrays using the `ArrowArrayAppendXXX()`
+/// functions, the run-end encoded array's logical length must be updated manually.
+ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
+                                               enum ArrowType run_end_type);
 
 /// \brief Set the format field of a time, timestamp, or duration schema
 ///

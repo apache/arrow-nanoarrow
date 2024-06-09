@@ -450,7 +450,8 @@ enum ArrowType {
   NANOARROW_TYPE_LARGE_STRING,
   NANOARROW_TYPE_LARGE_BINARY,
   NANOARROW_TYPE_LARGE_LIST,
-  NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
+  NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+  NANOARROW_TYPE_RUN_END_ENCODED
 };
 
 /// \brief Get a string value of an enum ArrowType value
@@ -537,6 +538,8 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
       return "large_list";
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       return "interval_month_day_nano";
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      return "run_end_encoded";
     default:
       return NULL;
   }
