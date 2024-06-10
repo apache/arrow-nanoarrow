@@ -16,4 +16,5 @@
 # under the License.
 
 dist/* linguist-generated
+thirdparty/* linguist-vendored
 python/src/nanoarrow/*.pxi linguist-generated

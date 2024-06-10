@@ -465,18 +465,12 @@ if(NANOARROW_BUILD_TESTS)
                           ${NANOARROW_ARROW_TARGET}
                           gtest_main
                           ipc_coverage_config)
-    target_include_directories(nanoarrow_ipc_decoder_test
-                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                                      $<INSTALL_INTERFACE:include>)
     target_link_libraries(nanoarrow_ipc_reader_test
                           nanoarrow_ipc
                           nanoarrow
                           flatccrt
                           gtest_main
                           ipc_coverage_config)
-    target_include_directories(nanoarrow_ipc_reader_test
-                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                                      $<INSTALL_INTERFACE:include>)
     target_link_libraries(nanoarrow_ipc_files_test
                           nanoarrow_ipc
                           nanoarrow
@@ -486,9 +480,6 @@ if(NANOARROW_BUILD_TESTS)
                           ZLIB::ZLIB
                           gtest_main
                           ipc_coverage_config)
-    target_include_directories(nanoarrow_ipc_files_test
-                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                                      $<INSTALL_INTERFACE:include>)
     target_link_libraries(nanoarrow_ipc_hpp_test
                           nanoarrow_ipc
                           nanoarrow

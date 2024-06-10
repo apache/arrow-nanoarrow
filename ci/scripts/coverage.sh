@@ -67,21 +67,8 @@ function main() {
     fi
     mkdir "${SANDBOX_DIR}"
 
-    # Bulid + run tests with gcov for core library
+    # Bulid + run tests with gcov
     show_header "Build + test nanoarrow"
-    mkdir "${SANDBOX_DIR}/nanoarrow"
-    pushd "${SANDBOX_DIR}/nanoarrow"
-
-    cmake "${TARGET_NANOARROW_DIR}" \
-        -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
-    cmake --build .
-    CTEST_OUTPUT_ON_FAILURE=1 ctest .
-
-    popd
-
-    # Build + run tests with gcov for IPC extension
-    show_header "Build + test nanoarrow_ipc"
-    rm -rf "${SANDBOX_DIR}/nanoarrow"
     mkdir "${SANDBOX_DIR}/nanoarrow"
     pushd "${SANDBOX_DIR}/nanoarrow"
 
