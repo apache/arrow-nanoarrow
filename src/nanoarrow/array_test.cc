@@ -21,7 +21,6 @@
 #include <cstdint>
 #include <type_traits>
 
-#include <arrow/config.h>
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
 #include <arrow/array/builder_decimal.h>
@@ -31,12 +30,12 @@
 #include <arrow/array/builder_union.h>
 #include <arrow/c/bridge.h>
 #include <arrow/compare.h>
+#include <arrow/config.h>
 #include <arrow/util/decimal.h>
 
 #if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 12
 #include <arrow/array/builder_run_end.h>
 #endif
-
 
 #include "nanoarrow/nanoarrow.hpp"
 
@@ -2584,20 +2583,6 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   ArrowArrayRelease(&array);
 }
 
-template <
-    typename TypeClass, typename ValueType,
-    typename std::enable_if<std::is_same_v<TypeClass, HalfFloatType>, bool>::type = true>
-auto transform_value(ValueType t) -> uint16_t {
-  return ArrowFloatToHalfFloat(t);
-}
-
-template <
-    typename TypeClass, typename ValueType,
-    typename std::enable_if<!std::is_same_v<TypeClass, HalfFloatType>, bool>::type = true>
-auto transform_value(ValueType t) -> ValueType {
-  return t;
-}
-
 template <typename TypeClass>
 void TestGetFromNumericArrayView() {
   struct ArrowArray array;
@@ -2609,9 +2594,17 @@ void TestGetFromNumericArrayView() {
 
   // Array with nulls
   auto builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(1)));
-  ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(4)));
+
+  if (type->id() == Type::HALF_FLOAT) {
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1)));
+    ARROW_EXPECT_OK(builder.AppendNulls(2));
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(4)));
+  } else {
+    ARROW_EXPECT_OK(builder.Append(1));
+    ARROW_EXPECT_OK(builder.AppendNulls(2));
+    ARROW_EXPECT_OK(builder.Append(4));
+  }
+
   auto maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   auto arrow_array = maybe_arrow_array.ValueUnsafe();
@@ -2642,8 +2635,15 @@ void TestGetFromNumericArrayView() {
 
   // Array without nulls (Arrow does not allocate the validity buffer)
   builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(1)));
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(2)));
+
+  if (type->id() == Type::HALF_FLOAT) {
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1)));
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(2)));
+  } else {
+    ARROW_EXPECT_OK(builder.Append(1));
+    ARROW_EXPECT_OK(builder.Append(2));
+  }
+
   maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   arrow_array = maybe_arrow_array.ValueUnsafe();
