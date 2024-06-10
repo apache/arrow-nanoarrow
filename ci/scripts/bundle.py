@@ -161,6 +161,40 @@ def bundle_nanoarrow(
         yield f"{output_source_dir}/nanoarrow.c", nanoarrow_c
 
 
+def bundle_nanoarrow_device(
+    root_dir,
+    header_namespace="nanoarrow/",
+    output_source_dir="src",
+    output_include_dir="include",
+):
+    root_dir = pathlib.Path(root_dir)
+    src_dir = root_dir / "extensions" / "nanoarrow_device" / "src" / "nanoarrow"
+
+    output_source_dir = pathlib.Path(output_source_dir)
+    output_include_dir = pathlib.Path(output_include_dir) / header_namespace
+
+    # Generate nanoarrow/nanoarrow_device.h
+    nanoarrow_device_h = read_content(src_dir / "nanoarrow_device.h")
+    nanoarrow_device_h = namespace_nanoarrow_includes(
+        nanoarrow_device_h, header_namespace
+    )
+    yield f"{output_include_dir}/nanoarrow_device.h", nanoarrow_device_h
+
+    # Generate nanoarrow/nanoarrow_device.hpp
+    nanoarrow_device_hpp = read_content(src_dir / "nanoarrow_device.hpp")
+    nanoarrow_device_hpp = namespace_nanoarrow_includes(
+        nanoarrow_device_hpp, header_namespace
+    )
+    yield f"{output_include_dir}/nanoarrow_device.hpp", nanoarrow_device_hpp
+
+    # Generate nanoarrow/nanoarrow_device.c
+    nanoarrow_device_c = read_content(src_dir / "nanoarrow_device.c")
+    nanoarrow_device_c = namespace_nanoarrow_includes(
+        nanoarrow_device_c, header_namespace
+    )
+    yield f"{output_source_dir}/nanoarrow_device.c", nanoarrow_device_c
+
+
 def ensure_output_path_exists(out_path: pathlib.Path):
     if out_path.is_dir() and out_path.exists():
         return
@@ -211,6 +245,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--cpp", help="Bundle sources as C++ where possible", action="store_true"
     )
+    parser.add_argument(
+        "--with-device", help="Include nanoarrow_device sources/headers", action="store_true"
+    )
 
     args = parser.parse_args()
     if args.include_output_dir is None:
@@ -220,13 +257,25 @@ if __name__ == "__main__":
 
     root_dir = pathlib.Path(__file__).parent.parent.parent
 
-    bundler = bundle_nanoarrow(
-        root_dir,
-        symbol_namespace=args.symbol_namespace,
-        header_namespace=args.header_namespace,
-        output_source_dir=args.source_output_dir,
-        output_include_dir=args.include_output_dir,
-        cpp=args.cpp,
+    # Bundle nanoarrow
+    do_bundle(
+        bundle_nanoarrow(
+            root_dir,
+            symbol_namespace=args.symbol_namespace,
+            header_namespace=args.header_namespace,
+            output_source_dir=args.source_output_dir,
+            output_include_dir=args.include_output_dir,
+            cpp=args.cpp,
+        )
     )
 
-    do_bundle(bundler)
+    # Bundle nanoarrow_device
+    if args.with_device:
+        do_bundle(
+            bundle_nanoarrow_device(
+                root_dir,
+                header_namespace=args.header_namespace,
+                output_source_dir=args.source_output_dir,
+                output_include_dir=args.include_output_dir,
+            )
+        )
