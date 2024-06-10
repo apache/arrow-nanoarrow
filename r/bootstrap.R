@@ -36,26 +36,15 @@ run_bundler <- function() {
     "--symbol-namespace=RPkg",
     "--header-namespace=''",
     "--include-output-dir=src",
-    "--source-output-dir=src"
+    "--source-output-dir=src",
+    "--with-ipc",
+    "--with-flatcc"
   )
   command <- sprintf(
     "python3 ../ci/scripts/bundle.py  %s",
     paste(args, collapse = " ")
   )
 
-  exit_code <- system(command)
-  message(sprintf("[%d] %s", exit_code, command))
-  exit_code == 0
-}
-
-run_cmake <- function(args, wd = ".") {
-  force(args)
-
-  previous_wd <- getwd()
-  setwd(dir = wd)
-  on.exit(setwd(dir = previous_wd))
-
-  command <- sprintf("%s %s", cmake_command, paste(args, collapse = " "))
   exit_code <- system(command)
   message(sprintf("[%d] %s", exit_code, command))
   exit_code == 0
@@ -83,9 +72,11 @@ if (!file.exists(file.path(dist_dir, "nanoarrow.h"))) {
 
 files_to_vendor <- file.path(
   dist_dir,
-  c("nanoarrow.c", "nanoarrow.h",
+  c(
+    "nanoarrow.c", "nanoarrow.h",
     "nanoarrow_ipc.c", "nanoarrow_ipc.h",
-    "flatcc.c", "flatcc")
+    "flatcc.c", "flatcc"
+  )
 )
 
 if (all(file.exists(files_to_vendor))) {
@@ -111,6 +102,6 @@ if (all(file.exists(files_to_vendor))) {
   writeLines(gsub("^#pragma", "/**/#pragma", lines), f)
 
   # Remove unused files
-  unused_files <- list.files("src", "\\.hpp$",  full.names = TRUE)
+  unused_files <- list.files("src", "\\.hpp$", full.names = TRUE)
   unlink(unused_files)
 }

@@ -19,6 +19,7 @@ import io
 import os
 import pathlib
 import re
+import glob
 
 
 def read_content(path_or_content):
@@ -126,7 +127,11 @@ def bundle_nanoarrow(
     yield f"{output_include_dir}/nanoarrow.h", nanoarrow_h
 
     # Generate files that don't need special handling
-    for filename in ["nanoarrow.hpp", "nanoarrow_testing.hpp", "nanoarrow_gtest_util.hpp"]:
+    for filename in [
+        "nanoarrow.hpp",
+        "nanoarrow_testing.hpp",
+        "nanoarrow_gtest_util.hpp",
+    ]:
         content = read_content(src_dir / filename)
         content = namespace_nanoarrow_includes(content, header_namespace)
         yield f"{output_include_dir}/{filename}", content
@@ -160,11 +165,82 @@ def bundle_nanoarrow_device(
     output_source_dir = pathlib.Path(output_source_dir)
     output_include_dir = pathlib.Path(output_include_dir) / header_namespace
 
-    # Generate files that don't need special handling
-    for filename in ["nanoarrow_device.h", "nanoarrow_device.hpp", "nanoarrow_device.c"]:
+    # Generate headers
+    for filename in ["nanoarrow_device.h", "nanoarrow_device.hpp"]:
         content = read_content(src_dir / filename)
         content = namespace_nanoarrow_includes(content, header_namespace)
         yield f"{output_include_dir}/{filename}", content
+
+    # Generate sources
+    for filename in ["nanoarrow_device.c"]:
+        content = read_content(src_dir / filename)
+        content = namespace_nanoarrow_includes(content, header_namespace)
+        yield f"{output_source_dir}/{filename}", content
+
+
+def bundle_nanoarrow_ipc(
+    root_dir,
+    header_namespace="nanoarrow/",
+    output_source_dir="src",
+    output_include_dir="include",
+):
+    root_dir = pathlib.Path(root_dir)
+    src_dir = root_dir / "extensions" / "nanoarrow_ipc" / "src" / "nanoarrow"
+
+    output_source_dir = pathlib.Path(output_source_dir)
+    output_include_dir = pathlib.Path(output_include_dir) / header_namespace
+
+    # Generate headers
+    for filename in [
+        "nanoarrow_ipc.h",
+        "nanoarrow_ipc.hpp",
+        "nanoarrow_ipc_flatcc_generated.h",
+    ]:
+        content = read_content(src_dir / filename)
+        content = namespace_nanoarrow_includes(content, header_namespace)
+        yield f"{output_include_dir}/{filename}", content
+
+    nanoarrow_ipc_c = concatenate_content(
+        [src_dir / "nanoarrow_ipc_decoder.c", src_dir / "nanoarrow_ipc_reader.c"]
+    )
+    nanoarrow_ipc_c = namespace_nanoarrow_includes(nanoarrow_ipc_c, header_namespace)
+    yield f"{output_source_dir}/nanoarrow_ipc.c", nanoarrow_ipc_c
+
+
+def bundle_flatcc(
+    root_dir,
+    output_source_dir="src",
+    output_include_dir="include",
+):
+    root_dir = pathlib.Path(root_dir)
+    flatcc_dir = root_dir / "extensions" / "nanoarrow_ipc" / "thirdparty" / "flatcc"
+
+    output_source_dir = pathlib.Path(output_source_dir)
+    output_include_dir = pathlib.Path(output_include_dir)
+
+    # Generate headers
+    header_files = glob.glob(
+        "flatcc/**/*.h",
+        root_dir=flatcc_dir / "include",
+        recursive=True,
+    )
+    for filename in header_files:
+        yield f"{output_include_dir}/{filename}", read_content(
+            flatcc_dir / "include" / filename
+        )
+
+    # Generate sources
+    src_dir = flatcc_dir / "src" / "runtime"
+    flatcc_c = concatenate_content(
+        [
+            src_dir / "builder.c",
+            src_dir / "emitter.c",
+            src_dir / "verifier.c",
+            src_dir / "refmap.c",
+        ]
+    )
+
+    yield f"{output_source_dir}/flatcc.c", flatcc_c
 
 
 def ensure_output_path_exists(out_path: pathlib.Path):
@@ -218,7 +294,19 @@ if __name__ == "__main__":
         "--cpp", help="Bundle sources as C++ where possible", action="store_true"
     )
     parser.add_argument(
-        "--with-device", help="Include nanoarrow_device sources/headers", action="store_true"
+        "--with-device",
+        help="Include nanoarrow_device sources/headers",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--with-ipc",
+        help="Include nanoarrow_ipc sources/headers",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--with-flatcc",
+        help="Include flatcc sources/headers",
+        action="store_true",
     )
 
     args = parser.parse_args()
@@ -247,6 +335,27 @@ if __name__ == "__main__":
             bundle_nanoarrow_device(
                 root_dir,
                 header_namespace=args.header_namespace,
+                output_source_dir=args.source_output_dir,
+                output_include_dir=args.include_output_dir,
+            )
+        )
+
+    # Bundle nanoarrow_ipc
+    if args.with_ipc:
+        do_bundle(
+            bundle_nanoarrow_ipc(
+                root_dir,
+                header_namespace=args.header_namespace,
+                output_source_dir=args.source_output_dir,
+                output_include_dir=args.include_output_dir,
+            )
+        )
+
+    # Bundle flatcc
+    if args.with_flatcc:
+        do_bundle(
+            bundle_flatcc(
+                root_dir,
                 output_source_dir=args.source_output_dir,
                 output_include_dir=args.include_output_dir,
             )
