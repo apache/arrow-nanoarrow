@@ -68,7 +68,7 @@ function main() {
     show_header "Run test suite"
     meson configure -Dtests=true -Db_coverage=true
     meson compile
-    meson test --wrap valgrind --print-errorlogs
+    meson test --wrap='valgrind --track-origins=yes' --print-errorlogs
 
     show_header "Run benchmarks"
     meson configure -Dbenchmarks=true
