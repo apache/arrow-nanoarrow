@@ -53,6 +53,10 @@ option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
 option(NANOARROW_ARROW_STATIC
        "Use a statically-linked Arrow C++ build when linking tests" OFF)
 
+if(NANOARROW_IPC)
+  add_library(ipc_coverage_config INTERFACE)
+endif()
+
 if(NANOARROW_NAMESPACE)
   set(NANOARROW_NAMESPACE_DEFINE "#define NANOARROW_NAMESPACE ${NANOARROW_NAMESPACE}")
 else()
@@ -72,41 +76,40 @@ configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
 if(NANOARROW_IPC AND (NANOARROW_BUILD_TESTS OR NOT NANOARROW_BUNDLE))
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY
-    ON
-    CACHE INTERNAL "")
+      ON
+      CACHE INTERNAL "")
   set(FLATCC_REFLECTION
-    OFF
-    CACHE INTERNAL "")
+      OFF
+      CACHE INTERNAL "")
 
   # A flatcc installation is unlikely, so default to building the vendored one
   if(NOT NANOARROW_FLATCC_INCLUDE_DIR AND NOT NANOARROW_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC
-      thirdparty/flatcc/src/runtime/builder.c
-      thirdparty/flatcc/src/runtime/emitter.c
-      thirdparty/flatcc/src/runtime/verifier.c
-      thirdparty/flatcc/src/runtime/refmap.c)
+                thirdparty/flatcc/src/runtime/builder.c
+                thirdparty/flatcc/src/runtime/emitter.c
+                thirdparty/flatcc/src/runtime/verifier.c
+                thirdparty/flatcc/src/runtime/refmap.c)
 
-    set(NANOARROW_FLATCC_INCLUDE_DIR
-      ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc/include)
+    set(NANOARROW_FLATCC_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc/include)
     target_include_directories(flatccrt
-      PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
-      $<INSTALL_INTERFACE:include>)
+                               PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
+                                      $<INSTALL_INTERFACE:include>)
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt
-      PROPERTIES IMPORTED_LOCATION
-      "${NANOARROW_FLATCC_LIB_DIR}/libflatccrt.a"
-      INTERFACE_INCLUDE_DIRECTORIES
-      "${NANOARROW_FLATCC_INCLUDE_DIR}")
+                          PROPERTIES IMPORTED_LOCATION
+                                     "${NANOARROW_FLATCC_LIB_DIR}/libflatccrt.a"
+                                     INTERFACE_INCLUDE_DIRECTORIES
+                                     "${NANOARROW_FLATCC_INCLUDE_DIR}")
 
   elseif(NOT NANOARROW_FLATCC_INCLUDE_DIR)
     set(NANOARROW_FLATCC_INCLUDE_DIR ${NANOARROW_FLATCC_ROOT_DIR}/include)
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt
-      PROPERTIES IMPORTED_LOCATION
-      "${NANOARROW_FLATCC_ROOT_DIR}/lib/libflatccrt.a"
-      INTERFACE_INCLUDE_DIRECTORIES
-      "${NANOARROW_FLATCC_INCLUDE_DIR}")
+                          PROPERTIES IMPORTED_LOCATION
+                                     "${NANOARROW_FLATCC_ROOT_DIR}/lib/libflatccrt.a"
+                                     INTERFACE_INCLUDE_DIRECTORIES
+                                     "${NANOARROW_FLATCC_INCLUDE_DIR}")
   endif()
 endif()
 
@@ -179,7 +182,7 @@ if(NANOARROW_BUNDLE)
                 ${NANOARROW_HPP_TEMP}
                 ${NANOARROW_GTEST_UTIL_HPP_TEMP}
                 ${NANOARROW_TESTING_HPP_TEMP}
-                DESTINATION ".")
+          DESTINATION ".")
 
   if(NANOARROW_IPC)
     # nanoarrow_ipc.h is already standalone
@@ -217,13 +220,13 @@ if(NANOARROW_BUNDLE)
       # Bundle flatcc into the nanoarrow_ipc library instead of
       # link to the flatccrt static lib we declared above.
       add_library(nanoarrow_ipc ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_ipc.c
-        ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/flatcc.c)
+                                ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/flatcc.c)
 
       target_include_directories(nanoarrow_ipc
-        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-        $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
-        $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-        #$<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
+                                 PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                        $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
+                                        $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+                                        $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
       )
     endif()
 
@@ -326,7 +329,7 @@ else()
                                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                       $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
                                       $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-                                      #$<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
+                                      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
 
     install(TARGETS nanoarrow_ipc DESTINATION lib)
@@ -455,30 +458,42 @@ if(NANOARROW_BUILD_TESTS)
       target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
     endif()
     target_link_libraries(nanoarrow_ipc_decoder_test
-      nanoarrow_ipc
-      nanoarrow
-      ${NANOARROW_ARROW_TARGET}
-      gtest_main
-      ipc_coverage_config)
+                          nanoarrow_ipc
+                          nanoarrow
+                          flatccrt
+                          ${NANOARROW_ARROW_TARGET}
+                          gtest_main
+                          ipc_coverage_config)
+    target_include_directories(nanoarrow_ipc_decoder_test
+                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                      $<INSTALL_INTERFACE:include>)
     target_link_libraries(nanoarrow_ipc_reader_test
-      nanoarrow_ipc
-      nanoarrow
-      gtest_main
-      ipc_coverage_config)
+                          nanoarrow_ipc
+                          nanoarrow
+                          flatccrt
+                          gtest_main
+                          ipc_coverage_config)
+    target_include_directories(nanoarrow_ipc_reader_test
+                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                      $<INSTALL_INTERFACE:include>)
     target_link_libraries(nanoarrow_ipc_files_test
-      nanoarrow_ipc
-      nanoarrow
-      ${NANOARROW_ARROW_TARGET}
-      nlohmann_json
-      ZLIB::ZLIB
-      gtest_main
-      ipc_coverage_config)
+                          nanoarrow_ipc
+                          nanoarrow
+                          flatccrt
+                          ${NANOARROW_ARROW_TARGET}
+                          nlohmann_json
+                          ZLIB::ZLIB
+                          gtest_main
+                          ipc_coverage_config)
+    target_include_directories(nanoarrow_ipc_files_test
+                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                      $<INSTALL_INTERFACE:include>)
     target_link_libraries(nanoarrow_ipc_hpp_test
-      nanoarrow_ipc
-      nanoarrow
-      ${NANOARROW_ARROW_TARGET}
-      gtest_main
-      ipc_coverage_config)
+                          nanoarrow_ipc
+                          nanoarrow
+                          ${NANOARROW_ARROW_TARGET}
+                          gtest_main
+                          ipc_coverage_config)
 
     include(GoogleTest)
     gtest_discover_tests(nanoarrow_ipc_decoder_test)
