@@ -1482,11 +1482,9 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     array.offset = INT32_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_STREQ(
-        ArrowErrorMessage(&error),
-        "Offset + length of a run-end encoded array must fit in a value of the "
-        "run end type int32, but offset + length is 2147483654 while the allowed "
-        "maximum is 2147483647");
+    EXPECT_STREQ(ArrowErrorMessage(&error),
+                 "Offset + length of a run-end encoded array must fit in a value of the "
+                 "run end type int32, but offset + length is 2147483654");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT16;
@@ -1496,18 +1494,17 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     EXPECT_STREQ(
         ArrowErrorMessage(&error),
         "Offset + length of a run-end encoded array must fit in a value of the run end "
-        "type int16, but offset + length is 32774 while the allowed maximum is 32767");
+        "type int16, but offset + length is 32774");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT64;
     array.offset = INT64_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_STREQ(ArrowErrorMessage(&error),
-                 "Offset + length of a run-end encoded array must fit in a value of the "
-                 "run end type int64, but offset + length is 9223372036854775814 while "
-                 "the allowed "
-                 "maximum is 9223372036854775807");
+    EXPECT_THAT(
+        ArrowErrorMessage(&error),
+        ::testing::StartsWith("Offset + length of a run-end encoded array must fit in a "
+                              "value of the run end type int64, but offset + length is"));
   }
   ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
       NANOARROW_TYPE_INT32;

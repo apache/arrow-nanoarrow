@@ -891,11 +891,9 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
         ArrowErrorSet(
             error,
             "Offset + length of a run-end encoded array must fit in a value"
-            " of the run end type %s, but offset + length is %lu while the "
-            "allowed maximum is %lu",
+            " of the run end type %s, but offset + length is %ld",
             ArrowTypeString(run_ends_view->storage_type),
-            (unsigned long)array_view->offset + (unsigned long)array_view->length,
-            (unsigned long)max_length);
+            (long)array_view->offset + (long)array_view->length);
         return EINVAL;
       }
       if (run_ends_view->length > values_view->length) {
