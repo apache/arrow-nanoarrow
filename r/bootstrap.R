@@ -31,6 +31,23 @@ dir.create(dist_dir)
 
 cmake_command <- shQuote(Sys.getenv("CMAKE_BIN", "cmake"))
 
+run_bundler <- function() {
+  args <- c(
+    "--symbol-namespace=RPkg",
+    "--header-namespace=''",
+    "--include-output-dir=src",
+    "--source-output-dir=src"
+  )
+  command <- sprintf(
+    "python3 ../ci/scripts/bundle.py  %s",
+    paste(args, collapse = " ")
+  )
+
+  exit_code <- system(command)
+  message(sprintf("[%d] %s", exit_code, command))
+  exit_code == 0
+}
+
 run_cmake <- function(args, wd = ".") {
   force(args)
 
@@ -92,4 +109,8 @@ if (all(file.exists(files_to_vendor))) {
   f <- "src/flatcc/portable/pdiagnostic.h"
   lines <- readLines(f)
   writeLines(gsub("^#pragma", "/**/#pragma", lines), f)
+
+  # Remove unused files
+  unused_files <- list.files("src", "\\.hpp$",  full.names = TRUE)
+  unlink(unused_files)
 }
