@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build, cmake_args: "-DNANOARROW_IPC_BUILD_APPS=ON"}
+          - {label: default-build, cmake_args: "-DNANOARROW_BUILD_APPS=ON"}
           - {label: default-noatomics, cmake_args: "-DCMAKE_C_FLAGS='-DNANOARROW_IPC_USE_STDATOMIC=0'"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}

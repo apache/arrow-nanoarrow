@@ -81,6 +81,9 @@ function main() {
 
     # Build + run tests with gcov for IPC extension
     show_header "Build + test nanoarrow_ipc"
+    rm -rf "${SANDBOX_DIR}/nanoarrow"
+    mkdir "${SANDBOX_DIR}/nanoarrow"
+    pushd "${SANDBOX_DIR}/nanoarrow"
 
     cmake "${TARGET_NANOARROW_DIR}" \
         -DNANOARROW_IPC=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON

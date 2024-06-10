@@ -22,7 +22,6 @@ on.exit(unlink(temp_dir, recursive = TRUE))
 dir.create(temp_dir)
 
 source_dir <- normalizePath("..", winslash = "/")
-ipc_source_dir <- file.path(source_dir, "extensions", "nanoarrow_ipc")
 build_dir <- file.path(temp_dir, "build")
 ipc_build_dir <- file.path(temp_dir, "build_ipc")
 dist_dir <- file.path(temp_dir, "dist")
@@ -48,15 +47,12 @@ run_cmake <- function(args, wd = ".") {
 file.exists("../CMakeLists.txt") &&
   run_cmake("--version") &&
   run_cmake(
-    sprintf("%s -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=RPkg", source_dir),
+    sprintf("%s -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=RPkg -DNANOARROW_IPC=ON",
+            source_dir),
     wd = build_dir
   ) &&
   run_cmake(
     sprintf("--install %s --prefix=%s", shQuote(build_dir), shQuote(dist_dir))
-  ) &&
-  run_cmake(
-    sprintf("%s -DNANOARROW_IPC_BUNDLE=ON", ipc_source_dir),
-    wd = ipc_build_dir
   ) &&
   run_cmake(
     sprintf("--install %s --prefix=%s", shQuote(ipc_build_dir), shQuote(dist_dir))
