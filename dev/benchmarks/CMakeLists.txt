@@ -55,7 +55,9 @@ fetchcontent_makeavailable(benchmark)
 if(IS_DIRECTORY "${NANOARROW_BENCHMARK_SOURCE_URL}")
   # In nanoarrow >= 0.6.0, optional features use NANOARROW_XXX=ON instead
   # of being packaged as separate projects.
-  set(NANOARROW_IPC ON CACHE INTERNAL "")
+  set(NANOARROW_IPC
+      ON
+      CACHE INTERNAL "")
   fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_URL}")
   fetchcontent_makeavailable(nanoarrow)
 elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
