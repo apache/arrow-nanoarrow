@@ -16,6 +16,7 @@
 # under the License.
 
 import io
+import os
 import pathlib
 import re
 
@@ -60,6 +61,7 @@ def concatenate_content(paths_or_content):
 
 def cmakelist_version(path_or_content):
     content = read_content(path_or_content)
+
     version_match = re.search(r'set\(NANOARROW_VERSION "(.*?)"\)', content)
     if version_match is None:
         raise ValueError(f"Can't find NANOARROW_VERSION in '{path_or_content}'")
@@ -70,11 +72,23 @@ def cmakelist_version(path_or_content):
     return (version,) + tuple(int(component) for component in component_match.groups())
 
 
+def namespace_nanoarrow_includes(path_or_content, header_namespace="nanoarrow"):
+    content = read_content(path_or_content)
+    return re.sub(
+        r'#include "nanoarrow/([^"]+)"', f'#include "{header_namespace}\\1"', content
+    )
+
+
 def bundle_nanoarrow(
-    root_dir, symbol_namespace=None, header_namespace="nanoarrow", cpp=False
+    root_dir,
+    symbol_namespace=None,
+    header_namespace="nanoarrow/",
+    source_namespace="src",
+    cpp=False,
 ):
     root_dir = pathlib.Path(root_dir)
     src_dir = root_dir / "src" / "nanoarrow"
+    include_dir_out = pathlib.Path("include") / header_namespace
 
     version, major, minor, patch = cmakelist_version(root_dir / "CMakeLists.txt")
 
@@ -106,20 +120,26 @@ def bundle_nanoarrow(
     )
 
     nanoarrow_h = re.sub(r'#include "[a-z_.]+"', "", nanoarrow_h)
-    yield f"{header_namespace}/nanoarrow.h", nanoarrow_h
+    yield f"{include_dir_out}/nanoarrow.h", nanoarrow_h
 
     # Generate nanoarrow/nanoarrow.hpp
-    yield f"{header_namespace}/nanoarrow.hpp", read_content(src_dir / "nanoarrow.hpp")
+    nanoarrow_hpp = read_content(src_dir / "nanoarrow.hpp")
+    nanoarrow_hpp = namespace_nanoarrow_includes(nanoarrow_hpp, header_namespace)
+    yield f"{include_dir_out}/nanoarrow.hpp", nanoarrow_hpp
 
     # Generate nanoarrow/nanoarrow_testing.hpp
-    yield f"{header_namespace}/nanoarrow_testing.hpp", read_content(
-        src_dir / "nanoarrow_testing.hpp"
+    nanoarrow_testing_hpp = read_content(src_dir / "nanoarrow_testing.hpp")
+    nanoarrow_testing_hpp = namespace_nanoarrow_includes(
+        nanoarrow_testing_hpp, header_namespace
     )
+    yield f"{include_dir_out}/nanoarrow_testing.hpp", nanoarrow_testing_hpp
 
     # Generate nanoarrow/nanoarrow_gtest_util.hpp
-    yield f"{header_namespace}/nanoarrow_gtest_util.hpp", read_content(
-        src_dir / "nanoarrow_gtest_util.hpp"
+    nanoarrow_gtest_util_hpp = read_content(src_dir / "nanoarrow_gtest_util.hpp")
+    nanoarrow_gtest_util_hpp = namespace_nanoarrow_includes(
+        nanoarrow_gtest_util_hpp, header_namespace
     )
+    yield f"{include_dir_out}/nanoarrow_gtest_util.hpp", nanoarrow_gtest_util_hpp
 
     # Generate nanoarrow/nanoarrow.c
     nanoarrow_c = concatenate_content(
@@ -130,12 +150,35 @@ def bundle_nanoarrow(
             src_dir / "array_stream.c",
         ]
     )
+    nanoarrow_c = namespace_nanoarrow_includes(nanoarrow_c, header_namespace)
 
     if cpp:
-        yield f"{header_namespace}/nanoarrow.cc", nanoarrow_c
+        yield f"{source_namespace}/nanoarrow.cc", nanoarrow_c
     else:
-        yield f"{header_namespace}/nanoarrow.c", nanoarrow_c
+        yield f"{source_namespace}/nanoarrow.c", nanoarrow_c
+
+
+def ensure_output_path_exists(out_path: pathlib.Path):
+    if out_path.is_dir() and out_path.exists():
+        return
+
+    if out_path.is_file() and out_path.exists():
+        raise ValueError(f"Can't create directory '{out_path}': exists and is a file")
+
+    ensure_output_path_exists(out_path.parent)
+    os.mkdir(out_path)
+
+
+def do_bundle(out_dir, bundler):
+    out_dir = pathlib.Path(out_dir)
+
+    for out_file, out_content in bundler:
+        out_path = out_dir / out_file
+        ensure_output_path_exists(out_path.parent)
+        write_content(out_content, out_path)
 
 
 if __name__ == "__main__":
-    list(bundle_nanoarrow(pathlib.Path(__file__).parent.parent.parent))
+    do_bundle(
+        "dist_test", bundle_nanoarrow(pathlib.Path(__file__).parent.parent.parent)
+    )
