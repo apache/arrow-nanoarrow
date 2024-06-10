@@ -92,7 +92,8 @@ endif()
 
 configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
 
-if(NANOARROW_IPC AND (NANOARROW_BUILD_TESTS OR NOT NANOARROW_BUNDLE))
+if((NANOARROW_DEVICE OR NANOARROW_IPC) AND (NANOARROW_BUILD_TESTS OR NOT NANOARROW_BUNDLE
+                                           ))
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY
       ON
@@ -276,7 +277,7 @@ if(NANOARROW_BUNDLE)
     file(WRITE ${NANOARROW_DEVICE_C_TEMP} "${SRC_FILE_CONTENTS}")
 
     # Add a library that the tests can link against (but don't install it)
-    if(NANOARROW_DEVICE_BUILD_TESTS)
+    if(NANOARROW_BUILD_TESTS)
       add_library(nanoarrow_device ${NANOARROW_DEVICE_C_TEMP})
 
       target_include_directories(nanoarrow_device
