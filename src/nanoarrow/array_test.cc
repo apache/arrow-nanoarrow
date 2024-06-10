@@ -21,17 +21,22 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <arrow/config.h>
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
 #include <arrow/array/builder_decimal.h>
 #include <arrow/array/builder_nested.h>
 #include <arrow/array/builder_primitive.h>
-#include <arrow/array/builder_run_end.h>
 #include <arrow/array/builder_time.h>
 #include <arrow/array/builder_union.h>
 #include <arrow/c/bridge.h>
 #include <arrow/compare.h>
 #include <arrow/util/decimal.h>
+
+#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 12
+#include <arrow/array/builder_run_end.h>
+#endif
+
 
 #include "nanoarrow/nanoarrow.hpp"
 
@@ -1569,6 +1574,10 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
+#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#else
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1588,6 +1597,7 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
 
   EXPECT_STREQ(arrow_array.ValueUnsafe()->ToString().c_str(),
                expected_array.ValueUnsafe()->ToString().c_str());
+#endif
 }
 
 TEST(ArrayTest, ArrayTestUnionUtils) {

@@ -548,6 +548,9 @@ TEST(SchemaTest, SchemaCopyDictType) {
 }
 
 TEST(SchemaTest, SchemaCopyRunEndEncodedType) {
+#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+  GTEST_SKIP() << "Arrow C++ REE integration test requires ARROW_VERSION_MAJOR >= 12";
+#else
   struct ArrowSchema schema;
   auto struct_type = run_end_encoded(int32(), float32());
   ARROW_EXPECT_OK(ExportType(*struct_type, &schema));
@@ -565,6 +568,7 @@ TEST(SchemaTest, SchemaCopyRunEndEncodedType) {
 
   ArrowSchemaRelease(&schema);
   ArrowSchemaRelease(&schema_copy);
+#endif
 }
 
 TEST(SchemaTest, SchemaCopyFlags) {
