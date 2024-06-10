@@ -83,12 +83,15 @@ def bundle_nanoarrow(
     root_dir,
     symbol_namespace=None,
     header_namespace="nanoarrow/",
-    source_namespace="src",
+    output_source_dir="src",
+    output_include_dir="include",
     cpp=False,
 ):
     root_dir = pathlib.Path(root_dir)
     src_dir = root_dir / "src" / "nanoarrow"
-    include_dir_out = pathlib.Path("include") / header_namespace
+
+    output_source_dir = pathlib.Path(output_source_dir)
+    output_include_dir = pathlib.Path(output_include_dir) / header_namespace
 
     version, major, minor, patch = cmakelist_version(root_dir / "CMakeLists.txt")
 
@@ -120,26 +123,26 @@ def bundle_nanoarrow(
     )
 
     nanoarrow_h = re.sub(r'#include "[a-z_.]+"', "", nanoarrow_h)
-    yield f"{include_dir_out}/nanoarrow.h", nanoarrow_h
+    yield f"{output_include_dir}/nanoarrow.h", nanoarrow_h
 
     # Generate nanoarrow/nanoarrow.hpp
     nanoarrow_hpp = read_content(src_dir / "nanoarrow.hpp")
     nanoarrow_hpp = namespace_nanoarrow_includes(nanoarrow_hpp, header_namespace)
-    yield f"{include_dir_out}/nanoarrow.hpp", nanoarrow_hpp
+    yield f"{output_include_dir}/nanoarrow.hpp", nanoarrow_hpp
 
     # Generate nanoarrow/nanoarrow_testing.hpp
     nanoarrow_testing_hpp = read_content(src_dir / "nanoarrow_testing.hpp")
     nanoarrow_testing_hpp = namespace_nanoarrow_includes(
         nanoarrow_testing_hpp, header_namespace
     )
-    yield f"{include_dir_out}/nanoarrow_testing.hpp", nanoarrow_testing_hpp
+    yield f"{output_include_dir}/nanoarrow_testing.hpp", nanoarrow_testing_hpp
 
     # Generate nanoarrow/nanoarrow_gtest_util.hpp
     nanoarrow_gtest_util_hpp = read_content(src_dir / "nanoarrow_gtest_util.hpp")
     nanoarrow_gtest_util_hpp = namespace_nanoarrow_includes(
         nanoarrow_gtest_util_hpp, header_namespace
     )
-    yield f"{include_dir_out}/nanoarrow_gtest_util.hpp", nanoarrow_gtest_util_hpp
+    yield f"{output_include_dir}/nanoarrow_gtest_util.hpp", nanoarrow_gtest_util_hpp
 
     # Generate nanoarrow/nanoarrow.c
     nanoarrow_c = concatenate_content(
@@ -153,9 +156,9 @@ def bundle_nanoarrow(
     nanoarrow_c = namespace_nanoarrow_includes(nanoarrow_c, header_namespace)
 
     if cpp:
-        yield f"{source_namespace}/nanoarrow.cc", nanoarrow_c
+        yield f"{output_source_dir}/nanoarrow.cc", nanoarrow_c
     else:
-        yield f"{source_namespace}/nanoarrow.c", nanoarrow_c
+        yield f"{output_source_dir}/nanoarrow.c", nanoarrow_c
 
 
 def ensure_output_path_exists(out_path: pathlib.Path):
@@ -169,16 +172,61 @@ def ensure_output_path_exists(out_path: pathlib.Path):
     os.mkdir(out_path)
 
 
-def do_bundle(out_dir, bundler):
-    out_dir = pathlib.Path(out_dir)
-
+def do_bundle(bundler):
     for out_file, out_content in bundler:
-        out_path = out_dir / out_file
+        out_path = pathlib.Path(out_file)
         ensure_output_path_exists(out_path.parent)
         write_content(out_content, out_path)
 
 
 if __name__ == "__main__":
-    do_bundle(
-        "dist_test", bundle_nanoarrow(pathlib.Path(__file__).parent.parent.parent)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Bundled nanoarrow distribution")
+    parser.add_argument(
+        "--include-output-dir",
+        help="include/ directory in which nanoarrow headers should be placed",
     )
+    parser.add_argument(
+        "--source-output-dir",
+        help="Directory in which nanoarrow source files should be placed",
+    )
+    parser.add_argument(
+        "--symbol-namespace", help="A value with which symbols should be prefixed"
+    )
+    parser.add_argument(
+        "--header-namespace",
+        help="The directory within include-output-dir that nanoarrow headers should be placed",
+        default="nanoarrow/",
+    )
+    parser.add_argument(
+        "--output-dir",
+        help=(
+            "If include-output-dir or source-output-dir are missing, ensures a single output "
+            "directory with include/ and src/ subdirectories containing the headers and sources, "
+            "respectively"
+        ),
+        default="dist",
+    )
+    parser.add_argument(
+        "--cpp", help="Bundle sources as C++ where possible", action="store_true"
+    )
+
+    args = parser.parse_args()
+    if args.include_output_dir is None:
+        args.include_output_dir = pathlib.Path(args.output_dir) / "include"
+    if args.source_output_dir is None:
+        args.source_output_dir = pathlib.Path(args.output_dir) / "src"
+
+    root_dir = pathlib.Path(__file__).parent.parent.parent
+
+    bundler = bundle_nanoarrow(
+        root_dir,
+        symbol_namespace=args.symbol_namespace,
+        header_namespace=args.header_namespace,
+        output_source_dir=args.source_output_dir,
+        output_include_dir=args.include_output_dir,
+        cpp=args.cpp,
+    )
+
+    do_bundle(bundler)
