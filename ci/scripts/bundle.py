@@ -19,7 +19,6 @@ import io
 import os
 import pathlib
 import re
-import glob
 
 
 def read_content(path_or_content):
@@ -219,12 +218,9 @@ def bundle_flatcc(
     output_include_dir = pathlib.Path(output_include_dir)
 
     # Generate headers
-    header_files = glob.glob(
-        "flatcc/**/*.h",
-        root_dir=flatcc_dir / "include",
-        recursive=True,
-    )
-    for filename in header_files:
+    include_dir = flatcc_dir / "include"
+    for abs_filename in include_dir.glob("flatcc/**/*.h"):
+        filename = abs_filename.relative_to(include_dir)
         yield f"{output_include_dir}/{filename}", read_content(
             flatcc_dir / "include" / filename
         )
