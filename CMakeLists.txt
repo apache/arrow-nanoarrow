@@ -128,66 +128,23 @@ if(NANOARROW_IPC AND (NANOARROW_BUILD_TESTS OR NOT NANOARROW_BUNDLE))
 endif()
 
 if(NANOARROW_BUNDLE)
-  # Combine all headers into amalgamation/nanoarrow.h in the build directory
-  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation)
-  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow)
-  set(NANOARROW_H_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.h)
-  file(READ ${CMAKE_BINARY_DIR}/generated/nanoarrow_config.h SRC_FILE_CONTENTS)
-  file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/nanoarrow_types.h SRC_FILE_CONTENTS)
-  file(APPEND ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/nanoarrow.h SRC_FILE_CONTENTS)
-  file(APPEND ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/buffer_inline.h SRC_FILE_CONTENTS)
-  file(APPEND ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/array_inline.h SRC_FILE_CONTENTS)
-  file(APPEND ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
+  find_package(Python3
+               COMPONENTS Interpreter
+               REQUIRED)
 
-  # Remove includes that aren't needed when the headers are concatenated
-  file(READ ${NANOARROW_H_TEMP} SRC_FILE_CONTENTS)
-  string(REGEX REPLACE "#include \"[a-z_.]+\"" "" SRC_FILE_CONTENTS
-                       "${SRC_FILE_CONTENTS}")
-  file(WRITE ${NANOARROW_H_TEMP} "${SRC_FILE_CONTENTS}")
-
-  # Copy nanoarrow.hpp
-  set(NANOARROW_HPP_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.hpp)
-  file(READ src/nanoarrow/nanoarrow.hpp SRC_FILE_CONTENTS)
-  file(WRITE ${NANOARROW_HPP_TEMP} "${SRC_FILE_CONTENTS}")
-
-  # Copy nanoarrow_testing.hpp
-  set(NANOARROW_TESTING_HPP_TEMP
-      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_testing.hpp)
-  file(READ src/nanoarrow/nanoarrow_testing.hpp SRC_FILE_CONTENTS)
-  file(WRITE ${NANOARROW_TESTING_HPP_TEMP} "${SRC_FILE_CONTENTS}")
-
-  # Copy nanoarrow_gtest_util.hpp
-  set(NANOARROW_GTEST_UTIL_HPP_TEMP
-      ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_gtest_util.hpp)
-  file(READ src/nanoarrow/nanoarrow_gtest_util.hpp SRC_FILE_CONTENTS)
-  file(WRITE ${NANOARROW_GTEST_UTIL_HPP_TEMP} "${SRC_FILE_CONTENTS}")
-
-  # Combine all source files into amalgamation/nanoarrow.c in the build directory
   if(NANOARROW_BUNDLE_AS_CPP)
-    set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.cc)
+    execute_process(COMMAND ${Python3_EXECUTABLE}
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ci/scripts/bundle.py
+                            "--output-dir" ${CMAKE_BINARY_DIR}/amalgamation
+                            "--cpp")
+
+    set(NANOARROW_BUILD_SOURCES "${CMAKE_BINARY_DIR}/amalgamation/src/nanoarrow.cc")
   else()
-    set(NANOARROW_C_TEMP ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow.c)
-  endif()
-  file(READ src/nanoarrow/utils.c SRC_FILE_CONTENTS)
-  file(WRITE ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/schema.c SRC_FILE_CONTENTS)
-  file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/array.c SRC_FILE_CONTENTS)
-  file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
-  file(READ src/nanoarrow/array_stream.c SRC_FILE_CONTENTS)
-  file(APPEND ${NANOARROW_C_TEMP} "${SRC_FILE_CONTENTS}")
+    execute_process(COMMAND ${Python3_EXECUTABLE}
+                            ${CMAKE_CURRENT_SOURCE_DIR}/ci/scripts/bundle.py
+                            "--output-dir" ${CMAKE_BINARY_DIR}/amalgamation)
 
-  # Add a library that the tests can link against (but don't install it)
-  if(NANOARROW_BUILD_TESTS)
-    include_directories(${CMAKE_BINARY_DIR}/amalgamation)
-    add_library(nanoarrow ${NANOARROW_C_TEMP})
-    add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
-
-    target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+    set(NANOARROW_BUILD_SOURCES "${CMAKE_BINARY_DIR}/amalgamation/src/nanoarrow.c")
   endif()
 
   # Install the amalgamated header and source
@@ -285,56 +242,82 @@ if(NANOARROW_BUNDLE)
     install(FILES ${NANOARROW_DEVICE_H_TEMP} ${NANOARROW_DEVICE_C_TEMP} DESTINATION ".")
   endif()
 else()
-  add_library(nanoarrow src/nanoarrow/array.c src/nanoarrow/schema.c
-                        src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
-  add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
+  set(NANOARROW_BUILD_SOURCES src/nanoarrow/array.c src/nanoarrow/schema.c
+                              src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
+  set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+endif()
 
-  target_include_directories(nanoarrow
-                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                                    $<INSTALL_INTERFACE:include>)
-  target_include_directories(nanoarrow
-                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
-  )
-  target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+add_library(nanoarrow ${NANOARROW_BUILD_SOURCES})
+add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-      target_compile_options(nanoarrow
-                             PRIVATE -Wall
-                                     -Werror
-                                     -Wextra
-                                     -Wpedantic
-                                     -Wno-type-limits
-                                     -Wmaybe-uninitialized
-                                     -Wunused-result
-                                     -Wconversion
-                                     -Wno-sign-conversion)
-    elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
-                                                        "Clang")
-      target_compile_options(nanoarrow
-                             PRIVATE -Wall
-                                     -Werror
-                                     -Wextra
-                                     -Wpedantic
-                                     -Wdocumentation
-                                     -Wconversion
-                                     -Wno-sign-conversion)
-    endif()
+target_include_directories(nanoarrow
+                           PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                  $<INSTALL_INTERFACE:include>)
+target_include_directories(nanoarrow
+                           PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
+)
+target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(nanoarrow
+                           PRIVATE -Wall
+                                   -Werror
+                                   -Wextra
+                                   -Wpedantic
+                                   -Wno-type-limits
+                                   -Wmaybe-uninitialized
+                                   -Wunused-result
+                                   -Wconversion
+                                   -Wno-sign-conversion)
+  elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
+                                                      "Clang")
+    target_compile_options(nanoarrow
+                           PRIVATE -Wall
+                                   -Werror
+                                   -Wextra
+                                   -Wpedantic
+                                   -Wdocumentation
+                                   -Wconversion
+                                   -Wno-sign-conversion)
+  endif()
+endif()
+
+install(TARGETS nanoarrow
+        DESTINATION lib
+        EXPORT nanoarrow-exports)
+install(DIRECTORY ${NANOARROW_BUILD_INCLUDE_DIR}
+        DESTINATION include
+        FILES_MATCHING
+        PATTERN "*.h*")
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
+        DESTINATION include/nanoarrow)
+
+# Generate package files for the build and install trees.
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
+
+foreach(tree_type BUILD INSTALL)
+  if(tree_type STREQUAL "BUILD")
+    set(install_location ".")
+  else()
+    set(install_location "${CMAKE_INSTALL_LIBDIR}/cmake/nanoarrow")
   endif()
 
-  install(TARGETS nanoarrow
-          DESTINATION lib
-          EXPORT nanoarrow-exports)
-  install(DIRECTORY src/
-          DESTINATION include
-          FILES_MATCHING
-          PATTERN "*.h*")
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
-          DESTINATION include/nanoarrow)
+  set(build_location "${PROJECT_BINARY_DIR}/${install_location}")
+  write_basic_package_version_file(
+    "${build_location}/nanoarrow-config-version.cmake"
+    VERSION ${nanoarrow_VERSION}
+    # After 1.0.0, we can use `SameMajorVersion` here.
+    COMPATIBILITY ExactVersion)
+  configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
+                                "${build_location}/nanoarrow-config.cmake"
+                                INSTALL_DESTINATION "${install_location}")
 
-  # Generate package files for the build and install trees.
-  include(CMakePackageConfigHelpers)
-  include(GNUInstallDirs)
+  if(tree_type STREQUAL "BUILD")
+    export(EXPORT nanoarrow-exports
+           FILE "${build_location}/nanoarrow-targets.cmake"
+           NAMESPACE nanoarrow::)
 
   foreach(tree_type BUILD INSTALL)
     if(tree_type STREQUAL "BUILD")
