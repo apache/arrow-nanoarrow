@@ -52,11 +52,11 @@ jobs:
 
       - name: Bundle nanoarrow_device
         run: |
-          cd extensions/nanoarrow_device
+          rm -rf build
           mkdir build && cd build
-          cmake .. -DNANOARROW_DEVICE_BUNDLE=ON
+          cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_DEVICE=ON
           cmake --build .
-          cmake --install . --prefix=../../../nanoarrow-latest
+          cmake --install . --prefix=../nanoarrow-latest
 
       - name: Compress bundle
         run: |
