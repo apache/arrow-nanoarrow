@@ -245,6 +245,9 @@ else()
   add_library(nanoarrow src/nanoarrow/array.c src/nanoarrow/schema.c
                         src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
   add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
+  # our library may be static but the test library can be shared, so we need
+  # to set -fPIC on both to get things to work
+  set_target_properties(nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
   target_include_directories(nanoarrow
                              PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -349,8 +352,7 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
 
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
-  set_target_properties(nanoarrow_c_data_integration PROPERTIES POSITION_INDEPENDENT_CODE
-                                                                ON)
+
   target_include_directories(nanoarrow_c_data_integration
                              PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
