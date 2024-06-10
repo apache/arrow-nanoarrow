@@ -34,8 +34,8 @@ set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
 # Feature options
 option(NANOARROW_IPC "Build IPC extension" OFF)
-option(NANOARROW_IPC_FLATCC_ROOT_DIR
-       "Root directory for flatcc include and lib directories" OFF)
+option(NANOARROW_FLATCC_ROOT_DIR "Root directory for flatcc include and lib directories"
+       OFF)
 option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
 
@@ -173,6 +173,7 @@ if(NANOARROW_BUNDLE)
     add_library(nanoarrow ${NANOARROW_C_TEMP})
     add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
+    set_target_properties(nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
   endif()
 
@@ -226,7 +227,7 @@ if(NANOARROW_BUNDLE)
                                  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                         $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
                                         $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-                                        $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
+                                        $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
       )
     endif()
 
