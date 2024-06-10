@@ -26,12 +26,16 @@
 #include <arrow/array/builder_decimal.h>
 #include <arrow/array/builder_nested.h>
 #include <arrow/array/builder_primitive.h>
-#include <arrow/array/builder_run_end.h>
 #include <arrow/array/builder_time.h>
 #include <arrow/array/builder_union.h>
 #include <arrow/c/bridge.h>
 #include <arrow/compare.h>
+#include <arrow/config.h>
 #include <arrow/util/decimal.h>
+
+#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 12
+#include <arrow/array/builder_run_end.h>
+#endif
 
 #include "nanoarrow/nanoarrow.hpp"
 
@@ -1482,11 +1486,9 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     array.offset = INT32_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_STREQ(
-        ArrowErrorMessage(&error),
-        "Offset + length of a run-end encoded array must fit in a value of the "
-        "run end type int32, but offset + length is 2147483654 while the allowed "
-        "maximum is 2147483647");
+    EXPECT_STREQ(ArrowErrorMessage(&error),
+                 "Offset + length of a run-end encoded array must fit in a value of the "
+                 "run end type int32, but offset + length is 2147483654");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT16;
@@ -1496,18 +1498,17 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     EXPECT_STREQ(
         ArrowErrorMessage(&error),
         "Offset + length of a run-end encoded array must fit in a value of the run end "
-        "type int16, but offset + length is 32774 while the allowed maximum is 32767");
+        "type int16, but offset + length is 32774");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT64;
     array.offset = INT64_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_STREQ(ArrowErrorMessage(&error),
-                 "Offset + length of a run-end encoded array must fit in a value of the "
-                 "run end type int64, but offset + length is 9223372036854775814 while "
-                 "the allowed "
-                 "maximum is 9223372036854775807");
+    EXPECT_THAT(
+        ArrowErrorMessage(&error),
+        ::testing::StartsWith("Offset + length of a run-end encoded array must fit in a "
+                              "value of the run end type int64, but offset + length is"));
   }
   ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
       NANOARROW_TYPE_INT32;
@@ -1572,6 +1573,10 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
+#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#else
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1591,6 +1596,7 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
 
   EXPECT_STREQ(arrow_array.ValueUnsafe()->ToString().c_str(),
                expected_array.ValueUnsafe()->ToString().c_str());
+#endif
 }
 
 TEST(ArrayTest, ArrayTestUnionUtils) {
@@ -2577,20 +2583,6 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   ArrowArrayRelease(&array);
 }
 
-template <
-    typename TypeClass, typename ValueType,
-    typename std::enable_if<std::is_same_v<TypeClass, HalfFloatType>, bool>::type = true>
-auto transform_value(ValueType t) -> uint16_t {
-  return ArrowFloatToHalfFloat(t);
-}
-
-template <
-    typename TypeClass, typename ValueType,
-    typename std::enable_if<!std::is_same_v<TypeClass, HalfFloatType>, bool>::type = true>
-auto transform_value(ValueType t) -> ValueType {
-  return t;
-}
-
 template <typename TypeClass>
 void TestGetFromNumericArrayView() {
   struct ArrowArray array;
@@ -2602,9 +2594,17 @@ void TestGetFromNumericArrayView() {
 
   // Array with nulls
   auto builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(1)));
-  ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(4)));
+
+  if (type->id() == Type::HALF_FLOAT) {
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1)));
+    ARROW_EXPECT_OK(builder.AppendNulls(2));
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(4)));
+  } else {
+    ARROW_EXPECT_OK(builder.Append(1));
+    ARROW_EXPECT_OK(builder.AppendNulls(2));
+    ARROW_EXPECT_OK(builder.Append(4));
+  }
+
   auto maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   auto arrow_array = maybe_arrow_array.ValueUnsafe();
@@ -2635,8 +2635,15 @@ void TestGetFromNumericArrayView() {
 
   // Array without nulls (Arrow does not allocate the validity buffer)
   builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(1)));
-  ARROW_EXPECT_OK(builder.Append(transform_value<TypeClass>(2)));
+
+  if (type->id() == Type::HALF_FLOAT) {
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1)));
+    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(2)));
+  } else {
+    ARROW_EXPECT_OK(builder.Append(1));
+    ARROW_EXPECT_OK(builder.Append(2));
+  }
+
   maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   arrow_array = maybe_arrow_array.ValueUnsafe();

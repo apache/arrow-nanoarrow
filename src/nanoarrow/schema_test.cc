@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include <arrow/c/bridge.h>
+#include <arrow/config.h>
 #include <arrow/testing/gtest_util.h>
 #include <arrow/util/key_value_metadata.h>
 
@@ -235,6 +236,9 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
 
   ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
 
+#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+  ArrowSchemaRelease(&schema);
+#else
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int16(), float32())));
@@ -258,6 +262,7 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(run_end_encoded(int64(), float32())));
+#endif
 }
 
 TEST(SchemaTest, SchemaInitDateTime) {
@@ -543,6 +548,9 @@ TEST(SchemaTest, SchemaCopyDictType) {
 }
 
 TEST(SchemaTest, SchemaCopyRunEndEncodedType) {
+#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+  GTEST_SKIP() << "Arrow C++ REE integration test requires ARROW_VERSION_MAJOR >= 12";
+#else
   struct ArrowSchema schema;
   auto struct_type = run_end_encoded(int32(), float32());
   ARROW_EXPECT_OK(ExportType(*struct_type, &schema));
@@ -560,6 +568,7 @@ TEST(SchemaTest, SchemaCopyRunEndEncodedType) {
 
   ArrowSchemaRelease(&schema);
   ArrowSchemaRelease(&schema_copy);
+#endif
 }
 
 TEST(SchemaTest, SchemaCopyFlags) {
