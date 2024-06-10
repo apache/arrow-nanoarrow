@@ -53,6 +53,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout arrow-testing
+        uses: actions/checkout@v4
+        with:
+          repository: apache/arrow-testing
+          path: arrow-testing
+
       - name: Install memcheck dependencies
         if: matrix.config.label == 'default-build'
         run: |
