@@ -72,6 +72,10 @@ if(NANOARROW_IPC)
   add_library(ipc_coverage_config INTERFACE)
 endif()
 
+if(NANOARROW_DEVICE)
+  add_library(device_coverage_config INTERFACE)
+endif()
+
 if(NANOARROW_NAMESPACE)
   set(NANOARROW_NAMESPACE_DEFINE "#define NANOARROW_NAMESPACE ${NANOARROW_NAMESPACE}")
 else()
