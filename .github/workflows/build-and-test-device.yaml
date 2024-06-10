@@ -28,7 +28,6 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/build-and-test-device.yaml'
       - 'src/nanoarrow/**'
-      - 'extensions/nanoarrow_device/**'
 
 permissions:
   contents: read
@@ -46,10 +45,9 @@ jobs:
         config:
           - {label: default-build}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
-          - {label: bundled-build, cmake_args: "-DNANOARROW_DEVICE=ON -DNANOARROW_BUNDLE=ON"}
+          - {label: bundled-build, cmake_args: "--DNANOARROW_BUNDLE=ON"}
 
     env:
-      SUBDIR: 'extensions/nanoarrow_device'
       NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
@@ -62,7 +60,6 @@ jobs:
 
       - name: Build
         run: |
-          cd $SUBDIR
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           mkdir build
@@ -73,7 +70,6 @@ jobs:
       - name: Check for non-namespaced symbols in namespaced build
         if: matrix.config.label == 'namespaced-build'
         run: |
-          cd $SUBDIR
 
           # Dump all symbols
           nm --extern-only build/libnanoarrow_device.a
@@ -90,7 +86,6 @@ jobs:
 
       - name: Run tests
         run: |
-          cd $SUBDIR
 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
@@ -100,7 +95,6 @@ jobs:
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build' || matrix.config.label == 'default-noatomics'
         run: |
-          cd $SUBDIR
 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
@@ -112,4 +106,4 @@ jobs:
         uses: actions/upload-artifact@main
         with:
           name: nanoarrow-device-memcheck
-          path: extensions/nanoarrow_device/build/Testing/Temporary/MemoryChecker.*.log
+          path: build/Testing/Temporary/MemoryChecker.*.log

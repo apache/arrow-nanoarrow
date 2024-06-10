@@ -67,7 +67,7 @@ cpp_id_attributes = ["NANOARROW_CHECK_PRINTF_ATTRIBUTE"]
 breathe_projects = {
     "nanoarrow_c": "../../src/apidoc/xml",
     "nanoarrow_ipc": "../../src/apidoc/xml",
-    "nanoarrow_device": "../../extensions/nanoarrow_device/src/apidoc/xml",
+    "nanoarrow_device": "../../src/apidoc/xml",
 }
 breathe_default_project = "nanoarrow_c"
 
