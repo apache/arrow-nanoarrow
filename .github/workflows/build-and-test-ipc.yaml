@@ -46,7 +46,7 @@ jobs:
           - {label: default-build, cmake_args: "-DNANOARROW_BUILD_APPS=ON"}
           - {label: default-noatomics, cmake_args: "-DCMAKE_C_FLAGS='-DNANOARROW_IPC_USE_STDATOMIC=0'"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
-          - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
+          - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
 
     env:
       SUBDIR: '${{ github.workspace }}'
@@ -90,8 +90,9 @@ jobs:
           mkdir build
           cd build
 
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON \
-            -DCMAKE_PREFIX_PATH="${ARROW_PATH}" ${{ matrix.config.cmake_args }}
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_BUILD_TESTS=ON \
+            -DNANOARROW_IPC=ON -DCMAKE_PREFIX_PATH="${ARROW_PATH}" \
+            ${{ matrix.config.cmake_args }}
 
           cmake --build .
 
