@@ -49,6 +49,7 @@ jobs:
           - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
 
     env:
+      SUBDIR: '${{ github.workspace }}/arrow'
       NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
