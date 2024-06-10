@@ -125,24 +125,11 @@ def bundle_nanoarrow(
     nanoarrow_h = re.sub(r'#include "[a-z_.]+"', "", nanoarrow_h)
     yield f"{output_include_dir}/nanoarrow.h", nanoarrow_h
 
-    # Generate nanoarrow/nanoarrow.hpp
-    nanoarrow_hpp = read_content(src_dir / "nanoarrow.hpp")
-    nanoarrow_hpp = namespace_nanoarrow_includes(nanoarrow_hpp, header_namespace)
-    yield f"{output_include_dir}/nanoarrow.hpp", nanoarrow_hpp
-
-    # Generate nanoarrow/nanoarrow_testing.hpp
-    nanoarrow_testing_hpp = read_content(src_dir / "nanoarrow_testing.hpp")
-    nanoarrow_testing_hpp = namespace_nanoarrow_includes(
-        nanoarrow_testing_hpp, header_namespace
-    )
-    yield f"{output_include_dir}/nanoarrow_testing.hpp", nanoarrow_testing_hpp
-
-    # Generate nanoarrow/nanoarrow_gtest_util.hpp
-    nanoarrow_gtest_util_hpp = read_content(src_dir / "nanoarrow_gtest_util.hpp")
-    nanoarrow_gtest_util_hpp = namespace_nanoarrow_includes(
-        nanoarrow_gtest_util_hpp, header_namespace
-    )
-    yield f"{output_include_dir}/nanoarrow_gtest_util.hpp", nanoarrow_gtest_util_hpp
+    # Generate files that don't need special handling
+    for filename in ["nanoarrow.hpp", "nanoarrow_testing.hpp", "nanoarrow_gtest_util.hpp"]:
+        content = read_content(src_dir / filename)
+        content = namespace_nanoarrow_includes(content, header_namespace)
+        yield f"{output_include_dir}/{filename}", content
 
     # Generate nanoarrow/nanoarrow.c
     nanoarrow_c = concatenate_content(
@@ -173,26 +160,11 @@ def bundle_nanoarrow_device(
     output_source_dir = pathlib.Path(output_source_dir)
     output_include_dir = pathlib.Path(output_include_dir) / header_namespace
 
-    # Generate nanoarrow/nanoarrow_device.h
-    nanoarrow_device_h = read_content(src_dir / "nanoarrow_device.h")
-    nanoarrow_device_h = namespace_nanoarrow_includes(
-        nanoarrow_device_h, header_namespace
-    )
-    yield f"{output_include_dir}/nanoarrow_device.h", nanoarrow_device_h
-
-    # Generate nanoarrow/nanoarrow_device.hpp
-    nanoarrow_device_hpp = read_content(src_dir / "nanoarrow_device.hpp")
-    nanoarrow_device_hpp = namespace_nanoarrow_includes(
-        nanoarrow_device_hpp, header_namespace
-    )
-    yield f"{output_include_dir}/nanoarrow_device.hpp", nanoarrow_device_hpp
-
-    # Generate nanoarrow/nanoarrow_device.c
-    nanoarrow_device_c = read_content(src_dir / "nanoarrow_device.c")
-    nanoarrow_device_c = namespace_nanoarrow_includes(
-        nanoarrow_device_c, header_namespace
-    )
-    yield f"{output_source_dir}/nanoarrow_device.c", nanoarrow_device_c
+    # Generate files that don't need special handling
+    for filename in ["nanoarrow_device.h", "nanoarrow_device.hpp", "nanoarrow_device.c"]:
+        content = read_content(src_dir / filename)
+        content = namespace_nanoarrow_includes(content, header_namespace)
+        yield f"{output_include_dir}/{filename}", content
 
 
 def ensure_output_path_exists(out_path: pathlib.Path):
