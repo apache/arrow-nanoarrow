@@ -48,6 +48,7 @@ jobs:
           - {label: bundled-build, cmake_args: "--DNANOARROW_BUNDLE=ON"}
 
     env:
+      SUBDIR: '${{ github.workspace }}'
       NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
@@ -66,6 +67,7 @@ jobs:
 
       - name: Build
         run: |
+          cd $SUBDIR
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
           mkdir build
@@ -76,6 +78,7 @@ jobs:
       - name: Check for non-namespaced symbols in namespaced build
         if: matrix.config.label == 'namespaced-build'
         run: |
+          cd $SUBDIR
 
           # Dump all symbols
           nm --extern-only build/libnanoarrow_device.a
@@ -92,6 +95,7 @@ jobs:
 
       - name: Run tests
         run: |
+          cd $SUBDIR
 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
@@ -101,6 +105,7 @@ jobs:
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build' || matrix.config.label == 'default-noatomics'
         run: |
+          cd $SUBDIR
 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
           sudo ldconfig
