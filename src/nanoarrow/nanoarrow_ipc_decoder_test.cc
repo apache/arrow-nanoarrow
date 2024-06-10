@@ -54,7 +54,6 @@ struct ArrowIpcDecoderPrivate {
 static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
   uint32_t check = 1;
   char first_byte;
-  enum ArrowIpcEndianness system_endianness;
   memcpy(&first_byte, &check, sizeof(char));
   if (first_byte) {
     return NANOARROW_IPC_ENDIANNESS_LITTLE;
@@ -501,8 +500,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   data.size_bytes = sizeof(kSimpleRecordBatch);
 
   ArrowIpcDecoderInit(&decoder);
-  auto decoder_private =
-      reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
 
   ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
@@ -602,8 +599,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   std::thread threads[10];
   for (int i = 0; i < 10; i++) {
     threads[i] = std::thread([&arrays, i, &one_two_three_le] {
-      memcmp(arrays[i].children[0]->buffers[1], one_two_three_le,
-             sizeof(one_two_three_le));
+      auto result = memcmp(arrays[i].children[0]->buffers[1], one_two_three_le,
+                           sizeof(one_two_three_le));
+      // discard result to silence -Wunused-value
+      (void)result;
       ArrowArrayRelease(arrays + i);
     });
   }
@@ -791,7 +790,7 @@ TEST_P(ArrowTypeIdParameterizedTestFixture, NanoarrowIpcDecodeSwapEndian) {
   // Make a data buffer long enough for 10 Decimal256s with a pattern
   // where an endian swap isn't silently the same value (e.g., 0s)
   uint8_t data_buffer[32 * 10];
-  for (int64_t i = 0; i < sizeof(data_buffer); i++) {
+  for (size_t i = 0; i < sizeof(data_buffer); i++) {
     data_buffer[i] = i % 256;
   }
 

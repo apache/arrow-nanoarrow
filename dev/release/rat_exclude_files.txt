@@ -18,3 +18,4 @@ python/src/nanoarrow/dlpack_abi.h
 subprojects/google-benchmark.wrap
 subprojects/gtest.wrap
 subprojects/nlohmann_json.wrap
+subprojects/zlib.wrap

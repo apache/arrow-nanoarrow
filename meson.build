@@ -34,3 +34,14 @@ subdir('src/nanoarrow')
 if get_option('benchmarks')
   subdir('dev/benchmarks')
 endif
+
+
+if get_option('apps')
+  if get_option('ipc')
+  executable(
+      'dump_stream',
+      'src/apps/dump_stream.c',
+      dependencies: [nanoarrow_dep, nanoarrow_ipc_dep]
+  )
+  endif
+endif
