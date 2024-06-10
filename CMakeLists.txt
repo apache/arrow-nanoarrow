@@ -135,8 +135,7 @@ if(NANOARROW_BUNDLE)
   if(NANOARROW_BUNDLE_AS_CPP)
     execute_process(COMMAND ${Python3_EXECUTABLE}
                             ${CMAKE_CURRENT_SOURCE_DIR}/ci/scripts/bundle.py
-                            "--output-dir" ${CMAKE_BINARY_DIR}/amalgamation
-                            "--cpp")
+                            "--output-dir" ${CMAKE_BINARY_DIR}/amalgamation "--cpp")
 
     set(NANOARROW_BUILD_SOURCES "${CMAKE_BINARY_DIR}/amalgamation/src/nanoarrow.cc")
   else()

@@ -15,13 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import os
 import pathlib
 import re
 import subprocess
 import sys
-import tempfile
-import warnings
 
 
 # Generate the nanoarrow_c.pxd file used by the Cython extensions

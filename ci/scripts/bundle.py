@@ -274,15 +274,18 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--header-namespace",
-        help="The directory within include-output-dir that nanoarrow headers should be placed",
+        help=(
+            "The directory within include-output-dir that nanoarrow headers should be"
+            "placed"
+        ),
         default="nanoarrow/",
     )
     parser.add_argument(
         "--output-dir",
         help=(
-            "If include-output-dir or source-output-dir are missing, ensures a single output "
-            "directory with include/ and src/ subdirectories containing the headers and sources, "
-            "respectively"
+            "If include-output-dir or source-output-dir are missing, ensures a single "
+            "output directory with include/ and src/ subdirectories containing the "
+            "headers and sources, respectively"
         ),
         default="dist",
     )
