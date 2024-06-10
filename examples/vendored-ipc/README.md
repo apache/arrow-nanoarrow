@@ -64,7 +64,7 @@ popd
 # Then, build and install nanoarrow_ipc
 mkdir build_ipc
 pushd build_ipc
-cmake ../../../extensions/nanoarrow_ipc -DNANOARROW_IPC_BUNDLE=ON
+cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_IPC=ON
 cmake --build .
 cmake --install . --prefix=../src/nanoarrow
 popd

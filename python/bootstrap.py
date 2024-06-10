@@ -230,9 +230,7 @@ def copy_or_generate_nanoarrow_c():
             dst[device_file],
         )
 
-    ipc_source_dir = source_dir / "extensions/nanoarrow_ipc"
-
-    for cmake_project in [source_dir, ipc_source_dir]:
+    for cmake_project in [source_dir, source_dir]:
         with tempfile.TemporaryDirectory() as build_dir:
             try:
                 subprocess.run(
@@ -242,8 +240,8 @@ def copy_or_generate_nanoarrow_c():
                         build_dir,
                         "-S",
                         cmake_project,
-                        "-DNANOARROW_IPC_BUNDLE=ON",
                         "-DNANOARROW_BUNDLE=ON",
+                        "-DNANOARROW_IPC=ON",
                         "-DNANOARROW_NAMESPACE=PythonPkg",
                     ]
                 )

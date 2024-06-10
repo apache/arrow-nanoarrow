@@ -28,7 +28,6 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/build-and-test-ipc.yaml'
       - 'src/nanoarrow/**'
-      - 'extensions/nanoarrow_ipc/**'
 
 permissions:
   contents: read
@@ -44,13 +43,13 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build, cmake_args: "-DNANOARROW_IPC_BUILD_APPS=ON"}
+          - {label: default-build, cmake_args: "-DNANOARROW_BUILD_APPS=ON"}
           - {label: default-noatomics, cmake_args: "-DCMAKE_C_FLAGS='-DNANOARROW_IPC_USE_STDATOMIC=0'"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
-          - {label: bundled-build, cmake_args: "-DNANOARROW_IPC_BUNDLE=ON"}
+          - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
 
     env:
-      SUBDIR: 'extensions/nanoarrow_ipc'
+      SUBDIR: '${{ github.workspace }}'
       NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
@@ -91,8 +90,9 @@ jobs:
           mkdir build
           cd build
 
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_IPC_BUILD_TESTS=ON \
-            -DCMAKE_PREFIX_PATH="${ARROW_PATH}" ${{ matrix.config.cmake_args }}
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_BUILD_TESTS=ON \
+            -DNANOARROW_IPC=ON -DCMAKE_PREFIX_PATH="${ARROW_PATH}" \
+            ${{ matrix.config.cmake_args }}
 
           cmake --build .
 
@@ -147,4 +147,4 @@ jobs:
         uses: actions/upload-artifact@main
         with:
           name: nanoarrow-ipc-memcheck
-          path: extensions/nanoarrow_ipc/build/Testing/Temporary/MemoryChecker.*.log
+          path: build/Testing/Temporary/MemoryChecker.*.log

@@ -31,7 +31,6 @@ on:
       - 'docker-compose.yml'
       - 'CMakeLists.txt'
       - 'src/nanoarrow/**'
-      - 'extensions/nanoarrow_ipc/**'
       - 'r/**'
 
 jobs:

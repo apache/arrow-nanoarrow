@@ -47,7 +47,7 @@ makedepend -s#: -f- -- -I. -DFLATCC_PORTABLE -- 2>/dev/null \
   ../src/runtime/builder.c \
   ../src/runtime/verifier.c \
   ../src/runtime/refmap.c \
-  ../../../../src/nanoarrow/nanoarrow_ipc.c | \
+  ../src/nanoarrow/nanoarrow_ipc.c | \
   # Remove the '<src file>.o: ' prefix
   sed 's/[^:]*: *//' | \
   # Spaces to new lines

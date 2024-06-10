@@ -72,11 +72,6 @@ main() {
    doxygen
    popd
 
-   show_header "Run Doxygen for IPC extension"
-   pushd extensions/nanoarrow_ipc/src/apidoc
-   doxygen
-   popd
-
    show_header "Run Doxygen for device extension"
    pushd extensions/nanoarrow_device/src/apidoc
    doxygen
