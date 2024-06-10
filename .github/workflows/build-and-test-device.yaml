@@ -45,7 +45,7 @@ jobs:
         config:
           - {label: default-build}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
-          - {label: bundled-build, cmake_args: "--DNANOARROW_BUNDLE=ON"}
+          - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
 
     env:
       SUBDIR: '${{ github.workspace }}'
