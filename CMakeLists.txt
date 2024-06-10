@@ -346,7 +346,6 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
   set_target_properties(nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON)
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
-
   target_include_directories(nanoarrow_c_data_integration
                              PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
