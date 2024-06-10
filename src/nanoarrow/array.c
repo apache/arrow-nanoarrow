@@ -888,12 +888,11 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       // uint64_t is used here to avoid overflow when adding the offset and length
       if ((uint64_t)array_view->offset + (uint64_t)array_view->length >
           (uint64_t)max_length) {
-        ArrowErrorSet(
-            error,
-            "Offset + length of a run-end encoded array must fit in a value"
-            " of the run end type %s, but offset + length is %ld",
-            ArrowTypeString(run_ends_view->storage_type),
-            (long)array_view->offset + (long)array_view->length);
+        ArrowErrorSet(error,
+                      "Offset + length of a run-end encoded array must fit in a value"
+                      " of the run end type %s, but offset + length is %ld",
+                      ArrowTypeString(run_ends_view->storage_type),
+                      (long)array_view->offset + (long)array_view->length);
         return EINVAL;
       }
       if (run_ends_view->length > values_view->length) {
