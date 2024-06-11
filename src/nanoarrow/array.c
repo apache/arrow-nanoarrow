@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -1255,18 +1256,20 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
           ArrowErrorSet(
               error,
               "Every run end must be strictly greater than the previous run end, "
-              "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
-              (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
+              "but run_ends[%" PRId64 " is %" PRId64 " and run_ends[%" PRId64
+              "] is %" PRId64,
+              i, run_end, i - 1, last_run_end);
           return EINVAL;
         }
         last_run_end = run_end;
       }
       last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
       if (last_run_end < (array_view->offset + array_view->length)) {
-        ArrowErrorSet(
-            error, "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
-            (long)last_run_end, (long)(array_view->offset + array_view->length),
-            (long)array_view->offset, (long)array_view->length);
+        ArrowErrorSet(error,
+                      "Last run end is %" PRId64 " but it should >= %" PRId64
+                      " (offset: %" PRId64 ", length: %" PRId64 ")",
+                      last_run_end, array_view->offset + array_view->length,
+                      array_view->offset, array_view->length);
         return EINVAL;
       }
     }
