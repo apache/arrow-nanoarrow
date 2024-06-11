@@ -470,7 +470,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, "\0\0\0\0"));
         return NANOARROW_OK;
       },
-      [](ArrowArray* array) { return NANOARROW_OK; }, &WriteFieldJSON,
+      [](ArrowArray*) { return NANOARROW_OK; }, &WriteFieldJSON,
       R"({"name": null, "nullable": true, "type": {"name": "null"}, "children": []})",
       [](TestingJSONWriter& writer) { writer.set_include_metadata(false); });
 }

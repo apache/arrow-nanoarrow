@@ -15,13 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[wrap-file]
-directory = nlohmann_json-3.11.2
-lead_directory_missing = true
-source_url = https://github.com/nlohmann/json/releases/download/v3.11.2/include.zip
-source_filename = nlohmann_json-3.11.2.zip
-source_hash = e5c7a9f49a16814be27e4ed0ee900ecd0092bfb7dbfca65b5a421b774dccaaed
-wrapdb_version = 3.11.2-1
+project('flatcc',
+  'c',
+  version : '0.6.1',
+  license : 'Apache-2.0',
+)
 
-[provide]
-nlohmann_json = nlohmann_json_dep
+incdir = include_directories('include')
+
+flatcc_lib = library(
+    'flatcc',
+    sources: [
+        'src/runtime/builder.c',
+        'src/runtime/emitter.c',
+        'src/runtime/verifier.c',
+        'src/runtime/refmap.c',
+    ],
+    include_directories: [incdir],
+)
+
+flatcc_dep = declare_dependency(
+    include_directories: [incdir],
+    link_with: [flatcc_lib],
+)
