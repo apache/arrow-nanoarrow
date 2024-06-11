@@ -1250,10 +1250,10 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     for (int64_t i = 1; i < run_ends_view->length; i++) {
       const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
       if (run_end <= last_run_end) {
-        ArrowErrorSet(error,
-                      "Every run end must be strictly greater than the previous run end, "
-                      "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
-                      (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
+        // ArrowErrorSet(error,
+        //               "Every run end must be strictly greater than the previous run
+        //               end, " "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
+        //               (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
         return EINVAL;
       }
       last_run_end = run_end;
