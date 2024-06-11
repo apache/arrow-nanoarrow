@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -283,7 +284,7 @@ static int ArrowIpcArrayStreamReaderNextBody(
 
   if (bytes_read != bytes_to_read) {
     ArrowErrorSet(&private_data->error,
-                  "Expected to be able to read %l" PRId64
+                  "Expected to be able to read %" PRId64
                   " bytes for message body but got %" PRId64,
                   bytes_to_read, bytes_read);
     return ESPIPE;
