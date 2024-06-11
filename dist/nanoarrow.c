@@ -2552,12 +2552,12 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
   // was added and C# as later discovered). Only do this fix if we can assume
   // CPU data access.
   if (validation_level >= NANOARROW_VALIDATION_LEVEL_DEFAULT) {
-    //NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFinalizeBuffers(array), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFinalizeBuffers(array), error);
   }
 
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
-  ArrowArrayFlushInternalPointers(array);
+  //ArrowArrayFlushInternalPointers(array);
 
   if (validation_level == NANOARROW_VALIDATION_LEVEL_NONE) {
     return NANOARROW_OK;
