@@ -24,3 +24,7 @@ option('integration_tests', type: 'boolean',
        value: false)
 option('namespace', type: 'string',
        description: 'A prefix for exported symbols')
+option('device', type: 'boolean', description: 'Build device libraries', value: false)
+option('metal', type: 'boolean', description: 'Build Apple metal libraries',
+       value: false)
+option('cuda', type: 'boolean', description: 'Build CUDA libraries', value: false)

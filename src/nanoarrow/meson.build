@@ -84,6 +84,29 @@ if get_option('ipc')
                                            dependencies: [nanoarrow_dep, flatcc_dep])
 endif
 
+needs_device = get_option('device') or get_option('metal') or get_option('cuda')
+if needs_device
+  device_deps = [nanoarrow_dep]
+
+  if get_option('metal')
+    metal_dep = dependency('appleframeworks', modules: ['Foundation', 'Quartz', 'Metal'])
+    device_deps += metal_dep
+  endif
+
+  if get_option('cuda')
+    cuda_dep = dependency('cuda', modules: ['cublas'])
+    device_deps += cuda_dep
+  endif
+
+  nanoarrow_device_lib = build_target(
+      'nanoarrow_device',
+      'nanoarrow_device.c',
+      dependencies: device_deps,
+      install: true,
+      target_type: libtype,
+  )
+endif
+
 if get_option('tests') or get_option('integration_tests')
   nlohmann_json_dep = dependency('nlohmann_json')
 
@@ -198,5 +221,38 @@ if get_option('tests')
           )
           test(name, exc)
       endforeach
+  endif
+
+  if needs_device
+    device_tests = ['nanoarrow_device', 'nanoarrow_device_hpp']
+    foreach device_test : device_tests
+      exc = executable(
+          device_test.replace('_', '-') + '-test',
+          device_test + '_test.cc',
+          link_with: nanoarrow_device_lib,
+          dependencies: [nanoarrow_dep, gtest_dep],
+      )
+      test(device_test.replace('_', '-'), exc)
+    endforeach
+
+    if get_option('metal')
+      exc = executable(
+          'nanoarrow-device-metal-test',
+          'nanoarrow_device_metal_test.cc',
+          link_with: nanoarrow_device_lib,
+          dependencies: [nanoarrow_dep, gtest_dep, metal_dep],
+      )
+      test('nanoarrow-device-metal', exc)
+    endif
+
+    if get_option('cuda')
+      exc = executable(
+          'nanoarrow-device-cuda-test',
+          'nanoarrow_device_cuda_test.cc',
+          link_with: nanoarrow_device_lib,
+          dependencies: [nanoarrow_dep, gtest_dep, cuda_dep],
+      )
+      test('nanoarrow-device-cuda', exc)
+    endif
   endif
 endif
