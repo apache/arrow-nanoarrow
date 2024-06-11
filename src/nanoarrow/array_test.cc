@@ -19,7 +19,6 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <cstdint>
-#include <type_traits>
 
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
@@ -821,7 +820,7 @@ TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
   EXPECT_EQ(data_buffer[1], 0);
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[3]), 3.0);
-  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[4]), 3.138672);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[4]), static_cast<float>(3.138672));
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[5]),
                   std::numeric_limits<float>::max());
   EXPECT_TRUE(std::isnan(ArrowHalfFloatToFloat(data_buffer[6])));
