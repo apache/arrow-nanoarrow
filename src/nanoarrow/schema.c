@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -835,11 +836,10 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
             int64_t n_type_ids =
                 _ArrowParseUnionTypeIds(schema_view->union_type_ids, NULL);
             if (n_type_ids != schema_view->schema->n_children) {
-              ArrowErrorSet(
-                  error,
-                  "Expected union type_ids parameter to be a comma-separated list of %ld "
-                  "values between 0 and 127 but found '%s'",
-                  (long)schema_view->schema->n_children, schema_view->union_type_ids);
+              ArrowErrorSet(error,
+                            "Expected union type_ids parameter to be a comma-separated "
+                            "list of %" PRId64 " values between 0 and 127 but found '%s'",
+                            schema_view->schema->n_children, schema_view->union_type_ids);
               return EINVAL;
             }
             *format_end_out = format + strlen(format);
@@ -1038,15 +1038,15 @@ static ArrowErrorCode ArrowSchemaViewValidateNChildren(
   for (int64_t i = 0; i < schema_view->schema->n_children; i++) {
     child = schema_view->schema->children[i];
     if (child == NULL) {
-      ArrowErrorSet(error,
-                    "Expected valid schema at schema->children[%ld] but found NULL",
-                    (long)i);
+      ArrowErrorSet(
+          error, "Expected valid schema at schema->children[%" PRId64 "] but found NULL",
+          i);
       return EINVAL;
     } else if (child->release == NULL) {
-      ArrowErrorSet(
-          error,
-          "Expected valid schema at schema->children[%ld] but found a released schema",
-          (long)i);
+      ArrowErrorSet(error,
+                    "Expected valid schema at schema->children[%" PRId64
+                    "] but found a released schema",
+                    i);
       return EINVAL;
     }
   }
@@ -1304,7 +1304,7 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
                       ArrowTimeUnitString(schema_view->time_unit));
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      return snprintf(out, n, "%s(%ld)", type_string, (long)schema_view->fixed_size);
+      return snprintf(out, n, "%s(%" PRId32 ")", type_string, schema_view->fixed_size);
     case NANOARROW_TYPE_SPARSE_UNION:
     case NANOARROW_TYPE_DENSE_UNION:
       return snprintf(out, n, "%s([%s])", type_string, schema_view->union_type_ids);

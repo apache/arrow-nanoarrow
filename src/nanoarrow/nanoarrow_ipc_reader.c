@@ -283,8 +283,9 @@ static int ArrowIpcArrayStreamReaderNextBody(
 
   if (bytes_read != bytes_to_read) {
     ArrowErrorSet(&private_data->error,
-                  "Expected to be able to read %ld bytes for message body but got %ld",
-                  (long)bytes_to_read, bytes_read);
+                  "Expected to be able to read %l" PRId64
+                  " bytes for message body but got %" PRId64,
+                  bytes_to_read, bytes_read);
     return ESPIPE;
   } else {
     return NANOARROW_OK;
