@@ -22,20 +22,20 @@ C API
 ------------------------
 
 .. doxygengroup:: nanoarrow_device
-   :project: nanoarrow_device
+   :project: nanoarrow_c
    :members:
 
 C++ Helpers
 ------------------------
 
 .. doxygengroup:: nanoarrow_device_hpp-unique
-   :project: nanoarrow_device
+   :project: nanoarrow_c
    :members:
 
 Arrow C Device Interface
 ------------------------
 
 .. doxygengroup:: nanoarrow_device-arrow-cdata
-   :project: nanoarrow_device
+   :project: nanoarrow_c
    :members:
    :undoc-members:

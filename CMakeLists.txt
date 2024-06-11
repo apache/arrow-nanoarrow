@@ -16,7 +16,7 @@
 # under the License.
 
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.14)
 
 if(NOT DEFINED CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
@@ -56,17 +56,12 @@ option(NANOARROW_ARROW_STATIC
 option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal libraries" OFF)
 option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
 
-include(CMakeDependentOption)
-cmake_dependent_option(NANOARROW_DEVICE
-                       "Build device libraries"
-                       VALUE
-                       ON
-                       DEPENDS
-                       NANOARROW_DEVICE_WITH_METAL
-                       OR
-                       NANOARROW_DEVICE_WITH_CUDA
-                       FORCE
-                       OFF)
+set(NANOARROW_DEVICE
+    NANOARROW_DEVICE
+    OR
+    NANOARROW_DEVICE_WITH_MDETAL
+    OR
+    NANOARROW_DEVICE_WITH_CUDA)
 
 if(NANOARROW_IPC)
   add_library(ipc_coverage_config INTERFACE)
@@ -92,8 +87,7 @@ endif()
 
 configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
 
-if((NANOARROW_DEVICE OR NANOARROW_IPC) AND (NANOARROW_BUILD_TESTS OR NOT NANOARROW_BUNDLE
-                                           ))
+if(NANOARROW_IPC AND (NANOARROW_BUILD_TESTS OR NOT NANOARROW_BUNDLE))
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY
       ON
@@ -383,7 +377,6 @@ else()
                                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                       $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
                                       $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-                                      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
 
     install(TARGETS nanoarrow_ipc DESTINATION lib)
