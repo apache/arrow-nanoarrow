@@ -15,9 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[wrap-file]
-directory = flatcc-0.6.1
-source_url = https://github.com/dvidelabs/flatcc/archive/refs/tags/v0.6.1.tar.gz
-source_filename = flatcc-0.6.1.tar.gz
-source_hash = 2533c2f1061498499f15acc7e0937dcf35bc68e685d237325124ae0d6c600c2b
-patch_directory = flatcc
+project('flatcc',
+  'c',
+  version : '0.6.1',
+  license : 'Apache-2.0',
+)
+
+incdir = include_directories('include')
+
+flatcc_lib = library(
+    'flatcc',
+    sources: [
+        'src/runtime/builder.c',
+        'src/runtime/emitter.c',
+        'src/runtime/verifier.c',
+        'src/runtime/refmap.c',
+    ],
+    include_directories: [incdir],
+)
+
+flatcc_dep = declare_dependency(
+    include_directories: [incdir],
+    link_with: [flatcc_lib],
+)
