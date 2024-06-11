@@ -2588,12 +2588,12 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
 // the "value type" that would correspond to what ArrowArrayViewGetDoubleUnsafe()
 // or ArrowArrayAppendDouble() do since they operate on the logical/represented
 // value.
-template<typename TypeClass, typename BuilderValueT>
+template <typename TypeClass, typename BuilderValueT>
 BuilderValueT logical_value_to_builder_value(int64_t value) {
   return static_cast<BuilderValueT>(value);
 }
 
-template<>
+template <>
 uint16_t logical_value_to_builder_value<HalfFloatType, uint16_t>(int64_t value) {
   return ArrowFloatToHalfFloat(static_cast<float>(value));
 }
@@ -2611,9 +2611,11 @@ void TestGetFromNumericArrayView() {
   // Array with nulls
   auto builder = NumericBuilder<TypeClass>();
 
-  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(4)));
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(4)));
 
   auto maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
@@ -2646,8 +2648,10 @@ void TestGetFromNumericArrayView() {
   // Array without nulls (Arrow does not allocate the validity buffer)
   builder = NumericBuilder<TypeClass>();
 
-  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
-  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(2)));
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(2)));
 
   maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
