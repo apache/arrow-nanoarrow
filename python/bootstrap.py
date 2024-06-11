@@ -18,7 +18,6 @@
 import os
 import pathlib
 import re
-import shutil
 import subprocess
 import tempfile
 import warnings
@@ -214,21 +213,7 @@ def copy_or_generate_nanoarrow_c():
     if not has_cmake:
         raise ValueError("Attempt to build source distribution without CMake")
 
-    # The C library, IPC extension, and Device extension all currently have slightly
-    # different methods of bundling (hopefully this can be unified)
-
     vendor_dir.mkdir(exist_ok=True)
-
-    # Copy device files
-    device_ext_src = (
-        source_dir / "extensions" / "nanoarrow_device" / "src" / "nanoarrow"
-    )
-
-    for device_file in ["nanoarrow_device.h", "nanoarrow_device.c"]:
-        shutil.copyfile(
-            device_ext_src / device_file,
-            dst[device_file],
-        )
 
     for cmake_project in [source_dir, source_dir]:
         with tempfile.TemporaryDirectory() as build_dir:
@@ -241,6 +226,7 @@ def copy_or_generate_nanoarrow_c():
                         "-S",
                         cmake_project,
                         "-DNANOARROW_BUNDLE=ON",
+                        "-DNANOARROW_DEVICE=ON",
                         "-DNANOARROW_IPC=ON",
                         "-DNANOARROW_NAMESPACE=PythonPkg",
                     ]

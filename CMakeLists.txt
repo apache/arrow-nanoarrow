@@ -53,8 +53,22 @@ option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
 option(NANOARROW_ARROW_STATIC
        "Use a statically-linked Arrow C++ build when linking tests" OFF)
 
+option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal libraries" OFF)
+option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
+
+set(NANOARROW_DEVICE
+    NANOARROW_DEVICE
+    OR
+    NANOARROW_DEVICE_WITH_MDETAL
+    OR
+    NANOARROW_DEVICE_WITH_CUDA)
+
 if(NANOARROW_IPC)
   add_library(ipc_coverage_config INTERFACE)
+endif()
+
+if(NANOARROW_DEVICE)
+  add_library(device_coverage_config INTERFACE)
 endif()
 
 if(NANOARROW_NAMESPACE)
@@ -237,6 +251,39 @@ if(NANOARROW_BUNDLE)
     # Also install the flatcc headers
     install(DIRECTORY thirdparty/flatcc/include/flatcc DESTINATION ".")
   endif()
+
+  if(NANOARROW_DEVICE)
+    # The CMake build step is creating nanoarrow_device.c and nanoarrow_device.h;
+    # the CMake install step is copying them to a specific location
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow)
+
+    # nanoarrow_device.h is currently standalone
+    set(NANOARROW_DEVICE_H_TEMP
+        ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_device.h)
+    file(READ src/nanoarrow/nanoarrow_device.h SRC_FILE_CONTENTS)
+    file(WRITE ${NANOARROW_DEVICE_H_TEMP} "${SRC_FILE_CONTENTS}")
+
+    # nanoarrow_device.c is currently standalone
+    set(NANOARROW_DEVICE_C_TEMP
+        ${CMAKE_BINARY_DIR}/amalgamation/nanoarrow/nanoarrow_device.c)
+    file(READ src/nanoarrow/nanoarrow_device.c SRC_FILE_CONTENTS)
+    file(WRITE ${NANOARROW_DEVICE_C_TEMP} "${SRC_FILE_CONTENTS}")
+
+    # Add a library that the tests can link against (but don't install it)
+    if(NANOARROW_BUILD_TESTS)
+      add_library(nanoarrow_device ${NANOARROW_DEVICE_C_TEMP})
+
+      target_include_directories(nanoarrow_device
+                                 PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                                        $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
+                                        $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+      )
+    endif()
+
+    # Install the amalgamated header and sources
+    install(FILES ${NANOARROW_DEVICE_H_TEMP} ${NANOARROW_DEVICE_C_TEMP} DESTINATION ".")
+  endif()
 else()
   add_library(nanoarrow src/nanoarrow/array.c src/nanoarrow/schema.c
                         src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
@@ -329,13 +376,77 @@ else()
                                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                       $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
                                       $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-                                      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
+                                      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
                                       $<INSTALL_INTERFACE:include>)
 
     install(TARGETS nanoarrow_ipc DESTINATION lib)
     install(FILES src/nanoarrow/nanoarrow_ipc.h
                   src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
             DESTINATION include/nanoarrow)
+  endif()
+
+  if(NANOARROW_DEVICE)
+    if(NANOARROW_DEVICE_WITH_METAL)
+      if(NOT EXISTS "${CMAKE_BINARY_DIR}/metal-cpp")
+        message(STATUS "Fetching metal-cpp")
+        file(DOWNLOAD
+             "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
+             "${CMAKE_BINARY_DIR}/metal-cpp.zip")
+        file(ARCHIVE_EXTRACT
+             INPUT
+             ${CMAKE_BINARY_DIR}/metal-cpp.zip
+             DESTINATION
+             ${CMAKE_BINARY_DIR})
+      endif()
+
+      if(NOT DEFINED CMAKE_CXX_STANDARD)
+        set(CMAKE_CXX_STANDARD 17)
+      endif()
+      set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+      find_library(METAL_LIBRARY Metal REQUIRED)
+      message(STATUS "Metal framework found at '${METAL_LIBRARY}'")
+
+      find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
+      message(STATUS "Foundation framework found at '${FOUNDATION_LIBRARY}'")
+
+      find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
+      message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
+
+      set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/nanoarrow_device_metal.cc)
+      set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
+      set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
+                                      ${QUARTZ_CORE_LIBRARY})
+      set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
+    endif()
+
+    if(NANOARROW_DEVICE_WITH_CUDA)
+      find_package(CUDAToolkit REQUIRED)
+      set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
+      set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cuda_driver)
+      set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
+    endif()
+
+    add_library(nanoarrow_device
+                src/nanoarrow/nanoarrow_device.c ${NANOARROW_DEVICE_SOURCES_METAL}
+                ${NANOARROW_DEVICE_SOURCES_CUDA})
+
+    target_include_directories(nanoarrow_device
+                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
+                                      $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
+                                      $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+                                      $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
+                                      $<INSTALL_INTERFACE:include>)
+
+    target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
+                                                        ${NANOARROW_DEVICE_DEFS_CUDA})
+    target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL}
+                                                  ${NANOARROW_DEVICE_LIBS_CUDA})
+    target_compile_definitions(nanoarrow_device
+                               PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
+    install(TARGETS nanoarrow_device DESTINATION lib)
+    install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
   endif()
 endif()
 
@@ -493,6 +604,55 @@ if(NANOARROW_BUILD_TESTS)
     gtest_discover_tests(nanoarrow_ipc_files_test)
     gtest_discover_tests(nanoarrow_ipc_hpp_test)
   endif()
+
+  if(NANOARROW_DEVICE)
+    enable_testing()
+    add_executable(nanoarrow_device_test src/nanoarrow/nanoarrow_device_test.cc)
+    add_executable(nanoarrow_device_hpp_test src/nanoarrow/nanoarrow_device_hpp_test.cc)
+
+    if(NANOARROW_DEVICE_CODE_COVERAGE)
+      target_compile_options(device_coverage_config INTERFACE -O0 -g --coverage)
+      target_link_options(device_coverage_config INTERFACE --coverage)
+      target_link_libraries(nanoarrow_device PRIVATE device_coverage_config)
+    endif()
+
+    target_link_libraries(nanoarrow_device_test
+                          nanoarrow_device
+                          nanoarrow
+                          gtest_main
+                          device_coverage_config)
+    target_link_libraries(nanoarrow_device_hpp_test
+                          nanoarrow_device
+                          nanoarrow
+                          gtest_main
+                          device_coverage_config)
+
+    include(GoogleTest)
+    gtest_discover_tests(nanoarrow_device_test)
+    gtest_discover_tests(nanoarrow_device_hpp_test)
+
+    if(NANOARROW_DEVICE_WITH_METAL)
+      add_executable(nanoarrow_device_metal_test
+                     src/nanoarrow/nanoarrow_device_metal_test.cc)
+      target_link_libraries(nanoarrow_device_metal_test
+                            nanoarrow_device
+                            nanoarrow
+                            gtest_main
+                            device_coverage_config)
+      gtest_discover_tests(nanoarrow_device_metal_test)
+    endif()
+
+    if(NANOARROW_DEVICE_WITH_CUDA)
+      add_executable(nanoarrow_device_cuda_test
+                     src/nanoarrow/nanoarrow_device_cuda_test.cc)
+      target_link_libraries(nanoarrow_device_cuda_test
+                            nanoarrow_device
+                            nanoarrow
+                            gtest_main
+                            device_coverage_config)
+      gtest_discover_tests(nanoarrow_device_cuda_test)
+    endif()
+  endif()
 endif()
 
 if(NANOARROW_BUILD_APPS)
@@ -500,10 +660,6 @@ if(NANOARROW_BUILD_APPS)
     add_executable(dump_stream src/apps/dump_stream.c)
     target_link_libraries(dump_stream nanoarrow_ipc nanoarrow)
   endif()
-endif()
-
-if(NANOARROW_DEVICE)
-  add_subdirectory(extensions/nanoarrow_device)
 endif()
 
 if(NANOARROW_BUILD_BENCHMARKS)

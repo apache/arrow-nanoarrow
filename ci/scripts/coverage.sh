@@ -73,21 +73,8 @@ function main() {
     pushd "${SANDBOX_DIR}/nanoarrow"
 
     cmake "${TARGET_NANOARROW_DIR}" \
-        -DNANOARROW_IPC=ON -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
-    cmake --build .
-    CTEST_OUTPUT_ON_FAILURE=1 ctest .
-
-    popd
-
-    pushd "${SANDBOX_DIR}"
-
-    # Build + run tests with gcov for device extension
-    show_header "Build + test nanoarrow_device"
-    mkdir "${SANDBOX_DIR}/nanoarrow_device"
-    pushd "${SANDBOX_DIR}/nanoarrow_device"
-
-    cmake "${TARGET_NANOARROW_DIR}/extensions/nanoarrow_device" \
-        -DNANOARROW_DEVICE_BUILD_TESTS=ON -DNANOARROW_DEVICE_CODE_COVERAGE=ON
+          -DNANOARROW_DEVICE=ON -DNANOARROW_IPC=ON \
+          -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
     cmake --build .
     CTEST_OUTPUT_ON_FAILURE=1 ctest .
 

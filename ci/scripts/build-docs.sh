@@ -72,11 +72,6 @@ main() {
    doxygen
    popd
 
-   show_header "Run Doxygen for device extension"
-   pushd extensions/nanoarrow_device/src/apidoc
-   doxygen
-   popd
-
    show_header "Build nanoarrow Python"
 
    pushd python
