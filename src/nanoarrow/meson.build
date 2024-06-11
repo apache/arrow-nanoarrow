@@ -64,6 +64,26 @@ incdir = include_directories('..')
 nanoarrow_dep = declare_dependency(include_directories: [curdir, incdir],
                                    link_with: nanoarrow_lib)
 
+if get_option('ipc')
+    cmake = import('cmake')
+    cmake_opts = cmake.subproject_options()
+    cmake_opts.add_cmake_defines({'CMAKE_POSITION_INDEPENDENT_CODE': true})
+    flatcc_subproj = cmake.subproject('flatcc', options: cmake_opts)
+    flatcc_dep = flatcc_subproj.dependency('flatccrt')
+
+    nanoarrow_ipc_lib = build_target(
+        'nanoarrow_ipc',
+        'nanoarrow_ipc_decoder.c',
+        'nanoarrow_ipc_reader.c',
+        dependencies: [nanoarrow_dep, flatcc_dep],
+        install: true,
+        target_type: libtype,
+    )
+    nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
+                                           link_with: nanoarrow_ipc_lib,
+                                           dependencies: [nanoarrow_dep, flatcc_dep])
+endif
+
 if get_option('tests') or get_option('integration_tests')
   nlohmann_json_dep = dependency('nlohmann_json')
 
@@ -147,4 +167,36 @@ if get_option('tests')
                                        include_directories: incdir)
   test('c_data_integration test', c_data_integration_test)
 
+  if get_option('ipc')
+      zlib_dep = dependency('zlib')
+      ipc_test_files = {
+          'nanoarrow-ipc-decoder': {
+              'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
+          },
+          'nanoarrow-ipc-reader': {
+              'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
+          },
+          'nanoarrow-ipc-files': {
+              'deps': [
+                  nanoarrow_ipc_dep,
+                  zlib_dep,
+                  arrow_dep,
+                  gtest_dep,
+                  nlohmann_json_dep
+              ],
+          },
+          'nanoarrow-ipc-hpp': {
+              'deps': [nanoarrow_ipc_dep, gtest_dep],
+          },
+      }
+
+      foreach name, config : ipc_test_files
+          exc = executable(
+              name + '-test',
+              name.replace('-', '_') + '_test.cc',
+              dependencies: config['deps']
+          )
+          test(name, exc)
+      endforeach
+  endif
 endif

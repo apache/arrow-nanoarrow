@@ -31,6 +31,7 @@ __pycache__
 # meson subprojects - wrap files need to be kept to let meson download
 # dependencies as needed, but dependencies themselves should not be versioned
 subprojects/*
+!subprojects/packagefiles
 !subprojects/*.wrap
 
 compile_commands.json

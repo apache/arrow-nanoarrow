@@ -15,6 +15,3 @@ dist/flatcc.c
 src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
 thirdparty/*
 python/src/nanoarrow/dlpack_abi.h
-subprojects/google-benchmark.wrap
-subprojects/gtest.wrap
-subprojects/nlohmann_json.wrap

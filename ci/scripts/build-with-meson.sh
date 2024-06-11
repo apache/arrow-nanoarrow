@@ -68,12 +68,12 @@ function main() {
     show_header "Run test suite"
     meson configure -Dtests=true -Db_coverage=true
     meson compile
-    meson test --wrap valgrind
+    meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlogs
 
     show_header "Run benchmarks"
     meson configure -Dbenchmarks=true
     meson compile
-    meson test --benchmark
+    meson test --benchmark --print-errorlogs
 
     show_header "Generate coverage reports"
     ninja coverage
