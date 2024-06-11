@@ -2557,7 +2557,7 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
-  //ArrowArrayFlushInternalPointers(array);
+  ArrowArrayFlushInternalPointers(array);
 
   if (validation_level == NANOARROW_VALIDATION_LEVEL_NONE) {
     return NANOARROW_OK;
@@ -3359,10 +3359,10 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     }
     last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
     if (last_run_end < (array_view->offset + array_view->length)) {
-      ArrowErrorSet(error,
-                    "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
-                    (long)last_run_end, (long)(array_view->offset + array_view->length),
-                    (long)array_view->offset, (long)array_view->length);
+      //ArrowErrorSet(error,
+      //              "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
+      //              (long)last_run_end, (long)(array_view->offset + array_view->length),
+      //              (long)array_view->offset, (long)array_view->length);
       return EINVAL;
     }
   }
