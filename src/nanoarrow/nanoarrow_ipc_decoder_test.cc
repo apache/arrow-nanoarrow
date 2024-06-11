@@ -602,7 +602,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
       auto result = memcmp(arrays[i].children[0]->buffers[1], one_two_three_le,
                            sizeof(one_two_three_le));
       // discard result to silence -Wunused-value
-      (void)result;
+      NANOARROW_UNUSED(result);
       ArrowArrayRelease(arrays + i);
     });
   }

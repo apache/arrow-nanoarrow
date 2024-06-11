@@ -80,7 +80,8 @@ if get_option('ipc')
         target_type: libtype,
     )
     nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
-                                           link_with: nanoarrow_ipc_lib)
+                                           link_with: nanoarrow_ipc_lib,
+                                           dependencies: [nanoarrow_dep, flatcc_dep])
 endif
 
 if get_option('tests') or get_option('integration_tests')
@@ -170,15 +171,14 @@ if get_option('tests')
       zlib_dep = dependency('zlib')
       ipc_test_files = {
           'nanoarrow-ipc-decoder': {
-              'deps': [nanoarrow_dep, flatcc_dep, arrow_dep, gtest_dep],
+              'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
           },
           'nanoarrow-ipc-reader': {
-              'deps': [nanoarrow_dep, flatcc_dep, arrow_dep, gtest_dep],
+              'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
           },
           'nanoarrow-ipc-files': {
               'deps': [
-                  nanoarrow_dep,
-                  flatcc_dep,
+                  nanoarrow_ipc_dep,
                   zlib_dep,
                   arrow_dep,
                   gtest_dep,
@@ -186,7 +186,7 @@ if get_option('tests')
               ],
           },
           'nanoarrow-ipc-hpp': {
-              'deps': [nanoarrow_dep, flatcc_dep, gtest_dep],
+              'deps': [nanoarrow_ipc_dep, gtest_dep],
           },
       }
 
@@ -194,7 +194,6 @@ if get_option('tests')
           exc = executable(
               name + '-test',
               name.replace('-', '_') + '_test.cc',
-              link_with: nanoarrow_ipc_lib,
               dependencies: config['deps']
           )
           test(name, exc)

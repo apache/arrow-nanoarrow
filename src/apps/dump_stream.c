@@ -23,6 +23,8 @@
 
 void dump_schema_to_stdout(struct ArrowSchema* schema, int level, char* buf,
                            int buf_size) {
+  ArrowSchemaToString(schema, buf, buf_size, 0);
+
   for (int i = 0; i < level; i++) {
     fprintf(stdout, "  ");
   }
