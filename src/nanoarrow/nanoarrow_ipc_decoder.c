@@ -1000,7 +1000,7 @@ static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decode
   *message_size_bytes = header_body_size_bytes + kMessageHeaderPrefixSize;
   if (header_body_size_bytes < 0) {
     ArrowErrorSet(error,
-                  "Expected message body size > 0 but found message body size of %" PRId64
+                  "Expected message body size > 0 but found message body size of %" PRId32
                   " bytes",
                   header_body_size_bytes);
     return EINVAL;
