@@ -278,7 +278,6 @@ if(NANOARROW_BUNDLE)
                                  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                         $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
                                         $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-                                        $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
       )
     endif()
 
@@ -377,6 +376,7 @@ else()
                                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
                                       $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
                                       $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+                                      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
                                       $<INSTALL_INTERFACE:include>)
 
     install(TARGETS nanoarrow_ipc DESTINATION lib)
