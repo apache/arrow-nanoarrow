@@ -2584,6 +2584,20 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   ArrowArrayRelease(&array);
 }
 
+// In Arrow C++, HalfFloatType::ctype gives uint16_t; however, this is not
+// the "value type" that would correspond to what ArrowArrayViewGetDoubleUnsafe()
+// or ArrowArrayAppendDouble() do since they operate on the logical/represented
+// value.
+template<typename TypeClass, typename BuilderValueT>
+BuilderValueT logical_value_to_builder_value(int64_t value) {
+  return static_cast<BuilderValueT>(value);
+}
+
+template<>
+uint16_t logical_value_to_builder_value<HalfFloatType, uint16_t>(int64_t value) {
+  return ArrowFloatToHalfFloat(static_cast<float>(value));
+}
+
 template <typename TypeClass>
 void TestGetFromNumericArrayView() {
   struct ArrowArray array;
@@ -2592,19 +2606,14 @@ void TestGetFromNumericArrayView() {
   struct ArrowError error;
 
   auto type = TypeTraits<TypeClass>::type_singleton();
+  using value_type = typename TypeClass::c_type;
 
   // Array with nulls
   auto builder = NumericBuilder<TypeClass>();
 
-  if (type->id() == Type::HALF_FLOAT) {
-    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1)));
-    ARROW_EXPECT_OK(builder.AppendNulls(2));
-    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(4)));
-  } else {
-    ARROW_EXPECT_OK(builder.Append(1));
-    ARROW_EXPECT_OK(builder.AppendNulls(2));
-    ARROW_EXPECT_OK(builder.Append(4));
-  }
+  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(4)));
 
   auto maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
@@ -2637,13 +2646,8 @@ void TestGetFromNumericArrayView() {
   // Array without nulls (Arrow does not allocate the validity buffer)
   builder = NumericBuilder<TypeClass>();
 
-  if (type->id() == Type::HALF_FLOAT) {
-    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(1)));
-    ARROW_EXPECT_OK(builder.Append(ArrowFloatToHalfFloat(2)));
-  } else {
-    ARROW_EXPECT_OK(builder.Append(1));
-    ARROW_EXPECT_OK(builder.Append(2));
-  }
+  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
+  ARROW_EXPECT_OK(builder.Append(logical_value_to_builder_value<TypeClass, value_type>(2)));
 
   maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
