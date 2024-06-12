@@ -313,9 +313,7 @@ if(NANOARROW_DEVICE)
               ${NANOARROW_DEVICE_SOURCES_CUDA})
 
   target_include_directories(nanoarrow_device
-                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
-                                    $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
-                                    $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+                             PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
                                     $<INSTALL_INTERFACE:include>)
 
