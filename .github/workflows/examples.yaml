@@ -89,7 +89,7 @@ jobs:
             --with-flatcc
 
           cd src
-          gcc -c library.c nanoarrow/nanoarrow.c nanoarrow/flatcc.c nanoarrow/nanoarrow_ipc.c -I./nanoarrow -I./nanoarrow/flatcc
+          gcc -c library.c nanoarrow.c flatcc.c nanoarrow_ipc.c -I.
           ar rcs libexample_vendored_ipc_library.a library.o nanoarrow.o nanoarrow_ipc.o flatcc.o
           gcc -o example_vendored_ipc_app app.c libexample_vendored_ipc_library.a
 
