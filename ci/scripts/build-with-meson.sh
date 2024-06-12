@@ -66,12 +66,21 @@ function main() {
     pushd "${SANDBOX_DIR}"
 
     show_header "Run test suite"
-    meson configure -Dtests=true -Db_coverage=true -Dipc=true
+    meson configure \
+          -Dbuildtype=debugoptimized
+          -Db_sanitize="address,undefined"
+          -Dtests=true \
+          -Db_coverage=true \
+          -Dipc=true
     meson compile
     meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlogs
 
     show_header "Run benchmarks"
-    meson configure -Dbenchmarks=true
+    meson configure \
+          -Dbuildtype=release \
+          -Db_sanitize=none \
+          -Db_coverage=false \
+          -Dbenchmarks=true
     meson compile
     meson test --benchmark --print-errorlogs
 
