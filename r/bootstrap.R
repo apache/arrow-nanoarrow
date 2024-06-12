@@ -21,7 +21,7 @@
 run_bundler <- function() {
   args <- c(
     "--symbol-namespace=RPkg",
-    "--header-namespace=''",
+    "--header-namespace=",
     "--include-output-dir=src",
     "--source-output-dir=src",
     "--with-ipc",
