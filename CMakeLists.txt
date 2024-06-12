@@ -308,8 +308,13 @@ if(NANOARROW_DEVICE)
     set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
   endif()
 
+  # If the bundler didn't already assign the source files for the library, do so here
+  if(NOT NANOARROW_BUNDLE)
+  set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/nanoarrow_device.c)
+  endif()
+
   add_library(nanoarrow_device
-              src/nanoarrow/nanoarrow_device.c ${NANOARROW_DEVICE_SOURCES_METAL}
+              ${NANOARROW_DEVICE_BUILD_SOURCES} ${NANOARROW_DEVICE_SOURCES_METAL}
               ${NANOARROW_DEVICE_SOURCES_CUDA})
 
   target_include_directories(nanoarrow_device
