@@ -3163,6 +3163,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_RUN_END_ENCODED: {
       struct ArrowArrayView* run_ends_view = array_view->children[0];
+      if (run_ends_view->length == 0) break;
       int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
       if (last_run_end < 1) {
         ArrowErrorSet(error,
@@ -3342,25 +3343,28 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
 
   if (array_view->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
     struct ArrowArrayView* run_ends_view = array_view->children[0];
-    int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
-    for (int64_t i = 1; i < run_ends_view->length; i++) {
-      const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
-      if (run_end <= last_run_end) {
-        ArrowErrorSet(error,
-                      "Every run end must be strictly greater than the previous run end, "
-                      "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
-                      (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
+    if (run_ends_view->length > 0) {
+      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      for (int64_t i = 1; i < run_ends_view->length; i++) {
+        const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
+        if (run_end <= last_run_end) {
+          ArrowErrorSet(
+              error,
+              "Every run end must be strictly greater than the previous run end, "
+              "but run_ends[%ld] is %ld and run_ends[%ld] is %ld",
+              (long)i, (long)run_end, (long)i - 1, (long)last_run_end);
+          return EINVAL;
+        }
+        last_run_end = run_end;
+      }
+      last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
+      if (last_run_end < (array_view->offset + array_view->length)) {
+        ArrowErrorSet(
+            error, "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
+            (long)last_run_end, (long)(array_view->offset + array_view->length),
+            (long)array_view->offset, (long)array_view->length);
         return EINVAL;
       }
-      last_run_end = run_end;
-    }
-    last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
-    if (last_run_end < (array_view->offset + array_view->length)) {
-      ArrowErrorSet(error,
-                    "Last run end is %ld but it should >= %ld (offset: %ld, length: %ld)",
-                    (long)last_run_end, (long)(array_view->offset + array_view->length),
-                    (long)array_view->offset, (long)array_view->length);
-      return EINVAL;
     }
   }
 
