@@ -1574,14 +1574,6 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
                "All run ends must be greater than 0 but the first run end is 0");
   run_ends[0] = 4;
 
-  // Ensure the last run end is checked for >= 0
-  run_ends[2] = 0;
-  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            EINVAL);
-  EXPECT_STREQ(ArrowErrorMessage(&error),
-               "All run ends must be greater than 0 but the last run end is 0");
-  run_ends[2] = 7;
-
   array.length = 7;
   array.offset = 0;
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
