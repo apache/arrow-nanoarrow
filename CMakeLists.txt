@@ -127,10 +127,8 @@ add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
 target_include_directories(nanoarrow
                            PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
                                   $<INSTALL_INTERFACE:include>)
-target_include_directories(nanoarrow
-                           PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
-)
 target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -258,6 +256,7 @@ if(NANOARROW_IPC)
   target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
                                     $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
                                     $<INSTALL_INTERFACE:include>)
 
@@ -339,6 +338,7 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
               src/nanoarrow/integration/c_data_integration.cc)
   target_include_directories(nanoarrow_c_data_integration
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
                                     $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
 endif()
