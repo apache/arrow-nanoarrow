@@ -19,6 +19,7 @@ message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 cmake_minimum_required(VERSION 3.12)
 
 project(NanoArrowExampleCMakeMinimal LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 11)
 
 option(FIND_NANOARROW "Find an existing nanoarrow" ON)
 

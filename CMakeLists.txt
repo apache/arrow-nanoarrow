@@ -115,10 +115,21 @@ else()
   set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 endif()
 
+# Start the list of targets and headers to install
+set(NANOARROW_INSTALL_TARGETS nanoarrow)
+set(NANOARROW_INSTALL_HEADERS ${NANOARROW_BUILD_INCLUDE_DIR}/nanoarrow/nanoarrow.h
+                              ${NANOARROW_BUILD_INCLUDE_DIR}/nanoarrow/nanoarrow.hpp)
+
 # If the bundler didn't already assign the source files for the library, do so here
 if(NOT NANOARROW_BUNDLE)
   set(NANOARROW_BUILD_SOURCES src/nanoarrow/array.c src/nanoarrow/schema.c
                               src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
+  list(APPEND
+       NANOARROW_INSTALL_HEADERS
+       src/nanoarrow/array_inline.h
+       src/nanoarrow/buffer_inline.h
+       src/nanoarrow/nanoarrow_types.h
+       "${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h")
 endif()
 
 # Add the nanoarrow library target
@@ -155,51 +166,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                                    -Wno-sign-conversion)
   endif()
 endif()
-
-install(TARGETS nanoarrow
-        DESTINATION lib
-        EXPORT nanoarrow-exports)
-install(DIRECTORY ${NANOARROW_BUILD_INCLUDE_DIR}
-        DESTINATION include
-        FILES_MATCHING
-        PATTERN "*.h*")
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h
-        DESTINATION include/nanoarrow)
-
-# Generate package files for the build and install trees.
-include(CMakePackageConfigHelpers)
-include(GNUInstallDirs)
-
-foreach(tree_type BUILD INSTALL)
-  if(tree_type STREQUAL "BUILD")
-    set(install_location ".")
-  else()
-    set(install_location "${CMAKE_INSTALL_LIBDIR}/cmake/nanoarrow")
-  endif()
-
-  set(build_location "${PROJECT_BINARY_DIR}/${install_location}")
-  write_basic_package_version_file(
-    "${build_location}/nanoarrow-config-version.cmake"
-    VERSION ${nanoarrow_VERSION}
-    # After 1.0.0, we can use `SameMajorVersion` here.
-    COMPATIBILITY ExactVersion)
-  configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
-                                "${build_location}/nanoarrow-config.cmake"
-                                INSTALL_DESTINATION "${install_location}")
-
-  if(tree_type STREQUAL "BUILD")
-    export(EXPORT nanoarrow-exports
-           FILE "${build_location}/nanoarrow-targets.cmake"
-           NAMESPACE nanoarrow::)
-
-  else()
-    install(DIRECTORY "${build_location}/" DESTINATION "${install_location}")
-    install(EXPORT nanoarrow-exports
-            DESTINATION "${install_location}"
-            FILE "nanoarrow-targets.cmake"
-            NAMESPACE nanoarrow::)
-  endif()
-endforeach()
 
 if(NANOARROW_IPC)
   # Add the flatcc (runtime) dependency
@@ -549,3 +515,44 @@ endif()
 if(NANOARROW_BUILD_BENCHMARKS)
   add_subdirectory(dev/benchmarks)
 endif()
+
+# Ensure targets/headers can be installed
+install(TARGETS ${NANOARROW_INSTALL_TARGETS}
+        DESTINATION lib
+        EXPORT nanoarrow-exports)
+install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
+
+# Generate package files for the build and install trees.
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
+
+foreach(tree_type BUILD INSTALL)
+  if(tree_type STREQUAL "BUILD")
+    set(install_location ".")
+  else()
+    set(install_location "${CMAKE_INSTALL_LIBDIR}/cmake/nanoarrow")
+  endif()
+
+  set(build_location "${PROJECT_BINARY_DIR}/${install_location}")
+  write_basic_package_version_file(
+    "${build_location}/nanoarrow-config-version.cmake"
+    VERSION ${nanoarrow_VERSION}
+    # After 1.0.0, we can use `SameMajorVersion` here.
+    COMPATIBILITY ExactVersion)
+  configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in"
+                                "${build_location}/nanoarrow-config.cmake"
+                                INSTALL_DESTINATION "${install_location}")
+
+  if(tree_type STREQUAL "BUILD")
+    export(EXPORT nanoarrow-exports
+           FILE "${build_location}/nanoarrow-targets.cmake"
+           NAMESPACE nanoarrow::)
+
+  else()
+    install(DIRECTORY "${build_location}/" DESTINATION "${install_location}")
+    install(EXPORT nanoarrow-exports
+            DESTINATION "${install_location}"
+            FILE "nanoarrow-targets.cmake"
+            NAMESPACE nanoarrow::)
+  endif()
+endforeach()
