@@ -168,9 +168,14 @@ if get_option('tests')
       ipc_test_files = {
           'nanoarrow-ipc-decoder': {
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
+              "timeout": 30,
           },
           'nanoarrow-ipc-reader': {
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
+              # the ipc reader test can take longer when executed
+              # under valgrind, hence the increased timeout
+              "timeout": 90,
+
           },
           'nanoarrow-ipc-files': {
               'deps': [
@@ -180,9 +185,11 @@ if get_option('tests')
                   gtest_dep,
                   nlohmann_json_dep
               ],
+              "timeout": 30,
           },
           'nanoarrow-ipc-hpp': {
               'deps': [nanoarrow_ipc_dep, gtest_dep],
+              "timeout": 30,
           },
       }
 
@@ -192,7 +199,7 @@ if get_option('tests')
               name.replace('-', '_') + '_test.cc',
               dependencies: config['deps']
           )
-          test(name, exc)
+          test(name, exc, timeout: config['timeout'])
       endforeach
   endif
 endif
