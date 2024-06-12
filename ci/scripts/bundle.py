@@ -206,7 +206,7 @@ def bundle_nanoarrow_ipc(
         ]
     )
     nanoarrow_ipc_c = nanoarrow_ipc_c.replace(
-        '#include "nanoarrow_ipc_flatcc_generated.h"', ""
+        '#include "nanoarrow/nanoarrow_ipc_flatcc_generated.h"', ""
     )
     nanoarrow_ipc_c = namespace_nanoarrow_includes(nanoarrow_ipc_c, header_namespace)
     yield f"{output_source_dir}/nanoarrow_ipc.c", nanoarrow_ipc_c
