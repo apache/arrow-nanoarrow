@@ -79,9 +79,12 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
 endif()
 
 if(NANOARROW_BUNDLE)
+  message(STATUS "Generating bundled nanoarrow sources using ci/scripts/bundle.py")
+
   find_package(Python3
                COMPONENTS Interpreter
                REQUIRED)
+
   # Set up arguments to the bundler
   set(NANOARROW_BUNDLE_ARGS "--with-ipc" "--with-device" "--with-flatcc")
 
@@ -248,7 +251,7 @@ if(NANOARROW_IPC)
 
   if(NOT NANOARROW_BUNDLE)
     set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/nanoarrow_ipc_decoder.c
-    src/nanoarrow/nanoarrow_ipc_reader.c)
+                                    src/nanoarrow/nanoarrow_ipc_reader.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
