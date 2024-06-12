@@ -67,8 +67,8 @@ function main() {
 
     show_header "Run test suite"
     meson configure \
-          -Dbuildtype=debugoptimized
-          -Db_sanitize="address,undefined"
+          -Dbuildtype=debugoptimized \
+          -Db_sanitize="address,undefined" \
           -Dtests=true \
           -Db_coverage=true \
           -Dipc=true
