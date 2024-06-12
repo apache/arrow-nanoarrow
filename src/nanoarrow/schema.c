@@ -1234,7 +1234,7 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
 
   if ((format + format_len) != format_end_out) {
     ArrowErrorSet(error, "Error parsing schema->format '%s': parsed %d/%zu characters",
-                  format, format_end_out - format, format_len);
+                  format, int(format_end_out - format), format_len);
     return EINVAL;
   }
 
