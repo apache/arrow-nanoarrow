@@ -310,7 +310,7 @@ if(NANOARROW_DEVICE)
 
   # If the bundler didn't already assign the source files for the library, do so here
   if(NOT NANOARROW_BUNDLE)
-  set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/nanoarrow_device.c)
+    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/nanoarrow_device.c)
   endif()
 
   add_library(nanoarrow_device
