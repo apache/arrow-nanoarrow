@@ -193,14 +193,20 @@ def bundle_nanoarrow_ipc(
     for filename in [
         "nanoarrow_ipc.h",
         "nanoarrow_ipc.hpp",
-        "nanoarrow_ipc_flatcc_generated.h",
     ]:
         content = read_content(src_dir / filename)
         content = namespace_nanoarrow_includes(content, header_namespace)
         yield f"{output_include_dir}/{filename}", content
 
     nanoarrow_ipc_c = concatenate_content(
-        [src_dir / "nanoarrow_ipc_decoder.c", src_dir / "nanoarrow_ipc_reader.c"]
+        [
+            src_dir / "nanoarrow_ipc_flatcc_generated.h",
+            src_dir / "nanoarrow_ipc_decoder.c",
+            src_dir / "nanoarrow_ipc_reader.c",
+        ]
+    )
+    nanoarrow_ipc_c = nanoarrow_ipc_c.replace(
+        '#include "nanoarrow_ipc_flatcc_generated.h"', ""
     )
     nanoarrow_ipc_c = namespace_nanoarrow_includes(nanoarrow_ipc_c, header_namespace)
     yield f"{output_source_dir}/nanoarrow_ipc.c", nanoarrow_ipc_c

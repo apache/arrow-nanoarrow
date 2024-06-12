@@ -46,8 +46,5 @@ lines <- readLines(f)
 writeLines(gsub("^#pragma", "/**/#pragma", lines), f)
 
 # Remove unused files
-unused_files <- c(
-  list.files("src", "\\.hpp$", full.names = TRUE),
-  "src/nanoarrow_ipc_flatcc_generated.h"
-)
+unused_files <- list.files("src", "\\.hpp$", full.names = TRUE)
 unlink(unused_files)
