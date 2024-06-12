@@ -88,6 +88,12 @@ TEST(ArrayTest, ArrayTestAllocateChildren) {
   ArrowArrayRelease(&array);
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAllocateChildren(
+                &array, std::numeric_limits<int64_t>::max() / sizeof(void*)),
+            ENOMEM);
+  ArrowArrayRelease(&array);
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAllocateChildren(&array, 2), NANOARROW_OK);
   EXPECT_EQ(array.n_children, 2);
   ASSERT_NE(array.children, nullptr);

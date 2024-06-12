@@ -73,7 +73,8 @@ function main() {
           -Db_coverage=true \
           -Dipc=true
     meson compile
-    meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlogs
+    export ASAN_OPTIONS=allocator_may_return_null=1  # allow ENOMEM tests
+    meson test --wrap= 'valgrind --track-origins=yes --leak-check=full' --print-errorlogs
 
     show_header "Run benchmarks"
     meson configure \
