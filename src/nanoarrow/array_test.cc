@@ -1485,11 +1485,9 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     array.offset = INT32_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_THAT(
-        ArrowErrorMessage(&error),
-        ::testing::StartsWith(
-            "Offset + length of a run-end encoded array must fit in a value of the "
-            "run end type int32, but offset + length is"));
+    EXPECT_STREQ(ArrowErrorMessage(&error),
+                 "Offset + length of a run-end encoded array must fit in a value of the "
+                 "run end type int32 but is 2147483647 + 7");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT16;
@@ -1499,17 +1497,14 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     EXPECT_STREQ(
         ArrowErrorMessage(&error),
         "Offset + length of a run-end encoded array must fit in a value of the run end "
-        "type int16, but offset + length is 32774");
+        "type int16 but is 32767 + 7");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT64;
     array.offset = INT64_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_THAT(
-        ArrowErrorMessage(&error),
-        ::testing::StartsWith("Offset + length of a run-end encoded array must fit in a "
-                              "value of the run end type int64, but offset + length is"));
+    EXPECT_STREQ(ArrowErrorMessage(&error), "Offset + length is > INT64_MAX");
   }
   ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
       NANOARROW_TYPE_INT32;
