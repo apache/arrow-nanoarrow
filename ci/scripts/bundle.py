@@ -159,7 +159,7 @@ def bundle_nanoarrow_device(
     output_include_dir="include",
 ):
     root_dir = pathlib.Path(root_dir)
-    src_dir = root_dir / "extensions" / "nanoarrow_device" / "src" / "nanoarrow"
+    src_dir = root_dir / "src" / "nanoarrow"
 
     output_source_dir = pathlib.Path(output_source_dir)
     output_include_dir = pathlib.Path(output_include_dir) / header_namespace
@@ -184,7 +184,7 @@ def bundle_nanoarrow_ipc(
     output_include_dir="include",
 ):
     root_dir = pathlib.Path(root_dir)
-    src_dir = root_dir / "extensions" / "nanoarrow_ipc" / "src" / "nanoarrow"
+    src_dir = root_dir / "src" / "nanoarrow"
 
     output_source_dir = pathlib.Path(output_source_dir)
     output_include_dir = pathlib.Path(output_include_dir) / header_namespace
@@ -212,7 +212,7 @@ def bundle_flatcc(
     output_include_dir="include",
 ):
     root_dir = pathlib.Path(root_dir)
-    flatcc_dir = root_dir / "extensions" / "nanoarrow_ipc" / "thirdparty" / "flatcc"
+    flatcc_dir = root_dir / "thirdparty" / "flatcc"
 
     output_source_dir = pathlib.Path(output_source_dir)
     output_include_dir = pathlib.Path(output_include_dir)
