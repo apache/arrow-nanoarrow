@@ -65,11 +65,7 @@ nanoarrow_dep = declare_dependency(include_directories: [curdir, incdir],
                                    link_with: nanoarrow_lib)
 
 if get_option('ipc')
-    cmake = import('cmake')
-    cmake_opts = cmake.subproject_options()
-    cmake_opts.add_cmake_defines({'CMAKE_POSITION_INDEPENDENT_CODE': true})
-    flatcc_subproj = cmake.subproject('flatcc', options: cmake_opts)
-    flatcc_dep = flatcc_subproj.dependency('flatccrt')
+    flatcc_dep = dependency('flatcc')
 
     nanoarrow_ipc_lib = build_target(
         'nanoarrow_ipc',
