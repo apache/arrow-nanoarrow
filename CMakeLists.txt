@@ -56,13 +56,6 @@ option(NANOARROW_ARROW_STATIC
 option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal libraries" OFF)
 option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
 
-set(NANOARROW_DEVICE
-    NANOARROW_DEVICE
-    OR
-    NANOARROW_DEVICE_WITH_MDETAL
-    OR
-    NANOARROW_DEVICE_WITH_CUDA)
-
 if(NANOARROW_IPC)
   add_library(ipc_coverage_config INTERFACE)
 endif()
@@ -89,30 +82,40 @@ if(NANOARROW_BUNDLE)
   find_package(Python3
                COMPONENTS Interpreter
                REQUIRED)
-
+  # Set up arguments to the bundler
   set(NANOARROW_BUNDLE_ARGS "--with-ipc" "--with-device" "--with-flatcc")
 
   if(NANOARROW_BUNDLE_AS_CPP)
     list(APPEND NANOARROW_BUNDLE_ARGS "--cpp")
+    set(NANOARROW_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow.cc")
+  else()
+    set(NANOARROW_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow.c")
   endif()
 
   if(NANOARROW_NAMESPACE)
-    list(APPEND NANOARROW_BUNDLE_ARGS "--symbol-namespace" ${NANOARROW_NAMESPACE})
+    list(APPEND NANOARROW_BUNDLE_ARGS "--symbol-namespace=${NANOARROW_NAMESPACE}")
   endif()
 
+  # Run the bundler
   execute_process(COMMAND ${Python3_EXECUTABLE}
-                          ${CMAKE_CURRENT_SOURCE_DIR}/ci/scripts/bundle.py "--output-dir"
-                          ${CMAKE_BINARY_DIR}/amalgamation ${NANOARROW_BUNDLE_ARGS})
+                          "${CMAKE_CURRENT_SOURCE_DIR}/ci/scripts/bundle.py"
+                          "--output-dir" "${CMAKE_BINARY_DIR}/bundled"
+                          ${NANOARROW_BUNDLE_ARGS} COMMAND_ECHO STDERR)
 
-  set(NANOARROW_BUILD_SOURCES "${CMAKE_BINARY_DIR}/amalgamation/src/nanoarrow.c")
-  set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_BINARY_DIR}/amalgamation/include")
+  set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_BINARY_DIR}/bundled/include")
+  set(NANOARROW_IPC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_ipc.c")
+  set(NANOARROW_DEVICE_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_device.c")
+  set(NANOARROW_FLATCC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/flatcc.c")
 else()
   # Generate the version information
   configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
+  set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+endif()
 
+# If the bundler didn't already assign the source files for the library, do so here
+if(NOT NANOARROW_BUNDLE)
   set(NANOARROW_BUILD_SOURCES src/nanoarrow/array.c src/nanoarrow/schema.c
                               src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
-  set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 endif()
 
 # Add the nanoarrow library target
@@ -208,16 +211,23 @@ if(NANOARROW_IPC)
 
   # A flatcc installation is unlikely, so default to building the vendored one
   if(NOT NANOARROW_FLATCC_INCLUDE_DIR AND NOT NANOARROW_FLATCC_ROOT_DIR)
-    add_library(flatccrt STATIC
-                thirdparty/flatcc/src/runtime/builder.c
-                thirdparty/flatcc/src/runtime/emitter.c
-                thirdparty/flatcc/src/runtime/verifier.c
-                thirdparty/flatcc/src/runtime/refmap.c)
 
-    set(NANOARROW_FLATCC_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc/include)
+    # If the bundler didn't already assign the source files for the library, do so here
+    if(NOT NANOARROW_BUNDLE)
+      set(NANOARROW_FLATCC_BUILD_SOURCES
+          thirdparty/flatcc/src/runtime/builder.c thirdparty/flatcc/src/runtime/emitter.c
+          thirdparty/flatcc/src/runtime/verifier.c thirdparty/flatcc/src/runtime/refmap.c)
+      set(NANOARROW_FLATCC_INCLUDE_DIR
+          "${CMAKE_CURRENT_LIST_DIR}/thirdparty/flatcc/include")
+    else()
+      set(NANOARROW_FLATCC_INCLUDE_DIR "${NANOARROW_BUILD_INCLUDE_DIR}")
+    endif()
+
+    add_library(flatccrt STATIC ${NANOARROW_FLATCC_BUILD_SOURCES})
     target_include_directories(flatccrt
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
+
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt
@@ -227,94 +237,94 @@ if(NANOARROW_IPC)
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
 
   elseif(NOT NANOARROW_FLATCC_INCLUDE_DIR)
-    set(NANOARROW_FLATCC_INCLUDE_DIR ${NANOARROW_FLATCC_ROOT_DIR}/include)
+    set(NANOARROW_FLATCC_INCLUDE_DIR "${NANOARROW_FLATCC_ROOT_DIR}/include")
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt
                           PROPERTIES IMPORTED_LOCATION
                                      "${NANOARROW_FLATCC_ROOT_DIR}/lib/libflatccrt.a"
                                      INTERFACE_INCLUDE_DIRECTORIES
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
-
-    add_library(nanoarrow_ipc src/nanoarrow/nanoarrow_ipc_decoder.c
-                              src/nanoarrow/nanoarrow_ipc_reader.c)
-    target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
-
-    target_include_directories(nanoarrow_ipc
-                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-                                      $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
-                                      $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-                                      $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
-                                      $<INSTALL_INTERFACE:include>)
-
-    install(TARGETS nanoarrow_ipc DESTINATION lib)
-    install(FILES src/nanoarrow/nanoarrow_ipc.h
-                  src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
-            DESTINATION include/nanoarrow)
   endif()
 
-  if(NANOARROW_DEVICE)
-    if(NANOARROW_DEVICE_WITH_METAL)
-      if(NOT EXISTS "${CMAKE_BINARY_DIR}/metal-cpp")
-        message(STATUS "Fetching metal-cpp")
-        file(DOWNLOAD
-             "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
-             "${CMAKE_BINARY_DIR}/metal-cpp.zip")
-        file(ARCHIVE_EXTRACT
-             INPUT
-             ${CMAKE_BINARY_DIR}/metal-cpp.zip
-             DESTINATION
-             ${CMAKE_BINARY_DIR})
-      endif()
-
-      if(NOT DEFINED CMAKE_CXX_STANDARD)
-        set(CMAKE_CXX_STANDARD 17)
-      endif()
-      set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-      find_library(METAL_LIBRARY Metal REQUIRED)
-      message(STATUS "Metal framework found at '${METAL_LIBRARY}'")
-
-      find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
-      message(STATUS "Foundation framework found at '${FOUNDATION_LIBRARY}'")
-
-      find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
-      message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
-
-      set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/nanoarrow_device_metal.cc)
-      set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
-      set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
-                                      ${QUARTZ_CORE_LIBRARY})
-      set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
-    endif()
-
-    if(NANOARROW_DEVICE_WITH_CUDA)
-      find_package(CUDAToolkit REQUIRED)
-      set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
-      set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cuda_driver)
-      set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
-    endif()
-
-    add_library(nanoarrow_device
-                src/nanoarrow/nanoarrow_device.c ${NANOARROW_DEVICE_SOURCES_METAL}
-                ${NANOARROW_DEVICE_SOURCES_CUDA})
-
-    target_include_directories(nanoarrow_device
-                               PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
-                                      $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
-                                      $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
-                                      $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
-                                      $<INSTALL_INTERFACE:include>)
-
-    target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
-                                                        ${NANOARROW_DEVICE_DEFS_CUDA})
-    target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL}
-                                                  ${NANOARROW_DEVICE_LIBS_CUDA})
-    target_compile_definitions(nanoarrow_device
-                               PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
-
-    install(TARGETS nanoarrow_device DESTINATION lib)
-    install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
+  if(NOT NANOARROW_BUNDLE)
+    set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/nanoarrow_ipc_decoder.c
+    src/nanoarrow/nanoarrow_ipc_reader.c)
   endif()
+
+  add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
+  target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
+  target_include_directories(nanoarrow_ipc
+                             PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                    $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
+                                    $<INSTALL_INTERFACE:include>)
+
+  install(TARGETS nanoarrow_ipc DESTINATION lib)
+  install(FILES src/nanoarrow/nanoarrow_ipc.h
+                src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
+          DESTINATION include/nanoarrow)
+endif()
+
+if(NANOARROW_DEVICE)
+  if(NANOARROW_DEVICE_WITH_METAL)
+    if(NOT EXISTS "${CMAKE_BINARY_DIR}/metal-cpp")
+      message(STATUS "Fetching metal-cpp")
+      file(DOWNLOAD
+           "https://developer.apple.com/metal/cpp/files/metal-cpp_macOS12_iOS15.zip"
+           "${CMAKE_BINARY_DIR}/metal-cpp.zip")
+      file(ARCHIVE_EXTRACT
+           INPUT
+           ${CMAKE_BINARY_DIR}/metal-cpp.zip
+           DESTINATION
+           ${CMAKE_BINARY_DIR})
+    endif()
+
+    if(NOT DEFINED CMAKE_CXX_STANDARD)
+      set(CMAKE_CXX_STANDARD 17)
+    endif()
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+    find_library(METAL_LIBRARY Metal REQUIRED)
+    message(STATUS "Metal framework found at '${METAL_LIBRARY}'")
+
+    find_library(FOUNDATION_LIBRARY Foundation REQUIRED)
+    message(STATUS "Foundation framework found at '${FOUNDATION_LIBRARY}'")
+
+    find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
+    message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
+
+    set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/nanoarrow_device_metal.cc)
+    set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
+    set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
+                                    ${QUARTZ_CORE_LIBRARY})
+    set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
+  endif()
+
+  if(NANOARROW_DEVICE_WITH_CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
+    set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cuda_driver)
+    set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
+  endif()
+
+  add_library(nanoarrow_device
+              src/nanoarrow/nanoarrow_device.c ${NANOARROW_DEVICE_SOURCES_METAL}
+              ${NANOARROW_DEVICE_SOURCES_CUDA})
+
+  target_include_directories(nanoarrow_device
+                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/nanoarrow>
+                                    $<BUILD_INTERFACE:${nanoarrow_SOURCE_DIR}/src/nanoarrow>
+                                    $<BUILD_INTERFACE:${nanoarrow_BINARY_DIR}/generated>
+                                    $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
+                                    $<INSTALL_INTERFACE:include>)
+
+  target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
+                                                      ${NANOARROW_DEVICE_DEFS_CUDA})
+  target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL}
+                                                ${NANOARROW_DEVICE_LIBS_CUDA})
+  target_compile_definitions(nanoarrow_device PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
+  install(TARGETS nanoarrow_device DESTINATION lib)
+  install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
 endif()
 
 # Always build integration test if building tests
@@ -325,7 +335,7 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
   target_include_directories(nanoarrow_c_data_integration
-                             PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+                             PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
 endif()
