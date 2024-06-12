@@ -1152,7 +1152,7 @@ static int ArrowAssertIncreasingInt64(struct ArrowBufferView view,
 
   for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int64_t); i++) {
     if (view.data.as_int64[i] < view.data.as_int64[i - 1]) {
-      ArrowErrorSet(error, "[%" PRId64 "] Expected element size >= 0", (long)i);
+      ArrowErrorSet(error, "[%" PRId64 "] Expected element size >= 0", i);
       return EINVAL;
     }
   }

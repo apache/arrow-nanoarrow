@@ -367,7 +367,7 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
       ArrowDeviceResolve(device_array->device_type, device_array->device_id);
   if (device == NULL) {
     ArrowErrorSet(error,
-                  "Can't resolve device with type %" PRId32 " and identifier %l" PRId64,
+                  "Can't resolve device with type %" PRId32 " and identifier %" PRId64,
                   device_array->device_type, device_array->device_id);
     return EINVAL;
   }
