@@ -66,7 +66,7 @@ function main() {
     pushd "${SANDBOX_DIR}"
 
     show_header "Run test suite"
-    meson configure -Dtests=true -Db_coverage=true
+    meson configure -Dtests=true -Db_coverage=true -Dipc=true
     meson compile
     meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlogs
 
