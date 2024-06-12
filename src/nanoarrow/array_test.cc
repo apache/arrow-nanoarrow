@@ -1557,7 +1557,7 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Last run end is 7 but it should >= 8 (offset: 1, length: 7)");
+               "Last run end is 7 but it should be >= (1 + 7)");
 
   //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
   //   ^                                    ^
@@ -1567,7 +1567,25 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Last run end is 7 but it should >= 8 (offset: 0, length: 8)");
+               "Last run end is 7 but it should be >= (0 + 8)");
+
+  // Ensure the first run end is checked for >= 0
+  int32_t* run_ends = const_cast<int32_t*>(
+      reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]));
+  run_ends[0] = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "All run ends must be greater than 0 but the first run end is 0");
+  run_ends[0] = 4;
+
+  // Ensure the last run end is checked for >= 0
+  run_ends[2] = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "All run ends must be greater than 0 but the last run end is 0");
+  run_ends[2] = 7;
 
   array.length = 7;
   array.offset = 0;

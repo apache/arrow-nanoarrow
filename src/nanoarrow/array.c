@@ -1073,13 +1073,35 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_RUN_END_ENCODED: {
       struct ArrowArrayView* run_ends_view = array_view->children[0];
-      if (run_ends_view->length == 0) break;
-      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
-      if (last_run_end < 1) {
+      if (run_ends_view->length == 0) {
+        break;
+      }
+
+      int64_t first_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      if (first_run_end < 1) {
         ArrowErrorSet(
             error,
             "All run ends must be greater than 0 but the first run end is %" PRId64,
+            first_run_end);
+        return EINVAL;
+      }
+
+      int64_t last_run_end =
+          ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
+      if (last_run_end < 1) {
+        ArrowErrorSet(
+            error, "All run ends must be greater than 0 but the last run end is %" PRId64,
             last_run_end);
+        return EINVAL;
+      }
+
+      uint64_t offset_plus_length =
+          (uint64_t)array_view->offset + (uint64_t)array_view->length;
+      if (((uint64_t)last_run_end) < offset_plus_length) {
+        ArrowErrorSet(error,
+                      "Last run end is %" PRId64 " but it should be >= (%" PRId64
+                      " + %" PRId64 ")",
+                      last_run_end, array_view->offset, array_view->length);
         return EINVAL;
       }
       break;
@@ -1270,15 +1292,6 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
           return EINVAL;
         }
         last_run_end = run_end;
-      }
-      last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
-      if (last_run_end < (array_view->offset + array_view->length)) {
-        ArrowErrorSet(error,
-                      "Last run end is %" PRId64 " but it should >= %" PRId64
-                      " (offset: %" PRId64 ", length: %" PRId64 ")",
-                      last_run_end, array_view->offset + array_view->length,
-                      array_view->offset, array_view->length);
-        return EINVAL;
       }
     }
   }
