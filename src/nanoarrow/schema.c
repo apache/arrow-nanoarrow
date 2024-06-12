@@ -234,10 +234,10 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
   int n_chars;
   switch (type) {
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      n_chars = snprintf(buffer, sizeof(buffer), "w:%d", (int)fixed_size);
+      n_chars = snprintf(buffer, sizeof(buffer), "w:%" PRId32, fixed_size);
       break;
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      n_chars = snprintf(buffer, sizeof(buffer), "+w:%d", (int)fixed_size);
+      n_chars = snprintf(buffer, sizeof(buffer), "+w:%" PRId32, fixed_size);
       break;
     default:
       return EINVAL;
@@ -430,7 +430,7 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
     format_out_size -= n_chars;
 
     for (int64_t i = 1; i < n_children; i++) {
-      n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
+      n_chars = snprintf(format_cursor, format_out_size, ",%" PRId64, i);
       format_cursor += n_chars;
       format_out_size -= n_chars;
     }
@@ -724,8 +724,9 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_DECIMAL256);
           return NANOARROW_OK;
         default:
-          ArrowErrorSet(error, "Expected decimal bitwidth of 128 or 256 but found %d",
-                        (int)schema_view->decimal_bitwidth);
+          ArrowErrorSet(error,
+                        "Expected decimal bitwidth of 128 or 256 but found %" PRId32,
+                        schema_view->decimal_bitwidth);
           return EINVAL;
       }
 
@@ -1027,8 +1028,9 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
 static ArrowErrorCode ArrowSchemaViewValidateNChildren(
     struct ArrowSchemaView* schema_view, int64_t n_children, struct ArrowError* error) {
   if (n_children != -1 && schema_view->schema->n_children != n_children) {
-    ArrowErrorSet(error, "Expected schema with %d children but found %d children",
-                  (int)n_children, (int)schema_view->schema->n_children);
+    ArrowErrorSet(
+        error, "Expected schema with %" PRId64 " children but found %" PRId64 " children",
+        n_children, schema_view->schema->n_children);
     return EINVAL;
   }
 
@@ -1064,8 +1066,9 @@ static ArrowErrorCode ArrowSchemaViewValidateMap(struct ArrowSchemaView* schema_
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewValidateNChildren(schema_view, 1, error));
 
   if (schema_view->schema->children[0]->n_children != 2) {
-    ArrowErrorSet(error, "Expected child of map type to have 2 children but found %d",
-                  (int)schema_view->schema->children[0]->n_children);
+    ArrowErrorSet(error,
+                  "Expected child of map type to have 2 children but found %" PRId64,
+                  schema_view->schema->children[0]->n_children);
     return EINVAL;
   }
 
@@ -1180,7 +1183,7 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
 
     default:
       ArrowErrorSet(error, "Expected a valid enum ArrowType value but found %d",
-                    (int)schema_view->type);
+                    schema_view->type);
       return EINVAL;
   }
 
@@ -1230,8 +1233,8 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
   }
 
   if ((format + format_len) != format_end_out) {
-    ArrowErrorSet(error, "Error parsing schema->format '%s': parsed %d/%d characters",
-                  format, (int)(format_end_out - format), (int)(format_len));
+    ArrowErrorSet(error, "Error parsing schema->format '%s': parsed %d/%zu characters",
+                  format, format_end_out - format, format_len);
     return EINVAL;
   }
 
@@ -1291,9 +1294,8 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
   switch (schema_view->type) {
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
-      return snprintf(out, n, "%s(%d, %d)", type_string,
-                      (int)schema_view->decimal_precision,
-                      (int)schema_view->decimal_scale);
+      return snprintf(out, n, "%s(%" PRId32 ", %" PRId32 ")", type_string,
+                      schema_view->decimal_precision, schema_view->decimal_scale);
     case NANOARROW_TYPE_TIMESTAMP:
       return snprintf(out, n, "%s('%s', '%s')", type_string,
                       ArrowTimeUnitString(schema_view->time_unit), schema_view->timezone);

@@ -382,7 +382,7 @@ static int ArrowIpcDecoderSetTypeInt(struct ArrowSchema* schema,
       default:
         ArrowErrorSet(error,
                       "Expected signed int bitwidth of 8, 16, 32, or 64 but got %d",
-                      (int)bitwidth);
+                      bitwidth);
         return EINVAL;
     }
   } else {
@@ -402,7 +402,7 @@ static int ArrowIpcDecoderSetTypeInt(struct ArrowSchema* schema,
       default:
         ArrowErrorSet(error,
                       "Expected unsigned int bitwidth of 8, 16, 32, or 64 but got %d",
-                      (int)bitwidth);
+                      bitwidth);
         return EINVAL;
     }
   }
@@ -423,8 +423,7 @@ static int ArrowIpcDecoderSetTypeFloatingPoint(struct ArrowSchema* schema,
     case ns(Precision_DOUBLE):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_DOUBLE, error);
     default:
-      ArrowErrorSet(error, "Unexpected FloatingPoint Precision value: %d",
-                    (int)precision);
+      ArrowErrorSet(error, "Unexpected FloatingPoint Precision value: %d", precision);
       return EINVAL;
   }
 }
@@ -448,7 +447,7 @@ static int ArrowIpcDecoderSetTypeDecimal(struct ArrowSchema* schema,
           ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL256, precision, scale);
       break;
     default:
-      ArrowErrorSet(error, "Unexpected Decimal bitwidth value: %d", (int)bitwidth);
+      ArrowErrorSet(error, "Unexpected Decimal bitwidth value: %d", bitwidth);
       return EINVAL;
   }
 
@@ -519,7 +518,7 @@ static int ArrowIpcDecoderSetTypeTime(struct ArrowSchema* schema,
       break;
 
     default:
-      ArrowErrorSet(error, "Unexpected Time TimeUnit value: %d", (int)time_unit);
+      ArrowErrorSet(error, "Unexpected Time TimeUnit value: %d", time_unit);
       return EINVAL;
   }
 
@@ -585,7 +584,7 @@ static int ArrowIpcDecoderSetTypeInterval(struct ArrowSchema* schema,
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
                                           error);
     default:
-      ArrowErrorSet(error, "Unexpected Interval unit value: %d", (int)interval_unit);
+      ArrowErrorSet(error, "Unexpected Interval unit value: %d", interval_unit);
       return EINVAL;
   }
 }
@@ -673,7 +672,7 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
       format_out_size -= n_chars;
       break;
     default:
-      ArrowErrorSet(error, "Unexpected Union UnionMode value: %d", (int)union_mode);
+      ArrowErrorSet(error, "Unexpected Union UnionMode value: %d", union_mode);
       return EINVAL;
   }
 
@@ -706,8 +705,8 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
       }
 
       for (int64_t i = 1; i < n_type_ids; i++) {
-        n_chars = snprintf(format_cursor, format_out_size, ",%d",
-                           (int)flatbuffers_int32_vec_at(type_ids, i));
+        n_chars = snprintf(format_cursor, format_out_size, ",%" PRId32,
+                           flatbuffers_int32_vec_at(type_ids, i));
         format_cursor += n_chars;
         format_out_size -= n_chars;
 
@@ -728,7 +727,7 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
     }
 
     for (int64_t i = 1; i < n_children; i++) {
-      n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
+      n_chars = snprintf(format_cursor, format_out_size, ",%" PRId64, i);
       format_cursor += n_chars;
       format_out_size -= n_chars;
 
@@ -793,7 +792,7 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
       return ArrowIpcDecoderSetTypeUnion(schema, ns(Field_type_get(field)), n_children,
                                          error);
     default:
-      ArrowErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
+      ArrowErrorSet(error, "Unrecognized Field type with value %d", type_type);
       return EINVAL;
   }
 }
@@ -879,7 +878,7 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
     default:
       ArrowErrorSet(error,
                     "Expected Schema endianness of 0 (little) or 1 (big) but got %d",
-                    (int)endianness);
+                    endianness);
       return EINVAL;
   }
 
@@ -1467,8 +1466,9 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
           break;
         }
         default:
-          ArrowErrorSet(error, "Endian swapping for element bitwidth %d is not supported",
-                        (int)src->element_size_bits);
+          ArrowErrorSet(
+              error, "Endian swapping for element bitwidth %" PRId64 " is not supported",
+              src->element_size_bits);
           return ENOTSUP;
       }
       break;
