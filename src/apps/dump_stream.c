@@ -17,6 +17,7 @@
 
 #include "nanoarrow/nanoarrow_ipc.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -121,8 +122,8 @@ int main(int argc, char* argv[]) {
 
   end = clock();
   elapsed = (end - begin) / ((double)CLOCKS_PER_SEC);
-  fprintf(stdout, "Read %ld rows in %ld batch(es) <%.06f seconds>\n", (long)row_count,
-          (long)batch_count, elapsed);
+  fprintf(stdout, "Read %l" PRId64 " rows in %" PRId64 " batch(es) <%.06f seconds>\n",
+          row_count, batch_count, elapsed);
 
   ArrowArrayStreamRelease(&stream);
   fclose(file_ptr);

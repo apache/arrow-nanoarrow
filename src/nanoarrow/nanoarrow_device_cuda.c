@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <inttypes.h>
+
 #include <cuda.h>
 
 #include "nanoarrow_device.h"
@@ -409,7 +411,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
     case ARROW_DEVICE_CUDA_HOST:
       break;
     default:
-      ArrowErrorSet(error, "Device type code %d not supported", (int)device_type);
+      ArrowErrorSet(error, "Device type code %" PRId32 " not supported", device_type);
       return EINVAL;
   }
 
