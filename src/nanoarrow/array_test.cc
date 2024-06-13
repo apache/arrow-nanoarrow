@@ -1485,11 +1485,9 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     array.offset = INT32_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_THAT(
-        ArrowErrorMessage(&error),
-        ::testing::StartsWith(
-            "Offset + length of a run-end encoded array must fit in a value of the "
-            "run end type int32, but offset + length is"));
+    EXPECT_STREQ(ArrowErrorMessage(&error),
+                 "Offset + length of a run-end encoded array must fit in a value of the "
+                 "run end type int32 but is 2147483647 + 7");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT16;
@@ -1499,17 +1497,14 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
     EXPECT_STREQ(
         ArrowErrorMessage(&error),
         "Offset + length of a run-end encoded array must fit in a value of the run end "
-        "type int16, but offset + length is 32774");
+        "type int16 but is 32767 + 7");
 
     ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
         NANOARROW_TYPE_INT64;
     array.offset = INT64_MAX;
     EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
               EINVAL);
-    EXPECT_THAT(
-        ArrowErrorMessage(&error),
-        ::testing::StartsWith("Offset + length of a run-end encoded array must fit in a "
-                              "value of the run end type int64, but offset + length is"));
+    EXPECT_STREQ(ArrowErrorMessage(&error), "Offset + length is > INT64_MAX");
   }
   ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
       NANOARROW_TYPE_INT32;
@@ -1557,7 +1552,7 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Last run end is 7 but it should >= 8 (offset: 1, length: 7)");
+               "Last run end is 7 but it should be >= (1 + 7)");
 
   //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
   //   ^                                    ^
@@ -1567,7 +1562,17 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(ArrowErrorMessage(&error),
-               "Last run end is 7 but it should >= 8 (offset: 0, length: 8)");
+               "Last run end is 7 but it should be >= (0 + 8)");
+
+  // Ensure the first run end is checked for >= 0
+  int32_t* run_ends = const_cast<int32_t*>(
+      reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]));
+  run_ends[0] = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "All run ends must be greater than 0 but the first run end is 0");
+  run_ends[0] = 4;
 
   array.length = 7;
   array.offset = 0;
