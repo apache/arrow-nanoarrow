@@ -360,7 +360,7 @@ TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
 
     memcpy(simple_stream_invalid, kSimpleSchema, i);
     memcpy(simple_stream_invalid + i, kSimpleSchema + (i + 1),
-           (sizeof(kSimpleSchema) - i));
+           (sizeof(kSimpleSchema) - i - 1));
 
     ArrowBufferInit(&input_buffer);
     ASSERT_EQ(ArrowBufferAppendBufferView(&input_buffer, data), NANOARROW_OK);
@@ -382,7 +382,7 @@ TEST(NanoarrowIpcTest, StreamReaderInvalidBuffer) {
 
     memcpy(simple_stream_invalid + sizeof(kSimpleSchema), kSimpleRecordBatch, i);
     memcpy(simple_stream_invalid + sizeof(kSimpleSchema) + i,
-           kSimpleRecordBatch + (i + 1), (sizeof(kSimpleRecordBatch) - i));
+           kSimpleRecordBatch + (i + 1), (sizeof(kSimpleRecordBatch) - i - 1));
 
     ArrowBufferInit(&input_buffer);
     ASSERT_EQ(ArrowBufferAppendBufferView(&input_buffer, data), NANOARROW_OK);
