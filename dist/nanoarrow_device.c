@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 
 #include "nanoarrow.h"
 
@@ -365,8 +366,9 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
   struct ArrowDevice* device =
       ArrowDeviceResolve(device_array->device_type, device_array->device_id);
   if (device == NULL) {
-    ArrowErrorSet(error, "Can't resolve device with type %d and identifier %ld",
-                  (int)device_array->device_type, (long)device_array->device_id);
+    ArrowErrorSet(error,
+                  "Can't resolve device with type %" PRId32 " and identifier %" PRId64,
+                  device_array->device_type, device_array->device_id);
     return EINVAL;
   }
 

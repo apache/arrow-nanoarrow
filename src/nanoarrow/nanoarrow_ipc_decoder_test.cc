@@ -252,7 +252,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifyInvalid) {
 
     memcpy(simple_schema_invalid, kSimpleSchema, i);
     memcpy(simple_schema_invalid + i, kSimpleSchema + (i + 1),
-           (sizeof(simple_schema_invalid) - i));
+           (sizeof(simple_schema_invalid) - i - 1));
 
     ArrowErrorInit(&error);
     ASSERT_NE(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);

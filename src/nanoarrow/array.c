@@ -750,6 +750,12 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
     return EINVAL;
   }
 
+  // Ensure that offset + length fits within an int64 before a possible overflow
+  if ((uint64_t)array_view->offset + (uint64_t)array_view->length > (uint64_t)INT64_MAX) {
+    ArrowErrorSet(error, "Offset + length is > INT64_MAX");
+    return EINVAL;
+  }
+
   // Calculate buffer sizes that do not require buffer access. If marked as
   // unknown, assign the buffer size; otherwise, validate it.
   int64_t offset_plus_length = array_view->offset + array_view->length;
@@ -888,16 +894,17 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
               ArrowTypeString(run_ends_view->storage_type));
           return EINVAL;
       }
-      // uint64_t is used here to avoid overflow when adding the offset and length
-      if ((uint64_t)array_view->offset + (uint64_t)array_view->length >
-          (uint64_t)max_length) {
+
+      // There is already a check above that offset_plus_length < INT64_MAX
+      if (offset_plus_length > max_length) {
         ArrowErrorSet(error,
                       "Offset + length of a run-end encoded array must fit in a value"
-                      " of the run end type %s, but offset + length is %" PRId64,
-                      ArrowTypeString(run_ends_view->storage_type),
-                      array_view->offset + array_view->length);
+                      " of the run end type %s but is %" PRId64 " + %" PRId64,
+                      ArrowTypeString(run_ends_view->storage_type), array_view->offset,
+                      array_view->length);
         return EINVAL;
       }
+
       if (run_ends_view->length > values_view->length) {
         ArrowErrorSet(error,
                       "Length of run_ends is greater than the length of values: %" PRId64
@@ -905,6 +912,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                       run_ends_view->length, values_view->length);
         return EINVAL;
       }
+
       if (run_ends_view->length == 0 && values_view->length != 0) {
         ArrowErrorSet(error,
                       "Run-end encoded array has zero length %" PRId64
@@ -913,6 +921,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                       values_view->length);
         return EINVAL;
       }
+
       if (run_ends_view->null_count != 0) {
         ArrowErrorSet(error, "Null count must be 0 for run ends array, but is %" PRId64,
                       run_ends_view->null_count);
@@ -920,6 +929,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       }
       break;
     }
+
     default:
       break;
   }
@@ -1073,13 +1083,27 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_RUN_END_ENCODED: {
       struct ArrowArrayView* run_ends_view = array_view->children[0];
-      if (run_ends_view->length == 0) break;
-      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
-      if (last_run_end < 1) {
+      if (run_ends_view->length == 0) {
+        break;
+      }
+
+      int64_t first_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      if (first_run_end < 1) {
         ArrowErrorSet(
             error,
             "All run ends must be greater than 0 but the first run end is %" PRId64,
-            last_run_end);
+            first_run_end);
+        return EINVAL;
+      }
+
+      // offset + length < INT64_MAX is checked in ArrowArrayViewValidateMinimal()
+      int64_t last_run_end =
+          ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
+      if (last_run_end < offset_plus_length) {
+        ArrowErrorSet(error,
+                      "Last run end is %" PRId64 " but it should be >= (%" PRId64
+                      " + %" PRId64 ")",
+                      last_run_end, array_view->offset, array_view->length);
         return EINVAL;
       }
       break;
@@ -1270,15 +1294,6 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
           return EINVAL;
         }
         last_run_end = run_end;
-      }
-      last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
-      if (last_run_end < (array_view->offset + array_view->length)) {
-        ArrowErrorSet(error,
-                      "Last run end is %" PRId64 " but it should >= %" PRId64
-                      " (offset: %" PRId64 ", length: %" PRId64 ")",
-                      last_run_end, array_view->offset + array_view->length,
-                      array_view->offset, array_view->length);
-        return EINVAL;
       }
     }
   }
