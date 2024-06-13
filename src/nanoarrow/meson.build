@@ -94,7 +94,7 @@ if needs_device
   endif
 
   if get_option('cuda')
-    cuda_dep = dependency('cuda', modules: ['cublas'])
+    cuda_dep = dependency('cuda', modules: ['cuda_driver'])
     device_deps += cuda_dep
     device_srcs += 'nanoarrow_device_cuda.cc'
   endif
