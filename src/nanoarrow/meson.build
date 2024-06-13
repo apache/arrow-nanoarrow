@@ -104,64 +104,47 @@ if get_option('tests')
   gmock_dep = dependency('gmock')
   nlohmann_json_dep = dependency('nlohmann_json')
 
-  utils_test = executable('utils_test', 'utils_test.cc',
-                          link_with: nanoarrow_lib,
-                          dependencies: [
-                              arrow_dep,
-                              gtest_dep,
-                              gmock_dep,
-                              nlohmann_json_dep,
-                          ],
-                          include_directories: incdir)
-  test('utils test', utils_test)
+  nanoarrow_tests = {
+      'utils': {
+          'deps': [arrow_dep, gtest_dep, gmock_dep, nlohmann_json_dep],
+      },
+      'buffer': {
+          'deps': [arrow_dep, gtest_dep],
+      },
+      'array': {
+          'deps': [arrow_dep, gtest_dep, gmock_dep],
+      },
+      'schema': {
+          'deps': [arrow_dep, gtest_dep],
+      },
+      'array-stream': {
+          'deps': [arrow_dep, gtest_dep, gmock_dep],
+      },
+      'nanoarrow-hpp': {
+          'deps': [arrow_dep, gtest_dep, gmock_dep, nlohmann_json_dep],
+      },
+      'nanoarrow-testing': {
+          'deps': [arrow_dep, gtest_dep, nlohmann_json_dep],
+      },
+  }
 
-  buffer_test = executable('buffer_test', 'buffer_test.cc',
-                           dependencies: [arrow_dep, gtest_dep],
-                          link_with: nanoarrow_lib,
-                           include_directories: incdir)
-  test('buffer test', buffer_test)
+  foreach name, config : nanoarrow_tests
+    exc = executable(
+        name + '-test',
+        sources: name.replace('-', '_') + '_test.cc',
+        link_with: nanoarrow_lib,
+        include_directories: incdir,
+        dependencies: config['deps'],
+    )
+    test(name, exc)
+  endforeach
 
-  array_test = executable('array_test', 'array_test.cc',
-                          dependencies: [arrow_dep, gtest_dep, gmock_dep],
-                          link_with: nanoarrow_lib,
-                          include_directories: incdir)
-  test('array test', array_test)
-
-  schema_test = executable('schema_test', 'schema_test.cc',
-                           dependencies: [arrow_dep, gtest_dep],
-                          link_with: nanoarrow_lib,
-                           include_directories: incdir)
-  test('schema test', schema_test)
-
-  array_stream_test = executable('array_stream_test', 'array_stream_test.cc',
-                                 dependencies: [arrow_dep, gtest_dep, gmock_dep],
-                                 link_with: nanoarrow_lib,
-                                 include_directories: incdir)
-  test('array_stream test', array_stream_test)
-
-  nanoarrow_hpp_test = executable('nanoarrow_hpp_test', 'nanoarrow_hpp_test.cc',
-                                  dependencies: [
-                                      arrow_dep,
-                                      gtest_dep,
-                                      gmock_dep,
-                                      nlohmann_json_dep,
-                                  ],
-                                  link_with: nanoarrow_lib,
-                                  include_directories: incdir)
-  test('nanoarrow_hpp test', nanoarrow_hpp_test)
-
-  nanoarrow_testing_test = executable('nanoarrow_testing_test', 'nanoarrow_testing_test.cc',
-                                      dependencies: [arrow_dep, gtest_dep, nlohmann_json_dep],
-                                      link_with: nanoarrow_lib,
-                                      include_directories: incdir)
-  test('nanoarrow_testing test', nanoarrow_testing_test)
-
-
-  c_data_integration_test = executable('c_data_integration_test', 'integration/c_data_integration_test.cc',
+  c_data_integration_test = executable('c-data-integration-test',
+                                       'integration/c_data_integration_test.cc',
                                        link_with: c_data_integration_lib,
                                        dependencies: [arrow_dep, gtest_dep],
                                        include_directories: incdir)
-  test('c_data_integration test', c_data_integration_test)
+  test('c-data-integration', c_data_integration_test)
 
   if get_option('ipc')
       zlib_dep = dependency('zlib')
