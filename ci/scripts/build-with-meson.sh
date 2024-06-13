@@ -70,7 +70,9 @@ function main() {
           -Dbuildtype=debugoptimized \
           -Db_sanitize="address,undefined" \
           -Dtests=true \
-          -Dipc=true
+          -Dipc=true \
+          -Dbenchmarks=false \
+          -Db_coverage=false
     meson compile
     export ASAN_OPTIONS=allocator_may_return_null=1  # allow ENOMEM tests
     meson test --print-errorlogs
@@ -80,28 +82,34 @@ function main() {
           -Dbuildtype=debugoptimized \
           -Db_sanitize=none \
           -Dtests=true \
-          -Dipc=true
+          -Dipc=true \
+          -Dbenchmarks=false \
+          -Db_coverage=false
     meson compile
-    meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlogs
-
-    show_header "Run coverage test suite"
-    meson configure \
-          -Dbuildtype=release \
-          -Db_sanitize=none \
-          -Db_coverage=true \
-          -Dtests=true \
-          -Dipc=true
-    meson compile
-    meson test --print-errorlogs
+    meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlog
 
     show_header "Run benchmarks"
     meson configure \
           -Dbuildtype=release \
           -Db_sanitize=none \
-          -Db_coverage=false \
-          -Dbenchmarks=true
+          -Dtests=false \
+          -Dipc=true \
+          -Dbenchmarks=true \
+          -Db_coverage=false
     meson compile
     meson test --benchmark --print-errorlogs
+
+    show_header "Run coverage test suite"
+    meson configure \
+          -Dbuildtype=release \
+          -Db_sanitize=none \
+          -Dtests=true \
+          -Dipc=true \
+          -Dbenchmarks=false \
+          -Db_coverage=true
+
+    meson compile
+    meson test --print-errorlogs
 
     show_header "Generate coverage reports"
     ninja coverage
