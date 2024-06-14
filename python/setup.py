@@ -68,6 +68,18 @@ else:
 setup(
     ext_modules=[
         Extension(
+            name="nanoarrow._utils",
+            include_dirs=["src/nanoarrow", "vendor"],
+            language="c",
+            sources=[
+                "src/nanoarrow/_utils.pyx",
+                "vendor/nanoarrow.c",
+            ],
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
+            define_macros=extra_define_macros,
+        ),
+        Extension(
             name="nanoarrow._lib",
             include_dirs=["src/nanoarrow", "vendor"],
             language="c",

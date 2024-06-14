@@ -18,7 +18,8 @@
 import io
 
 from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
-from nanoarrow._lib import CArrayStream, _obj_is_buffer
+from nanoarrow._lib import CArrayStream
+from nanoarrow._utils import obj_is_buffer
 
 from nanoarrow import _repr_utils
 
@@ -99,7 +100,7 @@ class Stream:
         <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
-        if not hasattr(obj, "readinto") and _obj_is_buffer(obj):
+        if not hasattr(obj, "readinto") and obj_is_buffer(obj):
             close_obj = True
             obj = io.BytesIO(obj)
         else:

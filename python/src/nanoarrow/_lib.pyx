@@ -59,22 +59,6 @@ from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
 
-def c_version():
-    """Return the nanoarrow C library version string
-    """
-    return ArrowNanoarrowVersion().decode("UTF-8")
-
-
-# CPython utilities that are helpful in Python and not available in all
-# implementations of ctypes (e.g., early Python versions, pypy)
-def _obj_is_capsule(obj, str name):
-    return PyCapsule_IsValid(obj, name.encode()) == 1
-
-
-def _obj_is_buffer(obj):
-    return PyObject_CheckBuffer(obj) == 1
-
-
 # PyCapsule utilities
 #
 # PyCapsules are used (1) to safely manage memory associated with C structures
