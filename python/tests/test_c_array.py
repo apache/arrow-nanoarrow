@@ -148,7 +148,7 @@ def test_c_array_shallow_copy():
     import gc
     import platform
 
-    from nanoarrow._lib import get_pyobject_buffer_count
+    from nanoarrow._utils import get_pyobject_buffer_count
 
     if platform.python_implementation() == "PyPy":
         pytest.skip(
