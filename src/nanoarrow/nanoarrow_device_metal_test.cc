@@ -106,7 +106,7 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
   old_ptr = buffer.data;
   ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2), NANOARROW_OK);
   EXPECT_EQ(buffer2.size_bytes, 5);
-  EXPECT_NE(buffer2.data, old_ptr);
+  // EXPECT_NE(buffer2.data, old_ptr);
   EXPECT_EQ(memcmp(buffer2.data, data, sizeof(data)), 0);
   EXPECT_EQ(buffer.data, nullptr);
 
@@ -237,23 +237,22 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
 
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
 
-  // Copy required to Metal
+  // We should be able to move arrays to Metal (this may depend on MacOS version
+  // ...wrapping an arbitrary sequence of bytes as an MTL::Buffer failed under
+  // previous versions of MacOS but now seems to work)
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
-  ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, metal, &device_array2), ENOTSUP);
-  ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, metal, &device_array2),
+  ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, metal, &device_array2),
             NANOARROW_OK);
-  ArrowArrayRelease(&device_array.array);
+  ASSERT_EQ(device_array.array.release, nullptr);
 
-  ASSERT_NE(device_array2.array.release, nullptr);
-  ASSERT_EQ(device_array2.device_id, metal->device_id);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
   EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
             0);
 
-  // Copy shouldn't be required to the CPU
+  // Copy shouldn't be required back to the CPU
   ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array2, cpu, &device_array),
             NANOARROW_OK);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),

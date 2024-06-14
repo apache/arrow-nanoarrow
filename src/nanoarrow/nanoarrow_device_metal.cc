@@ -145,7 +145,9 @@ struct ArrowDeviceMetalArrayPrivate {
 static void ArrowDeviceMetalArrayRelease(struct ArrowArray* array) {
   struct ArrowDeviceMetalArrayPrivate* private_data =
       (struct ArrowDeviceMetalArrayPrivate*)array->private_data;
-  private_data->event->release();
+  if (private_data->event != nullptr) {
+    private_data->event->release();
+  }
   ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
   array->release = NULL;
@@ -163,7 +165,7 @@ static ArrowErrorCode ArrowDeviceMetalArrayInit(struct ArrowDevice* device,
   }
 
   // One can create a new event with mtl_device->newSharedEvent();
-  private_data->event = sync_event;
+  private_data->event = static_cast<MTL::SharedEvent*>(sync_event);
 
   memset(device_array, 0, sizeof(struct ArrowDeviceArray));
   device_array->array = *array;
@@ -330,7 +332,8 @@ static ArrowErrorCode ArrowDeviceMetalArrayMove(struct ArrowDevice* device_src,
       return ENOTSUP;
     }
 
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayInit(device_dst, dst, &src->array));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowDeviceArrayInit(device_dst, dst, &src->array, src->sync_event));
     return NANOARROW_OK;
 
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
