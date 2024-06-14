@@ -22,6 +22,9 @@ from cpython cimport (
     Py_buffer,
     PyObject_CheckBuffer,
     PyBuffer_Release,
+    PyObject_GetBuffer,
+    PyBUF_FORMAT,
+    PyBUF_ANY_CONTIGUOUS
 )
 from cpython.ref cimport Py_INCREF, Py_DECREF
 
@@ -336,3 +339,32 @@ cdef ArrowBufferAllocator c_pybuffer_deallocator(Py_buffer* buffer):
 
     memcpy(allocator_private, buffer, sizeof(Py_buffer))
     return ArrowBufferDeallocator(<ArrowBufferDeallocatorCallback>&c_deallocate_pybuffer, allocator_private)
+
+
+cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
+    ArrowBufferReset(c_buffer[0])
+
+    cdef Py_buffer buffer
+    cdef int rc = PyObject_GetBuffer(obj, &buffer, PyBUF_FORMAT | PyBUF_ANY_CONTIGUOUS)
+    if rc != 0:
+        raise BufferError()
+
+    # Parse the buffer's format string to get the ArrowType and element size
+    try:
+        if buffer.format == NULL:
+            format = "B"
+        else:
+            format = buffer.format.decode("UTF-8")
+    except Exception as e:
+        PyBuffer_Release(&buffer)
+        raise e
+
+    # Transfers ownership of buffer to c_buffer, whose finalizer will be called by
+    # the capsule when the capsule is deleted or garbage collected
+    c_buffer[0].data = <uint8_t*>buffer.buf
+    c_buffer[0].size_bytes = <int64_t>buffer.len
+    c_buffer[0].capacity_bytes = 0
+    c_buffer[0].allocator = c_pybuffer_deallocator(&buffer)
+
+    # Return the calculated components
+    return format
