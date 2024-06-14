@@ -208,13 +208,13 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("abc")), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("defg")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "abc"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "defg"_asv), NANOARROW_OK);
   if (include_null) {
     ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
     expected_data_size = 7;
   } else {
-    ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("hjk")), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(&array, "hjk"_asv), NANOARROW_OK);
     expected_data_size = 10;
   }
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
