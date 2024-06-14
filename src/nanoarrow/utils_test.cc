@@ -286,6 +286,8 @@ TEST(DecimalTest, Decimal128Test) {
 }
 
 TEST(DecimalTest, DecimalNegateTest) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
@@ -341,6 +343,8 @@ TEST(DecimalTest, DecimalNegateTest) {
 }
 
 TEST(DecimalTest, Decimal256Test) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 256, 10, 3);
 
@@ -378,6 +382,8 @@ TEST(DecimalTest, Decimal256Test) {
 }
 
 TEST(DecimalTest, DecimalStringTestBasic) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 39, 0);
 
@@ -455,6 +461,8 @@ TEST(DecimalTest, DecimalStringTestBasic) {
 }
 
 TEST(DecimalTest, DecimalStringTestInvalid) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 39, 0);
   EXPECT_EQ(ArrowDecimalSetDigits(&decimal, "this is not an integer"_sv), EINVAL);

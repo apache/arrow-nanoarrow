@@ -25,6 +25,7 @@
 using nanoarrow::testing::TestingJSONComparison;
 using nanoarrow::testing::TestingJSONReader;
 using nanoarrow::testing::TestingJSONWriter;
+using namespace nanoarrow::literals;
 
 ArrowErrorCode WriteBatchJSON(std::ostream& out, TestingJSONWriter& writer,
                               const ArrowSchema* schema, ArrowArrayView* array_view) {

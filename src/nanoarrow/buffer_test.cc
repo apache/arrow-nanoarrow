@@ -194,6 +194,8 @@ TEST(BufferTest, BufferTestError) {
 }
 
 TEST(BufferTest, BufferTestAppendHelpers) {
+  using namespace nanoarrow::literals;
+
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
 

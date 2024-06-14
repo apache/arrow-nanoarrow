@@ -1495,6 +1495,8 @@ TEST(SchemaViewTest, SchemaViewInitDictionaryErrors) {
 }
 
 TEST(SchemaViewTest, SchemaViewInitExtension) {
+  using namespace nanoarrow::literals;
+
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
@@ -1506,7 +1508,7 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
   auto int_field = field("field_name", int32(), arrow_meta);
   ARROW_EXPECT_OK(ExportField(*int_field, &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(schema_view.extension_name.data, "arrow.test.ext_name"_sv);
+  EXPECT_EQ(schema_view.extension_name, "arrow.test.ext_name"_sv);
   EXPECT_EQ(schema_view.extension_metadata, "test metadata"_sv);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "arrow.test.ext_name{int32}");
 
@@ -1514,6 +1516,8 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
 }
 
 TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
+  using namespace nanoarrow::literals;
+
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
@@ -1568,6 +1572,8 @@ TEST(SchemaViewTest, SchemaFormatInvalid) {
 }
 
 TEST(MetadataTest, Metadata) {
+  using namespace nanoarrow::literals;
+
   // Encoded metadata string for "key": "value"
   std::string simple_metadata = SimpleMetadata();
 
@@ -1590,6 +1596,8 @@ TEST(MetadataTest, Metadata) {
 }
 
 TEST(MetadataTest, MetadataBuild) {
+  using namespace nanoarrow::literals;
+
   // Encoded metadata string for "key": "value"
   std::string simple_metadata = SimpleMetadata();
 

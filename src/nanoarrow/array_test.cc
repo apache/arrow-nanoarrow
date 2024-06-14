@@ -39,6 +39,7 @@
 #include "nanoarrow/nanoarrow.hpp"
 
 using namespace arrow;
+using namespace nanoarrow::literals;
 using nanoarrow::NA;
 using testing::ElementsAre;
 

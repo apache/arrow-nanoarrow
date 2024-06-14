@@ -68,6 +68,8 @@ class StringTypeParameterizedTestFixture
 };
 
 TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowArray array;
   struct ArrowDeviceArray device_array;

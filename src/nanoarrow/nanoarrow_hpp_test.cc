@@ -288,6 +288,8 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsTest) {
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
+  using namespace nanoarrow::literals;
+
   nanoarrow::UniqueBuffer is_valid, offsets, data;
   nanoarrow::BufferInitSequence(is_valid.get(), std::vector<uint8_t>{0xFF});
   ArrowBitClear(is_valid->data, 2);
@@ -316,6 +318,8 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
+  using namespace nanoarrow::literals;
+
   nanoarrow::UniqueBuffer is_valid, data;
   nanoarrow::BufferInitSequence(is_valid.get(), std::vector<uint8_t>{0xFF});
   ArrowBitClear(is_valid->data, 2);
