@@ -227,15 +227,10 @@ static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
       mtl_buffer->release();
       ArrowBufferMove(src, dst);
       return NANOARROW_OK;
+    } else {
+      // Otherwise, return ENOTSUP to signal that a move is not possible
+      return ENOTSUP;
     }
-
-    // Otherwise, initialize a new buffer and copy
-    struct ArrowBuffer tmp;
-    ArrowDeviceMetalInitBuffer(&tmp);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src->data, src->size_bytes));
-    ArrowBufferMove(&tmp, dst);
-    ArrowBufferReset(src);
-    return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
     // Metal -> Metal is always just a move
