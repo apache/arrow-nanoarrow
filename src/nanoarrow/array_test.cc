@@ -879,7 +879,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
 
   EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
-              ElementsAre("1234"_v, NA, NA, "56789"_v, ""_v));
+              ElementsAre("1234"_sv, NA, NA, "56789"_sv, ""_sv));
   ArrowArrayRelease(&array);
 }
 
@@ -915,7 +915,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_EQ(memcmp(data_buffer, expected_data, 25), 0);
 
   EXPECT_THAT(nanoarrow::ViewArrayAsFixedSizeBytes(&array, 5),
-              ElementsAre("12345"_v, NA, NA, "67890"_v, "\0\0\0\0\0"_v));
+              ElementsAre("12345"_sv, NA, NA, "67890"_sv, "\0\0\0\0\0"_sv));
   ArrowArrayRelease(&array);
   ArrowSchemaRelease(&schema);
 }
@@ -1264,9 +1264,8 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
 
-  struct ArrowStringView string_value = ArrowCharView("foobar");
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0]->children[0], 123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.children[0]->children[1], string_value),
+  ASSERT_EQ(ArrowArrayAppendString(array.children[0]->children[1], "foobar"_sv),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(array.children[0]), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
@@ -2361,11 +2360,8 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 1), 1);
 
-  struct ArrowStringView item;
-  item = ArrowArrayViewGetStringUnsafe(array_view.dictionary, 0);
-  EXPECT_EQ(std::string(item.data, item.size_bytes), "abc");
-  item = ArrowArrayViewGetStringUnsafe(array_view.dictionary, 1);
-  EXPECT_EQ(std::string(item.data, item.size_bytes), "def");
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(array_view.dictionary, 0), "abc"_sv);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(array_view.dictionary, 1), "def"_sv);
 
   ArrowArrayRelease(&array);
 

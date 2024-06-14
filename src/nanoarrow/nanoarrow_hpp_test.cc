@@ -304,7 +304,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   array.buffers = buffers;
 
   int i = 0;
-  ArrowStringView expected[] = {"a"_v, "b"_v, "c"_v, "d"_v, "e"_v, "f"_v, "g"_v};
+  ArrowStringView expected[] = {"a"_sv, "b"_sv, "c"_sv, "d"_sv, "e"_sv, "f"_sv, "g"_sv};
   for (auto slot : nanoarrow::ViewArrayAsBytes<32>(&array)) {
     if (i == 2 || i == 5) {
       EXPECT_EQ(slot, nanoarrow::NA);
@@ -335,7 +335,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
     if (i == 2 || i == 5) {
       EXPECT_EQ(slot, nanoarrow::NA);
     } else {
-      EXPECT_EQ(slot, i % 2 == 0 ? "foo"_v : "bar"_v);
+      EXPECT_EQ(slot, i % 2 == 0 ? "foo"_sv : "bar"_sv);
     }
     ++i;
   }

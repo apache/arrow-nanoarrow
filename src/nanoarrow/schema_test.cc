@@ -22,7 +22,7 @@
 #include <arrow/testing/gtest_util.h>
 #include <arrow/util/key_value_metadata.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
 
 using namespace arrow;
 
@@ -1589,13 +1589,13 @@ TEST(MetadataTest, Metadata) {
   struct ArrowStringView value = ArrowCharView("default_val");
   EXPECT_EQ(ArrowMetadataGetValue(simple_metadata.data(), ArrowCharView("key"), &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "value");
+  EXPECT_EQ(value, "value"_sv);
 
   value = ArrowCharView("default_val");
   EXPECT_EQ(
       ArrowMetadataGetValue(simple_metadata.data(), ArrowCharView("not_a_key"), &value),
       NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "default_val");
+  EXPECT_EQ(value, "default_val"_sv);
 }
 
 TEST(MetadataTest, MetadataBuild) {

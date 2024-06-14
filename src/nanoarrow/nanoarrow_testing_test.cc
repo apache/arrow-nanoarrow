@@ -723,8 +723,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadSchema) {
   ArrowStringView key;
   ArrowStringView value;
   ASSERT_EQ(ArrowMetadataReaderRead(&metadata_reader, &key, &value), NANOARROW_OK);
-  ASSERT_EQ(std::string(key.data, key.size_bytes), "k1");
-  ASSERT_EQ(std::string(value.data, value.size_bytes), "v1");
+  ASSERT_EQ(key, "k1"_sv);
+  ASSERT_EQ(value, "v1"_sv);
 
   // Check invalid JSON
   EXPECT_EQ(reader.ReadSchema(R"({)", schema.get()), EINVAL);
@@ -799,12 +799,12 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldMetadata) {
   ASSERT_EQ(metadata.remaining_keys, 2);
 
   ASSERT_EQ(ArrowMetadataReaderRead(&metadata, &key, &value), NANOARROW_OK);
-  ASSERT_EQ(std::string(key.data, key.size_bytes), "k1");
-  ASSERT_EQ(std::string(value.data, value.size_bytes), "v1");
+  ASSERT_EQ(key, "k1"_sv);
+  ASSERT_EQ(value, "v1"_sv);
 
   ASSERT_EQ(ArrowMetadataReaderRead(&metadata, &key, &value), NANOARROW_OK);
-  ASSERT_EQ(std::string(key.data, key.size_bytes), "k2");
-  ASSERT_EQ(std::string(value.data, value.size_bytes), "v2");
+  ASSERT_EQ(key, "k2"_sv);
+  ASSERT_EQ(value, "v2"_sv);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
