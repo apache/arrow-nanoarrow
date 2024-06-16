@@ -84,6 +84,7 @@ needs_device = get_option('device') or get_option('metal') or get_option('cuda')
 if needs_device
   device_deps = [nanoarrow_dep]
   device_srcs = ['nanoarrow_device.c']
+  device_defines = []
 
   if get_option('metal')
     metal_dep = dependency('appleframeworks', modules: ['Foundation', 'Metal'])
@@ -91,12 +92,11 @@ if needs_device
     device_deps += metal_dep
     device_deps += metal_cpp_dep
     device_srcs += 'nanoarrow_device_metal.cc'
+    device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
   endif
 
   if get_option('cuda')
-    cuda_dep = dependency('cuda', modules: ['cuda_driver'])
-    device_deps += cuda_dep
-    device_srcs += 'nanoarrow_device_cuda.cc'
+    error('CUDA support with the Meson build system is not implemented')
   endif
 
   nanoarrow_device_lib = build_target(
@@ -105,6 +105,7 @@ if needs_device
       dependencies: device_deps,
       install: true,
       target_type: libtype,
+      cpp_args: device_defines,
   )
 endif
 
@@ -251,16 +252,6 @@ if get_option('tests')
           dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep],
       )
       test('nanoarrow-device-metal', exc)
-    endif
-
-    if get_option('cuda')
-      exc = executable(
-          'nanoarrow-device-cuda-test',
-          'nanoarrow_device_cuda_test.cc',
-          link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep, cuda_dep],
-      )
-      test('nanoarrow-device-cuda', exc)
     endif
   endif
 endif
