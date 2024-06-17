@@ -39,23 +39,13 @@ configure_file(input: 'nanoarrow_config.h.in',
                output: 'nanoarrow_config.h',
                configuration: conf_data)
 
-# Windows shared libraries are not exporting the right symbols
-# See https://github.com/mesonbuild/wrapdb/pull/1536#issuecomment-2136011408
-# and https://github.com/apache/arrow-nanoarrow/issues/495
-if host_machine.system() == 'windows'
-    libtype = 'static_library'
-else
-    libtype = 'library'
-endif
-
-nanoarrow_lib = build_target(
+nanoarrow_lib = library(
     'nanoarrow',
     'array.c',
     'schema.c',
     'array_stream.c',
     'utils.c',
     install: true,
-    target_type: libtype,
 )
 
 curdir = include_directories('.')  # only needed when used as subproject?
@@ -67,13 +57,12 @@ nanoarrow_dep = declare_dependency(include_directories: [curdir, incdir],
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
 
-    nanoarrow_ipc_lib = build_target(
+    nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
         'nanoarrow_ipc_decoder.c',
         'nanoarrow_ipc_reader.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
-        target_type: libtype,
     )
     nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
                                            link_with: nanoarrow_ipc_lib,
@@ -99,12 +88,11 @@ if needs_device
     error('CUDA support with the Meson build system is not implemented')
   endif
 
-  nanoarrow_device_lib = build_target(
+  nanoarrow_device_lib = library(
       'nanoarrow_device',
       sources: device_srcs,
       dependencies: device_deps,
       install: true,
-      target_type: libtype,
       cpp_args: device_defines,
   )
 endif
