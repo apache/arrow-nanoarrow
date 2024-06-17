@@ -107,6 +107,10 @@ if needs_device
       target_type: libtype,
       cpp_args: device_defines,
   )
+
+  nanoarrow_device_dep = declare_dependency(include_directories: [incdir],
+                                            link_with: nanoarrow_device_lib,
+                                            dependencies: device_deps)
 endif
 
 if get_option('tests') or get_option('integration_tests')
