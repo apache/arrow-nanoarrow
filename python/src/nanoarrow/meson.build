@@ -27,31 +27,28 @@ if get_option('buildtype') == 'debug'
     cython_args += ['--gdb']
 endif
 
-nanoarrow_dep = dependency('nanoarrow')
+# TODO: not sure these are the idiomatic approach to handle multiple dependencies
+# from same project, where some require optionas being set
+nanoarrow_dep = dependency('nanoarrow', default_options: ['ipc=true'])
+#nanoarrow_device_dep = dependency('nanoarrow_device', default_options: ['device=true'])
+nanoarrow_ipc_dep = dependency('nanoarrow_ipc', default_options: ['ipc=true'])
 
 generated_pyx = custom_target(
     'generate-pyx',
     input: meson.current_build_dir(),
     output: 'nanoarrow_c.pxd',
-    command: [py, '../../bootstrap.py', '@INPUT@'],
-    install: true,
-    install_dir: '.',
-    #depends: nanoarrow_dep,
-    # ERROR: custom_target keyword argument 'depends' was of type
-    # array[InternalDependency] but should have been array[BuildTarget |
-    # CustomTarget] - seems fragile without this?
-
+    command: [py, meson.current_source_dir() + '/../../bootstrap.py', '@INPUT@'],
 )
 nanoarrow_c_dep = declare_dependency(sources: generated_pyx)
-
-# TODO: we need dependencies on nanoarrow_ipc and nanoarrow_device,
-# which should happen as part of https://github.com/apache/arrow-nanoarrow/pull/483
 
 py.extension_module(
     '_lib',
     sources: ['_lib.pyx'],
     cython_args: cython_args,
-    dependencies: [nanoarrow_dep, nanoarrow_c_dep],
+    dependencies: [
+        nanoarrow_c_dep,
+        nanoarrow_dep,
+    ],
     subdir: 'nanoarrow/',
     install: true,
 )
@@ -60,7 +57,35 @@ py.extension_module(
     '_ipc_lib',
     sources: ['_ipc_lib.pyx'],
     cython_args: cython_args,
-    dependencies: [nanoarrow_dep, nanoarrow_c_dep],
+    dependencies: [
+        nanoarrow_c_dep,
+        nanoarrow_dep,
+        nanoarrow_ipc_dep,
+    ],
     subdir: 'nanoarrow',
     install: true,
 )
+
+py_sources = [
+    'array.py',
+    'array_stream.py',
+    'c_array.py',
+    'c_array_stream.py',
+    'c_buffer.py',
+    'c_schema.py',
+    'device.py',
+    'ipc.py',
+    'iterator.py',
+    '_repr_utils.py',
+    'schema.py',
+    '_static_version.py',
+    '_version.py',
+    'visitor.py',
+]
+
+foreach source: py_sources
+    py.install_sources(
+        source,
+        subdir: 'nanoarrow'
+    )
+endforeach
