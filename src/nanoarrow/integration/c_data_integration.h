@@ -20,10 +20,20 @@
 
 #include <stdint.h>
 
-#if defined(_MSC_VER)
-#define DLL_EXPORT __declspec(dllexport)
+#if defined _WIN32 || defined __CYGWIN__
+#define NANOARROW_DLL_IMPORT __declspec(dllimport)
+#define NANOARROW_DLL_EXPORT __declspec(dllexport)
+#define NANOARROW_DLL_LOCAL
 #else
-#define DLL_EXPORT
+#if __GNUC__ >= 4
+#define NANOARROW_DLL_IMPORT __attribute__((visibility("default")))
+#define NANOARROW_DLL_EXPORT __attribute__((visibility("default")))
+#define NANOARROW_DLL_LOCAL __attribute__((visibility("hidden")))
+#else
+#define NANOARROW_DLL_IMPORT
+#define NANOARROW_DLL_EXPORT
+#define NANOARROW_DLL_LOCAL
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -76,19 +86,19 @@ struct ArrowArray {
 #endif  // ARROW_C_DATA_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
-DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(
     const char* json_path, struct ArrowSchema* out);
 
-DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(
     const char* json_path, struct ArrowSchema* schema);
 
-DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportBatchFromJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportBatchFromJson(
     const char* json_path, int num_batch, struct ArrowArray* out);
 
-DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(
     const char* json_path, int num_batch, struct ArrowArray* batch);
 
-DLL_EXPORT int64_t nanoarrow_BytesAllocated(void);
+NANOARROW_DLL_EXPORT int64_t nanoarrow_BytesAllocated(void);
 
 #ifdef __cplusplus
 }
