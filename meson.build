@@ -121,7 +121,7 @@ if needs_device
       cpp_args: device_defines,
   )
 
-  nanoarrow_device_dep = declare_dependency(include_directories: [incdgir],
+  nanoarrow_device_dep = declare_dependency(include_directories: [incdir],
                                             link_with: nanoarrow_device_lib,
                                             dependencies: device_deps)
 endif
