@@ -482,7 +482,8 @@ enum ArrowType {
   NANOARROW_TYPE_LARGE_STRING,
   NANOARROW_TYPE_LARGE_BINARY,
   NANOARROW_TYPE_LARGE_LIST,
-  NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
+  NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
+  NANOARROW_TYPE_RUN_END_ENCODED
 };
 
 /// \brief Get a string value of an enum ArrowType value
@@ -569,6 +570,8 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
       return "large_list";
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       return "interval_month_day_nano";
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      return "run_end_encoded";
     default:
       return NULL;
   }
@@ -1052,6 +1055,8 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeFixedSize)
 #define ArrowSchemaSetTypeDecimal \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDecimal)
+#define ArrowSchemaSetTypeRunEndEncoded \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeRunEndEncoded)
 #define ArrowSchemaSetTypeDateTime \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeDateTime)
 #define ArrowSchemaSetTypeUnion \
@@ -1363,6 +1368,17 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
 ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
                                          int32_t decimal_precision,
                                          int32_t decimal_scale);
+
+/// \brief Set the format field of a run-end encoded schema
+///
+/// Returns EINVAL for run_end_type that is not
+/// NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32 or NANOARROW_TYPE_INT64.
+/// Schema must have been initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
+/// The caller must call `ArrowSchemaSetTypeXXX(schema->children[1])` to
+/// set the value type. Note that when building arrays using the `ArrowArrayAppendXXX()`
+/// functions, the run-end encoded array's logical length must be updated manually.
+ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema* schema,
+                                               enum ArrowType run_end_type);
 
 /// \brief Set the format field of a time, timestamp, or duration schema
 ///
@@ -3527,6 +3543,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
         }
       }
       break;
+      return NANOARROW_OK;
     default:
       return EINVAL;
   }

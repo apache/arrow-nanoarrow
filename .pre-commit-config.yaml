@@ -35,7 +35,7 @@ repos:
       - id: clang-format
         args: [-i]
         types_or: [c, c++]
-        exclude: "(^extensions/nanoarrow_ipc/thirdparty/.*$)|(nanoarrow_ipc_flatcc_generated.h)"
+        exclude: "(^thirdparty/.*$)|(nanoarrow_ipc_flatcc_generated.h)"
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
@@ -65,7 +65,7 @@ repos:
         additional_dependencies: [tomli]
         exclude: |
             (?x)
-            ^extensions/nanoarrow_ipc/thirdparty
+            ^thirdparty
             |nanoarrow_ipc_flatcc_generated.h
             |nanoarrow_device_metal.cc
 

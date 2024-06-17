@@ -547,8 +547,8 @@ TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
 // https://github.com/apache/arrow/blob/main/go/arrow/float16/float16_test.go
 TEST(HalfFloatTest, FloatAndHalfFloatRoundTrip) {
   uint16_t cases_bits[] = {
-      0x8000,  0x7c00, 0xfc00, 0x3c00, 0x4000, 0xc000,
-      +0x0000, 0x5b8f, 0xdb8f, 0x48c8, 0xc8c8,
+      0x8000, 0x7c00, 0xfc00, 0x3c00, 0x4000, 0xc000,
+      0x0000, 0x5b8f, 0xdb8f, 0x48c8, 0xc8c8,
   };
   float cases_float[] = {
       -0.0, INFINITY, -INFINITY, 1, 2, -2, 0, 241.875, -241.875, 9.5625, -9.5625,
@@ -618,7 +618,7 @@ TEST(MaybeTest, ConstructionAndConversion) {
 }
 
 TEST(RandomAccessRangeTest, ConstructionAndPrinting) {
-  auto square = [](int i) { return i * i; };
+  auto square = [](int64_t i) { return i * i; };
 
   // the range is usable as a constant
   const nanoarrow::internal::RandomAccessRange<decltype(square)> squares{square, 4};
@@ -628,8 +628,8 @@ TEST(RandomAccessRangeTest, ConstructionAndPrinting) {
 
   // since the range is usable as a constant, we can iterate through it multiple times and
   // it will work
-  int sum = 0;
-  for (int i : squares) {
+  int64_t sum = 0;
+  for (int64_t i : squares) {
     sum += i;
   }
   EXPECT_EQ(sum, 1 + 4 + 9);

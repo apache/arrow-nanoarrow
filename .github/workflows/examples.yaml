@@ -90,7 +90,7 @@ jobs:
           cmake --build .
           cmake --install . --prefix=../src/nanoarrow
           mkdir ../build_ipc && cd ../build_ipc
-          cmake ../../../extensions/nanoarrow_ipc -DNANOARROW_IPC_BUNDLE=ON
+          cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_IPC=ON
           cmake --build .
           cmake --install . --prefix=../src/nanoarrow
 

@@ -24,16 +24,17 @@ project(NanoArrowExampleCMakeIpc)
 # See examples/cmake-minimal for why this is a good idea
 set(NANOARROW_NAMESPACE "ExampleCmakeIpc")
 
+set(NANOARROW_IPC
+    ON
+    CACHE INTERNAL "Turn on Ipc")
 fetchcontent_declare(# The name 'nanoarrow' is important here: it allows the IPC extension
                      # to link to the same version of nanoarrow as your library/application
                      nanoarrow
                      # See examples/cmake-minimal for how to specify a GIT repository or URL
                      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 fetchcontent_makeavailable(nanoarrow)
-
-fetchcontent_declare(nanoarrow_ipc_example_cmake
-                     SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../../extensions/nanoarrow_ipc)
-fetchcontent_makeavailable(nanoarrow_ipc_example_cmake)
+target_compile_options(nanoarrow PUBLIC -DNANOARROW_IPC=ON)
+unset(NANOARROW_IPC)
 
 # Add the library and link it against nanoarrow and nanoarrow_ipc
 # You will need to link to both...nanoarrow_ipc assumes the caller

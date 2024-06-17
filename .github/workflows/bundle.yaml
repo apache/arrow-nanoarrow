@@ -44,19 +44,19 @@ jobs:
 
       - name: Bundle nanoarrow_ipc
         run: |
-          cd extensions/nanoarrow_ipc
+          rm -rf build
           mkdir build && cd build
-          cmake .. -DNANOARROW_IPC_BUNDLE=ON
+          cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_IPC=ON
           cmake --build .
-          cmake --install . --prefix=../../../nanoarrow-latest
+          cmake --install . --prefix=../nanoarrow-latest
 
       - name: Bundle nanoarrow_device
         run: |
-          cd extensions/nanoarrow_device
+          rm -rf build
           mkdir build && cd build
-          cmake .. -DNANOARROW_DEVICE_BUNDLE=ON
+          cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_DEVICE=ON
           cmake --build .
-          cmake --install . --prefix=../../../nanoarrow-latest
+          cmake --install . --prefix=../nanoarrow-latest
 
       - name: Compress bundle
         run: |

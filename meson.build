@@ -29,22 +29,19 @@ project(
     ]
 )
 
-if get_option('NANOARROW_CODE_COVERAGE')
-  error(
-      '''For meson builds, please use '-Db_coverage=true' flag
-      instead of -DNANOARROW_CODE_COVERAGE=true''')
-endif
-
-if get_option('NANOARROW_BUNDLE')
-  error('NANOARROW_BUNDLE not implemented in meson configuration - try CMake instead')
-endif
-
-if get_option('NANOARROW_BUNDLE_AS_CPP')
-  error('NANOARROW_BUNDLE_AS_CPP not implemented in meson configuration - try CMake instead')
-endif
-
 subdir('src/nanoarrow')
 
-if get_option('NANOARROW_BUILD_BENCHMARKS')
+if get_option('benchmarks')
   subdir('dev/benchmarks')
+endif
+
+
+if get_option('apps')
+  if get_option('ipc')
+  executable(
+      'dump_stream',
+      'src/apps/dump_stream.c',
+      dependencies: [nanoarrow_dep, nanoarrow_ipc_dep]
+  )
+  endif
 endif

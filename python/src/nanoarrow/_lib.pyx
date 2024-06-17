@@ -717,8 +717,9 @@ cdef class Device:
     def _array_init(self, uintptr_t array_addr, CSchema schema):
         cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
         cdef ArrowDeviceArray* device_array_ptr
+        cdef void* sync_event = NULL
         holder = alloc_c_device_array(&device_array_ptr)
-        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
+        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr, sync_event)
         Error.raise_error_not_ok("ArrowDevice::init_array", code)
 
         return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
@@ -1093,6 +1094,17 @@ cdef class CSchemaView:
     @property
     def storage_type_id(self):
         return self._schema_view.storage_type
+
+    @property
+    def storage_buffer_format(self):
+        if self.buffer_format is not None:
+            return self.buffer_format
+        elif self._schema_view.type == NANOARROW_TYPE_DATE32:
+            return 'i'
+        elif self._schema_view.type in (NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
+            return 'q'
+        else:
+            return None
 
     @property
     def buffer_format(self):
