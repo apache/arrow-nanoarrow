@@ -32,6 +32,16 @@
 extern "C" {
 #endif
 
+#if defined _WIN32 || defined __CYGWIN__
+#define NANOARROW_DLL_EXPORT __declspec(dllexport)
+#else
+#if __GNUC__ >= 4
+#define NANOARROW_DLL_EXPORT __attribute__((visibility("default")))
+#else
+#define NANOARROW_DLL_EXPORT
+#endif
+#endif
+
 // Extra guard for versions of Arrow without the canonical guard
 #ifndef ARROW_FLAG_DICTIONARY_ORDERED
 
