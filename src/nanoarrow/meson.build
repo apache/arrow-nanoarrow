@@ -80,6 +80,35 @@ if get_option('ipc')
                                            dependencies: [nanoarrow_dep, flatcc_dep])
 endif
 
+needs_device = get_option('device') or get_option('metal') or get_option('cuda')
+if needs_device
+  device_deps = [nanoarrow_dep]
+  device_srcs = ['nanoarrow_device.c']
+  device_defines = []
+
+  if get_option('metal')
+    metal_dep = dependency('appleframeworks', modules: ['Foundation', 'Metal'])
+    metal_cpp_dep = dependency('metal-cpp')
+    device_deps += metal_dep
+    device_deps += metal_cpp_dep
+    device_srcs += 'nanoarrow_device_metal.cc'
+    device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
+  endif
+
+  if get_option('cuda')
+    error('CUDA support with the Meson build system is not implemented')
+  endif
+
+  nanoarrow_device_lib = build_target(
+      'nanoarrow_device',
+      sources: device_srcs,
+      dependencies: device_deps,
+      install: true,
+      target_type: libtype,
+      cpp_args: device_defines,
+  )
+endif
+
 if get_option('tests') or get_option('integration_tests')
   nlohmann_json_dep = dependency('nlohmann_json')
 
@@ -100,7 +129,7 @@ if get_option('tests')
   # https://mesonbuild.com/Unit-tests.html#coverage
 
   arrow_dep = dependency('arrow')
-  gtest_dep = dependency('gtest', fallback: ['gtest', 'gtest_main_dep'])
+  gtest_dep = dependency('gtest_main')
   gmock_dep = dependency('gmock')
   nlohmann_json_dep = dependency('nlohmann_json')
 
@@ -184,5 +213,28 @@ if get_option('tests')
           )
           test(name, exc, timeout: config['timeout'])
       endforeach
+  endif
+
+  if needs_device
+    device_tests = ['nanoarrow_device', 'nanoarrow_device_hpp']
+    foreach device_test : device_tests
+      exc = executable(
+          device_test.replace('_', '-') + '-test',
+          device_test + '_test.cc',
+          link_with: nanoarrow_device_lib,
+          dependencies: [nanoarrow_dep, gtest_dep],
+      )
+      test(device_test.replace('_', '-'), exc)
+    endforeach
+
+    if get_option('metal')
+      exc = executable(
+          'nanoarrow-device-metal-test',
+          'nanoarrow_device_metal_test.cc',
+          link_with: nanoarrow_device_lib,
+          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep],
+      )
+      test('nanoarrow-device-metal', exc)
+    endif
   endif
 endif

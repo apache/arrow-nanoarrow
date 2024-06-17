@@ -71,8 +71,10 @@ function main() {
           -Db_sanitize="address,undefined" \
           -Dtests=true \
           -Dipc=true \
+          -Ddevice=true \
           -Dbenchmarks=false \
           -Db_coverage=false
+
     meson compile
     export ASAN_OPTIONS=allocator_may_return_null=1  # allow ENOMEM tests
     meson test --print-errorlogs
@@ -83,6 +85,7 @@ function main() {
           -Db_sanitize=none \
           -Dtests=true \
           -Dipc=true \
+          -Ddevice=true \
           -Dbenchmarks=false \
           -Db_coverage=false
     meson compile
@@ -94,6 +97,7 @@ function main() {
           -Db_sanitize=none \
           -Dtests=false \
           -Dipc=true \
+          -Ddevice=true \
           -Dbenchmarks=true \
           -Db_coverage=false
     meson compile
@@ -105,6 +109,7 @@ function main() {
           -Db_sanitize=none \
           -Dtests=true \
           -Dipc=true \
+          -Ddevice=true \
           -Dbenchmarks=false \
           -Db_coverage=true
 
