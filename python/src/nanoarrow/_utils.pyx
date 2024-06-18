@@ -28,9 +28,38 @@ from cpython cimport (
 )
 from cpython.ref cimport Py_INCREF, Py_DECREF
 
-from nanoarrow_c cimport *
-from nanoarrow_device_c cimport *
-from nanoarrow_dlpack cimport *
+from nanoarrow_c cimport (
+    ArrowNanoarrowVersion,
+    NANOARROW_OK,
+    ArrowSchema,
+    ArrowSchemaRelease,
+    ArrowFree,
+    ArrowMalloc,
+    ArrowArray,
+    ArrowArrayRelease,
+    ArrowArrayStream,
+    ArrowArrayStreamRelease,
+    ArrowArrayView,
+    ArrowArrayViewReset,
+    ArrowArrayViewInitFromType,
+    NANOARROW_TYPE_UNINITIALIZED,
+    ArrowBufferAllocator,
+    ArrowBufferAllocatorDefault,
+    ArrowBufferDeallocator,
+    ArrowBufferDeallocatorCallback,
+    ArrowBuffer,
+    ArrowArrayInitFromType,
+    ArrowArrayBuffer,
+    ArrowArrayAllocateChildren,
+    ArrowArrayAllocateDictionary,
+    ArrowArrayMove,
+    ArrowBufferReset,
+    ArrowBufferInit,
+)
+
+from nanoarrow_device_c cimport (
+    ArrowDeviceArray
+)
 
 def c_version():
     """Return the nanoarrow C library version string
