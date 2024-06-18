@@ -62,17 +62,18 @@ else
     libtype = 'library'
 endif
 
+incdir = include_directories('src/')
+
 nanoarrow_lib = build_target(
     'nanoarrow',
     'src/nanoarrow/array.c',
     'src/nanoarrow/schema.c',
     'src/nanoarrow/array_stream.c',
     'src/nanoarrow/utils.c',
+    include_directories: [incdir],
     install: true,
     target_type: libtype,
 )
-
-incdir = include_directories('src/')
 
 nanoarrow_dep = declare_dependency(include_directories: [incdir],
                                    link_with: nanoarrow_lib)
