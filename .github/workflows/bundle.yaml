@@ -35,28 +35,15 @@ jobs:
 
       - name: Bundle nanoarrow
         run: |
-          mkdir build && cd build
-          cmake .. -DNANOARROW_BUNDLE=ON
-          cmake --build .
-          cmake --install . --prefix=../nanoarrow-latest
-          cd ..
+          python3 ci/scripts/bundle.py \
+            --source-output-dir=nanoarrow-latest \
+            --include-output-dir=nanoarrow-latest \
+            --header-namespace= \
+            --with-device \
+            --with-ipc \
+            --with-flatcc
+
           cp LICENSE.txt nanoarrow-latest/LICENSE.txt
-
-      - name: Bundle nanoarrow_ipc
-        run: |
-          cd extensions/nanoarrow_ipc
-          mkdir build && cd build
-          cmake .. -DNANOARROW_IPC_BUNDLE=ON
-          cmake --build .
-          cmake --install . --prefix=../../../nanoarrow-latest
-
-      - name: Bundle nanoarrow_device
-        run: |
-          cd extensions/nanoarrow_device
-          mkdir build && cd build
-          cmake .. -DNANOARROW_DEVICE_BUNDLE=ON
-          cmake --build .
-          cmake --install . --prefix=../../../nanoarrow-latest
 
       - name: Compress bundle
         run: |

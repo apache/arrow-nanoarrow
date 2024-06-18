@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 
 #include "nanoarrow.h"
 
@@ -159,13 +160,18 @@ struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t devi
 
 ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
                                     struct ArrowDeviceArray* device_array,
-                                    struct ArrowArray* array) {
+                                    struct ArrowArray* array, void* sync_event) {
   if (device->array_init != NULL) {
-    return device->array_init(device, device_array, array);
-  } else {
-    ArrowDeviceArrayInitDefault(device, device_array, array);
-    return NANOARROW_OK;
+    return device->array_init(device, device_array, array, sync_event);
   }
+
+  // Handling a sync event is not supported in the default constructor
+  if (sync_event != NULL) {
+    return EINVAL;
+  }
+
+  ArrowDeviceArrayInitDefault(device, device_array, array);
+  return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
@@ -224,7 +230,7 @@ static int ArrowDeviceBasicArrayStreamGetNext(struct ArrowDeviceArrayStream* arr
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(
       private_data->naive_stream.get_next(&private_data->naive_stream, &tmp));
-  int result = ArrowDeviceArrayInit(private_data->device, device_array, &tmp);
+  int result = ArrowDeviceArrayInit(private_data->device, device_array, &tmp, NULL);
   if (result != NANOARROW_OK) {
     ArrowArrayRelease(&tmp);
     return result;
@@ -360,8 +366,9 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
   struct ArrowDevice* device =
       ArrowDeviceResolve(device_array->device_type, device_array->device_id);
   if (device == NULL) {
-    ArrowErrorSet(error, "Can't resolve device with type %d and identifier %ld",
-                  (int)device_array->device_type, (long)device_array->device_id);
+    ArrowErrorSet(error,
+                  "Can't resolve device with type %" PRId32 " and identifier %" PRId64,
+                  device_array->device_type, device_array->device_id);
     return EINVAL;
   }
 
@@ -449,7 +456,7 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
     return result;
   }
 
-  result = ArrowDeviceArrayInit(device_dst, dst, &tmp);
+  result = ArrowDeviceArrayInit(device_dst, dst, &tmp, NULL);
   if (result != NANOARROW_OK) {
     ArrowArrayRelease(&tmp);
     return result;

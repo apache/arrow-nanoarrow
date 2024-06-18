@@ -20287,6 +20287,7 @@ static inline int org_apache_arrow_flatbuf_Tensor_verify_as_root_with_type_hash(
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -20571,8 +20572,8 @@ static int ArrowIpcDecoderSetMetadata(struct ArrowSchema* schema,
 
   if (n_pairs > 2147483647) {
     ArrowErrorSet(error,
-                  "Expected between 0 and 2147483647 key/value pairs but found %ld",
-                  (long)n_pairs);
+                  "Expected between 0 and 2147483647 key/value pairs but found %" PRId64,
+                  n_pairs);
     return EINVAL;
   }
 
@@ -20652,7 +20653,7 @@ static int ArrowIpcDecoderSetTypeInt(struct ArrowSchema* schema,
       default:
         ArrowErrorSet(error,
                       "Expected signed int bitwidth of 8, 16, 32, or 64 but got %d",
-                      (int)bitwidth);
+                      bitwidth);
         return EINVAL;
     }
   } else {
@@ -20672,7 +20673,7 @@ static int ArrowIpcDecoderSetTypeInt(struct ArrowSchema* schema,
       default:
         ArrowErrorSet(error,
                       "Expected unsigned int bitwidth of 8, 16, 32, or 64 but got %d",
-                      (int)bitwidth);
+                      bitwidth);
         return EINVAL;
     }
   }
@@ -20693,8 +20694,7 @@ static int ArrowIpcDecoderSetTypeFloatingPoint(struct ArrowSchema* schema,
     case ns(Precision_DOUBLE):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_DOUBLE, error);
     default:
-      ArrowErrorSet(error, "Unexpected FloatingPoint Precision value: %d",
-                    (int)precision);
+      ArrowErrorSet(error, "Unexpected FloatingPoint Precision value: %d", precision);
       return EINVAL;
   }
 }
@@ -20718,7 +20718,7 @@ static int ArrowIpcDecoderSetTypeDecimal(struct ArrowSchema* schema,
           ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL256, precision, scale);
       break;
     default:
-      ArrowErrorSet(error, "Unexpected Decimal bitwidth value: %d", (int)bitwidth);
+      ArrowErrorSet(error, "Unexpected Decimal bitwidth value: %d", bitwidth);
       return EINVAL;
   }
 
@@ -20789,7 +20789,7 @@ static int ArrowIpcDecoderSetTypeTime(struct ArrowSchema* schema,
       break;
 
     default:
-      ArrowErrorSet(error, "Unexpected Time TimeUnit value: %d", (int)time_unit);
+      ArrowErrorSet(error, "Unexpected Time TimeUnit value: %d", time_unit);
       return EINVAL;
   }
 
@@ -20855,7 +20855,7 @@ static int ArrowIpcDecoderSetTypeInterval(struct ArrowSchema* schema,
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
                                           error);
     default:
-      ArrowErrorSet(error, "Unexpected Interval unit value: %d", (int)interval_unit);
+      ArrowErrorSet(error, "Unexpected Interval unit value: %d", interval_unit);
       return EINVAL;
   }
 }
@@ -20916,8 +20916,8 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
 
   if (n_children < 0 || n_children > 127) {
     ArrowErrorSet(error,
-                  "Expected between 0 and 127 children for Union type but found %ld",
-                  (long)n_children);
+                  "Expected between 0 and 127 children for Union type but found %" PRId64,
+                  n_children);
     return EINVAL;
   }
 
@@ -20943,7 +20943,7 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
       format_out_size -= n_chars;
       break;
     default:
-      ArrowErrorSet(error, "Unexpected Union UnionMode value: %d", (int)union_mode);
+      ArrowErrorSet(error, "Unexpected Union UnionMode value: %d", union_mode);
       return EINVAL;
   }
 
@@ -20957,10 +20957,10 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
     int64_t n_type_ids = flatbuffers_int32_vec_len(type_ids);
 
     if (n_type_ids != n_children) {
-      ArrowErrorSet(
-          error,
-          "Expected between %ld children for Union type with %ld typeIds but found %ld",
-          (long)n_type_ids, (long)n_type_ids, (long)n_children);
+      ArrowErrorSet(error,
+                    "Expected between %" PRId64 " children for Union type with %" PRId64
+                    " typeIds but found %" PRId64,
+                    n_type_ids, n_type_ids, n_children);
       return EINVAL;
     }
 
@@ -20976,8 +20976,8 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
       }
 
       for (int64_t i = 1; i < n_type_ids; i++) {
-        n_chars = snprintf(format_cursor, format_out_size, ",%d",
-                           (int)flatbuffers_int32_vec_at(type_ids, i));
+        n_chars = snprintf(format_cursor, format_out_size, ",%" PRId32,
+                           flatbuffers_int32_vec_at(type_ids, i));
         format_cursor += n_chars;
         format_out_size -= n_chars;
 
@@ -20998,7 +20998,7 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
     }
 
     for (int64_t i = 1; i < n_children; i++) {
-      n_chars = snprintf(format_cursor, format_out_size, ",%d", (int)i);
+      n_chars = snprintf(format_cursor, format_out_size, ",%" PRId64, i);
       format_cursor += n_chars;
       format_out_size -= n_chars;
 
@@ -21063,7 +21063,7 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
       return ArrowIpcDecoderSetTypeUnion(schema, ns(Field_type_get(field)), n_children,
                                          error);
     default:
-      ArrowErrorSet(error, "Unrecognized Field type with value %d", (int)type_type);
+      ArrowErrorSet(error, "Unrecognized Field type with value %d", type_type);
       return EINVAL;
   }
 }
@@ -21149,7 +21149,7 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
     default:
       ArrowErrorSet(error,
                     "Expected Schema endianness of 0 (little) or 1 (big) but got %d",
-                    (int)endianness);
+                    endianness);
       return EINVAL;
   }
 
@@ -21191,14 +21191,14 @@ static int ArrowIpcDecoderDecodeRecordBatchHeader(struct ArrowIpcDecoder* decode
   // Check field node and buffer count. We have one more field and buffer
   // because we count the root struct and the flatbuffer message does not.
   if ((n_fields + 1) != private_data->n_fields) {
-    ArrowErrorSet(error, "Expected %ld field nodes in message but found %ld",
-                  (long)private_data->n_fields - 1, (long)n_fields);
+    ArrowErrorSet(error, "Expected %" PRId64 " field nodes in message but found %" PRId64,
+                  private_data->n_fields - 1, n_fields);
     return EINVAL;
   }
 
   if ((n_buffers + 1) != private_data->n_buffers) {
-    ArrowErrorSet(error, "Expected %ld buffers in message but found %ld",
-                  (long)private_data->n_buffers - 1, (long)n_buffers);
+    ArrowErrorSet(error, "Expected %" PRId64 " buffers in message but found %" PRId64,
+                  private_data->n_buffers - 1, n_buffers);
     return EINVAL;
   }
 
@@ -21252,8 +21252,9 @@ static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decode
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   if (data_mut->size_bytes < kMessageHeaderPrefixSize) {
-    ArrowErrorSet(error, "Expected data of at least 8 bytes but only %ld bytes remain",
-                  (long)data_mut->size_bytes);
+    ArrowErrorSet(error,
+                  "Expected data of at least 8 bytes but only %" PRId64 " bytes remain",
+                  data_mut->size_bytes);
     return ESPIPE;
   }
 
@@ -21268,9 +21269,10 @@ static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decode
   int32_t header_body_size_bytes = ArrowIpcReadInt32LE(data_mut, swap_endian);
   *message_size_bytes = header_body_size_bytes + kMessageHeaderPrefixSize;
   if (header_body_size_bytes < 0) {
-    ArrowErrorSet(
-        error, "Expected message body size > 0 but found message body size of %ld bytes",
-        (long)header_body_size_bytes);
+    ArrowErrorSet(error,
+                  "Expected message body size > 0 but found message body size of %" PRId32
+                  " bytes",
+                  header_body_size_bytes);
     return EINVAL;
   }
 
@@ -21306,9 +21308,10 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
   int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
   if (data.size_bytes < message_body_size) {
     ArrowErrorSet(error,
-                  "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
-                  (long)message_body_size + kMessageHeaderPrefixSize,
-                  (long)data.size_bytes + kMessageHeaderPrefixSize);
+                  "Expected >= %" PRId64 " bytes of remaining data but found %" PRId64
+                  " bytes in buffer",
+                  message_body_size + kMessageHeaderPrefixSize,
+                  data.size_bytes + kMessageHeaderPrefixSize);
     return ESPIPE;
   }
 
@@ -21344,9 +21347,10 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
   if (data.size_bytes < message_body_size) {
     ArrowErrorSet(error,
-                  "Expected >= %ld bytes of remaining data but found %ld bytes in buffer",
-                  (long)message_body_size + kMessageHeaderPrefixSize,
-                  (long)data.size_bytes + kMessageHeaderPrefixSize);
+                  "Expected >= %" PRId64 " bytes of remaining data but found %" PRId64
+                  " bytes in buffer",
+                  message_body_size + kMessageHeaderPrefixSize,
+                  data.size_bytes + kMessageHeaderPrefixSize);
     return ESPIPE;
   }
 
@@ -21423,8 +21427,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
   int result = ArrowSchemaSetTypeStruct(&tmp, n_fields);
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);
-    ArrowErrorSet(error, "Failed to allocate struct schema with %ld children",
-                  (long)n_fields);
+    ArrowErrorSet(error, "Failed to allocate struct schema with %" PRId64 " children",
+                  n_fields);
     return result;
   }
 
@@ -21733,8 +21737,9 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
           break;
         }
         default:
-          ArrowErrorSet(error, "Endian swapping for element bitwidth %d is not supported",
-                        (int)src->element_size_bits);
+          ArrowErrorSet(
+              error, "Endian swapping for element bitwidth %" PRId64 " is not supported",
+              src->element_size_bits);
           return ENOTSUP;
       }
       break;
@@ -21769,8 +21774,10 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
   int64_t buffer_start = offset;
   int64_t buffer_end = buffer_start + length;
   if (buffer_start < 0 || buffer_end > setter->body_size_bytes) {
-    ArrowErrorSet(error, "Buffer requires body offsets [%ld..%ld) but body has size %ld",
-                  (long)buffer_start, (long)buffer_end, (long)setter->body_size_bytes);
+    ArrowErrorSet(error,
+                  "Buffer requires body offsets [%" PRId64 "..%" PRId64
+                  ") but body has size %" PRId64,
+                  buffer_start, buffer_end, setter->body_size_bytes);
     return EINVAL;
   }
 
@@ -22039,6 +22046,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -22306,8 +22314,9 @@ static int ArrowIpcArrayStreamReaderNextBody(
 
   if (bytes_read != bytes_to_read) {
     ArrowErrorSet(&private_data->error,
-                  "Expected to be able to read %ld bytes for message body but got %ld",
-                  (long)bytes_to_read, bytes_read);
+                  "Expected to be able to read %" PRId64
+                  " bytes for message body but got %" PRId64,
+                  bytes_to_read, bytes_read);
     return ESPIPE;
   } else {
     return NANOARROW_OK;

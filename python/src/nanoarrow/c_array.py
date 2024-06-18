@@ -406,7 +406,7 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
     def __init__(self, schema):
         super().__init__(schema)
 
-        if self._schema_view.buffer_format is None:
+        if self._schema_view.storage_buffer_format is None:
             raise ValueError(
                 f"Can't build array of type {self._schema_view.type} from PyBuffer"
             )
@@ -508,7 +508,7 @@ class ArrayFromIterableBuilder(ArrayBuilder):
     def _append_using_array(self, obj: Iterable) -> None:
         from array import array
 
-        py_array = array(self._schema_view.buffer_format, obj)
+        py_array = array(self._schema_view.storage_buffer_format, obj)
         buffer = CBuffer.from_pybuffer(py_array)
         self._c_builder.set_buffer(1, buffer, move=True)
         self._c_builder.set_length(len(buffer))
@@ -549,6 +549,10 @@ _ARRAY_BUILDER_FROM_ITERABLE_METHOD = {
     CArrowType.UINT64: "_append_using_array",
     CArrowType.FLOAT: "_append_using_array",
     CArrowType.DOUBLE: "_append_using_array",
+    CArrowType.TIMESTAMP: "_append_using_array",
+    CArrowType.DATE32: "_append_using_array",
+    CArrowType.DATE64: "_append_using_array",
+    CArrowType.DURATION: "_append_using_array",
 }
 
 _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD = {

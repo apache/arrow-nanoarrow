@@ -16,10 +16,11 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
   // Release buffers held by this array
@@ -69,6 +70,7 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
   switch (storage_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
     case NANOARROW_TYPE_NA:
+    case NANOARROW_TYPE_RUN_END_ENCODED:
       array->n_buffers = 0;
       break;
 
@@ -695,15 +697,17 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
 
   // Check the number of buffers
   if (buffers_required != array->n_buffers) {
-    ArrowErrorSet(error, "Expected array with %d buffer(s) but found %d buffer(s)",
-                  (int)buffers_required, (int)array->n_buffers);
+    ArrowErrorSet(error,
+                  "Expected array with %" PRId64 " buffer(s) but found %" PRId64
+                  " buffer(s)",
+                  buffers_required, array->n_buffers);
     return EINVAL;
   }
 
   // Check number of children
   if (array_view->n_children != array->n_children) {
-    ArrowErrorSet(error, "Expected %ld children but found %ld children",
-                  (long)array_view->n_children, (long)array->n_children);
+    ArrowErrorSet(error, "Expected %" PRId64 " children but found %" PRId64 " children",
+                  array_view->n_children, array->n_children);
     return EINVAL;
   }
 
@@ -735,14 +739,20 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
 static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                                          struct ArrowError* error) {
   if (array_view->length < 0) {
-    ArrowErrorSet(error, "Expected length >= 0 but found length %ld",
-                  (long)array_view->length);
+    ArrowErrorSet(error, "Expected length >= 0 but found length %" PRId64,
+                  array_view->length);
     return EINVAL;
   }
 
   if (array_view->offset < 0) {
-    ArrowErrorSet(error, "Expected offset >= 0 but found offset %ld",
-                  (long)array_view->offset);
+    ArrowErrorSet(error, "Expected offset >= 0 but found offset %" PRId64,
+                  array_view->offset);
+    return EINVAL;
+  }
+
+  // Ensure that offset + length fits within an int64 before a possible overflow
+  if ((uint64_t)array_view->offset + (uint64_t)array_view->length > (uint64_t)INT64_MAX) {
+    ArrowErrorSet(error, "Offset + length is > INT64_MAX");
     return EINVAL;
   }
 
@@ -790,11 +800,11 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       array_view->buffer_views[i].size_bytes = min_buffer_size_bytes;
     } else if (array_view->buffer_views[i].size_bytes < min_buffer_size_bytes) {
       ArrowErrorSet(error,
-                    "Expected %s array buffer %d to have size >= %ld bytes but found "
-                    "buffer with %ld bytes",
-                    ArrowTypeString(array_view->storage_type), (int)i,
-                    (long)min_buffer_size_bytes,
-                    (long)array_view->buffer_views[i].size_bytes);
+                    "Expected %s array buffer %d to have size >= %" PRId64
+                    " bytes but found "
+                    "buffer with %" PRId64 " bytes",
+                    ArrowTypeString(array_view->storage_type), i, min_buffer_size_bytes,
+                    array_view->buffer_views[i].size_bytes);
       return EINVAL;
     }
   }
@@ -806,11 +816,20 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
     case NANOARROW_TYPE_MAP:
       if (array_view->n_children != 1) {
-        ArrowErrorSet(error, "Expected 1 child of %s array but found %ld child arrays",
-                      ArrowTypeString(array_view->storage_type),
-                      (long)array_view->n_children);
+        ArrowErrorSet(error,
+                      "Expected 1 child of %s array but found %" PRId64 " child arrays",
+                      ArrowTypeString(array_view->storage_type), array_view->n_children);
         return EINVAL;
       }
+      break;
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      if (array_view->n_children != 2) {
+        ArrowErrorSet(
+            error, "Expected 2 children for %s array but found %" PRId64 " child arrays",
+            ArrowTypeString(array_view->storage_type), array_view->n_children);
+        return EINVAL;
+      }
+      break;
     default:
       break;
   }
@@ -824,12 +843,11 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       child_min_length = (array_view->offset + array_view->length);
       for (int64_t i = 0; i < array_view->n_children; i++) {
         if (array_view->children[i]->length < child_min_length) {
-          ArrowErrorSet(
-              error,
-              "Expected struct child %d to have length >= %ld but found child with "
-              "length %ld",
-              (int)(i + 1), (long)(child_min_length),
-              (long)array_view->children[i]->length);
+          ArrowErrorSet(error,
+                        "Expected struct child %" PRId64 " to have length >= %" PRId64
+                        " but found child with "
+                        "length %" PRId64,
+                        i + 1, child_min_length, array_view->children[i]->length);
           return EINVAL;
         }
       }
@@ -840,12 +858,78 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
                          array_view->layout.child_size_elements;
       if (array_view->children[0]->length < child_min_length) {
         ArrowErrorSet(error,
-                      "Expected child of fixed_size_list array to have length >= %ld but "
-                      "found array with length %ld",
-                      (long)child_min_length, (long)array_view->children[0]->length);
+                      "Expected child of fixed_size_list array to have length >= %" PRId64
+                      " but "
+                      "found array with length %" PRId64,
+                      child_min_length, array_view->children[0]->length);
         return EINVAL;
       }
       break;
+
+    case NANOARROW_TYPE_RUN_END_ENCODED: {
+      if (array_view->n_children != 2) {
+        ArrowErrorSet(error,
+                      "Expected 2 children for run-end encoded array but found %" PRId64,
+                      array_view->n_children);
+        return EINVAL;
+      }
+      struct ArrowArrayView* run_ends_view = array_view->children[0];
+      struct ArrowArrayView* values_view = array_view->children[1];
+      int64_t max_length;
+      switch (run_ends_view->storage_type) {
+        case NANOARROW_TYPE_INT16:
+          max_length = INT16_MAX;
+          break;
+        case NANOARROW_TYPE_INT32:
+          max_length = INT32_MAX;
+          break;
+        case NANOARROW_TYPE_INT64:
+          max_length = INT64_MAX;
+          break;
+        default:
+          ArrowErrorSet(
+              error,
+              "Run-end encoded array only supports INT16, INT32 or INT64 run-ends "
+              "but found run-ends type %s",
+              ArrowTypeString(run_ends_view->storage_type));
+          return EINVAL;
+      }
+
+      // There is already a check above that offset_plus_length < INT64_MAX
+      if (offset_plus_length > max_length) {
+        ArrowErrorSet(error,
+                      "Offset + length of a run-end encoded array must fit in a value"
+                      " of the run end type %s but is %" PRId64 " + %" PRId64,
+                      ArrowTypeString(run_ends_view->storage_type), array_view->offset,
+                      array_view->length);
+        return EINVAL;
+      }
+
+      if (run_ends_view->length > values_view->length) {
+        ArrowErrorSet(error,
+                      "Length of run_ends is greater than the length of values: %" PRId64
+                      " > %" PRId64,
+                      run_ends_view->length, values_view->length);
+        return EINVAL;
+      }
+
+      if (run_ends_view->length == 0 && values_view->length != 0) {
+        ArrowErrorSet(error,
+                      "Run-end encoded array has zero length %" PRId64
+                      ", but values array has "
+                      "non-zero length",
+                      values_view->length);
+        return EINVAL;
+      }
+
+      if (run_ends_view->null_count != 0) {
+        ArrowErrorSet(error, "Null count must be 0 for run ends array, but is %" PRId64,
+                      run_ends_view->null_count);
+        return EINVAL;
+      }
+      break;
+    }
+
     default:
       break;
   }
@@ -883,8 +967,8 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int32[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
-                        (long)first_offset);
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
+                        first_offset);
           return EINVAL;
         }
 
@@ -895,10 +979,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
           array_view->buffer_views[2].size_bytes = last_offset;
         } else if (array_view->buffer_views[2].size_bytes < last_offset) {
           ArrowErrorSet(error,
-                        "Expected %s array buffer 2 to have size >= %ld bytes but found "
-                        "buffer with %ld bytes",
-                        ArrowTypeString(array_view->storage_type), (long)last_offset,
-                        (long)array_view->buffer_views[2].size_bytes);
+                        "Expected %s array buffer 2 to have size >= %" PRId64
+                        " bytes but found "
+                        "buffer with %" PRId64 " bytes",
+                        ArrowTypeString(array_view->storage_type), last_offset,
+                        array_view->buffer_views[2].size_bytes);
           return EINVAL;
         }
       } else if (array_view->buffer_views[2].size_bytes == -1) {
@@ -913,8 +998,8 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int64[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
-                        (long)first_offset);
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
+                        first_offset);
           return EINVAL;
         }
 
@@ -925,10 +1010,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
           array_view->buffer_views[2].size_bytes = last_offset;
         } else if (array_view->buffer_views[2].size_bytes < last_offset) {
           ArrowErrorSet(error,
-                        "Expected %s array buffer 2 to have size >= %ld bytes but found "
-                        "buffer with %ld bytes",
-                        ArrowTypeString(array_view->storage_type), (long)last_offset,
-                        (long)array_view->buffer_views[2].size_bytes);
+                        "Expected %s array buffer 2 to have size >= %" PRId64
+                        " bytes but found "
+                        "buffer with %" PRId64 " bytes",
+                        ArrowTypeString(array_view->storage_type), last_offset,
+                        array_view->buffer_views[2].size_bytes);
           return EINVAL;
         }
       } else if (array_view->buffer_views[2].size_bytes == -1) {
@@ -941,12 +1027,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_STRUCT:
       for (int64_t i = 0; i < array_view->n_children; i++) {
         if (array_view->children[i]->length < offset_plus_length) {
-          ArrowErrorSet(
-              error,
-              "Expected struct child %d to have length >= %ld but found child with "
-              "length %ld",
-              (int)(i + 1), (long)offset_plus_length,
-              (long)array_view->children[i]->length);
+          ArrowErrorSet(error,
+                        "Expected struct child %" PRId64 " to have length >= %" PRId64
+                        " but found child with "
+                        "length %" PRId64,
+                        i + 1, offset_plus_length, array_view->children[i]->length);
           return EINVAL;
         }
       }
@@ -957,19 +1042,19 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int32[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
-                        (long)first_offset);
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
+                        first_offset);
           return EINVAL;
         }
 
         last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
         if (array_view->children[0]->length < last_offset) {
-          ArrowErrorSet(
-              error,
-              "Expected child of %s array to have length >= %ld but found array with "
-              "length %ld",
-              ArrowTypeString(array_view->storage_type), (long)last_offset,
-              (long)array_view->children[0]->length);
+          ArrowErrorSet(error,
+                        "Expected child of %s array to have length >= %" PRId64
+                        " but found array with "
+                        "length %" PRId64,
+                        ArrowTypeString(array_view->storage_type), last_offset,
+                        array_view->children[0]->length);
           return EINVAL;
         }
       }
@@ -979,22 +1064,50 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int64[0];
         if (first_offset < 0) {
-          ArrowErrorSet(error, "Expected first offset >= 0 but found %ld",
-                        (long)first_offset);
+          ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
+                        first_offset);
           return EINVAL;
         }
 
         last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
         if (array_view->children[0]->length < last_offset) {
-          ArrowErrorSet(
-              error,
-              "Expected child of large list array to have length >= %ld but found array "
-              "with length %ld",
-              (long)last_offset, (long)array_view->children[0]->length);
+          ArrowErrorSet(error,
+                        "Expected child of large list array to have length >= %" PRId64
+                        " but found array "
+                        "with length %" PRId64,
+                        last_offset, array_view->children[0]->length);
           return EINVAL;
         }
       }
       break;
+
+    case NANOARROW_TYPE_RUN_END_ENCODED: {
+      struct ArrowArrayView* run_ends_view = array_view->children[0];
+      if (run_ends_view->length == 0) {
+        break;
+      }
+
+      int64_t first_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      if (first_run_end < 1) {
+        ArrowErrorSet(
+            error,
+            "All run ends must be greater than 0 but the first run end is %" PRId64,
+            first_run_end);
+        return EINVAL;
+      }
+
+      // offset + length < INT64_MAX is checked in ArrowArrayViewValidateMinimal()
+      int64_t last_run_end =
+          ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
+      if (last_run_end < offset_plus_length) {
+        ArrowErrorSet(error,
+                      "Last run end is %" PRId64 " but it should be >= (%" PRId64
+                      " + %" PRId64 ")",
+                      last_run_end, array_view->offset, array_view->length);
+        return EINVAL;
+      }
+      break;
+    }
     default:
       break;
   }
@@ -1047,7 +1160,7 @@ static int ArrowAssertIncreasingInt32(struct ArrowBufferView view,
 
   for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int32_t); i++) {
     if (view.data.as_int32[i] < view.data.as_int32[i - 1]) {
-      ArrowErrorSet(error, "[%ld] Expected element size >= 0", (long)i);
+      ArrowErrorSet(error, "[%" PRId64 "] Expected element size >= 0", i);
       return EINVAL;
     }
   }
@@ -1063,7 +1176,7 @@ static int ArrowAssertIncreasingInt64(struct ArrowBufferView view,
 
   for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int64_t); i++) {
     if (view.data.as_int64[i] < view.data.as_int64[i - 1]) {
-      ArrowErrorSet(error, "[%ld] Expected element size >= 0", (long)i);
+      ArrowErrorSet(error, "[%" PRId64 "] Expected element size >= 0", i);
       return EINVAL;
     }
   }
@@ -1076,8 +1189,9 @@ static int ArrowAssertRangeInt8(struct ArrowBufferView view, int8_t min_value,
   for (int64_t i = 0; i < view.size_bytes; i++) {
     if (view.data.as_int8[i] < min_value || view.data.as_int8[i] > max_value) {
       ArrowErrorSet(error,
-                    "[%ld] Expected buffer value between %d and %d but found value %d",
-                    (long)i, (int)min_value, (int)max_value, (int)view.data.as_int8[i]);
+                    "[%" PRId64 "] Expected buffer value between %" PRId8 " and %" PRId8
+                    " but found value %" PRId8,
+                    i, min_value, max_value, view.data.as_int8[i]);
       return EINVAL;
     }
   }
@@ -1097,8 +1211,8 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
     }
 
     if (!item_found) {
-      ArrowErrorSet(error, "[%ld] Unexpected buffer value %d", (long)i,
-                    (int)view.data.as_int8[i]);
+      ArrowErrorSet(error, "[%" PRId64 "] Unexpected buffer value %" PRId8, i,
+                    view.data.as_int8[i]);
       return EINVAL;
     }
   }
@@ -1153,12 +1267,33 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       int64_t offset = ArrowArrayViewUnionChildOffset(array_view, i);
       int64_t child_length = array_view->children[child_id]->length;
       if (offset < 0 || offset > child_length) {
-        ArrowErrorSet(
-            error,
-            "[%ld] Expected union offset for child id %d to be between 0 and %ld but "
-            "found offset value %ld",
-            (long)i, (int)child_id, (long)child_length, (long)offset);
+        ArrowErrorSet(error,
+                      "[%" PRId64 "] Expected union offset for child id %" PRId8
+                      " to be between 0 and %" PRId64
+                      " but "
+                      "found offset value %" PRId64,
+                      i, child_id, child_length, offset);
         return EINVAL;
+      }
+    }
+  }
+
+  if (array_view->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
+    struct ArrowArrayView* run_ends_view = array_view->children[0];
+    if (run_ends_view->length > 0) {
+      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      for (int64_t i = 1; i < run_ends_view->length; i++) {
+        const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
+        if (run_end <= last_run_end) {
+          ArrowErrorSet(
+              error,
+              "Every run end must be strictly greater than the previous run end, "
+              "but run_ends[%" PRId64 " is %" PRId64 " and run_ends[%" PRId64
+              "] is %" PRId64,
+              i, run_end, i - 1, last_run_end);
+          return EINVAL;
+        }
+        last_run_end = run_end;
       }
     }
   }

@@ -22,12 +22,12 @@ C API
 ------------------------
 
 .. doxygengroup:: nanoarrow_ipc
-   :project: nanoarrow_ipc
+   :project: nanoarrow_c
    :members:
 
 C++ Helpers
 ------------------------
 
 .. doxygengroup:: nanoarrow_ipc_hpp-unique
-   :project: nanoarrow_ipc
+   :project: nanoarrow_c
    :members:

@@ -243,20 +243,12 @@ test_cmake_project() {
 
 test_c() {
   show_header "Build and test C library"
-  test_cmake_project build . -DNANOARROW_BUILD_TESTS=ON
-
-  show_header "Build and test C IPC extension"
-  test_cmake_project build-ipc extensions/nanoarrow_ipc -DNANOARROW_IPC_BUILD_TESTS=ON
+  test_cmake_project build . -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_IPC=ON
 }
 
 test_c_bundled() {
   show_header "Build test bundled C library"
-  test_cmake_project build-bundled . -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUNDLE=ON
-
-  show_header "Build and test bundled C IPC extension"
-  test_cmake_project build-ipc extensions/nanoarrow_ipc \
-    -DNANOARROW_IPC_BUILD_TESTS=ON \
-    -DNANOARROW_IPC_BUNDLE=ON
+  test_cmake_project build-bundled . -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_IPC=ON -DNANOARROW_BUNDLE=ON
 }
 
 test_r() {

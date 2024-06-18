@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 const char* ArrowNanoarrowVersion(void) { return NANOARROW_VERSION; }
 
@@ -66,6 +66,7 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   switch (storage_type) {
     case NANOARROW_TYPE_UNINITIALIZED:
     case NANOARROW_TYPE_NA:
+    case NANOARROW_TYPE_RUN_END_ENCODED:
       layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_NONE;
       layout->buffer_data_type[0] = NANOARROW_TYPE_UNINITIALIZED;
       layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_NONE;

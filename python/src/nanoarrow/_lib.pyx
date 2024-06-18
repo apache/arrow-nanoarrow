@@ -46,11 +46,13 @@ from cpython cimport (
     PyBuffer_FillInfo,
     PyBUF_ANY_CONTIGUOUS,
     PyBUF_FORMAT,
-    PyBUF_WRITABLE
+    PyBUF_WRITABLE,
+    PyErr_WriteUnraisable,
 )
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
+from nanoarrow_dlpack cimport *
 
 from enum import Enum
 from sys import byteorder as sys_byteorder
@@ -164,6 +166,98 @@ cdef object alloc_c_array_view(ArrowArrayView** c_array_view):
     c_array_view[0] = <ArrowArrayView*> ArrowMalloc(sizeof(ArrowArrayView))
     ArrowArrayViewInitFromType(c_array_view[0], NANOARROW_TYPE_UNINITIALIZED)
     return PyCapsule_New(c_array_view[0], 'nanoarrow_array_view', &pycapsule_array_view_deleter)
+
+
+cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
+    cdef DLManagedTensor* dlm_tensor
+
+    # Do nothing if the capsule has been consumed
+    if PyCapsule_IsValid(dltensor, "used_dltensor"):
+        return
+
+    dlm_tensor = <DLManagedTensor*>PyCapsule_GetPointer(dltensor, 'dltensor')
+    if dlm_tensor == NULL:
+        PyErr_WriteUnraisable(dltensor)
+    # The deleter can be NULL if there is no way for the caller
+    # to provide a reasonable destructor
+    elif dlm_tensor.deleter:
+        dlm_tensor.deleter(dlm_tensor)
+
+
+cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
+    if tensor.manager_ctx is NULL:
+        return
+    Py_DECREF(<CBufferView>tensor.manager_ctx)
+    tensor.manager_ctx = NULL
+    ArrowFree(tensor)
+
+_uint = (NANOARROW_TYPE_UINT8, NANOARROW_TYPE_UINT16, NANOARROW_TYPE_UINT32, NANOARROW_TYPE_UINT64)
+_int = (NANOARROW_TYPE_INT8, NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32, NANOARROW_TYPE_INT64, NANOARROW_TYPE_INTERVAL_MONTHS)
+_float = (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE)
+
+cdef DLDataType view_to_dlpack_data_type(CBufferView view):
+    cdef DLDataType dtype
+    # Define DLDataType struct
+    if view.data_type_id in _uint:
+        dtype.code = kDLUInt
+    elif view.data_type_id in _int:
+        dtype.code = kDLInt
+    elif view.data_type_id in _float:
+        dtype.code = kDLFloat
+    elif view.data_type_id == NANOARROW_TYPE_BOOL:
+        raise ValueError('Bit-packed boolean data type not supported by DLPack.')
+    else:
+        raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
+    dtype.lanes = <uint16_t>1
+    dtype.bits = <uint8_t>(view._element_size_bits)
+
+    return dtype
+
+
+cdef object view_to_dlpack(CBufferView view):
+    # Define DLDevice and DLDataType struct and
+    # with that check for data type support first
+    cdef DLDevice device = view_to_dlpack_device(view)
+    cdef DLDataType dtype = view_to_dlpack_data_type(view)
+
+    # Allocate memory for DLManagedTensor
+    cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>ArrowMalloc(sizeof(DLManagedTensor))
+    # Define DLManagedTensor struct
+    cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
+    dl_tensor.data = <void*>view._ptr.data.data
+    dl_tensor.ndim = 1
+
+    dl_tensor.shape = &view._n_elements
+    dl_tensor.strides = NULL
+    dl_tensor.byte_offset = 0
+
+    dl_tensor.device = device
+    dl_tensor.dtype = dtype
+
+    dlm_tensor.manager_ctx = <void*>view
+    Py_INCREF(view)
+    dlm_tensor.deleter = view_dlpack_deleter
+
+    return PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_dlpack_deleter)
+
+
+cdef DLDevice view_to_dlpack_device(CBufferView view):
+    cdef DLDevice device
+
+    # Check data type support
+    if view.data_type_id == NANOARROW_TYPE_BOOL:
+        raise ValueError('Bit-packed boolean data type not supported by DLPack.')
+    elif view.data_type_id not in _uint + _int + _float:
+        raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
+
+    # Define DLDevice struct
+    if view._device.device_type_id == ARROW_DEVICE_CPU:
+        device.device_type = kDLCPU
+        device.device_id =  0
+    else:
+        raise ValueError('Only CPU device is currently supported.')
+
+    return device
 
 
 # Provide a way to validate that we release all references we create
@@ -623,8 +717,9 @@ cdef class Device:
     def _array_init(self, uintptr_t array_addr, CSchema schema):
         cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
         cdef ArrowDeviceArray* device_array_ptr
+        cdef void* sync_event = NULL
         holder = alloc_c_device_array(&device_array_ptr)
-        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr)
+        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr, sync_event)
         Error.raise_error_not_ok("ArrowDevice::init_array", code)
 
         return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
@@ -999,6 +1094,17 @@ cdef class CSchemaView:
     @property
     def storage_type_id(self):
         return self._schema_view.storage_type
+
+    @property
+    def storage_buffer_format(self):
+        if self.buffer_format is not None:
+            return self.buffer_format
+        elif self._schema_view.type == NANOARROW_TYPE_DATE32:
+            return 'i'
+        elif self._schema_view.type in (NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
+            return 'q'
+        else:
+            return None
 
     @property
     def buffer_format(self):
@@ -1641,7 +1747,7 @@ cdef class CArrayView:
             return self._ptr.null_count
 
         cdef ArrowBufferType buffer_type = self._ptr.layout.buffer_type[0]
-        cdef uint8_t* validity_bits = self._ptr.buffer_views[0].data.as_uint8
+        cdef const uint8_t* validity_bits = self._ptr.buffer_views[0].data.as_uint8
 
         if buffer_type != NANOARROW_BUFFER_TYPE_VALIDITY:
             self._ptr.null_count = 0
@@ -1842,6 +1948,7 @@ cdef class CBufferView:
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
+    cdef int64_t _n_elements
     cdef char _format[128]
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
@@ -1861,6 +1968,10 @@ cdef class CBufferView:
         )
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
+        if self._data_type == NANOARROW_TYPE_BOOL:
+            self._n_elements = self._shape * 8
+        else:
+            self._n_elements = self._shape
 
     def _addr(self):
         return <uintptr_t>self._ptr.data.data
@@ -1941,10 +2052,7 @@ cdef class CBufferView:
 
     @property
     def n_elements(self):
-        if self._data_type == NANOARROW_TYPE_BOOL:
-            return self._shape * 8
-        else:
-            return self._shape
+        return self._n_elements
 
     def element(self, i):
         if self._data_type == NANOARROW_TYPE_BOOL:
@@ -2089,6 +2197,48 @@ cdef class CBufferView:
             return 1
         else:
             return self._element_size_bits // 8
+
+
+    def __dlpack__(self, stream=None):
+        """
+        Export CBufferView as a DLPack capsule.
+
+        Parameters
+        ----------
+        stream : int, optional
+            A Python integer representing a pointer to a stream. Currently not supported.
+            Stream is provided by the consumer to the producer to instruct the producer
+            to ensure that operations can safely be performed on the array.
+
+        Returns
+        -------
+        capsule : PyCapsule
+            A DLPack capsule for the array, pointing to a DLManagedTensor.
+        """
+        # Note: parent offset not applied!
+
+        if stream is None:
+            return view_to_dlpack(self)
+        else:
+            raise NotImplementedError(
+                "Only stream=None is supported."
+            )
+
+
+    def __dlpack_device__(self):
+        """
+        Return the DLPack device tuple this CBufferView resides on.
+
+        Returns
+        -------
+        tuple : Tuple[int, int]
+            Tuple with index specifying the type of the device (where
+            CPU = 1, see python/src/nanoarrow/dpack_abi.h) and index of the
+            device which is 0 by default for CPU.
+        """
+        return (view_to_dlpack_device(self).device_type,
+                view_to_dlpack_device(self).device_id)
+
 
     # These are special methods, which can't be cdef and we can't
     # call them from elsewhere. We implement the logic for the buffer

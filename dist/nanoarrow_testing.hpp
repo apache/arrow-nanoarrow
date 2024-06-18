@@ -804,6 +804,7 @@ class TestingJSONWriter {
         }
         break;
 
+      case NANOARROW_TYPE_HALF_FLOAT:
       case NANOARROW_TYPE_FLOAT:
       case NANOARROW_TYPE_DOUBLE: {
         // JSON number to float_precision_ decimal places
@@ -984,28 +985,8 @@ class TestingJSONWriter {
   }
 
   void WriteString(std::ostream& out, ArrowStringView value) {
-    out << R"(")";
-
-    for (int64_t i = 0; i < value.size_bytes; i++) {
-      char c = value.data[i];
-      if (c == '"') {
-        out << R"(\")";
-      } else if (c == '\\') {
-        out << R"(\\)";
-      } else if (c >= 0 && c < 32) {
-        // Control characters need to be escaped with a \uXXXX escape
-        uint16_t utf16_bytes = static_cast<uint16_t>(c);
-
-        char utf16_esc[7];
-        utf16_esc[6] = '\0';
-        snprintf(utf16_esc, sizeof(utf16_esc), R"(\u%04x)", utf16_bytes);
-        out << utf16_esc;
-      } else {
-        out << c;
-      }
-    }
-
-    out << R"(")";
+    std::string value_str(value.data, static_cast<size_t>(value.size_bytes));
+    out << nlohmann::json(value_str);
   }
 
   void WriteBytes(std::ostream& out, ArrowBufferView value) {
@@ -2146,6 +2127,8 @@ class TestingJSONReader {
           case NANOARROW_TYPE_UINT64:
             return SetBufferInt<uint64_t, uint64_t>(data, buffer, error);
 
+          case NANOARROW_TYPE_HALF_FLOAT:
+            return SetBufferFloatingPoint<float>(data, buffer, error);
           case NANOARROW_TYPE_FLOAT:
             return SetBufferFloatingPoint<float>(data, buffer, error);
           case NANOARROW_TYPE_DOUBLE:

@@ -18,7 +18,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-#include "nanoarrow.hpp"
+#include "nanoarrow/nanoarrow.hpp"
 
 #ifndef NANOARROW_GTEST_UTIL_HPP_INCLUDED
 #define NANOARROW_GTEST_UTIL_HPP_INCLUDED

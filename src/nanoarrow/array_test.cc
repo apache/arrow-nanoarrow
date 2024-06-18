@@ -29,7 +29,12 @@
 #include <arrow/array/builder_union.h>
 #include <arrow/c/bridge.h>
 #include <arrow/compare.h>
+#include <arrow/config.h>
 #include <arrow/util/decimal.h>
+
+#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 12
+#include <arrow/array/builder_run_end.h>
+#endif
 
 #include "nanoarrow/nanoarrow.hpp"
 
@@ -787,6 +792,47 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe(), options));
 }
 
+TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendUInt(&array, 3), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 3.14), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, std::numeric_limits<float>::max()),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, NAN), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -INFINITY), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, -1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 0), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 11);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint16_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0b11111001);
+  EXPECT_EQ(validity_buffer[1], 0b00000111);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[0]), 1);
+  EXPECT_EQ(data_buffer[1], 0);
+  EXPECT_EQ(data_buffer[2], 0);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[3]), 3.0);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[4]), static_cast<float>(3.138672));
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[5]),
+                  std::numeric_limits<float>::max());
+  EXPECT_TRUE(std::isnan(ArrowHalfFloatToFloat(data_buffer[6])));
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[7]), INFINITY);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[8]), -INFINITY);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[9]), -1);
+  EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[10]), 0);
+
+  auto arrow_array = ImportArray(&array, float16());
+  ARROW_EXPECT_OK(arrow_array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {
   struct ArrowArray array;
 
@@ -1396,6 +1442,167 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+}
+
+TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  // in this test case we construct a run-end encoded array with logical length = 7
+  // and the values are float32s
+  //
+  // the virtual big array:
+  //   type: Float32
+  //   [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
+  //
+  // run-end encoded array:
+  //   run_ends<INT32>: [4, 6, 7]
+  //   values<FLOAT>: [1.0, null, 2.0]
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 4), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 6), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 7), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendDouble(array.children[1], 1.0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array.children[1], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendDouble(array.children[1], 2.0), NANOARROW_OK);
+  array.length = 7;
+
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 2 children for run_end_encoded array but found 0 child arrays");
+  array.n_children = 2;
+
+  {
+    array.offset = INT32_MAX;
+    EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+              EINVAL);
+    EXPECT_STREQ(ArrowErrorMessage(&error),
+                 "Offset + length of a run-end encoded array must fit in a value of the "
+                 "run end type int32 but is 2147483647 + 7");
+
+    ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
+        NANOARROW_TYPE_INT16;
+    array.offset = INT16_MAX;
+    EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+              EINVAL);
+    EXPECT_STREQ(
+        ArrowErrorMessage(&error),
+        "Offset + length of a run-end encoded array must fit in a value of the run end "
+        "type int16 but is 32767 + 7");
+
+    ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
+        NANOARROW_TYPE_INT64;
+    array.offset = INT64_MAX;
+    EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+              EINVAL);
+    EXPECT_STREQ(ArrowErrorMessage(&error), "Offset + length is > INT64_MAX");
+  }
+  ((struct ArrowArrayPrivateData*)(array.children[0]->private_data))->storage_type =
+      NANOARROW_TYPE_INT32;
+  array.offset = 0;
+
+  // Make sure final child size is checked at finish
+  array.children[0]->length += 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Length of run_ends is greater than the length of values: 4 > 3");
+  array.children[0]->length -= 1;
+
+  array.children[0]->length = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Run-end encoded array has zero length 3, but values array has non-zero length");
+  array.children[0]->length = 3;
+
+  array.children[0]->null_count = 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Null count must be 0 for run ends array, but is 1");
+  array.children[0]->null_count = 0;
+
+  // it can be a projection of the virtual big array
+  //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
+  //        ^                          ^
+  //        |- offset = 1              |- length = 6
+  array.length = 6;
+  array.offset = 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // checks for one-off errors
+  //  this one makes the logical length larger than the last run end
+  //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
+  //        ^                               ^
+  //        |- offset = 1                   |- length = 7 (out of bound)
+  array.length = 7;
+  array.offset = 1;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Last run end is 7 but it should be >= (1 + 7)");
+
+  //  [1.0, 1.0, 1.0, 1.0, null, null, 2.0]
+  //   ^                                    ^
+  //   |- offset = 1                        |- length = 8 (out of bound)
+  array.length = 8;
+  array.offset = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Last run end is 7 but it should be >= (0 + 8)");
+
+  // Ensure the first run end is checked for >= 0
+  int32_t* run_ends = const_cast<int32_t*>(
+      reinterpret_cast<const int32_t*>(array.children[0]->buffers[1]));
+  run_ends[0] = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "All run ends must be greater than 0 but the first run end is 0");
+  run_ends[0] = 4;
+
+  array.length = 7;
+  array.offset = 0;
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#else
+  auto arrow_array = ImportArray(&array, &schema);
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto run_ends_builder = std::make_shared<Int32Builder>();
+  auto values_builder = std::make_shared<FloatBuilder>();
+  auto builder =
+      RunEndEncodedBuilder(default_memory_pool(), run_ends_builder, values_builder,
+                           run_end_encoded(int32(), float32()));
+  ARROW_EXPECT_OK(run_ends_builder->Append(4));
+  ARROW_EXPECT_OK(run_ends_builder->Append(6));
+  ARROW_EXPECT_OK(run_ends_builder->Append(7));
+  ARROW_EXPECT_OK(values_builder->Append(1.0));
+  ARROW_EXPECT_OK(values_builder->AppendNull());
+  ARROW_EXPECT_OK(values_builder->Append(2.0));
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_STREQ(arrow_array.ValueUnsafe()->ToString().c_str(),
+               expected_array.ValueUnsafe()->ToString().c_str());
+#endif
 }
 
 TEST(ArrayTest, ArrayTestUnionUtils) {
@@ -2382,6 +2589,20 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   ArrowArrayRelease(&array);
 }
 
+// In Arrow C++, HalfFloatType::ctype gives uint16_t; however, this is not
+// the "value type" that would correspond to what ArrowArrayViewGetDoubleUnsafe()
+// or ArrowArrayAppendDouble() do since they operate on the logical/represented
+// value.
+template <typename TypeClass, typename BuilderValueT>
+BuilderValueT logical_value_to_builder_value(int64_t value) {
+  return static_cast<BuilderValueT>(value);
+}
+
+template <>
+uint16_t logical_value_to_builder_value<HalfFloatType, uint16_t>(int64_t value) {
+  return ArrowFloatToHalfFloat(static_cast<float>(value));
+}
+
 template <typename TypeClass>
 void TestGetFromNumericArrayView() {
   struct ArrowArray array;
@@ -2390,12 +2611,17 @@ void TestGetFromNumericArrayView() {
   struct ArrowError error;
 
   auto type = TypeTraits<TypeClass>::type_singleton();
+  using value_type = typename TypeClass::c_type;
 
   // Array with nulls
   auto builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(1));
+
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
   ARROW_EXPECT_OK(builder.AppendNulls(2));
-  ARROW_EXPECT_OK(builder.Append(4));
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(4)));
+
   auto maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   auto arrow_array = maybe_arrow_array.ValueUnsafe();
@@ -2426,8 +2652,12 @@ void TestGetFromNumericArrayView() {
 
   // Array without nulls (Arrow does not allocate the validity buffer)
   builder = NumericBuilder<TypeClass>();
-  ARROW_EXPECT_OK(builder.Append(1));
-  ARROW_EXPECT_OK(builder.Append(2));
+
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(1)));
+  ARROW_EXPECT_OK(
+      builder.Append(logical_value_to_builder_value<TypeClass, value_type>(2)));
+
   maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
   arrow_array = maybe_arrow_array.ValueUnsafe();
@@ -2463,6 +2693,73 @@ TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
   TestGetFromNumericArrayView<UInt32Type>();
   TestGetFromNumericArrayView<DoubleType>();
   TestGetFromNumericArrayView<FloatType>();
+  TestGetFromNumericArrayView<HalfFloatType>();
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 4), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 3), 4);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 3), 4.0);
+
+  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 0);
+  EXPECT_EQ(string_view.data, nullptr);
+  EXPECT_EQ(string_view.size_bytes, 0);
+  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 0);
+  EXPECT_EQ(buffer_view.data.data, nullptr);
+  EXPECT_EQ(buffer_view.size_bytes, 0);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+
+  // Array without nulls (Arrow does not allocate the validity buffer)
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendDouble(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_HALF_FLOAT), NANOARROW_OK);
+  schema.flags &= ~ARROW_FLAG_NULLABLE;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // We're trying to test behavior with no validity buffer, so make sure that's true
+  ASSERT_EQ(array_view.buffer_views[0].data.data, nullptr);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 1), 0);
+
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 1);
+  EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(&array_view, 1), 2);
+  EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(&array_view, 1), 2);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
 }
 
 template <typename BuilderClass>

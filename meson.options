@@ -15,19 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-option('NANOARROW_BUILD_TESTS', type: 'boolean', description: 'Build tests', value: false)
-option('NANOARROW_BUILD_BENCHMARKS', type: 'boolean', description: 'Build benchmarks', value: false)
-option('NANOARROW_BUILD_INTEGRATION_TESTS', type: 'boolean',
+option('tests', type: 'boolean', description: 'Build tests', value: false)
+option('benchmarks', type: 'boolean', description: 'Build benchmarks', value: false)
+option('apps', type: 'boolean', description: 'Build utility applications', value: false)
+option('ipc', type: 'boolean', description: 'Build IPC libraries', value: false)
+option('integration_tests', type: 'boolean',
        description: 'Build cross-implementation Arrow integration tests',
        value: false)
-option('NANOARROW_BUNDLE', type: 'boolean',
-       description: 'Create bundled nanoarrow.h and nanoarrow.c',
-       value: false)
-option('NANOARROW_BUNDLE_AS_CPP', type: 'boolean',
-       description: 'Create bundled nanoarrow.h and nanoarrow.cc',
-       value: false)
-option('NANOARROW_NAMESPACE', type: 'string',
+option('namespace', type: 'string',
        description: 'A prefix for exported symbols')
-option('NANOARROW_CODE_COVERAGE', type: 'boolean',
-       description: 'Enable coverage reporting',
+option('device', type: 'boolean', description: 'Build device libraries', value: false)
+option('metal', type: 'boolean', description: 'Build Apple metal libraries',
        value: false)
+option('cuda', type: 'boolean', description: 'Build CUDA libraries', value: false)

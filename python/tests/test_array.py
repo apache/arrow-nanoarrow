@@ -14,6 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from nanoarrow.c_array_stream import CArrayStream
@@ -354,3 +355,67 @@ def test_array_inspect(capsys):
     array.inspect()
     captured = capsys.readouterr()
     assert captured.out.startswith("<ArrowArray struct<col0: int32")
+
+
+def test_timestamp_array():
+    d1 = int(round(datetime(1985, 12, 31, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
+    d2 = int(round(datetime(2005, 3, 4, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
+    array = na.Array([d1, d2], na.timestamp("ms"))
+    assert list(array.to_pysequence()) == [
+        datetime(1985, 12, 31, 0, 0),
+        datetime(2005, 3, 4, 0, 0),
+    ]
+    assert array.to_pylist() == [
+        datetime(1985, 12, 31, 0, 0),
+        datetime(2005, 3, 4, 0, 0),
+    ]
+    assert repr(array).startswith("nanoarrow.Array<timestamp('ms', '')>")
+
+
+def test_date64_array():
+    unix_epoch = date(1970, 1, 1)
+    d1, d2 = date(1970, 1, 2), date(1970, 1, 3)
+    d1_date64 = int(round((d1 - unix_epoch).total_seconds() * 1e3))
+    d2_date64 = int(round((d2 - unix_epoch).total_seconds() * 1e3))
+    array = na.Array([d1_date64, d2_date64], na.date64())
+    assert list(array.to_pysequence()) == [d1, d2]
+    assert array.to_pylist() == [d1, d2]
+
+
+def test_duration_array():
+    unix_epoch = date(1970, 1, 1)
+    d1, d2 = date(1970, 1, 2), date(1970, 1, 3)
+    d1_date64 = int(round((d1 - unix_epoch).total_seconds() * 1e3))
+    d2_date64 = int(round((d2 - unix_epoch).total_seconds() * 1e3))
+    array = na.Array([d1_date64, d2_date64], na.duration("ms"))
+    assert list(array.to_pysequence()) == [timedelta(days=1), timedelta(days=2)]
+    assert array.to_pylist() == [timedelta(days=1), timedelta(days=2)]
+
+
+def test_timestamp_array_using_struct():
+    schema = na.struct(
+        {
+            "creation_timestamp": na.timestamp("ms"),
+        }
+    )
+
+    d1 = int(round(datetime(1985, 12, 31, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
+    d2 = int(round(datetime(2005, 3, 4, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
+
+    columns = [
+        na.c_array([d1, d2], na.timestamp("ms")),
+    ]
+
+    c_array = na.c_array_from_buffers(
+        schema, length=columns[0].length, buffers=[None], children=columns
+    )
+    array = na.Array(c_array)
+    names, columns = array.to_columns_pysequence()
+    assert names == ["creation_timestamp"]
+    assert list(array.to_pysequence()) == [
+        {"creation_timestamp": datetime(1985, 12, 31, 0, 0)},
+        {"creation_timestamp": datetime(2005, 3, 4, 0, 0)},
+    ]
+    assert repr(array).startswith(
+        "nanoarrow.Array<struct<creation_timestamp: timestamp('ms', '')>"
+    )

@@ -67,39 +67,14 @@ function main() {
     fi
     mkdir "${SANDBOX_DIR}"
 
-    # Bulid + run tests with gcov for core library
+    # Bulid + run tests with gcov
     show_header "Build + test nanoarrow"
     mkdir "${SANDBOX_DIR}/nanoarrow"
     pushd "${SANDBOX_DIR}/nanoarrow"
 
     cmake "${TARGET_NANOARROW_DIR}" \
-        -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
-    cmake --build .
-    CTEST_OUTPUT_ON_FAILURE=1 ctest .
-
-    popd
-
-    # Build + run tests with gcov for IPC extension
-    show_header "Build + test nanoarrow_ipc"
-    mkdir "${SANDBOX_DIR}/nanoarrow_ipc"
-    pushd "${SANDBOX_DIR}/nanoarrow_ipc"
-
-    cmake "${TARGET_NANOARROW_DIR}/extensions/nanoarrow_ipc" \
-        -DNANOARROW_IPC_BUILD_TESTS=ON -DNANOARROW_IPC_CODE_COVERAGE=ON
-    cmake --build .
-    CTEST_OUTPUT_ON_FAILURE=1 ctest .
-
-    popd
-
-    pushd "${SANDBOX_DIR}"
-
-    # Build + run tests with gcov for device extension
-    show_header "Build + test nanoarrow_device"
-    mkdir "${SANDBOX_DIR}/nanoarrow_device"
-    pushd "${SANDBOX_DIR}/nanoarrow_device"
-
-    cmake "${TARGET_NANOARROW_DIR}/extensions/nanoarrow_device" \
-        -DNANOARROW_DEVICE_BUILD_TESTS=ON -DNANOARROW_DEVICE_CODE_COVERAGE=ON
+          -DNANOARROW_DEVICE=ON -DNANOARROW_IPC=ON \
+          -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_CODE_COVERAGE=ON
     cmake --build .
     CTEST_OUTPUT_ON_FAILURE=1 ctest .
 

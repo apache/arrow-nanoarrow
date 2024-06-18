@@ -29,52 +29,26 @@ to by another project.
 
 The nanoarrow/ files included in this example are stubs to illustrate
 how these files could fit in to a library and/or command-line application project.
-The easiest way is to use the pre-generated versions in the dist/ folder of this
-repository:
-
-```bash
-git clone https://github.com/apache/arrow-nanoarrow.git
-cd arrow-nanoarrow/examples/vendored-ipc
-mkdir -p src/nanoarrow
-cp ../../dist/nanoarrow.h src/nanoarrow/nanoarrow.h
-cp ../../dist/nanoarrow.c src/nanoarrow/nanoarrow.c
-cp ../../dist/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.h
-cp ../../dist/nanoarrow_ipc.c src/nanoarrow/nanoarrow_ipc.c
-cp ../../dist/flatcc.c src/nanoarrow/flatcc.c
-cp -r ../../dist/flatcc src/nanoarrow/flatcc
-```
-
-If you use these, you will have to manually `#define NANOARROW_NAMESPACE MyProject`
-in nanoarrow.h.
-
-You can also generate the bundled versions with the namespace defined using `cmake`:
+You can generate the bundled versions with the namespace defined using the Python
+script `ci/scripts/bundle.py`:
 
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git
 cd arrow-nanoarrow/examples/vendored-ipc
 
-# First, build and install nanoarrow
-mkdir build
-pushd build
-cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
-cmake --build .
-cmake --install . --prefix=../src/nanoarrow
-popd
-
-# Then, build and install nanoarrow_ipc
-mkdir build_ipc
-pushd build_ipc
-cmake ../../../extensions/nanoarrow_ipc -DNANOARROW_IPC_BUNDLE=ON
-cmake --build .
-cmake --install . --prefix=../src/nanoarrow
-popd
+python ../../ci/scripts/bundle.py \
+  --source-output-dir=src \
+  --include-output-dir=src \
+  --symbol-namespace=MyProject \
+  --with-ipc \
+  --with-flatcc
 ```
 
 Then you can build/link the application/library using the build tool of your choosing:
 
 ```bash
 cd src
-cc -c library.c nanoarrow/nanoarrow.c nanoarrow/flatcc.c nanoarrow/nanoarrow_ipc.c -I./nanoarrow -I./nanoarrow/flatcc
+cc -c library.c nanoarrow.c flatcc.c nanoarrow_ipc.c -I.
 ar rcs libexample_vendored_ipc_library.a library.o nanoarrow.o nanoarrow_ipc.o flatcc.o
 cc -o example_vendored_ipc_app app.c libexample_vendored_ipc_library.a
 ```
