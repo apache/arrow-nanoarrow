@@ -22,7 +22,8 @@ from nanoarrow_c cimport (
     ArrowArray,
     ArrowArrayStream,
     ArrowArrayView,
-    ArrowBuffer
+    ArrowBuffer,
+    ArrowError
 )
 from nanoarrow_device_c cimport ArrowDeviceArray
 
@@ -44,3 +45,16 @@ cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* src,
                                       ArrowDeviceArray* dst)
 
 cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer)
+
+cdef class Error:
+    cdef ArrowError c_error
+
+    cdef raise_message(self, what, code)
+
+    cdef raise_message_not_ok(self, what, code)
+
+    @staticmethod
+    cdef raise_error(what, code)
+
+    @staticmethod
+    cdef raise_error_not_ok(what, code)

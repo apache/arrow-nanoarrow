@@ -74,29 +74,28 @@ cdef class Error:
     reference to the object and provides helpers for raising exceptions based
     on the contained message.
     """
-    cdef ArrowError c_error
 
     def __cinit__(self):
         self.c_error.message[0] = 0
 
-    def raise_message(self, what, code):
+    cdef raise_message(self, what, code):
         """Raise a NanoarrowException from this message
         """
         raise NanoarrowException(what, code, self.c_error.message.decode("UTF-8"))
 
-    def raise_message_not_ok(self, what, code):
+    cdef raise_message_not_ok(self, what, code):
         if code == NANOARROW_OK:
             return
         self.raise_message(what, code)
 
     @staticmethod
-    def raise_error(what, code):
+    cdef raise_error(what, code):
         """Raise a NanoarrowException without a message
         """
         raise NanoarrowException(what, code, "")
 
     @staticmethod
-    def raise_error_not_ok(what, code):
+    cdef raise_error_not_ok(what, code):
         if code == NANOARROW_OK:
             return
         Error.raise_error(what, code)

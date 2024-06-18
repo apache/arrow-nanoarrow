@@ -39,7 +39,6 @@ from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_Is
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
     Py_buffer,
-    PyObject_CheckBuffer,
     PyObject_GetBuffer,
     PyBuffer_Release,
     PyBuffer_ToContiguous,
@@ -67,7 +66,8 @@ from nanoarrow._utils cimport (
     alloc_c_buffer,
     c_array_shallow_copy,
     c_device_array_shallow_copy,
-    c_buffer_set_pybuffer
+    c_buffer_set_pybuffer,
+    Error
 )
 
 cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
@@ -276,62 +276,6 @@ cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size
 
     snprintf(out, out_size, "%s", format_const)
     return element_size_bits_calc
-
-
-class NanoarrowException(RuntimeError):
-    """An error resulting from a call to the nanoarrow C library
-
-    Calls to the nanoarrow C library and/or the Arrow C Stream interface
-    callbacks return an errno error code and sometimes a message with extra
-    detail. This exception wraps a RuntimeError to format a suitable message
-    and store the components of the original error.
-    """
-
-    def __init__(self, what, code, message=""):
-        self.what = what
-        self.code = code
-        self.message = message
-
-        if self.message == "":
-            super().__init__(f"{self.what} failed ({self.code})")
-        else:
-            super().__init__(f"{self.what} failed ({self.code}): {self.message}")
-
-
-cdef class Error:
-    """Memory holder for an ArrowError
-
-    ArrowError is the C struct that is optionally passed to nanoarrow functions
-    when a detailed error message might be returned. This class holds a C
-    reference to the object and provides helpers for raising exceptions based
-    on the contained message.
-    """
-    cdef ArrowError c_error
-
-    def __cinit__(self):
-        self.c_error.message[0] = 0
-
-    def raise_message(self, what, code):
-        """Raise a NanoarrowException from this message
-        """
-        raise NanoarrowException(what, code, self.c_error.message.decode("UTF-8"))
-
-    def raise_message_not_ok(self, what, code):
-        if code == NANOARROW_OK:
-            return
-        self.raise_message(what, code)
-
-    @staticmethod
-    def raise_error(what, code):
-        """Raise a NanoarrowException without a message
-        """
-        raise NanoarrowException(what, code, "")
-
-    @staticmethod
-    def raise_error_not_ok(what, code):
-        if code == NANOARROW_OK:
-            return
-        Error.raise_error(what, code)
 
 
 # This could in theory use cpdef enum, but an initial attempt to do so
@@ -2571,7 +2515,7 @@ cdef class CArrayBuilder:
                 code = ArrowArrayAppendString(self._ptr, item)
 
             if code != NANOARROW_OK:
-                Error.raise_error(f"append string item {py_item}")
+                Error.raise_error(f"append string item {py_item}", code)
 
         return self
 
@@ -2598,7 +2542,7 @@ cdef class CArrayBuilder:
                 PyBuffer_Release(&buffer)
 
             if code != NANOARROW_OK:
-                Error.raise_error(f"append bytes item {py_item}")
+                Error.raise_error(f"append bytes item {py_item}", code)
 
     def set_offset(self, int64_t offset):
         self.c_array._assert_valid()
