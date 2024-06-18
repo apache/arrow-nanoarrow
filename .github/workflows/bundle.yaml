@@ -35,11 +35,6 @@ jobs:
 
       - name: Bundle nanoarrow
         run: |
-          mkdir build && cd build
-          cmake .. -DNANOARROW_BUNDLE=ON
-          cmake --build .
-          cmake --install . --prefix=../nanoarrow-latest
-          cd ..
           python3 ci/scripts/bundle.py \
             --source-output-dir=nanoarrow-latest \
             --include-output-dir=nanoarrow-latest \
@@ -47,6 +42,7 @@ jobs:
             --with-device \
             --with-ipc \
             --with-flatcc
+
           cp LICENSE.txt nanoarrow-latest/LICENSE.txt
 
       - name: Compress bundle
