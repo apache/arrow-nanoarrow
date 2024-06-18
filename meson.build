@@ -29,30 +29,6 @@ project(
     ]
 )
 
-conf_data = configuration_data()
-
-ns = get_option('namespace')
-conf_data.set('NANOARROW_NAMESPACE_DEFINE', '#define NANOARROW_NAMESPACE ' + ns)
-
-version = meson.project_version()
-# Remove any pre-release / build identifiers
-version_no_pre_release = version.split('-')[0]
-version_no_build = version_no_pre_release.split('+')[0]
-components = version_no_build.split('.')
-assert(components.length() >= 3,
-       'The version does not contain major, minor and patch')
-ver_major = components[0]
-ver_minor = components[1]
-ver_patch = components[2]
-conf_data.set('NANOARROW_VERSION', version)
-conf_data.set('NANOARROW_VERSION_MAJOR', ver_major)
-conf_data.set('NANOARROW_VERSION_MINOR', ver_minor)
-conf_data.set('NANOARROW_VERSION_PATCH', ver_patch)
-
-configure_file(input: 'src/nanoarrow/nanoarrow_config.h.in',
-               output: 'nanoarrow_config.h',
-               configuration: conf_data)
-
 # Windows shared libraries are not exporting the right symbols
 # See https://github.com/mesonbuild/wrapdb/pull/1536#issuecomment-2136011408
 # and https://github.com/apache/arrow-nanoarrow/issues/495
@@ -62,6 +38,7 @@ else
     libtype = 'library'
 endif
 
+subdir('src')
 incdir = include_directories('src/')
 
 nanoarrow_lib = build_target(
