@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nanoarrow_device.hpp"
+#include "nanoarrow/nanoarrow_device.hpp"
 
 TEST(NanoarrowDeviceHpp, UniqueDeviceArray) {
   nanoarrow::device::UniqueDeviceArray array;

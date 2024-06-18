@@ -18,9 +18,8 @@
 #include <errno.h>
 #include <inttypes.h>
 
-#include "nanoarrow.h"
-
-#include "nanoarrow_device.h"
+#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow_device.h"
 
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error) {
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();

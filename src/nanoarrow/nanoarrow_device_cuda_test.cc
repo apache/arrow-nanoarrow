@@ -20,8 +20,8 @@
 #include <cuda.h>
 #include <gtest/gtest.h>
 
-#include "nanoarrow_device.h"
-#include "nanoarrow_device_cuda.h"
+#include "nanoarrow/nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device_cuda.h"
 
 class CudaTemporaryContext {
  public:

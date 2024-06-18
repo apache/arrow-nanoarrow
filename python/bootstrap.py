@@ -15,12 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import os
 import pathlib
 import re
 import subprocess
-import tempfile
-import warnings
+import sys
 
 
 # Generate the nanoarrow_c.pxd file used by the Cython extensions
@@ -206,42 +204,24 @@ def copy_or_generate_nanoarrow_c():
             "Attempt to build source distribution outside the nanoarrow repo"
         )
 
-    cmake_bin = os.getenv("CMAKE_BIN")
-    if not cmake_bin:
-        cmake_bin = "cmake"
-    has_cmake = os.system(f"{cmake_bin} --version") == 0
-    if not has_cmake:
-        raise ValueError("Attempt to build source distribution without CMake")
-
     vendor_dir.mkdir(exist_ok=True)
-
-    for cmake_project in [source_dir, source_dir]:
-        with tempfile.TemporaryDirectory() as build_dir:
-            try:
-                subprocess.run(
-                    [
-                        cmake_bin,
-                        "-B",
-                        build_dir,
-                        "-S",
-                        cmake_project,
-                        "-DNANOARROW_BUNDLE=ON",
-                        "-DNANOARROW_DEVICE=ON",
-                        "-DNANOARROW_IPC=ON",
-                        "-DNANOARROW_NAMESPACE=PythonPkg",
-                    ]
-                )
-                subprocess.run(
-                    [
-                        cmake_bin,
-                        "--install",
-                        build_dir,
-                        "--prefix",
-                        vendor_dir,
-                    ]
-                )
-            except Exception as e:
-                warnings.warn(f"cmake call failed: {e}")
+    subprocess.run(
+        [
+            sys.executable,
+            source_dir / "ci" / "scripts" / "bundle.py",
+            "--symbol-namespace",
+            "PythonPkg",
+            "--header-namespace",
+            "",
+            "--source-output-dir",
+            vendor_dir,
+            "--include-output-dir",
+            vendor_dir,
+            "--with-device",
+            "--with-ipc",
+            "--with-flatcc",
+        ],
+    )
 
     if not dst["nanoarrow.h"].exists():
         raise ValueError("Attempt to vendor nanoarrow.c/h failed")

@@ -24,9 +24,8 @@
 #define MTL_PRIVATE_IMPLEMENTATION
 #include <Metal/Metal.hpp>
 
-#include "nanoarrow_device.hpp"
-
-#include "nanoarrow_device_metal.h"
+#include "nanoarrow/nanoarrow_device.hpp"
+#include "nanoarrow/nanoarrow_device_metal.h"
 
 // If non-null, caller must ->release() the return value. This doesn't
 // release the underlying memory (which must be managed separately).
