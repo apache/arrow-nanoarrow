@@ -56,7 +56,9 @@ configure_file(input: 'src/nanoarrow/nanoarrow_config.h.in',
 
 if host_machine.system() == 'windows'
   libtype = get_option('default_library')
-  if libtype == 'shared'  # TODO: do we need to handle default_library=both?
+  if libtype == 'both'
+    error('libtype "both" is not supported')
+  elif libtype == 'shared'
     if meson.is_subproject()
       add_project_arguments('-DNANOARROW_CONSUME_DLL', language: 'c')
       add_project_arguments('-DNANOARROW_CONSUME_DLL', language: 'cpp')
