@@ -15,7 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CArrowType, CBuffer, CBufferBuilder, _obj_is_buffer
+from nanoarrow._lib import CArrowType, CBuffer, CBufferBuilder
+from nanoarrow._utils import obj_is_buffer
 from nanoarrow.c_schema import c_schema_view
 
 
@@ -61,7 +62,7 @@ def c_buffer(obj, schema=None) -> CBuffer:
     if isinstance(obj, CBuffer) and schema is None:
         return obj
 
-    if _obj_is_buffer(obj):
+    if obj_is_buffer(obj):
         if schema is not None:
             raise NotImplementedError(
                 "c_buffer() with schema for pybuffer is not implemented"

@@ -15,7 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CArrayStream, _obj_is_capsule
+from nanoarrow._lib import CArrayStream
+from nanoarrow._utils import obj_is_capsule
 from nanoarrow.c_array import c_array
 from nanoarrow.c_schema import c_schema
 
@@ -73,7 +74,7 @@ def c_array_stream(obj=None, schema=None) -> CArrayStream:
         )
 
     # Try import of bare capsule
-    if _obj_is_capsule(obj, "arrow_array_stream"):
+    if obj_is_capsule(obj, "arrow_array_stream"):
         if schema is not None:
             raise TypeError(
                 "Can't import c_array_stream from capsule with requested schema"

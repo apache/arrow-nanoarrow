@@ -16,7 +16,7 @@
 # under the License.
 
 import pytest
-from nanoarrow._lib import _obj_is_capsule
+from nanoarrow._utils import obj_is_capsule
 
 import nanoarrow as na
 
@@ -25,7 +25,7 @@ np = pytest.importorskip("numpy")
 
 def check_dlpack_export(view, expected_arr):
     DLTensor = view.__dlpack__()
-    assert _obj_is_capsule(DLTensor, "dltensor") is True
+    assert obj_is_capsule(DLTensor, "dltensor") is True
 
     result = np.from_dlpack(view)
     np.testing.assert_array_equal(result, expected_arr, strict=True)

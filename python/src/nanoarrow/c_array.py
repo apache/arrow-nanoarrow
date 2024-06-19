@@ -27,9 +27,8 @@ from nanoarrow._lib import (
     CSchema,
     CSchemaBuilder,
     NoneAwareWrapperIterator,
-    _obj_is_buffer,
-    _obj_is_capsule,
 )
+from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
 from nanoarrow.c_schema import c_schema, c_schema_view
 
@@ -97,7 +96,7 @@ def c_array(obj, schema=None) -> CArray:
         )
 
     # Try import of bare capsule
-    if _obj_is_capsule(obj, "arrow_array"):
+    if obj_is_capsule(obj, "arrow_array"):
         if schema is None:
             schema_capsule = CSchema.allocate()._capsule
         else:
@@ -138,7 +137,7 @@ def _resolve_builder(obj):
     if _obj_is_empty(obj):
         return EmptyArrayBuilder
 
-    if _obj_is_buffer(obj):
+    if obj_is_buffer(obj):
         return ArrayFromPyBufferBuilder
 
     if _obj_is_iterable(obj):

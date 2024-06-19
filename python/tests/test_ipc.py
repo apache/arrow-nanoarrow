@@ -21,7 +21,7 @@ import pathlib
 import tempfile
 
 import pytest
-from nanoarrow._lib import NanoarrowException
+from nanoarrow._utils import NanoarrowException
 from nanoarrow.ipc import Stream
 
 import nanoarrow as na
