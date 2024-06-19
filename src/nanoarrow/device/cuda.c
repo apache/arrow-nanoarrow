@@ -105,7 +105,7 @@ static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
 static ArrowErrorCode ArrowDeviceCudaAllocateBufferAsync(struct ArrowDevice* device,
                                                          struct ArrowBuffer* buffer,
                                                          int64_t size_bytes,
-                                                         CUstream hstream) {
+                                                         CUstream* stream) {
   struct ArrowDeviceCudaPrivate* private_data =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
 
@@ -130,7 +130,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBufferAsync(struct ArrowDevice* dev
 
       // cuMemalloc requires non-zero size_bytes
       if (size_bytes > 0) {
-        err = cuMemAllocAsync(&dptr, (size_t)size_bytes, hstream);
+        err = cuMemAllocAsync(&dptr, (size_t)size_bytes, *stream);
       } else {
         err = CUDA_SUCCESS;
       }
@@ -167,13 +167,6 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBufferAsync(struct ArrowDevice* dev
 
   NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
   return NANOARROW_OK;
-}
-
-static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
-                                                    struct ArrowBuffer* buffer,
-                                                    int64_t size_bytes) {
-  return ArrowDeviceCudaAllocateBufferAsync(device, buffer, size_bytes,
-                                            NANOARROW_CUDA_DEFAULT_STREAM);
 }
 
 struct ArrowDeviceCudaArrayPrivate {
@@ -353,7 +346,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_
     case ARROW_DEVICE_CUDA:
     case ARROW_DEVICE_CUDA_HOST:
       NANOARROW_RETURN_NOT_OK(
-          ArrowDeviceCudaAllocateBufferAsync(device_dst, &tmp, src.size_bytes, hstream));
+          ArrowDeviceCudaAllocateBufferAsync(device_dst, &tmp, src.size_bytes, &hstream));
       break;
     case ARROW_DEVICE_CPU:
       ArrowBufferInit(&tmp);
