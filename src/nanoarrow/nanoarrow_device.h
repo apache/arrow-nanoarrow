@@ -213,7 +213,7 @@ struct ArrowDevice {
   /// fallback implementation based on buffer_copy will be used.
   ArrowErrorCode (*array_copy)(struct ArrowDeviceArrayView* src,
                                struct ArrowDevice* device_dst,
-                               struct ArrowDeviceArray* dst);
+                               struct ArrowDeviceArray* dst, void* stream);
 
   /// \brief Initialize an owning buffer from existing content
   ///
@@ -295,9 +295,13 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
     struct ArrowError* error);
 
 /// \brief Copy an ArrowDeviceArrayView to a device
-ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
-                                        struct ArrowDevice* device_dst,
-                                        struct ArrowDeviceArray* dst);
+ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
+                                             struct ArrowDevice* device_dst,
+                                             struct ArrowDeviceArray* dst, void* stream);
+
+static inline ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
+                                                      struct ArrowDevice* device_dst,
+                                                      struct ArrowDeviceArray* dst);
 
 /// \brief Move an ArrowDeviceArray to a device if possible
 ///
@@ -428,6 +432,12 @@ static inline ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_sr
                                                    struct ArrowDevice* device_dst,
                                                    struct ArrowBuffer* dst) {
   return ArrowDeviceBufferInitAsync(device_src, src, device_dst, dst, NULL);
+}
+
+static inline ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
+                                                      struct ArrowDevice* device_dst,
+                                                      struct ArrowDeviceArray* dst) {
+  return ArrowDeviceArrayViewCopyAsync(src, device_dst, dst, NULL);
 }
 
 #ifdef __cplusplus

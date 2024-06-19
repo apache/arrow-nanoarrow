@@ -670,13 +670,16 @@ static void ArrowDeviceCudaRelease(struct ArrowDevice* device) {
   device->release = NULL;
 }
 
-static ArrowErrorCode ArrowDeviceCudaArrayViewCopy(struct ArrowDeviceArrayView* src,
-                                                   struct ArrowDevice* device_dst,
-                                                   struct ArrowDeviceArray* dst) {
-  // For CUDA_HOST, the default implementation is sufficient
-  // TODO: Make sure we've synchronized here when CUDA_HOST is the source.
-  // cuCtxSynchronize() is probably necessary there (since the implementation
-  // calls raw memcpys)
+static ArrowErrorCode ArrowDeviceCudaArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
+                                                        struct ArrowDevice* device_dst,
+                                                        struct ArrowDeviceArray* dst,
+                                                        void* stream) {
+  CUstream hstream;
+  if (stream == NULL) {
+    hstream = NANOARROW_CUDA_DEFAULT_STREAM;
+  } else {
+    hstream = *((CUstream*)stream);
+  }
 
   switch (src->device->device_type) {
     case ARROW_DEVICE_CUDA:
@@ -686,10 +689,12 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopy(struct ArrowDeviceArrayView* 
         case ARROW_DEVICE_CPU:
           break;
         default:
+          // TODO: synchronize the stream with the CPU
           return ENOTSUP;
       }
       break;
     default:
+      // TODO: synchornize the stream with the CPU
       return ENOTSUP;
   }
 
@@ -754,7 +759,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   device->device_id = device_id;
   device->array_init = &ArrowDeviceCudaArrayInit;
   device->array_move = &ArrowDeviceCudaArrayMove;
-  device->array_copy = &ArrowDeviceCudaArrayViewCopy;
+  device->array_copy = &ArrowDeviceCudaArrayViewCopyAsync;
   device->buffer_init = &ArrowDeviceCudaBufferInitAsync;
   device->buffer_move = NULL;
   device->buffer_copy = &ArrowDeviceCudaBufferCopyAsync;

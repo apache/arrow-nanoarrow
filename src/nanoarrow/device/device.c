@@ -468,15 +468,15 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyDefault(struct ArrowDeviceArrayVie
   return result;
 }
 
-ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
+ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
                                         struct ArrowDevice* device_dst,
-                                        struct ArrowDeviceArray* dst) {
+                                        struct ArrowDeviceArray* dst, void* stream) {
   struct ArrowDevice* device_src = src->device;
 
   // See if the source knows how to copy
   int result;
   if (device_src->array_copy != NULL) {
-    result = device_src->array_copy(src, device_dst, dst);
+    result = device_src->array_copy(src, device_dst, dst, stream);
     if (result != ENOTSUP) {
       return result;
     }
@@ -484,10 +484,16 @@ ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayView* src,
 
   // See if the destination knows how to copy
   if (device_dst->array_copy != NULL) {
-    result = device_dst->array_copy(src, device_dst, dst);
+    result = device_dst->array_copy(src, device_dst, dst, stream);
     if (result != ENOTSUP) {
       return result;
     }
+  }
+
+  // TODO: I think we can maybe leverage the buffer copiers to
+  // provide a device-agnostic implementation by passing this value through.
+  if (stream != NULL) {
+    return EINVAL;
   }
 
   // Fall back to default implementation (copy buffer-by-buffer)
