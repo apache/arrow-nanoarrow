@@ -74,10 +74,14 @@ static ArrowErrorCode ArrowDeviceCpuBufferMove(struct ArrowDevice* device_src,
 static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
                                                struct ArrowBufferView src,
                                                struct ArrowDevice* device_dst,
-                                               struct ArrowBufferView dst) {
+                                               struct ArrowBufferView dst, void* stream) {
   if (device_dst->device_type != ARROW_DEVICE_CPU ||
       device_src->device_type != ARROW_DEVICE_CPU) {
     return ENOTSUP;
+  }
+
+  if (stream != NULL) {
+    return EINVAL;
   }
 
   memcpy((uint8_t*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
@@ -186,13 +190,13 @@ ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
   return result;
 }
 
-ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
-                                     struct ArrowBufferView src,
-                                     struct ArrowDevice* device_dst,
-                                     struct ArrowBufferView dst) {
-  int result = device_dst->buffer_copy(device_src, src, device_dst, dst);
+ArrowErrorCode ArrowDeviceBufferCopyAsync(struct ArrowDevice* device_src,
+                                          struct ArrowBufferView src,
+                                          struct ArrowDevice* device_dst,
+                                          struct ArrowBufferView dst, void* stream) {
+  int result = device_dst->buffer_copy(device_src, src, device_dst, dst, stream);
   if (result == ENOTSUP) {
-    result = device_src->buffer_copy(device_src, src, device_dst, dst);
+    result = device_src->buffer_copy(device_src, src, device_dst, dst, stream);
   }
 
   return result;

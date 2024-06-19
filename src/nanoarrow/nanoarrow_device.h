@@ -245,7 +245,7 @@ struct ArrowDevice {
   ArrowErrorCode (*buffer_copy)(struct ArrowDevice* device_src,
                                 struct ArrowBufferView src,
                                 struct ArrowDevice* device_dst,
-                                struct ArrowBufferView dst);
+                                struct ArrowBufferView dst, void* stream);
 
   /// \brief Wait for an event on the CPU host
   ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device, void* sync_event,
@@ -331,17 +331,22 @@ ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
                                      struct ArrowDevice* device_dst,
                                      struct ArrowBuffer* dst);
 
-ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
-                                     struct ArrowBufferView src,
-                                     struct ArrowDevice* device_dst,
-                                     struct ArrowBufferView dst);
+static inline ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
+                                                   struct ArrowBufferView src,
+                                                   struct ArrowDevice* device_dst,
+                                                   struct ArrowBufferView dst);
+
+ArrowErrorCode ArrowDeviceBufferCopyAsync(struct ArrowDevice* device_src,
+                                          struct ArrowBufferView src,
+                                          struct ArrowDevice* device_dst,
+                                          struct ArrowBufferView dst, void* stream);
 
 /// \brief Initialize an ArrowDeviceArrayStream from an existing ArrowArrayStream
 ///
 /// Wrap an ArrowArrayStream of ArrowDeviceArray objects already allocated by the
-/// specified device as an ArrowDeviceArrayStream. This function moves the ownership of
-/// array_stream to the device_array_stream. If this function returns NANOARROW_OK, the
-/// caller is responsible for releasing the ArrowDeviceArrayStream.
+/// specified device as an ArrowDeviceArrayStream. This function moves the ownership
+/// of array_stream to the device_array_stream. If this function returns NANOARROW_OK,
+/// the caller is responsible for releasing the ArrowDeviceArrayStream.
 ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
     struct ArrowDeviceArrayStream* device_array_stream,
     struct ArrowArrayStream* array_stream, struct ArrowDevice* device);
@@ -403,6 +408,14 @@ ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer);
 ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array);
 
 /// @}
+// Inline implementations
+
+static inline ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
+                                                   struct ArrowBufferView src,
+                                                   struct ArrowDevice* device_dst,
+                                                   struct ArrowBufferView dst) {
+  return ArrowDeviceBufferCopyAsync(device_src, src, device_dst, dst, NULL);
+}
 
 #ifdef __cplusplus
 }

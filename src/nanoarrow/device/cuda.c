@@ -314,7 +314,14 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyAsync(struct ArrowDevice* device_
                                                      struct ArrowBufferView src,
                                                      struct ArrowDevice* device_dst,
                                                      struct ArrowBufferView dst,
-                                                     CUstream hstream) {
+                                                     void* stream) {
+  CUstream hstream;
+  if (stream == NULL) {
+    hstream = NANOARROW_CUDA_DEFAULT_STREAM;
+  } else {
+    hstream = *((CUstream*)stream);
+  }
+
   int n_pop_context = 0;
   struct ArrowError error;
 
@@ -326,14 +333,6 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyAsync(struct ArrowDevice* device_
   }
 
   return result;
-}
-
-static ArrowErrorCode ArrowDeviceCudaBufferCopy(struct ArrowDevice* device_src,
-                                                struct ArrowBufferView src,
-                                                struct ArrowDevice* device_dst,
-                                                struct ArrowBufferView dst) {
-  return ArrowDeviceCudaBufferCopyAsync(device_src, src, device_dst, dst,
-                                        NANOARROW_CUDA_DEFAULT_STREAM);
 }
 
 static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_src,
@@ -361,7 +360,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_
   tmp_view.data.data = tmp.data;
   tmp_view.size_bytes = tmp.size_bytes;
   int result =
-      ArrowDeviceCudaBufferCopyAsync(device_src, src, device_dst, tmp_view, hstream);
+      ArrowDeviceCudaBufferCopyAsync(device_src, src, device_dst, tmp_view, &hstream);
   if (result != NANOARROW_OK) {
     ArrowBufferReset(&tmp);
     return result;
@@ -452,7 +451,7 @@ static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
         // back to the less efficient implementation on big endian).
         array_view->buffer_views[2].size_bytes = 0;
         NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferCopyAsync(
-            device, src_view, ArrowDeviceCpu(), dst_view, hstream));
+            device, src_view, ArrowDeviceCpu(), dst_view, &hstream));
       }
 
       break;
@@ -469,7 +468,7 @@ static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
 
         array_view->buffer_views[2].size_bytes = 0;
         NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferCopyAsync(
-            device, src_view, ArrowDeviceCpu(), dst_view, hstream));
+            device, src_view, ArrowDeviceCpu(), dst_view, &hstream));
       }
       break;
     default:
@@ -766,7 +765,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   device->array_copy = &ArrowDeviceCudaArrayViewCopy;
   device->buffer_init = &ArrowDeviceCudaBufferInit;
   device->buffer_move = NULL;
-  device->buffer_copy = &ArrowDeviceCudaBufferCopy;
+  device->buffer_copy = &ArrowDeviceCudaBufferCopyAsync;
   device->synchronize_event = &ArrowDeviceCudaSynchronize;
   device->release = &ArrowDeviceCudaRelease;
 
