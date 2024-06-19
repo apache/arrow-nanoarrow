@@ -43,13 +43,18 @@ static void ArrowDeviceArrayInitDefault(struct ArrowDevice* device,
   ArrowArrayMove(array, &device_array->array);
 }
 
-static ArrowErrorCode ArrowDeviceCpuBufferInit(struct ArrowDevice* device_src,
-                                               struct ArrowBufferView src,
-                                               struct ArrowDevice* device_dst,
-                                               struct ArrowBuffer* dst) {
+static ArrowErrorCode ArrowDeviceCpuBufferInitAsync(struct ArrowDevice* device_src,
+                                                    struct ArrowBufferView src,
+                                                    struct ArrowDevice* device_dst,
+                                                    struct ArrowBuffer* dst,
+                                                    void* stream) {
   if (device_dst->device_type != ARROW_DEVICE_CPU ||
       device_src->device_type != ARROW_DEVICE_CPU) {
     return ENOTSUP;
+  }
+
+  if (stream != NULL) {
+    return EINVAL;
   }
 
   ArrowBufferInit(dst);
@@ -123,7 +128,7 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->array_init = NULL;
   device->array_move = NULL;
   device->array_copy = NULL;
-  device->buffer_init = &ArrowDeviceCpuBufferInit;
+  device->buffer_init = &ArrowDeviceCpuBufferInitAsync;
   device->buffer_move = &ArrowDeviceCpuBufferMove;
   device->buffer_copy = &ArrowDeviceCpuBufferCopy;
   device->synchronize_event = &ArrowDeviceCpuSynchronize;
@@ -166,13 +171,13 @@ ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
-                                     struct ArrowBufferView src,
-                                     struct ArrowDevice* device_dst,
-                                     struct ArrowBuffer* dst) {
-  int result = device_dst->buffer_init(device_src, src, device_dst, dst);
+ArrowErrorCode ArrowDeviceBufferInitAsync(struct ArrowDevice* device_src,
+                                          struct ArrowBufferView src,
+                                          struct ArrowDevice* device_dst,
+                                          struct ArrowBuffer* dst, void* stream) {
+  int result = device_dst->buffer_init(device_src, src, device_dst, dst, stream);
   if (result == ENOTSUP) {
-    result = device_src->buffer_init(device_src, src, device_dst, dst);
+    result = device_src->buffer_init(device_src, src, device_dst, dst, stream);
   }
 
   return result;

@@ -223,7 +223,8 @@ struct ArrowDevice {
   /// not prepared to handle this operation.
   ArrowErrorCode (*buffer_init)(struct ArrowDevice* device_src,
                                 struct ArrowBufferView src,
-                                struct ArrowDevice* device_dst, struct ArrowBuffer* dst);
+                                struct ArrowDevice* device_dst, struct ArrowBuffer* dst,
+                                void* stream);
 
   /// \brief Move an owning buffer to a device
   ///
@@ -321,10 +322,15 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device);
 /// Callers must not release the pointed-to device.
 struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id);
 
-ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
-                                     struct ArrowBufferView src,
-                                     struct ArrowDevice* device_dst,
-                                     struct ArrowBuffer* dst);
+ArrowErrorCode ArrowDeviceBufferInitAsync(struct ArrowDevice* device_src,
+                                          struct ArrowBufferView src,
+                                          struct ArrowDevice* device_dst,
+                                          struct ArrowBuffer* dst, void* stream);
+
+static inline ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
+                                                   struct ArrowBufferView src,
+                                                   struct ArrowDevice* device_dst,
+                                                   struct ArrowBuffer* dst);
 
 ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
                                      struct ArrowBuffer* src,
@@ -415,6 +421,13 @@ static inline ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_sr
                                                    struct ArrowDevice* device_dst,
                                                    struct ArrowBufferView dst) {
   return ArrowDeviceBufferCopyAsync(device_src, src, device_dst, dst, NULL);
+}
+
+static inline ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_src,
+                                                   struct ArrowBufferView src,
+                                                   struct ArrowDevice* device_dst,
+                                                   struct ArrowBuffer* dst) {
+  return ArrowDeviceBufferInitAsync(device_src, src, device_dst, dst, NULL);
 }
 
 #ifdef __cplusplus

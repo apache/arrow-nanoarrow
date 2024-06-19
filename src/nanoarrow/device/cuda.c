@@ -339,7 +339,14 @@ static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_
                                                      struct ArrowBufferView src,
                                                      struct ArrowDevice* device_dst,
                                                      struct ArrowBuffer* dst,
-                                                     CUstream hstream) {
+                                                     void* stream) {
+  CUstream hstream;
+  if (stream == NULL) {
+    hstream = NANOARROW_CUDA_DEFAULT_STREAM;
+  } else {
+    hstream = *((CUstream*)stream);
+  }
+
   struct ArrowBuffer tmp;
 
   switch (device_dst->device_type) {
@@ -368,14 +375,6 @@ static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_
 
   ArrowBufferMove(&tmp, dst);
   return NANOARROW_OK;
-}
-
-static ArrowErrorCode ArrowDeviceCudaBufferInit(struct ArrowDevice* device_src,
-                                                struct ArrowBufferView src,
-                                                struct ArrowDevice* device_dst,
-                                                struct ArrowBuffer* dst) {
-  return ArrowDeviceCudaBufferInitAsync(device_src, src, device_dst, dst,
-                                        NANOARROW_CUDA_DEFAULT_STREAM);
 }
 
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
@@ -531,7 +530,7 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopyBuffers(
 
     // Otherwise, initialize the buffer
     NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferInitAsync(
-        device_src, src_view, device_dst, buffer_dst, hstream));
+        device_src, src_view, device_dst, buffer_dst, &hstream));
   }
 
   // Recurse for children
@@ -763,7 +762,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   device->array_init = &ArrowDeviceCudaArrayInit;
   device->array_move = &ArrowDeviceCudaArrayMove;
   device->array_copy = &ArrowDeviceCudaArrayViewCopy;
-  device->buffer_init = &ArrowDeviceCudaBufferInit;
+  device->buffer_init = &ArrowDeviceCudaBufferInitAsync;
   device->buffer_move = NULL;
   device->buffer_copy = &ArrowDeviceCudaBufferCopyAsync;
   device->synchronize_event = &ArrowDeviceCudaSynchronize;
