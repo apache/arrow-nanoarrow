@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nanoarrow_config.h"
+#include <nanoarrow/nanoarrow_config.h>
 
 #if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
 #include <stdio.h>

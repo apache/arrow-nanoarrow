@@ -35,6 +35,6 @@ conf_data.set('NANOARROW_VERSION_MAJOR', ver_major)
 conf_data.set('NANOARROW_VERSION_MINOR', ver_minor)
 conf_data.set('NANOARROW_VERSION_PATCH', ver_patch)
 
-configure_file(input: 'nanoarrow/nanoarrow_config.h.in',
+configure_file(input: 'nanoarrow_config.h.in',
                output: 'nanoarrow_config.h',
                configuration: conf_data)

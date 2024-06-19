@@ -38,7 +38,7 @@ else
     libtype = 'library'
 endif
 
-subdir('src')
+subdir('src/nanoarrow')
 incdir = include_directories('src/')
 
 nanoarrow_lib = build_target(
