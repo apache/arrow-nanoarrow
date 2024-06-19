@@ -19,7 +19,6 @@
 #include <inttypes.h>
 
 #include "nanoarrow.h"
-
 #include "nanoarrow_device.h"
 
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error) {
