@@ -446,8 +446,10 @@ static ArrowErrorCode ArrowDeviceCudaResolveBufferSizesAsync(
         dst_view.data.data = &(array_view->buffer_views[2].size_bytes);
         dst_view.size_bytes = sizeof(int32_t);
 
-        // Note that this strategy (copying four bytes into an int64_t)
-        // only works on little-endian (should be checked at a higher level).
+        // Note that this strategy (copying all four bytes of the source int32_t
+        // into the first four bytes of a zeroed int64_t) only works on little-endian
+        // (should be checked at a higher level where we can return ENOTSUP to fall
+        // back to the less efficient implementation on big endian).
         array_view->buffer_views[2].size_bytes = 0;
         NANOARROW_RETURN_NOT_OK(ArrowDeviceCudaBufferCopyAsync(
             device, src_view, ArrowDeviceCpu(), dst_view, hstream));
@@ -521,7 +523,9 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopyBuffers(
 
     struct ArrowBuffer* buffer_dst = ArrowArrayBuffer(dst, i);
 
-    // Don't initialize a buffer that has already been initialized
+    // Don't initialize a buffer if we have already started the copy.
+    // This check works because the buffer size is set synchronously
+    // when the copy operation is launched.
     if (buffer_dst->size_bytes > 0) {
       continue;
     }
