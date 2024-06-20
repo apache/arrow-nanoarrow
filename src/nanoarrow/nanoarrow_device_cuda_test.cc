@@ -15,10 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <errno.h>
-
 #include <cuda.h>
+#include <errno.h>
 #include <gtest/gtest.h>
+#include <tuple>
 
 #include "nanoarrow/nanoarrow_device.h"
 #include "nanoarrow/nanoarrow_device_cuda.h"
@@ -185,29 +185,38 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
 }
 
 class StringTypeParameterizedTestFixture
-    : public ::testing::TestWithParam<std::pair<ArrowDeviceType, enum ArrowType>> {
+    : public ::testing::TestWithParam<std::tuple<ArrowDeviceType, enum ArrowType, bool>> {
  protected:
   std::pair<ArrowDeviceType, enum ArrowType> info;
 };
 
-std::pair<ArrowDeviceType, enum ArrowType> DeviceAndType(ArrowDeviceType device_type,
-                                                         enum ArrowType arrow_type) {
-  return {device_type, arrow_type};
+std::tuple<ArrowDeviceType, enum ArrowType, bool> TestParams(ArrowDeviceType device_type,
+                                                             enum ArrowType arrow_type,
+                                                             bool include_null) {
+  return {device_type, arrow_type, include_null};
 }
 
 TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
-  struct ArrowDevice* gpu = ArrowDeviceCuda(GetParam().first, 0);
+  struct ArrowDevice* gpu = ArrowDeviceCuda(std::get<0>(GetParam()), 0);
   struct ArrowArray array;
   struct ArrowDeviceArray device_array;
   struct ArrowDeviceArrayView device_array_view;
-  enum ArrowType string_type = GetParam().second;
+  enum ArrowType string_type = std::get<1>(GetParam());
+  bool include_null = std::get<2>(GetParam());
+  int64_t expected_data_size;  // expected
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("abc")), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("defg")), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  if (include_null) {
+    ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+    expected_data_size = 7;
+  } else {
+    ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("hjk")), NANOARROW_OK);
+    expected_data_size = 10;
+  }
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   ASSERT_EQ(ArrowDeviceArrayInit(cpu, &device_array, &array, nullptr), NANOARROW_OK);
@@ -217,7 +226,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
             NANOARROW_OK);
 
-  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
+  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
   EXPECT_EQ(device_array.array.length, 3);
 
   // Copy required to Cuda
@@ -232,7 +241,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_EQ(device_array2.device_id, gpu->device_id);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
             NANOARROW_OK);
-  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
+  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
   EXPECT_EQ(device_array_view.array_view.length, 3);
   EXPECT_EQ(device_array2.array.length, 3);
 
@@ -251,9 +260,16 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),
             NANOARROW_OK);
 
-  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
-  EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
-            0);
+  EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
+
+  if (include_null) {
+    EXPECT_EQ(
+        memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7), 0);
+  } else {
+    EXPECT_EQ(
+        memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefghjk", 7),
+        0);
+  }
 
   ArrowArrayRelease(&device_array.array);
   ArrowDeviceArrayViewReset(&device_array_view);
@@ -261,12 +277,22 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
 
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowDeviceCuda, StringTypeParameterizedTestFixture,
-    ::testing::Values(DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_STRING),
-                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_STRING),
-                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_BINARY),
-                      DeviceAndType(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_BINARY),
-                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_STRING),
-                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_STRING),
-                      DeviceAndType(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_BINARY),
-                      DeviceAndType(ARROW_DEVICE_CUDA_HOST,
-                                    NANOARROW_TYPE_LARGE_BINARY)));
+    ::testing::Values(
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_STRING, true),
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_STRING, false),
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_STRING, true),
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_STRING, false),
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_BINARY, true),
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_BINARY, false),
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_BINARY, true),
+        TestParams(ARROW_DEVICE_CUDA, NANOARROW_TYPE_LARGE_BINARY, false),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_STRING, true),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_STRING, false),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_STRING, true),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_STRING, false),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_BINARY, true),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_BINARY, false),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_BINARY, true),
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_BINARY, false)
+
+            ));
