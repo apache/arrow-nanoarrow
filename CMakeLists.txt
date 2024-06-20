@@ -138,7 +138,7 @@ add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
 target_include_directories(nanoarrow
                            PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
-                                  $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/src>
+                                  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                   $<INSTALL_INTERFACE:include>)
 target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
@@ -222,7 +222,7 @@ if(NANOARROW_IPC)
   target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
-                                    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/src>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
                                     $<INSTALL_INTERFACE:include>)
 
@@ -285,7 +285,7 @@ if(NANOARROW_DEVICE)
 
   target_include_directories(nanoarrow_device
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
-                                    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/src>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
                                     $<INSTALL_INTERFACE:include>)
 
