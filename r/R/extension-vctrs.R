@@ -133,7 +133,7 @@ serialize_ptype <- function(x) {
       stop(sprintf("storage '%s' is not supported by serialize_ptype", type))
     )
 
-    values[is.na(values)] <- "null"
+    values[is.na(x)] <- "null"
     values_serialized <- sprintf(
       '"values":[%s]',
       paste(values, collapse = ",")
@@ -161,15 +161,22 @@ unserialize_ptype <- function(x) {
 unserialize_ptype_impl <- function(x) {
   if (identical(x$type, "NULL")) {
     return(NULL)
-  } else if (length(x$values) == 0) {
-    out <- vector(x$type)
-  } else if (identical(x$type, "list")) {
-    out <- lapply(x$values, unserialize_ptype_impl)
-  } else {
-    na <- vector(x$type)[1]
-    x$values[vapply(x$values, is.null, logical(1))] <- na
-    out <- unlist(x$values)
   }
+
+  sanitizer <- switch(
+    x$type,
+    raw = as.raw,
+    complex = as.complex,
+    logical = as.logical,
+    integer = as.integer,
+    double = as.double,
+    list = function(x) list(unserialize_ptype_impl(x)),
+    identity
+  )
+
+  na <- vector(x$type)[1]
+  x$values[vapply(x$values, is.null, logical(1))] <- na
+  out <- vapply(x$values, sanitizer, na)
 
   if (!is.null(x$attributes)) {
     attributes(out) <- lapply(x$attributes, unserialize_ptype_impl)

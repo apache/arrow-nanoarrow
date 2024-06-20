@@ -83,3 +83,37 @@ test_that("vctrs extension type respects `to` in convert_array()", {
     vctrs::vec_cast(vctr, as.POSIXct(character()))
   )
 })
+
+test_that("serialize_ptype() can roundtrip R objects", {
+  vectors <- list(
+    raw = as.raw(c(0x00, 0x01, 0x02)),
+    lgl = c(FALSE, TRUE, NA),
+    int = c(0L, 1L, NA_integer_),
+    dbl = c(0, 1, NA_real_),
+    chr = c("a", NA_character_),
+    cmplx = c(complex(real = 1:3, imaginary = 3:1), NA_complex_),
+    list = list(1, 2, x = 3),
+
+    raw0 = raw(),
+    lgl0 = logical(),
+    int0 = integer(),
+    dbl0 = double(),
+    chr0 = character(),
+    cmplx0 = complex(),
+    list0 = list(),
+
+    posixct = as.POSIXct("2000-01-01 12:23", tz = "UTC"),
+    posixlt = as.POSIXlt("2000-01-01 12:23", tz = "UTC"),
+    date = as.Date("2000-01-01"),
+    difftime = as.difftime(123, units = "secs"),
+    data_frame_simple = tibble::tibble(x = 1:5),
+    data_frame_nested = tibble::tibble(x = 1:5, y = tibble::tibble(z = letters[1:5]))
+  )
+
+  for (obj in vectors) {
+    expect_identical(
+      unserialize_ptype(serialize_ptype(obj)),
+      obj
+    )
+  }
+})
