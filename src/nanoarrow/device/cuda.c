@@ -539,29 +539,6 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopyBuffers(
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowDeviceCudaCreateStream(struct ArrowDevice* src,
-                                                  struct ArrowDevice* dst, CUstream* out,
-                                                  struct ArrowError* error) {
-  struct ArrowDeviceCudaPrivate* private_data;
-
-  if (dst->device_type == ARROW_DEVICE_CUDA) {
-    private_data = (struct ArrowDeviceCudaPrivate*)dst->private_data;
-  } else if (src->device_type == ARROW_DEVICE_CUDA) {
-    private_data = (struct ArrowDeviceCudaPrivate*)src->private_data;
-  } else {
-    return NANOARROW_OK;
-  }
-
-  NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(private_data->cu_context),
-                               "cuCtxPushCurrent", NULL);
-  CUresult err = cuStreamCreate(out, CU_STREAM_NON_BLOCKING);
-  CUcontext unused;
-  NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
-  NANOARROW_CUDA_RETURN_NOT_OK(err, "cuStreamCreate", error);
-
-  return NANOARROW_OK;
-}
-
 static ArrowErrorCode ArrowDeviceCudaArrayViewCopyInternal(
     struct ArrowDevice* device_src, struct ArrowDeviceArrayView* src,
     struct ArrowDevice* device_dst, struct ArrowArray* dst, CUstream* stream,
