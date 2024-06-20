@@ -382,10 +382,13 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
   CUevent* cu_event = (CUevent*)sync_event;
   CUstream* cu_stream = (CUstream*)stream;
 
-  if (cu_stream == NULL) {
+  if (cu_stream == NULL && cu_event != NULL) {
     NANOARROW_CUDA_RETURN_NOT_OK(cuEventSynchronize(*cu_event), "cuEventSynchronize",
                                  error);
-  } else {
+  } else if (cu_stream != NULL && cu_event == NULL) {
+    NANOARROW_CUDA_RETURN_NOT_OK(cuStreamSynchronize(*cu_stream), "cuEventSynchronize",
+                                 error);
+  } else if (cu_stream != NULL && cu_event != NULL) {
     NANOARROW_CUDA_RETURN_NOT_OK(
         cuStreamWaitEvent(*cu_stream, *cu_event, CU_EVENT_WAIT_DEFAULT),
         "cuStreamWaitEvent", error);
