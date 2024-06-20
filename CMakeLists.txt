@@ -223,6 +223,7 @@ if(NANOARROW_IPC)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
+                                    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
 
   install(TARGETS nanoarrow_ipc DESTINATION lib)
@@ -285,6 +286,7 @@ if(NANOARROW_DEVICE)
   target_include_directories(nanoarrow_device
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
+                                    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
 
   target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
