@@ -469,8 +469,8 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyDefault(struct ArrowDeviceArrayVie
 }
 
 ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
-                                        struct ArrowDevice* device_dst,
-                                        struct ArrowDeviceArray* dst, void* stream) {
+                                             struct ArrowDevice* device_dst,
+                                             struct ArrowDeviceArray* dst, void* stream) {
   struct ArrowDevice* device_src = src->device;
 
   // See if the source knows how to copy
