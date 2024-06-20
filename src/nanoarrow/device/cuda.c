@@ -367,7 +367,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_
 }
 
 static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
-                                                 void* sync_event,
+                                                 void* sync_event, void* stream,
                                                  struct ArrowError* error) {
   if (sync_event == NULL) {
     return NANOARROW_OK;
@@ -379,9 +379,17 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
   }
 
   // Memory for cuda_event is owned by the ArrowArray member of the ArrowDeviceArray
-  CUevent* cuda_event = (CUevent*)sync_event;
-  NANOARROW_CUDA_RETURN_NOT_OK(cuEventSynchronize(*cuda_event), "cuEventSynchronize",
-                               error);
+  CUevent* cu_event = (CUevent*)sync_event;
+  CUstream* cu_stream = (CUstream*)stream;
+
+  if (cu_stream == NULL) {
+    NANOARROW_CUDA_RETURN_NOT_OK(cuEventSynchronize(*cu_event), "cuEventSynchronize",
+                                 error);
+  } else {
+    NANOARROW_CUDA_RETURN_NOT_OK(
+        cuStreamWaitEvent(*cu_stream, *cu_event, CU_EVENT_WAIT_DEFAULT),
+        "cuStreamWaitEvent", error);
+  }
 
   return NANOARROW_OK;
 }
@@ -399,7 +407,7 @@ static ArrowErrorCode ArrowDeviceCudaArrayMove(struct ArrowDevice* device_src,
     // We do have to wait on the sync event, though, because this has to be NULL
     // for a CPU device array.
     NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceCudaSynchronize(device_src, src->sync_event, NULL));
+        ArrowDeviceCudaSynchronize(device_src, src->sync_event, NULL, NULL));
     ArrowDeviceArrayMove(src, dst);
     dst->device_type = device_dst->device_type;
     dst->device_id = device_dst->device_id;
@@ -611,13 +619,10 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopyAsync(struct ArrowDeviceArrayV
     CUevent* event = (CUevent*)src->sync_event;
     if (event != NULL) {
       NANOARROW_CUDA_RETURN_NOT_OK(
-        cuStreamWaitEvent(hstream, *event, CU_EVENT_WAIT_DEFAULT),
-        "cuStreamWaitEvent",
-        NULL
-      );
+          cuStreamWaitEvent(hstream, *event, CU_EVENT_WAIT_DEFAULT), "cuStreamWaitEvent",
+          NULL);
     }
   }
-
 
   // If we're copying to or from CUDA_HOST, we can now fall back to the
   // default implementation by returning ENOTSUP.

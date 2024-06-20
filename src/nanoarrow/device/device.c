@@ -94,7 +94,7 @@ static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
 }
 
 static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
-                                                void* sync_event,
+                                                void* sync_event, void* stream,
                                                 struct ArrowError* error) {
   switch (device->device_type) {
     case ARROW_DEVICE_CPU:
@@ -106,7 +106,9 @@ static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
         return NANOARROW_OK;
       }
     default:
-      return device->synchronize_event(device, sync_event, error);
+      ArrowErrorSet(error, "Excpected CPU device but got device type %d",
+                    (int)device->device_id);
+      return ENOTSUP;
   }
 }
 
@@ -400,7 +402,7 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
   // these operations should be explicit and asynchronous (and is probably outside
   // the scope of what can be done with a generic callback).
   NANOARROW_RETURN_NOT_OK(device_array_view->device->synchronize_event(
-      device_array_view->device, device_array->sync_event, error));
+      device_array_view->device, device_array->sync_event, NULL, error));
 
   // Resolve unknown buffer sizes (i.e., string, binary, large string, large binary)
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(

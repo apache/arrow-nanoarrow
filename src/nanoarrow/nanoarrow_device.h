@@ -251,7 +251,7 @@ struct ArrowDevice {
 
   /// \brief Wait for an event on the CPU host
   ArrowErrorCode (*synchronize_event)(struct ArrowDevice* device, void* sync_event,
-                                      struct ArrowError* error);
+                                      void* stream, struct ArrowError* error);
 
   /// \brief Release this device and any resources it holds
   void (*release)(struct ArrowDevice* device);
