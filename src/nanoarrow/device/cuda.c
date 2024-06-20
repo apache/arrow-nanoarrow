@@ -604,6 +604,23 @@ static ArrowErrorCode ArrowDeviceCudaArrayViewCopyAsync(struct ArrowDeviceArrayV
 
   CUstream hstream = *((CUstream*)stream);
 
+  // In all cases, we make the stream wait on src->sync_event if the source
+  // is CUDA.
+  if (src->device->device_type == ARROW_DEVICE_CUDA ||
+      src->device->device_type == ARROW_DEVICE_CUDA_HOST) {
+    CUevent* event = (CUevent*)src->sync_event;
+    if (event != NULL) {
+      NANOARROW_CUDA_RETURN_NOT_OK(
+        cuStreamWaitEvent(hstream, *event, CU_EVENT_WAIT_DEFAULT),
+        "cuStreamWaitEvent",
+        NULL
+      );
+    }
+  }
+
+
+  // If we're copying to or from CUDA_HOST, we can now fall back to the
+  // default implementation by returning ENOTSUP.
   switch (src->device->device_type) {
     case ARROW_DEVICE_CUDA:
     case ARROW_DEVICE_CPU:

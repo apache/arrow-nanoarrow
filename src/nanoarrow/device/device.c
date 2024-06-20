@@ -414,7 +414,8 @@ ArrowErrorCode ArrowDeviceArrayViewSetArray(
 static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* device_src,
                                                        struct ArrowArrayView* src,
                                                        struct ArrowDevice* device_dst,
-                                                       struct ArrowArray* dst) {
+                                                       struct ArrowArray* dst,
+                                                       void* stream) {
   // Currently no attempt to minimize the amount of memory copied (i.e.,
   // by applying offset + length and copying potentially fewer bytes)
   dst->length = src->length;
@@ -426,18 +427,18 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
       break;
     }
 
-    NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferInit(device_src, src->buffer_views[i],
-                                                  device_dst, ArrowArrayBuffer(dst, i)));
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferInitAsync(
+        device_src, src->buffer_views[i], device_dst, ArrowArrayBuffer(dst, i), stream));
   }
 
   for (int64_t i = 0; i < src->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCopyInternal(
-        device_src, src->children[i], device_dst, dst->children[i]));
+        device_src, src->children[i], device_dst, dst->children[i], stream));
   }
 
   if (src->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCopyInternal(
-        device_src, src->dictionary, device_dst, dst->dictionary));
+        device_src, src->dictionary, device_dst, dst->dictionary, stream));
   }
 
   return NANOARROW_OK;
@@ -445,12 +446,13 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
 
 static ArrowErrorCode ArrowDeviceArrayViewCopyDefault(struct ArrowDeviceArrayView* src,
                                                       struct ArrowDevice* device_dst,
-                                                      struct ArrowDeviceArray* dst) {
+                                                      struct ArrowDeviceArray* dst,
+                                                      void* stream) {
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&tmp, &src->array_view, NULL));
 
-  int result =
-      ArrowDeviceArrayViewCopyInternal(src->device, &src->array_view, device_dst, &tmp);
+  int result = ArrowDeviceArrayViewCopyInternal(src->device, &src->array_view, device_dst,
+                                                &tmp, stream);
   if (result != NANOARROW_OK) {
     ArrowArrayRelease(&tmp);
     return result;
@@ -493,14 +495,8 @@ ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
     }
   }
 
-  // TODO: I think we can maybe leverage the buffer copiers to
-  // provide a device-agnostic implementation by passing this value through.
-  if (stream != NULL) {
-    return EINVAL;
-  }
-
   // Fall back to default implementation (copy buffer-by-buffer)
-  return ArrowDeviceArrayViewCopyDefault(src, device_dst, dst);
+  return ArrowDeviceArrayViewCopyDefault(src, device_dst, dst, stream);
 }
 
 ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
