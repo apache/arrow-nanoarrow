@@ -128,7 +128,6 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->device_id = -1;
   device->array_init = NULL;
   device->array_move = NULL;
-  device->array_copy = NULL;
   device->buffer_init = &ArrowDeviceCpuBufferInitAsync;
   device->buffer_move = &ArrowDeviceCpuBufferMove;
   device->buffer_copy = &ArrowDeviceCpuBufferCopy;

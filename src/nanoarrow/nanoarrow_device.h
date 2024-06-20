@@ -206,16 +206,6 @@ struct ArrowDevice {
                                struct ArrowDevice* device_dst,
                                struct ArrowDeviceArray* dst);
 
-  /// \brief Copy an ArrowDeviceArray to a device
-  ///
-  /// An ArrowDevice can provide an optional implementation to better optimize
-  /// device-to-device copies, including those from host to device and device
-  /// to host. If this function pointer is NULL, a potentially inefficient
-  /// fallback implementation based on buffer_copy will be used.
-  ArrowErrorCode (*array_copy)(struct ArrowDeviceArrayView* src,
-                               struct ArrowDevice* device_dst,
-                               struct ArrowDeviceArray* dst, void* stream);
-
   /// \brief Initialize an owning buffer from existing content
   ///
   /// Creates a new buffer whose data member can be accessed by the GPU by
