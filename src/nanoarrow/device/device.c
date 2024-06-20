@@ -284,85 +284,6 @@ void ArrowDeviceArrayViewReset(struct ArrowDeviceArrayView* device_array_view) {
   device_array_view->device = NULL;
 }
 
-static ArrowErrorCode ArrowDeviceBufferGetInt32(struct ArrowDevice* device,
-                                                struct ArrowBufferView buffer_view,
-                                                int64_t i, int32_t* out) {
-  struct ArrowBufferView out_view;
-  out_view.data.as_int32 = out;
-  out_view.size_bytes = sizeof(int32_t);
-
-  struct ArrowBufferView device_buffer_view;
-  device_buffer_view.data.as_int32 = buffer_view.data.as_int32 + i;
-  device_buffer_view.size_bytes = sizeof(int32_t);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowDeviceBufferCopy(device, device_buffer_view, ArrowDeviceCpu(), out_view));
-  return NANOARROW_OK;
-}
-
-static ArrowErrorCode ArrowDeviceBufferGetInt64(struct ArrowDevice* device,
-                                                struct ArrowBufferView buffer_view,
-                                                int64_t i, int64_t* out) {
-  struct ArrowBufferView out_view;
-  out_view.data.as_int64 = out;
-  out_view.size_bytes = sizeof(int64_t);
-
-  struct ArrowBufferView device_buffer_view;
-  device_buffer_view.data.as_int64 = buffer_view.data.as_int64 + i;
-  device_buffer_view.size_bytes = sizeof(int64_t);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowDeviceBufferCopy(device, device_buffer_view, ArrowDeviceCpu(), out_view));
-  return NANOARROW_OK;
-}
-
-static ArrowErrorCode ArrowDeviceArrayViewResolveBufferSizes(
-    struct ArrowDevice* device, struct ArrowArrayView* array_view) {
-  // Calculate buffer sizes that require accessing the offset buffer
-  // (at this point all other sizes have been resolved).
-  int64_t offset_plus_length = array_view->offset + array_view->length;
-  int32_t last_offset32;
-  int64_t last_offset64;
-
-  switch (array_view->storage_type) {
-    case NANOARROW_TYPE_STRING:
-    case NANOARROW_TYPE_BINARY:
-      if (array_view->buffer_views[1].size_bytes == 0) {
-        array_view->buffer_views[2].size_bytes = 0;
-      } else if (array_view->buffer_views[2].size_bytes == -1) {
-        NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferGetInt32(
-            device, array_view->buffer_views[1], offset_plus_length, &last_offset32));
-        array_view->buffer_views[2].size_bytes = last_offset32;
-      }
-      break;
-
-    case NANOARROW_TYPE_LARGE_STRING:
-    case NANOARROW_TYPE_LARGE_BINARY:
-      if (array_view->buffer_views[1].size_bytes == 0) {
-        array_view->buffer_views[2].size_bytes = 0;
-      } else if (array_view->buffer_views[2].size_bytes == -1) {
-        NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferGetInt64(
-            device, array_view->buffer_views[1], offset_plus_length, &last_offset64));
-        array_view->buffer_views[2].size_bytes = last_offset64;
-      }
-      break;
-    default:
-      break;
-  }
-
-  // Recurse for children
-  for (int64_t i = 0; i < array_view->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceArrayViewResolveBufferSizes(device, array_view->children[i]));
-  }
-
-  // ...and for dictionary
-  if (array_view->dictionary != NULL) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowDeviceArrayViewResolveBufferSizes(device, array_view->dictionary));
-  }
-
-  return NANOARROW_OK;
-}
-
 ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     struct ArrowError* error) {
@@ -389,25 +310,186 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
   return NANOARROW_OK;
 }
 
+// Walks the tree of arrays to count the number of buffers with unknown size
+// and the numeber of bytes we need to copy from a device buffer to find it.
+static ArrowErrorCode ArrowDeviceArrayViewWalkUnknownBufferSizes(
+    struct ArrowArrayView* array_view, int64_t* offset_buffer_size) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      if (array_view->length == 0 || array_view->buffer_views[1].size_bytes == 0) {
+        array_view->buffer_views[2].size_bytes = 0;
+      } else if (array_view->buffer_views[2].size_bytes == -1) {
+        *offset_buffer_size += array_view->layout.element_size_bits[1] / 8;
+      }
+      break;
+    default:
+      break;
+  }
+
+  // Recurse for children
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewWalkUnknownBufferSizes(
+        array_view->children[i], offset_buffer_size));
+  }
+
+  // ...and for dictionary
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewWalkUnknownBufferSizes(
+        array_view->dictionary, offset_buffer_size));
+  }
+
+  return NANOARROW_OK;
+}
+
+// Walks the tree of arrays and launches an async copy of the relevant
+// item in the array's offset buffer to the temporary buffer we've just
+// allocated to collect these values.
+static ArrowErrorCode ArrowDeviceArrayViewResolveUnknownBufferSizesAsync(
+    struct ArrowDevice* device, struct ArrowArrayView* array_view,
+    uint8_t* offset_value_dst, void* stream) {
+  int64_t offset_plus_length = array_view->offset + array_view->length;
+
+  struct ArrowBufferView src_view;
+  struct ArrowBufferView dst_view;
+
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+      if (array_view->buffer_views[2].size_bytes == -1) {
+        src_view.data.as_int32 =
+            array_view->buffer_views[1].data.as_int32 + offset_plus_length;
+        src_view.size_bytes = sizeof(int32_t);
+        dst_view.size_bytes = sizeof(int32_t);
+
+        NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferCopyAsync(
+            device, src_view, ArrowDeviceCpu(), dst_view, stream));
+
+        *offset_value_dst += sizeof(int32_t);
+      }
+      break;
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      if (array_view->buffer_views[2].size_bytes == -1) {
+        src_view.data.as_int64 =
+            array_view->buffer_views[1].data.as_int64 + offset_plus_length;
+        src_view.size_bytes = sizeof(int64_t);
+        dst_view.size_bytes = sizeof(int64_t);
+
+        NANOARROW_RETURN_NOT_OK(ArrowDeviceBufferCopyAsync(
+            device, src_view, ArrowDeviceCpu(), dst_view, stream));
+
+        *offset_value_dst += sizeof(int64_t);
+      }
+      break;
+    default:
+      break;
+  }
+
+  // Recurse for children
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewResolveUnknownBufferSizesAsync(
+        device, array_view->children[i], offset_value_dst, stream));
+  }
+
+  // ...and for dictionary
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewResolveUnknownBufferSizesAsync(
+        device, array_view->dictionary, offset_value_dst, stream));
+  }
+
+  return NANOARROW_OK;
+}
+
+// After synchronizing the stream with the CPU to ensure that all of the
+// buffer sizes have been copied to the our temporary buffer, relay them
+// back to the appropriate buffer view so that the buffer copier can
+// do its thing.
+static ArrowErrorCode ArrowDeviceArrayViewCollectUnknownBufferSizes(
+    struct ArrowArrayView* array_view, uint8_t* offset_value_dst) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_BINARY:
+      if (array_view->buffer_views[2].size_bytes == -1) {
+        int32_t size_bytes_32;
+        memcpy(&size_bytes_32, offset_value_dst, sizeof(int32_t));
+        array_view->buffer_views[2].size_bytes = size_bytes_32;
+        *offset_value_dst += sizeof(int32_t);
+      }
+      break;
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
+      if (array_view->buffer_views[2].size_bytes == -1) {
+        memcpy(&array_view->buffer_views[2].size_bytes, offset_value_dst,
+               sizeof(int64_t));
+        *offset_value_dst += sizeof(int64_t);
+      }
+      break;
+    default:
+      break;
+  }
+
+  // Recurse for children
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCollectUnknownBufferSizes(
+        array_view->children[i], offset_value_dst));
+  }
+
+  // ...and for dictionary
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewCollectUnknownBufferSizes(
+        array_view->dictionary, offset_value_dst));
+  }
+
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     void* stream, struct ArrowError* error) {
+  // Populate the array view with all information accessible from the CPU
   NANOARROW_RETURN_NOT_OK(
       ArrowDeviceArrayViewSetArrayMinimal(device_array_view, device_array, error));
 
-  // Wait on device_array to synchronize with the CPU
-  // TODO: This is not actually sufficient for CUDA, where the synchronization
-  // should happen after the cudaMemcpy, not before it. The ordering of
-  // these operations should be explicit and asynchronous (and is probably outside
-  // the scope of what can be done with a generic callback).
-  NANOARROW_RETURN_NOT_OK(device_array_view->device->synchronize_event(
-      device_array_view->device, device_array->sync_event, NULL, error));
+  // Walk the tree of arrays to check for buffers whose size we don't know
+  int64_t temp_buffer_length_bytes_required = 0;
+  NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewWalkUnknownBufferSizes(
+      &device_array_view->array_view, &temp_buffer_length_bytes_required));
 
-  // Resolve unknown buffer sizes (i.e., string, binary, large string, large binary)
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowDeviceArrayViewResolveBufferSizes(device_array_view->device,
-                                             &device_array_view->array_view),
-      error);
+  // If there are no such arrays (e.g., there are no string or binary arrays in the tree),
+  // we don't have to do anything extra
+  if (temp_buffer_length_bytes_required == 0) {
+    return NANOARROW_OK;
+  }
+
+  // Ensure that the stream provided waits on the array's sync event
+  NANOARROW_RETURN_NOT_OK(device_array_view->device->synchronize_event(
+      device_array_view->device, device_array->sync_event, stream, error));
+
+  // Allocate a buffer big enough to hold all the offset values we need to
+  // copy from the GPU
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+  NANOARROW_RETURN_NOT_OK(
+      ArrowBufferResize(&buffer, temp_buffer_length_bytes_required, 0));
+
+  uint8_t* cursor = buffer.data;
+  // TODO clean up buffer on fail
+  NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewResolveUnknownBufferSizesAsync(
+      device_array_view->device, &device_array_view->array_view, cursor, stream));
+
+  // Synchronize the stream with the CPU
+  // TODO clean up buffer on fail
+  NANOARROW_RETURN_NOT_OK(device_array_view->device->synchronize_event(
+      device_array_view->device, NULL, stream, error));
+
+  // Collect the values from the temporary buffer
+  // TODO clean up buffer on fail
+  cursor = buffer.data;
+  ArrowDeviceArrayViewCollectUnknownBufferSizes(&device_array_view->array_view, cursor);
+  ArrowBufferReset(&buffer);
 
   return NANOARROW_OK;
 }
