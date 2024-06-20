@@ -128,20 +128,20 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewReset)
 #define ArrowDeviceArrayViewSetArrayMinimal \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewSetArrayMinimal)
-#define ArrowDeviceArrayViewSetArray \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewSetArray)
-#define ArrowDeviceArrayViewCopy \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopy)
-#define ArrowDeviceArrayViewCopyRequired \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopyRequired)
+#define ArrowDeviceArrayViewSetArrayAsync \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewSetArrayAsync)
+#define ArrowDeviceArrayViewCopyAsync \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewCopyAsync)
 #define ArrowDeviceArrayMoveToDevice \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayMoveToDevice)
 #define ArrowDeviceResolve NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceResolve)
 #define ArrowDeviceCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCpu)
 #define ArrowDeviceInitCpu NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceInitCpu)
-#define ArrowDeviceBufferInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferInit)
+#define ArrowDeviceBufferInitAsync \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferInitAsync)
 #define ArrowDeviceBufferMove NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferMove)
-#define ArrowDeviceBufferCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferCopy)
+#define ArrowDeviceBufferCopyAsync \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBufferCopyAsync)
 #define ArrowDeviceBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceBasicArrayStreamInit)
 
@@ -291,9 +291,13 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
 /// Runs ArrowDeviceArrayViewSetArrayMinimal() but also sets buffer sizes for
 /// variable-length buffers by copying data from the device. This function will block on
 /// the device_array's sync_event.
-ArrowErrorCode ArrowDeviceArrayViewSetArray(
+static inline ArrowErrorCode ArrowDeviceArrayViewSetArray(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     struct ArrowError* error);
+
+ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
+    struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
+    void* stream, struct ArrowError* error);
 
 /// \brief Copy an ArrowDeviceArrayView to a device
 ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
@@ -439,6 +443,12 @@ static inline ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayVie
                                                       struct ArrowDevice* device_dst,
                                                       struct ArrowDeviceArray* dst) {
   return ArrowDeviceArrayViewCopyAsync(src, device_dst, dst, NULL);
+}
+
+static inline ArrowErrorCode ArrowDeviceArrayViewSetArray(
+    struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
+    struct ArrowError* error) {
+  return ArrowDeviceArrayViewSetArrayAsync(device_array_view, device_array, NULL, error);
 }
 
 #ifdef __cplusplus

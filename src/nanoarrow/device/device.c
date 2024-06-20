@@ -388,9 +388,9 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowDeviceArrayViewSetArray(
+ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
-    struct ArrowError* error) {
+    void* stream, struct ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       ArrowDeviceArrayViewSetArrayMinimal(device_array_view, device_array, error));
 
