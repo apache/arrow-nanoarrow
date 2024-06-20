@@ -382,6 +382,9 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArrayMinimal(&device_array_view->array_view,
                                                         &device_array->array, error));
 
+  // Populate the sync_event
+  device_array_view->sync_event = device_array->sync_event;
+
   return NANOARROW_OK;
 }
 

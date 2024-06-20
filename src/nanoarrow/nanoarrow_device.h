@@ -171,6 +171,7 @@ ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 struct ArrowDeviceArrayView {
   struct ArrowDevice* device;
   struct ArrowArrayView array_view;
+  void* sync_event;
 };
 
 /// \brief A Device wrapper with callbacks for basic memory management tasks
