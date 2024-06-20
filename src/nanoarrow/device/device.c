@@ -446,13 +446,9 @@ static void ArrowDeviceArrayViewCollectUnknownBufferSizes(
   }
 }
 
-ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
-    struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
-    void* stream, struct ArrowError* error) {
-  // Populate the array view with all information accessible from the CPU
-  NANOARROW_RETURN_NOT_OK(
-      ArrowDeviceArrayViewSetArrayMinimal(device_array_view, device_array, error));
-
+static ArrowErrorCode ArrowDeviceArrayViewEnsureBufferSizesAsync(
+    struct ArrowDeviceArrayView* device_array_view, void* stream,
+    struct ArrowError* error) {
   // Walk the tree of arrays to check for buffers whose size we don't know
   int64_t temp_buffer_length_bytes_required = 0;
   NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewWalkUnknownBufferSizes(
@@ -466,7 +462,7 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
 
   // Ensure that the stream provided waits on the array's sync event
   NANOARROW_RETURN_NOT_OK(device_array_view->device->synchronize_event(
-      device_array_view->device, device_array->sync_event, stream, error));
+      device_array_view->device, device_array_view->sync_event, stream, error));
 
   // Allocate a buffer big enough to hold all the offset values we need to
   // copy from the GPU
@@ -494,6 +490,19 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
   ArrowDeviceArrayViewCollectUnknownBufferSizes(&device_array_view->array_view, &cursor);
   NANOARROW_DCHECK(cursor == (buffer.data + buffer.size_bytes));
   ArrowBufferReset(&buffer);
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
+    struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
+    void* stream, struct ArrowError* error) {
+  // Populate the array view with all information accessible from the CPU
+  NANOARROW_RETURN_NOT_OK(
+      ArrowDeviceArrayViewSetArrayMinimal(device_array_view, device_array, error));
+
+  NANOARROW_RETURN_NOT_OK(
+      ArrowDeviceArrayViewEnsureBufferSizesAsync(device_array_view, stream, error));
 
   return NANOARROW_OK;
 }
@@ -531,10 +540,12 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyInternal(struct ArrowDevice* devic
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowDeviceArrayViewCopyDefault(struct ArrowDeviceArrayView* src,
-                                                      struct ArrowDevice* device_dst,
-                                                      struct ArrowDeviceArray* dst,
-                                                      void* stream) {
+ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
+                                             struct ArrowDevice* device_dst,
+                                             struct ArrowDeviceArray* dst, void* stream) {
+  // Ensure src has all buffer sizes defined
+  NANOARROW_RETURN_NOT_OK(ArrowDeviceArrayViewEnsureBufferSizesAsync(src, stream, NULL));
+
   struct ArrowArray tmp;
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&tmp, &src->array_view, NULL));
 
@@ -558,32 +569,6 @@ static ArrowErrorCode ArrowDeviceArrayViewCopyDefault(struct ArrowDeviceArrayVie
   }
 
   return result;
-}
-
-ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
-                                             struct ArrowDevice* device_dst,
-                                             struct ArrowDeviceArray* dst, void* stream) {
-  struct ArrowDevice* device_src = src->device;
-
-  // See if the source knows how to copy
-  int result;
-  if (device_src->array_copy != NULL) {
-    result = device_src->array_copy(src, device_dst, dst, stream);
-    if (result != ENOTSUP) {
-      return result;
-    }
-  }
-
-  // See if the destination knows how to copy
-  if (device_dst->array_copy != NULL) {
-    result = device_dst->array_copy(src, device_dst, dst, stream);
-    if (result != ENOTSUP) {
-      return result;
-    }
-  }
-
-  // Fall back to default implementation (copy buffer-by-buffer)
-  return ArrowDeviceArrayViewCopyDefault(src, device_dst, dst, stream);
 }
 
 ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
