@@ -49,12 +49,12 @@ na_vctrs <- function(ptype, storage_type = NULL) {
   # The arrow package currently uses the non-ASCII version; however, it generally
   # makes life easier if the metadata is valid UTF-8. The deserializer works with
   # either.
-  na_extension(storage_type, "arrow.r.vctrs", serialize(ptype, NULL, ascii = TRUE))
+  na_extension(storage_type, "nanoarrow.r.vctrs", serialize_ptype(ptype))
 }
 
 register_vctrs_extension <- function() {
   register_nanoarrow_extension(
-    "arrow.r.vctrs",
+    "nanoarrow.r.vctrs",
     nanoarrow_extension_spec(subclass = "nanoarrow_extension_spec_vctrs")
   )
 }
@@ -62,7 +62,7 @@ register_vctrs_extension <- function() {
 #' @export
 infer_nanoarrow_ptype_extension.nanoarrow_extension_spec_vctrs <- function(extension_spec, x, ...) {
   parsed <- .Call(nanoarrow_c_schema_parse, x)
-  unserialize(parsed$extension_metadata)
+  unserialize_ptype(parsed$extension_metadata)
 }
 
 #' @export
@@ -98,7 +98,82 @@ as_nanoarrow_array_extension.nanoarrow_extension_spec_vctrs <- function(
 
   nanoarrow_extension_array(
     storage_array,
-    "arrow.r.vctrs",
+    "nanoarrow.r.vctrs",
     schema$metadata[["ARROW:extension:metadata"]]
   )
+}
+
+serialize_ptype <- function(x) {
+  type <- typeof(x)
+  type_serialized <- sprintf('"type":"%s"', type)
+
+  attrs <- attributes(x)
+  attributes(x) <- NULL
+  if (!is.null(attrs)) {
+    attr_names_serialized  <- paste0('"', gsub('"', '\\"', names(attrs)), '"')
+    attr_values_serialized <- lapply(unname(attrs), serialize_ptype)
+    attrs_serialized <- sprintf(
+      '"attributes":{%s}',
+      paste0(attr_names_serialized, ":", attr_values_serialized, collapse = ",")
+    )
+  } else {
+    attrs_serialized <- NULL
+  }
+
+  if (length(x) > 0) {
+    values <- switch(
+      type,
+      character = ,
+      raw = ,
+      complex = paste0('"', gsub('"', '\\"', as.character(x)), '"'),
+      logical = tolower(as.character(x)),
+      integer = ,
+      double = as.character(x),
+      list = lapply(x, serialize_ptype),
+      stop(sprintf("storage '%s' is not supported by serialize_ptype", type))
+    )
+
+    values[is.na(values)] <- "null"
+    values_serialized <- sprintf(
+      '"values":[%s]',
+      paste(values, collapse = ",")
+    )
+  } else {
+    values_serialized <- '"values":[]'
+  }
+
+  sprintf(
+    "{%s}",
+    paste(
+      c(type_serialized, attrs_serialized, values_serialized),
+      collapse = ","
+    )
+  )
+}
+
+unserialize_ptype <- function(x) {
+  if (is.raw(x)) {
+    x <- rawToChar(x)
+  }
+  unserialize_ptype_impl(jsonlite::fromJSON(x, simplifyVector = FALSE))
+}
+
+unserialize_ptype_impl <- function(x) {
+  if (identical(x$type, "NULL")) {
+    return(NULL)
+  } else if (length(x$values) == 0) {
+    out <- vector(x$type)
+  } else if (identical(x$type, "list")) {
+    out <- lapply(x$values, unserialize_ptype_impl)
+  } else {
+    na <- vector(x$type)[1]
+    x$values[vapply(x$values, is.null, logical(1))] <- na
+    out <- unlist(x$values)
+  }
+
+  if (!is.null(x$attributes)) {
+    attributes(out) <- lapply(x$attributes, unserialize_ptype_impl)
+  }
+
+  out
 }
