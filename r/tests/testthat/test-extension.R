@@ -26,18 +26,18 @@ test_that("extension types can be registered and unregistered", {
 test_that("infer_nanoarrow_ptype() dispatches on registered extension spec", {
   register_nanoarrow_extension(
     "some_ext",
-    nanoarrow_extension_spec(subclass = "some_spec_class")
+    nanoarrow_extension_spec(subclass = "some_spec_class0")
   )
   on.exit(unregister_nanoarrow_extension("some_ext"))
 
-  infer_nanoarrow_ptype_extension.some_spec_class <- function(spec, x, ...) {
+  infer_nanoarrow_ptype_extension.some_spec_class0 <- function(spec, x, ...) {
     infer_nanoarrow_ptype_extension(NULL, x, ..., warn_unregistered = FALSE)
   }
 
   s3_register(
     "nanoarrow::infer_nanoarrow_ptype_extension",
-    "some_spec_class",
-    infer_nanoarrow_ptype_extension.some_spec_class
+    "some_spec_class0",
+    infer_nanoarrow_ptype_extension.some_spec_class0
   )
 
   expect_identical(
@@ -51,18 +51,29 @@ test_that("infer_nanoarrow_ptype() dispatches on registered extension spec", {
 test_that("convert_array() dispatches on registered extension spec", {
   register_nanoarrow_extension(
     "some_ext",
-    nanoarrow_extension_spec(subclass = "some_spec_class")
+    nanoarrow_extension_spec(subclass = "some_spec_class1")
   )
   on.exit(unregister_nanoarrow_extension("some_ext"))
 
-  convert_array_extension.some_spec_class <- function(spec, array, to, ...) {
+  # Use unique spec class names to avoid interdependency between tests
+  convert_array_extension.some_spec_class1 <- function(spec, array, to, ...) {
     convert_array_extension(NULL, array, to, ..., warn_unregistered = FALSE)
+  }
+
+  infer_nanoarrow_ptype_extension.some_spec_class1 <- function(spec, x, ...) {
+    infer_nanoarrow_ptype_extension(NULL, x, ..., warn_unregistered = FALSE)
   }
 
   s3_register(
     "nanoarrow::convert_array_extension",
-    "some_spec_class",
-    convert_array_extension.some_spec_class
+    "some_spec_class1",
+    convert_array_extension.some_spec_class1
+  )
+
+  s3_register(
+    "nanoarrow::infer_nanoarrow_ptype_extension",
+    "some_spec_class1",
+    infer_nanoarrow_ptype_extension.some_spec_class1
   )
 
   expect_identical(
@@ -76,7 +87,7 @@ test_that("convert_array() dispatches on registered extension spec", {
 test_that("as_nanoarrow_array() dispatches on registered extension spec", {
   register_nanoarrow_extension(
     "some_ext",
-    nanoarrow_extension_spec(subclass = "some_spec_class")
+    nanoarrow_extension_spec(subclass = "some_spec_class2")
   )
   on.exit(unregister_nanoarrow_extension("some_ext"))
 
@@ -91,14 +102,14 @@ test_that("as_nanoarrow_array() dispatches on registered extension spec", {
     "not implemented for extension"
   )
 
-  as_nanoarrow_array_extension.some_spec_class <- function(spec, x, ..., schema = NULL) {
+  as_nanoarrow_array_extension.some_spec_class2 <- function(spec, x, ..., schema = NULL) {
     nanoarrow_extension_array(x, "some_ext")
   }
 
   s3_register(
     "nanoarrow::as_nanoarrow_array_extension",
-    "some_spec_class",
-    as_nanoarrow_array_extension.some_spec_class
+    "some_spec_class2",
+    as_nanoarrow_array_extension.some_spec_class2
   )
 
   ext_array <- as_nanoarrow_array(
