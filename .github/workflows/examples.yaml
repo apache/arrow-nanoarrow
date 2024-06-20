@@ -114,6 +114,7 @@ jobs:
 
       - name: Meson example
         run: |
+          python3 -m pip install meson
           cd examples/meson-minimal
           meson setup builddir
           meson compile -C builddir
