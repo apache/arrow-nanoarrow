@@ -185,10 +185,9 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
   array->release = NULL;
 }
 
-static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
-                                               struct ArrowDeviceArray* device_array,
-                                               struct ArrowArray* array,
-                                               void* sync_event) {
+static ArrowErrorCode ArrowDeviceCudaArrayInitInternal(
+    struct ArrowDevice* device, struct ArrowDeviceArray* device_array,
+    struct ArrowArray* array, void* sync_event) {
   struct ArrowDeviceCudaPrivate* device_private =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
   // One can create an event with cuEventCreate(&cu_event, CU_EVENT_DEFAULT);
@@ -212,10 +211,22 @@ static ArrowErrorCode ArrowDeviceCudaArrayInit(struct ArrowDevice* device,
 
   if (sync_event != NULL) {
     private_data->cu_event = *((CUevent*)sync_event);
-    device_array->sync_event = sync_event;
+    device_array->sync_event = &private_data->cu_event;
   } else {
     private_data->cu_event = NULL;
     device_array->sync_event = NULL;
+  }
+
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
+                                                    struct ArrowDeviceArray* device_array,
+                                                    struct ArrowArray* array,
+                                                    void* sync_event, void* stream) {
+  int result = ArrowDeviceCudaArrayInitInternal(device, device_array, array, sync_event);
+  if (result != NANOARROW_OK) {
+    return result;
   }
 
   return NANOARROW_OK;
@@ -462,7 +473,7 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
 
   device->device_type = device_type;
   device->device_id = device_id;
-  device->array_init = &ArrowDeviceCudaArrayInit;
+  device->array_init = &ArrowDeviceCudaArrayInitAsync;
   device->array_move = &ArrowDeviceCudaArrayMove;
   device->buffer_init = &ArrowDeviceCudaBufferInitAsync;
   device->buffer_move = NULL;
