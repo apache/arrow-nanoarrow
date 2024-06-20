@@ -98,6 +98,10 @@ as_nanoarrow_array_extension.nanoarrow_extension_spec_vctrs <- function(
   )
 }
 
+# The logic for serializing and deserializing prototypes is a subset of
+# the implementation in jsonlite. Unlike jsonlite, we don't need to handle
+# arbitrary attributes because vector prototypes typically do not contain
+# complex information like expression/language objects and environments.
 serialize_ptype <- function(x) {
   type <- typeof(x)
   type_serialized <- sprintf('"type":"%s"', type)
@@ -153,6 +157,7 @@ unserialize_ptype <- function(x) {
   if (is.raw(x)) {
     x <- rawToChar(x)
   }
+
   unserialize_ptype_impl(jsonlite::fromJSON(x, simplifyVector = FALSE))
 }
 
@@ -167,11 +172,12 @@ unserialize_ptype_impl <- function(x) {
     x$type,
     raw = as.raw,
     complex = as.complex,
+    character = as.character,
     logical = as.logical,
     integer = as.integer,
     double = as.double,
     list = function(x) list(unserialize_ptype_impl(x)),
-    identity
+    stop(sprintf("storage '%s' is not supported by unserialize_ptype", x$type))
   )
 
   na <- vector(x$type)[1]

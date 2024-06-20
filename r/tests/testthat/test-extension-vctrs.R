@@ -74,13 +74,14 @@ test_that("serialize_ptype() can roundtrip R objects", {
   skip_if_not_installed("jsonlite")
 
   vectors <- list(
+    null = NULL,
     raw = as.raw(c(0x00, 0x01, 0x02)),
     lgl = c(FALSE, TRUE, NA),
     int = c(0L, 1L, NA_integer_),
     dbl = c(0, 1, pi, NA_real_),
     chr = c("a", NA_character_),
     cmplx = c(complex(real = 1:3, imaginary = 3:1), NA_complex_),
-    list = list(1, 2, x = 3),
+    list = list(1, 2, x = 3, NULL),
 
     raw0 = raw(),
     lgl0 = logical(),
@@ -116,4 +117,19 @@ test_that("serialize_ptype() can roundtrip R objects", {
       obj
     )
   }
+})
+
+test_that("serialize_ptype() errors for unsupported R objects", {
+  skip_if_not_installed("jsonlite")
+
+  expect_error(
+    serialize_ptype(quote(cat("I will eat you"))),
+    "storage 'language' is not supported by serialize_ptype"
+  )
+
+  expect_error(
+    unserialize_ptype(jsonlite::serializeJSON(quote(cat("I will eat you")))),
+    "storage 'language' is not supported by unserialize_ptype"
+  )
+
 })
