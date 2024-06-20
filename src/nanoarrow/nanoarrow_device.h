@@ -194,7 +194,7 @@ struct ArrowDevice {
   /// device_array->sync_event (if sync_event applies to this device type).
   ArrowErrorCode (*array_init)(struct ArrowDevice* device,
                                struct ArrowDeviceArray* device_array,
-                               struct ArrowArray* array, void* sync_event);
+                               struct ArrowArray* array, void* sync_event, void* stream);
 
   /// \brief Move an ArrowDeviceArray between devices without copying buffers
   ///
@@ -254,9 +254,15 @@ struct ArrowDevice {
 ///
 /// Given an ArrowArray whose buffers/release callback has been set appropriately,
 /// initialize an ArrowDeviceArray.
-ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
-                                    struct ArrowDeviceArray* device_array,
-                                    struct ArrowArray* array, void* sync_event);
+ArrowErrorCode ArrowDeviceArrayInitAsync(struct ArrowDevice* device,
+                                         struct ArrowDeviceArray* device_array,
+                                         struct ArrowArray* array, void* sync_event,
+                                         void* stream);
+
+static inline ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
+                                                  struct ArrowDeviceArray* device_array,
+                                                  struct ArrowArray* array,
+                                                  void* sync_event);
 
 /// \brief Initialize an ArrowDeviceArrayView
 ///
@@ -439,6 +445,13 @@ static inline ArrowErrorCode ArrowDeviceArrayViewSetArray(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     struct ArrowError* error) {
   return ArrowDeviceArrayViewSetArrayAsync(device_array_view, device_array, NULL, error);
+}
+
+static inline ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
+                                                  struct ArrowDeviceArray* device_array,
+                                                  struct ArrowArray* array,
+                                                  void* sync_event) {
+  return ArrowDeviceArrayInitAsync(device, device_array, array, sync_event, NULL);
 }
 
 #ifdef __cplusplus

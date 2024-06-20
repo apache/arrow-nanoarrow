@@ -155,15 +155,16 @@ struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t devi
   return NULL;
 }
 
-ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
-                                    struct ArrowDeviceArray* device_array,
-                                    struct ArrowArray* array, void* sync_event) {
+ArrowErrorCode ArrowDeviceArrayInitAsync(struct ArrowDevice* device,
+                                         struct ArrowDeviceArray* device_array,
+                                         struct ArrowArray* array, void* sync_event,
+                                         void* stream) {
   if (device->array_init != NULL) {
-    return device->array_init(device, device_array, array, sync_event);
+    return device->array_init(device, device_array, array, sync_event, stream);
   }
 
-  // Handling a sync event is not supported in the default constructor
-  if (sync_event != NULL) {
+  // Handling a sync event or stream is not supported in the default constructor
+  if (sync_event != NULL || stream != NULL) {
     return EINVAL;
   }
 

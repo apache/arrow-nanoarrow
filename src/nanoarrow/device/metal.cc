@@ -150,18 +150,21 @@ static void ArrowDeviceMetalArrayRelease(struct ArrowArray* array) {
   }
   ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
-  array->release = NULL;
+  array->release = nullptr;
 }
 
-static ArrowErrorCode ArrowDeviceMetalArrayInit(struct ArrowDevice* device,
-                                                struct ArrowDeviceArray* device_array,
-                                                struct ArrowArray* array,
-                                                void* sync_event) {
+static ArrowErrorCode ArrowDeviceMetalArrayInitAsync(
+    struct ArrowDevice* device, struct ArrowDeviceArray* device_array,
+    struct ArrowArray* array, void* sync_event, void* stream) {
   struct ArrowDeviceMetalArrayPrivate* private_data =
       (struct ArrowDeviceMetalArrayPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceMetalArrayPrivate));
-  if (private_data == NULL) {
+  if (private_data == nullptr) {
     return ENOMEM;
+  }
+
+  if (stream != NULL) {
+    return EINVAL;
   }
 
   // One can create a new event with mtl_device->newSharedEvent();
@@ -378,7 +381,7 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
 
   device->device_type = ARROW_DEVICE_METAL;
   device->device_id = static_cast<int64_t>(default_device->registryID());
-  device->array_init = &ArrowDeviceMetalArrayInit;
+  device->array_init = &ArrowDeviceMetalArrayInitAsync;
   device->array_move = &ArrowDeviceMetalArrayMove;
   device->buffer_init = &ArrowDeviceMetalBufferInitAsync;
   device->buffer_move = &ArrowDeviceMetalBufferMove;
