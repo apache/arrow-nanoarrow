@@ -493,5 +493,5 @@ ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
     NANOARROW_RETURN_NOT_OK(device_dst->array_move(device_src, src, device_dst, dst));
   }
 
-  return ENOTSUP;
+  return NANOARROW_OK;
 }
