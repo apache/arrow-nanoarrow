@@ -122,7 +122,7 @@ def bundle_nanoarrow(
         ]
     )
 
-    nanoarrow_h = re.sub(r'#include "[a-z_.]+"', "", nanoarrow_h)
+    nanoarrow_h = re.sub(r'#include "(nanoarrow/)?[a-z_.]+"', "", nanoarrow_h)
     yield f"{output_include_dir}/nanoarrow.h", nanoarrow_h
 
     # Generate files that don't need special handling
