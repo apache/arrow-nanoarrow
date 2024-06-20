@@ -126,8 +126,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBuffer(struct ArrowDevice* device,
       CUdeviceptr dptr = 0;
       if (size_bytes > 0) {  // cuMemalloc requires non-zero size_bytes
         err = cuMemAlloc(&dptr, (size_t)size_bytes);
-      }
-      else {
+      } else {
         err = CUDA_SUCCESS;
       }
       ptr = (void*)dptr;
