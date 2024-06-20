@@ -105,7 +105,7 @@ static ArrowErrorCode ArrowDeviceCpuSynchronize(struct ArrowDevice* device,
         return NANOARROW_OK;
       }
     default:
-      ArrowErrorSet(error, "Excpected CPU device but got device type %d",
+      ArrowErrorSet(error, "Expected CPU device but got device type %d",
                     (int)device->device_id);
       return ENOTSUP;
   }
@@ -310,7 +310,7 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
 }
 
 // Walks the tree of arrays to count the number of buffers with unknown size
-// and the numeber of bytes we need to copy from a device buffer to find it.
+// and the number of bytes we need to copy from a device buffer to find it.
 static ArrowErrorCode ArrowDeviceArrayViewWalkUnknownBufferSizes(
     struct ArrowArrayView* array_view, int64_t* offset_buffer_size) {
   switch (array_view->storage_type) {
