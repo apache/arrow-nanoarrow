@@ -18,7 +18,7 @@
 include(FetchContent)
 
 fetchcontent_declare(nlohmann_json
-                     URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.2.zip
-                     URL_HASH SHA256=95651d7d1fcf2e5c3163c3d37df6d6b3e9e5027299e6bd050d157322ceda9ac9
+                     URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip
+                     URL_HASH SHA256=04022b05d806eb5ff73023c280b68697d12b93e1b7267a0b22a1a39ec7578069
 )
 fetchcontent_makeavailable(nlohmann_json)
