@@ -273,7 +273,7 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(
+static ArrowErrorCode ArrowDeviceCudaBufferCopyAsyncInternal(
     struct ArrowDevice* device_src, struct ArrowBufferView src,
     struct ArrowDevice* device_dst, struct ArrowBufferView dst, int* n_pop_context,
     struct ArrowError* error, CUstream hstream) {
@@ -306,7 +306,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(
     NANOARROW_CUDA_RETURN_NOT_OK(
         cuMemcpyDtoDAsync((CUdeviceptr)dst.data.data, (CUdeviceptr)src.data.data,
                           (size_t)src.size_bytes, hstream),
-        "cuMemcpytoD", error);
+        "cuMemcpyDtoDAsync", error);
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CUDA) {
@@ -319,7 +319,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(
         cuMemcpyPeerAsync((CUdeviceptr)dst.data.data, dst_private->cu_context,
                           (CUdeviceptr)src.data.data, src_private->cu_context,
                           (size_t)src.size_bytes, hstream),
-        "cuMemcpyPeer", error);
+        "cuMemcpyPeerAsync", error);
 
   } else if (device_src->device_type == ARROW_DEVICE_CUDA &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
@@ -332,7 +332,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyInternal(
     NANOARROW_CUDA_RETURN_NOT_OK(
         cuMemcpyDtoHAsync((void*)dst.data.data, (CUdeviceptr)src.data.data,
                           (size_t)src.size_bytes, hstream),
-        "cuMemcpyDtoH", error);
+        "cuMemcpyDtoHAsync", error);
 
   } else if (device_src->device_type == ARROW_DEVICE_CPU &&
              device_dst->device_type == ARROW_DEVICE_CUDA_HOST) {
@@ -367,8 +367,8 @@ static ArrowErrorCode ArrowDeviceCudaBufferCopyAsync(struct ArrowDevice* device_
   int n_pop_context = 0;
   struct ArrowError error;
 
-  int result = ArrowDeviceCudaBufferCopyInternal(device_src, src, device_dst, dst,
-                                                 &n_pop_context, &error, hstream);
+  int result = ArrowDeviceCudaBufferCopyAsyncInternal(device_src, src, device_dst, dst,
+                                                      &n_pop_context, &error, hstream);
   for (int i = 0; i < n_pop_context; i++) {
     CUcontext unused;
     NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
