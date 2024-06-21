@@ -29,19 +29,21 @@ project(
     ]
 )
 
-# Windows shared libraries are not exporting the right symbols
-# See https://github.com/mesonbuild/wrapdb/pull/1536#issuecomment-2136011408
-# and https://github.com/apache/arrow-nanoarrow/issues/495
-if host_machine.system() == 'windows'
-    libtype = 'static_library'
-else
-    libtype = 'library'
+if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
+  add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
+endif
+
+nanoarrow_dep_args = []
+if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
+  add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'c')
+  add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'cpp')
+  nanoarrow_dep_args += ['-DNANOARROW_BUILD_DLL']
 endif
 
 subdir('src/nanoarrow')
 incdir = include_directories('src/')
 
-nanoarrow_lib = build_target(
+nanoarrow_lib = library(
     'nanoarrow',
     'src/nanoarrow/array.c',
     'src/nanoarrow/schema.c',
@@ -49,22 +51,21 @@ nanoarrow_lib = build_target(
     'src/nanoarrow/utils.c',
     include_directories: [incdir],
     install: true,
-    target_type: libtype,
 )
 
 nanoarrow_dep = declare_dependency(include_directories: [incdir],
-                                   link_with: nanoarrow_lib)
+                                   link_with: nanoarrow_lib,
+                                   compile_args: nanoarrow_dep_args)
 
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
 
-    nanoarrow_ipc_lib = build_target(
+    nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
         'src/nanoarrow/nanoarrow_ipc_decoder.c',
         'src/nanoarrow/nanoarrow_ipc_reader.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
-        target_type: libtype,
     )
     nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
                                            link_with: nanoarrow_ipc_lib,
@@ -90,12 +91,11 @@ if needs_device
     error('CUDA support with the Meson build system is not implemented')
   endif
 
-  nanoarrow_device_lib = build_target(
+  nanoarrow_device_lib = library(
       'nanoarrow_device',
       sources: device_srcs,
       dependencies: device_deps,
       install: true,
-      target_type: libtype,
       cpp_args: device_defines,
   )
 endif
@@ -200,8 +200,7 @@ if get_option('tests')
           exc = executable(
               name + '-test',
               'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
-              dependencies: config['deps']
-          )
+              dependencies: config['deps'])
           test(name, exc, timeout: config['timeout'])
       endforeach
   endif
@@ -213,8 +212,7 @@ if get_option('tests')
           device_test.replace('_', '-') + '-test',
           'src/nanoarrow/' + device_test + '_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep],
-      )
+          dependencies: [nanoarrow_dep, gtest_dep])
       test(device_test.replace('_', '-'), exc)
     endforeach
 
@@ -223,8 +221,7 @@ if get_option('tests')
           'nanoarrow-device-metal-test',
           'src/nanoarrow/nanoarrow_device_metal_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep],
-      )
+          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep])
       test('nanoarrow-device-metal', exc)
     endif
   endif
