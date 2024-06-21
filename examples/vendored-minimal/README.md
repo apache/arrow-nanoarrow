@@ -29,28 +29,18 @@ linked to by another project.
 
 The nanoarrow.c and nanoarrow.h files included in this example are stubs to illustrate
 how these files could fit in to a library and/or command-line application project.
-The easiest way is to use the pre-generated versions in the dist/ folder of this
-repository:
-
-```bash
-git clone https://github.com/apache/arrow-nanoarrow.git
-cd arrow-nanoarrow/examples/vendored-minimal
-cp ../../dist/nanoarrow.h src/nanoarrow.h
-cp ../../dist/nanoarrow.c src/nanoarrow.c
-```
-
-If you use these, you will have to manually `#define NANOARROW_NAMESPACE MyProject`
-manually in nanoarrow.h.
-
-You can also generate the bundled versions with the namespace defined using `cmake`:
+You can generate the bundled versions with the namespace defined using the Python
+script `ci/scripts/bundle.py`:
 
 ```bash
 git clone https://github.com/apache/arrow-nanoarrow.git
 cd arrow-nanoarrow
-mkdir build && cd build
-cmake .. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
-cmake --build .
-cmake --install . --prefix=../examples/vendored-minimal/src
+
+cd examples/vendored-minimal
+python ../../ci/scripts/bundle.py \
+  --source-output-dir=src \
+  --include-output-dir=src \
+  --symbol-namespace=ExampleVendored
 ```
 
 Then you can build/link the application/library using the build tool of your choosing:

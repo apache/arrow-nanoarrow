@@ -18,8 +18,8 @@
 #ifndef NANOARROW_IPC_HPP_INCLUDED
 #define NANOARROW_IPC_HPP_INCLUDED
 
-#include "nanoarrow/nanoarrow.hpp"
-#include "nanoarrow/nanoarrow_ipc.h"
+#include "nanoarrow.hpp"
+#include "nanoarrow_ipc.h"
 
 namespace nanoarrow {
 

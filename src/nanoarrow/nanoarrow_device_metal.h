@@ -18,7 +18,7 @@
 #ifndef NANOARROW_DEVICE_METAL_H_INCLUDED
 #define NANOARROW_DEVICE_METAL_H_INCLUDED
 
-#include "nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device.h"
 
 #ifdef NANOARROW_NAMESPACE
 
@@ -26,10 +26,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalDefaultDevice)
 #define ArrowDeviceMetalInitDefaultDevice \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalInitDefaultDevice)
-#define ArrowDeviceMetalInitCpuBuffer \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalInitCpuBuffer)
-#define ArrowDeviceMetalInitCpuArrayBuffers \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalInitCpuArrayBuffers)
+#define ArrowDeviceMetalInitBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalInitBuffer)
+#define ArrowDeviceMetalAlignArrayBuffers \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceMetalAlignArrayBuffers)
 
 #endif
 

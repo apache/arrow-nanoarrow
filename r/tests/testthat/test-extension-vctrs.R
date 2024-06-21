@@ -17,8 +17,8 @@
 
 test_that("vctrs extension type can roundtrip built-in vector types", {
   skip_if_not_installed("tibble")
+  skip_if_not_installed("jsonlite")
 
-  # Arrow tibbleifies everything, so we do here too
   # Lists aren't automatically handled in nanoarrow conversion, so they
   # aren't listed here yet.
   vectors <- list(
@@ -30,7 +30,7 @@ test_that("vctrs extension type can roundtrip built-in vector types", {
     posixlt = as.POSIXlt("2000-01-01 12:23", tz = "UTC"),
     date = as.Date("2000-01-01"),
     difftime = as.difftime(123, units = "secs"),
-    data_frame_simple = tibble::tibble(x = 1:5),
+    data_frame_simple = data.frame(x = 1:5),
     data_frame_nested = tibble::tibble(x = 1:5, y = tibble::tibble(z = letters[1:5]))
   )
 
@@ -54,20 +54,6 @@ test_that("vctrs extension type can roundtrip built-in vector types", {
     # Roundtrip with multiple chunks
     stream <- basic_array_stream(list(array, array))
     expect_identical(convert_array_stream(stream), vctrs::vec_rep(vctr, 2))
-
-    if (requireNamespace("arrow", quietly = TRUE)) {
-      # Roundtrip from nanoarrow -> arrow -> R
-      arrow_array <- arrow::as_arrow_array(array)
-      expect_s3_class(arrow_array, "ExtensionArray")
-      expect_identical(arrow_array$type$ptype(), ptype)
-      expect_identical(arrow_array$as_vector(), vctr)
-
-      # Roundtrip from arrow -> nanoarrow -> R
-      arrow_array <- arrow::vctrs_extension_array(vctr)
-      array <- as_nanoarrow_array(vctr, schema = schema)
-      expect_identical(infer_nanoarrow_ptype(array), ptype)
-      expect_identical(convert_array(array), vctr)
-    }
   }
 })
 
@@ -82,4 +68,68 @@ test_that("vctrs extension type respects `to` in convert_array()", {
     convert_array(array, to = as.POSIXct(character())),
     vctrs::vec_cast(vctr, as.POSIXct(character()))
   )
+})
+
+test_that("serialize_ptype() can roundtrip R objects", {
+  skip_if_not_installed("jsonlite")
+
+  vectors <- list(
+    null = NULL,
+    raw = as.raw(c(0x00, 0x01, 0x02)),
+    lgl = c(FALSE, TRUE, NA),
+    int = c(0L, 1L, NA_integer_),
+    dbl = c(0, 1, pi, NA_real_),
+    chr = c("a", NA_character_),
+    cmplx = c(complex(real = 1:3, imaginary = 3:1), NA_complex_),
+    list = list(1, 2, x = 3, NULL),
+
+    raw0 = raw(),
+    lgl0 = logical(),
+    int0 = integer(),
+    dbl0 = double(),
+    chr0 = character(),
+    cmplx0 = complex(),
+    list0 = list(),
+
+    posixct = as.POSIXct("2000-01-01 12:23", tz = "UTC"),
+    posixlt = as.POSIXlt("2000-01-01 12:23", tz = "UTC"),
+    date = as.Date("2000-01-01"),
+    difftime = as.difftime(123, units = "secs"),
+    data_frame_simple = data.frame(x = 1:5),
+    data_frame_nested = tibble::tibble(x = 1:5, y = tibble::tibble(z = letters[1:5]))
+  )
+
+  for (obj in vectors) {
+    # Check that our serializer/deserializer can roundtrip
+    expect_identical(
+      unserialize_ptype(serialize_ptype(obj)),
+      obj
+    )
+
+    # Check that our generated JSON is compatible with jsonlite's serde
+    expect_identical(
+      jsonlite::unserializeJSON(serialize_ptype(obj)),
+      obj
+    )
+
+    expect_identical(
+      unserialize_ptype(jsonlite::serializeJSON(obj, digits = 16)),
+      obj
+    )
+  }
+})
+
+test_that("serialize_ptype() errors for unsupported R objects", {
+  skip_if_not_installed("jsonlite")
+
+  expect_error(
+    serialize_ptype(quote(cat("I will eat you"))),
+    "storage 'language' is not supported by serialize_ptype"
+  )
+
+  expect_error(
+    unserialize_ptype(jsonlite::serializeJSON(quote(cat("I will eat you")))),
+    "storage 'language' is not supported by unserialize_ptype"
+  )
+
 })

@@ -24,7 +24,7 @@ the nanoarrow C library, it provides tools to facilitate the use of the
 Arrow C Data and Arrow C Stream interfaces.
 """
 
-from nanoarrow._lib import c_version
+from nanoarrow._utils import c_version
 from nanoarrow.c_array import c_array_from_buffers, c_array
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema

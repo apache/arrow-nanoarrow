@@ -18,7 +18,7 @@
 #ifndef NANOARROW_IPC_H_INCLUDED
 #define NANOARROW_IPC_H_INCLUDED
 
-#include "nanoarrow.h"
+#include "nanoarrow/nanoarrow.h"
 
 #ifdef NANOARROW_NAMESPACE
 

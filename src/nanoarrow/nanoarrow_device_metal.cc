@@ -24,9 +24,8 @@
 #define MTL_PRIVATE_IMPLEMENTATION
 #include <Metal/Metal.hpp>
 
-#include "nanoarrow_device.hpp"
-
-#include "nanoarrow_device_metal.h"
+#include "nanoarrow/nanoarrow_device.hpp"
+#include "nanoarrow/nanoarrow_device_metal.h"
 
 // If non-null, caller must ->release() the return value. This doesn't
 // release the underlying memory (which must be managed separately).
@@ -145,7 +144,9 @@ struct ArrowDeviceMetalArrayPrivate {
 static void ArrowDeviceMetalArrayRelease(struct ArrowArray* array) {
   struct ArrowDeviceMetalArrayPrivate* private_data =
       (struct ArrowDeviceMetalArrayPrivate*)array->private_data;
-  private_data->event->release();
+  if (private_data->event != nullptr) {
+    private_data->event->release();
+  }
   ArrowArrayRelease(&private_data->parent);
   ArrowFree(private_data);
   array->release = NULL;
@@ -225,15 +226,10 @@ static ArrowErrorCode ArrowDeviceMetalBufferMove(struct ArrowDevice* device_src,
       mtl_buffer->release();
       ArrowBufferMove(src, dst);
       return NANOARROW_OK;
+    } else {
+      // Otherwise, return ENOTSUP to signal that a move is not possible
+      return ENOTSUP;
     }
-
-    // Otherwise, initialize a new buffer and copy
-    struct ArrowBuffer tmp;
-    ArrowDeviceMetalInitBuffer(&tmp);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src->data, src->size_bytes));
-    ArrowBufferMove(&tmp, dst);
-    ArrowBufferReset(src);
-    return NANOARROW_OK;
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
     // Metal -> Metal is always just a move

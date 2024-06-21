@@ -60,13 +60,9 @@ jobs:
       - name: Minimal Vendored Example
         run: |
           cd examples/vendored-minimal
-          mkdir build && cd build
-          cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
-          cmake --build .
-          cmake --install . --prefix=../src
+          python3 ../../ci/scripts/bundle.py --source-output-dir=src --include-output-dir=src
 
-          cd ../src
-
+          cd src
           gcc -c library.c nanoarrow.c
           ar rcs libexample_vendored_minimal_library.a library.o nanoarrow.o
           gcc -o example_vendored_minimal_app app.c libexample_vendored_minimal_library.a
@@ -85,18 +81,15 @@ jobs:
       - name: Ipc Vendored Example
         run: |
           cd examples/vendored-ipc
-          mkdir build && cd build
-          cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_NAMESPACE=ExampleVendored
-          cmake --build .
-          cmake --install . --prefix=../src/nanoarrow
-          mkdir ../build_ipc && cd ../build_ipc
-          cmake ../../.. -DNANOARROW_BUNDLE=ON -DNANOARROW_IPC=ON
-          cmake --build .
-          cmake --install . --prefix=../src/nanoarrow
+          python3 ../../ci/scripts/bundle.py \
+            --source-output-dir=src \
+            --include-output-dir=src \
+            --symbol-namespace=MyProject \
+            --with-ipc \
+            --with-flatcc
 
-          cd ../src
-
-          gcc -c library.c nanoarrow/nanoarrow.c nanoarrow/flatcc.c nanoarrow/nanoarrow_ipc.c -I./nanoarrow -I./nanoarrow/flatcc
+          cd src
+          gcc -c library.c nanoarrow.c flatcc.c nanoarrow_ipc.c -I.
           ar rcs libexample_vendored_ipc_library.a library.o nanoarrow.o nanoarrow_ipc.o flatcc.o
           gcc -o example_vendored_ipc_app app.c libexample_vendored_ipc_library.a
 
@@ -118,3 +111,12 @@ jobs:
             ./${dir}/minimal_cpp_app;
             echo ;
           done
+
+      - name: Meson example
+        run: |
+          python3 -m pip install meson ninja
+          cd examples/meson-minimal
+          meson setup builddir
+          meson compile -C builddir
+
+          ./builddir/example_meson_minimal_app

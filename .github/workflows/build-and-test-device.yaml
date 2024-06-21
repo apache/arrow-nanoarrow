@@ -35,7 +35,7 @@ permissions:
 jobs:
   test-c-device:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.runner }}
 
     name: ${{ matrix.config.label }}
 
@@ -43,22 +43,14 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build}
-          - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
-          - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
+          - {runner: ubuntu-latest, label: default-build}
+          - {runner: ubuntu-latest, label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
+          - {runner: ubuntu-latest, label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
+          - {runner: macOS-latest, label: with-metal, cmake_args: "-DNANOARROW_DEVICE_WITH_METAL=ON"}
 
-    env:
-      SUBDIR: '${{ github.workspace }}'
-      NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Checkout arrow-testing
-        uses: actions/checkout@v4
-        with:
-          repository: apache/arrow-testing
-          path: arrow-testing
 
       - name: Install memcheck dependencies
         if: matrix.config.label == 'default-build'
@@ -82,9 +74,6 @@ jobs:
       - name: Build
         run: |
           ARROW_PATH="$(pwd)/arrow"
-          cd $SUBDIR
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
-          sudo ldconfig
           mkdir build
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_DEVICE=ON \
@@ -96,8 +85,6 @@ jobs:
       - name: Check for non-namespaced symbols in namespaced build
         if: matrix.config.label == 'namespaced-build'
         run: |
-          cd $SUBDIR
-
           # Dump all symbols
           nm --extern-only build/libnanoarrow_device.a
 
@@ -113,20 +100,12 @@ jobs:
 
       - name: Run tests
         run: |
-          cd $SUBDIR
-
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
-          sudo ldconfig
           cd build
           ctest -T test --output-on-failure .
 
       - name: Run tests with valgrind
         if: matrix.config.label == 'default-build' || matrix.config.label == 'default-noatomics'
         run: |
-          cd $SUBDIR
-
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/dist/lib
-          sudo ldconfig
           cd build
           ctest -T memcheck .
 

@@ -26,7 +26,8 @@ Python objects.
 """
 
 
-from nanoarrow._lib import CSchema, CSchemaView, _obj_is_capsule
+from nanoarrow._lib import CSchema, CSchemaView
+from nanoarrow._utils import obj_is_capsule
 
 
 def c_schema(obj=None) -> CSchema:
@@ -65,7 +66,7 @@ def c_schema(obj=None) -> CSchema:
     if hasattr(obj, "__arrow_c_schema__"):
         return CSchema._import_from_c_capsule(obj.__arrow_c_schema__())
 
-    if _obj_is_capsule(obj, "arrow_schema"):
+    if obj_is_capsule(obj, "arrow_schema"):
         return CSchema._import_from_c_capsule(obj)
 
     # for pyarrow < 14.0

@@ -18,9 +18,8 @@
 #include <errno.h>
 #include <inttypes.h>
 
-#include "nanoarrow.h"
-
-#include "nanoarrow_device.h"
+#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow_device.h"
 
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error) {
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
@@ -494,5 +493,5 @@ ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
     NANOARROW_RETURN_NOT_OK(device_dst->array_move(device_src, src, device_dst, dst));
   }
 
-  return ENOTSUP;
+  return NANOARROW_OK;
 }
