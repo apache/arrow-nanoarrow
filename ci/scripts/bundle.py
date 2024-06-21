@@ -171,10 +171,10 @@ def bundle_nanoarrow_device(
         yield f"{output_include_dir}/{filename}", content
 
     # Generate sources
-    for filename in ["nanoarrow_device.c"]:
-        content = read_content(src_dir / filename)
+    for filename in ["device.c"]:
+        content = read_content(src_dir / "device"/ filename)
         content = namespace_nanoarrow_includes(content, header_namespace)
-        yield f"{output_source_dir}/{filename}", content
+        yield f"{output_source_dir}/nanoarrow_{filename}", content
 
 
 def bundle_nanoarrow_ipc(

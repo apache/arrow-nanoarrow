@@ -75,7 +75,7 @@ endif
 needs_device = get_option('device') or get_option('metal') or get_option('cuda')
 if needs_device
   device_deps = [nanoarrow_dep]
-  device_srcs = ['src/nanoarrow/nanoarrow_device.c']
+  device_srcs = ['src/nanoarrow/device/device.c']
   device_defines = []
 
   if get_option('metal')
@@ -83,7 +83,7 @@ if needs_device
     metal_cpp_dep = dependency('metal-cpp')
     device_deps += metal_dep
     device_deps += metal_cpp_dep
-    device_srcs += 'src/nanoarrow/nanoarrow_device_metal.cc'
+    device_srcs += 'src/nanoarrow/device/metal.cc'
     device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
   endif
 
@@ -206,11 +206,11 @@ if get_option('tests')
   endif
 
   if needs_device
-    device_tests = ['nanoarrow_device', 'nanoarrow_device_hpp']
+    device_tests = ['device', 'device_hpp']
     foreach device_test : device_tests
       exc = executable(
-          device_test.replace('_', '-') + '-test',
-          'src/nanoarrow/' + device_test + '_test.cc',
+          'nanoarrow-' + device_test.replace('_', '-') + '-test',
+          'src/nanoarrow/device/' + device_test + '_test.cc',
           link_with: nanoarrow_device_lib,
           dependencies: [nanoarrow_dep, gtest_dep])
       test(device_test.replace('_', '-'), exc)
@@ -219,7 +219,7 @@ if get_option('tests')
     if get_option('metal')
       exc = executable(
           'nanoarrow-device-metal-test',
-          'src/nanoarrow/nanoarrow_device_metal_test.cc',
+          'src/nanoarrow/device/metal_test.cc',
           link_with: nanoarrow_device_lib,
           dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep])
       test('nanoarrow-device-metal', exc)
