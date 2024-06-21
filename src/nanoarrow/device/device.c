@@ -163,12 +163,10 @@ ArrowErrorCode ArrowDeviceArrayInitAsync(struct ArrowDevice* device,
     return device->array_init(device, device_array, array, sync_event, stream);
   }
 
-  // TODO: Right now we have to let these events through and ignore them
-  // because we don't have a good way to separate the source and destination
-  // streams.
-  // if (sync_event != NULL || stream != NULL) {
-  //   return EINVAL;
-  // }
+  // Sync event and stream aren't handled by the fallback implementation
+  if (sync_event != NULL || stream != NULL) {
+    return EINVAL;
+  }
 
   ArrowDeviceArrayInitDefault(device, device_array, array);
   return NANOARROW_OK;
@@ -556,6 +554,18 @@ ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
   if (result != NANOARROW_OK) {
     ArrowArrayRelease(&tmp);
     return result;
+  }
+
+  // If we are copying to the CPU, we need to synchronize the stream because we
+  // can't populate a sync event for a CPU array.
+  if (device_dst->device_type == ARROW_DEVICE_CPU) {
+    result = src->device->synchronize_event(src->device, NULL, stream, NULL);
+    if (result != NANOARROW_OK) {
+      ArrowArrayRelease(&tmp);
+      return result;
+    }
+
+    stream = NULL;
   }
 
   result = ArrowArrayFinishBuilding(&tmp, NANOARROW_VALIDATION_LEVEL_MINIMAL, NULL);
