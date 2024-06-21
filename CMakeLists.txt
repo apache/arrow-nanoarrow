@@ -349,7 +349,7 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(schema_test src/nanoarrow/schema_test.cc)
   add_executable(array_stream_test src/nanoarrow/array_stream_test.cc)
   add_executable(nanoarrow_hpp_test src/nanoarrow/nanoarrow_hpp_test.cc)
-  add_executable(nanoarrow_testing_test src/nanoarrow/nanoarrow_testing_test.cc)
+  add_executable(nanoarrow_testing_test src/nanoarrow/testing/testing_test.cc)
   add_executable(c_data_integration_test
                  src/nanoarrow/integration/c_data_integration_test.cc)
 

@@ -143,9 +143,6 @@ if get_option('tests')
       'nanoarrow-hpp': {
           'deps': [arrow_dep, gtest_dep, gmock_dep, nlohmann_json_dep],
       },
-      'nanoarrow-testing': {
-          'deps': [arrow_dep, gtest_dep, nlohmann_json_dep],
-      },
   }
 
   foreach name, config : nanoarrow_tests
@@ -158,6 +155,12 @@ if get_option('tests')
     )
     test(name, exc)
   endforeach
+
+  testing_test = executable('nanoarrow-testing-test',
+                            'src/nanoarrow/testing/testing_test.cc',
+                            link_with: nanoarrow_lib,
+                            include_directories: incdir,
+                            dependencies: [arrow_dep, gtest_dep, nlohmann_json_dep])
 
   c_data_integration_test = executable('c-data-integration-test',
                                        'src/nanoarrow/integration/c_data_integration_test.cc',
