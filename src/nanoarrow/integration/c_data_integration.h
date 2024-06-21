@@ -18,8 +18,23 @@
 #ifndef NANOARROW_INTEGRATION_C_DATA_INTEGRATION_H_INCLUDED
 #define NANOARROW_INTEGRATION_C_DATA_INTEGRATION_H_INCLUDED
 
-#include <nanoarrow/nanoarrow_types.h>
 #include <stdint.h>
+
+#if defined _WIN32 || defined __CYGWIN__
+#define NANOARROW_DLL_IMPORT __declspec(dllimport)
+#define NANOARROW_DLL_EXPORT __declspec(dllexport)
+#define NANOARROW_DLL_LOCAL
+#else
+#if __GNUC__ >= 4
+#define NANOARROW_DLL_IMPORT __attribute__((visibility("default")))
+#define NANOARROW_DLL_EXPORT __attribute__((visibility("default")))
+#define NANOARROW_DLL_LOCAL __attribute__((visibility("hidden")))
+#else
+#define NANOARROW_DLL_IMPORT
+#define NANOARROW_DLL_EXPORT
+#define NANOARROW_DLL_LOCAL
+#endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {
