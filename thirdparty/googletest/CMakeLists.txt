@@ -21,8 +21,8 @@ include(FetchContent)
 if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_VERSION
                                                VERSION_GREATER_EQUAL "5.0.0")
   fetchcontent_declare(googletest
-                       URL https://github.com/google/googletest/archive/release-1.11.0.zip
-                       URL_HASH SHA256=353571c2440176ded91c2de6d6cd88ddd41401d14692ec1f99e35d013feda55a
+                       URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+                       URL_HASH SHA256=8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7
   )
 else()
   fetchcontent_declare(googletest
