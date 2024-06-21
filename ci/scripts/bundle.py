@@ -172,7 +172,7 @@ def bundle_nanoarrow_device(
 
     # Generate sources
     for filename in ["device.c"]:
-        content = read_content(src_dir / "device"/ filename)
+        content = read_content(src_dir / "device" / filename)
         content = namespace_nanoarrow_includes(content, header_namespace)
         yield f"{output_source_dir}/nanoarrow_{filename}", content
 

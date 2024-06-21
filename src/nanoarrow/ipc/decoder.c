@@ -45,7 +45,7 @@
 
 #include "nanoarrow/nanoarrow.h"
 #include "nanoarrow/nanoarrow_ipc.h"
-#include "nanoarrow/nanoarrow_ipc_flatcc_generated.h"
+#include "nanoarrow/ipc/flatcc_generated.h"
 
 // R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
 #if defined(_WIN32) && !defined(_MSC_VER) && !defined(ENODATA)

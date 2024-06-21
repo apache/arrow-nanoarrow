@@ -21,9 +21,9 @@ import pathlib
 import tempfile
 
 import pytest
-from nanoarrow.ipc import Stream
 
 import nanoarrow as na
+from nanoarrow.ipc import Stream
 
 
 def test_array_stream_iter():

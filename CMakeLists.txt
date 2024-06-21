@@ -214,8 +214,8 @@ if(NANOARROW_IPC)
   endif()
 
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/nanoarrow_ipc_decoder.c
-                                    src/nanoarrow/nanoarrow_ipc_reader.c)
+    set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/ipc/decoder.c
+                                    src/nanoarrow/ipc/reader.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
@@ -409,10 +409,10 @@ if(NANOARROW_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
-    add_executable(nanoarrow_ipc_reader_test src/nanoarrow/nanoarrow_ipc_reader_test.cc)
-    add_executable(nanoarrow_ipc_files_test src/nanoarrow/nanoarrow_ipc_files_test.cc)
-    add_executable(nanoarrow_ipc_hpp_test src/nanoarrow/nanoarrow_ipc_hpp_test.cc)
+    add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/ipc/decoder_test.cc)
+    add_executable(nanoarrow_ipc_reader_test src/nanoarrow/ipc/reader_test.cc)
+    add_executable(nanoarrow_ipc_files_test src/nanoarrow/ipc/files_test.cc)
+    add_executable(nanoarrow_ipc_hpp_test src/nanoarrow/ipc/ipc_hpp_test.cc)
 
     if(NANOARROW_CODE_COVERAGE)
       target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
@@ -482,8 +482,7 @@ if(NANOARROW_BUILD_TESTS)
     gtest_discover_tests(nanoarrow_device_hpp_test)
 
     if(NANOARROW_DEVICE_WITH_METAL)
-      add_executable(nanoarrow_device_metal_test
-                     src/nanoarrow/device/metal_test.cc)
+      add_executable(nanoarrow_device_metal_test src/nanoarrow/device/metal_test.cc)
       target_link_libraries(nanoarrow_device_metal_test
                             nanoarrow_device
                             nanoarrow
@@ -493,8 +492,7 @@ if(NANOARROW_BUILD_TESTS)
     endif()
 
     if(NANOARROW_DEVICE_WITH_CUDA)
-      add_executable(nanoarrow_device_cuda_test
-                     src/nanoarrow/device/cuda_test.cc)
+      add_executable(nanoarrow_device_cuda_test src/nanoarrow/device/cuda_test.cc)
       target_link_libraries(nanoarrow_device_cuda_test
                             nanoarrow_device
                             nanoarrow
