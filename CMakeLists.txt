@@ -111,7 +111,7 @@ if(NANOARROW_BUNDLE)
   set(NANOARROW_FLATCC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/flatcc.c")
 else()
   # Generate the version information
-  configure_file(src/nanoarrow/nanoarrow_config.h.in generated/nanoarrow_config.h)
+  configure_file(src/nanoarrow/nanoarrow_config.h.in src/nanoarrow/nanoarrow_config.h)
   set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 endif()
 
@@ -129,7 +129,7 @@ if(NOT NANOARROW_BUNDLE)
        src/nanoarrow/array_inline.h
        src/nanoarrow/buffer_inline.h
        src/nanoarrow/nanoarrow_types.h
-       "${CMAKE_CURRENT_BINARY_DIR}/generated/nanoarrow_config.h")
+       "${CMAKE_CURRENT_BINARY_DIR}/src/nanoarrow/nanoarrow_config.h")
 endif()
 
 # Add the nanoarrow library target
@@ -138,7 +138,7 @@ add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
 target_include_directories(nanoarrow
                            PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
-                                  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
+                                  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                   $<INSTALL_INTERFACE:include>)
 target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
@@ -222,7 +222,7 @@ if(NANOARROW_IPC)
   target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
-                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
                                     $<INSTALL_INTERFACE:include>)
 
@@ -285,7 +285,7 @@ if(NANOARROW_DEVICE)
 
   target_include_directories(nanoarrow_device
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
-                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<BUILD_INTERFACE:${NANOARROW_DEVICE_INCLUDE_METAL}>
                                     $<INSTALL_INTERFACE:include>)
 
@@ -308,7 +308,7 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
               src/nanoarrow/integration/c_data_integration.cc)
   target_include_directories(nanoarrow_c_data_integration
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
-                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
 endif()

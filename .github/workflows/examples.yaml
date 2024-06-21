@@ -111,3 +111,12 @@ jobs:
             ./${dir}/minimal_cpp_app;
             echo ;
           done
+
+      - name: Meson example
+        run: |
+          python3 -m pip install meson ninja
+          cd examples/meson-minimal
+          meson setup builddir
+          meson compile -C builddir
+
+          ./builddir/example_meson_minimal_app
