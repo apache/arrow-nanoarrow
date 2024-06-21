@@ -222,6 +222,8 @@ class StringTypeParameterizedTestFixture
 };
 
 TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDevice* metal = ArrowDeviceMetalDefaultDevice();
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowArray array;
