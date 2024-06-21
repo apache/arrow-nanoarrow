@@ -62,8 +62,8 @@ if get_option('ipc')
 
     nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
-        'src/nanoarrow/nanoarrow_ipc_decoder.c',
-        'src/nanoarrow/nanoarrow_ipc_reader.c',
+        'src/nanoarrow/ipc/decoder.c',
+        'src/nanoarrow/ipc/reader.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
     )
@@ -169,18 +169,21 @@ if get_option('tests')
   if get_option('ipc')
       zlib_dep = dependency('zlib')
       ipc_test_files = {
-          'nanoarrow-ipc-decoder': {
+          'ipc-decoder': {
+              'src': 'decoder',
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
               'timeout': 30,
           },
-          'nanoarrow-ipc-reader': {
+          'ipc-reader': {
+              'src': 'reader',
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
               # the ipc reader test can take longer when executed
               # under valgrind, hence the increased timeout
               'timeout': 90,
 
           },
-          'nanoarrow-ipc-files': {
+          'ipc-files': {
+              'src': 'files',
               'deps': [
                   nanoarrow_ipc_dep,
                   zlib_dep,
@@ -190,7 +193,8 @@ if get_option('tests')
               ],
               'timeout': 30,
           },
-          'nanoarrow-ipc-hpp': {
+          'ipc-hpp': {
+              'src': 'ipc_hpp',
               'deps': [nanoarrow_ipc_dep, gtest_dep],
               'timeout': 30,
           },
@@ -198,9 +202,10 @@ if get_option('tests')
 
       foreach name, config : ipc_test_files
           exc = executable(
-              name + '-test',
-              'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
-              dependencies: config['deps'])
+              'nanoarrow-' + name + '-test',
+              'src/nanoarrow/ipc/' + config['src'] + '_test.cc',
+              dependencies: config['deps']
+          )
           test(name, exc, timeout: config['timeout'])
       endforeach
   endif
