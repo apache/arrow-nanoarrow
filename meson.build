@@ -29,19 +29,14 @@ project(
     ]
 )
 
-# Windows shared libraries are not exporting the right symbols
-# See https://github.com/mesonbuild/wrapdb/pull/1536#issuecomment-2136011408
-# and https://github.com/apache/arrow-nanoarrow/issues/495
-if host_machine.system() == 'windows'
-    libtype = 'static_library'
-else
-    libtype = 'library'
+if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
+  add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
 endif
 
 subdir('src/nanoarrow')
 incdir = include_directories('src/')
 
-nanoarrow_lib = build_target(
+nanoarrow_lib = library(
     'nanoarrow',
     'src/nanoarrow/array.c',
     'src/nanoarrow/schema.c',
@@ -49,7 +44,6 @@ nanoarrow_lib = build_target(
     'src/nanoarrow/utils.c',
     include_directories: [incdir],
     install: true,
-    target_type: libtype,
 )
 
 nanoarrow_dep = declare_dependency(include_directories: [incdir],
@@ -58,17 +52,17 @@ nanoarrow_dep = declare_dependency(include_directories: [incdir],
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
 
-    nanoarrow_ipc_lib = build_target(
+    nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
         'src/nanoarrow/nanoarrow_ipc_decoder.c',
         'src/nanoarrow/nanoarrow_ipc_reader.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
-        target_type: libtype,
     )
     nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
                                            link_with: nanoarrow_ipc_lib,
                                            dependencies: [nanoarrow_dep, flatcc_dep])
+endif
 
 needs_device = get_option('device') or get_option('metal') or get_option('cuda')
 if needs_device
@@ -89,12 +83,11 @@ if needs_device
     error('CUDA support with the Meson build system is not implemented')
   endif
 
-  nanoarrow_device_lib = build_target(
+  nanoarrow_device_lib = library(
       'nanoarrow_device',
       sources: device_srcs,
       dependencies: device_deps,
       install: true,
-      target_type: libtype,
       cpp_args: device_defines,
   )
 endif
@@ -228,6 +221,7 @@ if get_option('tests')
     endif
   endif
 endif
+
 
 if get_option('benchmarks')
   subdir('dev/benchmarks')
