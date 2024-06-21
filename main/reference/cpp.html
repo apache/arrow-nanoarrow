@@ -537,15 +537,6 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <dd class="field-odd"><p><strong>T</strong> – A class with methods <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">GetSchema(ArrowSchema*)</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">GetNext(ArrowArray*)</span></code>, and <code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char*</span> <span class="pre">GetLastError()</span></code></p>
 </dd>
 </dl>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream">
-<span id="_CPPv3N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"></span><span id="_CPPv2N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"></span><span id="nanoarrow::ArrayStreamFactory::InitArrayStream__TP.ArrowArrayStreamP"></span><span class="target" id="classnanoarrow_1_1_array_stream_factory_1ab0ac9ace734408c74557f5520e381c02"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">InitArrayStream</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE" title="nanoarrow::ArrayStreamFactory::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">instance</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
-<dd><p>Take ownership of instance and populate callbacks of out. </p>
-</dd></dl>
-
-</div>
 </dd></dl>
 
 <dl class="cpp class">
@@ -556,32 +547,6 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <p>An empty array stream. </p>
 <p>This class can be constructed from an struct <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> and implements a default get_next() method that always marks the output <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> as released.</p>
 <p>DEPRECATED (0.4.0): Early versions of nanoarrow allowed subclasses to override get_schema(), get_next(), and get_last_error(). This functionality will be removed in a future release: use the pattern documented in <a class="reference internal" href="#classnanoarrow_1_1_array_stream_factory"><span class="std std-ref">ArrayStreamFactory</span></a> to create custom <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> implementations. </p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema">
-<span id="_CPPv3N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"></span><span id="nanoarrow::EmptyArrayStream::EmptyArrayStream__ArrowSchemaP"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream_1a062ae763ff644a1ecd73bb9a0639022a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EmptyArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema" title="Link to this definition">#</a><br /></dt>
-<dd><p>Create an <a class="reference internal" href="#classnanoarrow_1_1_empty_array_stream"><span class="std std-ref">EmptyArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. </p>
-<p>Takes ownership of schema. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream">
-<span id="_CPPv3N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="nanoarrow::EmptyArrayStream::ToArrayStream__ArrowArrayStreamP"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream_1a3ba24ecff6e00bed4418e76087967a61"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ToArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
-<dd><p>Export to <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
-</dd></dl>
-
-</div>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema">
-<span id="_CPPv3N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema"></span><span id="nanoarrow::EmptyArrayStream::MakeUnique__ArrowSchemaP"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream_1abeb0b129442c5a78db5cf95fa380f066"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv417UniqueArrayStream" title="UniqueArrayStream"><span class="n"><span class="pre">UniqueArrayStream</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MakeUnique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema" title="Link to this definition">#</a><br /></dt>
-<dd><p>Create an empty UniqueArrayStream from a struct <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. </p>
-<p>DEPRECATED (0.4.0): Use the constructor + <a class="reference internal" href="#classnanoarrow_1_1_empty_array_stream_1a3ba24ecff6e00bed4418e76087967a61"><span class="std std-ref">ToArrayStream()</span></a> to export an <a class="reference internal" href="#classnanoarrow_1_1_empty_array_stream"><span class="std std-ref">EmptyArrayStream</span></a> to an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer. </p>
-</dd></dl>
-
-</div>
 </dd></dl>
 
 <dl class="cpp class">
@@ -590,46 +555,6 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <dd><div class="docutils container">
 <em>#include &lt;nanoarrow.hpp&gt;</em></div>
 <p>Implementation of an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> backed by a vector of UniqueArray objects. </p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE">
-<span id="_CPPv3N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="nanoarrow::VectorArrayStream::VectorArrayStream__ArrowSchemaP.std::vector:UniqueArray:"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1a04d3b0219bae57ee9d0f0cb427640763"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv411UniqueArray" title="UniqueArray"><span class="n"><span class="pre">UniqueArray</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">arrays</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE" title="Link to this definition">#</a><br /></dt>
-<dd><p>Create a <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> + vector of UniqueArray. </p>
-<p>Takes ownership of schema and moves arrays if possible. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray">
-<span id="_CPPv3N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"></span><span id="nanoarrow::VectorArrayStream::VectorArrayStream__ArrowSchemaP.ArrowArrayP"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1af428b4ae37a39df9c6151c82302af99d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray" title="Link to this definition">#</a><br /></dt>
-<dd><p>Create a one-shot <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> + <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>. </p>
-<p>Takes ownership of schema and array. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream">
-<span id="_CPPv3N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"></span><span id="nanoarrow::VectorArrayStream::ToArrayStream__ArrowArrayStreamP"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1a3636ab1f8e1f5e0ccc163c2e90a523bd"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ToArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
-<dd><p>Export to <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
-</dd></dl>
-
-</div>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-static-functions">Public Static Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray">
-<span id="_CPPv3N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray"></span><span id="nanoarrow::VectorArrayStream::MakeUnique__ArrowSchemaP.ArrowArrayP"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1ada8ae27d26108887f3ca63bf1db7c87a"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv417UniqueArrayStream" title="UniqueArrayStream"><span class="n"><span class="pre">UniqueArrayStream</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MakeUnique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray" title="Link to this definition">#</a><br /></dt>
-<dd><p>Create a UniqueArrowArrayStream from an existing array. </p>
-<p>DEPRECATED (0.4.0): Use the constructors + <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream_1a3636ab1f8e1f5e0ccc163c2e90a523bd"><span class="std std-ref">ToArrayStream()</span></a> to export a <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> to an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE">
-<span id="_CPPv3N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="_CPPv2N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="nanoarrow::VectorArrayStream::MakeUnique__ArrowSchemaP.std::vector:UniqueArray:"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream_1a59fbc6edd7957bed81f5b82f791d8668"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv417UniqueArrayStream" title="UniqueArrayStream"><span class="n"><span class="pre">UniqueArrayStream</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MakeUnique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv411UniqueArray" title="UniqueArray"><span class="n"><span class="pre">UniqueArray</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">arrays</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE" title="Link to this definition">#</a><br /></dt>
-<dd><p>Create a UniqueArrowArrayStream from existing arrays. </p>
-<p>DEPRECATED (0.4.0): Use the constructor + <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream_1a3636ab1f8e1f5e0ccc163c2e90a523bd"><span class="std std-ref">ToArrayStream()</span></a> to export a <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> to an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer. </p>
-</dd></dl>
-
-</div>
 </dd></dl>
 
 </dd></dl>
@@ -709,28 +634,7 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <dd><div class="docutils container">
 <em>#include &lt;nanoarrow.hpp&gt;</em></div>
 <p>A range-for compatible wrapper for <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
-<p>Provides a sequence of <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>&amp; referencing the most recent array drawn from the wrapped stream. (Each array may be moved from if necessary.) When streams terminate due to an error, the error code and message are available for inspection through the <a class="reference internal" href="#classnanoarrow_1_1_view_array_stream_1a6213560a4f1d8386e3c88adcfbfab5ec"><span class="std std-ref">code()</span></a> and <a class="reference internal" href="#classnanoarrow_1_1_view_array_stream_1ac0838bdec9ed623e65c2729bcb31eb00"><span class="std std-ref">error()</span></a> member functions respectively. Failure to inspect the error code will result in an assertion failure. The number of arrays drawn from the stream is also available through the <a class="reference internal" href="#classnanoarrow_1_1_view_array_stream_1a94928519e599361c465b22b6cff9fd3a"><span class="std std-ref">count()</span></a> member function. </p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow15ViewArrayStream4codeEv">
-<span id="_CPPv3N9nanoarrow15ViewArrayStream4codeEv"></span><span id="_CPPv2N9nanoarrow15ViewArrayStream4codeEv"></span><span id="nanoarrow::ViewArrayStream::code"></span><span class="target" id="classnanoarrow_1_1_view_array_stream_1a6213560a4f1d8386e3c88adcfbfab5ec"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">code</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow15ViewArrayStream4codeEv" title="Link to this definition">#</a><br /></dt>
-<dd><p>The error code which caused this stream to terminate, if any. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow15ViewArrayStream5errorEv">
-<span id="_CPPv3N9nanoarrow15ViewArrayStream5errorEv"></span><span id="_CPPv2N9nanoarrow15ViewArrayStream5errorEv"></span><span id="nanoarrow::ViewArrayStream::error"></span><span class="target" id="classnanoarrow_1_1_view_array_stream_1ac0838bdec9ed623e65c2729bcb31eb00"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">error</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9nanoarrow15ViewArrayStream5errorEv" title="Link to this definition">#</a><br /></dt>
-<dd><p>The error message which caused this stream to terminate, if any. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK9nanoarrow15ViewArrayStream5countEv">
-<span id="_CPPv3NK9nanoarrow15ViewArrayStream5countEv"></span><span id="_CPPv2NK9nanoarrow15ViewArrayStream5countEv"></span><span id="nanoarrow::ViewArrayStream::countC"></span><span class="target" id="classnanoarrow_1_1_view_array_stream_1a94928519e599361c465b22b6cff9fd3a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">count</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK9nanoarrow15ViewArrayStream5countEv" title="Link to this definition">#</a><br /></dt>
-<dd><p>The number of arrays streamed so far. </p>
-</dd></dl>
-
-</div>
+<p>Provides a sequence of <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>&amp; referencing the most recent array drawn from the wrapped stream. (Each array may be moved from if necessary.) When streams terminate due to an error, the error code and message are available for inspection through the code() and error() member functions respectively. Failure to inspect the error code will result in an assertion failure. The number of arrays drawn from the stream is also available through the count() member function. </p>
 </dd></dl>
 
 </dd></dl>
@@ -798,24 +702,9 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#array-stream-utilities">Array Stream utilities</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory::InitArrayStream()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStreamE"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::EmptyArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::ToArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStream10MakeUniqueEP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::MakeUnique()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStreamE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::VectorArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::VectorArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::ToArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::MakeUnique()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStream10MakeUniqueEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::MakeUnique()</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStreamE"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStreamE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#buffer-utilities">Buffer utilities</a><ul class="visible nav section-nav flex-column">
@@ -828,12 +717,7 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN9nanoarrow11ViewArrayAsE"><code class="docutils literal notranslate"><span class="pre">ViewArrayAs</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I_iEN9nanoarrow16ViewArrayAsBytesE"><code class="docutils literal notranslate"><span class="pre">ViewArrayAsBytes</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow25ViewArrayAsFixedSizeBytesE"><code class="docutils literal notranslate"><span class="pre">ViewArrayAsFixedSizeBytes</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow15ViewArrayStreamE"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow15ViewArrayStream4codeEv"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream::code()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow15ViewArrayStream5errorEv"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream::error()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK9nanoarrow15ViewArrayStream5countEv"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream::count()</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow15ViewArrayStreamE"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream</span></code></a></li>
 </ul>
 </li>
 </ul>
