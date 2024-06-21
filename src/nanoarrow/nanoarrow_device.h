@@ -121,7 +121,8 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 
 #define ArrowDeviceCheckRuntime \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceCheckRuntime)
-#define ArrowDeviceArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayInit)
+#define ArrowDeviceArrayInitAsync \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayInitAsync)
 #define ArrowDeviceArrayViewInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDeviceArrayViewInit)
 #define ArrowDeviceArrayViewReset \

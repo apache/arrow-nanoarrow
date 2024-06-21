@@ -224,8 +224,49 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
                                                     struct ArrowDeviceArray* device_array,
                                                     struct ArrowArray* array,
                                                     void* sync_event, void* stream) {
+  struct ArrowDeviceCudaPrivate* private_data =
+      (struct ArrowDeviceCudaPrivate*)device->private_data;
+
+  NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(private_data->cu_context),
+                               "cuCtxPushCurrent", NULL);
+  CUcontext unused;  // needed for cuCtxPopCurrent()
+
+  CUevent* cu_event = (CUevent*)sync_event;
+
+  // If the stream was passed, we must have an event to work with
+  CUevent cu_event_tmp = NULL;
+  CUresult err;
+
+  if (stream != NULL && cu_event == NULL) {
+    // TODO: Should this use the disable timing flag as well?
+    err = cuEventCreate(&cu_event_tmp, CU_EVENT_DEFAULT);
+    if (err != CUDA_SUCCESS) {
+      NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
+      NANOARROW_CUDA_RETURN_NOT_OK(err, "cuEventCreate", NULL);
+    }
+
+    cu_event = &cu_event_tmp;
+  }
+
+  if (stream != NULL) {
+    err = cuEventRecord(*cu_event, *((CUstream*)stream));
+    if (err != CUDA_SUCCESS) {
+      NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
+      if (cu_event_tmp != NULL) {
+        NANOARROW_CUDA_ASSERT_OK(cuEventDestroy(cu_event_tmp));
+      }
+
+      NANOARROW_CUDA_RETURN_NOT_OK(err, "cuEventCreate", NULL);
+    }
+  }
+
   int result = ArrowDeviceCudaArrayInitInternal(device, device_array, array, sync_event);
+  NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
   if (result != NANOARROW_OK) {
+    if (cu_event_tmp != NULL) {
+      NANOARROW_CUDA_ASSERT_OK(cuEventDestroy(cu_event_tmp));
+    }
+
     return result;
   }
 
