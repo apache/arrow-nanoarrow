@@ -260,7 +260,7 @@ if(NANOARROW_DEVICE)
     find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
     message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
 
-    set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/nanoarrow_device_metal.cc)
+    set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/device/metal.cc)
     set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
     set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
                                     ${QUARTZ_CORE_LIBRARY})
@@ -269,14 +269,14 @@ if(NANOARROW_DEVICE)
 
   if(NANOARROW_DEVICE_WITH_CUDA)
     find_package(CUDAToolkit REQUIRED)
-    set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
+    set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/device/cuda.c)
     set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cuda_driver)
     set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
   endif()
 
   # If the bundler didn't already assign the source files for the library, do so here
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/nanoarrow_device.c)
+    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/device/device.c)
   endif()
 
   add_library(nanoarrow_device
@@ -457,8 +457,8 @@ if(NANOARROW_BUILD_TESTS)
 
   if(NANOARROW_DEVICE)
     enable_testing()
-    add_executable(nanoarrow_device_test src/nanoarrow/nanoarrow_device_test.cc)
-    add_executable(nanoarrow_device_hpp_test src/nanoarrow/nanoarrow_device_hpp_test.cc)
+    add_executable(nanoarrow_device_test src/nanoarrow/device/device_test.cc)
+    add_executable(nanoarrow_device_hpp_test src/nanoarrow/device/device_hpp_test.cc)
 
     if(NANOARROW_DEVICE_CODE_COVERAGE)
       target_compile_options(device_coverage_config INTERFACE -O0 -g --coverage)
@@ -483,7 +483,7 @@ if(NANOARROW_BUILD_TESTS)
 
     if(NANOARROW_DEVICE_WITH_METAL)
       add_executable(nanoarrow_device_metal_test
-                     src/nanoarrow/nanoarrow_device_metal_test.cc)
+                     src/nanoarrow/device/metal_test.cc)
       target_link_libraries(nanoarrow_device_metal_test
                             nanoarrow_device
                             nanoarrow
@@ -494,7 +494,7 @@ if(NANOARROW_BUILD_TESTS)
 
     if(NANOARROW_DEVICE_WITH_CUDA)
       add_executable(nanoarrow_device_cuda_test
-                     src/nanoarrow/nanoarrow_device_cuda_test.cc)
+                     src/nanoarrow/device/cuda_test.cc)
       target_link_libraries(nanoarrow_device_cuda_test
                             nanoarrow_device
                             nanoarrow
