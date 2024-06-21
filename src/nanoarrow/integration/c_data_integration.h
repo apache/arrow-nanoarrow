@@ -20,21 +20,19 @@
 
 #include <stdint.h>
 
-#if defined _WIN32 || defined __CYGWIN__
-#define NANOARROW_DLL_IMPORT __declspec(dllimport)
-#define NANOARROW_DLL_EXPORT __declspec(dllexport)
-#define NANOARROW_DLL_LOCAL
+#if (defined _WIN32 || defined __CYGWIN__) && defined(NANOARROW_BUILD_DLL)
+#if defined(NANOARROW_EXPORT_DLL)
+#define NANOARROW_DLL __declspec(dllexport)
+#else
+#define NANOARROW_DLL __declspec(dllimport)
+#endif  // (defined _WIN32 || defined __CYGWIN__) && defined(NANOARROW_BUILD_DLL)
 #else
 #if __GNUC__ >= 4
-#define NANOARROW_DLL_IMPORT __attribute__((visibility("default")))
-#define NANOARROW_DLL_EXPORT __attribute__((visibility("default")))
-#define NANOARROW_DLL_LOCAL __attribute__((visibility("hidden")))
+#define NANOARROW_DLL __attribute__((visibility("default")))
 #else
-#define NANOARROW_DLL_IMPORT
-#define NANOARROW_DLL_EXPORT
-#define NANOARROW_DLL_LOCAL
-#endif
-#endif
+#define NANOARROW_DLL
+#endif  // __GNUC__ >= 4
+#endif  // defined _WIN32 || defined __CYGWIN__
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,19 +84,19 @@ struct ArrowArray {
 #endif  // ARROW_C_DATA_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
-NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(
+NANOARROW_DLL const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(
     const char* json_path, struct ArrowSchema* out);
 
-NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(
+NANOARROW_DLL const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(
     const char* json_path, struct ArrowSchema* schema);
 
-NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportBatchFromJson(
+NANOARROW_DLL const char* nanoarrow_CDataIntegration_ExportBatchFromJson(
     const char* json_path, int num_batch, struct ArrowArray* out);
 
-NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(
+NANOARROW_DLL const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(
     const char* json_path, int num_batch, struct ArrowArray* batch);
 
-NANOARROW_DLL_EXPORT int64_t nanoarrow_BytesAllocated(void);
+NANOARROW_DLL int64_t nanoarrow_BytesAllocated(void);
 
 #ifdef __cplusplus
 }

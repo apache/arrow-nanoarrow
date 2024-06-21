@@ -33,6 +33,13 @@ if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_
   add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
 endif
 
+nanoarrow_dep_args = []
+if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
+  add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'c')
+  add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'cpp')
+  nanoarrow_dep_args += ['-DNANOARROW_BUILD_DLL']
+endif
+
 subdir('src/nanoarrow')
 incdir = include_directories('src/')
 
@@ -47,7 +54,8 @@ nanoarrow_lib = library(
 )
 
 nanoarrow_dep = declare_dependency(include_directories: [incdir],
-                                   link_with: nanoarrow_lib)
+                                   link_with: nanoarrow_lib,
+                                   compile_args: nanoarrow_dep_args)
 
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
@@ -192,8 +200,7 @@ if get_option('tests')
           exc = executable(
               name + '-test',
               'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
-              dependencies: config['deps']
-          )
+              dependencies: config['deps'])
           test(name, exc, timeout: config['timeout'])
       endforeach
   endif
@@ -205,8 +212,7 @@ if get_option('tests')
           device_test.replace('_', '-') + '-test',
           'src/nanoarrow/' + device_test + '_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep],
-      )
+          dependencies: [nanoarrow_dep, gtest_dep])
       test(device_test.replace('_', '-'), exc)
     endforeach
 
@@ -215,8 +221,7 @@ if get_option('tests')
           'nanoarrow-device-metal-test',
           'src/nanoarrow/nanoarrow_device_metal_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep],
-      )
+          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep])
       test('nanoarrow-device-metal', exc)
     endif
   endif
