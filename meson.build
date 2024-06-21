@@ -45,10 +45,10 @@ incdir = include_directories('src/')
 
 nanoarrow_lib = library(
     'nanoarrow',
-    'src/nanoarrow/array.c',
-    'src/nanoarrow/schema.c',
-    'src/nanoarrow/array_stream.c',
-    'src/nanoarrow/utils.c',
+    'src/nanoarrow/common/array.c',
+    'src/nanoarrow/common/schema.c',
+    'src/nanoarrow/common/array_stream.c',
+    'src/nanoarrow/common/utils.c',
     include_directories: [incdir],
     install: true,
 )
@@ -148,7 +148,7 @@ if get_option('tests')
   foreach name, config : nanoarrow_tests
     exc = executable(
         name + '-test',
-        sources: 'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
+        sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
         link_with: nanoarrow_lib,
         include_directories: incdir,
         dependencies: config['deps'],

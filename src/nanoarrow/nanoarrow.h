@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "nanoarrow/inline_types.h"
+#include "nanoarrow/common/inline_types.h"
 
 // If using CMake, optionally pass -DNANOARROW_NAMESPACE=MyNamespace which will set this
 // define in nanoarrow_config.h. If not, you can optionally #define NANOARROW_NAMESPACE
@@ -1170,8 +1170,8 @@ ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* arra
 #endif
 
 // Inline function definitions
-#include "nanoarrow/inline_array.h"
-#include "nanoarrow/inline_buffer.h"
+#include "nanoarrow/common/inline_array.h"
+#include "nanoarrow/common/inline_buffer.h"
 
 #ifdef __cplusplus
 }

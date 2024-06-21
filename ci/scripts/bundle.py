@@ -115,14 +115,14 @@ def bundle_nanoarrow(
     nanoarrow_h = concatenate_content(
         [
             nanoarrow_config_h,
-            src_dir / "inline_types.h",
+            src_dir / "common" / "inline_types.h",
             src_dir / "nanoarrow.h",
-            src_dir / "inline_buffer.h",
-            src_dir / "inline_array.h",
+            src_dir / "common" / "inline_buffer.h",
+            src_dir / "common" / "inline_array.h",
         ]
     )
 
-    nanoarrow_h = re.sub(r'#include "(nanoarrow/)?[a-z_.]+"', "", nanoarrow_h)
+    nanoarrow_h = re.sub(r'#include "(nanoarrow/)?[a-z_./]+"', "", nanoarrow_h)
     yield f"{output_include_dir}/nanoarrow.h", nanoarrow_h
 
     # Generate files that don't need special handling
@@ -138,10 +138,10 @@ def bundle_nanoarrow(
     # Generate nanoarrow/nanoarrow.c
     nanoarrow_c = concatenate_content(
         [
-            src_dir / "utils.c",
-            src_dir / "schema.c",
-            src_dir / "array.c",
-            src_dir / "array_stream.c",
+            src_dir / "common" / "utils.c",
+            src_dir / "common" / "schema.c",
+            src_dir / "common" / "array.c",
+            src_dir / "common" / "array_stream.c",
         ]
     )
     nanoarrow_c = namespace_nanoarrow_includes(nanoarrow_c, header_namespace)

@@ -122,13 +122,14 @@ set(NANOARROW_INSTALL_HEADERS ${NANOARROW_BUILD_INCLUDE_DIR}/nanoarrow/nanoarrow
 
 # If the bundler didn't already assign the source files for the library, do so here
 if(NOT NANOARROW_BUNDLE)
-  set(NANOARROW_BUILD_SOURCES src/nanoarrow/array.c src/nanoarrow/schema.c
-                              src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
+  set(NANOARROW_BUILD_SOURCES
+      src/nanoarrow/common/array.c src/nanoarrow/common/schema.c
+      src/nanoarrow/common/array_stream.c src/nanoarrow/common/utils.c)
   list(APPEND
        NANOARROW_INSTALL_HEADERS
-       src/nanoarrow/array_inline.h
-       src/nanoarrow/buffer_inline.h
-       src/nanoarrow/nanoarrow_types.h
+       src/nanoarrow/common/inline_array.h
+       src/nanoarrow/common/inline_buffer.h
+       src/nanoarrow/common/inline_types.h
        "${CMAKE_CURRENT_BINARY_DIR}/src/nanoarrow/nanoarrow_config.h")
 endif()
 
@@ -343,12 +344,12 @@ if(NANOARROW_BUILD_TESTS)
   add_subdirectory("thirdparty/googletest")
 
   # Be sure to keep these tests in sync with src/nanoarrow/meson.build
-  add_executable(utils_test src/nanoarrow/utils_test.cc)
-  add_executable(buffer_test src/nanoarrow/buffer_test.cc)
-  add_executable(array_test src/nanoarrow/array_test.cc)
-  add_executable(schema_test src/nanoarrow/schema_test.cc)
-  add_executable(array_stream_test src/nanoarrow/array_stream_test.cc)
-  add_executable(nanoarrow_hpp_test src/nanoarrow/nanoarrow_hpp_test.cc)
+  add_executable(utils_test src/nanoarrow/common/utils_test.cc)
+  add_executable(buffer_test src/nanoarrow/common/buffer_test.cc)
+  add_executable(array_test src/nanoarrow/common/array_test.cc)
+  add_executable(schema_test src/nanoarrow/common/schema_test.cc)
+  add_executable(array_stream_test src/nanoarrow/common/array_stream_test.cc)
+  add_executable(nanoarrow_hpp_test src/nanoarrow/common/nanoarrow_hpp_test.cc)
   add_executable(nanoarrow_testing_test src/nanoarrow/testing/testing_test.cc)
   add_executable(c_data_integration_test
                  src/nanoarrow/integration/c_data_integration_test.cc)
