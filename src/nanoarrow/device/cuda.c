@@ -187,7 +187,7 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
 
 static ArrowErrorCode ArrowDeviceCudaArrayInitInternal(
     struct ArrowDevice* device, struct ArrowDeviceArray* device_array,
-    struct ArrowArray* array, void* sync_event) {
+    struct ArrowArray* array, CUevent* cu_event) {
   struct ArrowDeviceCudaPrivate* device_private =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
   // One can create an event with cuEventCreate(&cu_event, CU_EVENT_DEFAULT);
@@ -209,8 +209,8 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitInternal(
   device_array->device_id = device->device_id;
   device_array->device_type = device->device_type;
 
-  if (sync_event != NULL) {
-    private_data->cu_event = *((CUevent*)sync_event);
+  if (cu_event != NULL) {
+    private_data->cu_event = *cu_event;
     device_array->sync_event = &private_data->cu_event;
   } else {
     private_data->cu_event = NULL;
@@ -260,7 +260,7 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
     }
   }
 
-  int result = ArrowDeviceCudaArrayInitInternal(device, device_array, array, sync_event);
+  int result = ArrowDeviceCudaArrayInitInternal(device, device_array, array, cu_event);
   NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
   if (result != NANOARROW_OK) {
     if (cu_event_tmp != NULL) {
@@ -430,22 +430,33 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
     return ENOTSUP;
   }
 
+  // Sync functions require a context to be set
+  struct ArrowDeviceCudaPrivate* private_data =
+      (struct ArrowDeviceCudaPrivate*)device->private_data;
+
+  NANOARROW_CUDA_RETURN_NOT_OK(cuCtxPushCurrent(private_data->cu_context),
+                               "cuCtxPushCurrent", NULL);
+  CUcontext unused;  // needed for cuCtxPopCurrent()
+
   // Memory for cuda_event is owned by the ArrowArray member of the ArrowDeviceArray
   CUevent* cu_event = (CUevent*)sync_event;
   CUstream* cu_stream = (CUstream*)stream;
+  CUresult err;
+  const char* op = "";
 
   if (cu_stream == NULL && cu_event != NULL) {
-    NANOARROW_CUDA_RETURN_NOT_OK(cuEventSynchronize(*cu_event), "cuEventSynchronize",
-                                 error);
+    err = cuEventSynchronize(*cu_event);
+    op = "cuEventSynchronize";
   } else if (cu_stream != NULL && cu_event == NULL) {
-    NANOARROW_CUDA_RETURN_NOT_OK(cuStreamSynchronize(*cu_stream), "cuEventSynchronize",
-                                 error);
+    err = cuStreamSynchronize(*cu_stream);
+    op = "cuStreamSynchronize";
   } else if (cu_stream != NULL && cu_event != NULL) {
-    NANOARROW_CUDA_RETURN_NOT_OK(
-        cuStreamWaitEvent(*cu_stream, *cu_event, CU_EVENT_WAIT_DEFAULT),
-        "cuStreamWaitEvent", error);
+    err = cuStreamWaitEvent(*cu_stream, *cu_event, CU_EVENT_WAIT_DEFAULT);
+    op = "cuStreamWaitEvent";
   }
 
+  NANOARROW_ASSERT_OK(cuCtxPopCurrent(&unused));
+  NANOARROW_CUDA_RETURN_NOT_OK(err, op, error);
   return NANOARROW_OK;
 }
 

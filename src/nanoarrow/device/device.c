@@ -163,10 +163,12 @@ ArrowErrorCode ArrowDeviceArrayInitAsync(struct ArrowDevice* device,
     return device->array_init(device, device_array, array, sync_event, stream);
   }
 
-  // Handling a sync event or stream is not supported in the default constructor
-  if (sync_event != NULL || stream != NULL) {
-    return EINVAL;
-  }
+  // TODO: Right now we have to let these events through and ignore them
+  // because we don't have a good way to separate the source and destination
+  // streams.
+  // if (sync_event != NULL || stream != NULL) {
+  //   return EINVAL;
+  // }
 
   ArrowDeviceArrayInitDefault(device, device_array, array);
   return NANOARROW_OK;
@@ -562,7 +564,7 @@ ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
     return result;
   }
 
-  result = ArrowDeviceArrayInit(device_dst, dst, &tmp, NULL);
+  result = ArrowDeviceArrayInitAsync(device_dst, dst, &tmp, NULL, stream);
   if (result != NANOARROW_OK) {
     ArrowArrayRelease(&tmp);
     return result;
