@@ -197,6 +197,8 @@ std::tuple<ArrowDeviceType, enum ArrowType, bool> TestParams(ArrowDeviceType dev
 }
 
 TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowDevice* gpu = ArrowDeviceCuda(std::get<0>(GetParam()), 0);
   struct ArrowArray array;
