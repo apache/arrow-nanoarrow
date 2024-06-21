@@ -114,7 +114,7 @@ jobs:
 
       - name: Meson example
         run: |
-          python3 -m pip install meson ninja-build
+          python3 -m pip install meson ninja
           cd examples/meson-minimal
           meson setup builddir
           meson compile -C builddir
