@@ -115,7 +115,7 @@ enum ArrowIpcCompressionType {
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
 /// \brief A structure representing a reference-counted buffer that may be passed to
 /// ArrowIpcDecoderDecodeArrayFromShared().
@@ -127,7 +127,7 @@ struct ArrowIpcSharedBuffer {
 ///
 /// If NANOARROW_OK is returned, the ArrowIpcSharedBuffer takes ownership of
 /// src.
-NANOARROW_EXPORT ArrowErrorCode
+NANOARROW_DLL_EXPORT ArrowErrorCode
 ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared, struct ArrowBuffer* src);
 
 /// \brief Release the caller's copy of the shared buffer
@@ -135,14 +135,14 @@ ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared, struct ArrowBuffer
 /// When finished, the caller must relinquish its own copy of the shared data
 /// using this function. The original buffer will continue to exist until all
 /// ArrowArray objects that refer to it have also been released.
-NANOARROW_EXPORT void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
+NANOARROW_DLL_EXPORT void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
 
 /// \brief Check for shared buffer thread safety
 ///
 /// Thread-safe shared buffers require C11 and the stdatomic.h header.
 /// If either are unavailable, shared buffers are still possible but
 /// the resulting arrays must not be passed to other threads to be released.
-NANOARROW_EXPORT int ArrowIpcSharedBufferIsThreadSafe(void);
+NANOARROW_DLL_EXPORT int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief Decoder for Arrow IPC messages
 ///
@@ -183,10 +183,10 @@ struct ArrowIpcDecoder {
 };
 
 /// \brief Initialize a decoder
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
 
 /// \brief Release all resources attached to a decoder
-NANOARROW_EXPORT void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
+NANOARROW_DLL_EXPORT void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
 /// \brief Peek at a message header
 ///
@@ -195,9 +195,9 @@ NANOARROW_EXPORT void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 /// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
 /// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
 /// Arrow end-of-stream indicator has been reached, or NANOARROW_OK otherwise.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
-                                                          struct ArrowBufferView data,
-                                                          struct ArrowError* error);
+NANOARROW_DLL_EXPORT ArrowErrorCode
+ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder, struct ArrowBufferView data,
+                          struct ArrowError* error);
 
 /// \brief Verify a message header
 ///
@@ -209,7 +209,7 @@ NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder
 ///
 /// Returns as ArrowIpcDecoderPeekHeader() and additionally will
 /// return EINVAL if flatbuffer verification fails.
-NANOARROW_EXPORT ArrowErrorCode
+NANOARROW_DLL_EXPORT ArrowErrorCode
 ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder, struct ArrowBufferView data,
                             struct ArrowError* error);
 
@@ -228,7 +228,7 @@ ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder, struct ArrowBufferV
 ///
 /// Returns EINVAL if the content of the message cannot be decoded or ENOTSUP if the
 /// content of the message uses features not supported by this library.
-NANOARROW_EXPORT ArrowErrorCode
+NANOARROW_DLL_EXPORT ArrowErrorCode
 ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder, struct ArrowBufferView data,
                             struct ArrowError* error);
 
@@ -239,7 +239,7 @@ ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder, struct ArrowBufferV
 ///
 /// Returns EINVAL if the decoder did not just decode a schema message or
 /// NANOARROW_OK otherwise.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeSchema(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeSchema(
     struct ArrowIpcDecoder* decoder, struct ArrowSchema* out, struct ArrowError* error);
 
 /// \brief Set the ArrowSchema used to decode future record batch messages
@@ -251,9 +251,9 @@ NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeSchema(
 /// schema message applies to future record batch messages).
 ///
 /// Returns EINVAL if schema validation fails or NANOARROW_OK otherwise.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
-                                                         struct ArrowSchema* schema,
-                                                         struct ArrowError* error);
+NANOARROW_DLL_EXPORT ArrowErrorCode
+ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder, struct ArrowSchema* schema,
+                         struct ArrowError* error);
 
 /// \brief Set the endianness used to decode future record batch messages
 ///
@@ -263,7 +263,7 @@ NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder*
 /// schema message applies to future record batch messages).
 ///
 /// Returns NANOARROW_OK on success.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderSetEndianness(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcDecoderSetEndianness(
     struct ArrowIpcDecoder* decoder, enum ArrowIpcEndianness endianness);
 
 /// \brief Decode an ArrowArrayView
@@ -278,7 +278,7 @@ NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderSetEndianness(
 /// will not perform any heap allocations; however, the buffers referred to by the
 /// returned ArrowArrayView are only valid as long as the buffer referred to by body stays
 /// valid.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArrayView(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArrayView(
     struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
     struct ArrowArrayView** out, struct ArrowError* error);
 
@@ -293,7 +293,7 @@ NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArrayView(
 /// Returns EINVAL if the decoder did not just decode a record batch message, ENOTSUP
 /// if the message uses features not supported by this library, or or NANOARROW_OK
 /// otherwise.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArray(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArray(
     struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
@@ -305,7 +305,7 @@ NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArray(
 /// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
 /// ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released by another
 /// thread.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
@@ -332,11 +332,11 @@ struct ArrowIpcInputStream {
 };
 
 /// \brief Transfer ownership of an ArrowIpcInputStream
-NANOARROW_EXPORT void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
-                                              struct ArrowIpcInputStream* dst);
+NANOARROW_DLL_EXPORT void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
+                                                  struct ArrowIpcInputStream* dst);
 
 /// \brief Create an input stream from an ArrowBuffer
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcInputStreamInitBuffer(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcInputStreamInitBuffer(
     struct ArrowIpcInputStream* stream, struct ArrowBuffer* input);
 
 /// \brief Create an input stream from a C FILE* pointer
@@ -344,7 +344,7 @@ NANOARROW_EXPORT ArrowErrorCode ArrowIpcInputStreamInitBuffer(
 /// Note that the ArrowIpcInputStream has no mechanism to communicate an error
 /// if file_ptr fails to close. If this behaviour is needed, pass false to
 /// close_on_release and handle closing the file independently from stream.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcInputStreamInitFile(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcInputStreamInitFile(
     struct ArrowIpcInputStream* stream, void* file_ptr, int close_on_release);
 
 /// \brief Options for ArrowIpcArrayStreamReaderInit()
@@ -372,7 +372,7 @@ struct ArrowIpcArrayStreamReaderOptions {
 /// format specification. Returns NANOARROW_OK on success. If NANOARROW_OK
 /// is returned, the ArrowArrayStream takes ownership of input_stream and
 /// the caller is responsible for releasing out.
-NANOARROW_EXPORT ArrowErrorCode ArrowIpcArrayStreamReaderInit(
+NANOARROW_DLL_EXPORT ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options);
 

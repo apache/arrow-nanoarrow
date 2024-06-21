@@ -53,28 +53,23 @@ configure_file(input: 'src/nanoarrow/nanoarrow_config.h.in',
                output: 'nanoarrow_config.h',
                configuration: conf_data)
 
-
+# Windows shared libraries are not exporting the right symbols
+# See https://github.com/mesonbuild/wrapdb/pull/1536#issuecomment-2136011408
+# and https://github.com/apache/arrow-nanoarrow/issues/495
 if host_machine.system() == 'windows'
-  libtype = get_option('default_library')
-  if libtype == 'shared'  # TODO: do we need to handle default_library=both?
-    if meson.is_subproject()
-      add_project_arguments('-DNANOARROW_CONSUME_DLL', language: 'c')
-      add_project_arguments('-DNANOARROW_CONSUME_DLL', language: 'cpp')
-    else
-      add_project_arguments('-DNANOARROW_BUILD_DLL', language: 'c')
-      add_project_arguments('-DNANOARROW_BUILD_DLL', language: 'cpp')
-    endif
-  endif
+    libtype = 'static_library'
+else
+    libtype = 'library'
 endif
 
-nanoarrow_lib = library(
+nanoarrow_lib = build_target(
     'nanoarrow',
     'src/nanoarrow/array.c',
     'src/nanoarrow/schema.c',
     'src/nanoarrow/array_stream.c',
     'src/nanoarrow/utils.c',
     install: true,
-    gnu_symbol_visibility: 'hidden',
+    target_type: libtype,
 )
 
 incdir = include_directories('src/')
@@ -85,13 +80,13 @@ nanoarrow_dep = declare_dependency(include_directories: [incdir],
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
 
-    nanoarrow_ipc_lib = library(
+    nanoarrow_ipc_lib = build_target(
         'nanoarrow_ipc',
         'src/nanoarrow/nanoarrow_ipc_decoder.c',
         'src/nanoarrow/nanoarrow_ipc_reader.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
-        gnu_symbol_visibility: 'hidden',
+        target_type: libtype,
     )
     nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
                                            link_with: nanoarrow_ipc_lib,
@@ -117,13 +112,13 @@ if needs_device
     error('CUDA support with the Meson build system is not implemented')
   endif
 
-  nanoarrow_device_lib = library(
+  nanoarrow_device_lib = build_target(
       'nanoarrow_device',
       sources: device_srcs,
       dependencies: device_deps,
       install: true,
+      target_type: libtype,
       cpp_args: device_defines,
-      gnu_symbol_visibility: 'hidden',
   )
 endif
 

@@ -71,19 +71,19 @@ struct ArrowArray {
 #endif  // ARROW_C_DATA_INTERFACE
 #endif  // ARROW_FLAG_DICTIONARY_ORDERED
 
-NANOARROW_EXPORT const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportSchemaFromJson(
     const char* json_path, struct ArrowSchema* out);
 
-NANOARROW_EXPORT const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportSchemaAndCompareToJson(
     const char* json_path, struct ArrowSchema* schema);
 
-NANOARROW_EXPORT const char* nanoarrow_CDataIntegration_ExportBatchFromJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ExportBatchFromJson(
     const char* json_path, int num_batch, struct ArrowArray* out);
 
-NANOARROW_EXPORT const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(
+NANOARROW_DLL_EXPORT const char* nanoarrow_CDataIntegration_ImportBatchAndCompareToJson(
     const char* json_path, int num_batch, struct ArrowArray* batch);
 
-NANOARROW_EXPORT int64_t nanoarrow_BytesAllocated(void);
+NANOARROW_DLL_EXPORT int64_t nanoarrow_BytesAllocated(void);
 
 #ifdef __cplusplus
 }
