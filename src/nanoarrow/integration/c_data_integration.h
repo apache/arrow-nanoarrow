@@ -25,14 +25,14 @@
 #define NANOARROW_DLL __declspec(dllexport)
 #else
 #define NANOARROW_DLL __declspec(dllimport)
-#endif  // (defined _WIN32 || defined __CYGWIN__) && defined(NANOARROW_BUILD_DLL)
-#else
+#endif  // defined(NANOARROW_EXPORT_DLL)
+#elif !defined(NANOARROW_BUILD_DLL)
 #if __GNUC__ >= 4
 #define NANOARROW_DLL __attribute__((visibility("default")))
 #else
 #define NANOARROW_DLL
 #endif  // __GNUC__ >= 4
-#endif  // defined _WIN32 || defined __CYGWIN__
+#endif
 
 #ifdef __cplusplus
 extern "C" {
