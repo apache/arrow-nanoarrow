@@ -90,8 +90,8 @@ namespace literals {
 ///
 /// @{
 
-/// \brief User literal operator allowing ArrowStringView construction like "str"_sv
-inline ArrowStringView operator"" _sv(const char* data, std::size_t size_bytes) {
+/// \brief User literal operator allowing ArrowStringView construction like "str"_asv
+inline ArrowStringView operator"" _asv(const char* data, std::size_t size_bytes) {
   return {data, static_cast<int64_t>(size_bytes)};
 }
 

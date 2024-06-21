@@ -231,8 +231,8 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, "abc"_sv), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, "defg"_sv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "abc"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "defg"_asv), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 

@@ -239,7 +239,7 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   EXPECT_EQ(reinterpret_cast<float*>(buffer.data)[0], 123);
   ArrowBufferReset(&buffer);
 
-  EXPECT_EQ(ArrowBufferAppendStringView(&buffer, "a"_sv), NANOARROW_OK);
+  EXPECT_EQ(ArrowBufferAppendStringView(&buffer, "a"_asv), NANOARROW_OK);
   EXPECT_EQ(reinterpret_cast<char*>(buffer.data)[0], 'a');
   EXPECT_EQ(buffer.size_bytes, 1);
   ArrowBufferReset(&buffer);

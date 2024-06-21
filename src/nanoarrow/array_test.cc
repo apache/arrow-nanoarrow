@@ -257,8 +257,8 @@ TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_sv), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, "5678"_sv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_asv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "5678"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, &error),
             NANOARROW_OK);
 
@@ -313,8 +313,8 @@ TEST(ArrayTest, ArrayTestValidateMinimalBufferAccess) {
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_sv), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, "5678"_sv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_asv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "5678"_asv), NANOARROW_OK);
 
   // Temporarily make it so that referencing the offsets buffer will crash
   // but make sure it has the correct size_bytes and passes minimal validation
@@ -396,7 +396,7 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   buffer_view.data.data = nullptr;
   buffer_view.size_bytes = 0;
   EXPECT_EQ(ArrowArrayAppendBytes(&array, buffer_view), EINVAL);
-  EXPECT_EQ(ArrowArrayAppendString(&array, ""_sv), EINVAL);
+  EXPECT_EQ(ArrowArrayAppendString(&array, ""_asv), EINVAL);
   ArrowArrayRelease(&array);
 }
 
@@ -524,9 +524,9 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes, (5 + 1) * sizeof(int32_t));
 
-  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_sv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, "56789"_sv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "56789"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
@@ -560,7 +560,7 @@ TEST(ArrayTest, ArrayTestAppendEmptyToString) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, ""_sv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, ""_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
   EXPECT_NE(array.buffers[2], nullptr);
   ArrowArrayRelease(&array);
@@ -860,9 +860,9 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes, (5 + 1) * sizeof(int64_t));
 
-  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_sv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(&array, "56789"_sv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "56789"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
@@ -880,7 +880,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
 
   EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
-              ElementsAre("1234"_sv, NA, NA, "56789"_sv, ""_sv));
+              ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
   ArrowArrayRelease(&array);
 }
 
@@ -916,7 +916,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   EXPECT_EQ(memcmp(data_buffer, expected_data, 25), 0);
 
   EXPECT_THAT(nanoarrow::ViewArrayAsFixedSizeBytes(&array, 5),
-              ElementsAre("12345"_sv, NA, NA, "67890"_sv, "\0\0\0\0\0"_sv));
+              ElementsAre("12345"_asv, NA, NA, "67890"_asv, "\0\0\0\0\0"_asv));
   ArrowArrayRelease(&array);
   ArrowSchemaRelease(&schema);
 }
@@ -1266,7 +1266,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
 
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0]->children[0], 123), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.children[0]->children[1], "foobar"_sv),
+  ASSERT_EQ(ArrowArrayAppendString(array.children[0]->children[1], "foobar"_asv),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(array.children[0]), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
@@ -1653,7 +1653,7 @@ TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_sv),
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_asv),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
@@ -1699,7 +1699,7 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_sv),
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_asv),
             NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
@@ -2345,8 +2345,8 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, "abc"_sv), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, "def"_sv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, "abc"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, "def"_asv), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(&array, 0), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
@@ -2361,8 +2361,8 @@ TEST(ArrayTest, ArrayViewTestDictionary) {
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewGetIntUnsafe(&array_view, 1), 1);
 
-  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(array_view.dictionary, 0), "abc"_sv);
-  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(array_view.dictionary, 1), "def"_sv);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(array_view.dictionary, 0), "abc"_asv);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(array_view.dictionary, 1), "def"_asv);
 
   ArrowArrayRelease(&array);
 
@@ -2402,7 +2402,7 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_sv),
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
@@ -2510,7 +2510,7 @@ TEST(ArrayTest, ArrayViewTestDenseUnionGet) {
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_sv),
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
@@ -2556,7 +2556,7 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 0), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_sv),
+  ASSERT_EQ(ArrowArrayAppendString(array.children[1], "one twenty four"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
