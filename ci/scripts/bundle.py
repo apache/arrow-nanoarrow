@@ -115,10 +115,10 @@ def bundle_nanoarrow(
     nanoarrow_h = concatenate_content(
         [
             nanoarrow_config_h,
-            src_dir / "nanoarrow_types.h",
+            src_dir / "inline_types.h",
             src_dir / "nanoarrow.h",
-            src_dir / "buffer_inline.h",
-            src_dir / "array_inline.h",
+            src_dir / "inline_buffer.h",
+            src_dir / "inline_array.h",
         ]
     )
 
