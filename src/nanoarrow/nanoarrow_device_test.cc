@@ -19,7 +19,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nanoarrow/nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device.hpp"
 
 TEST(NanoarrowDevice, CheckRuntime) {
   EXPECT_EQ(ArrowDeviceCheckRuntime(nullptr), NANOARROW_OK);
@@ -68,6 +68,8 @@ class StringTypeParameterizedTestFixture
 };
 
 TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowArray array;
   struct ArrowDeviceArray device_array;
@@ -76,8 +78,8 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCpuArrayViewString) {
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("abc")), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("defg")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "abc"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "defg"_asv), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
