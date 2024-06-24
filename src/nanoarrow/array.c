@@ -764,8 +764,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   // is always data dependent for all current Arrow types.
   for (int i = 0; i < 2; i++) {
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
-    // Initialize with a value that will cause an error if accidentally used uninitialized
-    int64_t min_buffer_size_bytes = array_view->buffer_views[i].size_bytes + 1;
+    int64_t min_buffer_size_bytes;
 
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_VALIDITY:
