@@ -57,7 +57,7 @@ jobs:
           - {os: ubuntu-latest, label: ubuntu}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: src
           fetch-depth: 0
@@ -153,7 +153,7 @@ jobs:
           - {platform: "alpine", arch: "s390x", compose_args: "-e TEST_C_BUNDLED=0"}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: src
           fetch-depth: 0

@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Build documentation
         run: |
@@ -54,7 +54,7 @@ jobs:
 
       - name: Clone asf-site branch
         if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           ref: asf-site
           path: pages-clone
