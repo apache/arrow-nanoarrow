@@ -494,7 +494,9 @@ struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_
 #endif
 
 #if !defined(NANOARROW_DEVICE_WITH_METAL)
-struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void) { return NULL; }
+struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void) {
+  return NULL;
+}
 
 ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
                                                  struct ArrowError* error) {
