@@ -78,7 +78,10 @@ jobs:
         with:
           path: arrow
           # Bump the number at the end of this line to force a new Arrow C++ build
-          key: arrow-${{ runner.os }}-${{ runner.arch }}-1
+          # The self-hosted runner needs its own Arrow build since it is running
+          # a much older linux distribution. When the Arrow C++ requirement for tests is
+          # dropped, we don't have to use this at all as part of the CI configuration.
+          key: arrow-device-${{ runner.os }}-${{ runner.arch }}-${{ matrix.config.label }}-1
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
