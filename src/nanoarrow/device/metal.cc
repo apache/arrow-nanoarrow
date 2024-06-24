@@ -25,7 +25,6 @@
 #include <Metal/Metal.hpp>
 
 #include "nanoarrow/nanoarrow_device.hpp"
-#include "nanoarrow/nanoarrow_device_metal.h"
 
 // If non-null, caller must ->release() the return value. This doesn't
 // release the underlying memory (which must be managed separately).
@@ -107,13 +106,15 @@ static void ArrowDeviceMetalAllocatorFree(struct ArrowBufferAllocator* allocator
   free(ptr);
 }
 
-void ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer) {
+ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer) {
   buffer->allocator.reallocate = &ArrowDeviceMetalAllocatorReallocate;
   buffer->allocator.free = &ArrowDeviceMetalAllocatorFree;
   buffer->allocator.private_data = nullptr;
   buffer->data = nullptr;
   buffer->size_bytes = 0;
   buffer->capacity_bytes = 0;
+
+  return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array) {
@@ -122,7 +123,7 @@ ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array) {
 
   for (int64_t i = 0; i < array->n_buffers; i++) {
     buffer = ArrowArrayBuffer(array, i);
-    ArrowDeviceMetalInitBuffer(&new_buffer);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitBuffer(&new_buffer));
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferAppend(&new_buffer, buffer->data, buffer->size_bytes));
     ArrowBufferReset(buffer);
@@ -186,7 +187,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
     struct ArrowBuffer tmp;
-    ArrowDeviceMetalInitBuffer(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitBuffer(&tmp));
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.data.as_uint8, src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
@@ -194,7 +195,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_METAL) {
     struct ArrowBuffer tmp;
-    ArrowDeviceMetalInitBuffer(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitBuffer(&tmp));
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.data.as_uint8, src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
@@ -202,7 +203,7 @@ static ArrowErrorCode ArrowDeviceMetalBufferInit(struct ArrowDevice* device_src,
   } else if (device_src->device_type == ARROW_DEVICE_METAL &&
              device_dst->device_type == ARROW_DEVICE_CPU) {
     struct ArrowBuffer tmp;
-    ArrowDeviceMetalInitBuffer(&tmp);
+    NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitBuffer(&tmp));
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&tmp, src.data.as_uint8, src.size_bytes));
     ArrowBufferMove(&tmp, dst);
     return NANOARROW_OK;
@@ -303,8 +304,8 @@ static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
 
   // auto event = reinterpret_cast<MTL::SharedEvent*>(sync_event);
   // event->notifyListener(
-  //   listener, event->signaledValue(), ^(MTL::SharedEvent* pEvent, uint64_t value) {
-  //     pEvent->signaledValue = value + 1;
+  //   listener, event->signaledValue(), ^(MTL::SharedEvent* event, uint64_t value) {
+  //     event->signaledValue = value + 1;
   //   });
 
   // listener->release();

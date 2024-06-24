@@ -22,7 +22,6 @@
 #include <Metal/Metal.hpp>
 
 #include "nanoarrow/nanoarrow_device.hpp"
-#include "nanoarrow/nanoarrow_device_metal.h"
 
 TEST(NanoarrowDeviceMetal, DefaultDevice) {
   nanoarrow::device::UniqueDevice device;
@@ -41,7 +40,7 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
   struct ArrowBuffer buffer_aligned;
-  ArrowDeviceMetalInitBuffer(&buffer_aligned);
+  ASSERT_EQ(ArrowDeviceMetalInitBuffer(&buffer_aligned), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppend(&buffer_aligned, data, sizeof(data)), NANOARROW_OK);
   struct ArrowBufferView gpu_view = {buffer_aligned.data, sizeof(data)};
 
@@ -162,7 +161,7 @@ TEST(NanoarrowDeviceMetal, DeviceAlignedBuffer) {
   int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8};
   struct ArrowBufferView view = {data, sizeof(data)};
 
-  ArrowDeviceMetalInitBuffer(&buffer);
+  ASSERT_EQ(ArrowDeviceMetalInitBuffer(&buffer), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendBufferView(&buffer, view), NANOARROW_OK);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   EXPECT_EQ(buffer.capacity_bytes, 64);
@@ -185,7 +184,7 @@ TEST(NanoarrowDeviceMetal, DeviceAlignedBuffer) {
 
   // When we reallocate to an invalid size, we get null
   ArrowBufferReset(&buffer);
-  ArrowDeviceMetalInitBuffer(&buffer);
+  ASSERT_EQ(ArrowDeviceMetalInitBuffer(&buffer), NANOARROW_OK);
   EXPECT_EQ(ArrowBufferReserve(&buffer, std::numeric_limits<intptr_t>::max()), ENOMEM);
   EXPECT_EQ(buffer.data, nullptr);
   EXPECT_EQ(buffer.allocator.private_data, nullptr);

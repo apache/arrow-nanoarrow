@@ -115,20 +115,22 @@ else()
   set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 endif()
 
-# Start the list of targets and headers to install
-set(NANOARROW_INSTALL_TARGETS nanoarrow)
+# Start the list of headers to install
 set(NANOARROW_INSTALL_HEADERS ${NANOARROW_BUILD_INCLUDE_DIR}/nanoarrow/nanoarrow.h
                               ${NANOARROW_BUILD_INCLUDE_DIR}/nanoarrow/nanoarrow.hpp)
 
-# If the bundler didn't already assign the source files for the library, do so here
+# If the bundler didn't already assign the source files for the library, do so here.
+# Also handle install() arguments that are different between the bundled and not
+# bundled version.
 if(NOT NANOARROW_BUNDLE)
-  set(NANOARROW_BUILD_SOURCES src/nanoarrow/array.c src/nanoarrow/schema.c
-                              src/nanoarrow/array_stream.c src/nanoarrow/utils.c)
-  list(APPEND
-       NANOARROW_INSTALL_HEADERS
-       src/nanoarrow/array_inline.h
-       src/nanoarrow/buffer_inline.h
-       src/nanoarrow/nanoarrow_types.h
+  set(NANOARROW_BUILD_SOURCES
+      src/nanoarrow/common/array.c src/nanoarrow/common/schema.c
+      src/nanoarrow/common/array_stream.c src/nanoarrow/common/utils.c)
+
+  install(FILES src/nanoarrow/common/inline_array.h src/nanoarrow/common/inline_buffer.h
+                src/nanoarrow/common/inline_types.h DESTINATION include/nanoarrow/common)
+
+  list(APPEND NANOARROW_INSTALL_HEADERS
        "${CMAKE_CURRENT_BINARY_DIR}/src/nanoarrow/nanoarrow_config.h")
 endif()
 
@@ -141,6 +143,13 @@ target_include_directories(nanoarrow
                                   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                   $<INSTALL_INTERFACE:include>)
 target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
+# Ensure targets/headers can be installed
+install(TARGETS nanoarrow
+        DESTINATION lib
+        EXPORT nanoarrow-exports)
+
+install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -214,8 +223,8 @@ if(NANOARROW_IPC)
   endif()
 
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/nanoarrow_ipc_decoder.c
-                                    src/nanoarrow/nanoarrow_ipc_reader.c)
+    set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/ipc/decoder.c
+                                    src/nanoarrow/ipc/reader.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
@@ -260,7 +269,7 @@ if(NANOARROW_DEVICE)
     find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
     message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
 
-    set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/nanoarrow_device_metal.cc)
+    set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/device/metal.cc)
     set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
     set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
                                     ${QUARTZ_CORE_LIBRARY})
@@ -269,14 +278,14 @@ if(NANOARROW_DEVICE)
 
   if(NANOARROW_DEVICE_WITH_CUDA)
     find_package(CUDAToolkit REQUIRED)
-    set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/nanoarrow_device_cuda.c)
+    set(NANOARROW_DEVICE_SOURCES_CUDA src/nanoarrow/device/cuda.c)
     set(NANOARROW_DEVICE_LIBS_CUDA CUDA::cuda_driver)
     set(NANOARROW_DEVICE_DEFS_CUDA "NANOARROW_DEVICE_WITH_CUDA")
   endif()
 
   # If the bundler didn't already assign the source files for the library, do so here
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/nanoarrow_device.c)
+    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/device/device.c)
   endif()
 
   add_library(nanoarrow_device
@@ -343,13 +352,13 @@ if(NANOARROW_BUILD_TESTS)
   add_subdirectory("thirdparty/googletest")
 
   # Be sure to keep these tests in sync with src/nanoarrow/meson.build
-  add_executable(utils_test src/nanoarrow/utils_test.cc)
-  add_executable(buffer_test src/nanoarrow/buffer_test.cc)
-  add_executable(array_test src/nanoarrow/array_test.cc)
-  add_executable(schema_test src/nanoarrow/schema_test.cc)
-  add_executable(array_stream_test src/nanoarrow/array_stream_test.cc)
-  add_executable(nanoarrow_hpp_test src/nanoarrow/nanoarrow_hpp_test.cc)
-  add_executable(nanoarrow_testing_test src/nanoarrow/nanoarrow_testing_test.cc)
+  add_executable(utils_test src/nanoarrow/common/utils_test.cc)
+  add_executable(buffer_test src/nanoarrow/common/buffer_test.cc)
+  add_executable(array_test src/nanoarrow/common/array_test.cc)
+  add_executable(schema_test src/nanoarrow/common/schema_test.cc)
+  add_executable(array_stream_test src/nanoarrow/common/array_stream_test.cc)
+  add_executable(nanoarrow_hpp_test src/nanoarrow/common/nanoarrow_hpp_test.cc)
+  add_executable(nanoarrow_testing_test src/nanoarrow/testing/testing_test.cc)
   add_executable(c_data_integration_test
                  src/nanoarrow/integration/c_data_integration_test.cc)
 
@@ -409,10 +418,10 @@ if(NANOARROW_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/nanoarrow_ipc_decoder_test.cc)
-    add_executable(nanoarrow_ipc_reader_test src/nanoarrow/nanoarrow_ipc_reader_test.cc)
-    add_executable(nanoarrow_ipc_files_test src/nanoarrow/nanoarrow_ipc_files_test.cc)
-    add_executable(nanoarrow_ipc_hpp_test src/nanoarrow/nanoarrow_ipc_hpp_test.cc)
+    add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/ipc/decoder_test.cc)
+    add_executable(nanoarrow_ipc_reader_test src/nanoarrow/ipc/reader_test.cc)
+    add_executable(nanoarrow_ipc_files_test src/nanoarrow/ipc/files_test.cc)
+    add_executable(nanoarrow_ipc_hpp_test src/nanoarrow/ipc/ipc_hpp_test.cc)
 
     if(NANOARROW_CODE_COVERAGE)
       target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
@@ -457,8 +466,8 @@ if(NANOARROW_BUILD_TESTS)
 
   if(NANOARROW_DEVICE)
     enable_testing()
-    add_executable(nanoarrow_device_test src/nanoarrow/nanoarrow_device_test.cc)
-    add_executable(nanoarrow_device_hpp_test src/nanoarrow/nanoarrow_device_hpp_test.cc)
+    add_executable(nanoarrow_device_test src/nanoarrow/device/device_test.cc)
+    add_executable(nanoarrow_device_hpp_test src/nanoarrow/device/device_hpp_test.cc)
 
     if(NANOARROW_DEVICE_CODE_COVERAGE)
       target_compile_options(device_coverage_config INTERFACE -O0 -g --coverage)
@@ -482,8 +491,7 @@ if(NANOARROW_BUILD_TESTS)
     gtest_discover_tests(nanoarrow_device_hpp_test)
 
     if(NANOARROW_DEVICE_WITH_METAL)
-      add_executable(nanoarrow_device_metal_test
-                     src/nanoarrow/nanoarrow_device_metal_test.cc)
+      add_executable(nanoarrow_device_metal_test src/nanoarrow/device/metal_test.cc)
       target_link_libraries(nanoarrow_device_metal_test
                             nanoarrow_device
                             nanoarrow
@@ -493,8 +501,7 @@ if(NANOARROW_BUILD_TESTS)
     endif()
 
     if(NANOARROW_DEVICE_WITH_CUDA)
-      add_executable(nanoarrow_device_cuda_test
-                     src/nanoarrow/nanoarrow_device_cuda_test.cc)
+      add_executable(nanoarrow_device_cuda_test src/nanoarrow/device/cuda_test.cc)
       target_link_libraries(nanoarrow_device_cuda_test
                             nanoarrow_device
                             nanoarrow
@@ -515,12 +522,6 @@ endif()
 if(NANOARROW_BUILD_BENCHMARKS)
   add_subdirectory(dev/benchmarks)
 endif()
-
-# Ensure targets/headers can be installed
-install(TARGETS ${NANOARROW_INSTALL_TARGETS}
-        DESTINATION lib
-        EXPORT nanoarrow-exports)
-install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
 # Generate package files for the build and install trees.
 include(CMakePackageConfigHelpers)

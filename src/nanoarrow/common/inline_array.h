@@ -24,8 +24,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "buffer_inline.h"
-#include "nanoarrow_types.h"
+#include "nanoarrow/common/inline_buffer.h"
+#include "nanoarrow/common/inline_types.h"
 
 #ifdef __cplusplus
 extern "C" {

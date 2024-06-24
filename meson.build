@@ -45,10 +45,10 @@ incdir = include_directories('src/')
 
 nanoarrow_lib = library(
     'nanoarrow',
-    'src/nanoarrow/array.c',
-    'src/nanoarrow/schema.c',
-    'src/nanoarrow/array_stream.c',
-    'src/nanoarrow/utils.c',
+    'src/nanoarrow/common/array.c',
+    'src/nanoarrow/common/schema.c',
+    'src/nanoarrow/common/array_stream.c',
+    'src/nanoarrow/common/utils.c',
     include_directories: [incdir],
     install: true,
 )
@@ -62,8 +62,8 @@ if get_option('ipc')
 
     nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
-        'src/nanoarrow/nanoarrow_ipc_decoder.c',
-        'src/nanoarrow/nanoarrow_ipc_reader.c',
+        'src/nanoarrow/ipc/decoder.c',
+        'src/nanoarrow/ipc/reader.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
     )
@@ -75,7 +75,7 @@ endif
 needs_device = get_option('device') or get_option('metal') or get_option('cuda')
 if needs_device
   device_deps = [nanoarrow_dep]
-  device_srcs = ['src/nanoarrow/nanoarrow_device.c']
+  device_srcs = ['src/nanoarrow/device/device.c']
   device_defines = []
 
   if get_option('metal')
@@ -83,7 +83,7 @@ if needs_device
     metal_cpp_dep = dependency('metal-cpp')
     device_deps += metal_dep
     device_deps += metal_cpp_dep
-    device_srcs += 'src/nanoarrow/nanoarrow_device_metal.cc'
+    device_srcs += 'src/nanoarrow/device/metal.cc'
     device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
   endif
 
@@ -143,21 +143,24 @@ if get_option('tests')
       'nanoarrow-hpp': {
           'deps': [arrow_dep, gtest_dep, gmock_dep, nlohmann_json_dep],
       },
-      'nanoarrow-testing': {
-          'deps': [arrow_dep, gtest_dep, nlohmann_json_dep],
-      },
   }
 
   foreach name, config : nanoarrow_tests
     exc = executable(
         name + '-test',
-        sources: 'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
+        sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
         link_with: nanoarrow_lib,
         include_directories: incdir,
         dependencies: config['deps'],
     )
     test(name, exc)
   endforeach
+
+  testing_test = executable('nanoarrow-testing-test',
+                            'src/nanoarrow/testing/testing_test.cc',
+                            link_with: nanoarrow_lib,
+                            include_directories: incdir,
+                            dependencies: [arrow_dep, gtest_dep, nlohmann_json_dep])
 
   c_data_integration_test = executable('c-data-integration-test',
                                        'src/nanoarrow/integration/c_data_integration_test.cc',
@@ -169,18 +172,21 @@ if get_option('tests')
   if get_option('ipc')
       zlib_dep = dependency('zlib')
       ipc_test_files = {
-          'nanoarrow-ipc-decoder': {
+          'ipc-decoder': {
+              'src': 'decoder',
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
               'timeout': 30,
           },
-          'nanoarrow-ipc-reader': {
+          'ipc-reader': {
+              'src': 'reader',
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
               # the ipc reader test can take longer when executed
               # under valgrind, hence the increased timeout
               'timeout': 90,
 
           },
-          'nanoarrow-ipc-files': {
+          'ipc-files': {
+              'src': 'files',
               'deps': [
                   nanoarrow_ipc_dep,
                   zlib_dep,
@@ -190,7 +196,8 @@ if get_option('tests')
               ],
               'timeout': 30,
           },
-          'nanoarrow-ipc-hpp': {
+          'ipc-hpp': {
+              'src': 'ipc_hpp',
               'deps': [nanoarrow_ipc_dep, gtest_dep],
               'timeout': 30,
           },
@@ -198,19 +205,20 @@ if get_option('tests')
 
       foreach name, config : ipc_test_files
           exc = executable(
-              name + '-test',
-              'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
-              dependencies: config['deps'])
+              'nanoarrow-' + name + '-test',
+              'src/nanoarrow/ipc/' + config['src'] + '_test.cc',
+              dependencies: config['deps']
+          )
           test(name, exc, timeout: config['timeout'])
       endforeach
   endif
 
   if needs_device
-    device_tests = ['nanoarrow_device', 'nanoarrow_device_hpp']
+    device_tests = ['device', 'device_hpp']
     foreach device_test : device_tests
       exc = executable(
-          device_test.replace('_', '-') + '-test',
-          'src/nanoarrow/' + device_test + '_test.cc',
+          'nanoarrow-' + device_test.replace('_', '-') + '-test',
+          'src/nanoarrow/device/' + device_test + '_test.cc',
           link_with: nanoarrow_device_lib,
           dependencies: [nanoarrow_dep, gtest_dep])
       test(device_test.replace('_', '-'), exc)
@@ -219,7 +227,7 @@ if get_option('tests')
     if get_option('metal')
       exc = executable(
           'nanoarrow-device-metal-test',
-          'src/nanoarrow/nanoarrow_device_metal_test.cc',
+          'src/nanoarrow/device/metal_test.cc',
           link_with: nanoarrow_device_lib,
           dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep])
       test('nanoarrow-device-metal', exc)

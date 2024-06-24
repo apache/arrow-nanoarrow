@@ -22,9 +22,9 @@ import tempfile
 
 import pytest
 from nanoarrow._utils import NanoarrowException
-from nanoarrow.ipc import Stream
 
 import nanoarrow as na
+from nanoarrow.ipc import Stream
 
 
 def test_ipc_stream_example():

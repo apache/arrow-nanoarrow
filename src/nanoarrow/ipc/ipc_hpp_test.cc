@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nanoarrow_ipc.hpp"
+#include "nanoarrow/nanoarrow_ipc.hpp"
 
 TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDecoder) {
   nanoarrow::ipc::UniqueDecoder decoder;
