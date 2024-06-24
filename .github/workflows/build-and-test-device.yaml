@@ -47,7 +47,7 @@ jobs:
           - {runner: ubuntu-latest, label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {runner: ubuntu-latest, label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
           - {runner: macOS-latest, label: with-metal, cmake_args: "-DNANOARROW_DEVICE_WITH_METAL=ON"}
-          - {runner: ["self-hosted", "cuda"], label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON -DCUDAToolkit_ROOT=/usr/local/cuda"}
+          - {runner: ["self-hosted", "cuda"], label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
 
 
     steps:
@@ -62,6 +62,9 @@ jobs:
       - name: Ensure CMake
         if: runner.os == 'Linux'
         run: |
+          # Debug install location of cuda toolkit
+          ldconfig -p | grep libcuda
+
           if cmake --version; then
             echo "Using provided CMake"
           else
