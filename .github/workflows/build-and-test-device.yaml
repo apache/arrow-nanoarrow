@@ -58,18 +58,18 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y valgrind
 
-      # The self-hosted runner for CUDA does not have cmake preinstalled
+      # The self-hosted runner for CUDA does not have cmake preinstalled.
+      # We need at least CMake 3.17 for FindCUDAToolkit.
       - name: Ensure CMake
-        if: runner.os == 'Linux'
+        if: matrix.config.label == 'with-cuda'
         run: |
+          mkdir tmp_cmake && cd tmp_cmake
+          curl -L https://github.com/Kitware/CMake/releases/download/v3.17.5/cmake-3.17.5-Linux-x86_64.tar.gz |
+            tar -zxf -
+          CMAKE_PATH=$(find $(pwd) -name "bin")
+          echo "PATH=${CMAKE_PATH}:${PATH}" >> $GITHUB_ENV
           # Debug install location of cuda toolkit
           ldconfig -p | grep libcuda
-
-          if cmake --version; then
-            echo "Using provided CMake"
-          else
-            sudo apt-get update && sudo apt-get install -y cmake
-          fi
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
