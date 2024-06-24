@@ -12,6 +12,6 @@ r/tests/testthat/_snaps/*.md
 r/cran-comments.md
 dist/flatcc/*
 dist/flatcc.c
-src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
+src/nanoarrow/ipc/flatcc_generated.h
 thirdparty/*
 python/src/nanoarrow/dlpack_abi.h
