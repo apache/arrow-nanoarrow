@@ -58,9 +58,15 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y valgrind
 
+      # The self-hosted runner for CUDA does not have cmake preinstalled
       - name: Ensure CMake
+        if: runner.os == 'Linux'
         run: |
-          cmake --version || sudo apt-get update && sudo apt-get install -y cmake
+          if cmake --version; then
+            echo "Using provided CMake"
+          else
+            sudo apt-get update && sudo apt-get install -y cmake
+          fi
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
