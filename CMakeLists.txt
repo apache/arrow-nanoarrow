@@ -115,21 +115,22 @@ else()
   set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 endif()
 
-# Start the list of targets and headers to install
-set(NANOARROW_INSTALL_TARGETS nanoarrow)
+# Start the list of headers to install
 set(NANOARROW_INSTALL_HEADERS ${NANOARROW_BUILD_INCLUDE_DIR}/nanoarrow/nanoarrow.h
                               ${NANOARROW_BUILD_INCLUDE_DIR}/nanoarrow/nanoarrow.hpp)
 
-# If the bundler didn't already assign the source files for the library, do so here
+# If the bundler didn't already assign the source files for the library, do so here.
+# Also handle install() arguments that are different between the bundled and not
+# bundled version.
 if(NOT NANOARROW_BUNDLE)
   set(NANOARROW_BUILD_SOURCES
       src/nanoarrow/common/array.c src/nanoarrow/common/schema.c
       src/nanoarrow/common/array_stream.c src/nanoarrow/common/utils.c)
-  list(APPEND
-       NANOARROW_INSTALL_HEADERS
-       src/nanoarrow/common/inline_array.h
-       src/nanoarrow/common/inline_buffer.h
-       src/nanoarrow/common/inline_types.h
+
+  install(FILES src/nanoarrow/common/inline_array.h src/nanoarrow/common/inline_buffer.h
+                src/nanoarrow/common/inline_types.h DESTINATION include/nanoarrow/common)
+
+  list(APPEND NANOARROW_INSTALL_HEADERS
        "${CMAKE_CURRENT_BINARY_DIR}/src/nanoarrow/nanoarrow_config.h")
 endif()
 
@@ -142,6 +143,13 @@ target_include_directories(nanoarrow
                                   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                   $<INSTALL_INTERFACE:include>)
 target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
+# Ensure targets/headers can be installed
+install(TARGETS nanoarrow
+        DESTINATION lib
+        EXPORT nanoarrow-exports)
+
+install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -514,12 +522,6 @@ endif()
 if(NANOARROW_BUILD_BENCHMARKS)
   add_subdirectory(dev/benchmarks)
 endif()
-
-# Ensure targets/headers can be installed
-install(TARGETS ${NANOARROW_INSTALL_TARGETS}
-        DESTINATION lib
-        EXPORT nanoarrow-exports)
-install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
 # Generate package files for the build and install trees.
 include(CMakePackageConfigHelpers)
