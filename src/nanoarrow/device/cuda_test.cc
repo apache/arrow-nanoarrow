@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 #include <tuple>
 
-#include "nanoarrow/nanoarrow_device.h"
+#include "nanoarrow/nanoarrow_device.hpp"
 #include "nanoarrow/nanoarrow_device_cuda.h"
 
 class CudaTemporaryContext {
