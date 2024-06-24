@@ -88,9 +88,13 @@ jobs:
       - name: Build
         run: |
           ARROW_PATH="$(pwd)/arrow"
+
+          # Debug arrow includes
+          find "${ARROW_PATH}"
+
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_DEVICE=ON \
+          VERBOSE=1 cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_DEVICE=ON \
             -DNANOARROW_BUILD_TESTS=ON -DCMAKE_PREFIX_PATH="${ARROW_PATH}" \
             ${{ matrix.config.cmake_args }}
 
