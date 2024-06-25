@@ -176,7 +176,6 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
     needs:
       - docs
       - source
@@ -187,21 +186,17 @@ jobs:
         with:
           path: release-artifacts
 
-      - name: Create release and upload artifacts
-        shell: bash
+      - name: List release artifacts
+        run: |
+          find release-artifacts
+
+      - name: Create release
+        if: success() && startsWith(github.ref, 'refs/tags/')
         run: |
           RELEASE_TAG=${GITHUB_REF#refs/*/}
-          # Deduplicate artifacts built in different jobs with same tag
-          mkdir -p upload-staging
-          find ./release-artifacts/ \
-            '(' \
-              -name docs.tgz -or \
-              -name 'apache-arrow-nanoarrow-*.tar.gz' \
-            ')' \
-            -exec mv '{}' upload-staging \;
-          UPLOAD=$(find upload-staging -type f | sort | uniq)
-          echo "Uploading files:"
-          echo ${UPLOAD}
+
+          UPLOAD=$(find release-artifacts)
+
           gh release create "${RELEASE_TAG}" \
             --repo ${{ github.repository }} \
             --prerelease \
