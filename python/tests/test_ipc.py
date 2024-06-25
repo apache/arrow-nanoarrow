@@ -21,10 +21,10 @@ import pathlib
 import tempfile
 
 import pytest
-from nanoarrow._lib import NanoarrowException
-from nanoarrow.ipc import Stream
+from nanoarrow._utils import NanoarrowException
 
 import nanoarrow as na
+from nanoarrow.ipc import Stream
 
 
 def test_ipc_stream_example():

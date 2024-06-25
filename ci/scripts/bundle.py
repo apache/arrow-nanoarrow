@@ -115,14 +115,14 @@ def bundle_nanoarrow(
     nanoarrow_h = concatenate_content(
         [
             nanoarrow_config_h,
-            src_dir / "nanoarrow_types.h",
+            src_dir / "common" / "inline_types.h",
             src_dir / "nanoarrow.h",
-            src_dir / "buffer_inline.h",
-            src_dir / "array_inline.h",
+            src_dir / "common" / "inline_buffer.h",
+            src_dir / "common" / "inline_array.h",
         ]
     )
 
-    nanoarrow_h = re.sub(r'#include "[a-z_.]+"', "", nanoarrow_h)
+    nanoarrow_h = re.sub(r'#include "(nanoarrow/)?[a-z_./]+"', "", nanoarrow_h)
     yield f"{output_include_dir}/nanoarrow.h", nanoarrow_h
 
     # Generate files that don't need special handling
@@ -138,10 +138,10 @@ def bundle_nanoarrow(
     # Generate nanoarrow/nanoarrow.c
     nanoarrow_c = concatenate_content(
         [
-            src_dir / "utils.c",
-            src_dir / "schema.c",
-            src_dir / "array.c",
-            src_dir / "array_stream.c",
+            src_dir / "common" / "utils.c",
+            src_dir / "common" / "schema.c",
+            src_dir / "common" / "array.c",
+            src_dir / "common" / "array_stream.c",
         ]
     )
     nanoarrow_c = namespace_nanoarrow_includes(nanoarrow_c, header_namespace)
@@ -171,10 +171,10 @@ def bundle_nanoarrow_device(
         yield f"{output_include_dir}/{filename}", content
 
     # Generate sources
-    for filename in ["nanoarrow_device.c"]:
-        content = read_content(src_dir / filename)
+    for filename in ["device.c"]:
+        content = read_content(src_dir / "device" / filename)
         content = namespace_nanoarrow_includes(content, header_namespace)
-        yield f"{output_source_dir}/{filename}", content
+        yield f"{output_source_dir}/nanoarrow_{filename}", content
 
 
 def bundle_nanoarrow_ipc(
@@ -200,13 +200,13 @@ def bundle_nanoarrow_ipc(
 
     nanoarrow_ipc_c = concatenate_content(
         [
-            src_dir / "nanoarrow_ipc_flatcc_generated.h",
-            src_dir / "nanoarrow_ipc_decoder.c",
-            src_dir / "nanoarrow_ipc_reader.c",
+            src_dir / "ipc" / "flatcc_generated.h",
+            src_dir / "ipc" / "decoder.c",
+            src_dir / "ipc" / "reader.c",
         ]
     )
     nanoarrow_ipc_c = nanoarrow_ipc_c.replace(
-        '#include "nanoarrow/nanoarrow_ipc_flatcc_generated.h"', ""
+        '#include "nanoarrow/ipc/flatcc_generated.h"', ""
     )
     nanoarrow_ipc_c = namespace_nanoarrow_includes(nanoarrow_ipc_c, header_namespace)
     yield f"{output_source_dir}/nanoarrow_ipc.c", nanoarrow_ipc_c

@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
 
 // This test allocator guarantees that allocator->reallocate will return
 // a new pointer so that we can test when reallocations happen whilst
@@ -191,6 +191,8 @@ TEST(BufferTest, BufferTestError) {
 }
 
 TEST(BufferTest, BufferTestAppendHelpers) {
+  using namespace nanoarrow::literals;
+
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
 
@@ -234,7 +236,7 @@ TEST(BufferTest, BufferTestAppendHelpers) {
   EXPECT_EQ(reinterpret_cast<float*>(buffer.data)[0], 123);
   ArrowBufferReset(&buffer);
 
-  EXPECT_EQ(ArrowBufferAppendStringView(&buffer, ArrowCharView("a")), NANOARROW_OK);
+  EXPECT_EQ(ArrowBufferAppendStringView(&buffer, "a"_asv), NANOARROW_OK);
   EXPECT_EQ(reinterpret_cast<char*>(buffer.data)[0], 'a');
   EXPECT_EQ(buffer.size_bytes, 1);
   ArrowBufferReset(&buffer);

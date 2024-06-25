@@ -288,6 +288,8 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsTest) {
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
+  using namespace nanoarrow::literals;
+
   nanoarrow::UniqueBuffer is_valid, offsets, data;
   nanoarrow::BufferInitSequence(is_valid.get(), std::vector<uint8_t>{0xFF});
   ArrowBitClear(is_valid->data, 2);
@@ -304,7 +306,8 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   array.buffers = buffers;
 
   int i = 0;
-  ArrowStringView expected[] = {"a"_v, "b"_v, "c"_v, "d"_v, "e"_v, "f"_v, "g"_v};
+  ArrowStringView expected[] = {"a"_asv, "b"_asv, "c"_asv, "d"_asv,
+                                "e"_asv, "f"_asv, "g"_asv};
   for (auto slot : nanoarrow::ViewArrayAsBytes<32>(&array)) {
     if (i == 2 || i == 5) {
       EXPECT_EQ(slot, nanoarrow::NA);
@@ -316,6 +319,8 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
+  using namespace nanoarrow::literals;
+
   nanoarrow::UniqueBuffer is_valid, data;
   nanoarrow::BufferInitSequence(is_valid.get(), std::vector<uint8_t>{0xFF});
   ArrowBitClear(is_valid->data, 2);
@@ -335,7 +340,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
     if (i == 2 || i == 5) {
       EXPECT_EQ(slot, nanoarrow::NA);
     } else {
-      EXPECT_EQ(slot, i % 2 == 0 ? "foo"_v : "bar"_v);
+      EXPECT_EQ(slot, i % 2 == 0 ? "foo"_asv : "bar"_asv);
     }
     ++i;
   }

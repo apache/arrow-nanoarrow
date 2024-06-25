@@ -19,7 +19,6 @@
 #include <inttypes.h>
 
 #include "nanoarrow.h"
-
 #include "nanoarrow_device.h"
 
 ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error) {
@@ -127,33 +126,21 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
   device->private_data = NULL;
 }
 
-#ifdef NANOARROW_DEVICE_WITH_METAL
-struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
-#endif
-
-#ifdef NANOARROW_DEVICE_WITH_CUDA
-struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_id);
-#endif
-
 struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id) {
   if (device_type == ARROW_DEVICE_CPU) {
     return ArrowDeviceCpu();
   }
 
-#ifdef NANOARROW_DEVICE_WITH_METAL
   if (device_type == ARROW_DEVICE_METAL) {
     struct ArrowDevice* default_device = ArrowDeviceMetalDefaultDevice();
     if (device_id == default_device->device_id) {
       return default_device;
     }
   }
-#endif
 
-#ifdef NANOARROW_DEVICE_WITH_CUDA
   if (device_type == ARROW_DEVICE_CUDA || device_type == ARROW_DEVICE_CUDA_HOST) {
     return ArrowDeviceCuda(device_type, device_id);
   }
-#endif
 
   return NULL;
 }
@@ -494,5 +481,38 @@ ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
     NANOARROW_RETURN_NOT_OK(device_dst->array_move(device_src, src, device_dst, dst));
   }
 
+  return NANOARROW_OK;
+}
+
+#if !defined(NANOARROW_DEVICE_WITH_CUDA)
+struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_id) {
+  NANOARROW_UNUSED(device_type);
+  NANOARROW_UNUSED(device_id);
+
+  return NULL;
+}
+#endif
+
+#if !defined(NANOARROW_DEVICE_WITH_METAL)
+struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void) {
+  return NULL;
+}
+
+ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
+                                                 struct ArrowError* error) {
+  NANOARROW_UNUSED(device);
+
+  ArrowErrorSet(error, "nanoarrow_device not built with Metal support");
   return ENOTSUP;
 }
+
+ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer) {
+  NANOARROW_UNUSED(buffer);
+  return ENOTSUP;
+}
+
+ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array) {
+  NANOARROW_UNUSED(array);
+  return ENOTSUP;
+}
+#endif

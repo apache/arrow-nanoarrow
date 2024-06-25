@@ -29,65 +29,43 @@ project(
     ]
 )
 
-conf_data = configuration_data()
-
-ns = get_option('namespace')
-conf_data.set('NANOARROW_NAMESPACE_DEFINE', '#define NANOARROW_NAMESPACE ' + ns)
-
-version = meson.project_version()
-# Remove any pre-release / build identifiers
-version_no_pre_release = version.split('-')[0]
-version_no_build = version_no_pre_release.split('+')[0]
-components = version_no_build.split('.')
-assert(components.length() >= 3,
-       'The version does not contain major, minor and patch')
-ver_major = components[0]
-ver_minor = components[1]
-ver_patch = components[2]
-conf_data.set('NANOARROW_VERSION', version)
-conf_data.set('NANOARROW_VERSION_MAJOR', ver_major)
-conf_data.set('NANOARROW_VERSION_MINOR', ver_minor)
-conf_data.set('NANOARROW_VERSION_PATCH', ver_patch)
-
-configure_file(input: 'src/nanoarrow/nanoarrow_config.h.in',
-               output: 'nanoarrow_config.h',
-               configuration: conf_data)
-
-# Windows shared libraries are not exporting the right symbols
-# See https://github.com/mesonbuild/wrapdb/pull/1536#issuecomment-2136011408
-# and https://github.com/apache/arrow-nanoarrow/issues/495
-if host_machine.system() == 'windows'
-    libtype = 'static_library'
-else
-    libtype = 'library'
+if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
+  add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
 endif
 
+nanoarrow_dep_args = []
+if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
+  add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'c')
+  add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'cpp')
+  nanoarrow_dep_args += ['-DNANOARROW_BUILD_DLL']
+endif
+
+subdir('src/nanoarrow')
 incdir = include_directories('src/')
 
-nanoarrow_lib = build_target(
+nanoarrow_lib = library(
     'nanoarrow',
-    'src/nanoarrow/array.c',
-    'src/nanoarrow/schema.c',
-    'src/nanoarrow/array_stream.c',
-    'src/nanoarrow/utils.c',
+    'src/nanoarrow/common/array.c',
+    'src/nanoarrow/common/schema.c',
+    'src/nanoarrow/common/array_stream.c',
+    'src/nanoarrow/common/utils.c',
     include_directories: [incdir],
     install: true,
-    target_type: libtype,
 )
 
 nanoarrow_dep = declare_dependency(include_directories: [incdir],
-                                   link_with: nanoarrow_lib)
+                                   link_with: nanoarrow_lib,
+                                   compile_args: nanoarrow_dep_args)
 
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
 
-    nanoarrow_ipc_lib = build_target(
+    nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
-        'src/nanoarrow/nanoarrow_ipc_decoder.c',
-        'src/nanoarrow/nanoarrow_ipc_reader.c',
+        'src/nanoarrow/ipc/decoder.c',
+        'src/nanoarrow/ipc/reader.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
-        target_type: libtype,
     )
     nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
                                            link_with: nanoarrow_ipc_lib,
@@ -97,7 +75,7 @@ endif
 needs_device = get_option('device') or get_option('metal') or get_option('cuda')
 if needs_device
   device_deps = [nanoarrow_dep]
-  device_srcs = ['src/nanoarrow/nanoarrow_device.c']
+  device_srcs = ['src/nanoarrow/device/device.c']
   device_defines = []
 
   if get_option('metal')
@@ -105,7 +83,7 @@ if needs_device
     metal_cpp_dep = dependency('metal-cpp')
     device_deps += metal_dep
     device_deps += metal_cpp_dep
-    device_srcs += 'src/nanoarrow/nanoarrow_device_metal.cc'
+    device_srcs += 'src/nanoarrow/device/metal.cc'
     device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
   endif
 
@@ -113,12 +91,11 @@ if needs_device
     error('CUDA support with the Meson build system is not implemented')
   endif
 
-  nanoarrow_device_lib = build_target(
+  nanoarrow_device_lib = library(
       'nanoarrow_device',
       sources: device_srcs,
       dependencies: device_deps,
       install: true,
-      target_type: libtype,
       cpp_args: device_defines,
   )
 endif
@@ -166,21 +143,24 @@ if get_option('tests')
       'nanoarrow-hpp': {
           'deps': [arrow_dep, gtest_dep, gmock_dep, nlohmann_json_dep],
       },
-      'nanoarrow-testing': {
-          'deps': [arrow_dep, gtest_dep, nlohmann_json_dep],
-      },
   }
 
   foreach name, config : nanoarrow_tests
     exc = executable(
         name + '-test',
-        sources: 'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
+        sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
         link_with: nanoarrow_lib,
         include_directories: incdir,
         dependencies: config['deps'],
     )
     test(name, exc)
   endforeach
+
+  testing_test = executable('nanoarrow-testing-test',
+                            'src/nanoarrow/testing/testing_test.cc',
+                            link_with: nanoarrow_lib,
+                            include_directories: incdir,
+                            dependencies: [arrow_dep, gtest_dep, nlohmann_json_dep])
 
   c_data_integration_test = executable('c-data-integration-test',
                                        'src/nanoarrow/integration/c_data_integration_test.cc',
@@ -192,18 +172,21 @@ if get_option('tests')
   if get_option('ipc')
       zlib_dep = dependency('zlib')
       ipc_test_files = {
-          'nanoarrow-ipc-decoder': {
+          'ipc-decoder': {
+              'src': 'decoder',
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
               'timeout': 30,
           },
-          'nanoarrow-ipc-reader': {
+          'ipc-reader': {
+              'src': 'reader',
               'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
               # the ipc reader test can take longer when executed
               # under valgrind, hence the increased timeout
               'timeout': 90,
 
           },
-          'nanoarrow-ipc-files': {
+          'ipc-files': {
+              'src': 'files',
               'deps': [
                   nanoarrow_ipc_dep,
                   zlib_dep,
@@ -213,7 +196,8 @@ if get_option('tests')
               ],
               'timeout': 30,
           },
-          'nanoarrow-ipc-hpp': {
+          'ipc-hpp': {
+              'src': 'ipc_hpp',
               'deps': [nanoarrow_ipc_dep, gtest_dep],
               'timeout': 30,
           },
@@ -221,8 +205,8 @@ if get_option('tests')
 
       foreach name, config : ipc_test_files
           exc = executable(
-              name + '-test',
-              'src/nanoarrow/' + name.replace('-', '_') + '_test.cc',
+              'nanoarrow-' + name + '-test',
+              'src/nanoarrow/ipc/' + config['src'] + '_test.cc',
               dependencies: config['deps']
           )
           test(name, exc, timeout: config['timeout'])
@@ -230,24 +214,22 @@ if get_option('tests')
   endif
 
   if needs_device
-    device_tests = ['nanoarrow_device', 'nanoarrow_device_hpp']
+    device_tests = ['device', 'device_hpp']
     foreach device_test : device_tests
       exc = executable(
-          device_test.replace('_', '-') + '-test',
-          'src/nanoarrow/' + device_test + '_test.cc',
+          'nanoarrow-' + device_test.replace('_', '-') + '-test',
+          'src/nanoarrow/device/' + device_test + '_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep],
-      )
+          dependencies: [nanoarrow_dep, gtest_dep])
       test(device_test.replace('_', '-'), exc)
     endforeach
 
     if get_option('metal')
       exc = executable(
           'nanoarrow-device-metal-test',
-          'src/nanoarrow/nanoarrow_device_metal_test.cc',
+          'src/nanoarrow/device/metal_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep],
-      )
+          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep])
       test('nanoarrow-device-metal', exc)
     endif
   endif

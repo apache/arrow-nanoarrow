@@ -286,6 +286,8 @@ TEST(DecimalTest, Decimal128Test) {
 }
 
 TEST(DecimalTest, DecimalNegateTest) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
@@ -312,9 +314,9 @@ TEST(DecimalTest, DecimalNegateTest) {
               std::numeric_limits<uint64_t>::max());
 
     // Check with a large value that fits in the 128 bit size
-    ASSERT_EQ(ArrowDecimalSetDigits(
-                  &decimal, ArrowCharView("123456789012345678901234567890123456789")),
-              NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowDecimalSetDigits(&decimal, "123456789012345678901234567890123456789"_asv),
+        NANOARROW_OK);
     ArrowDecimalNegate(&decimal);
 
     buffer.size_bytes = 0;
@@ -341,6 +343,8 @@ TEST(DecimalTest, DecimalNegateTest) {
 }
 
 TEST(DecimalTest, Decimal256Test) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 256, 10, 3);
 
@@ -378,6 +382,8 @@ TEST(DecimalTest, Decimal256Test) {
 }
 
 TEST(DecimalTest, DecimalStringTestBasic) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 39, 0);
 
@@ -385,7 +391,7 @@ TEST(DecimalTest, DecimalStringTestBasic) {
   ArrowBufferInit(&buffer);
 
   // Only spans one 32-bit word
-  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("123456")), NANOARROW_OK);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, "123456"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 123456);
 
   // Check roundtrip to string
@@ -395,7 +401,7 @@ TEST(DecimalTest, DecimalStringTestBasic) {
             "123456");
 
   // Negative value
-  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("-123456")), NANOARROW_OK);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, "-123456"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -123456);
 
   // Check roundtrip to string
@@ -405,7 +411,7 @@ TEST(DecimalTest, DecimalStringTestBasic) {
             "-123456");
 
   // Spans >1 32-bit word
-  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("1234567899")), NANOARROW_OK);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, "1234567899"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 1234567899L);
 
   // Check roundtrip to string
@@ -415,8 +421,7 @@ TEST(DecimalTest, DecimalStringTestBasic) {
             "1234567899");
 
   // Check maximum value of a 64-bit integer
-  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("18446744073709551615")),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, "18446744073709551615"_asv), NANOARROW_OK);
   EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
   EXPECT_EQ(decimal.words[decimal.high_word_index], 0);
 
@@ -427,9 +432,9 @@ TEST(DecimalTest, DecimalStringTestBasic) {
             "18446744073709551615");
 
   // Check with the maximum value of a signed 128-bit integer
-  ASSERT_EQ(ArrowDecimalSetDigits(
-                &decimal, ArrowCharView("170141183460469231731687303715884105727")),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowDecimalSetDigits(&decimal, "170141183460469231731687303715884105727"_asv),
+      NANOARROW_OK);
   EXPECT_EQ(decimal.words[decimal.low_word_index], std::numeric_limits<uint64_t>::max());
   EXPECT_EQ(decimal.words[decimal.high_word_index], std::numeric_limits<int64_t>::max());
 
@@ -457,10 +462,11 @@ TEST(DecimalTest, DecimalStringTestBasic) {
 }
 
 TEST(DecimalTest, DecimalStringTestInvalid) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 39, 0);
-  EXPECT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("this is not an integer")),
-            EINVAL);
+  EXPECT_EQ(ArrowDecimalSetDigits(&decimal, "this is not an integer"_asv), EINVAL);
 }
 
 TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {

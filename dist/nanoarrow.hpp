@@ -82,6 +82,23 @@ class Exception : public std::exception {
 
 /// @}
 
+namespace literals {
+
+/// \defgroup nanoarrow_hpp-string_view_helpers ArrowStringView helpers
+///
+/// Factories and equality comparison for ArrowStringView.
+///
+/// @{
+
+/// \brief User literal operator allowing ArrowStringView construction like "str"_asv
+inline ArrowStringView operator"" _asv(const char* data, std::size_t size_bytes) {
+  return {data, static_cast<int64_t>(size_bytes)};
+}
+
+// @}
+
+}  // namespace literals
+
 namespace internal {
 
 /// \defgroup nanoarrow_hpp-unique_base Base classes for Unique wrappers
@@ -893,22 +910,11 @@ class ViewArrayStream {
 
 }  // namespace nanoarrow
 
-/// \defgroup nanoarrow_hpp-string_view_helpers ArrowStringView helpers
-///
-/// Factories and equality comparison for ArrowStringView.
-///
-/// @{
-
 /// \brief Equality comparison operator between ArrowStringView
+/// \ingroup nanoarrow_hpp-string_view_helpers
 inline bool operator==(ArrowStringView l, ArrowStringView r) {
   if (l.size_bytes != r.size_bytes) return false;
   return memcmp(l.data, r.data, l.size_bytes) == 0;
 }
-
-/// \brief User literal operator allowing ArrowStringView construction like "str"_sv
-inline ArrowStringView operator"" _v(const char* data, std::size_t size_bytes) {
-  return {data, static_cast<int64_t>(size_bytes)};
-}
-/// @}
 
 #endif

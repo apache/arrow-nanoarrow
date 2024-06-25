@@ -22,7 +22,7 @@
 #include <arrow/testing/gtest_util.h>
 #include <arrow/util/key_value_metadata.h>
 
-#include "nanoarrow/nanoarrow.h"
+#include "nanoarrow/nanoarrow.hpp"
 
 using namespace arrow;
 
@@ -1495,6 +1495,8 @@ TEST(SchemaViewTest, SchemaViewInitDictionaryErrors) {
 }
 
 TEST(SchemaViewTest, SchemaViewInitExtension) {
+  using namespace nanoarrow::literals;
+
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
@@ -1506,18 +1508,16 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
   auto int_field = field("field_name", int32(), arrow_meta);
   ARROW_EXPECT_OK(ExportField(*int_field, &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
-  EXPECT_EQ(
-      std::string(schema_view.extension_name.data, schema_view.extension_name.size_bytes),
-      "arrow.test.ext_name");
-  EXPECT_EQ(std::string(schema_view.extension_metadata.data,
-                        schema_view.extension_metadata.size_bytes),
-            "test metadata");
+  EXPECT_EQ(schema_view.extension_name, "arrow.test.ext_name"_asv);
+  EXPECT_EQ(schema_view.extension_metadata, "test metadata"_asv);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "arrow.test.ext_name{int32}");
 
   ArrowSchemaRelease(&schema);
 }
 
 TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
+  using namespace nanoarrow::literals;
+
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
@@ -1531,12 +1531,8 @@ TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_DICTIONARY);
   EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_INT32);
-  EXPECT_EQ(
-      std::string(schema_view.extension_name.data, schema_view.extension_name.size_bytes),
-      "arrow.test.ext_name");
-  EXPECT_EQ(std::string(schema_view.extension_metadata.data,
-                        schema_view.extension_metadata.size_bytes),
-            "test metadata");
+  EXPECT_EQ(schema_view.extension_name, "arrow.test.ext_name"_asv);
+  EXPECT_EQ(schema_view.extension_metadata, "test metadata"_asv);
   EXPECT_EQ(ArrowSchemaToStdString(&schema),
             "arrow.test.ext_name{dictionary(int32)<string>}");
 
@@ -1576,6 +1572,8 @@ TEST(SchemaViewTest, SchemaFormatInvalid) {
 }
 
 TEST(MetadataTest, Metadata) {
+  using namespace nanoarrow::literals;
+
   // Encoded metadata string for "key": "value"
   std::string simple_metadata = SimpleMetadata();
 
@@ -1583,22 +1581,23 @@ TEST(MetadataTest, Metadata) {
   EXPECT_EQ(ArrowMetadataSizeOf(simple_metadata.data()),
             static_cast<int64_t>(simple_metadata.size()));
 
-  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata.data(), ArrowCharView("key")), 1);
-  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata.data(), ArrowCharView("not_a_key")), 0);
+  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata.data(), "key"_asv), 1);
+  EXPECT_EQ(ArrowMetadataHasKey(simple_metadata.data(), "not_a_key"_asv), 0);
 
-  struct ArrowStringView value = ArrowCharView("default_val");
-  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata.data(), ArrowCharView("key"), &value),
+  struct ArrowStringView value = "default_val"_asv;
+  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata.data(), "key"_asv, &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "value");
+  EXPECT_EQ(value, "value"_asv);
 
-  value = ArrowCharView("default_val");
-  EXPECT_EQ(
-      ArrowMetadataGetValue(simple_metadata.data(), ArrowCharView("not_a_key"), &value),
-      NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "default_val");
+  value = "default_val"_asv;
+  EXPECT_EQ(ArrowMetadataGetValue(simple_metadata.data(), "not_a_key"_asv, &value),
+            NANOARROW_OK);
+  EXPECT_EQ(value, "default_val"_asv);
 }
 
 TEST(MetadataTest, MetadataBuild) {
+  using namespace nanoarrow::literals;
+
   // Encoded metadata string for "key": "value"
   std::string simple_metadata = SimpleMetadata();
 
@@ -1618,59 +1617,49 @@ TEST(MetadataTest, MetadataBuild) {
   EXPECT_EQ(metadata_builder.data, nullptr);
 
   // Recreate simple_metadata
-  ASSERT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, ArrowCharView("key"),
-                                       ArrowCharView("value")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(&metadata_builder, "key"_asv, "value"_asv),
             NANOARROW_OK);
   ASSERT_EQ(metadata_builder.size_bytes, simple_metadata.size());
   EXPECT_EQ(memcmp(metadata_builder.data, simple_metadata.data(), simple_metadata.size()),
             0);
 
   // Remove a key that doesn't exist
-  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, ArrowCharView("key2")),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, "key2"_asv), NANOARROW_OK);
   ASSERT_EQ(metadata_builder.size_bytes, simple_metadata.size());
   EXPECT_EQ(
       memcmp(metadata_builder.data, simple_metadata.data(), metadata_builder.size_bytes),
       0);
 
   // Add a new key
-  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, ArrowCharView("key2"),
-                                    ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key2"_asv, "value2"_asv),
             NANOARROW_OK);
   EXPECT_EQ(metadata_builder.size_bytes,
             simple_metadata.size() + sizeof(int32_t) + 4 + sizeof(int32_t) + 6);
 
   struct ArrowStringView value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
-                                  ArrowCharView("key2"), &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key2"_asv, &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "value2");
+  EXPECT_EQ(value, "value2"_asv);
 
   // Set an existing key
-  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, ArrowCharView("key"),
-                                    ArrowCharView("value3")),
+  ASSERT_EQ(ArrowMetadataBuilderSet(&metadata_builder, "key"_asv, "value3"_asv),
             NANOARROW_OK);
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
-                                  ArrowCharView("key"), &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key"_asv, &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "value3");
+  EXPECT_EQ(value, "value3"_asv);
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
-                                  ArrowCharView("key2"), &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key2"_asv, &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "value2");
+  EXPECT_EQ(value, "value2"_asv);
 
   // Remove a key that does exist
-  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, ArrowCharView("key")),
-            NANOARROW_OK);
-  EXPECT_EQ(ArrowMetadataHasKey((const char*)metadata_builder.data, ArrowCharView("key")),
-            false);
+  ASSERT_EQ(ArrowMetadataBuilderRemove(&metadata_builder, "key"_asv), NANOARROW_OK);
+  EXPECT_EQ(ArrowMetadataHasKey((const char*)metadata_builder.data, "key"_asv), false);
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data,
-                                  ArrowCharView("key2"), &value),
+  ASSERT_EQ(ArrowMetadataGetValue((const char*)metadata_builder.data, "key2"_asv, &value),
             NANOARROW_OK);
-  EXPECT_EQ(std::string(value.data, value.size_bytes), "value2");
+  EXPECT_EQ(value, "value2"_asv);
 
   ArrowBufferReset(&metadata_builder);
 }

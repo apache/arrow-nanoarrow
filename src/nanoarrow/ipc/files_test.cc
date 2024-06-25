@@ -28,9 +28,9 @@
 #include <arrow/table.h>
 #include <gtest/gtest.h>
 
-#include "nanoarrow.hpp"
-#include "nanoarrow_ipc.h"
-#include "nanoarrow_testing.hpp"
+#include "nanoarrow/nanoarrow.hpp"
+#include "nanoarrow/nanoarrow_ipc.h"
+#include "nanoarrow/nanoarrow_testing.hpp"
 
 #include "flatcc/portable/pendian_detect.h"
 

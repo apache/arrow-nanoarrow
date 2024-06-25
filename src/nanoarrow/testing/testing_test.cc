@@ -25,6 +25,7 @@
 using nanoarrow::testing::TestingJSONComparison;
 using nanoarrow::testing::TestingJSONReader;
 using nanoarrow::testing::TestingJSONWriter;
+using namespace nanoarrow::literals;
 
 ArrowErrorCode WriteBatchJSON(std::ostream& out, TestingJSONWriter& writer,
                               const ArrowSchema* schema, ArrowArrayView* array_view) {
@@ -209,8 +210,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
       },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, "abc"_asv));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, "def"_asv));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
@@ -236,7 +237,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnString) {
         return ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRING);
       },
       [](ArrowArray* array) {
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("\u0001")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, "\u0001"_asv));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
@@ -251,8 +252,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnLargeString) {
       },
       [](ArrowArray* array) {
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("def")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, "abc"_asv));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, "def"_asv));
         return NANOARROW_OK;
       },
       &WriteColumnJSON,
@@ -272,7 +273,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestColumnBinary) {
         value_view.size_bytes = sizeof(value);
 
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array, 1));
-        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, ArrowCharView("abc")));
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array, "abc"_asv));
         NANOARROW_RETURN_NOT_OK(ArrowArrayAppendBytes(array, value_view));
         return NANOARROW_OK;
       },
@@ -449,10 +450,10 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
       [](ArrowSchema* schema) {
         nanoarrow::UniqueBuffer buffer;
         NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
-        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
-            buffer.get(), ArrowCharView("k1"), ArrowCharView("v1")));
-        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
-            buffer.get(), ArrowCharView("k2"), ArrowCharView("v2")));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowMetadataBuilderAppend(buffer.get(), "k1"_asv, "v1"_asv));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowMetadataBuilderAppend(buffer.get(), "k2"_asv, "v2"_asv));
 
         NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_NA));
         NANOARROW_RETURN_NOT_OK(
@@ -723,8 +724,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadSchema) {
   ArrowStringView key;
   ArrowStringView value;
   ASSERT_EQ(ArrowMetadataReaderRead(&metadata_reader, &key, &value), NANOARROW_OK);
-  ASSERT_EQ(std::string(key.data, key.size_bytes), "k1");
-  ASSERT_EQ(std::string(value.data, value.size_bytes), "v1");
+  ASSERT_EQ(key, "k1"_asv);
+  ASSERT_EQ(value, "v1"_asv);
 
   // Check invalid JSON
   EXPECT_EQ(reader.ReadSchema(R"({)", schema.get()), EINVAL);
@@ -799,12 +800,12 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldMetadata) {
   ASSERT_EQ(metadata.remaining_keys, 2);
 
   ASSERT_EQ(ArrowMetadataReaderRead(&metadata, &key, &value), NANOARROW_OK);
-  ASSERT_EQ(std::string(key.data, key.size_bytes), "k1");
-  ASSERT_EQ(std::string(value.data, value.size_bytes), "v1");
+  ASSERT_EQ(key, "k1"_asv);
+  ASSERT_EQ(value, "v1"_asv);
 
   ASSERT_EQ(ArrowMetadataReaderRead(&metadata, &key, &value), NANOARROW_OK);
-  ASSERT_EQ(std::string(key.data, key.size_bytes), "k2");
-  ASSERT_EQ(std::string(value.data, value.size_bytes), "v2");
+  ASSERT_EQ(key, "k2"_asv);
+  ASSERT_EQ(value, "v2"_asv);
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldNested) {
@@ -1398,11 +1399,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestSchemaComparison) {
   // With different top-level metadata
   nanoarrow::UniqueBuffer buf;
   ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key1"),
-                                       ArrowCharView("value1")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key1"_asv, "value1"_asv),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
-                                       ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
@@ -1490,22 +1489,18 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestMetadataComparison) {
   // With different top-level metadata that are not equivalent because of order
   buf.reset();
   ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key1"),
-                                       ArrowCharView("value1")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key1"_asv, "value1"_asv),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
-                                       ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
 
   buf.reset();
   ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
-                                       ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key1"),
-                                       ArrowCharView("value1")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key1"_asv, "value1"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetMetadata(expected.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
@@ -1560,11 +1555,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestMetadataComparison) {
   // With different top-level metadata that are not equivalent because of item content
   buf.reset();
   ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
-                                       ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key1"),
-                                       ArrowCharView("gazornenplat")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key1"_asv, "gazornenplat"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
@@ -1597,11 +1590,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestMetadataComparison) {
   // With different top-level metadata that are not equivalent because of item keys
   buf.reset();
   ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
-                                       ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key3"),
-                                       ArrowCharView("value1")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key3"_asv, "value1"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
@@ -1634,11 +1625,9 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestMetadataComparison) {
   // Metadata that are not equal and contain duplicate keys
   buf.reset();
   ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
-                                       ArrowCharView("value2")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
             NANOARROW_OK);
-  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), ArrowCharView("key2"),
-                                       ArrowCharView("value2 again")),
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2 again"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetMetadata(actual.get(), reinterpret_cast<char*>(buf->data)),
             NANOARROW_OK);
@@ -1774,9 +1763,8 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayWithDictionaryComparison) {
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(expected.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(expected->children[0], 0), NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowArrayAppendString(expected->children[0]->dictionary, ArrowCharView("abc")),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(expected->children[0]->dictionary, "abc"_asv),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(expected.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(expected.get(), nullptr), NANOARROW_OK);
 
@@ -1784,7 +1772,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayWithDictionaryComparison) {
   ASSERT_EQ(ArrowArrayInitFromSchema(actual.get(), schema.get(), nullptr), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(actual.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(actual->children[0], 0), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(actual->children[0]->dictionary, ArrowCharView("def")),
+  ASSERT_EQ(ArrowArrayAppendString(actual->children[0]->dictionary, "def"_asv),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(actual.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(actual.get(), nullptr), NANOARROW_OK);

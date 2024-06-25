@@ -26,7 +26,7 @@
 // For bswap32()
 #include "flatcc/portable/pendian.h"
 
-#include "nanoarrow_ipc.h"
+#include "nanoarrow/nanoarrow_ipc.h"
 
 using namespace arrow;
 

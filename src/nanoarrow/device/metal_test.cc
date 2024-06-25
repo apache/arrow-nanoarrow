@@ -22,7 +22,6 @@
 #include <Metal/Metal.hpp>
 
 #include "nanoarrow/nanoarrow_device.hpp"
-#include "nanoarrow/nanoarrow_device_metal.h"
 
 TEST(NanoarrowDeviceMetal, DefaultDevice) {
   nanoarrow::device::UniqueDevice device;
@@ -41,7 +40,7 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferInit) {
   struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
   struct ArrowBuffer buffer_aligned;
-  ArrowDeviceMetalInitBuffer(&buffer_aligned);
+  ASSERT_EQ(ArrowDeviceMetalInitBuffer(&buffer_aligned), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppend(&buffer_aligned, data, sizeof(data)), NANOARROW_OK);
   struct ArrowBufferView gpu_view = {buffer_aligned.data, sizeof(data)};
 
@@ -99,17 +98,26 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
   EXPECT_EQ(buffer.data, nullptr);
   ArrowBufferReset(&buffer2);
 
-  // CPU -> GPU without alignment should trigger a copy and release the input
+  // CPU -> GPU without alignment may require a copy
   ArrowBufferInit(&buffer);
   ASSERT_EQ(ArrowBufferAppend(&buffer, data, sizeof(data)), NANOARROW_OK);
   old_ptr = buffer.data;
-  ASSERT_EQ(ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2), NANOARROW_OK);
-  EXPECT_EQ(buffer2.size_bytes, 5);
-  EXPECT_NE(buffer2.data, old_ptr);
-  EXPECT_EQ(memcmp(buffer2.data, data, sizeof(data)), 0);
-  EXPECT_EQ(buffer.data, nullptr);
 
-  ArrowBufferReset(&buffer2);
+  int code = ArrowDeviceBufferMove(cpu, &buffer, gpu, &buffer2);
+  if (code == NANOARROW_OK) {
+    // If the move was reported as a success, ensure it happened
+    ASSERT_EQ(buffer2.data, old_ptr);
+    EXPECT_EQ(buffer.data, nullptr);
+    ASSERT_EQ(buffer2.size_bytes, 5);
+    EXPECT_EQ(memcmp(buffer2.data, data, sizeof(data)), 0);
+    ArrowBufferReset(&buffer2);
+  } else {
+    // Otherwise, ensure the old buffer was left intact
+    ASSERT_EQ(buffer.data, old_ptr);
+    EXPECT_EQ(buffer2.data, nullptr);
+    ASSERT_EQ(buffer.size_bytes, 5);
+    EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
+  }
 }
 
 TEST(NanoarrowDeviceMetal, DeviceGpuBufferCopy) {
@@ -153,7 +161,7 @@ TEST(NanoarrowDeviceMetal, DeviceAlignedBuffer) {
   int64_t data[] = {1, 2, 3, 4, 5, 6, 7, 8};
   struct ArrowBufferView view = {data, sizeof(data)};
 
-  ArrowDeviceMetalInitBuffer(&buffer);
+  ASSERT_EQ(ArrowDeviceMetalInitBuffer(&buffer), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendBufferView(&buffer, view), NANOARROW_OK);
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   EXPECT_EQ(buffer.capacity_bytes, 64);
@@ -176,7 +184,7 @@ TEST(NanoarrowDeviceMetal, DeviceAlignedBuffer) {
 
   // When we reallocate to an invalid size, we get null
   ArrowBufferReset(&buffer);
-  ArrowDeviceMetalInitBuffer(&buffer);
+  ASSERT_EQ(ArrowDeviceMetalInitBuffer(&buffer), NANOARROW_OK);
   EXPECT_EQ(ArrowBufferReserve(&buffer, std::numeric_limits<intptr_t>::max()), ENOMEM);
   EXPECT_EQ(buffer.data, nullptr);
   EXPECT_EQ(buffer.allocator.private_data, nullptr);
@@ -213,6 +221,8 @@ class StringTypeParameterizedTestFixture
 };
 
 TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
+  using namespace nanoarrow::literals;
+
   struct ArrowDevice* metal = ArrowDeviceMetalDefaultDevice();
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowArray array;
@@ -222,8 +232,8 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("abc")), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(&array, ArrowCharView("defg")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "abc"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(&array, "defg"_asv), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
@@ -236,23 +246,32 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceMetalArrayViewString) {
 
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
 
-  // Copy required to Metal
+  // In some MacOS environments, ArrowDeviceArrayMoveToDevice() with buffers allocated
+  // using ArrowMalloc() will work (i.e., apparently MTL::Buffer can wrap
+  // arbitrary bytes, but only sometimes)
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
-  ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, metal, &device_array2), ENOTSUP);
-  ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, metal, &device_array2),
-            NANOARROW_OK);
-  ArrowArrayRelease(&device_array.array);
 
-  ASSERT_NE(device_array2.array.release, nullptr);
-  ASSERT_EQ(device_array2.device_id, metal->device_id);
+  int code = ArrowDeviceArrayMoveToDevice(&device_array, metal, &device_array2);
+  if (code == NANOARROW_OK) {
+    // If the move was successful, ensure it actually happened
+    ASSERT_EQ(device_array.array.release, nullptr);
+    ASSERT_NE(device_array2.array.release, nullptr);
+  } else {
+    // If the move was not successful, ensure we can copy to a metal device array
+    ASSERT_EQ(code, ENOTSUP);
+    ASSERT_EQ(ArrowDeviceArrayViewCopy(&device_array_view, metal, &device_array2),
+              NANOARROW_OK);
+  }
+
+  // Either way, ensure that the device array is reporting correct values
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array2, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, 7);
   EXPECT_EQ(memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7),
             0);
 
-  // Copy shouldn't be required to the CPU
+  // Copy shouldn't be required back to the CPU
   ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array2, cpu, &device_array),
             NANOARROW_OK);
   ASSERT_EQ(ArrowDeviceArrayViewSetArray(&device_array_view, &device_array, nullptr),

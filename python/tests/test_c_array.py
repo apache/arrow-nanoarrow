@@ -19,7 +19,8 @@ import array
 from datetime import date, datetime, timezone
 
 import pytest
-from nanoarrow._lib import CArrayBuilder, NanoarrowException
+from nanoarrow._lib import CArrayBuilder
+from nanoarrow._utils import NanoarrowException
 from nanoarrow.c_schema import c_schema_view
 
 import nanoarrow as na
@@ -148,7 +149,7 @@ def test_c_array_shallow_copy():
     import gc
     import platform
 
-    from nanoarrow._lib import get_pyobject_buffer_count
+    from nanoarrow._utils import get_pyobject_buffer_count
 
     if platform.python_implementation() == "PyPy":
         pytest.skip(

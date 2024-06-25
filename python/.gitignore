@@ -17,8 +17,7 @@
 # under the License.
 
 vendor/
-src/nanoarrow/_lib.c
-src/nanoarrow/_ipc_lib.c
+src/nanoarrow/_*.c
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

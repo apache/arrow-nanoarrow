@@ -20314,9 +20314,9 @@ static inline int org_apache_arrow_flatbuf_Tensor_verify_as_root_with_type_hash(
 
 #endif
 
+
 #include "nanoarrow.h"
 #include "nanoarrow_ipc.h"
-
 
 // R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
 #if defined(_WIN32) && !defined(_MSC_VER) && !defined(ENODATA)
