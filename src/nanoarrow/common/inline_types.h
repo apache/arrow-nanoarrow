@@ -882,7 +882,7 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
   memset(decimal->words, 0, sizeof(decimal->words));
   decimal->precision = precision;
   decimal->scale = scale;
-  decimal->n_words = bitwidth / 8 / sizeof(uint64_t);
+  decimal->n_words = (int)(bitwidth / 8 / sizeof(uint64_t));
 
   if (_ArrowIsLittleEndian()) {
     decimal->low_word_index = 0;
