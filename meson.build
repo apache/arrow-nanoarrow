@@ -43,6 +43,19 @@ endif
 subdir('src/nanoarrow')
 incdir = include_directories('src/')
 
+install_headers(
+    'src/nanoarrow/nanoarrow.h',
+    'src/nanoarrow/nanoarrow.hpp',
+    subdir: 'nanoarrow',
+)
+
+install_headers(
+    'src/nanoarrow/common/inline_array.h',
+    'src/nanoarrow/common/inline_buffer.h',
+    'src/nanoarrow/common/inline_types.h',
+    subdir: 'nanoarrow/common',
+)
+
 nanoarrow_lib = library(
     'nanoarrow',
     'src/nanoarrow/common/array.c',
@@ -59,6 +72,12 @@ nanoarrow_dep = declare_dependency(include_directories: [incdir],
 
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
+
+    install_headers(
+        'src/nanoarrow/nanoarrow_ipc.h',
+        'src/nanoarrow/ipc/flatcc_generated.h',
+        subdir: 'nanoarrow'
+    )
 
     nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
@@ -90,6 +109,11 @@ if needs_device
   if get_option('cuda')
     error('CUDA support with the Meson build system is not implemented')
   endif
+
+  install_headers(
+      'src/nanoarrow/nanoarrow_device.h',
+      subdir: 'nanoarrow',
+  )
 
   nanoarrow_device_lib = library(
       'nanoarrow_device',
@@ -250,3 +274,6 @@ if get_option('apps')
   )
   endif
 endif
+
+pkg = import('pkgconfig')
+pkg.generate(nanoarrow_lib)

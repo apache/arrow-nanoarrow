@@ -236,8 +236,7 @@ if(NANOARROW_IPC)
                                     $<INSTALL_INTERFACE:include>)
 
   install(TARGETS nanoarrow_ipc DESTINATION lib)
-  install(FILES src/nanoarrow/nanoarrow_ipc.h
-                src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
+  install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/ipc/flatcc_generated.h
           DESTINATION include/nanoarrow)
 endif()
 
