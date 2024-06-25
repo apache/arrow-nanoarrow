@@ -124,7 +124,7 @@ jobs:
       - name: Compress docs
         run: |
           cd nanoarrow/docs/_build
-          mv html nanoarrow-docs
+          cp -R html nanoarrow-docs
           tar -czf docs.tgz nanoarrow-docs
 
       - name: Upload docs
