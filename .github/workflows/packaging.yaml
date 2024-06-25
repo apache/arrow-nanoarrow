@@ -33,7 +33,6 @@ concurrency:
 
 jobs:
   source:
-    name: Source
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +73,7 @@ jobs:
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Create bundled distribution
-        run:
+        run: |
           python3 ci/scripts/bundle.py \
             --source-output-dir=dist \
             --include-output-dir=dist \
