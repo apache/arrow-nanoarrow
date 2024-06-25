@@ -188,14 +188,13 @@ jobs:
 
       - name: List release artifacts
         run: |
-          find release-artifacts
+          find release-artifacts -type f
 
       - name: Create release
         if: success() && startsWith(github.ref, 'refs/tags/')
         run: |
           RELEASE_TAG=${GITHUB_REF#refs/*/}
-
-          UPLOAD=$(find release-artifacts)
+          UPLOAD=$(find release-artifacts -type f)
 
           gh release create "${RELEASE_TAG}" \
             --repo ${{ github.repository }} \
