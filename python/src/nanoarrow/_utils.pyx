@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# cython: language_level = 3
+
 from libc.stdint cimport uint8_t, int64_t
 from libc.string cimport memcpy
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer, PyCapsule_IsValid

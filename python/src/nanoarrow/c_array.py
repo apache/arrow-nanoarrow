@@ -21,13 +21,13 @@ from nanoarrow._lib import (
     CArray,
     CArrayBuilder,
     CArrayView,
-    CArrowType,
     CBuffer,
     CBufferBuilder,
     CSchema,
     CSchemaBuilder,
     NoneAwareWrapperIterator,
 )
+from nanoarrow._types import CArrowType
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
 from nanoarrow.c_schema import c_schema, c_schema_view

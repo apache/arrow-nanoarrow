@@ -57,6 +57,8 @@ from enum import Enum
 from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
+
+from nanoarrow._types cimport CArrowType
 from nanoarrow._utils cimport (
     alloc_c_schema,
     alloc_c_array,
@@ -276,57 +278,6 @@ cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size
 
     snprintf(out, out_size, "%s", format_const)
     return element_size_bits_calc
-
-
-# This could in theory use cpdef enum, but an initial attempt to do so
-# resulted Cython duplicating some function definitions. For now, we resort
-# to a more manual trampoline of values to make them accessible from
-# schema.py.
-cdef class CArrowType:
-    """
-    Wrapper around ArrowType to provide implementations in Python access
-    to the values.
-    """
-
-    UNINITIALIZED = NANOARROW_TYPE_UNINITIALIZED
-    NA = NANOARROW_TYPE_NA
-    BOOL = NANOARROW_TYPE_BOOL
-    UINT8 = NANOARROW_TYPE_UINT8
-    INT8 = NANOARROW_TYPE_INT8
-    UINT16 = NANOARROW_TYPE_UINT16
-    INT16 = NANOARROW_TYPE_INT16
-    UINT32 = NANOARROW_TYPE_UINT32
-    INT32 = NANOARROW_TYPE_INT32
-    UINT64 = NANOARROW_TYPE_UINT64
-    INT64 = NANOARROW_TYPE_INT64
-    HALF_FLOAT = NANOARROW_TYPE_HALF_FLOAT
-    FLOAT = NANOARROW_TYPE_FLOAT
-    DOUBLE = NANOARROW_TYPE_DOUBLE
-    STRING = NANOARROW_TYPE_STRING
-    BINARY = NANOARROW_TYPE_BINARY
-    FIXED_SIZE_BINARY = NANOARROW_TYPE_FIXED_SIZE_BINARY
-    DATE32 = NANOARROW_TYPE_DATE32
-    DATE64 = NANOARROW_TYPE_DATE64
-    TIMESTAMP = NANOARROW_TYPE_TIMESTAMP
-    TIME32 = NANOARROW_TYPE_TIME32
-    TIME64 = NANOARROW_TYPE_TIME64
-    INTERVAL_MONTHS = NANOARROW_TYPE_INTERVAL_MONTHS
-    INTERVAL_DAY_TIME = NANOARROW_TYPE_INTERVAL_DAY_TIME
-    DECIMAL128 = NANOARROW_TYPE_DECIMAL128
-    DECIMAL256 = NANOARROW_TYPE_DECIMAL256
-    LIST = NANOARROW_TYPE_LIST
-    STRUCT = NANOARROW_TYPE_STRUCT
-    SPARSE_UNION = NANOARROW_TYPE_SPARSE_UNION
-    DENSE_UNION = NANOARROW_TYPE_DENSE_UNION
-    DICTIONARY = NANOARROW_TYPE_DICTIONARY
-    MAP = NANOARROW_TYPE_MAP
-    EXTENSION = NANOARROW_TYPE_EXTENSION
-    FIXED_SIZE_LIST = NANOARROW_TYPE_FIXED_SIZE_LIST
-    DURATION = NANOARROW_TYPE_DURATION
-    LARGE_STRING = NANOARROW_TYPE_LARGE_STRING
-    LARGE_BINARY = NANOARROW_TYPE_LARGE_BINARY
-    LARGE_LIST = NANOARROW_TYPE_LARGE_LIST
-    INTERVAL_MONTH_DAY_NANO = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 
 
 cdef class CArrowTimeUnit:

@@ -22,11 +22,11 @@ from typing import List, Mapping, Union
 
 from nanoarrow._lib import (
     CArrowTimeUnit,
-    CArrowType,
     CSchemaBuilder,
     CSchemaView,
     SchemaMetadata,
 )
+from nanoarrow._types import CArrowType
 from nanoarrow.c_schema import c_schema
 
 from nanoarrow import _repr_utils

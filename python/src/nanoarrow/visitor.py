@@ -17,7 +17,8 @@
 
 from typing import Any, Callable, List, Sequence, Tuple, Union
 
-from nanoarrow._lib import CArrayView, CArrowType, CBuffer, CBufferBuilder
+from nanoarrow._lib import CArrayView, CBuffer, CBufferBuilder
+from nanoarrow._types import CArrowType
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema_view
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
