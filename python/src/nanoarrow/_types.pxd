@@ -22,4 +22,4 @@ from nanoarrow_c cimport ArrowType
 cdef class CArrowType:
 
     @staticmethod
-    cdef ArrowType uninitialized()
+    cdef inline ArrowType uninitialized()

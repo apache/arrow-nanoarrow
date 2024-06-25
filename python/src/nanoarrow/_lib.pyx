@@ -58,7 +58,6 @@ from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
 
-from nanoarrow._types cimport CArrowType
 from nanoarrow._utils cimport (
     alloc_c_schema,
     alloc_c_array,
