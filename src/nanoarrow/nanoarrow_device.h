@@ -420,6 +420,7 @@ ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer);
 ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array);
 
 /// @}
+
 // Inline implementations
 
 static inline ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_src,
