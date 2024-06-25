@@ -72,16 +72,6 @@ jobs:
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Create bundled distribution
-        run: |
-          python3 ci/scripts/bundle.py \
-            --source-output-dir=dist \
-            --include-output-dir=dist \
-            --header-namespace= \
-            --with-device \
-            --with-ipc \
-            --with-flatcc
-
       - name: Create archive
         shell: bash
         run: |
