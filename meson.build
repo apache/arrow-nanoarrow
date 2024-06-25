@@ -75,7 +75,7 @@ if get_option('ipc')
 
     install_headers(
         'src/nanoarrow/nanoarrow_ipc.h',
-        # 'src/nanoarrnow/nanoarrow_ipc_flatcc_generated.h',
+        'src/nanoarrow/ipc/flatcc_generated.h',
         subdir: 'nanoarrow'
     )
 
