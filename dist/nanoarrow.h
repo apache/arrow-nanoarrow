@@ -914,7 +914,7 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
   memset(decimal->words, 0, sizeof(decimal->words));
   decimal->precision = precision;
   decimal->scale = scale;
-  decimal->n_words = bitwidth / 8 / sizeof(uint64_t);
+  decimal->n_words = (int)(bitwidth / 8 / sizeof(uint64_t));
 
   if (_ArrowIsLittleEndian()) {
     decimal->low_word_index = 0;
@@ -2266,7 +2266,7 @@ static inline uint16_t ArrowFloatToHalfFloat(float value) {
 
   uint16_t sn = (uint16_t)((u.b >> 31) & 0x1);
   uint16_t exp = (u.b >> 23) & 0xff;
-  int16_t res = (int16_t)exp - 127 + 15;
+  int16_t res = (int16_t)(exp - 127 + 15);
   uint16_t fc = (uint16_t)(u.b >> 13) & 0x3ff;
 
   if (exp == 0) {
