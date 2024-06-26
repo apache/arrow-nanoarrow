@@ -62,6 +62,46 @@ The nanoarrow R package is available from [CRAN](https://cran.r-project.org):
 install.packages("nanoarrow")
 ```
 
+The C library can be used by generating bundled versions of the core library
+and its components. This is the version used internally by the R and Python
+bindings.
+
+```shell
+python ci/scripts/bundle.py \
+  --source-output-dir=dist \
+  --include-output-dir=dist \
+  --header-namespace= \
+  --with-device \
+  --with-ipc \
+  --with-flatcc
+```
+
+CMake is also supported via a build/install with `find_package()` or using
+`FetchContent`:
+
+```
+fetchcontent_declare(nanoarrow
+                     URL "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/nanoarrow-0.5.0/apache-arrow-0.5.0.tar.gz")
+
+fetchcontent_makeavailable(nanoarrow)
+```
+
+The C library can also be used as a Meson subproject installed with:
+
+```shell
+mkdir subprojects
+meson wrap install nanoarrow
+```
+
+...and declared as a dependency with:
+
+```
+nanoarrow_dep = dependency('nanoarrow')
+example_exec = executable('example_meson_minimal_app',
+                          'src/app.cc',
+                          dependencies: [nanoarrow_dep])
+```
+
 See the [nanoarrow Documentation](https://arrow.apache.org/nanoarrow/latest/) for
 extended tutorials and API reference for the C, C++, Python, and R libraries.
 
