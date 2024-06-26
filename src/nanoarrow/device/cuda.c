@@ -103,7 +103,7 @@ static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
 static ArrowErrorCode ArrowDeviceCudaAllocateBufferAsync(struct ArrowDevice* device,
                                                          struct ArrowBuffer* buffer,
                                                          int64_t size_bytes,
-                                                         CUstream* stream) {
+                                                         CUstream hstream) {
   struct ArrowDeviceCudaPrivate* private_data =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
 
@@ -128,7 +128,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBufferAsync(struct ArrowDevice* dev
 
       // cuMemalloc requires non-zero size_bytes
       if (size_bytes > 0) {
-        err = cuMemAllocAsync(&dptr, (size_t)size_bytes, *stream);
+        err = cuMemAllocAsync(&dptr, (size_t)size_bytes, hstream);
       } else {
         err = CUDA_SUCCESS;
       }
@@ -187,33 +187,31 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
 
 static ArrowErrorCode ArrowDeviceCudaArrayInitInternal(
     struct ArrowDevice* device, struct ArrowDeviceArray* device_array,
-    struct ArrowArray* array, CUevent* cu_event) {
+    struct ArrowArray* array, CUevent cu_event) {
   struct ArrowDeviceCudaPrivate* device_private =
       (struct ArrowDeviceCudaPrivate*)device->private_data;
-  // One can create an event with cuEventCreate(&cu_event, CU_EVENT_DEFAULT);
-  // Requires cuCtxPushCurrent() + cuEventCreate() + cuCtxPopCurrent()
 
-  struct ArrowDeviceCudaArrayPrivate* private_data =
+  struct ArrowDeviceCudaArrayPrivate* array_private =
       (struct ArrowDeviceCudaArrayPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceCudaArrayPrivate));
-  if (private_data == NULL) {
+  if (array_private == NULL) {
     return ENOMEM;
   }
 
   memset(device_array, 0, sizeof(struct ArrowDeviceArray));
   device_array->array = *array;
-  device_array->array.private_data = private_data;
+  device_array->array.private_data = array_private;
   device_array->array.release = &ArrowDeviceCudaArrayRelease;
-  ArrowArrayMove(array, &private_data->parent);
+  ArrowArrayMove(array, &array_private->parent);
 
   device_array->device_id = device->device_id;
   device_array->device_type = device->device_type;
 
   if (cu_event != NULL) {
-    private_data->cu_event = *cu_event;
-    device_array->sync_event = &private_data->cu_event;
+    array_private->cu_event = cu_event;
+    device_array->sync_event = &array_private->cu_event;
   } else {
-    private_data->cu_event = NULL;
+    array_private->cu_event = NULL;
     device_array->sync_event = NULL;
   }
 
@@ -231,7 +229,12 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
                                "cuCtxPushCurrent", NULL);
   CUcontext unused;  // needed for cuCtxPopCurrent()
 
-  CUevent* cu_event = (CUevent*)sync_event;
+  CUevent cu_event;
+  if (sync_event == NULL) {
+    cu_event = NULL;
+  } else {
+    cu_event = *((CUevent*)sync_event);
+  }
 
   // If the stream was passed, it means that we are required to ensure that
   // the event that is exported by the output array captures the work that
@@ -248,11 +251,11 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
       NANOARROW_CUDA_RETURN_NOT_OK(err, "cuEventCreate", NULL);
     }
 
-    cu_event = &cu_event_tmp;
+    cu_event = cu_event_tmp;
   }
 
   if (stream != NULL) {
-    err = cuEventRecord(*cu_event, *((CUstream*)stream));
+    err = cuEventRecord(cu_event, *((CUstream*)stream));
     if (err != CUDA_SUCCESS) {
       NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
       if (cu_event_tmp != NULL) {
@@ -397,7 +400,7 @@ static ArrowErrorCode ArrowDeviceCudaBufferInitAsync(struct ArrowDevice* device_
     case ARROW_DEVICE_CUDA:
     case ARROW_DEVICE_CUDA_HOST:
       NANOARROW_RETURN_NOT_OK(
-          ArrowDeviceCudaAllocateBufferAsync(device_dst, &tmp, src.size_bytes, &hstream));
+          ArrowDeviceCudaAllocateBufferAsync(device_dst, &tmp, src.size_bytes, hstream));
       break;
     case ARROW_DEVICE_CPU:
       ArrowBufferInit(&tmp);
