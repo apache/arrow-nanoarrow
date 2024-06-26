@@ -88,7 +88,7 @@ jobs:
     strategy:
       matrix:
         config:
-          - {os: "ubuntu-20.04", label: "pyiodide", platform: "pyiodide"}
+          - {os: "ubuntu-20.04", label: "pyodide", platform: "pyodide"}
           - {os: "ubuntu-20.04", label: "linux", platform: "auto"}
           - {os: "windows-2019", label: "windows", platform: "auto"}
           - {os: "macOS-13", label: "macOS", platform: "auto"}
