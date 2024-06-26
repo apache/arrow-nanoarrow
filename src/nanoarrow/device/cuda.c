@@ -244,8 +244,9 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
   CUresult err;
 
   if (stream != NULL && cu_event == NULL) {
-    // TODO: Should this use the disable timing flag as well?
-    err = cuEventCreate(&cu_event_tmp, CU_EVENT_DEFAULT);
+    // Event is faster with timing disabled (a user can provide their
+    // own event if they want timing enabled)
+    err = cuEventCreate(&cu_event_tmp, CU_EVENT_DISABLE_TIMING);
     if (err != CUDA_SUCCESS) {
       NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
       NANOARROW_CUDA_RETURN_NOT_OK(err, "cuEventCreate", NULL);
