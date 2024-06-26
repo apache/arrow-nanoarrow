@@ -55,6 +55,35 @@ class CudaTemporaryContext {
   CUcontext context_;
 };
 
+class CudaStream {
+ public:
+  CudaStream(int64_t device_id) : device_id_(device_id), hstream_(0) {}
+
+  ArrowErrorCode Init() {
+    CudaTemporaryContext ctx(device_id_);
+    if (!ctx.valid()) {
+      return EINVAL;
+    }
+
+    if (cuStreamCreate(&hstream_, CU_STREAM_DEFAULT) != CUDA_SUCCESS) {
+      return EINVAL;
+    }
+
+    return NANOARROW_OK;
+  }
+
+  CUstream* get() { return &hstream_; }
+
+  ~CudaStream() {
+    if (hstream_ != 0) {
+      cuStreamDestroy(hstream_);
+    }
+  }
+
+  int64_t device_id_;
+  CUstream hstream_;
+};
+
 TEST(NanoarrowDeviceCuda, GetDevice) {
   struct ArrowDevice* cuda = ArrowDeviceCuda(ARROW_DEVICE_CUDA, 0);
   ASSERT_NE(cuda, nullptr);
@@ -79,30 +108,32 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferInit) {
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
-  // TODO: Use a non-default stream
-  CUstream hstream = (CUstream)0;
+  CudaStream stream(gpu->device_id);
+  ASSERT_EQ(stream.Init(), NANOARROW_OK);
 
   // CPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferInitAsync(cpu, cpu_view, gpu, &buffer_gpu, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferInitAsync(cpu, cpu_view, gpu, &buffer_gpu, stream.get()),
             NANOARROW_OK);
   EXPECT_EQ(buffer_gpu.size_bytes, sizeof(data));
   // (Content is tested on the roundtrip)
   struct ArrowBufferView gpu_view = {buffer_gpu.data, buffer_gpu.size_bytes};
 
   // GPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, gpu, &buffer, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, gpu, &buffer, stream.get()),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
   // (Content is tested on the roundtrip)
   ArrowBufferReset(&buffer);
 
   // GPU -> CPU
-  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, cpu, &buffer, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, cpu, &buffer, stream.get()),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
-  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
-  ArrowBufferReset(&buffer);
 
+  ASSERT_EQ(cuStreamSynchronize(*stream.get()), CUDA_SUCCESS);
+  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
+
+  ArrowBufferReset(&buffer);
   ArrowBufferReset(&buffer_gpu);
 }
 
@@ -116,11 +147,11 @@ TEST(NanoarrowDeviceCuda, DeviceCudaHostBufferInit) {
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   struct ArrowBufferView cpu_view = {data, sizeof(data)};
 
-  // TODO: Use a non-default stream
-  CUstream hstream = (CUstream)0;
+  CudaStream stream(gpu->device_id);
+  ASSERT_EQ(stream.Init(), NANOARROW_OK);
 
   // CPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferInitAsync(cpu, cpu_view, gpu, &buffer_gpu, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferInitAsync(cpu, cpu_view, gpu, &buffer_gpu, stream.get()),
             NANOARROW_OK);
   EXPECT_EQ(buffer_gpu.size_bytes, sizeof(data));
   EXPECT_EQ(memcmp(buffer_gpu.data, data, sizeof(data)), 0);
@@ -128,19 +159,21 @@ TEST(NanoarrowDeviceCuda, DeviceCudaHostBufferInit) {
   struct ArrowBufferView gpu_view = {buffer_gpu.data, buffer_gpu.size_bytes};
 
   // GPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, gpu, &buffer, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, gpu, &buffer, stream.get()),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
   EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
   ArrowBufferReset(&buffer);
 
   // GPU -> CPU
-  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, cpu, &buffer, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferInitAsync(gpu, gpu_view, cpu, &buffer, stream.get()),
             NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, sizeof(data));
-  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
-  ArrowBufferReset(&buffer);
 
+  ASSERT_EQ(cuStreamSynchronize(*stream.get()), CUDA_SUCCESS);
+  EXPECT_EQ(memcmp(buffer.data, data, sizeof(data)), 0);
+
+  ArrowBufferReset(&buffer);
   ArrowBufferReset(&buffer_gpu);
 }
 
@@ -169,24 +202,25 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
     GTEST_FAIL() << "cuMemAlloc() failed";
   }
 
-  // TODO: Use a non-default stream
-  CUstream hstream = (CUstream)0;
+  CudaStream stream(gpu->device_id);
+  ASSERT_EQ(stream.Init(), NANOARROW_OK);
 
   // CPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferCopyAsync(cpu, cpu_view, gpu, gpu_view, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferCopyAsync(cpu, cpu_view, gpu, gpu_view, stream.get()),
             NANOARROW_OK);
 
   // GPU -> GPU
-  ASSERT_EQ(ArrowDeviceBufferCopyAsync(gpu, gpu_view, gpu, gpu_view2, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferCopyAsync(gpu, gpu_view, gpu, gpu_view2, stream.get()),
             NANOARROW_OK);
 
   // GPU -> CPU
   uint8_t cpu_dest[5];
   struct ArrowBufferView cpu_dest_view = {cpu_dest, sizeof(data)};
-  ASSERT_EQ(ArrowDeviceBufferCopyAsync(gpu, gpu_view, cpu, cpu_dest_view, &hstream),
+  ASSERT_EQ(ArrowDeviceBufferCopyAsync(gpu, gpu_view, cpu, cpu_dest_view, stream.get()),
             NANOARROW_OK);
 
   // Check roundtrip
+  ASSERT_EQ(cuStreamSynchronize(*stream.get()), CUDA_SUCCESS);
   EXPECT_EQ(memcmp(cpu_dest, data, sizeof(data)), 0);
 
   // Clean up
@@ -225,8 +259,8 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   bool include_null = std::get<2>(GetParam());
   int64_t expected_data_size;  // expected
 
-  // TODO: Use a non-default stream
-  CUstream hstream = (CUstream)0;
+  CudaStream stream(gpu->device_id);
+  ASSERT_EQ(stream.Init(), NANOARROW_OK);
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
@@ -255,9 +289,9 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   struct ArrowDeviceArray device_array2;
   device_array2.array.release = nullptr;
   ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array, gpu, &device_array2), ENOTSUP);
-  ASSERT_EQ(
-      ArrowDeviceArrayViewCopyAsync(&device_array_view, gpu, &device_array2, &hstream),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowDeviceArrayViewCopyAsync(&device_array_view, gpu, &device_array2,
+                                          stream.get()),
+            NANOARROW_OK);
   ArrowArrayRelease(&device_array.array);
 
   ASSERT_NE(device_array2.array.release, nullptr);
@@ -274,9 +308,9 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
     ASSERT_EQ(ArrowDeviceArrayMoveToDevice(&device_array2, cpu, &device_array),
               NANOARROW_OK);
   } else {
-    ASSERT_EQ(
-        ArrowDeviceArrayViewCopyAsync(&device_array_view, cpu, &device_array, &hstream),
-        NANOARROW_OK);
+    ASSERT_EQ(ArrowDeviceArrayViewCopyAsync(&device_array_view, cpu, &device_array,
+                                            stream.get()),
+              NANOARROW_OK);
     ArrowArrayRelease(&device_array2.array);
   }
 
@@ -287,6 +321,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
 
   ASSERT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
 
+  ASSERT_EQ(cuStreamSynchronize(*stream.get()), CUDA_SUCCESS);
   if (include_null) {
     EXPECT_EQ(
         memcmp(device_array_view.array_view.buffer_views[2].data.data, "abcdefg", 7), 0);
