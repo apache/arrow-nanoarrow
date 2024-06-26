@@ -315,6 +315,11 @@ static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
 
   // listener->release();
 
+  // The case where we actually have to do something is not implemented
+  if (sync_event != NULL || stream != NULL) {
+    return ENOTSUP;
+  }
+
   return NANOARROW_OK;
 }
 

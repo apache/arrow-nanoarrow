@@ -233,7 +233,10 @@ static ArrowErrorCode ArrowDeviceCudaArrayInitAsync(struct ArrowDevice* device,
 
   CUevent* cu_event = (CUevent*)sync_event;
 
-  // If the stream was passed, we must have an event to work with
+  // If the stream was passed, it means that we are required to ensure that
+  // the event that is exported by the output array captures the work that
+  // has been done on stream. If we were not given an event to take ownership of,
+  // this means we need to create one.
   CUevent cu_event_tmp = NULL;
   CUresult err;
 
