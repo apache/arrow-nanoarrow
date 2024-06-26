@@ -88,12 +88,12 @@ jobs:
     strategy:
       matrix:
         config:
-          - {os: "ubuntu-20.04", label: "linux", platform: "pyiodide"}
-          - {os: "ubuntu-20.04", label: "linux"}
-          - {os: "windows-2019", label: "windows"}
-          - {os: "macOS-13", label: "macOS"}
-          - {os: "macOS-14", label: "macOS-arm64"}
-          - {os: ["self-hosted", "arm"], label: "linux-arm64"}
+          - {os: "ubuntu-20.04", label: "pyiodide", platform: "pyiodide"}
+          - {os: "ubuntu-20.04", label: "linux", platform: "auto"}
+          - {os: "windows-2019", label: "windows", platform: "auto"}
+          - {os: "macOS-13", label: "macOS", platform: "auto"}
+          - {os: "macOS-14", label: "macOS-arm64", platform: "auto"}
+          - {os: ["self-hosted", "arm"], label: "linux-arm64", platform: "auto"}
 
     steps:
       - uses: actions/checkout@v4
