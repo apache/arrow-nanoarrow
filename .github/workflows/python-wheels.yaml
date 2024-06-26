@@ -130,7 +130,7 @@ jobs:
 
 
   upload_nightly:
-    needs: ["build_sdist", "build_wheels"]
+    needs: ["sdist", "wheels"]
     name: Upload nightly packages
     runs-on: "ubuntu-20.04"
     if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
