@@ -110,7 +110,7 @@ jobs:
           echo "::group::Docker Pull"
           cd nanoarrow
           docker compose run --rm -e GITHUB_ACTIONS docs
-
+          echo "::endgroup::"
       - name: Compress docs
         run: |
           cp -R nanoarrow/docs/_build/html nanoarrow-docs
