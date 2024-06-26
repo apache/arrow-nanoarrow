@@ -85,9 +85,11 @@ jobs:
     strategy:
       matrix:
         config:
+          - {os: "ubuntu-20.04", label: "linux", platform: "pyiodide"}
           - {os: "ubuntu-20.04", label: "linux"}
           - {os: "windows-2019", label: "windows"}
-          - {os: "macOS-11", label: "macOS"}
+          - {os: "macOS-13", label: "macOS"}
+          - {os: "macOS-14", label: "macOS-arm64"}
           - {os: ["self-hosted", "arm"], label: "linux-arm64"}
 
     steps:
@@ -102,7 +104,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.15.0
+        run: python -m pip install cibuildwheel==2.19.1
 
       - name: Set nanoarrow Python dev version
         if: github.ref == 'refs/heads/main'
@@ -116,6 +118,7 @@ jobs:
           CIBW_ARCHS_MACOS: x86_64 arm64
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
+          CIBW_PLATFORM: ${{ matrox.config.platform }}
 
       - uses: actions/upload-artifact@v4
         with:
