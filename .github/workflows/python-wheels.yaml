@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Build Python Wheels
+name: python-wheels
 
 # Build wheels on commit to main, or when requested
 on:
@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 jobs:
-  build_sdist:
+  sdist:
     runs-on: "ubuntu-20.04"
     steps:
     - uses: actions/checkout@v4
@@ -81,9 +81,9 @@ jobs:
         name: release-sdist
         path: ./python/dist/nanoarrow-*.tar.gz
 
-  build_wheels:
-    needs: ["build_sdist"]
-    name: Build wheels on ${{ matrix.config.label }}
+  wheels:
+    needs: ["sdist"]
+    name: ${{ matrix.config.label }}
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
