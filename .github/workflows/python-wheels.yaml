@@ -121,7 +121,7 @@ jobs:
           CIBW_ARCHS_MACOS: x86_64 arm64
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
-          CIBW_PLATFORM: ${{ matrox.config.platform }}
+          CIBW_PLATFORM: ${{ matrix.config.platform }}
 
       - uses: actions/upload-artifact@v4
         with:
