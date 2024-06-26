@@ -111,6 +111,9 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferInit) {
   CudaStream stream(gpu->device_id);
   ASSERT_EQ(stream.Init(), NANOARROW_OK);
 
+  // Failing to provide a stream should error
+  ASSERT_EQ(ArrowDeviceBufferInitAsync(cpu, cpu_view, gpu, nullptr, nullptr), EINVAL);
+
   // CPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferInitAsync(cpu, cpu_view, gpu, &buffer_gpu, stream.get()),
             NANOARROW_OK);
@@ -205,6 +208,9 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
   CudaStream stream(gpu->device_id);
   ASSERT_EQ(stream.Init(), NANOARROW_OK);
 
+  // Failing to provide a stream should error
+  ASSERT_EQ(ArrowDeviceBufferCopyAsync(cpu, cpu_view, gpu, gpu_view, nullptr), EINVAL);
+
   // CPU -> GPU
   ASSERT_EQ(ArrowDeviceBufferCopyAsync(cpu, cpu_view, gpu, gpu_view, stream.get()),
             NANOARROW_OK);
@@ -235,6 +241,8 @@ TEST(NanoarrowDeviceCuda, DeviceCudaBufferCopy) {
   }
 }
 
+TEST(NanoarrowDeviceCuda, DeviceCudaArrayInit) {}
+
 class StringTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::tuple<ArrowDeviceType, enum ArrowType, bool>> {
  protected:
@@ -262,6 +270,7 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
   CudaStream stream(gpu->device_id);
   ASSERT_EQ(stream.Init(), NANOARROW_OK);
 
+  // Create some test data
   ASSERT_EQ(ArrowArrayInitFromType(&array, string_type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(&array, "abc"_asv), NANOARROW_OK);
@@ -284,6 +293,10 @@ TEST_P(StringTypeParameterizedTestFixture, ArrowDeviceCudaArrayViewString) {
 
   EXPECT_EQ(device_array_view.array_view.buffer_views[2].size_bytes, expected_data_size);
   EXPECT_EQ(device_array.array.length, 3);
+
+  // Failing to provide a stream should error
+  ASSERT_EQ(ArrowDeviceArrayViewCopyAsync(&device_array_view, gpu, nullptr, nullptr),
+            EINVAL);
 
   // Copy required to Cuda
   struct ArrowDeviceArray device_array2;
@@ -353,6 +366,4 @@ INSTANTIATE_TEST_SUITE_P(
         TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_BINARY, true),
         TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_BINARY, false),
         TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_BINARY, true),
-        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_BINARY, false)
-
-            ));
+        TestParams(ARROW_DEVICE_CUDA_HOST, NANOARROW_TYPE_LARGE_BINARY, false)));
