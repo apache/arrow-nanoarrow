@@ -32,9 +32,13 @@ TEST(NanoarrowDevice, CpuDevice) {
   EXPECT_EQ(cpu, ArrowDeviceCpu());
 
   void* sync_event = nullptr;
-  EXPECT_EQ(cpu->synchronize_event(cpu, sync_event, nullptr), NANOARROW_OK);
+  void* stream = nullptr;
+  EXPECT_EQ(cpu->synchronize_event(cpu, sync_event, stream, nullptr), NANOARROW_OK);
   sync_event = cpu;
-  EXPECT_EQ(cpu->synchronize_event(cpu, sync_event, nullptr), EINVAL);
+  EXPECT_EQ(cpu->synchronize_event(cpu, sync_event, stream, nullptr), EINVAL);
+  sync_event = nullptr;
+  stream = cpu;
+  EXPECT_EQ(cpu->synchronize_event(cpu, sync_event, stream, nullptr), EINVAL);
 }
 
 TEST(NanoarrowDevice, ArrowDeviceCpuBuffer) {
