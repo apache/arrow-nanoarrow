@@ -18,7 +18,7 @@
 # cython: language_level = 3
 
 from libc.stdio cimport snprintf
-from nanoarrow_c cimport *
+from . cimport _types
 
 from struct import calcsize
 from sys import byteorder as sys_byteorder
@@ -34,7 +34,7 @@ cdef equal(int type_id1, int type_id2):
 
 
 cdef one_of(int type_id, tuple type_ids):
-     """Check if type_id is one of several values
+    """Check if type_id is one of several values
 
     Provided because Cython is picky about comparing enum types and
     will error for ``_types.UINT8 in (NANOARROW_TYPE_UINT8,)``.
@@ -49,71 +49,71 @@ cdef one_of(int type_id, tuple type_ids):
 cpdef bint is_unsigned_integer(int type_id):
     """Check if type_id is an unsigned integral type"""
     return type_id in (
-        NANOARROW_TYPE_UINT8,
-        NANOARROW_TYPE_UINT8,
-        NANOARROW_TYPE_UINT16,
-        NANOARROW_TYPE_UINT32,
-        NANOARROW_TYPE_UINT64,
+        _types.UINT8,
+        _types.UINT8,
+        _types.UINT16,
+        _types.UINT32,
+        _types.UINT64,
     )
 
 
 cpdef bint is_signed_integer(int type_id):
     """Check if type_id is an signed integral type"""
     return type_id in (
-        NANOARROW_TYPE_INT8,
-        NANOARROW_TYPE_INT16,
-        NANOARROW_TYPE_INT32,
-        NANOARROW_TYPE_INT64,
+        _types.INT8,
+        _types.INT16,
+        _types.INT32,
+        _types.INT64,
     )
 
 
 cpdef bint is_floating_point(int type_id):
     """Check if type_id is a floating point type"""
     return type_id in (
-        NANOARROW_TYPE_HALF_FLOAT,
-        NANOARROW_TYPE_FLOAT,
-        NANOARROW_TYPE_DOUBLE,
+        _types.HALF_FLOAT,
+        _types.FLOAT,
+        _types.DOUBLE,
     )
 
 
 cpdef bint is_fixed_size(int type_id):
     """Check if type_id is a fixed-size (binary or list) type"""
     return type_id in (
-        NANOARROW_TYPE_FIXED_SIZE_LIST,
-        NANOARROW_TYPE_FIXED_SIZE_BINARY,
+        _types.FIXED_SIZE_LIST,
+        _types.FIXED_SIZE_BINARY,
     )
 
 
 cpdef bint is_decimal(int type_id):
     """Check if type_id is a decimal type"""
     return type_id in (
-        NANOARROW_TYPE_DECIMAL128,
-        NANOARROW_TYPE_DECIMAL256,
+        _types.DECIMAL128,
+        _types.DECIMAL256,
     )
 
 
 cpdef bint has_time_unit(int type_id):
     """Check if type_id represents a type with a time_unit parameter"""
     return type_id in (
-        NANOARROW_TYPE_TIME32,
-        NANOARROW_TYPE_TIME64,
-        NANOARROW_TYPE_DURATION,
-        NANOARROW_TYPE_TIMESTAMP,
+        _types.TIME32,
+        _types.TIME64,
+        _types.DURATION,
+        _types.TIMESTAMP,
     )
 
 
 cpdef bint is_union(int type_id):
     """Check if type_id is a union type"""
     return type_id in (
-        NANOARROW_TYPE_DENSE_UNION,
-        NANOARROW_TYPE_SPARSE_UNION,
+        _types.DENSE_UNION,
+        _types.SPARSE_UNION,
     )
 
 
 cdef tuple from_format(format):
     """Convert a Python buffer protocol format string to a itemsize/type_id tuple
 
-    Returns tuple of item size (in bytes) and the ``CArrowType``. Raises
+    Returns tuple of item size (in bytes) and the ``_types``. Raises
     ``ValueError`` if the given format string is cannot be represented
     (e.g., explicit non-system endian) but will return a fixed-size binary
     specification for unrecognized format strings. The BOOL types is
@@ -132,38 +132,38 @@ cdef tuple from_format(format):
     format = format.strip("=@")
 
     if format == "c":
-        return 0, NANOARROW_TYPE_STRING
+        return 0, _types.STRING
     elif format == "e":
-        return item_size, NANOARROW_TYPE_HALF_FLOAT
+        return item_size, _types.HALF_FLOAT
     elif format == "f":
-        return item_size, NANOARROW_TYPE_FLOAT
+        return item_size, _types.FLOAT
     elif format == "d":
-        return item_size, NANOARROW_TYPE_DOUBLE
+        return item_size, _types.DOUBLE
 
     # Check for signed integers
     if format in ("b", "h", "i", "l", "q", "n"):
         if item_size == 1:
-            return item_size, NANOARROW_TYPE_INT8
+            return item_size, _types.INT8
         elif item_size == 2:
-            return item_size, NANOARROW_TYPE_INT16
+            return item_size, _types.INT16
         elif item_size == 4:
-            return item_size, NANOARROW_TYPE_INT32
+            return item_size, _types.INT32
         elif item_size == 8:
-            return item_size, NANOARROW_TYPE_INT64
+            return item_size, _types.INT64
 
     # Check for unsinged integers
     if format in ("B", "?", "H", "I", "L", "Q", "N"):
         if item_size == 1:
-            return item_size, NANOARROW_TYPE_UINT8
+            return item_size, _types.UINT8
         elif item_size == 2:
-            return item_size, NANOARROW_TYPE_UINT16
+            return item_size, _types.UINT16
         elif item_size == 4:
-            return item_size, NANOARROW_TYPE_UINT32
+            return item_size, _types.UINT32
         elif item_size == 8:
-            return item_size, NANOARROW_TYPE_UINT64
+            return item_size, _types.UINT64
 
     # If all else fails, return opaque fixed-size binary
-    return item_size, NANOARROW_TYPE_BINARY
+    return item_size, _types.BINARY
 
 
 cdef int to_format(int type_id, int element_size_bits, size_t out_size, char* out):
@@ -176,65 +176,65 @@ cdef int to_format(int type_id, int element_size_bits, size_t out_size, char* ou
     (e.g., INTERVAL_DAY_TIME) export as packed structs such that their component
     values are preserved.
     """
-    if type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY) and element_size_bits > 0:
+    if type_id in (_types.BINARY, _types.FIXED_SIZE_BINARY) and element_size_bits > 0:
         snprintf(out, out_size, "%ds", <int>(element_size_bits // 8))
         return element_size_bits
 
     cdef const char* format_const = ""
     cdef int element_size_bits_calc = 0
-    if type_id == NANOARROW_TYPE_STRING:
+    if type_id == _types.STRING:
         format_const = "c"
         element_size_bits_calc = 0
-    elif type_id == NANOARROW_TYPE_BINARY:
+    elif type_id == _types.BINARY:
         format_const = "B"
         element_size_bits_calc = 0
-    elif type_id == NANOARROW_TYPE_BOOL:
+    elif type_id == _types.BOOL:
         # Bitmaps export as unspecified binary
         format_const = "B"
         element_size_bits_calc = 1
-    elif type_id == NANOARROW_TYPE_INT8:
+    elif type_id == _types.INT8:
         format_const = "b"
         element_size_bits_calc = 8
-    elif type_id == NANOARROW_TYPE_UINT8:
+    elif type_id == _types.UINT8:
         format_const = "B"
         element_size_bits_calc = 8
-    elif type_id == NANOARROW_TYPE_INT16:
+    elif type_id == _types.INT16:
         format_const = "h"
         element_size_bits_calc = 16
-    elif type_id == NANOARROW_TYPE_UINT16:
+    elif type_id == _types.UINT16:
         format_const = "H"
         element_size_bits_calc = 16
-    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS):
+    elif type_id in (_types.INT32, _types.INTERVAL_MONTHS):
         format_const = "i"
         element_size_bits_calc = 32
-    elif type_id == NANOARROW_TYPE_UINT32:
+    elif type_id == _types.UINT32:
         format_const = "I"
         element_size_bits_calc = 32
-    elif type_id == NANOARROW_TYPE_INT64:
+    elif type_id == _types.INT64:
         format_const = "q"
         element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_UINT64:
+    elif type_id == _types.UINT64:
         format_const = "Q"
         element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_HALF_FLOAT:
+    elif type_id == _types.HALF_FLOAT:
         format_const = "e"
         element_size_bits_calc = 16
-    elif type_id == NANOARROW_TYPE_FLOAT:
+    elif type_id == _types.FLOAT:
         format_const = "f"
         element_size_bits_calc = 32
-    elif type_id == NANOARROW_TYPE_DOUBLE:
+    elif type_id == _types.DOUBLE:
         format_const = "d"
         element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
+    elif type_id == _types.INTERVAL_DAY_TIME:
         format_const = "ii"
         element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+    elif type_id == _types.INTERVAL_MONTH_DAY_NANO:
         format_const = "iiq"
         element_size_bits_calc = 128
-    elif type_id == NANOARROW_TYPE_DECIMAL128:
+    elif type_id == _types.DECIMAL128:
         format_const = "16s"
         element_size_bits_calc = 128
-    elif type_id == NANOARROW_TYPE_DECIMAL256:
+    elif type_id == _types.DECIMAL256:
         format_const = "32s"
         element_size_bits_calc = 256
     else:
