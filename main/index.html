@@ -415,6 +415,38 @@ conda<span class="w"> </span>install<span class="w"> </span>nanoarrow<span class
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;nanoarrow&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The C library can be used by generating bundled versions of the core
+library and its components. This is the version used internally by the R
+and Python bindings.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>ci/scripts/bundle.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source-output-dir<span class="o">=</span>dist<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-output-dir<span class="o">=</span>dist<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--header-namespace<span class="o">=</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--with-device<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--with-ipc<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--with-flatcc
+</pre></div>
+</div>
+<p>CMake is also supported via a build/install with <code class="docutils literal notranslate"><span class="pre">find_package()</span></code> or
+using <code class="docutils literal notranslate"><span class="pre">FetchContent</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">fetchcontent_declare</span><span class="p">(</span><span class="n">nanoarrow</span>
+                     <span class="n">URL</span> <span class="s2">&quot;https://www.apache.org/dyn/closer.lua?action=download&amp;filename=arrow/nanoarrow-0.5.0/apache-arrow-0.5.0.tar.gz&quot;</span><span class="p">)</span>
+
+<span class="n">fetchcontent_makeavailable</span><span class="p">(</span><span class="n">nanoarrow</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The C library can also be used as a Meson subproject installed with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>subprojects
+meson<span class="w"> </span>wrap<span class="w"> </span>install<span class="w"> </span>nanoarrow
+</pre></div>
+</div>
+<p>…and declared as a dependency with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">nanoarrow_dep</span> <span class="o">=</span> <span class="n">dependency</span><span class="p">(</span><span class="s1">&#39;nanoarrow&#39;</span><span class="p">)</span>
+<span class="n">example_exec</span> <span class="o">=</span> <span class="n">executable</span><span class="p">(</span><span class="s1">&#39;example_meson_minimal_app&#39;</span><span class="p">,</span>
+                          <span class="s1">&#39;src/app.cc&#39;</span><span class="p">,</span>
+                          <span class="n">dependencies</span><span class="p">:</span> <span class="p">[</span><span class="n">nanoarrow_dep</span><span class="p">])</span>
+</pre></div>
+</div>
 <p>See the <a class="reference external" href="https://arrow.apache.org/nanoarrow/latest/">nanoarrow
 Documentation</a> for
 extended tutorials and API reference for the C, C++, Python, and R
