@@ -22,14 +22,14 @@ import sys
 
 
 # Generate the nanoarrow_c.pxd file used by the Cython extensions
-class NanoarrowPxdGenerator:
+class PxdGenerator:
     def __init__(self):
         self._define_regexes()
 
-    def generate_nanoarrow_pxd(self, file_in, file_out):
+    def generate_pxd(self, file_in, file_out):
         file_in_name = pathlib.Path(file_in).name
 
-        # Read the nanoarrow.h header
+        # Read the header
         content = None
         with open(file_in, "r") as input:
             content = input.read()
@@ -38,7 +38,7 @@ class NanoarrowPxdGenerator:
         content = self.re_comment.sub("", content)
 
         # Replace NANOARROW_MAX_FIXED_BUFFERS with its value
-        content = self.re_max_buffers.sub("3", content)
+        content = self._preprocess_content(content)
 
         # Find typedefs, types, and function definitions
         typedefs = self._find_typedefs(content)
@@ -62,13 +62,7 @@ class NanoarrowPxdGenerator:
             )
 
             # A few things we add in manually
-            output.write(b"\n")
-            output.write(b"    cdef int NANOARROW_OK\n")
-            output.write(b"    cdef int NANOARROW_MAX_FIXED_BUFFERS\n")
-            output.write(b"    cdef int ARROW_FLAG_DICTIONARY_ORDERED\n")
-            output.write(b"    cdef int ARROW_FLAG_NULLABLE\n")
-            output.write(b"    cdef int ARROW_FLAG_MAP_KEYS_SORTED\n")
-            output.write(b"\n")
+            self._write_defs(output)
 
             for type in types_cython:
                 output.write(type.encode("UTF-8"))
@@ -77,15 +71,21 @@ class NanoarrowPxdGenerator:
             for typedef in typedefs_cython:
                 output.write(typedef.encode("UTF-8"))
                 output.write(b"\n")
+
             output.write(b"\n")
 
             for func_def in func_defs_cython:
                 output.write(func_def.encode("UTF-8"))
                 output.write(b"\n")
 
+    def _preprocess_content(self, content):
+        return content
+
+    def _write_defs(self, output):
+        pass
+
     def _define_regexes(self):
         self.re_comment = re.compile(r"\s*//[^\n]*")
-        self.re_max_buffers = re.compile(r"NANOARROW_MAX_FIXED_BUFFERS")
         self.re_typedef = re.compile(r"typedef(?P<typedef>[^;]+)")
         self.re_type = re.compile(
             r"(?P<type>struct|union|enum) (?P<name>Arrow[^ ]+) {(?P<body>[^}]*)}"
@@ -167,9 +167,58 @@ class NanoarrowPxdGenerator:
 
         # cython: language_level = 3
 
-        from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t
-        from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t
         """
+
+
+class NanoarrowPxdGenerator(PxdGenerator):
+
+    def _preprocess_content(self, content):
+        return re.sub(r"NANOARROW_MAX_FIXED_BUFFERS", "3", content)
+
+    def _pxd_header(self):
+        return (
+            super()._pxd_header()
+            + """
+    from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t
+    from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t
+    """
+        )
+
+    def _write_defs(self, output):
+        output.write(b"\n")
+        output.write(b"    cdef int NANOARROW_OK\n")
+        output.write(b"    cdef int NANOARROW_MAX_FIXED_BUFFERS\n")
+        output.write(b"    cdef int ARROW_FLAG_DICTIONARY_ORDERED\n")
+        output.write(b"    cdef int ARROW_FLAG_NULLABLE\n")
+        output.write(b"    cdef int ARROW_FLAG_MAP_KEYS_SORTED\n")
+        output.write(b"\n")
+
+
+class NanoarrowDevicePxdGenerator(PxdGenerator):
+
+    def _preprocess_content(self, content):
+        self.device_names = re.findall("#define (ARROW_DEVICE_[A-Z0-9_]+)", content)
+        return super()._preprocess_content(content)
+
+    def _find_typedefs(self, content):
+        return []
+
+    def _pxd_header(self):
+        return (
+            super()._pxd_header()
+            + """
+    from libc.stdint cimport int32_t, int64_t
+    from nanoarrow_c cimport *
+    """
+        )
+
+    def _write_defs(self, output):
+        output.write(b"\n")
+        output.write(b"    ctypedef int32_t ArrowDeviceType\n")
+        output.write(b"\n")
+        for name in self.device_names:
+            output.write(f"    cdef ArrowDeviceType {name}\n".encode())
+        output.write(b"\n")
 
 
 # Runs cmake -DNANOARROW_BUNDLE=ON if cmake exists or copies nanoarrow.c/h
@@ -228,16 +277,18 @@ def copy_or_generate_nanoarrow_c():
 
 
 # Runs the pxd generator with some information about the file name
-def generate_nanoarrow_pxd():
+def generate_nanoarrow_pxds():
     this_dir = pathlib.Path(__file__).parent.resolve()
-    maybe_nanoarrow_h = this_dir / "vendor/nanoarrow.h"
-    maybe_nanoarrow_pxd = this_dir / "vendor/nanoarrow_c.pxd"
 
-    NanoarrowPxdGenerator().generate_nanoarrow_pxd(
-        maybe_nanoarrow_h, maybe_nanoarrow_pxd
+    NanoarrowPxdGenerator().generate_pxd(
+        this_dir / "vendor" / "nanoarrow.h", this_dir / "vendor" / "nanoarrow_c.pxd"
+    )
+    NanoarrowDevicePxdGenerator().generate_pxd(
+        this_dir / "vendor" / "nanoarrow_device.h",
+        this_dir / "vendor" / "nanoarrow_device_c.pxd",
     )
 
 
 if __name__ == "__main__":
     copy_or_generate_nanoarrow_c()
-    generate_nanoarrow_pxd()
+    generate_nanoarrow_pxds()
