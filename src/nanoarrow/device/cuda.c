@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#if defined(NANOARROW_DEVICE_WITH_CUDA)
+
 #include <inttypes.h>
 
 #include <cuda.h>
@@ -622,3 +624,5 @@ struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_
       return NULL;
   }
 }
+
+#endif
