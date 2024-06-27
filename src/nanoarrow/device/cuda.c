@@ -21,7 +21,7 @@
 
 #include <cuda.h>
 
-#include "nanoarrow/nanoarrow_device.h"
+#include "nanoarrow_device.h"
 
 static inline void ArrowDeviceCudaSetError(CUresult err, const char* op,
                                            struct ArrowError* error) {
@@ -152,7 +152,7 @@ static ArrowErrorCode ArrowDeviceCudaAllocateBufferAsync(struct ArrowDevice* dev
   if (err != CUDA_SUCCESS) {
     NANOARROW_CUDA_ASSERT_OK(cuCtxPopCurrent(&unused));
     ArrowFree(allocator_private);
-    return EIO;
+    NANOARROW_CUDA_RETURN_NOT_OK(err, op, NULL);
   }
 
   allocator_private->device_id = device->device_id;
@@ -190,9 +190,6 @@ static void ArrowDeviceCudaArrayRelease(struct ArrowArray* array) {
 static ArrowErrorCode ArrowDeviceCudaArrayInitInternal(
     struct ArrowDevice* device, struct ArrowDeviceArray* device_array,
     struct ArrowArray* array, CUevent cu_event) {
-  struct ArrowDeviceCudaPrivate* device_private =
-      (struct ArrowDeviceCudaPrivate*)device->private_data;
-
   struct ArrowDeviceCudaArrayPrivate* array_private =
       (struct ArrowDeviceCudaArrayPrivate*)ArrowMalloc(
           sizeof(struct ArrowDeviceCudaArrayPrivate));
@@ -450,7 +447,7 @@ static ArrowErrorCode ArrowDeviceCudaSynchronize(struct ArrowDevice* device,
   // Memory for cuda_event is owned by the ArrowArray member of the ArrowDeviceArray
   CUevent* cu_event = (CUevent*)sync_event;
   CUstream* cu_stream = (CUstream*)stream;
-  CUresult err;
+  CUresult err = CUDA_SUCCESS;
   const char* op = "";
 
   if (cu_stream == NULL && cu_event != NULL) {
