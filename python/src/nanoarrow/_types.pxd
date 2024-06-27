@@ -79,6 +79,6 @@ cpdef bint has_time_unit(int type_id)
 
 cpdef bint is_union(int type_id)
 
-cdef int to_format(ArrowType type_id, int element_size_bits, size_t out_size, char* out)
+cdef int to_format(int type_id, int element_size_bits, size_t out_size, char* out)
 
 cdef tuple from_format(format)

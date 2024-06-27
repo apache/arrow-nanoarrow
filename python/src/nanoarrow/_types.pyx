@@ -38,58 +38,58 @@ cdef one_of(int type_id, tuple type_ids):
 
 cpdef bint is_unsigned_integer(int type_id):
     return type_id in (
-        CArrowType.UINT8,
-        CArrowType.UINT8,
-        CArrowType.UINT16,
-        CArrowType.UINT32,
-        CArrowType.UINT64,
+        NANOARROW_TYPE_UINT8,
+        NANOARROW_TYPE_UINT8,
+        NANOARROW_TYPE_UINT16,
+        NANOARROW_TYPE_UINT32,
+        NANOARROW_TYPE_UINT64,
     )
 
 
 cpdef bint is_signed_integer(int type_id):
     return type_id in (
-        CArrowType.INT8,
-        CArrowType.INT16,
-        CArrowType.INT32,
-        CArrowType.INT64,
+        NANOARROW_TYPE_INT8,
+        NANOARROW_TYPE_INT16,
+        NANOARROW_TYPE_INT32,
+        NANOARROW_TYPE_INT64,
     )
 
 
 cpdef bint is_floating_point(int type_id):
     return type_id in (
-        CArrowType.HALF_FLOAT,
-        CArrowType.FLOAT,
-        CArrowType.DOUBLE,
+        NANOARROW_TYPE_HALF_FLOAT,
+        NANOARROW_TYPE_FLOAT,
+        NANOARROW_TYPE_DOUBLE,
     )
 
 
 cpdef bint is_fixed_size(int type_id):
     return type_id in (
-        CArrowType.FIXED_SIZE_LIST,
-        CArrowType.FIXED_SIZE_BINARY,
+        NANOARROW_TYPE_FIXED_SIZE_LIST,
+        NANOARROW_TYPE_FIXED_SIZE_BINARY,
     )
 
 
 cpdef bint is_decimal(int type_id):
     return type_id in (
-        CArrowType.DECIMAL128,
-        CArrowType.DECIMAL256,
+        NANOARROW_TYPE_DECIMAL128,
+        NANOARROW_TYPE_DECIMAL256,
     )
 
 
 cpdef bint has_time_unit(int type_id):
     return type_id in (
-        CArrowType.TIME32,
-        CArrowType.TIME64,
-        CArrowType.DURATION,
-        CArrowType.TIMESTAMP,
+        NANOARROW_TYPE_TIME32,
+        NANOARROW_TYPE_TIME64,
+        NANOARROW_TYPE_DURATION,
+        NANOARROW_TYPE_TIMESTAMP,
     )
 
 
 cpdef bint is_union(int type_id):
     return type_id in (
-        CArrowType.DENSE_UNION,
-        CArrowType.SPARSE_UNION,
+        NANOARROW_TYPE_DENSE_UNION,
+        NANOARROW_TYPE_SPARSE_UNION,
     )
 
 
@@ -141,7 +141,7 @@ cdef tuple from_format(format):
     return item_size, NANOARROW_TYPE_BINARY
 
 
-cdef int to_format(ArrowType type_id, int element_size_bits, size_t out_size, char* out):
+cdef int to_format(int type_id, int element_size_bits, size_t out_size, char* out):
     if type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY) and element_size_bits > 0:
         snprintf(out, out_size, "%ds", <int>(element_size_bits // 8))
         return element_size_bits

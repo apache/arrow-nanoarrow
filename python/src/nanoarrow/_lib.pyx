@@ -586,7 +586,7 @@ cdef class CSchemaView:
             return 'i'
         elif _types.one_of(
             self._schema_view.type,
-            (NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION)
+            (_types.TIMESTAMP, _types.DATE64, _types.DURATION)
         ):
             return 'q'
         else:
@@ -695,7 +695,7 @@ cdef class CSchemaView:
 
     @property
     def timezone(self):
-        if _types.equal(self._schema_view.type, NANOARROW_TYPE_TIMESTAMP):
+        if _types.equal(self._schema_view.type, _types.TIMESTAMP):
             return self._schema_view.timezone.decode()
         else:
             return None
@@ -1454,7 +1454,7 @@ cdef class CBufferView:
         )
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
-        if self._data_type == NANOARROW_TYPE_BOOL:
+        if _types.equal(self._data_type, _types.BOOL):
             self._n_elements = self._shape * 8
         else:
             self._n_elements = self._shape
@@ -1544,7 +1544,7 @@ cdef class CBufferView:
         return self._n_elements
 
     def element(self, i):
-        if _types.equal(self._data_type, NANOARROW_TYPE_BOOL):
+        if _types.equal(self._data_type, _types.BOOL):
             if i < 0 or i >= self.n_elements:
                 raise IndexError(f"Index {i} out of range")
             return ArrowBitGet(self._ptr.data.as_uint8, i)
@@ -1594,7 +1594,7 @@ cdef class CBufferView:
         return bytes_to_copy
 
     def unpack_bits_into(self, dest, offset=0, length=None, dest_offset=0):
-        if not _types.equal(self._data_type, NANOARROW_TYPE_BOOL):
+        if not _types.equal(self._data_type, _types.BOOL):
             raise ValueError("Can't unpack non-boolean buffer")
 
         if length is None:
@@ -2091,7 +2091,7 @@ cdef class CBufferBuilder:
 
         # Boolean arrays need their own writer since Python provides
         # no helpers for bitpacking
-        if self._buffer._data_type == NANOARROW_TYPE_BOOL:
+        if _types.equal(self._buffer._data_type, _types.BOOL):
             return self._write_bits(obj)
 
         cdef int64_t n_values = 0
