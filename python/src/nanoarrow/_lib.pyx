@@ -248,8 +248,12 @@ cdef class Device:
     def resolve(device_type, int64_t device_id):
         if int(device_type) == ARROW_DEVICE_CPU:
             return DEVICE_CPU
-        else:
+
+        cdef ArrowDevice* c_device = ArrowDeviceResolve(device_type, device_id)
+        if c_device == NULL:
             raise ValueError(f"Device not found for type {device_type}/{device_id}")
+
+        return Device(None, <uintptr_t>c_device)
 
 
 # Cache the CPU device

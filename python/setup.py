@@ -70,24 +70,26 @@ if os.getenv("NANOARROW_DEBUG_EXTENSION") == "1":
 
 cuda_toolkit_root = os.getenv("NANOARROW_PYTHON_CUDA_HOME")
 if cuda_toolkit_root:
+    cuda_so = "libcuda.dll" if os.name == 'nt' else "libcuda.so"
     include_dir = Path(cuda_toolkit_root) / "include"
-    possible_lib_dirs = [
-        Path(cuda_toolkit_root) / "lib",
-        Path(cuda_toolkit_root) / "lib64",
-        Path("/usr/lib/wsl/lib"),
+    possible_libs = [
+        Path(cuda_toolkit_root) / "lib" / cuda_so,
+        Path(cuda_toolkit_root) / "lib64" / cuda_so,
+        Path("/usr/lib/wsl/lib") / cuda_so,
     ]
 
     if not include_dir.is_dir():
         raise ValueError(f"CUDA include directory does not exist: '{include_dir}'")
 
-    lib_dirs = [d for d in possible_lib_dirs if d.is_dir()]
+    lib_dirs = [d for d in possible_libs if d.exists()]
     if not lib_dirs:
-        lib_dirs_err = ", ".join(f"'{d}" for d in possible_lib_dirs)
+        lib_dirs_err = ", ".join(f"'{d}" for d in possible_libs)
         raise ValueError(f"Can't find CUDA library directory. Checked {lib_dirs_err}")
 
     extra_include_dirs.append(str(include_dir))
-    library_dirs.append(str(lib_dirs[0]))
+    library_dirs.append(str(lib_dirs[0].parent))
     libraries.append("cuda")
+    extra_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
 
 
 setup(
@@ -127,6 +129,8 @@ setup(
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args,
             define_macros=extra_define_macros,
+            library_dirs=library_dirs,
+            libraries=libraries
         ),
         Extension(
             name="nanoarrow._ipc_lib",

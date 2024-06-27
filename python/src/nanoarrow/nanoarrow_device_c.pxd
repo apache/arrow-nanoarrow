@@ -95,3 +95,5 @@ cdef extern from "nanoarrow_device.h" nogil:
                                             ArrowDeviceArray* dst)
 
     ArrowDevice* ArrowDeviceCpu()
+
+    ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id)
