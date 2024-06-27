@@ -61,6 +61,9 @@ cpdef enum CArrowType:
     LARGE_LIST = NANOARROW_TYPE_LARGE_LIST
     INTERVAL_MONTH_DAY_NANO = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 
+cdef equal(int type_id1, int type_id2)
+
+cdef one_of(int type_id, tuple type_ids)
 
 cpdef bint is_unsigned_integer(int type_id)
 
@@ -75,3 +78,7 @@ cpdef bint is_decimal(int type_id)
 cpdef bint has_time_unit(int type_id)
 
 cpdef bint is_union(int type_id)
+
+cdef int to_format(ArrowType type_id, int element_size_bits, size_t out_size, char* out)
+
+cdef tuple from_format(format)
