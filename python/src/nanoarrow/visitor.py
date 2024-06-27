@@ -18,11 +18,12 @@
 from typing import Any, Callable, List, Sequence, Tuple, Union
 
 from nanoarrow._lib import CArrayView, CBuffer, CBufferBuilder
-from nanoarrow._types import CArrowType
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema_view
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 from nanoarrow.schema import Type
+
+from nanoarrow import _types
 
 
 class ArrayViewVisitable:
@@ -428,7 +429,7 @@ def _resolve_converter_cls(schema, handle_nulls=None):
     schema_view = c_schema_view(schema)
 
     if schema_view.nullable:
-        if schema_view.type_id == CArrowType.BOOL:
+        if schema_view.type_id == _types.BOOL:
             return ToNullableSequenceConverter, {
                 "converter_cls": ToBooleanBufferConverter,
                 "handle_nulls": handle_nulls,
@@ -442,7 +443,7 @@ def _resolve_converter_cls(schema, handle_nulls=None):
             return ToPyListConverter, {}
     else:
 
-        if schema_view.type_id == CArrowType.BOOL:
+        if schema_view.type_id == _types.BOOL:
             return ToBooleanBufferConverter, {}
         elif schema_view.buffer_format is not None:
             return ToPyBufferConverter, {}

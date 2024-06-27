@@ -16,9 +16,10 @@
 # under the License.
 
 from nanoarrow._lib import CBuffer, CBufferBuilder
-from nanoarrow._types import CArrowType
 from nanoarrow._utils import obj_is_buffer
 from nanoarrow.c_schema import c_schema_view
+
+from nanoarrow import _types
 
 
 def c_buffer(obj, schema=None) -> CBuffer:
@@ -104,17 +105,14 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
 
     builder = CBufferBuilder()
 
-    if schema_view.storage_type_id == CArrowType.FIXED_SIZE_BINARY:
-        builder.set_data_type(CArrowType.BINARY, schema_view.fixed_size * 8)
+    if schema_view.storage_type_id == _types.FIXED_SIZE_BINARY:
+        builder.set_data_type(_types.BINARY, schema_view.fixed_size * 8)
     else:
         builder.set_data_type(schema_view.storage_type_id)
 
     # If we are using a typecode supported by the array module, it has much
     # faster implementations of safely building buffers from iterables
-    if (
-        builder.format in array_typecodes
-        and schema_view.storage_type_id != CArrowType.BOOL
-    ):
+    if builder.format in array_typecodes and schema_view.storage_type_id != _types.BOOL:
         buf = array.array(builder.format, obj)
         return CBuffer.from_pybuffer(buf), len(buf)
 

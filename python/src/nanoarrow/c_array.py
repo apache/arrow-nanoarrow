@@ -27,10 +27,11 @@ from nanoarrow._lib import (
     CSchemaBuilder,
     NoneAwareWrapperIterator,
 )
-from nanoarrow._types import CArrowType
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
 from nanoarrow.c_schema import c_schema, c_schema_view
+
+from nanoarrow import _types
 
 
 def c_array(obj, schema=None) -> CArray:
@@ -356,7 +357,7 @@ class EmptyArrayBuilder(ArrayBuilder):
 
     @classmethod
     def infer_schema(cls, obj) -> Tuple[Any, CSchema]:
-        return obj, CSchemaBuilder.allocate().set_type(CArrowType.NA)
+        return obj, CSchemaBuilder.allocate().set_type(_types.NA)
 
     def start_building(self) -> None:
         self._c_builder.start_appending()
@@ -385,18 +386,16 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
         element_size_bits = obj.element_size_bits
 
         # Fixed-size binary needs a schema
-        if type_id == CArrowType.BINARY and element_size_bits != 0:
+        if type_id == _types.BINARY and element_size_bits != 0:
             schema = (
                 CSchemaBuilder.allocate()
-                .set_type_fixed_size(
-                    CArrowType.FIXED_SIZE_BINARY, element_size_bits // 8
-                )
+                .set_type_fixed_size(_types.FIXED_SIZE_BINARY, element_size_bits // 8)
                 .finish()
             )
-        elif type_id == CArrowType.STRING:
-            schema = CSchemaBuilder.allocate().set_type(CArrowType.INT8).finish()
-        elif type_id == CArrowType.BINARY:
-            schema = CSchemaBuilder.allocate().set_type(CArrowType.UINT8).finish()
+        elif type_id == _types.STRING:
+            schema = CSchemaBuilder.allocate().set_type(_types.INT8).finish()
+        elif type_id == _types.BINARY:
+            schema = CSchemaBuilder.allocate().set_type(_types.UINT8).finish()
         else:
             schema = CSchemaBuilder.allocate().set_type(type_id).finish()
 
@@ -528,30 +527,30 @@ class ArrayFromIterableBuilder(ArrayBuilder):
 
 
 _ARRAY_BUILDER_FROM_ITERABLE_METHOD = {
-    CArrowType.BOOL: "_append_using_buffer_builder",
-    CArrowType.HALF_FLOAT: "_append_using_buffer_builder",
-    CArrowType.INTERVAL_MONTH_DAY_NANO: "_append_using_buffer_builder",
-    CArrowType.INTERVAL_DAY_TIME: "_append_using_buffer_builder",
-    CArrowType.INTERVAL_MONTHS: "_append_using_buffer_builder",
-    CArrowType.BINARY: "_append_bytes",
-    CArrowType.LARGE_BINARY: "_append_bytes",
-    CArrowType.FIXED_SIZE_BINARY: "_append_bytes",
-    CArrowType.STRING: "_append_strings",
-    CArrowType.LARGE_STRING: "_append_strings",
-    CArrowType.INT8: "_append_using_array",
-    CArrowType.UINT8: "_append_using_array",
-    CArrowType.INT16: "_append_using_array",
-    CArrowType.UINT16: "_append_using_array",
-    CArrowType.INT32: "_append_using_array",
-    CArrowType.UINT32: "_append_using_array",
-    CArrowType.INT64: "_append_using_array",
-    CArrowType.UINT64: "_append_using_array",
-    CArrowType.FLOAT: "_append_using_array",
-    CArrowType.DOUBLE: "_append_using_array",
-    CArrowType.TIMESTAMP: "_append_using_array",
-    CArrowType.DATE32: "_append_using_array",
-    CArrowType.DATE64: "_append_using_array",
-    CArrowType.DURATION: "_append_using_array",
+    _types.BOOL: "_append_using_buffer_builder",
+    _types.HALF_FLOAT: "_append_using_buffer_builder",
+    _types.INTERVAL_MONTH_DAY_NANO: "_append_using_buffer_builder",
+    _types.INTERVAL_DAY_TIME: "_append_using_buffer_builder",
+    _types.INTERVAL_MONTHS: "_append_using_buffer_builder",
+    _types.BINARY: "_append_bytes",
+    _types.LARGE_BINARY: "_append_bytes",
+    _types.FIXED_SIZE_BINARY: "_append_bytes",
+    _types.STRING: "_append_strings",
+    _types.LARGE_STRING: "_append_strings",
+    _types.INT8: "_append_using_array",
+    _types.UINT8: "_append_using_array",
+    _types.INT16: "_append_using_array",
+    _types.UINT16: "_append_using_array",
+    _types.INT32: "_append_using_array",
+    _types.UINT32: "_append_using_array",
+    _types.INT64: "_append_using_array",
+    _types.UINT64: "_append_using_array",
+    _types.FLOAT: "_append_using_array",
+    _types.DOUBLE: "_append_using_array",
+    _types.TIMESTAMP: "_append_using_array",
+    _types.DATE32: "_append_using_array",
+    _types.DATE64: "_append_using_array",
+    _types.DURATION: "_append_using_array",
 }
 
 _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD = {
