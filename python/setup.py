@@ -70,12 +70,13 @@ if os.getenv("NANOARROW_DEBUG_EXTENSION") == "1":
 
 cuda_toolkit_root = os.getenv("NANOARROW_PYTHON_CUDA_HOME")
 if cuda_toolkit_root:
-    cuda_so = "libcuda.dll" if os.name == 'nt' else "libcuda.so"
+    cuda_lib = "cuda.lib" if os.name == 'nt' else "libcuda.so"
     include_dir = Path(cuda_toolkit_root) / "include"
     possible_libs = [
-        Path(cuda_toolkit_root) / "lib" / cuda_so,
-        Path(cuda_toolkit_root) / "lib64" / cuda_so,
-        Path("/usr/lib/wsl/lib") / cuda_so,
+        Path(cuda_toolkit_root) / "lib" / cuda_lib,
+        Path(cuda_toolkit_root) / "lib64" / cuda_lib,
+        Path(cuda_toolkit_root) / "lib" / "x64" / cuda_lib,
+        Path("/usr/lib/wsl/lib") / cuda_lib,
     ]
 
     if not include_dir.is_dir():
