@@ -18,9 +18,9 @@
 # under the License.
 
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 from setuptools import Extension, setup
 
@@ -70,7 +70,7 @@ if os.getenv("NANOARROW_DEBUG_EXTENSION") == "1":
 
 cuda_toolkit_root = os.getenv("NANOARROW_PYTHON_CUDA_HOME")
 if cuda_toolkit_root:
-    cuda_lib = "cuda.lib" if os.name == 'nt' else "libcuda.so"
+    cuda_lib = "cuda.lib" if os.name == "nt" else "libcuda.so"
     include_dir = Path(cuda_toolkit_root) / "include"
     possible_libs = [
         Path(cuda_toolkit_root) / "lib" / cuda_lib,
@@ -131,7 +131,7 @@ setup(
             extra_link_args=extra_link_args,
             define_macros=extra_define_macros,
             library_dirs=library_dirs,
-            libraries=libraries
+            libraries=libraries,
         ),
         Extension(
             name="nanoarrow._ipc_lib",

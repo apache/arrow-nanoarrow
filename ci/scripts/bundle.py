@@ -171,10 +171,9 @@ def bundle_nanoarrow_device(
         yield f"{output_include_dir}/{filename}", content
 
     # Generate sources
-    content = concatenate_content([
-        src_dir / "device" / "device.c",
-        src_dir / "device" / "cuda.c"
-    ])
+    content = concatenate_content(
+        [src_dir / "device" / "device.c", src_dir / "device" / "cuda.c"]
+    )
     content = namespace_nanoarrow_includes(content, header_namespace)
     yield f"{output_source_dir}/nanoarrow_device.c", content
 

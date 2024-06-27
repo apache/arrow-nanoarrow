@@ -171,7 +171,6 @@ class PxdGenerator:
 
 
 class NanoarrowPxdGenerator(PxdGenerator):
-
     def _preprocess_content(self, content):
         return re.sub(r"NANOARROW_MAX_FIXED_BUFFERS", "3", content)
 
@@ -195,7 +194,6 @@ class NanoarrowPxdGenerator(PxdGenerator):
 
 
 class NanoarrowDevicePxdGenerator(PxdGenerator):
-
     def _preprocess_content(self, content):
         self.device_names = re.findall("#define (ARROW_DEVICE_[A-Z0-9_]+)", content)
         return super()._preprocess_content(content)

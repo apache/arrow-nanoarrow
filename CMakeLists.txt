@@ -284,11 +284,12 @@ if(NANOARROW_DEVICE)
 
   # If the bundler didn't already assign the source files for the library, do so here
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/device/device.c ${NANOARROW_DEVICE_SOURCES_CUDA})
+    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/device/device.c
+                                       ${NANOARROW_DEVICE_SOURCES_CUDA})
   endif()
 
-  add_library(nanoarrow_device
-              ${NANOARROW_DEVICE_BUILD_SOURCES} ${NANOARROW_DEVICE_SOURCES_METAL})
+  add_library(nanoarrow_device ${NANOARROW_DEVICE_BUILD_SOURCES}
+                               ${NANOARROW_DEVICE_SOURCES_METAL})
 
   target_include_directories(nanoarrow_device
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
