@@ -26,7 +26,7 @@ from nanoarrow._lib import (
     CSchemaView,
     SchemaMetadata,
 )
-from nanoarrow._types import CArrowType
+from nanoarrow._types import CArrowType, is_decimal, has_time_unit
 from nanoarrow.c_schema import c_schema
 
 from nanoarrow import _repr_utils
@@ -1189,12 +1189,12 @@ def extension_type(
 def _c_schema_from_type_and_params(type: Type, params: dict):
     factory = CSchemaBuilder.allocate()
 
-    if type.value in CSchemaView._decimal_types:
+    if is_decimal(type.value):
         precision = int(params.pop("precision"))
         scale = int(params.pop("scale"))
         factory.set_type_decimal(type.value, precision, scale)
 
-    elif type.value in CSchemaView._time_unit_types:
+    elif has_time_unit(type.value):
         time_unit = params.pop("unit")
         if "timezone" in params:
             timezone = params.pop("timezone")

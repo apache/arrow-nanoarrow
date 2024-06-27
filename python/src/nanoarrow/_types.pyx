@@ -17,106 +17,59 @@
 
 # cython: language_level = 3
 
-from nanoarrow_c cimport *
 
-cdef class CArrowType:
+cpdef bint is_unsigned_integer(int type_id):
+    return type_id in (
+        CArrowType.UINT8,
+        CArrowType.UINT8,
+        CArrowType.UINT16,
+        CArrowType.UINT32,
+        CArrowType.UINT64,
+    )
 
-    UNINITIALIZED = NANOARROW_TYPE_UNINITIALIZED
-    NA = NANOARROW_TYPE_NA
-    BOOL = NANOARROW_TYPE_BOOL
-    UINT8 = NANOARROW_TYPE_UINT8
-    INT8 = NANOARROW_TYPE_INT8
-    UINT16 = NANOARROW_TYPE_UINT16
-    INT16 = NANOARROW_TYPE_INT16
-    UINT32 = NANOARROW_TYPE_UINT32
-    INT32 = NANOARROW_TYPE_INT32
-    UINT64 = NANOARROW_TYPE_UINT64
-    INT64 = NANOARROW_TYPE_INT64
-    HALF_FLOAT = NANOARROW_TYPE_HALF_FLOAT
-    FLOAT = NANOARROW_TYPE_FLOAT
-    DOUBLE = NANOARROW_TYPE_DOUBLE
-    STRING = NANOARROW_TYPE_STRING
-    BINARY = NANOARROW_TYPE_BINARY
-    FIXED_SIZE_BINARY = NANOARROW_TYPE_FIXED_SIZE_BINARY
-    DATE32 = NANOARROW_TYPE_DATE32
-    DATE64 = NANOARROW_TYPE_DATE64
-    TIMESTAMP = NANOARROW_TYPE_TIMESTAMP
-    TIME32 = NANOARROW_TYPE_TIME32
-    TIME64 = NANOARROW_TYPE_TIME64
-    INTERVAL_MONTHS = NANOARROW_TYPE_INTERVAL_MONTHS
-    INTERVAL_DAY_TIME = NANOARROW_TYPE_INTERVAL_DAY_TIME
-    DECIMAL128 = NANOARROW_TYPE_DECIMAL128
-    DECIMAL256 = NANOARROW_TYPE_DECIMAL256
-    LIST = NANOARROW_TYPE_LIST
-    STRUCT = NANOARROW_TYPE_STRUCT
-    SPARSE_UNION = NANOARROW_TYPE_SPARSE_UNION
-    DENSE_UNION = NANOARROW_TYPE_DENSE_UNION
-    DICTIONARY = NANOARROW_TYPE_DICTIONARY
-    MAP = NANOARROW_TYPE_MAP
-    EXTENSION = NANOARROW_TYPE_EXTENSION
-    FIXED_SIZE_LIST = NANOARROW_TYPE_FIXED_SIZE_LIST
-    DURATION = NANOARROW_TYPE_DURATION
-    LARGE_STRING = NANOARROW_TYPE_LARGE_STRING
-    LARGE_BINARY = NANOARROW_TYPE_LARGE_BINARY
-    LARGE_LIST = NANOARROW_TYPE_LARGE_LIST
-    INTERVAL_MONTH_DAY_NANO = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 
-    @staticmethod
-    cdef ArrowType uninitialized():
-        return NANOARROW_TYPE_UNINITIALIZED
+cpdef bint is_signed_integer(int type_id):
+    return type_id in (
+        CArrowType.INT8,
+        CArrowType.INT16,
+        CArrowType.INT32,
+        CArrowType.INT64,
+    )
 
-    @staticmethod
-    cdef bint is_unsigned_integer(ArrowType type_id):
-        return type_id in (
-            NANOARROW_TYPE_UINT8,
-            NANOARROW_TYPE_UINT16,
-            NANOARROW_TYPE_UINT32,
-            NANOARROW_TYPE_UINT64,
-        )
 
-    @staticmethod
-    cdef bint is_signed_integer(ArrowType type_id):
-        return type_id in (
-            NANOARROW_TYPE_INT8,
-            NANOARROW_TYPE_INT16,
-            NANOARROW_TYPE_INT32,
-            NANOARROW_TYPE_INT64,
-        )
+cpdef bint is_floating_point(int type_id):
+    return type_id in (
+        CArrowType.HALF_FLOAT,
+        CArrowType.FLOAT,
+        CArrowType.DOUBLE,
+    )
 
-    @staticmethod
-    cdef bint is_floating_point(ArrowType type_id):
-        return type_id in (
-            NANOARROW_TYPE_HALF_FLOAT,
-            NANOARROW_TYPE_FLOAT,
-            NANOARROW_TYPE_DOUBLE,
-        )
 
-    @staticmethod
-    cdef bint is_fixed_size(ArrowType type_id):
-        return type_id in (
-            NANOARROW_TYPE_FIXED_SIZE_LIST,
-            NANOARROW_TYPE_FIXED_SIZE_BINARY,
-        )
+cpdef bint is_fixed_size(int type_id):
+    return type_id in (
+        CArrowType.FIXED_SIZE_LIST,
+        CArrowType.FIXED_SIZE_BINARY,
+    )
 
-    @staticmethod
-    cdef bint is_decimal(ArrowType type_id):
-        return type_id in (
-            NANOARROW_TYPE_DECIMAL128,
-            NANOARROW_TYPE_DECIMAL256,
-        )
 
-    @staticmethod
-    cdef bint has_time_unit(ArrowType type_id):
-        return type_id in (
-            NANOARROW_TYPE_TIME32,
-            NANOARROW_TYPE_TIME64,
-            NANOARROW_TYPE_DURATION,
-            NANOARROW_TYPE_TIMESTAMP,
-        )
+cpdef bint is_decimal(int type_id):
+    return type_id in (
+        CArrowType.DECIMAL128,
+        CArrowType.DECIMAL256,
+    )
 
-    @staticmethod
-    cdef bint is_union(ArrowType type_id):
-        return type_id in (
-            NANOARROW_TYPE_DENSE_UNION,
-            NANOARROW_TYPE_SPARSE_UNION,
-        )
+
+cpdef bint has_time_unit(int type_id):
+    return type_id in (
+        CArrowType.TIME32,
+        CArrowType.TIME64,
+        CArrowType.DURATION,
+        CArrowType.TIMESTAMP,
+    )
+
+
+cpdef bint is_union(int type_id):
+    return type_id in (
+        CArrowType.DENSE_UNION,
+        CArrowType.SPARSE_UNION,
+    )

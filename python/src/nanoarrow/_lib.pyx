@@ -58,6 +58,7 @@ from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
 
+from nanoarrow cimport _types
 from nanoarrow._utils cimport (
     alloc_c_schema,
     alloc_c_array,
@@ -94,18 +95,15 @@ cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
     tensor.manager_ctx = NULL
     ArrowFree(tensor)
 
-_uint = (NANOARROW_TYPE_UINT8, NANOARROW_TYPE_UINT16, NANOARROW_TYPE_UINT32, NANOARROW_TYPE_UINT64)
-_int = (NANOARROW_TYPE_INT8, NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32, NANOARROW_TYPE_INT64, NANOARROW_TYPE_INTERVAL_MONTHS)
-_float = (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE)
 
 cdef DLDataType view_to_dlpack_data_type(CBufferView view):
     cdef DLDataType dtype
     # Define DLDataType struct
-    if view.data_type_id in _uint:
+    if _types.is_unsigned_integer(view.data_type_id):
         dtype.code = kDLUInt
-    elif view.data_type_id in _int:
+    elif _types.is_signed_integer(view.data_type_id):
         dtype.code = kDLInt
-    elif view.data_type_id in _float:
+    elif _types.is_floating_point(view.data_type_id):
         dtype.code = kDLFloat
     elif view.data_type_id == NANOARROW_TYPE_BOOL:
         raise ValueError('Bit-packed boolean data type not supported by DLPack.')
@@ -150,7 +148,11 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
     # Check data type support
     if view.data_type_id == NANOARROW_TYPE_BOOL:
         raise ValueError('Bit-packed boolean data type not supported by DLPack.')
-    elif view.data_type_id not in _uint + _int + _float:
+    elif (
+        not _types.is_unsigned_integer(view.data_type_id)
+        and not _types.is_signed_integer(view.data_type_id)
+        and not _types.is_floating_point(view.data_type_id)
+    ):
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
 
     # Define DLDevice struct
@@ -668,32 +670,10 @@ cdef class CSchemaView:
     cdef bint _nullable
     cdef bint _map_keys_sorted
 
-    _fixed_size_types = (
-        NANOARROW_TYPE_FIXED_SIZE_LIST,
-        NANOARROW_TYPE_FIXED_SIZE_BINARY
-    )
-
-    _decimal_types = (
-        NANOARROW_TYPE_DECIMAL128,
-        NANOARROW_TYPE_DECIMAL256
-    )
-
-    _time_unit_types = (
-        NANOARROW_TYPE_TIME32,
-        NANOARROW_TYPE_TIME64,
-        NANOARROW_TYPE_DURATION,
-        NANOARROW_TYPE_TIMESTAMP
-    )
-
-    _union_types = (
-        NANOARROW_TYPE_DENSE_UNION,
-        NANOARROW_TYPE_SPARSE_UNION
-    )
-
     def __cinit__(self, CSchema schema):
         self._base = schema
-        self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
-        self._schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED
+        self._schema_view.type = <ArrowType>_types.UNINITIALIZED
+        self._schema_view.storage_type = <ArrowType>_types.UNINITIALIZED
 
         cdef Error error = Error()
         cdef int code = ArrowSchemaViewInit(&self._schema_view, schema._ptr, &error.c_error)
@@ -787,42 +767,42 @@ cdef class CSchemaView:
 
     @property
     def fixed_size(self):
-        if self._schema_view.type in CSchemaView._fixed_size_types:
+        if _types.is_fixed_size(self._schema_view.type):
             return self._schema_view.fixed_size
         else:
             return None
 
     @property
     def decimal_bitwidth(self):
-        if self._schema_view.type in CSchemaView._decimal_types:
+        if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_bitwidth
         else:
             return None
 
     @property
     def decimal_precision(self):
-        if self._schema_view.type in CSchemaView._decimal_types:
+        if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_precision
         else:
             return None
 
     @property
     def decimal_scale(self):
-        if self._schema_view.type in CSchemaView._decimal_types:
+        if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_scale
         else:
             return None
 
     @property
     def time_unit_id(self):
-        if self._schema_view.type in CSchemaView._time_unit_types:
+        if _types.has_time_unit(self._schema_view.type):
             return self._schema_view.time_unit
         else:
             return None
 
     @property
     def time_unit(self):
-        if self._schema_view.type in CSchemaView._time_unit_types:
+        if _types.has_time_unit(self._schema_view.type):
             return ArrowTimeUnitString(self._schema_view.time_unit).decode()
         else:
             return None
@@ -836,7 +816,7 @@ cdef class CSchemaView:
 
     @property
     def union_type_ids(self):
-        if self._schema_view.type in CSchemaView._union_types:
+        if _types.has_time_unit(self._schema_view.type):
             type_ids_str = self._schema_view.union_type_ids.decode().split(',')
             return (int(type_id) for type_id in type_ids_str)
         else:
