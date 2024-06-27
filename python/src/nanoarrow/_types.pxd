@@ -22,4 +22,25 @@ from nanoarrow_c cimport ArrowType
 cdef class CArrowType:
 
     @staticmethod
-    cdef inline ArrowType uninitialized()
+    cdef ArrowType uninitialized()
+
+    @staticmethod
+    cdef bint is_unsigned_integer(ArrowType type_id)
+
+    @staticmethod
+    cdef bint is_signed_integer(ArrowType type_id)
+
+    @staticmethod
+    cdef bint is_floating_point(ArrowType type_id)
+
+    @staticmethod
+    cdef bint is_fixed_size(ArrowType type_id)
+
+    @staticmethod
+    cdef bint is_decimal(ArrowType type_id)
+
+    @staticmethod
+    cdef bint has_time_unit(ArrowType type_id)
+
+    @staticmethod
+    cdef bint is_union(ArrowType type_id)

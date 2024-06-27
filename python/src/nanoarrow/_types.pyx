@@ -64,3 +64,59 @@ cdef class CArrowType:
     @staticmethod
     cdef ArrowType uninitialized():
         return NANOARROW_TYPE_UNINITIALIZED
+
+    @staticmethod
+    cdef bint is_unsigned_integer(ArrowType type_id):
+        return type_id in (
+            NANOARROW_TYPE_UINT8,
+            NANOARROW_TYPE_UINT16,
+            NANOARROW_TYPE_UINT32,
+            NANOARROW_TYPE_UINT64,
+        )
+
+    @staticmethod
+    cdef bint is_signed_integer(ArrowType type_id):
+        return type_id in (
+            NANOARROW_TYPE_INT8,
+            NANOARROW_TYPE_INT16,
+            NANOARROW_TYPE_INT32,
+            NANOARROW_TYPE_INT64,
+        )
+
+    @staticmethod
+    cdef bint is_floating_point(ArrowType type_id):
+        return type_id in (
+            NANOARROW_TYPE_HALF_FLOAT,
+            NANOARROW_TYPE_FLOAT,
+            NANOARROW_TYPE_DOUBLE,
+        )
+
+    @staticmethod
+    cdef bint is_fixed_size(ArrowType type_id):
+        return type_id in (
+            NANOARROW_TYPE_FIXED_SIZE_LIST,
+            NANOARROW_TYPE_FIXED_SIZE_BINARY,
+        )
+
+    @staticmethod
+    cdef bint is_decimal(ArrowType type_id):
+        return type_id in (
+            NANOARROW_TYPE_DECIMAL128,
+            NANOARROW_TYPE_DECIMAL256,
+        )
+
+    @staticmethod
+    cdef bint has_time_unit(ArrowType type_id):
+        return type_id in (
+            NANOARROW_TYPE_TIME32,
+            NANOARROW_TYPE_TIME64,
+            NANOARROW_TYPE_DURATION,
+            NANOARROW_TYPE_TIMESTAMP,
+        )
+
+    @staticmethod
+    cdef bint is_union(ArrowType type_id):
+        return type_id in (
+            NANOARROW_TYPE_DENSE_UNION,
+            NANOARROW_TYPE_SPARSE_UNION,
+        )
