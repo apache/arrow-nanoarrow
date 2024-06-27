@@ -25,10 +25,20 @@ from sys import byteorder as sys_byteorder
 
 
 cdef equal(int type_id1, int type_id2):
+    """Check if two type identifiers are equal
+
+    Provided because Cython is picky about comparing enum types and
+    will error for ``_types.UINT8 == NANOARROW_TYPE_UINT8``.
+    """
     return type_id1 == type_id2
 
 
 cdef one_of(int type_id, tuple type_ids):
+     """Check if type_id is one of several values
+
+    Provided because Cython is picky about comparing enum types and
+    will error for ``_types.UINT8 in (NANOARROW_TYPE_UINT8,)``.
+    """
     for item in type_ids:
         if type_id == <int>item:
             return True
@@ -37,6 +47,7 @@ cdef one_of(int type_id, tuple type_ids):
 
 
 cpdef bint is_unsigned_integer(int type_id):
+    """Check if type_id is an unsigned integral type"""
     return type_id in (
         NANOARROW_TYPE_UINT8,
         NANOARROW_TYPE_UINT8,
@@ -47,6 +58,7 @@ cpdef bint is_unsigned_integer(int type_id):
 
 
 cpdef bint is_signed_integer(int type_id):
+    """Check if type_id is an signed integral type"""
     return type_id in (
         NANOARROW_TYPE_INT8,
         NANOARROW_TYPE_INT16,
@@ -56,6 +68,7 @@ cpdef bint is_signed_integer(int type_id):
 
 
 cpdef bint is_floating_point(int type_id):
+    """Check if type_id is a floating point type"""
     return type_id in (
         NANOARROW_TYPE_HALF_FLOAT,
         NANOARROW_TYPE_FLOAT,
@@ -64,6 +77,7 @@ cpdef bint is_floating_point(int type_id):
 
 
 cpdef bint is_fixed_size(int type_id):
+    """Check if type_id is a fixed-size (binary or list) type"""
     return type_id in (
         NANOARROW_TYPE_FIXED_SIZE_LIST,
         NANOARROW_TYPE_FIXED_SIZE_BINARY,
@@ -71,6 +85,7 @@ cpdef bint is_fixed_size(int type_id):
 
 
 cpdef bint is_decimal(int type_id):
+    """Check if type_id is a decimal type"""
     return type_id in (
         NANOARROW_TYPE_DECIMAL128,
         NANOARROW_TYPE_DECIMAL256,
@@ -78,6 +93,7 @@ cpdef bint is_decimal(int type_id):
 
 
 cpdef bint has_time_unit(int type_id):
+    """Check if type_id represents a type with a time_unit parameter"""
     return type_id in (
         NANOARROW_TYPE_TIME32,
         NANOARROW_TYPE_TIME64,
@@ -87,6 +103,7 @@ cpdef bint has_time_unit(int type_id):
 
 
 cpdef bint is_union(int type_id):
+    """Check if type_id is a union type"""
     return type_id in (
         NANOARROW_TYPE_DENSE_UNION,
         NANOARROW_TYPE_SPARSE_UNION,
@@ -94,6 +111,14 @@ cpdef bint is_union(int type_id):
 
 
 cdef tuple from_format(format):
+    """Convert a Python buffer protocol format string to a itemsize/type_id tuple
+
+    Returns tuple of item size (in bytes) and the ``CArrowType``. Raises
+    ``ValueError`` if the given format string is cannot be represented
+    (e.g., explicit non-system endian) but will return a fixed-size binary
+    specification for unrecognized format strings. The BOOL types is
+    converted as UINT8.
+    """
     # PyBuffer_SizeFromFormat() was added in Python 3.9 (potentially faster)
     item_size = calcsize(format)
 
@@ -142,6 +167,15 @@ cdef tuple from_format(format):
 
 
 cdef int to_format(int type_id, int element_size_bits, size_t out_size, char* out):
+    """Convert an Arrow type identifier to a Python buffer format string
+
+    Populates a format string describing this type. The populated format string
+    will usually roundtrip a buffer through the Python buffer protocol; however,
+    BOOL exports as ``"B"`` (i.e., unsigned bytes) and fixed-size types with no
+    Python equivalent (e.g., DECIMAL128) export as fixed-size binary. Packed types
+    (e.g., INTERVAL_DAY_TIME) export as packed structs such that their component
+    values are preserved.
+    """
     if type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY) and element_size_bits > 0:
         snprintf(out, out_size, "%ds", <int>(element_size_bits // 8))
         return element_size_bits

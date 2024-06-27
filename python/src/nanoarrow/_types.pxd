@@ -21,6 +21,13 @@ from nanoarrow_c cimport *
 
 
 cpdef enum CArrowType:
+    """ArrowType enumerator
+
+    This enum makes the type identifier constants available to Cython and
+    Python code as (e.g.) ``_types.UNINITIALIZED``. This removes the need
+    for other modules to import type codes, which in previous versions had
+    led to very long ``from nanoarrow_c cimport`` declarations.
+    """
     UNINITIALIZED = NANOARROW_TYPE_UNINITIALIZED
     NA = NANOARROW_TYPE_NA
     BOOL = NANOARROW_TYPE_BOOL
