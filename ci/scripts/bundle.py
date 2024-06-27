@@ -175,6 +175,7 @@ def bundle_nanoarrow_device(
         src_dir / "device" / "device.c",
         src_dir / "device" / "cuda.c"
     ])
+    content = namespace_nanoarrow_includes(content, header_namespace)
     yield f"{output_source_dir}/nanoarrow_device.c", content
 
 
