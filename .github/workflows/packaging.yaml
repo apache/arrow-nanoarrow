@@ -167,6 +167,7 @@ jobs:
       - name: Push development documentation to asf-site
         if: success() && github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         run: |
+          cd pages-clone
           git push
 
   create-release:
