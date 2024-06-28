@@ -96,6 +96,21 @@ if cuda_toolkit_root:
 setup(
     ext_modules=[
         Extension(
+            name="nanoarrow._device",
+            include_dirs=["src/nanoarrow", "vendor"],
+            language="c",
+            sources=[
+                "src/nanoarrow/_device.pyx",
+                "vendor/nanoarrow.c",
+                "vendor/nanoarrow_device.c",
+            ],
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
+            define_macros=extra_define_macros,
+            library_dirs=library_dirs,
+            libraries=libraries,
+        ),
+        Extension(
             name="nanoarrow._types",
             include_dirs=["src/nanoarrow", "vendor"],
             language="c",
