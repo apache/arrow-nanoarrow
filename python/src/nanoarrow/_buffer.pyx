@@ -207,6 +207,17 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
     return device
 
 
+cdef bint dlpack_strides_are_contiguous(DLTensor* dl_tensor):
+    if dl_tensor.strides == NULL:
+        return True
+
+    if dl_tensor.ndim != 1:
+        raise NotImplementedError("Contiguous stride check not implemented for ndim != 1")
+
+    # DLTensor strides are in elemements, not bytes
+    return dl_tensor.strides[0] == 1
+
+
 cdef class CBufferView:
     """Wrapper for Array buffer content
 
@@ -615,8 +626,8 @@ cdef class CBuffer:
         )
         cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
 
-        if dl_tensor.strides != NULL:
-            raise ValueError("dlpack strides not supported")
+        if not dlpack_strides_are_contiguous(dl_tensor):
+            raise ValueError("Non-contiguous dlpack strides not supported")
 
         cdef Device device = Device.resolve(dl_tensor.device.device_type, dl_tensor.device.device_id)
         cdef int arrow_type = dlpack_data_type_to_arrow(dl_tensor.dtype)
