@@ -120,6 +120,10 @@ DEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
 
 cdef class CSharedSyncEvent:
 
+    def __cinit__(self, Device device, uintptr_t sync_event=0):
+        self.device = device
+        self.sync_event = <void*>sync_event
+
     cdef synchronize(self):
         if self.sync_event == NULL:
             return
@@ -128,3 +132,5 @@ cdef class CSharedSyncEvent:
         cdef ArrowDevice* c_device = self.device._ptr
         cdef int code = c_device.synchronize_event(c_device, self.sync_event, NULL, &error.c_error)
         error.raise_message_not_ok("ArrowDevice::synchronize_event", code)
+
+        self.sync_event = NULL
