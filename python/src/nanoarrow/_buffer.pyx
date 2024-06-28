@@ -623,9 +623,9 @@ cdef class CBuffer:
         cdef uint8_t* data_ptr = <uint8_t*>dl_tensor.data + dl_tensor.byte_offset
 
         cdef int64_t size_bytes = 1
+        cdef int64_t element_size_bytes = dl_tensor.dtype.bits // 8
         for i in range(dl_tensor.ndim):
-            size_bytes *= dl_tensor.shape[i]
-
+            size_bytes *= dl_tensor.shape[i] * element_size_bytes
 
         cdef CBuffer out = CBuffer()
 
