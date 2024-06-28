@@ -20,16 +20,10 @@ import reprlib
 from functools import cached_property
 from typing import List, Mapping, Union
 
-from nanoarrow._lib import (
-    CArrowTimeUnit,
-    CArrowType,
-    CSchemaBuilder,
-    CSchemaView,
-    SchemaMetadata,
-)
+from nanoarrow._lib import CArrowTimeUnit, CSchemaBuilder, CSchemaView, SchemaMetadata
 from nanoarrow.c_schema import c_schema
 
-from nanoarrow import _repr_utils
+from nanoarrow import _repr_utils, _types
 
 
 class Type(enum.Enum):
@@ -38,45 +32,45 @@ class Type(enum.Enum):
     :class:`Schema` instances in most places for parameter-free types.
     """
 
-    UNINITIALIZED = CArrowType.UNINITIALIZED
-    NULL = CArrowType.NA
-    BOOL = CArrowType.BOOL
-    UINT8 = CArrowType.UINT8
-    INT8 = CArrowType.INT8
-    UINT16 = CArrowType.UINT16
-    INT16 = CArrowType.INT16
-    UINT32 = CArrowType.UINT32
-    INT32 = CArrowType.INT32
-    UINT64 = CArrowType.UINT64
-    INT64 = CArrowType.INT64
-    HALF_FLOAT = CArrowType.HALF_FLOAT
-    FLOAT = CArrowType.FLOAT
-    DOUBLE = CArrowType.DOUBLE
-    STRING = CArrowType.STRING
-    BINARY = CArrowType.BINARY
-    FIXED_SIZE_BINARY = CArrowType.FIXED_SIZE_BINARY
-    DATE32 = CArrowType.DATE32
-    DATE64 = CArrowType.DATE64
-    TIMESTAMP = CArrowType.TIMESTAMP
-    TIME32 = CArrowType.TIME32
-    TIME64 = CArrowType.TIME64
-    INTERVAL_MONTHS = CArrowType.INTERVAL_MONTHS
-    INTERVAL_DAY_TIME = CArrowType.INTERVAL_DAY_TIME
-    DECIMAL128 = CArrowType.DECIMAL128
-    DECIMAL256 = CArrowType.DECIMAL256
-    LIST = CArrowType.LIST
-    STRUCT = CArrowType.STRUCT
-    SPARSE_UNION = CArrowType.SPARSE_UNION
-    DENSE_UNION = CArrowType.DENSE_UNION
-    DICTIONARY = CArrowType.DICTIONARY
-    MAP = CArrowType.MAP
-    EXTENSION = CArrowType.EXTENSION
-    FIXED_SIZE_LIST = CArrowType.FIXED_SIZE_LIST
-    DURATION = CArrowType.DURATION
-    LARGE_STRING = CArrowType.LARGE_STRING
-    LARGE_BINARY = CArrowType.LARGE_BINARY
-    LARGE_LIST = CArrowType.LARGE_LIST
-    INTERVAL_MONTH_DAY_NANO = CArrowType.INTERVAL_MONTH_DAY_NANO
+    UNINITIALIZED = int(_types.UNINITIALIZED)
+    NULL = int(_types.NA)
+    BOOL = int(_types.BOOL)
+    UINT8 = int(_types.UINT8)
+    INT8 = int(_types.INT8)
+    UINT16 = int(_types.UINT16)
+    INT16 = int(_types.INT16)
+    UINT32 = int(_types.UINT32)
+    INT32 = int(_types.INT32)
+    UINT64 = int(_types.UINT64)
+    INT64 = int(_types.INT64)
+    HALF_FLOAT = int(_types.HALF_FLOAT)
+    FLOAT = int(_types.FLOAT)
+    DOUBLE = int(_types.DOUBLE)
+    STRING = int(_types.STRING)
+    BINARY = int(_types.BINARY)
+    FIXED_SIZE_BINARY = int(_types.FIXED_SIZE_BINARY)
+    DATE32 = int(_types.DATE32)
+    DATE64 = int(_types.DATE64)
+    TIMESTAMP = int(_types.TIMESTAMP)
+    TIME32 = int(_types.TIME32)
+    TIME64 = int(_types.TIME64)
+    INTERVAL_MONTHS = int(_types.INTERVAL_MONTHS)
+    INTERVAL_DAY_TIME = int(_types.INTERVAL_DAY_TIME)
+    DECIMAL128 = int(_types.DECIMAL128)
+    DECIMAL256 = int(_types.DECIMAL256)
+    LIST = int(_types.LIST)
+    STRUCT = int(_types.STRUCT)
+    SPARSE_UNION = int(_types.SPARSE_UNION)
+    DENSE_UNION = int(_types.DENSE_UNION)
+    DICTIONARY = int(_types.DICTIONARY)
+    MAP = int(_types.MAP)
+    EXTENSION = int(_types.EXTENSION)
+    FIXED_SIZE_LIST = int(_types.FIXED_SIZE_LIST)
+    DURATION = int(_types.DURATION)
+    LARGE_STRING = int(_types.LARGE_STRING)
+    LARGE_BINARY = int(_types.LARGE_BINARY)
+    LARGE_LIST = int(_types.LARGE_LIST)
+    INTERVAL_MONTH_DAY_NANO = int(_types.INTERVAL_MONTH_DAY_NANO)
 
     def __arrow_c_schema__(self):
         # This will only work for parameter-free types
@@ -313,7 +307,7 @@ class Schema:
         123
         """
 
-        if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_BINARY:
+        if self._c_schema_view.type_id == _types.FIXED_SIZE_BINARY:
             return self._c_schema_view.fixed_size
 
     @property
@@ -377,7 +371,7 @@ class Schema:
         >>> na.dictionary(na.int32(), na.string()).index_type
         <Schema> int32
         """
-        if self._c_schema_view.type_id == CArrowType.DICTIONARY:
+        if self._c_schema_view.type_id == _types.DICTIONARY:
             index_schema = self._c_schema.modify(
                 dictionary=False, flags=0, nullable=self.nullable
             )
@@ -409,12 +403,12 @@ class Schema:
         <Schema> string
         """
         if self._c_schema_view.type_id in (
-            CArrowType.LIST,
-            CArrowType.LARGE_LIST,
-            CArrowType.FIXED_SIZE_LIST,
+            _types.LIST,
+            _types.LARGE_LIST,
+            _types.FIXED_SIZE_LIST,
         ):
             return self.field(0)
-        elif self._c_schema_view.type_id == CArrowType.DICTIONARY:
+        elif self._c_schema_view.type_id == _types.DICTIONARY:
             return Schema(self._c_schema.dictionary)
         else:
             return None
@@ -427,7 +421,7 @@ class Schema:
         >>> na.fixed_size_list(na.int32(), 123).list_size
         123
         """
-        if self._c_schema_view.type_id == CArrowType.FIXED_SIZE_LIST:
+        if self._c_schema_view.type_id == _types.FIXED_SIZE_LIST:
             return self._c_schema_view.fixed_size
         else:
             return None
@@ -1189,12 +1183,12 @@ def extension_type(
 def _c_schema_from_type_and_params(type: Type, params: dict):
     factory = CSchemaBuilder.allocate()
 
-    if type.value in CSchemaView._decimal_types:
+    if _types.is_decimal(type.value):
         precision = int(params.pop("precision"))
         scale = int(params.pop("scale"))
         factory.set_type_decimal(type.value, precision, scale)
 
-    elif type.value in CSchemaView._time_unit_types:
+    elif _types.has_time_unit(type.value):
         time_unit = params.pop("unit")
         if "timezone" in params:
             timezone = params.pop("timezone")
@@ -1293,16 +1287,16 @@ def _schema_repr(obj, max_char_width=80, prefix="<Schema> ", include_metadata=Tr
 
 
 _PARAM_NAMES = {
-    CArrowType.FIXED_SIZE_BINARY: ("byte_width",),
-    CArrowType.TIMESTAMP: ("unit", "timezone"),
-    CArrowType.TIME32: ("unit",),
-    CArrowType.TIME64: ("unit",),
-    CArrowType.DURATION: ("unit",),
-    CArrowType.DECIMAL128: ("precision", "scale"),
-    CArrowType.DECIMAL256: ("precision", "scale"),
-    CArrowType.STRUCT: ("fields",),
-    CArrowType.LIST: ("value_type",),
-    CArrowType.LARGE_LIST: ("value_type",),
-    CArrowType.FIXED_SIZE_LIST: ("value_type", "list_size"),
-    CArrowType.DICTIONARY: ("index_type", "value_type", "dictionary_ordered"),
+    _types.FIXED_SIZE_BINARY: ("byte_width",),
+    _types.TIMESTAMP: ("unit", "timezone"),
+    _types.TIME32: ("unit",),
+    _types.TIME64: ("unit",),
+    _types.DURATION: ("unit",),
+    _types.DECIMAL128: ("precision", "scale"),
+    _types.DECIMAL256: ("precision", "scale"),
+    _types.STRUCT: ("fields",),
+    _types.LIST: ("value_type",),
+    _types.LARGE_LIST: ("value_type",),
+    _types.FIXED_SIZE_LIST: ("value_type", "list_size"),
+    _types.DICTIONARY: ("index_type", "value_type", "dictionary_ordered"),
 }

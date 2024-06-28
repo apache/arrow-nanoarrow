@@ -15,35 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Dev
+# cython: language_level = 3
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+from nanoarrow_device_c cimport ArrowDevice
 
-permissions:
-  contents: read
-
-jobs:
-  pre-commit:
-    name: "pre-commit"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-      - name: pre-commit (cache)
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      - name: pre-commit (--all-files)
-        run: |
-          python -m pip install pre-commit
-          pre-commit run --show-diff-on-failure --color=always --all-files
+cdef class Device:
+    cdef object _base
+    cdef ArrowDevice* _ptr

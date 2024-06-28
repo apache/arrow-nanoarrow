@@ -20,10 +20,12 @@ from functools import cached_property
 from itertools import islice, repeat
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import CArrayView, CArrowType
+from nanoarrow._lib import CArrayView
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema, c_schema_view
 from nanoarrow.schema import Schema
+
+from nanoarrow import _types
 
 
 def iter_py(obj, schema=None) -> Iterable:
@@ -353,7 +355,7 @@ class PyIterator(ArrayViewBaseIterator):
         storage = self._primitive_iter(offset, length)
         epoch = date(1970, 1, 1)
 
-        if self._schema_view.type_id == CArrowType.DATE32:
+        if self._schema_view.type_id == _types.DATE32:
             for item in storage:
                 if item is None:
                     yield item
@@ -544,24 +546,24 @@ def _get_tzinfo(tz_string, strategy=None):
 
 
 _ITEMS_ITER_LOOKUP = {
-    CArrowType.NA: "_null_iter",
-    CArrowType.BINARY: "_binary_iter",
-    CArrowType.LARGE_BINARY: "_binary_iter",
-    CArrowType.STRING: "_string_iter",
-    CArrowType.LARGE_STRING: "_string_iter",
-    CArrowType.STRUCT: "_struct_iter",
-    CArrowType.LIST: "_list_iter",
-    CArrowType.LARGE_LIST: "_list_iter",
-    CArrowType.FIXED_SIZE_LIST: "_fixed_size_list_iter",
-    CArrowType.DICTIONARY: "_dictionary_iter",
-    CArrowType.DATE32: "_date_iter",
-    CArrowType.DATE64: "_date_iter",
-    CArrowType.TIME32: "_time_iter",
-    CArrowType.TIME64: "_time_iter",
-    CArrowType.TIMESTAMP: "_timestamp_iter",
-    CArrowType.DURATION: "_duration_iter",
-    CArrowType.DECIMAL128: "_decimal_iter",
-    CArrowType.DECIMAL256: "_decimal_iter",
+    _types.NA: "_null_iter",
+    _types.BINARY: "_binary_iter",
+    _types.LARGE_BINARY: "_binary_iter",
+    _types.STRING: "_string_iter",
+    _types.LARGE_STRING: "_string_iter",
+    _types.STRUCT: "_struct_iter",
+    _types.LIST: "_list_iter",
+    _types.LARGE_LIST: "_list_iter",
+    _types.FIXED_SIZE_LIST: "_fixed_size_list_iter",
+    _types.DICTIONARY: "_dictionary_iter",
+    _types.DATE32: "_date_iter",
+    _types.DATE64: "_date_iter",
+    _types.TIME32: "_time_iter",
+    _types.TIME64: "_time_iter",
+    _types.TIMESTAMP: "_timestamp_iter",
+    _types.DURATION: "_duration_iter",
+    _types.DECIMAL128: "_decimal_iter",
+    _types.DECIMAL256: "_decimal_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [
@@ -584,5 +586,5 @@ _PRIMITIVE_TYPE_NAMES = [
 ]
 
 for type_name in _PRIMITIVE_TYPE_NAMES:
-    type_id = getattr(CArrowType, type_name)
+    type_id = getattr(_types, type_name)
     _ITEMS_ITER_LOOKUP[type_id] = "_primitive_iter"

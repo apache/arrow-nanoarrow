@@ -47,6 +47,7 @@ jobs:
           - {runner: ubuntu-latest, label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {runner: ubuntu-latest, label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
           - {runner: macOS-latest, label: with-metal, cmake_args: "-DNANOARROW_DEVICE_WITH_METAL=ON"}
+          - {runner: ["self-hosted", "cuda"], label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
 
 
     steps:
@@ -57,13 +58,30 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y valgrind
 
+      # The self-hosted runner for CUDA does not have cmake preinstalled.
+      # We need at least CMake 3.17 for FindCUDAToolkit.
+      - name: Ensure CMake
+        if: matrix.config.label == 'with-cuda'
+        run: |
+          mkdir tmp_cmake && cd tmp_cmake
+          CMAKE_VERSION="3.22.1"
+          curl -L https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz |
+            tar -zxf -
+          CMAKE_PATH=$(find $(pwd) -name "bin")
+          echo "PATH=${CMAKE_PATH}:${PATH}" >> $GITHUB_ENV
+          # Debug install location of cuda toolkit
+          ldconfig -p | grep libcuda
+
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
         uses: actions/cache@v4
         with:
           path: arrow
           # Bump the number at the end of this line to force a new Arrow C++ build
-          key: arrow-${{ runner.os }}-${{ runner.arch }}-1
+          # The self-hosted runner needs its own Arrow build since it is running
+          # a much older linux distribution. When the Arrow C++ requirement for tests is
+          # dropped, we don't have to use this at all as part of the CI configuration.
+          key: arrow-device-${{ runner.os }}-${{ runner.arch }}-${{ matrix.config.label }}-1
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
@@ -74,8 +92,13 @@ jobs:
       - name: Build
         run: |
           ARROW_PATH="$(pwd)/arrow"
+
+          # Debug arrow includes
+          find "${ARROW_PATH}"
+
           mkdir build
           cd build
+          export VERBOSE=1
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_DEVICE=ON \
             -DNANOARROW_BUILD_TESTS=ON -DCMAKE_PREFIX_PATH="${ARROW_PATH}" \
             ${{ matrix.config.cmake_args }}
@@ -108,6 +131,15 @@ jobs:
         run: |
           cd build
           ctest -T memcheck .
+
+      - name: Check Python bindings with CUDA
+        if: matrix.config.label == 'with-cuda'
+        env:
+          NANOARROW_PYTHON_CUDA_HOME: "/usr/local/cuda"
+        run: |
+          cd python
+          python3 -m pip install ".[test]" -vv
+          python3 -m pytest -vv
 
       - name: Upload memcheck results
         if: failure() && matrix.config.label == 'default-build'

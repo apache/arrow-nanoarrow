@@ -236,8 +236,7 @@ if(NANOARROW_IPC)
                                     $<INSTALL_INTERFACE:include>)
 
   install(TARGETS nanoarrow_ipc DESTINATION lib)
-  install(FILES src/nanoarrow/nanoarrow_ipc.h
-                src/nanoarrow/nanoarrow_ipc_flatcc_generated.h
+  install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/ipc/flatcc_generated.h
           DESTINATION include/nanoarrow)
 endif()
 
@@ -285,12 +284,12 @@ if(NANOARROW_DEVICE)
 
   # If the bundler didn't already assign the source files for the library, do so here
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/device/device.c)
+    set(NANOARROW_DEVICE_BUILD_SOURCES src/nanoarrow/device/device.c
+                                       ${NANOARROW_DEVICE_SOURCES_CUDA})
   endif()
 
-  add_library(nanoarrow_device
-              ${NANOARROW_DEVICE_BUILD_SOURCES} ${NANOARROW_DEVICE_SOURCES_METAL}
-              ${NANOARROW_DEVICE_SOURCES_CUDA})
+  add_library(nanoarrow_device ${NANOARROW_DEVICE_BUILD_SOURCES}
+                               ${NANOARROW_DEVICE_SOURCES_METAL})
 
   target_include_directories(nanoarrow_device
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
