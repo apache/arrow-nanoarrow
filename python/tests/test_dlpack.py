@@ -16,6 +16,8 @@
 # under the License.
 
 import pytest
+
+from nanoarrow._buffer import CBuffer
 from nanoarrow._utils import obj_is_capsule
 
 import nanoarrow as na
@@ -24,13 +26,20 @@ np = pytest.importorskip("numpy")
 
 
 def check_dlpack_export(view, expected_arr):
-    DLTensor = view.__dlpack__()
-    assert obj_is_capsule(DLTensor, "dltensor") is True
+    # Check device spec
+    assert view.__dlpack_device__() == (1, 0)
 
+    # Check capsule exprort
+    capsule = view.__dlpack__()
+    assert obj_is_capsule(capsule, "dltensor") is True
+
+    # Check roundtrip through numpy
     result = np.from_dlpack(view)
     np.testing.assert_array_equal(result, expected_arr, strict=True)
 
-    assert view.__dlpack_device__() == (1, 0)
+    # Check roundtrip through CBuffer
+    buffer = CBuffer.from_dlpack(view)
+    np.testing.assert_array_equal(np.array(buffer), expected_arr, strict=True)
 
 
 @pytest.mark.parametrize(
