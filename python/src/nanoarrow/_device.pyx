@@ -86,6 +86,13 @@ cdef class Device:
         self._base = base,
         self._ptr = <ArrowDevice*>addr
 
+    def __eq__(self, other) -> bool:
+        return (
+            isinstance(other, Device) and
+            other.device_type == self.device_type and
+            other.device_id == self.device_id
+        )
+
     def __repr__(self):
         return _repr_utils.device_repr(self)
 

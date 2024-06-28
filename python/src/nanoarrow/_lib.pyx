@@ -1257,16 +1257,18 @@ cdef class SchemaMetadata:
 cdef class CArrayBuilder:
     cdef CArray c_array
     cdef ArrowArray* _ptr
+    cdef Device _device
     cdef bint _can_validate
 
-    def __cinit__(self, CArray array):
+    def __cinit__(self, CArray array, Device device=DEVICE_CPU):
         self.c_array = array
         self._ptr = array._ptr
-        self._can_validate = True
+        self._device = device
+        self._can_validate = device is DEVICE_CPU
 
     @staticmethod
-    def allocate():
-        return CArrayBuilder(CArray.allocate(CSchema.allocate()))
+    def allocate(Device device=DEVICE_CPU):
+        return CArrayBuilder(CArray.allocate(CSchema.allocate()), device)
 
     def is_empty(self):
         if self._ptr.release == NULL:
@@ -1298,6 +1300,9 @@ cdef class CArrayBuilder:
         return self
 
     def start_appending(self):
+        if self._device != DEVICE_CPU:
+            raise ValueError("Can't append to non-CPU array")
+
         cdef int code = ArrowArrayStartAppending(self._ptr)
         Error.raise_error_not_ok("ArrowArrayStartAppending()", code)
         return self
@@ -1383,6 +1388,10 @@ cdef class CArrayBuilder:
             self._ptr.null_count = 0
             return self
 
+        # Don't attempt to access a non-cpu buffer
+        if self._device != DEVICE_CPU:
+            return self
+
         # From _ArrowBytesForBits(), which is not included in nanoarrow_c.pxd
         # because it's an internal inline function.
         cdef int64_t bits = self._ptr.offset + self._ptr.length
@@ -1412,6 +1421,9 @@ cdef class CArrayBuilder:
         layer of Python object wrapping."""
         if i < 0 or i > 3:
             raise IndexError("i must be >= 0 and <= 3")
+
+        if buffer._device != self._device:
+            raise ValueError("Can't source and buffer device not identical")
 
         self.c_array._assert_valid()
         if not move:
@@ -1467,9 +1479,19 @@ cdef class CArrayBuilder:
         out = self.c_array
         self.c_array = CArray.allocate(CSchema.allocate())
         self._ptr = self.c_array._ptr
-        self._can_validate = True
+        self._can_validate = self._device is DEVICE_CPU
 
         return out
+
+    def finish_device(self):
+        cdef CArray array = self.finish()
+
+        cdef ArrowDeviceArray* device_array_ptr
+        holder = alloc_c_device_array(&device_array_ptr)
+        cdef int code = ArrowDeviceArrayInit(self._device._ptr, device_array_ptr, array._ptr, NULL)
+        Error.raise_error_not_ok("ArrowDeviceArrayInit", code)
+
+        return CDeviceArray(holder, <uintptr_t>device_array_ptr, array._schema)
 
 
 cdef class CArrayStream:
