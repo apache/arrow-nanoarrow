@@ -702,7 +702,7 @@ cdef class CSchemaView:
 
     @property
     def union_type_ids(self):
-        if _types.has_time_unit(self._schema_view.type):
+        if _types.is_union(self._schema_view.type):
             type_ids_str = self._schema_view.union_type_ids.decode().split(',')
             return (int(type_id) for type_id in type_ids_str)
         else:

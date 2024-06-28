@@ -50,7 +50,6 @@ cpdef bint is_unsigned_integer(int type_id):
     """Check if type_id is an unsigned integral type"""
     return type_id in (
         _types.UINT8,
-        _types.UINT8,
         _types.UINT16,
         _types.UINT32,
         _types.UINT64,
