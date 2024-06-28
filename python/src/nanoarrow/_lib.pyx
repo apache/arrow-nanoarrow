@@ -781,6 +781,7 @@ cdef class CArray:
     cdef CSchema _schema
     cdef ArrowDeviceType _device_type
     cdef int _device_id
+    cdef void* _sync_event
 
     @staticmethod
     def allocate(CSchema schema):
@@ -794,10 +795,12 @@ cdef class CArray:
         self._schema = schema
         self._device_type = ARROW_DEVICE_CPU
         self._device_id = 0
+        self._sync_event = NULL
 
-    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id):
+    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id, void* sync_event):
         self._device_type = device_type
         self._device_id = device_id
+        self._sync_event = sync_event
 
     @staticmethod
     def _import_from_c_capsule(schema_capsule, array_capsule):
@@ -856,7 +859,8 @@ cdef class CArray:
         c_array_out.offset = c_array_out.offset + start
         c_array_out.length = stop - start
         cdef CArray out = CArray(base, <uintptr_t>c_array_out, self._schema)
-        out._set_device(self._device_type, self._device_id)
+        out._set_device(self._device_type, self._device_id, self._sync_event)
+
         return out
 
     def __arrow_c_array__(self, requested_schema=None):
@@ -970,7 +974,8 @@ cdef class CArray:
             <uintptr_t>self._ptr.children[i],
             self._schema.child(i)
         )
-        out._set_device(self._device_type, self._device_id)
+        out._set_device(self._device_type, self._device_id, self._sync_event)
+
         return out
 
     @property
@@ -984,7 +989,8 @@ cdef class CArray:
         cdef CArray out
         if self._ptr.dictionary != NULL:
             out = CArray(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
-            out._set_device(self._device_type, self._device_id)
+            out._set_device(self._device_type, self._device_id, self._sync_event)
+
             return out
         else:
             return None
@@ -1807,10 +1813,8 @@ cdef class CDeviceArray:
 
     @property
     def array(self):
-        # TODO: We lose access to the sync_event here, so we probably need to
-        # synchronize (or propagate it, or somehow prevent data access downstream)
         cdef CArray array = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
-        array._set_device(self._ptr.device_type, self._ptr.device_id)
+        array._set_device(self._ptr.device_type, self._ptr.device_id, self._ptr.sync_event)
         return array
 
     def view(self):
