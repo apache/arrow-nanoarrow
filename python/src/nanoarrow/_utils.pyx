@@ -493,3 +493,7 @@ cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
 
     # Return the calculated components
     return format
+
+
+cdef void c_buffer_set_pyobject(object base, uint8_t* data, int64_t size_bytes, ArrowBuffer** c_buffer):
+    raise NotImplementedError()
