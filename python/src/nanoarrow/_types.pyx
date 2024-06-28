@@ -115,7 +115,7 @@ cdef tuple from_format(format):
     Returns tuple of item size (in bytes) and the ``_types``. Raises
     ``ValueError`` if the given format string is cannot be represented
     (e.g., explicit non-system endian) but will return a fixed-size binary
-    specification for unrecognized format strings. The BOOL types is
+    specification for unrecognized format strings. The BOOL type is
     converted as UINT8.
     """
     # PyBuffer_SizeFromFormat() was added in Python 3.9 (potentially faster)
