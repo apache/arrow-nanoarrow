@@ -21,7 +21,7 @@ from typing import Iterable, Tuple
 
 from nanoarrow._buffer import CBufferView
 from nanoarrow._device import DEVICE_CPU, Device
-from nanoarrow._lib import CArray, CArrayView,  CMaterializedArrayStream
+from nanoarrow._lib import CArray, CArrayView, CMaterializedArrayStream
 from nanoarrow.c_array import c_array, c_array_view
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema
