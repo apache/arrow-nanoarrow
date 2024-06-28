@@ -509,6 +509,12 @@ cdef ArrowBufferAllocator c_pyobject_deallocator(object obj):
     )
 
 cdef void c_buffer_set_pyobject(object base, uint8_t* data, int64_t size_bytes, ArrowBuffer** c_buffer):
+    """Manage a Py_Buffer reference as an ArrowBuffer
+
+    Calls ``Py_INCREF()`` on base and populates ``c_buffer`` with an ``ArrowBuffer``
+    whose allocator has been set such that when ``ArrowBufferReset()`` is invoked,
+    the reference to base will be released with ``Py_DECREF()``.
+    """
     c_buffer[0].data = data
     c_buffer[0].size_bytes = size_bytes
     c_buffer[0].capacity_bytes = 0
