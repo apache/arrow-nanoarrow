@@ -132,6 +132,15 @@ jobs:
           cd build
           ctest -T memcheck .
 
+      - name: Check Python bindings with CUDA
+        if: matrix.config.label == 'with-cuda'
+        env:
+          NANOARROW_PYTHON_CUDA_HOME: "/usr/local/cuda"
+        run: |
+          cd python
+          python3 -m pip install ".[test]" -vv
+          python3 -m pytest -vv
+
       - name: Upload memcheck results
         if: failure() && matrix.config.label == 'default-build'
         uses: actions/upload-artifact@main

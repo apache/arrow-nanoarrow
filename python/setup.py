@@ -20,6 +20,7 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from setuptools import Extension, setup
 
@@ -52,18 +53,45 @@ if os.path.exists(bootstrap_py):
 
 
 # Set some extra flags for compiling with coverage support
+extra_include_dirs = []
+extra_compile_args = []
+extra_link_args = []
+extra_define_macros = []
+library_dirs = []
+libraries = []
+
 if os.getenv("NANOARROW_PYTHON_COVERAGE") == "1":
-    extra_compile_args = ["--coverage"]
-    extra_link_args = ["--coverage"]
-    extra_define_macros = [("CYTHON_TRACE", 1)]
-elif os.getenv("NANOARROW_DEBUG_EXTENSION") == "1":
-    extra_compile_args = ["-g", "-O0"]
-    extra_link_args = []
-    extra_define_macros = []
-else:
-    extra_compile_args = []
-    extra_link_args = []
-    extra_define_macros = []
+    extra_compile_args.append("--coverage")
+    extra_link_args.append("--coverage")
+    extra_define_macros.append(("CYTHON_TRACE", 1))
+
+if os.getenv("NANOARROW_DEBUG_EXTENSION") == "1":
+    extra_compile_args.extend(["-g", "-O0"])
+
+cuda_toolkit_root = os.getenv("NANOARROW_PYTHON_CUDA_HOME")
+if cuda_toolkit_root:
+    cuda_lib = "cuda.lib" if os.name == "nt" else "libcuda.so"
+    include_dir = Path(cuda_toolkit_root) / "include"
+    possible_libs = [
+        Path(cuda_toolkit_root) / "lib" / cuda_lib,
+        Path(cuda_toolkit_root) / "lib64" / cuda_lib,
+        Path(cuda_toolkit_root) / "lib" / "x64" / cuda_lib,
+        Path("/usr/lib/wsl/lib") / cuda_lib,
+    ]
+
+    if not include_dir.is_dir():
+        raise ValueError(f"CUDA include directory does not exist: '{include_dir}'")
+
+    lib_dirs = [d for d in possible_libs if d.exists()]
+    if not lib_dirs:
+        lib_dirs_err = ", ".join(f"'{d}" for d in possible_libs)
+        raise ValueError(f"Can't find CUDA library directory. Checked {lib_dirs_err}")
+
+    extra_include_dirs.append(str(include_dir))
+    library_dirs.append(str(lib_dirs[0].parent))
+    libraries.append("cuda")
+    extra_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
+
 
 setup(
     ext_modules=[
@@ -80,7 +108,7 @@ setup(
         ),
         Extension(
             name="nanoarrow._utils",
-            include_dirs=["src/nanoarrow", "vendor"],
+            include_dirs=extra_include_dirs + ["src/nanoarrow", "vendor"],
             language="c",
             sources=[
                 "src/nanoarrow/_utils.pyx",
@@ -92,7 +120,7 @@ setup(
         ),
         Extension(
             name="nanoarrow._lib",
-            include_dirs=["src/nanoarrow", "vendor"],
+            include_dirs=extra_include_dirs + ["src/nanoarrow", "vendor"],
             language="c",
             sources=[
                 "src/nanoarrow/_lib.pyx",
@@ -102,10 +130,12 @@ setup(
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args,
             define_macros=extra_define_macros,
+            library_dirs=library_dirs,
+            libraries=libraries,
         ),
         Extension(
             name="nanoarrow._ipc_lib",
-            include_dirs=["src/nanoarrow", "vendor"],
+            include_dirs=extra_include_dirs + ["src/nanoarrow", "vendor"],
             language="c",
             sources=[
                 "src/nanoarrow/_ipc_lib.pyx",
