@@ -495,5 +495,21 @@ cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer):
     return format
 
 
+cdef void c_deallocate_pyobject(ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t size) noexcept with gil:
+    """ArrowBufferDeallocatorCallback for an ArrowBuffer wrapping a Py_Buffer"""
+    Py_DECREF(<object>allocator.private_data)
+
+
+cdef ArrowBufferAllocator c_pyobject_deallocator(object obj):
+    """ArrowBufferAllocator implementation wrapping a PyObject"""
+    Py_INCREF(obj)
+    return ArrowBufferDeallocator(
+        <ArrowBufferDeallocatorCallback>&c_deallocate_pyobject,
+        <void*>obj
+    )
+
 cdef void c_buffer_set_pyobject(object base, uint8_t* data, int64_t size_bytes, ArrowBuffer** c_buffer):
-    raise NotImplementedError()
+    c_buffer[0].data = data
+    c_buffer[0].size_bytes = size_bytes
+    c_buffer[0].capacity_bytes = 0
+    c_buffer[0].allocator = c_pyobject_deallocator(base)
