@@ -53,9 +53,7 @@ from nanoarrow_c cimport *
 from nanoarrow_device_c cimport *
 from nanoarrow_dlpack cimport *
 
-from enum import Enum
-from struct import unpack_from, iter_unpack, calcsize, Struct
-from nanoarrow import _repr_utils
+from nanoarrow._device cimport Device
 
 from nanoarrow cimport _types
 from nanoarrow._utils cimport (
@@ -70,6 +68,11 @@ from nanoarrow._utils cimport (
     c_buffer_set_pybuffer,
     Error
 )
+
+from struct import unpack_from, iter_unpack, calcsize, Struct
+from nanoarrow import _repr_utils
+from nanoarrow._device import DEVICE_CPU, DeviceType
+
 
 cdef void pycapsule_dlpack_deleter(object dltensor) noexcept:
     cdef DLManagedTensor* dlm_tensor
@@ -174,91 +177,6 @@ cdef class CArrowTimeUnit:
     MILLI = NANOARROW_TIME_UNIT_MILLI
     MICRO = NANOARROW_TIME_UNIT_MICRO
     NANO = NANOARROW_TIME_UNIT_NANO
-
-
-class DeviceType(Enum):
-    """
-    An enumerator providing access to the device constant values
-    defined in the Arrow C Device interface. Unlike the other enum
-    accessors, this Python Enum is defined in Cython so that we can use
-    the bulit-in functionality to do better printing of device identifiers
-    for classes defined in Cython. Unlike the other enums, users don't
-    typically need to specify these (but would probably like them printed
-    nicely).
-    """
-
-    CPU = ARROW_DEVICE_CPU
-    CUDA = ARROW_DEVICE_CUDA
-    CUDA_HOST = ARROW_DEVICE_CUDA_HOST
-    OPENCL = ARROW_DEVICE_OPENCL
-    VULKAN =  ARROW_DEVICE_VULKAN
-    METAL = ARROW_DEVICE_METAL
-    VPI = ARROW_DEVICE_VPI
-    ROCM = ARROW_DEVICE_ROCM
-    ROCM_HOST = ARROW_DEVICE_ROCM_HOST
-    EXT_DEV = ARROW_DEVICE_EXT_DEV
-    CUDA_MANAGED = ARROW_DEVICE_CUDA_MANAGED
-    ONEAPI = ARROW_DEVICE_ONEAPI
-    WEBGPU = ARROW_DEVICE_WEBGPU
-    HEXAGON = ARROW_DEVICE_HEXAGON
-
-
-cdef class Device:
-    """ArrowDevice wrapper
-
-    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
-    not ABI stable) that contains callbacks for device operations
-    beyond its type and identifier (e.g., copy buffers to or from
-    a device).
-    """
-
-    cdef object _base
-    cdef ArrowDevice* _ptr
-
-    def __cinit__(self, object base, uintptr_t addr):
-        self._base = base,
-        self._ptr = <ArrowDevice*>addr
-
-    def _array_init(self, uintptr_t array_addr, CSchema schema):
-        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
-        cdef ArrowDeviceArray* device_array_ptr
-        cdef void* sync_event = NULL
-        holder = alloc_c_device_array(&device_array_ptr)
-        cdef int code = ArrowDeviceArrayInit(self._ptr, device_array_ptr, array_ptr, sync_event)
-        Error.raise_error_not_ok("ArrowDevice::init_array", code)
-
-        return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
-
-    def __repr__(self):
-        return _repr_utils.device_repr(self)
-
-    @property
-    def device_type(self):
-        return DeviceType(self._ptr.device_type)
-
-    @property
-    def device_type_id(self):
-        return self._ptr.device_type
-
-    @property
-    def device_id(self):
-        return self._ptr.device_id
-
-    @staticmethod
-    def resolve(device_type, int64_t device_id):
-        if int(device_type) == ARROW_DEVICE_CPU:
-            return DEVICE_CPU
-
-        cdef ArrowDevice* c_device = ArrowDeviceResolve(device_type, device_id)
-        if c_device == NULL:
-            raise ValueError(f"Device not found for type {device_type}/{device_id}")
-
-        return Device(None, <uintptr_t>c_device)
-
-
-# Cache the CPU device
-# The CPU device is statically allocated (so base is None)
-DEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
 
 
 cdef class CSchema:
@@ -2807,6 +2725,17 @@ cdef class CDeviceArray:
         self._base = base
         self._ptr = <ArrowDeviceArray*>addr
         self._schema = schema
+
+    @staticmethod
+    def _init_from_array(Device device, uintptr_t array_addr, CSchema schema):
+        cdef ArrowArray* array_ptr = <ArrowArray*>array_addr
+        cdef ArrowDeviceArray* device_array_ptr
+        cdef void* sync_event = NULL
+        holder = alloc_c_device_array(&device_array_ptr)
+        cdef int code = ArrowDeviceArrayInit(device._ptr, device_array_ptr, array_ptr, sync_event)
+        Error.raise_error_not_ok("ArrowDeviceArrayInit", code)
+
+        return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
 
     @property
     def schema(self):

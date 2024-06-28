@@ -15,7 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import DEVICE_CPU, CDeviceArray, Device, DeviceType  # noqa: F401
+from nanoarrow._device import DEVICE_CPU, Device, DeviceType  # noqa: F401
+from nanoarrow._lib import CDeviceArray
 from nanoarrow.c_array import c_array
 from nanoarrow.c_schema import c_schema
 
@@ -44,4 +45,4 @@ def c_device_array(obj, schema=None):
 
     # Attempt to create a CPU array and wrap it
     cpu_array = c_array(obj, schema=schema)
-    return cpu()._array_init(cpu_array._addr(), cpu_array.schema)
+    return CDeviceArray._init_from_array(cpu(), cpu_array._addr(), cpu_array.schema)
