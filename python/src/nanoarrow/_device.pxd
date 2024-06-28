@@ -22,3 +22,9 @@ from nanoarrow_device_c cimport ArrowDevice
 cdef class Device:
     cdef object _base
     cdef ArrowDevice* _ptr
+
+cdef class CSharedSyncEvent:
+    cdef Device device
+    cdef void* sync_event
+
+    cdef synchronize(self)

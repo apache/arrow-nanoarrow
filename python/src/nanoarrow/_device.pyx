@@ -39,6 +39,8 @@ from nanoarrow_device_c cimport (
     ArrowDeviceResolve
 )
 
+from nanoarrow._utils cimport Error
+
 from enum import Enum
 
 from nanoarrow import _repr_utils
@@ -114,3 +116,15 @@ cdef class Device:
 # Cache the CPU device
 # The CPU device is statically allocated (so base is None)
 DEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
+
+
+cdef class CSharedSyncEvent:
+
+    cdef synchronize(self):
+        if self.sync_event == NULL:
+            return
+
+        cdef Error error = Error()
+        cdef ArrowDevice* c_device = self.device._ptr
+        cdef int code = c_device.synchronize_event(c_device, self.sync_event, NULL, &error.c_error)
+        error.raise_message_not_ok("ArrowDevice::synchronize_event", code)
