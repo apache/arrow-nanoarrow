@@ -276,9 +276,5 @@ if get_option('apps')
 endif
 
 pkg = import('pkgconfig')
-pkg.generate(libraries : nanoarrow_lib,
-             subdirs : [incdir],
-             version : meson.project_version(),
-             name : 'Apache Arrow nanoarrow',
-             filebase : 'nanoarrow',
+pkg.generate(nanoarrow_lib,
              description : 'Helpers for Arrow C Data & Arrow C Stream interfaces')
