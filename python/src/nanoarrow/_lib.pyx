@@ -50,7 +50,7 @@ from nanoarrow_device_c cimport (
     ArrowDeviceArrayInit,
 )
 
-from nanoarrow._device cimport Device
+from nanoarrow._device cimport Device, CSharedSyncEvent
 
 from nanoarrow cimport _types
 from nanoarrow._buffer cimport CBuffer, CBufferView
@@ -1011,12 +1011,12 @@ cdef class CArrayView:
     cdef object _base
     cdef object _array_base
     cdef ArrowArrayView* _ptr
-    cdef Device _device
+    cdef CSharedSyncEvent _event
 
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._device = DEVICE_CPU
+        self._event = CSharedSyncEvent(DEVICE_CPU)
 
     def _set_array(self, CArray array, Device device=DEVICE_CPU):
         cdef Error error = Error()
@@ -1029,7 +1029,8 @@ cdef class CArrayView:
 
         error.raise_message_not_ok("ArrowArrayViewSetArray()", code)
         self._array_base = array._base
-        self._device = device
+        self._event = CSharedSyncEvent(device, <uintptr_t>array._sync_event)
+
         return self
 
     @property
@@ -1090,7 +1091,7 @@ cdef class CArrayView:
             <uintptr_t>self._ptr.children[i]
         )
 
-        child._device = self._device
+        child._event = self._event
         return child
 
     @property
@@ -1139,7 +1140,7 @@ cdef class CArrayView:
             buffer_view.size_bytes,
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
-            self._device
+            self._event
         )
 
     @property
@@ -1151,11 +1152,14 @@ cdef class CArrayView:
     def dictionary(self):
         if self._ptr.dictionary == NULL:
             return None
-        else:
-            return CArrayView(
-                self,
-                <uintptr_t>self._ptr.dictionary
-            )
+
+        cdef CArrayView dictionary = CArrayView(
+            self,
+            <uintptr_t>self._ptr.dictionary
+        )
+        dictionary._event = self._event
+
+        return dictionary
 
     def __repr__(self):
         return _repr_utils.array_view_repr(self)
