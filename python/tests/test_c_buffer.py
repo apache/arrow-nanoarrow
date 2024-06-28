@@ -20,7 +20,7 @@ import sys
 from datetime import date, datetime, timezone
 
 import pytest
-from nanoarrow._lib import CBuffer, CBufferBuilder
+from nanoarrow._buffer import CBuffer, CBufferBuilder
 
 import nanoarrow as na
 

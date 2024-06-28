@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CBuffer, CBufferBuilder
+from nanoarrow._buffer import CBuffer, CBufferBuilder
 from nanoarrow._utils import obj_is_buffer
 from nanoarrow.c_schema import c_schema_view
 
