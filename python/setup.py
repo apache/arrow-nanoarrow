@@ -59,7 +59,6 @@ extra_define_macros = []
 device_include_dirs = []
 device_library_dirs = []
 device_libraries = []
-device_define_macros = []
 
 if os.getenv("NANOARROW_PYTHON_COVERAGE") == "1":
     extra_compile_args.append("--coverage")
@@ -85,7 +84,7 @@ if cuda_toolkit_root:
 
     device_include_dirs.append(str(include_dir))
     device_libraries.append("cuda")
-    device_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
+    extra_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
 
     # Library might be already in a system library directory such that no -L flag
     # is needed
@@ -101,7 +100,6 @@ def nanoarrow_extension(
     libraries = []
     library_dirs = []
     include_dirs = ["src/nanoarrow", "vendor"]
-    define_macros = list(extra_define_macros)
 
     if nanoarrow_c:
         sources.append("vendor/nanoarrow.c")
@@ -111,7 +109,6 @@ def nanoarrow_extension(
         include_dirs.extend(device_include_dirs)
         libraries.extend(device_libraries)
         library_dirs.extend(device_library_dirs)
-        define_macros.extend(device_define_macros)
 
     if nanoarrow_ipc:
         sources.extend(["vendor/nanoarrow_ipc.c", "vendor/flatcc.c"])
@@ -123,7 +120,7 @@ def nanoarrow_extension(
         sources=sources,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-        define_macros=define_macros,
+        define_macros=extra_define_macros,
         library_dirs=library_dirs,
         libraries=libraries,
     )
