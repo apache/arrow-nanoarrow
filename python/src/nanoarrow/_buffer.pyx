@@ -56,11 +56,13 @@ from nanoarrow_c cimport (
 
 from nanoarrow_device_c cimport (
     ARROW_DEVICE_CPU,
+    ArrowDevice,
 )
 
 from nanoarrow_dlpack cimport (
     DLDataType,
     DLDevice,
+    DLDeviceType,
     DLManagedTensor,
     DLTensor,
     kDLCPU,
@@ -71,7 +73,7 @@ from nanoarrow_dlpack cimport (
 
 from nanoarrow cimport _utils
 from nanoarrow cimport _types
-from nanoarrow._device cimport Device
+from nanoarrow._device cimport CSharedSyncEvent
 
 from struct import unpack_from, iter_unpack, calcsize, Struct
 
@@ -163,11 +165,16 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
 
     # Define DLDevice struct
-    if view._device.device_type_id == ARROW_DEVICE_CPU:
+    cdef ArrowDevice* arrow_device = view._event.device._ptr
+    if arrow_device.device_type is ARROW_DEVICE_CPU:
+        # DLPack uses 0 for the CPU device id where Arrow uses -1
         device.device_type = kDLCPU
         device.device_id =  0
     else:
-        raise ValueError('Only CPU device is currently supported.')
+        # Otherwise, Arrow's device identifiers and types are intentionally
+        # identical to DLPack
+        device.device_type = <DLDeviceType>arrow_device.device_type
+        device.device_id = arrow_device.device_id
 
     return device
 
@@ -183,12 +190,12 @@ cdef class CBufferView:
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
                   ArrowType data_type,
-                  Py_ssize_t element_size_bits, Device device):
+                  Py_ssize_t element_size_bits, CSharedSyncEvent event):
         self._base = base
         self._ptr.data.data = <void*>addr
         self._ptr.size_bytes = size_bytes
         self._data_type = data_type
-        self._device = device
+        self._event = event
         self._format[0] = 0
         self._element_size_bits = _types.to_format(
             self._data_type,
@@ -208,7 +215,7 @@ cdef class CBufferView:
 
     @property
     def device(self):
-        return self._device
+        return self._event.device
 
     @property
     def element_size_bits(self):
@@ -483,7 +490,7 @@ cdef class CBufferView:
         self._do_releasebuffer(buffer)
 
     cdef _do_getbuffer(self, Py_buffer *buffer, int flags):
-        if self._device is not DEVICE_CPU:
+        if self.device is not DEVICE_CPU:
             raise RuntimeError("CBufferView is not a CPU buffer")
 
         if flags & PyBUF_WRITABLE:
@@ -531,7 +538,11 @@ cdef class CBuffer:
         self._format[0] = 66
         self._format[1] = 0
         self._get_buffer_count = 0
-        self._view = CBufferView(None, 0, 0, _types.BINARY, 0, self._device)
+        self._view = CBufferView(
+            None, 0,
+            0, _types.BINARY, 0,
+            CSharedSyncEvent(self._device)
+        )
 
     cdef _assert_valid(self):
         if self._ptr == NULL:
@@ -549,7 +560,7 @@ cdef class CBuffer:
         self._view = CBufferView(
             self._base, <uintptr_t>self._ptr.data,
             self._ptr.size_bytes, self._data_type, self._element_size_bits,
-            self._device
+            CSharedSyncEvent(self._device)
         )
 
         snprintf(self._view._format, sizeof(self._view._format), "%s", self._format)

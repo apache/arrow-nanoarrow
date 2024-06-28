@@ -25,14 +25,14 @@ from nanoarrow_c cimport (
     ArrowType,
 )
 
-from nanoarrow._device cimport Device
+from nanoarrow._device cimport Device, CSharedSyncEvent
 
 
 cdef class CBufferView:
     cdef object _base
     cdef ArrowBufferView _ptr
     cdef ArrowType _data_type
-    cdef Device _device
+    cdef CSharedSyncEvent _event
     cdef Py_ssize_t _element_size_bits
     cdef Py_ssize_t _shape
     cdef Py_ssize_t _strides
