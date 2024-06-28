@@ -66,14 +66,6 @@ nanoarrow_lib = library(
     install: true,
 )
 
-pkg = import('pkgconfig')
-pkg.generate(libraries : nanoarrow_lib,
-             subdirs : [incdir],
-             version : meson.project_version(),
-             name : 'Apache Arrow nanoarrow',
-             filebase : 'nanoarrow',
-             description : 'Helpers for Arrow C Data & Arrow C Stream interfaces')
-
 nanoarrow_dep = declare_dependency(include_directories: [incdir],
                                    link_with: nanoarrow_lib,
                                    compile_args: nanoarrow_dep_args)
@@ -284,4 +276,9 @@ if get_option('apps')
 endif
 
 pkg = import('pkgconfig')
-pkg.generate(nanoarrow_lib)
+pkg.generate(libraries : nanoarrow_lib,
+             subdirs : [incdir],
+             version : meson.project_version(),
+             name : 'Apache Arrow nanoarrow',
+             filebase : 'nanoarrow',
+             description : 'Helpers for Arrow C Data & Arrow C Stream interfaces')
