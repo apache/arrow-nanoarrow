@@ -54,9 +54,10 @@ from nanoarrow_device_c cimport *
 from nanoarrow_dlpack cimport *
 
 from enum import Enum
-from sys import byteorder as sys_byteorder
 from struct import unpack_from, iter_unpack, calcsize, Struct
 from nanoarrow import _repr_utils
+
+from nanoarrow cimport _types
 from nanoarrow._utils cimport (
     alloc_c_schema,
     alloc_c_array,
@@ -93,20 +94,17 @@ cdef void view_dlpack_deleter(DLManagedTensor* tensor) noexcept with gil:
     tensor.manager_ctx = NULL
     ArrowFree(tensor)
 
-_uint = (NANOARROW_TYPE_UINT8, NANOARROW_TYPE_UINT16, NANOARROW_TYPE_UINT32, NANOARROW_TYPE_UINT64)
-_int = (NANOARROW_TYPE_INT8, NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32, NANOARROW_TYPE_INT64, NANOARROW_TYPE_INTERVAL_MONTHS)
-_float = (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE)
 
 cdef DLDataType view_to_dlpack_data_type(CBufferView view):
     cdef DLDataType dtype
     # Define DLDataType struct
-    if view.data_type_id in _uint:
+    if _types.is_unsigned_integer(view.data_type_id):
         dtype.code = kDLUInt
-    elif view.data_type_id in _int:
+    elif _types.is_signed_integer(view.data_type_id):
         dtype.code = kDLInt
-    elif view.data_type_id in _float:
+    elif _types.is_floating_point(view.data_type_id):
         dtype.code = kDLFloat
-    elif view.data_type_id == NANOARROW_TYPE_BOOL:
+    elif _types.equal(view.data_type_id, _types.BOOL):
         raise ValueError('Bit-packed boolean data type not supported by DLPack.')
     else:
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
@@ -147,9 +145,13 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
     cdef DLDevice device
 
     # Check data type support
-    if view.data_type_id == NANOARROW_TYPE_BOOL:
+    if _types.equal(view.data_type_id, _types.BOOL):
         raise ValueError('Bit-packed boolean data type not supported by DLPack.')
-    elif view.data_type_id not in _uint + _int + _float:
+    elif (
+        not _types.is_unsigned_integer(view.data_type_id)
+        and not _types.is_signed_integer(view.data_type_id)
+        and not _types.is_floating_point(view.data_type_id)
+    ):
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
 
     # Define DLDevice struct
@@ -160,173 +162,6 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
         raise ValueError('Only CPU device is currently supported.')
 
     return device
-
-cdef c_arrow_type_from_format(format):
-    # PyBuffer_SizeFromFormat() was added in Python 3.9 (potentially faster)
-    item_size = calcsize(format)
-
-    # Don't allow non-native endian values
-    if sys_byteorder == "little" and (">" in format or "!" in format):
-        raise ValueError(f"Can't convert format '{format}' to Arrow type")
-    elif sys_byteorder == "big" and  "<" in format:
-        raise ValueError(f"Can't convert format '{format}' to Arrow type")
-
-    # Strip system endian specifiers
-    format = format.strip("=@")
-
-    if format == "c":
-        return 0, NANOARROW_TYPE_STRING
-    elif format == "e":
-        return item_size, NANOARROW_TYPE_HALF_FLOAT
-    elif format == "f":
-        return item_size, NANOARROW_TYPE_FLOAT
-    elif format == "d":
-        return item_size, NANOARROW_TYPE_DOUBLE
-
-    # Check for signed integers
-    if format in ("b", "h", "i", "l", "q", "n"):
-        if item_size == 1:
-            return item_size, NANOARROW_TYPE_INT8
-        elif item_size == 2:
-            return item_size, NANOARROW_TYPE_INT16
-        elif item_size == 4:
-            return item_size, NANOARROW_TYPE_INT32
-        elif item_size == 8:
-            return item_size, NANOARROW_TYPE_INT64
-
-    # Check for unsinged integers
-    if format in ("B", "?", "H", "I", "L", "Q", "N"):
-        if item_size == 1:
-            return item_size, NANOARROW_TYPE_UINT8
-        elif item_size == 2:
-            return item_size, NANOARROW_TYPE_UINT16
-        elif item_size == 4:
-            return item_size, NANOARROW_TYPE_UINT32
-        elif item_size == 8:
-            return item_size, NANOARROW_TYPE_UINT64
-
-    # If all else fails, return opaque fixed-size binary
-    return item_size, NANOARROW_TYPE_BINARY
-
-
-cdef int c_format_from_arrow_type(ArrowType type_id, int element_size_bits, size_t out_size, char* out):
-    if type_id in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY) and element_size_bits > 0:
-        snprintf(out, out_size, "%ds", <int>(element_size_bits // 8))
-        return element_size_bits
-
-    cdef const char* format_const = ""
-    cdef int element_size_bits_calc = 0
-    if type_id == NANOARROW_TYPE_STRING:
-        format_const = "c"
-        element_size_bits_calc = 0
-    elif type_id == NANOARROW_TYPE_BINARY:
-        format_const = "B"
-        element_size_bits_calc = 0
-    elif type_id == NANOARROW_TYPE_BOOL:
-        # Bitmaps export as unspecified binary
-        format_const = "B"
-        element_size_bits_calc = 1
-    elif type_id == NANOARROW_TYPE_INT8:
-        format_const = "b"
-        element_size_bits_calc = 8
-    elif type_id == NANOARROW_TYPE_UINT8:
-        format_const = "B"
-        element_size_bits_calc = 8
-    elif type_id == NANOARROW_TYPE_INT16:
-        format_const = "h"
-        element_size_bits_calc = 16
-    elif type_id == NANOARROW_TYPE_UINT16:
-        format_const = "H"
-        element_size_bits_calc = 16
-    elif type_id in (NANOARROW_TYPE_INT32, NANOARROW_TYPE_INTERVAL_MONTHS):
-        format_const = "i"
-        element_size_bits_calc = 32
-    elif type_id == NANOARROW_TYPE_UINT32:
-        format_const = "I"
-        element_size_bits_calc = 32
-    elif type_id == NANOARROW_TYPE_INT64:
-        format_const = "q"
-        element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_UINT64:
-        format_const = "Q"
-        element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_HALF_FLOAT:
-        format_const = "e"
-        element_size_bits_calc = 16
-    elif type_id == NANOARROW_TYPE_FLOAT:
-        format_const = "f"
-        element_size_bits_calc = 32
-    elif type_id == NANOARROW_TYPE_DOUBLE:
-        format_const = "d"
-        element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
-        format_const = "ii"
-        element_size_bits_calc = 64
-    elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-        format_const = "iiq"
-        element_size_bits_calc = 128
-    elif type_id == NANOARROW_TYPE_DECIMAL128:
-        format_const = "16s"
-        element_size_bits_calc = 128
-    elif type_id == NANOARROW_TYPE_DECIMAL256:
-        format_const = "32s"
-        element_size_bits_calc = 256
-    else:
-        raise ValueError(f"Unsupported Arrow type_id for format conversion: {type_id}")
-
-    snprintf(out, out_size, "%s", format_const)
-    return element_size_bits_calc
-
-
-# This could in theory use cpdef enum, but an initial attempt to do so
-# resulted Cython duplicating some function definitions. For now, we resort
-# to a more manual trampoline of values to make them accessible from
-# schema.py.
-cdef class CArrowType:
-    """
-    Wrapper around ArrowType to provide implementations in Python access
-    to the values.
-    """
-
-    UNINITIALIZED = NANOARROW_TYPE_UNINITIALIZED
-    NA = NANOARROW_TYPE_NA
-    BOOL = NANOARROW_TYPE_BOOL
-    UINT8 = NANOARROW_TYPE_UINT8
-    INT8 = NANOARROW_TYPE_INT8
-    UINT16 = NANOARROW_TYPE_UINT16
-    INT16 = NANOARROW_TYPE_INT16
-    UINT32 = NANOARROW_TYPE_UINT32
-    INT32 = NANOARROW_TYPE_INT32
-    UINT64 = NANOARROW_TYPE_UINT64
-    INT64 = NANOARROW_TYPE_INT64
-    HALF_FLOAT = NANOARROW_TYPE_HALF_FLOAT
-    FLOAT = NANOARROW_TYPE_FLOAT
-    DOUBLE = NANOARROW_TYPE_DOUBLE
-    STRING = NANOARROW_TYPE_STRING
-    BINARY = NANOARROW_TYPE_BINARY
-    FIXED_SIZE_BINARY = NANOARROW_TYPE_FIXED_SIZE_BINARY
-    DATE32 = NANOARROW_TYPE_DATE32
-    DATE64 = NANOARROW_TYPE_DATE64
-    TIMESTAMP = NANOARROW_TYPE_TIMESTAMP
-    TIME32 = NANOARROW_TYPE_TIME32
-    TIME64 = NANOARROW_TYPE_TIME64
-    INTERVAL_MONTHS = NANOARROW_TYPE_INTERVAL_MONTHS
-    INTERVAL_DAY_TIME = NANOARROW_TYPE_INTERVAL_DAY_TIME
-    DECIMAL128 = NANOARROW_TYPE_DECIMAL128
-    DECIMAL256 = NANOARROW_TYPE_DECIMAL256
-    LIST = NANOARROW_TYPE_LIST
-    STRUCT = NANOARROW_TYPE_STRUCT
-    SPARSE_UNION = NANOARROW_TYPE_SPARSE_UNION
-    DENSE_UNION = NANOARROW_TYPE_DENSE_UNION
-    DICTIONARY = NANOARROW_TYPE_DICTIONARY
-    MAP = NANOARROW_TYPE_MAP
-    EXTENSION = NANOARROW_TYPE_EXTENSION
-    FIXED_SIZE_LIST = NANOARROW_TYPE_FIXED_SIZE_LIST
-    DURATION = NANOARROW_TYPE_DURATION
-    LARGE_STRING = NANOARROW_TYPE_LARGE_STRING
-    LARGE_BINARY = NANOARROW_TYPE_LARGE_BINARY
-    LARGE_LIST = NANOARROW_TYPE_LARGE_LIST
-    INTERVAL_MONTH_DAY_NANO = NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO
 
 
 cdef class CArrowTimeUnit:
@@ -718,32 +553,10 @@ cdef class CSchemaView:
     cdef bint _nullable
     cdef bint _map_keys_sorted
 
-    _fixed_size_types = (
-        NANOARROW_TYPE_FIXED_SIZE_LIST,
-        NANOARROW_TYPE_FIXED_SIZE_BINARY
-    )
-
-    _decimal_types = (
-        NANOARROW_TYPE_DECIMAL128,
-        NANOARROW_TYPE_DECIMAL256
-    )
-
-    _time_unit_types = (
-        NANOARROW_TYPE_TIME32,
-        NANOARROW_TYPE_TIME64,
-        NANOARROW_TYPE_DURATION,
-        NANOARROW_TYPE_TIMESTAMP
-    )
-
-    _union_types = (
-        NANOARROW_TYPE_DENSE_UNION,
-        NANOARROW_TYPE_SPARSE_UNION
-    )
-
     def __cinit__(self, CSchema schema):
         self._base = schema
-        self._schema_view.type = NANOARROW_TYPE_UNINITIALIZED
-        self._schema_view.storage_type = NANOARROW_TYPE_UNINITIALIZED
+        self._schema_view.type = <ArrowType>_types.UNINITIALIZED
+        self._schema_view.storage_type = <ArrowType>_types.UNINITIALIZED
 
         cdef Error error = Error()
         cdef int code = ArrowSchemaViewInit(&self._schema_view, schema._ptr, &error.c_error)
@@ -769,9 +582,12 @@ cdef class CSchemaView:
     def storage_buffer_format(self):
         if self.buffer_format is not None:
             return self.buffer_format
-        elif self._schema_view.type == NANOARROW_TYPE_DATE32:
+        elif _types.equal(self._schema_view.type, _types.DATE32):
             return 'i'
-        elif self._schema_view.type in (NANOARROW_TYPE_TIMESTAMP, NANOARROW_TYPE_DATE64, NANOARROW_TYPE_DURATION):
+        elif _types.one_of(
+            self._schema_view.type,
+            (_types.TIMESTAMP, _types.DATE64, _types.DURATION)
+        ):
             return 'q'
         else:
             return None
@@ -792,11 +608,11 @@ cdef class CSchemaView:
 
         cdef char out[128]
         cdef int element_size_bits = 0
-        if self._schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY:
+        if _types.equal(self._schema_view.type, _types.FIXED_SIZE_BINARY):
             element_size_bits = self._schema_view.fixed_size * 8
 
         try:
-            c_format_from_arrow_type(self._schema_view.type, element_size_bits, sizeof(out), out)
+            _types.to_format(self._schema_view.type, element_size_bits, sizeof(out), out)
             return out.decode()
         except ValueError:
             return None
@@ -819,7 +635,7 @@ cdef class CSchemaView:
 
     @property
     def dictionary_ordered(self):
-        if self._schema_view.type == NANOARROW_TYPE_DICTIONARY:
+        if _types.equal(self._schema_view.type, _types.DICTIONARY):
             return self._dictionary_ordered != 0
         else:
             return None
@@ -830,63 +646,63 @@ cdef class CSchemaView:
 
     @property
     def map_keys_sorted(self):
-        if self._schema_view.type == NANOARROW_TYPE_MAP:
+        if _types.equal(self._schema_view.type, _types.MAP):
             return self._map_keys_sorted != 0
         else:
             return None
 
     @property
     def fixed_size(self):
-        if self._schema_view.type in CSchemaView._fixed_size_types:
+        if _types.is_fixed_size(self._schema_view.type):
             return self._schema_view.fixed_size
         else:
             return None
 
     @property
     def decimal_bitwidth(self):
-        if self._schema_view.type in CSchemaView._decimal_types:
+        if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_bitwidth
         else:
             return None
 
     @property
     def decimal_precision(self):
-        if self._schema_view.type in CSchemaView._decimal_types:
+        if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_precision
         else:
             return None
 
     @property
     def decimal_scale(self):
-        if self._schema_view.type in CSchemaView._decimal_types:
+        if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_scale
         else:
             return None
 
     @property
     def time_unit_id(self):
-        if self._schema_view.type in CSchemaView._time_unit_types:
+        if _types.has_time_unit(self._schema_view.type):
             return self._schema_view.time_unit
         else:
             return None
 
     @property
     def time_unit(self):
-        if self._schema_view.type in CSchemaView._time_unit_types:
+        if _types.has_time_unit(self._schema_view.type):
             return ArrowTimeUnitString(self._schema_view.time_unit).decode()
         else:
             return None
 
     @property
     def timezone(self):
-        if self._schema_view.type == NANOARROW_TYPE_TIMESTAMP:
+        if _types.equal(self._schema_view.type, _types.TIMESTAMP):
             return self._schema_view.timezone.decode()
         else:
             return None
 
     @property
     def union_type_ids(self):
-        if self._schema_view.type in CSchemaView._union_types:
+        if _types.is_union(self._schema_view.type):
             type_ids_str = self._schema_view.union_type_ids.decode().split(',')
             return (int(type_id) for type_id in type_ids_str)
         else:
@@ -1630,7 +1446,7 @@ cdef class CBufferView:
         self._data_type = data_type
         self._device = device
         self._format[0] = 0
-        self._element_size_bits = c_format_from_arrow_type(
+        self._element_size_bits = _types.to_format(
             self._data_type,
             element_size_bits,
             sizeof(self._format),
@@ -1638,7 +1454,7 @@ cdef class CBufferView:
         )
         self._strides = self._item_size()
         self._shape = self._ptr.size_bytes // self._strides
-        if self._data_type == NANOARROW_TYPE_BOOL:
+        if _types.equal(self._data_type, _types.BOOL):
             self._n_elements = self._shape * 8
         else:
             self._n_elements = self._shape
@@ -1697,14 +1513,17 @@ cdef class CBufferView:
                 f"of buffer with length {len(self)}"
             )
         # memoryview's implementation is very fast but not always possible (half float, fixed-size binary, interval)
-        if self._data_type in (
-            NANOARROW_TYPE_HALF_FLOAT,
-            NANOARROW_TYPE_INTERVAL_DAY_TIME,
-            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-            NANOARROW_TYPE_DECIMAL128,
-            NANOARROW_TYPE_DECIMAL256
+        if _types.one_of(
+            self._data_type,
+            (
+                _types.HALF_FLOAT,
+                _types.INTERVAL_DAY_TIME,
+                _types.INTERVAL_MONTH_DAY_NANO,
+                _types.DECIMAL128,
+                _types.DECIMAL256
+            )
         ) or (
-            self._data_type == NANOARROW_TYPE_BINARY and self._element_size_bits != 0
+            _types.equal(self._data_type, _types.BINARY) and self._element_size_bits != 0
         ):
             return self._iter_struct(offset, length)
         else:
@@ -1725,7 +1544,7 @@ cdef class CBufferView:
         return self._n_elements
 
     def element(self, i):
-        if self._data_type == NANOARROW_TYPE_BOOL:
+        if _types.equal(self._data_type, _types.BOOL):
             if i < 0 or i >= self.n_elements:
                 raise IndexError(f"Index {i} out of range")
             return ArrowBitGet(self._ptr.data.as_uint8, i)
@@ -1742,7 +1561,7 @@ cdef class CBufferView:
                 f"of buffer with {self.n_elements} elements"
             )
 
-        if self._data_type == NANOARROW_TYPE_BOOL:
+        if _types.equal(self._data_type, _types.BOOL):
             return self._iter_bitmap(offset, length)
         else:
             return self._iter_dispatch(offset, length)
@@ -1775,7 +1594,7 @@ cdef class CBufferView:
         return bytes_to_copy
 
     def unpack_bits_into(self, dest, offset=0, length=None, dest_offset=0):
-        if self._data_type != NANOARROW_TYPE_BOOL:
+        if not _types.equal(self._data_type, _types.BOOL):
             raise ValueError("Can't unpack non-boolean buffer")
 
         if length is None:
@@ -1969,14 +1788,14 @@ cdef class CBuffer:
     def __cinit__(self):
         self._base = None
         self._ptr = NULL
-        self._data_type = NANOARROW_TYPE_BINARY
+        self._data_type = <ArrowType>(_types.BINARY)
         self._element_size_bits = 0
         self._device = DEVICE_CPU
         # Set initial format to "B" (Cython makes this hard)
         self._format[0] = 66
         self._format[1] = 0
         self._get_buffer_count = 0
-        self._view = CBufferView(None, 0, 0, NANOARROW_TYPE_BINARY, 0, self._device)
+        self._view = CBufferView(None, 0, 0, _types.BINARY, 0, self._device)
 
     cdef _assert_valid(self):
         if self._ptr == NULL:
@@ -2017,7 +1836,7 @@ cdef class CBuffer:
     def _set_format(self, str format):
         self._assert_buffer_count_zero()
 
-        element_size_bytes, data_type = c_arrow_type_from_format(format)
+        element_size_bytes, data_type = _types.from_format(format)
         self._data_type = data_type
         self._element_size_bits = element_size_bytes * 8
         format_bytes = format.encode("UTF-8")
@@ -2028,7 +1847,7 @@ cdef class CBuffer:
     def _set_data_type(self, ArrowType type_id, int element_size_bits=0):
         self._assert_buffer_count_zero()
 
-        self._element_size_bits = c_format_from_arrow_type(
+        self._element_size_bits = _types.to_format(
             type_id,
             element_size_bits,
             sizeof(self._format),
@@ -2272,7 +2091,7 @@ cdef class CBufferBuilder:
 
         # Boolean arrays need their own writer since Python provides
         # no helpers for bitpacking
-        if self._buffer._data_type == NANOARROW_TYPE_BOOL:
+        if _types.equal(self._buffer._data_type, _types.BOOL):
             return self._write_bits(obj)
 
         cdef int64_t n_values = 0
@@ -2292,8 +2111,10 @@ cdef class CBufferBuilder:
         # pack_into() call. if code != NANOARROW_OK is used instead of
         # Error.raise_error_not_ok() Cython can avoid the extra function call
         # and this is a very tight loop.
-        if self._buffer._data_type in (NANOARROW_TYPE_INTERVAL_DAY_TIME,
-                                       NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO):
+        if _types.one_of(
+            self._buffer._data_type,
+            (_types.INTERVAL_DAY_TIME, _types.INTERVAL_MONTH_DAY_NANO)
+        ):
             for item in obj:
                 write(pack(*item))
                 n_values += 1
@@ -2384,15 +2205,15 @@ cdef class NoneAwareWrapperIterator:
         Error.raise_error_not_ok(self, code)
 
     def _get_value_if_none(self, type_id, item_size_bytes=0):
-        if type_id == NANOARROW_TYPE_INTERVAL_DAY_TIME:
+        if _types.equal(type_id, _types.INTERVAL_DAY_TIME):
             return (0, 0)
-        elif type_id == NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+        elif _types.equal(type_id, _types.INTERVAL_MONTH_DAY_NANO):
             return (0, 0, 0)
-        elif type_id == NANOARROW_TYPE_BOOL:
+        elif _types.equal(type_id, _types.BOOL):
             return False
-        elif type_id  in (NANOARROW_TYPE_BINARY, NANOARROW_TYPE_FIXED_SIZE_BINARY):
+        elif _types.one_of(type_id, (_types.BINARY, _types.FIXED_SIZE_BINARY)):
             return b"\x00" * item_size_bytes
-        elif type_id in (NANOARROW_TYPE_HALF_FLOAT, NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE):
+        elif _types.one_of(type_id, (_types.HALF_FLOAT, _types.FLOAT, _types.DOUBLE)):
             return 0.0
         else:
             return 0
@@ -2440,7 +2261,7 @@ cdef class NoneAwareWrapperIterator:
         if null_count > 0:
             validity = CBuffer.empty()
             ArrowBufferMove(&self._bitmap.buffer, validity._ptr)
-            validity._set_data_type(NANOARROW_TYPE_BOOL)
+            validity._set_data_type(<ArrowType>_types.BOOL)
 
         return (
             self._item_count,
@@ -2863,7 +2684,7 @@ cdef class CMaterializedArrayStream:
         Error.raise_error_not_ok("ArrowBufferAppendInt64()", code)
 
     cdef _finalize(self):
-        self._array_ends._set_data_type(NANOARROW_TYPE_INT64)
+        self._array_ends._set_data_type(<ArrowType>_types.INT64)
 
     @property
     def schema(self):
