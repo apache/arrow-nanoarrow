@@ -15,10 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Any, Iterable, Literal, Tuple
+from typing import Any, Iterable, Literal, Tuple, Union
 
 from nanoarrow._array import CArray, CArrayBuilder, CArrayView
 from nanoarrow._buffer import CBuffer, CBufferBuilder, NoneAwareWrapperIterator
+from nanoarrow._device import Device
 from nanoarrow._schema import CSchema, CSchemaBuilder
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
@@ -201,6 +202,7 @@ def c_array_from_buffers(
     children: Iterable[Any] = (),
     validation_level: Literal[None, "full", "default", "minimal", "none"] = None,
     move: bool = False,
+    device: Union[Device, None]=None
 ) -> CArray:
     """Create an ArrowArray wrapper from components
 
@@ -258,8 +260,11 @@ def c_array_from_buffers(
     - dictionary: NULL
     - children[0]:
     """
+    if device is None:
+        device = DEVICE_CPU
+
     schema = c_schema(schema)
-    builder = CArrayBuilder.allocate()
+    builder = CArrayBuilder.allocate(device)
 
     # Ensures that the output array->n_buffers is set and that the correct number
     # of children have been initialized.
@@ -298,7 +303,10 @@ def c_array_from_buffers(
     builder.resolve_null_count()
 
     # Validate + finish
-    return builder.finish(validation_level=validation_level)
+    if device is DEVICE_CPU:
+        return builder.finish(validation_level=validation_level)
+    else:
+        return builder.finish_device()
 
 
 class ArrayBuilder:
