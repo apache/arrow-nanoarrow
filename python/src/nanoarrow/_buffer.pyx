@@ -56,11 +56,13 @@ from nanoarrow_c cimport (
 
 from nanoarrow_device_c cimport (
     ARROW_DEVICE_CPU,
+    ArrowDevice,
 )
 
 from nanoarrow_dlpack cimport (
     DLDataType,
     DLDevice,
+    DLDeviceType,
     DLManagedTensor,
     DLTensor,
     kDLCPU,
@@ -71,7 +73,7 @@ from nanoarrow_dlpack cimport (
 
 from nanoarrow cimport _utils
 from nanoarrow cimport _types
-from nanoarrow._device cimport Device
+from nanoarrow._device cimport CSharedSyncEvent, Device
 
 from struct import unpack_from, iter_unpack, calcsize, Struct
 
@@ -121,6 +123,34 @@ cdef DLDataType view_to_dlpack_data_type(CBufferView view):
 
     return dtype
 
+cdef int dlpack_data_type_to_arrow(DLDataType dtype):
+    if dtype.code == kDLInt:
+        if dtype.bits == 8:
+            return _types.INT8
+        elif dtype.bits == 16:
+            return _types.INT16
+        elif dtype.bits == 32:
+            return _types.INT32
+        elif dtype.bits == 64:
+            return _types.INT64
+    elif dtype.code == kDLUInt:
+        if dtype.bits == 8:
+            return _types.UINT8
+        elif dtype.bits == 16:
+            return _types.UINT16
+        elif dtype.bits == 32:
+            return _types.UINT32
+        elif dtype.bits == 64:
+            return _types.UINT64
+    elif dtype.code == kDLFloat:
+        if dtype.bits == 16:
+            return _types.HALF_FLOAT
+        elif dtype.bits == 32:
+            return _types.FLOAT
+        elif dtype.bits == 64:
+            return _types.DOUBLE
+
+    raise ValueError("Can't convert dlpack data type to Arrow type")
 
 cdef object view_to_dlpack(CBufferView view):
     # Define DLDevice and DLDataType struct and
@@ -163,13 +193,29 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
 
     # Define DLDevice struct
-    if view._device.device_type_id == ARROW_DEVICE_CPU:
+    cdef ArrowDevice* arrow_device = view._event.device._ptr
+    if arrow_device.device_type is ARROW_DEVICE_CPU:
+        # DLPack uses 0 for the CPU device id where Arrow uses -1
         device.device_type = kDLCPU
         device.device_id =  0
     else:
-        raise ValueError('Only CPU device is currently supported.')
+        # Otherwise, Arrow's device identifiers and types are intentionally
+        # identical to DLPack
+        device.device_type = <DLDeviceType>arrow_device.device_type
+        device.device_id = arrow_device.device_id
 
     return device
+
+
+cdef bint dlpack_strides_are_contiguous(DLTensor* dl_tensor):
+    if dl_tensor.strides == NULL:
+        return True
+
+    if dl_tensor.ndim != 1:
+        raise NotImplementedError("Contiguous stride check not implemented for ndim != 1")
+
+    # DLTensor strides are in elemements, not bytes
+    return dl_tensor.strides[0] == 1
 
 
 cdef class CBufferView:
@@ -183,12 +229,12 @@ cdef class CBufferView:
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
                   ArrowType data_type,
-                  Py_ssize_t element_size_bits, Device device):
+                  Py_ssize_t element_size_bits, CSharedSyncEvent event):
         self._base = base
         self._ptr.data.data = <void*>addr
         self._ptr.size_bytes = size_bytes
         self._data_type = data_type
-        self._device = device
+        self._event = event
         self._format[0] = 0
         self._element_size_bits = _types.to_format(
             self._data_type,
@@ -208,7 +254,7 @@ cdef class CBufferView:
 
     @property
     def device(self):
-        return self._device
+        return self._event.device
 
     @property
     def element_size_bits(self):
@@ -469,9 +515,8 @@ cdef class CBufferView:
             CPU = 1, see python/src/nanoarrow/dpack_abi.h) and index of the
             device which is 0 by default for CPU.
         """
-        return (view_to_dlpack_device(self).device_type,
-                view_to_dlpack_device(self).device_id)
-
+        cdef DLDevice dlpack_device = view_to_dlpack_device(self)
+        return dlpack_device.device_type, dlpack_device.device_id
 
     # These are special methods, which can't be cdef and we can't
     # call them from elsewhere. We implement the logic for the buffer
@@ -483,7 +528,7 @@ cdef class CBufferView:
         self._do_releasebuffer(buffer)
 
     cdef _do_getbuffer(self, Py_buffer *buffer, int flags):
-        if self._device is not DEVICE_CPU:
+        if self.device is not DEVICE_CPU:
             raise RuntimeError("CBufferView is not a CPU buffer")
 
         if flags & PyBUF_WRITABLE:
@@ -531,7 +576,11 @@ cdef class CBuffer:
         self._format[0] = 66
         self._format[1] = 0
         self._get_buffer_count = 0
-        self._view = CBufferView(None, 0, 0, _types.BINARY, 0, self._device)
+        self._view = CBufferView(
+            None, 0,
+            0, _types.BINARY, 0,
+            CSharedSyncEvent(self._device)
+        )
 
     cdef _assert_valid(self):
         if self._ptr == NULL:
@@ -549,7 +598,7 @@ cdef class CBuffer:
         self._view = CBufferView(
             self._base, <uintptr_t>self._ptr.data,
             self._ptr.size_bytes, self._data_type, self._element_size_bits,
-            self._device
+            CSharedSyncEvent(self._device)
         )
 
         snprintf(self._view._format, sizeof(self._view._format), "%s", self._format)
@@ -567,6 +616,36 @@ cdef class CBuffer:
         out._set_format(_utils.c_buffer_set_pybuffer(obj, &out._ptr))
         out._device = DEVICE_CPU
         out._populate_view()
+        return out
+
+    @staticmethod
+    def from_dlpack(obj):
+        capsule = obj.__dlpack__()
+        cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyCapsule_GetPointer(
+            capsule, "dltensor"
+        )
+        cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
+
+        if not dlpack_strides_are_contiguous(dl_tensor):
+            raise ValueError("Non-contiguous dlpack strides not supported")
+
+        cdef Device device = Device.resolve(dl_tensor.device.device_type, dl_tensor.device.device_id)
+        cdef int arrow_type = dlpack_data_type_to_arrow(dl_tensor.dtype)
+        cdef uint8_t* data_ptr = <uint8_t*>dl_tensor.data + dl_tensor.byte_offset
+
+        cdef int64_t size_bytes = 1
+        cdef int64_t element_size_bytes = dl_tensor.dtype.bits // 8
+        for i in range(dl_tensor.ndim):
+            size_bytes *= dl_tensor.shape[i] * element_size_bytes
+
+        cdef CBuffer out = CBuffer()
+
+        out._base = _utils.alloc_c_buffer(&out._ptr)
+        _utils.c_buffer_set_pyobject(capsule, data_ptr, size_bytes, &out._ptr)
+        out._set_data_type(arrow_type)
+        out._device = device
+        out._populate_view()
+
         return out
 
     def _set_format(self, str format):
