@@ -30,7 +30,7 @@ project(
 )
 
 if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
-  add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
+  add_project_arguments(['-fvisibility=hidden', '-Wno-unused-parameter'], language: 'cpp')
 endif
 
 nanoarrow_dep_args = []
