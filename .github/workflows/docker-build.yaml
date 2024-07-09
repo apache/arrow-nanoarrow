@@ -42,12 +42,10 @@ jobs:
           - { runs_on: "ubuntu-latest", platform: "fedora", arch: "amd64" }
           - { runs_on: "ubuntu-latest", platform: "archlinux", arch: "amd64" }
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "amd64" }
-          - { runs_on: "ubuntu-latest", platform: "centos7", arch: "amd64" }
 
           - { runs_on: ["self-hosted", "arm"], platform: "ubuntu", arch: "arm64" }
           - { runs_on: ["self-hosted", "arm"], platform: "fedora", arch: "arm64" }
           - { runs_on: ["self-hosted", "arm"], platform: "alpine", arch: "arm64" }
-          - { runs_on: ["self-hosted", "arm"], platform: "centos7", arch: "arm64" }
 
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x" }
 
@@ -123,17 +121,6 @@ jobs:
           ghcr.io/apache/arrow-nanoarrow:ubuntu-arm64 --arch arm64
 
         docker manifest create \
-          ghcr.io/apache/arrow-nanoarrow:centos7 \
-          ghcr.io/apache/arrow-nanoarrow:centos7-amd64 \
-          ghcr.io/apache/arrow-nanoarrow:centos7-arm64
-        docker manifest annotate \
-          ghcr.io/apache/arrow-nanoarrow:centos7 \
-          ghcr.io/apache/arrow-nanoarrow:centos7-amd64 --arch amd64
-        docker manifest annotate \
-          ghcr.io/apache/arrow-nanoarrow:centos7 \
-          ghcr.io/apache/arrow-nanoarrow:centos7-arm64 --arch arm64
-
-        docker manifest create \
           ghcr.io/apache/arrow-nanoarrow:fedora \
           ghcr.io/apache/arrow-nanoarrow:fedora-amd64 \
           ghcr.io/apache/arrow-nanoarrow:fedora-arm64
@@ -164,5 +151,4 @@ jobs:
       run: |
         docker manifest push ghcr.io/apache/arrow-nanoarrow:ubuntu
         docker manifest push ghcr.io/apache/arrow-nanoarrow:fedora
-        docker manifest push ghcr.io/apache/arrow-nanoarrow:centos7
         docker manifest push ghcr.io/apache/arrow-nanoarrow:alpine
