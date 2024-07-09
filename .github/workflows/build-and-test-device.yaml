@@ -141,6 +141,7 @@ jobs:
           path: build/Testing/Temporary/MemoryChecker.*.log
 
       - name: Set up Python
+        if: matrix.config.label == 'with-cuda'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -156,8 +157,6 @@ jobs:
 
       - name: Test Python bindings with CUDA
         if: matrix.config.label == 'with-cuda'
-        env:
-          NANOARROW_PYTHON_CUDA_HOME: "/usr/local/cuda"
         run: |
           cd python
           python3 -m pytest -vv
