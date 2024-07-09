@@ -57,3 +57,10 @@
    fun:malloc
    fun:_PyObject_GC_NewVar
 }
+
+{
+   <jsonlite>:Leak in base64_encode
+   Memcheck:Leak
+   fun:base64_encode
+   fun:R_base64_encode
+}
