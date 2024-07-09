@@ -83,15 +83,15 @@ if cuda_toolkit_root:
     if not include_dir.is_dir():
         raise ValueError(f"CUDA include directory does not exist: '{include_dir}'")
 
-    lib_dirs = [d for d in possible_libs if d.exists()]
-    if not lib_dirs:
-        lib_dirs_err = ", ".join(f"'{d}" for d in possible_libs)
-        raise ValueError(f"Can't find CUDA library directory. Checked {lib_dirs_err}")
-
     device_include_dirs.append(str(include_dir))
-    device_library_dirs.append(str(lib_dirs[0].parent))
     device_libraries.append("cuda")
     device_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
+
+    # Library might be already in a system library directory such that no -L flag
+    # is needed
+    lib_dirs = [d for d in possible_libs if d.exists()]
+    if lib_dirs:
+        device_library_dirs.append(str(lib_dirs[0].parent))
 
 
 def nanoarrow_extension(
