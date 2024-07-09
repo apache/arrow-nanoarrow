@@ -58,9 +58,11 @@
    fun:_PyObject_GC_NewVar
 }
 
+# Can be removed when https://github.com/jeroen/jsonlite/pull/442 is released
 {
    <jsonlite>:Leak in base64_encode
    Memcheck:Leak
+   ...
    fun:base64_encode
    fun:R_base64_encode
 }
