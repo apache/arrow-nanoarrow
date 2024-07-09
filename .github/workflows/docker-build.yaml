@@ -42,12 +42,10 @@ jobs:
           - { runs_on: "ubuntu-latest", platform: "fedora", arch: "amd64" }
           - { runs_on: "ubuntu-latest", platform: "archlinux", arch: "amd64" }
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "amd64" }
-          - { runs_on: "ubuntu-latest", platform: "centos7", arch: "amd64" }
 
           - { runs_on: ["self-hosted", "arm"], platform: "ubuntu", arch: "arm64" }
           - { runs_on: ["self-hosted", "arm"], platform: "fedora", arch: "arm64" }
           - { runs_on: ["self-hosted", "arm"], platform: "alpine", arch: "arm64" }
-          - { runs_on: ["self-hosted", "arm"], platform: "centos7", arch: "arm64" }
 
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x" }
 
