@@ -28,6 +28,7 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/build-and-test-device.yaml'
       - 'src/nanoarrow/**'
+      - 'python/setup.py'
 
 permissions:
   contents: read
