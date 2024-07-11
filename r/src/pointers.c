@@ -21,10 +21,8 @@
 
 #include "array.h"
 #include "array_stream.h"
+#include "preserve.h"
 #include "schema.h"
-
-// More reliable way to stringify intptr_t on Windows using C++
-void intptr_as_string(intptr_t ptr_int, char* buf);
 
 SEXP nanoarrow_c_allocate_schema(void) { return nanoarrow_schema_owning_xptr(); }
 
