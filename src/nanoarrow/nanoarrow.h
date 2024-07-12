@@ -116,6 +116,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromType)
 #define ArrowArrayViewInitFromSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromSchema)
+#define ArrowArrayViewInitFromArray \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromArray)
 #define ArrowArrayViewAllocateChildren \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewAllocateChildren)
 #define ArrowArrayViewAllocateDictionary \
@@ -1028,6 +1030,10 @@ static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
 ArrowErrorCode ArrowArrayViewInitFromSchema(struct ArrowArrayView* array_view,
                                             const struct ArrowSchema* schema,
                                             struct ArrowError* error);
+
+/// \brief Initialize the contents of an ArrowArrayView from an ArrowArray
+ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
+                                           const struct ArrowArray* array);
 
 /// \brief Allocate the array_view->children array
 ///

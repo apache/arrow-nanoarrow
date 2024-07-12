@@ -309,8 +309,8 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
-                                                  struct ArrowArray* array) {
+ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
+                                           const struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
@@ -493,6 +493,11 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
                                               int64_t n_children) {
   if (array_view->children != NULL) {
     return EINVAL;
+  }
+
+  if (n_children == 0) {
+    array_view->n_children = 0;
+    return NANOARROW_OK;
   }
 
   array_view->children =
