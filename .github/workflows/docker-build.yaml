@@ -30,9 +30,13 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 jobs:
   build-docker:
-    name: "docker-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
+    name: "docker-${{ matrix.config.service }}-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
     runs-on: ${{ matrix.config.runs_on }}
     strategy:
       fail-fast: false
@@ -42,7 +46,7 @@ jobs:
           - { runs_on: "ubuntu-latest", platform: "fedora", arch: "amd64", service: "verify" }
           - { runs_on: "ubuntu-latest", platform: "archlinux", arch: "amd64", service: "verify" }
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "amd64", service: "verify" }
-          - { runs_on: "ubuntu-latest", arch: "amd64", service: "integration" }
+          - { runs_on: "ubuntu-latest", arch: "amd64", platform: "integration", service: "integration" }
 
           - { runs_on: ["self-hosted", "arm"], platform: "ubuntu", arch: "arm64", service: "verify" }
           - { runs_on: ["self-hosted", "arm"], platform: "fedora", arch: "arm64", service: "verify" }
