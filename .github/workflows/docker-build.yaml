@@ -14,7 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-name: Build Docker Images
+name: docker-build
 
 on:
   workflow_dispatch:
@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   build-docker:
-    name: "docker-${{ matrix.config.service }}-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
+    name: "${{ matrix.config.service }}-${{ matrix.config.platform }}-${{ matrix.config.arch }}"
     runs-on: ${{ matrix.config.runs_on }}
     strategy:
       fail-fast: false

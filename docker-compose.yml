@@ -61,5 +61,9 @@ services:
       - /bin/bash
       - -c
       - |
-        conda run --no-capture-output /arrow-integration/ci/scripts/nanoarrow_build.sh /arrow-integration /build"
-        conda run --no-capture-output /arrow-integration/ci/scripts/integration_arrow.sh /arrow-integration /build"
+        echo "::group::Build nanoarrow"
+        conda run --no-capture-output /arrow-integration/ci/scripts/nanoarrow_build.sh /arrow-integration /build
+        echo "::endgroup::"
+        echo "::group::Run integration tests"
+        conda run --no-capture-output /arrow-integration/ci/scripts/integration_arrow.sh /arrow-integration /build
+        echo "::endgroup::"
