@@ -1,0 +1,58 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+FROM apache/arrow-dev:amd64-conda-integration
+
+ENV ARROW_USE_CCACHE=OFF
+ENV ARROW_CPP_EXE_PATH=/build/cpp/debug
+ENV ARROW_NANOARROW_PATH=/build/nanoarrow
+ENV ARROW_RUST_EXE_PATH=/build/rust/debug
+ENV BUILD_DOCS_CPP=OFF
+ENV ARROW_INTEGRATION_CPP=ON
+ENV ARROW_INTEGRATION_CSHARP=ON
+ENV ARROW_INTEGRATION_GO=ON
+ENV ARROW_INTEGRATION_JAVA=ON
+ENV ARROW_INTEGRATION_JS=ON
+ENV ARCHERY_INTEGRATION_WITH_NANOARROW="1"
+ENV ARCHERY_INTEGRATION_WITH_RUST="1"
+# These are necessary because the github runner overrides $HOME
+# https://github.com/actions/runner/issues/863
+ENV RUSTUP_HOME=/root/.rustup
+ENV CARGO_HOME=/root/.cargo
+
+ENV ARROW_USE_CCACHE=OFF
+ENV ARROW_CPP_EXE_PATH=/build/cpp/debug
+ENV ARROW_NANOARROW_PATH=/build/nanoarrow
+ENV ARROW_RUST_EXE_PATH=/build/rust/debug
+ENV BUILD_DOCS_CPP=OFF
+
+# Clone the arrow monorepo
+RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-submodules
+
+# Clone the arrow-rs repo
+RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
+
+# Workaround: stable rust is not compatible with glibc provided by the
+# provided arrow docker image https://github.com/apache/arrow/issues/41637
+RUN cd /arrow-integration/rust && rustup override set 1.77
+
+# Build all the inegrations except nanoarrow (since we'll do that ourselves on each run)
+RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
+    conda run --no-capture-output \
+    /arrow-integration/ci/scripts/integration_arrow_build.sh \
+    /arrow-integration \
+    /build
