@@ -276,4 +276,5 @@ if get_option('apps')
 endif
 
 pkg = import('pkgconfig')
-pkg.generate(nanoarrow_lib)
+pkg.generate(nanoarrow_lib,
+             description : 'Helpers for Arrow C Data & Arrow C Stream interfaces')
