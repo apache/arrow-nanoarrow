@@ -495,6 +495,11 @@ ArrowErrorCode ArrowArrayViewAllocateChildren(struct ArrowArrayView* array_view,
     return EINVAL;
   }
 
+  if (n_children == 0) {
+    array_view->n_children = 0;
+    return NANOARROW_OK;
+  }
+
   array_view->children =
       (struct ArrowArrayView**)ArrowMalloc(n_children * sizeof(struct ArrowArrayView*));
   if (array_view->children == NULL) {
