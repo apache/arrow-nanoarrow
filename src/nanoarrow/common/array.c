@@ -309,8 +309,8 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
-                                           const struct ArrowArray* array) {
+static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
+                                                  struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
