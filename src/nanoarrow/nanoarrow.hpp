@@ -843,7 +843,7 @@ class ViewArrayAsFixedSizeBytes {
 class ViewArrayStream {
  public:
   ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
-      : range_{Next{this, stream, UniqueArray()}}, error_{error}, code_{code} {}
+      : range_{Next{this, stream, UniqueArray()}}, code_{code}, error_{error} {}
 
   ViewArrayStream(ArrowArrayStream* stream, ArrowError* error)
       : ViewArrayStream{stream, &internal_code_, error} {}
