@@ -58,12 +58,9 @@ services:
     volumes:
       - ${NANOARROW_DOCKER_SOURCE_DIR}:/arrow-integration/nanoarrow
     command:
-      - /bin/bash
-      - -c
-      - >
-        echo "::group::Build nanoarrow" &&
+      ["echo '::group::Build nanoarrow' &&
         conda run --no-capture-output /arrow-integration/ci/scripts/nanoarrow_build.sh /arrow-integration /build &&
-        echo "::endgroup::" &&
-        echo "::group::Run integration tests" &&
+        echo '::endgroup::' &&
+        echo '::group::Run integration tests' &&
         conda run --no-capture-output /arrow-integration/ci/scripts/integration_arrow.sh /arrow-integration /build &&
-        echo "::endgroup::"
+        echo '::endgroup::'"]
