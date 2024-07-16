@@ -182,7 +182,7 @@ def test_c_schema_equals():
 
 
 def test_c_schema_assert_type_equal():
-    from nanoarrow._lib import assert_type_equal
+    from nanoarrow._schema import assert_type_equal
 
     int32 = na.c_schema(na.int32())
     string = na.c_schema(na.string())

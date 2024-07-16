@@ -24,7 +24,7 @@ from nanoarrow_c cimport (
     ArrowSchemaView
 )
 
-cdef assert_type_equal(object lhs, object rhs)
+cpdef assert_type_equal(object lhs, object rhs)
 
 cdef class CLayout:
     cdef ArrowLayout* _layout

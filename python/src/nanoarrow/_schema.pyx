@@ -70,7 +70,7 @@ from nanoarrow import _repr_utils
 # This is likely a better fit for a dedicated testing module; however, we need
 # it here to produce nice error messages when ensuring that one or
 # more arrays conform to a given or inferred schema.
-def assert_type_equal(actual, expected):
+cpdef assert_type_equal(actual, expected):
     if not isinstance(actual, CSchema):
         raise TypeError(f"expected is {type(actual).__name__}, not CSchema")
 

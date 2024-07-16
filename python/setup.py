@@ -139,6 +139,7 @@ setup(
         nanoarrow_extension("nanoarrow._buffer", nanoarrow_c=True),
         nanoarrow_extension("nanoarrow._lib", nanoarrow_c=True, nanoarrow_device=True),
         nanoarrow_extension("nanoarrow._ipc_lib", nanoarrow_c=True, nanoarrow_ipc=True),
+        nanoarrow_extension("nanoarrow._schema", nanoarrow_c=True),
     ],
     version=version,
 )

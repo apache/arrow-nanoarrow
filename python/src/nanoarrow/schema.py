@@ -20,7 +20,12 @@ import reprlib
 from functools import cached_property
 from typing import List, Mapping, Union
 
-from nanoarrow._lib import CArrowTimeUnit, CSchemaBuilder, CSchemaView, SchemaMetadata
+from nanoarrow._schema import (
+    CArrowTimeUnit,
+    CSchemaBuilder,
+    CSchemaView,
+    SchemaMetadata,
+)
 from nanoarrow.c_schema import c_schema
 
 from nanoarrow import _repr_utils, _types
