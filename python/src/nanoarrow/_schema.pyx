@@ -117,6 +117,39 @@ cdef class CArrowTimeUnit:
     NANO = NANOARROW_TIME_UNIT_NANO
 
 
+cdef class CLayout:
+    """Abstract buffer information for Arrow types
+
+    Provides accessors for buffer counts, types, and attributes.
+    """
+
+    def __cinit__(self, base, uintptr_t ptr):
+        self._base = base
+        self._layout = <ArrowLayout*>ptr
+
+        self._n_buffers = NANOARROW_MAX_FIXED_BUFFERS
+        for i in range(NANOARROW_MAX_FIXED_BUFFERS):
+            if self._layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE:
+                self._n_buffers = i
+                break
+
+    @property
+    def n_buffers(self) -> int:
+        return self._n_buffers
+
+    @property
+    def buffer_data_type_id(self) -> int:
+        return tuple(self._layout.buffer_data_type[i] for i in range(self._n_buffers))
+
+    @property
+    def element_size_bits(self) -> int:
+        return tuple(self._layout.element_size_bits[i] for i in range(self._n_buffers))
+
+    @property
+    def child_size_elements(self) -> int:
+        return self._layout.child_size_elements
+
+
 cdef class SchemaMetadata:
     """Dictionary-like wrapper around a lazily-parsed CSchema.metadata string
 
@@ -205,7 +238,6 @@ cdef class SchemaMetadata:
             _repr_utils.metadata_repr(self)
         ]
         return "\n".join(lines)
-
 
 
 cdef class CSchema:
@@ -504,15 +536,15 @@ cdef class CSchemaView:
         return CLayout(self, <uintptr_t>&self._schema_view.layout)
 
     @property
-    def type_id(self):
+    def type_id(self) -> int:
         return self._schema_view.type
 
     @property
-    def storage_type_id(self):
+    def storage_type_id(self) -> int:
         return self._schema_view.storage_type
 
     @property
-    def storage_buffer_format(self):
+    def storage_buffer_format(self) -> Union[str, None]:
         if self.buffer_format is not None:
             return self.buffer_format
         elif _types.equal(self._schema_view.type, _types.DATE32):
@@ -526,7 +558,7 @@ cdef class CSchemaView:
             return None
 
     @property
-    def buffer_format(self) -> Union(str, None):
+    def buffer_format(self) -> Union[str, None]:
         """The Python struct format representing an element of this type
         or None if there is no Python format string that can represent this
         type without loosing information.
@@ -567,7 +599,7 @@ cdef class CSchemaView:
             raise ValueError("ArrowTypeString() returned NULL")
 
     @property
-    def dictionary_ordered(self):
+    def dictionary_ordered(self) -> Union[bool, None]:
         if _types.equal(self._schema_view.type, _types.DICTIONARY):
             return self._dictionary_ordered != 0
         else:
@@ -634,7 +666,7 @@ cdef class CSchemaView:
             return None
 
     @property
-    def union_type_ids(self) -> Tuple[int]:
+    def union_type_ids(self) -> Union[Tuple[int, ...], None]:
         if _types.is_union(self._schema_view.type):
             type_ids_str = self._schema_view.union_type_ids.decode().split(',')
             return (int(type_id) for type_id in type_ids_str)
@@ -664,35 +696,6 @@ cdef class CSchemaView:
 
     def __repr__(self) -> str:
         return _repr_utils.schema_view_repr(self)
-
-
-cdef class CLayout:
-
-    def __cinit__(self, base, uintptr_t ptr):
-        self._base = base
-        self._layout = <ArrowLayout*>ptr
-
-        self._n_buffers = NANOARROW_MAX_FIXED_BUFFERS
-        for i in range(NANOARROW_MAX_FIXED_BUFFERS):
-            if self._layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE:
-                self._n_buffers = i
-                break
-
-    @property
-    def n_buffers(self):
-        return self._n_buffers
-
-    @property
-    def buffer_data_type_id(self):
-        return tuple(self._layout.buffer_data_type[i] for i in range(self._n_buffers))
-
-    @property
-    def element_size_bits(self):
-        return tuple(self._layout.element_size_bits[i] for i in range(self._n_buffers))
-
-    @property
-    def child_size_elements(self):
-        return self._layout.child_size_elements
 
 
 cdef class CSchemaBuilder:
