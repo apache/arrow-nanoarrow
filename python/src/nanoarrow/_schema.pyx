@@ -64,20 +64,39 @@ from nanoarrow cimport _types
 from nanoarrow._buffer cimport CBuffer
 from nanoarrow._utils cimport alloc_c_schema, Error
 
+from typing import Iterable, List, Tuple, Union
+
 from nanoarrow import _repr_utils
 
 
 # This is likely a better fit for a dedicated testing module; however, we need
 # it here to produce nice error messages when ensuring that one or
 # more arrays conform to a given or inferred schema.
-cpdef assert_type_equal(actual, expected):
+cpdef assert_type_equal(actual, expected, bint check_nullability):
+    """Test two schemas for data type equality
+
+    Checks two CSchema objects for type equality (i.e., that an array with
+    schema ``actual`` contains elements with the same logical meaning as and
+    array with schema ``expected``). Notably, this excludes metadata from
+    all nodes in the schema.
+
+    Parameters
+    ----------
+    actual : CSchema
+        The schema to be tested for equality
+    expected : CSchema
+        The schema against which to test
+    check_nullability : bool
+        If True, actual and expected will be considered equal if their
+        data type information and marked nullability are identical.
+    """
     if not isinstance(actual, CSchema):
-        raise TypeError(f"expected is {type(actual).__name__}, not CSchema")
+        raise TypeError(f"actual is {type(actual).__name__}, not CSchema")
 
     if not isinstance(expected, CSchema):
         raise TypeError(f"expected is {type(expected).__name__}, not CSchema")
 
-    if not actual.type_equals(expected):
+    if not actual.type_equals(expected, check_nullability=check_nullability):
         actual_label = actual._to_string(max_chars=80, recursive=True)
         expected_label = expected._to_string(max_chars=80, recursive=True)
         raise ValueError(
@@ -99,7 +118,13 @@ cdef class CArrowTimeUnit:
 
 
 cdef class SchemaMetadata:
-    """Wrapper for a lazily-parsed CSchema.metadata string
+    """Dictionary-like wrapper around a lazily-parsed CSchema.metadata string
+
+    The Arrow C Data interface encodes key/value metadata as a bytes-to-bytes
+    mapping using a specific packed binary encoding. This class maintains a
+    reference to the underlying storage and parses it as required. Note that
+    unlike a Python dictionary, ``SchemaMetadata`` can contain duplicate
+    keys.
     """
 
     def __cinit__(self, object base, uintptr_t ptr):
@@ -108,6 +133,7 @@ cdef class SchemaMetadata:
 
     @staticmethod
     def empty():
+        """Create an empty SchemaMetadata with no keys or values"""
         return SchemaMetadata(None, 0)
 
     cdef _init_reader(self):
@@ -125,7 +151,12 @@ cdef class SchemaMetadata:
 
         return False
 
-    def __getitem__(self, k):
+    def __getitem__(self, k) -> bytes:
+        """Get the value associated with a unique key
+
+        Retrieves the unique value associated with k. Raises KeyError if
+        k does not point to exactly one value in the metadata.
+        """
         out = None
 
         for key, value in self.items():
@@ -135,19 +166,30 @@ cdef class SchemaMetadata:
                 else:
                     raise KeyError(f"key {k} matches more than one value in metadata")
 
+        if out is None:
+            raise KeyError(f"Key {k} not found")
+
         return out
 
     def __iter__(self):
         for key, _ in self.items():
             yield key
 
-    def keys(self):
+    def keys(self) -> List[bytes]:
+        """List meadata keys
+
+        The result may contain duplicate keys if they exist in the metadata.
+        """
         return list(self)
 
-    def values(self):
+    def values(self) -> List[bytes]:
+        """List metadata values"""
         return [value for _, value in self.items()]
 
-    def items(self):
+    def items(self) -> Iterable[bytes, bytes]:
+        """Iterate over key/value pairs
+
+        The result may contain duplicate keys if they exist in the metadata."""
         cdef ArrowStringView key
         cdef ArrowStringView value
         self._init_reader()
@@ -157,7 +199,7 @@ cdef class SchemaMetadata:
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         lines = [
             f"<{_repr_utils.make_class_label(self)}>",
             _repr_utils.metadata_repr(self)
@@ -173,11 +215,12 @@ cdef class CSchema:
     that return Python objects and handles the C Data interface lifecycle (i.e., initialized
     ArrowSchema structures are always released).
 
-    See `nanoarrow.c_schema()` for construction and usage examples.
+    See ``nanoarrow.c_schema()`` for construction and usage examples.
     """
 
     @staticmethod
-    def allocate():
+    def allocate() -> CSchema:
+        """Allocate a released CSchema"""
         cdef ArrowSchema* c_schema_out
         base = alloc_c_schema(&c_schema_out)
         return CSchema(base, <uintptr_t>(c_schema_out))
@@ -186,7 +229,7 @@ cdef class CSchema:
         self._base = base
         self._ptr = <ArrowSchema*>addr
 
-    def __deepcopy__(self):
+    def __deepcopy__(self, memo=None) -> CSchema:
         cdef CSchema out = CSchema.allocate()
         cdef int code = ArrowSchemaDeepCopy(self._ptr, out._ptr)
         Error.raise_error_not_ok("ArrowSchemaDeepCopy()", code)
@@ -194,9 +237,8 @@ cdef class CSchema:
         return out
 
     @staticmethod
-    def _import_from_c_capsule(schema_capsule):
-        """
-        Import from a ArrowSchema PyCapsule
+    def _import_from_c_capsule(schema_capsule) -> CSchema:
+        """Import from a ArrowSchema PyCapsule
 
         Parameters
         ----------
@@ -206,7 +248,7 @@ cdef class CSchema:
         """
         return CSchema(
             schema_capsule,
-            <uintptr_t>PyCapsule_GetPointer(schema_capsule, 'arrow_schema')
+            <uintptr_t>PyCapsule_GetPointer(schema_capsule, "arrow_schema")
         )
 
     def __arrow_c_schema__(self):
@@ -215,12 +257,10 @@ cdef class CSchema:
         """
         self._assert_valid()
 
-        cdef:
-            ArrowSchema* c_schema_out
-            int result
-
+        cdef ArrowSchema* c_schema_out
         schema_capsule = alloc_c_schema(&c_schema_out)
-        code = ArrowSchemaDeepCopy(self._ptr, c_schema_out)
+
+        cdef int code = ArrowSchemaDeepCopy(self._ptr, c_schema_out)
         Error.raise_error_not_ok("ArrowSchemaDeepCopy", code)
         return schema_capsule
 
@@ -240,10 +280,11 @@ cdef class CSchema:
 
         return None
 
-    def _addr(self):
+    def _addr(self) -> int:
         return <uintptr_t>self._ptr
 
-    def is_valid(self):
+    def is_valid(self) -> bool:
+        """Check for a non-null and non-released underlying ArrowSchema"""
         return self._ptr != NULL and self._ptr.release != NULL
 
     def _assert_valid(self):
@@ -252,7 +293,7 @@ cdef class CSchema:
         if self._ptr.release == NULL:
             raise RuntimeError("schema is released")
 
-    def _to_string(self, int64_t max_chars=0, recursive=False):
+    def _to_string(self, int64_t max_chars=0, recursive=False) -> str:
         cdef int64_t n_chars
         if max_chars == 0:
             n_chars = ArrowSchemaToString(self._ptr, NULL, 0, recursive)
@@ -269,10 +310,25 @@ cdef class CSchema:
 
         return out_str
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return _repr_utils.schema_repr(self)
 
-    def type_equals(self, CSchema other, check_nullability=False):
+    def type_equals(self, CSchema other, check_nullability: bool=False) -> bool:
+        """Test two schemas for data type equality
+
+        Checks two CSchema objects for type equality (i.e., that an array with
+        schema ``actual`` contains elements with the same logical meaning as and
+        array with schema ``expected``). Notably, this excludes metadata from
+        all nodes in the schema.
+
+        Parameters
+        ----------
+        other : CSchema
+            The schema against which to test
+        check_nullability : bool
+            If True, actual and expected will be considered equal if their
+            data type information and marked nullability are identical.
+        """
         self._assert_valid()
 
         if self._ptr == other._ptr:
@@ -314,25 +370,25 @@ cdef class CSchema:
 
 
     @property
-    def format(self):
+    def format(self) -> str:
         self._assert_valid()
         if self._ptr.format != NULL:
-            return self._ptr.format.decode("UTF-8")
+            return self._ptr.format.decode()
 
     @property
-    def name(self):
+    def name(self) -> Union[str, None]:
         self._assert_valid()
         if self._ptr.name != NULL:
-            return self._ptr.name.decode("UTF-8")
+            return self._ptr.name.decode()
         else:
             return None
 
     @property
-    def flags(self):
+    def flags(self) -> int:
         return self._ptr.flags
 
     @property
-    def metadata(self):
+    def metadata(self) -> SchemaMetadata:
         self._assert_valid()
         if self._ptr.metadata != NULL:
             return SchemaMetadata(self._base, <uintptr_t>self._ptr.metadata)
@@ -340,7 +396,7 @@ cdef class CSchema:
             return None
 
     @property
-    def n_children(self):
+    def n_children(self) -> int:
         self._assert_valid()
         return self._ptr.n_children
 
@@ -352,12 +408,12 @@ cdef class CSchema:
         return CSchema(self._base, <uintptr_t>self._ptr.children[i])
 
     @property
-    def children(self):
+    def children(self) -> Iterable["CSchema"]:
         for i in range(self.n_children):
             yield self.child(i)
 
     @property
-    def dictionary(self):
+    def dictionary(self) -> Union["CSchema", None]:
         self._assert_valid()
         if self._ptr.dictionary != NULL:
             return CSchema(self, <uintptr_t>self._ptr.dictionary)
@@ -365,7 +421,7 @@ cdef class CSchema:
             return None
 
     def modify(self, *, format=None, name=None, flags=None, nullable=None,
-               metadata=None, children=None, dictionary=None, validate=True):
+               metadata=None, children=None, dictionary=None, validate=True) -> CSchema:
         cdef CSchemaBuilder builder = CSchemaBuilder.allocate()
 
         if format is None:
@@ -444,7 +500,7 @@ cdef class CSchemaView:
         self._map_keys_sorted = schema._ptr.flags & ARROW_FLAG_MAP_KEYS_SORTED
 
     @property
-    def layout(self):
+    def layout(self) -> CLayout:
         return CLayout(self, <uintptr_t>&self._schema_view.layout)
 
     @property
@@ -470,10 +526,10 @@ cdef class CSchemaView:
             return None
 
     @property
-    def buffer_format(self):
+    def buffer_format(self) -> Union(str, None):
         """The Python struct format representing an element of this type
         or None if there is no Python format string that can represent this
-        type.
+        type without loosing information.
         """
         if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
             return None
@@ -495,7 +551,7 @@ cdef class CSchemaView:
             return None
 
     @property
-    def type(self):
+    def type(self) -> str:
         cdef const char* type_str = ArrowTypeString(self._schema_view.type)
         if type_str != NULL:
             return type_str.decode()
@@ -503,7 +559,7 @@ cdef class CSchemaView:
             raise ValueError("ArrowTypeString() returned NULL")
 
     @property
-    def storage_type(self):
+    def storage_type(self) -> str:
         cdef const char* type_str = ArrowTypeString(self._schema_view.storage_type)
         if type_str != NULL:
             return type_str.decode()
@@ -518,67 +574,67 @@ cdef class CSchemaView:
             return None
 
     @property
-    def nullable(self):
+    def nullable(self) -> bool:
         return self._nullable != 0
 
     @property
-    def map_keys_sorted(self):
+    def map_keys_sorted(self) -> Union[bool, None]:
         if _types.equal(self._schema_view.type, _types.MAP):
             return self._map_keys_sorted != 0
         else:
             return None
 
     @property
-    def fixed_size(self):
+    def fixed_size(self) -> Union[bool, None]:
         if _types.is_fixed_size(self._schema_view.type):
             return self._schema_view.fixed_size
         else:
             return None
 
     @property
-    def decimal_bitwidth(self):
+    def decimal_bitwidth(self) -> Union[int, None]:
         if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_bitwidth
         else:
             return None
 
     @property
-    def decimal_precision(self):
+    def decimal_precision(self) -> Union[int, None]:
         if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_precision
         else:
             return None
 
     @property
-    def decimal_scale(self):
+    def decimal_scale(self) -> Union[int, None]:
         if _types.is_decimal(self._schema_view.type):
             return self._schema_view.decimal_scale
         else:
             return None
 
     @property
-    def time_unit_id(self):
+    def time_unit_id(self) -> Union[int, None]:
         if _types.has_time_unit(self._schema_view.type):
             return self._schema_view.time_unit
         else:
             return None
 
     @property
-    def time_unit(self):
+    def time_unit(self) -> Union[str, None]:
         if _types.has_time_unit(self._schema_view.type):
             return ArrowTimeUnitString(self._schema_view.time_unit).decode()
         else:
             return None
 
     @property
-    def timezone(self):
+    def timezone(self) -> Union[str, None]:
         if _types.equal(self._schema_view.type, _types.TIMESTAMP):
             return self._schema_view.timezone.decode()
         else:
             return None
 
     @property
-    def union_type_ids(self):
+    def union_type_ids(self) -> Tuple[int]:
         if _types.is_union(self._schema_view.type):
             type_ids_str = self._schema_view.union_type_ids.decode().split(',')
             return (int(type_id) for type_id in type_ids_str)
@@ -586,7 +642,7 @@ cdef class CSchemaView:
             return None
 
     @property
-    def extension_name(self):
+    def extension_name(self) -> Union[str, None]:
         if self._schema_view.extension_name.data != NULL:
             name_bytes = PyBytes_FromStringAndSize(
                 self._schema_view.extension_name.data,
@@ -597,7 +653,7 @@ cdef class CSchemaView:
             return None
 
     @property
-    def extension_metadata(self):
+    def extension_metadata(self) -> Union[bytes, None]:
         if self._schema_view.extension_name.data != NULL:
             return PyBytes_FromStringAndSize(
                 self._schema_view.extension_metadata.data,
@@ -606,7 +662,7 @@ cdef class CSchemaView:
         else:
             return None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return _repr_utils.schema_view_repr(self)
 
 

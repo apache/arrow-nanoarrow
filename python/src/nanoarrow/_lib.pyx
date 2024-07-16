@@ -741,7 +741,7 @@ cdef class CArrayStream:
             array = arrays[i]
 
             if validate:
-                assert_type_equal(array.schema, validate_schema)
+                assert_type_equal(array.schema, validate_schema, False)
 
             if not move:
                 c_array_shallow_copy(array._base, array._ptr, &tmp)
@@ -968,7 +968,7 @@ cdef class CMaterializedArrayStream:
                 continue
 
             if validate:
-                assert_type_equal(array.schema, schema)
+                assert_type_equal(array.schema, schema, False)
 
             out._total_length += len(array)
             code = ArrowBufferAppendInt64(out._array_ends._ptr, out._total_length)
