@@ -20,7 +20,7 @@ name: integration
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     paths:
       - .github/workflows/integration.yaml
