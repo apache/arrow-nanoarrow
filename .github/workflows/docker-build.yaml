@@ -82,7 +82,7 @@ jobs:
 
       - name: Set up QEMU
         if: matrix.config.arch == 's390x'
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Build
         env:
@@ -107,7 +107,7 @@ jobs:
     needs: build-docker
     steps:
     - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}

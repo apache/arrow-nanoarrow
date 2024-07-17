@@ -18,17 +18,18 @@
 FROM apache/arrow-dev:amd64-conda-integration
 
 ENV ARROW_USE_CCACHE=OFF \
-        ARROW_CPP_EXE_PATH=/build/cpp/debug \
-        ARROW_NANOARROW_PATH=/build/nanoarrow \
-        ARROW_RUST_EXE_PATH=/build/rust/debug \
-        BUILD_DOCS_CPP=OFF \
-        ARROW_INTEGRATION_CPP=ON \
-        ARROW_INTEGRATION_CSHARP=ON \
-        ARROW_INTEGRATION_GO=ON \
-        ARROW_INTEGRATION_JAVA=ON \
-        ARROW_INTEGRATION_JS=ON \
-        ARCHERY_INTEGRATION_WITH_NANOARROW="1" \
-        ARCHERY_INTEGRATION_WITH_RUST="1" \
+    ARROW_CPP_EXE_PATH=/build/cpp/debug \
+    ARROW_NANOARROW_PATH=/build/nanoarrow \
+    ARROW_RUST_EXE_PATH=/build/rust/debug \
+    BUILD_DOCS_CPP=OFF \
+    ARROW_INTEGRATION_CPP=ON \
+    ARROW_INTEGRATION_CSHARP=ON \
+    ARROW_INTEGRATION_GO=ON \
+    ARROW_INTEGRATION_JAVA=ON \
+    ARROW_INTEGRATION_JS=ON \
+    ARCHERY_INTEGRATION_WITH_NANOARROW="1" \
+    ARCHERY_INTEGRATION_WITH_RUST="1"
+
 # These are necessary because the github runner overrides $HOME
 # https://github.com/actions/runner/issues/863
 ENV RUSTUP_HOME=/root/.rustup
@@ -50,7 +51,7 @@ RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
 # provided arrow docker image https://github.com/apache/arrow/issues/41637
 RUN cd /arrow-integration/rust && rustup override set 1.77
 
-# Build all the inegrations except nanoarrow (since we'll do that ourselves on each run)
+# Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
     conda run --no-capture-output \
     /arrow-integration/ci/scripts/integration_arrow_build.sh \
