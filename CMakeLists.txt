@@ -40,6 +40,7 @@ option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
 
 option(NANOARROW_DEVICE "Build device extension" OFF)
+option(NANOARROW_TESTING "Build testng extension" OFF)
 
 # Development options
 option(NANOARROW_BUILD_APPS "Build utility applications" OFF)
@@ -308,6 +309,12 @@ if(NANOARROW_DEVICE)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
 endif()
 
+if(NANOARROW_TESTING)
+  add_library(nanoarrow_testing src/nanoarrow/nanoarrow_testing.cc)
+  target_include_directories(nanoarrow_testing PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
+  target_link_libraries(nanoarrow_testing PUBLIC nanoarrow nlohmann_json::nlohmann_json)
+endif()
+
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
   add_subdirectory("thirdparty/nlohmann_json")
@@ -321,7 +328,7 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
-  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
+  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nanoarrow_testing)
 endif()
 
 if(NANOARROW_BUILD_TESTS)
@@ -371,6 +378,7 @@ if(NANOARROW_BUILD_TESTS)
 
   target_link_libraries(utils_test
                         nanoarrow
+                        nanoarrow_testing
                         gtest_main
                         gmock_main
                         ${NANOARROW_ARROW_TARGET}
@@ -388,7 +396,7 @@ if(NANOARROW_BUILD_TESTS)
                         gtest_main
                         gmock_main
                         nlohmann_json::nlohmann_json)
-  target_link_libraries(nanoarrow_testing_test nanoarrow gtest_main
+  target_link_libraries(nanoarrow_testing_test nanoarrow nanoarrow_testing gtest_main
                         nlohmann_json::nlohmann_json)
   target_link_libraries(c_data_integration_test nanoarrow nanoarrow_c_data_integration
                         gtest_main)
