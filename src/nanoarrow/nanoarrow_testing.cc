@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include "nlohmann/json.hpp"
+
 #include "nanoarrow/nanoarrow_testing.hpp"
 
 namespace nanoarrow {
@@ -2047,6 +2049,100 @@ static inline ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema
   return NANOARROW_OK;
 }
 
+ArrowErrorCode SetArrayBatch(const json& value, const ArrowSchema* schema,
+                             ArrowArrayView* array_view, ArrowArray* array,
+                             internal::DictionaryContext& dictionaries,
+                             ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_object(), error, "Expected RecordBatch to be a JSON object"));
+
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.contains("count"), error, "RecordBatch missing key 'count'"));
+
+  const auto& count = value["count"];
+  NANOARROW_RETURN_NOT_OK(
+      Check(count.is_number_integer(), error, "RecordBatch count must be integer"));
+  array_view->length = count.get<int64_t>();
+
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.contains("columns"), error, "RecordBatch missing key 'columns'"));
+
+  const auto& columns = value["columns"];
+  NANOARROW_RETURN_NOT_OK(
+      Check(columns.is_array(), error, "RecordBatch columns must be array"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(columns.size() == static_cast<size_t>(array_view->n_children), error,
+            "RecordBatch children has incorrect size"));
+
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(SetArrayColumn(columns[i], schema->children[i],
+                                           array_view->children[i], array->children[i],
+                                           dictionaries, error));
+  }
+
+  // Validate the array view
+  NANOARROW_RETURN_NOT_OK(PrefixError(
+      ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
+      "RecordBatch failed to validate: "));
+
+  // Flush length and buffer pointers to the Array
+  array->length = array_view->length;
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr), error);
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode RecordDictionaryBatch(const json& value,
+                                     internal::DictionaryContext& dictionaries,
+                                     ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_object(), error, "dictionary batch must be object"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.contains("id"), error, "dictionary batch missing key 'id'"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.contains("data"), error, "dictionary batch missing key 'data'"));
+
+  const auto& id = value["id"];
+  NANOARROW_RETURN_NOT_OK(
+      Check(id.is_number_integer(), error, "dictionary batch id must be integer"));
+  int id_int = id.get<int>();
+  NANOARROW_RETURN_NOT_OK(Check(dictionaries.HasDictionaryForId(id_int), error,
+                                "dictionary batch has unknown id"));
+
+  const auto& batch = value["data"];
+  NANOARROW_RETURN_NOT_OK(
+      Check(batch.is_object(), error, "dictionary batch data must be object"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(batch.contains("columns"), error, "dictionary batch missing key 'columns'"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(batch.contains("count"), error, "dictionary batch missing key 'count'"));
+
+  const auto& batch_columns = batch["columns"];
+  NANOARROW_RETURN_NOT_OK(Check(batch_columns.is_array() && batch_columns.size() == 1,
+                                error,
+                                "dictionary batch columns must be array of size 1"));
+
+  const auto& batch_count = batch["count"];
+  NANOARROW_RETURN_NOT_OK(Check(batch_count.is_number_integer(), error,
+                                "dictionary batch count must be integer"));
+
+  dictionaries.RecordArray(id_int, batch_count.get<int32_t>(), batch_columns[0].dump());
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode RecordDictionaryBatches(const json& value,
+                                       internal::DictionaryContext& dictionaries,
+                                       ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "dictionaries must be array"));
+
+  for (const auto& batch : value) {
+    NANOARROW_RETURN_NOT_OK(RecordDictionaryBatch(batch, dictionaries, error));
+  }
+
+  return NANOARROW_OK;
+}
+
 }  // namespace
 
 ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json,
@@ -2077,7 +2173,8 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
 
     // Record any dictionaries that might be present
     if (obj.contains("dictionaries")) {
-      NANOARROW_RETURN_NOT_OK(RecordDictionaryBatches(obj["dictionaries"], error));
+      NANOARROW_RETURN_NOT_OK(
+          RecordDictionaryBatches(obj["dictionaries"], dictionaries_, error));
     }
 
     // Get a vector of batch ids to parse
@@ -2107,7 +2204,8 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
           ArrowArrayInitFromArrayView(array.get(), array_view.get(), error));
       SetArrayAllocatorRecursive(array.get());
       NANOARROW_RETURN_NOT_OK(SetArrayBatch(batches[batch_ids[i]], schema.get(),
-                                            array_view.get(), array.get(), error));
+                                            array_view.get(), array.get(), dictionaries_,
+                                            error));
       ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
     }
 
@@ -2146,6 +2244,7 @@ ArrowErrorCode TestingJSONReader::ReadField(const std::string& field_json,
     return EINVAL;
   }
 }
+
 ArrowErrorCode TestingJSONReader::ReadBatch(const std::string& batch_json,
                                             const ArrowSchema* schema, ArrowArray* out,
                                             ArrowError* error) {
@@ -2163,7 +2262,7 @@ ArrowErrorCode TestingJSONReader::ReadBatch(const std::string& batch_json,
     SetArrayAllocatorRecursive(array.get());
 
     NANOARROW_RETURN_NOT_OK(
-        SetArrayBatch(obj, schema, array_view.get(), array.get(), error));
+        SetArrayBatch(obj, schema, array_view.get(), array.get(), dictionaries_, error));
     ArrowArrayMove(array.get(), out);
     return NANOARROW_OK;
   } catch (json::exception& e) {
@@ -2199,95 +2298,7 @@ ArrowErrorCode TestingJSONReader::ReadColumn(const std::string& column_json,
     return EINVAL;
   }
 }
-ArrowErrorCode TestingJSONReader::SetArrayBatch(const json& value,
-                                                const ArrowSchema* schema,
-                                                ArrowArrayView* array_view,
-                                                ArrowArray* array, ArrowError* error) {
-  NANOARROW_RETURN_NOT_OK(
-      Check(value.is_object(), error, "Expected RecordBatch to be a JSON object"));
 
-  NANOARROW_RETURN_NOT_OK(
-      Check(value.contains("count"), error, "RecordBatch missing key 'count'"));
-
-  const auto& count = value["count"];
-  NANOARROW_RETURN_NOT_OK(
-      Check(count.is_number_integer(), error, "RecordBatch count must be integer"));
-  array_view->length = count.get<int64_t>();
-
-  NANOARROW_RETURN_NOT_OK(
-      Check(value.contains("columns"), error, "RecordBatch missing key 'columns'"));
-
-  const auto& columns = value["columns"];
-  NANOARROW_RETURN_NOT_OK(
-      Check(columns.is_array(), error, "RecordBatch columns must be array"));
-  NANOARROW_RETURN_NOT_OK(
-      Check(columns.size() == static_cast<size_t>(array_view->n_children), error,
-            "RecordBatch children has incorrect size"));
-
-  for (int64_t i = 0; i < array_view->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(SetArrayColumn(columns[i], schema->children[i],
-                                           array_view->children[i], array->children[i],
-                                           dictionaries_, error));
-  }
-
-  // Validate the array view
-  NANOARROW_RETURN_NOT_OK(PrefixError(
-      ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
-      "RecordBatch failed to validate: "));
-
-  // Flush length and buffer pointers to the Array
-  array->length = array_view->length;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr), error);
-
-  return NANOARROW_OK;
-}
-ArrowErrorCode TestingJSONReader::RecordDictionaryBatches(const json& value,
-                                                          ArrowError* error) {
-  NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "dictionaries must be array"));
-
-  for (const auto& batch : value) {
-    NANOARROW_RETURN_NOT_OK(RecordDictionaryBatch(batch, error));
-  }
-
-  return NANOARROW_OK;
-}
-ArrowErrorCode TestingJSONReader::RecordDictionaryBatch(const json& value,
-                                                        ArrowError* error) {
-  NANOARROW_RETURN_NOT_OK(
-      Check(value.is_object(), error, "dictionary batch must be object"));
-  NANOARROW_RETURN_NOT_OK(
-      Check(value.contains("id"), error, "dictionary batch missing key 'id'"));
-  NANOARROW_RETURN_NOT_OK(
-      Check(value.contains("data"), error, "dictionary batch missing key 'data'"));
-
-  const auto& id = value["id"];
-  NANOARROW_RETURN_NOT_OK(
-      Check(id.is_number_integer(), error, "dictionary batch id must be integer"));
-  int id_int = id.get<int>();
-  NANOARROW_RETURN_NOT_OK(Check(dictionaries_.HasDictionaryForId(id_int), error,
-                                "dictionary batch has unknown id"));
-
-  const auto& batch = value["data"];
-  NANOARROW_RETURN_NOT_OK(
-      Check(batch.is_object(), error, "dictionary batch data must be object"));
-  NANOARROW_RETURN_NOT_OK(
-      Check(batch.contains("columns"), error, "dictionary batch missing key 'columns'"));
-  NANOARROW_RETURN_NOT_OK(
-      Check(batch.contains("count"), error, "dictionary batch missing key 'count'"));
-
-  const auto& batch_columns = batch["columns"];
-  NANOARROW_RETURN_NOT_OK(Check(batch_columns.is_array() && batch_columns.size() == 1,
-                                error,
-                                "dictionary batch columns must be array of size 1"));
-
-  const auto& batch_count = batch["count"];
-  NANOARROW_RETURN_NOT_OK(Check(batch_count.is_number_integer(), error,
-                                "dictionary batch count must be integer"));
-
-  dictionaries_.RecordArray(id_int, batch_count.get<int32_t>(), batch_columns[0].dump());
-  return NANOARROW_OK;
-}
 void TestingJSONReader::SetArrayAllocatorRecursive(ArrowArray* array) {
   for (int i = 0; i < array->n_buffers; i++) {
     ArrowArrayBuffer(array, i)->allocator = allocator_;

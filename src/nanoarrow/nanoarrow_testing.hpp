@@ -22,8 +22,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <nlohmann/json.hpp>
-
 #include "nanoarrow/nanoarrow.hpp"
 
 #ifndef NANOARROW_TESTING_HPP_INCLUDED
@@ -217,7 +215,6 @@ class TestingJSONWriter {
 
 /// \brief Reader for the Arrow integration testing JSON format
 class TestingJSONReader {
-  using json = nlohmann::json;
 
  public:
   TestingJSONReader(ArrowBufferAllocator allocator) : allocator_(allocator) {}
@@ -266,14 +263,6 @@ class TestingJSONReader {
  private:
   ArrowBufferAllocator allocator_;
   internal::DictionaryContext dictionaries_;
-
-  ArrowErrorCode SetArrayBatch(const json& value, const ArrowSchema* schema,
-                               ArrowArrayView* array_view, ArrowArray* array,
-                               ArrowError* error);
-
-  ArrowErrorCode RecordDictionaryBatches(const json& value, ArrowError* error);
-
-  ArrowErrorCode RecordDictionaryBatch(const json& value, ArrowError* error);
 
   void SetArrayAllocatorRecursive(ArrowArray* array);
 };
